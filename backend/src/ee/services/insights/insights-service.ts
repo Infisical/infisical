@@ -163,8 +163,11 @@ export const insightsServiceFactory = ({
   dynamicSecretLeaseDAL,
   insightsDAL
 }: TInsightsServiceFactoryDep) => {
-  // Gate for every org-wide aggregate: the org-level read permission plus the insights entitlement.
-  const assertOrgInsightsRead = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TOrgInsightsDTO) => {
+  // Gate for every org-wide aggregate: an org-level insights permission plus the insights entitlement.
+  const assertOrgInsightsRead = async (
+    { actor, actorId, orgId, actorAuthMethod, actorOrgId }: TOrgInsightsDTO,
+    action = OrgPermissionSecretsManagementInsightsActions.Read
+  ) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor,
@@ -174,10 +177,7 @@ export const insightsServiceFactory = ({
       actorOrgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSecretsManagementInsightsActions.Read,
-      OrgPermissionSubjects.SecretsManagementInsights
-    );
+    ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.SecretsManagementInsights);
 
     await assertInsightsPlanEnabled(licenseService, orgId);
   };
@@ -484,11 +484,11 @@ export const insightsServiceFactory = ({
     });
   };
 
-  // The org-wide view of the same question the project card answers. Permission is the org insights
-  // read, which already grants cross-project visibility elsewhere on this page (getSecretsProjects
-  // reads every project in the org behind the same assert), so there is no per-project filter here.
+  // The org-wide view of the same question the project card answers. The groups name every project
+  // a value lives in, so this needs SearchAllSecretValues rather than the page's plain read, and
+  // there is no per-project filter: holding it is the grant to see across projects.
   const getOrgSecretsDuplication = async (dto: TGetOrgSecretsDuplicationDTO) => {
-    await assertOrgInsightsRead(dto);
+    await assertOrgInsightsRead(dto, OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues);
 
     const org = await orgDAL.findById(dto.orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${dto.orgId}' not found` });
@@ -496,7 +496,7 @@ export const insightsServiceFactory = ({
     // Org-scoped digests only exist once the backfill has run, so an empty answer before then would
     // read as "no duplicates" when it means "nothing has been indexed".
     if (!org.orgWideSecretValueTrackingEnabled) {
-      return { result: { orgWideSecretValueTrackingEnabled: false as const, groups: [] } };
+      return { result: { orgWideSecretValueTrackingEnabled: false as const, groups: [], computedAt: null } };
     }
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, "org-secrets-duplication");
@@ -507,8 +507,9 @@ export const insightsServiceFactory = ({
       key: cacheKey,
       ttlSeconds: KeyStoreTtls.InsightsDuplicationCacheInSeconds,
       fetcher: async () => {
+        const computedAt = new Date().toISOString();
         const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValuesInOrg(dto.orgId);
-        if (!rawGroups.length) return { orgWideSecretValueTrackingEnabled: true as const, groups: [] };
+        if (!rawGroups.length) return { orgWideSecretValueTrackingEnabled: true as const, groups: [], computedAt };
 
         // One decryptor per project rather than per group: the value is encrypted under the owning
         // project's data key, and resolving that key can reach an external KMS.
@@ -577,13 +578,14 @@ export const insightsServiceFactory = ({
           // window, which is a different problem from three copies inside one project.
           .sort((a, b) => b.projectCount - a.projectCount || b.locationCount - a.locationCount);
 
-        return { orgWideSecretValueTrackingEnabled: true as const, groups };
+        return { orgWideSecretValueTrackingEnabled: true as const, groups, computedAt };
       }
     });
 
     const remainingTTL = await getCacheTtl(keyStore, cacheKey);
 
-    return { result, remainingTTL };
+    // An entry cached before computedAt existed lacks it until it expires.
+    return { result: { ...result, computedAt: result.computedAt ?? null }, remainingTTL };
   };
 
   const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: OrgServiceActor) => {

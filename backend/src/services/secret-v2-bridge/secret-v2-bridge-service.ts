@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import {
   ActionProjectType,
+  OrganizationActionScope,
   ProjectMembershipRole,
   ProjectType,
   SecretsV2Schema,
@@ -11,6 +12,10 @@ import {
   TableName,
   TSecretsV2
 } from "@app/db/schemas";
+import {
+  OrgPermissionSecretsManagementInsightsActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -154,7 +159,10 @@ type TSecretV2BridgeServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionFingerprint">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getProjectPermissionFingerprint" | "getOrgPermission"
+  >;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
@@ -4070,9 +4078,23 @@ export const secretV2BridgeServiceFactory = ({
     // what keeps this from being an oracle: a value held only in projects they cannot read costs the
     // same work, and takes the same time, as a value held nowhere. It also bounds the query, which
     // would otherwise fan out across every project in the org for a value like "true".
-    const readableProjectIds: string[] = [];
+    const { permission: orgPermission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
+    // Holding this is the grant to see a value's locations in every project, member or not.
+    const canSearchAllProjects = orgPermission.can(
+      OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+      OrgPermissionSubjects.SecretsManagementInsights
+    );
+
+    const readableProjectIds: string[] = canSearchAllProjects ? candidates.map((project) => project.id) : [];
     await Promise.all(
-      candidates.map(async (project) => {
+      (canSearchAllProjects ? [] : candidates).map(async (project) => {
         try {
           const { permission } = await permissionService.getProjectPermission({
             actor: actor.type,

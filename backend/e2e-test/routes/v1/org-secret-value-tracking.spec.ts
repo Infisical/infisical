@@ -1,8 +1,13 @@
+import { packRules } from "@casl/ability/extra";
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { createSecretV2, updateSecretV2 } from "e2e-test/testUtils/secrets";
 import jwt from "jsonwebtoken";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, SecretType, TableName } from "@app/db/schemas";
+import {
+  OrgPermissionSecretsManagementInsightsActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
 const ENV = "dev";
@@ -106,6 +111,78 @@ const withOwnOrg = async (
   } finally {
     await ctx.cleanup();
   }
+};
+
+// An org member with no project membership. With `insightsActions` they hold a custom org role
+// granting exactly those Secrets Management Insights actions; without, the built-in member role.
+const createOrgMemberToken = async (
+  orgId: string,
+  name: string,
+  insightsActions?: OrgPermissionSecretsManagementInsightsActions[]
+) => {
+  const username = `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
+  const [user] = await testDb(TableName.Users)
+    .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
+    .returning("*");
+  const [orgMembership] = await testDb(TableName.Membership)
+    .insert({
+      scope: AccessScope.Organization,
+      scopeOrgId: orgId,
+      actorUserId: user.id,
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
+    })
+    .returning("*");
+
+  if (insightsActions) {
+    const [role] = await testDb(TableName.Role)
+      .insert({
+        name: username,
+        slug: `role-${user.id}`,
+        orgId,
+        permissions: JSON.stringify(
+          packRules([{ subject: OrgPermissionSubjects.SecretsManagementInsights, action: insightsActions }] as never)
+        )
+      })
+      .returning("*");
+    await testDb(TableName.MembershipRole).insert({
+      membershipId: orgMembership.id,
+      role: OrgMembershipRole.Custom,
+      customRoleId: role.id
+    });
+  } else {
+    await testDb(TableName.MembershipRole).insert({
+      membershipId: orgMembership.id,
+      role: OrgMembershipRole.Member
+    });
+  }
+
+  const [tokenVersion] = await testDb(TableName.AuthTokenSession)
+    .insert({
+      userId: user.id,
+      ip: "127.0.0.1",
+      userAgent: "test",
+      accessVersion: 1,
+      refreshVersion: 1,
+      lastUsed: new Date()
+    })
+    .returning("*");
+
+  // Signed with jsonwebtoken directly rather than through the crypto wrapper: that module is a
+  // singleton the spec worker has not initialised, and this only needs the same claims the test
+  // environment mints for the seeded user.
+  return jwt.sign(
+    {
+      authTokenType: AuthTokenType.ACCESS_TOKEN,
+      userId: user.id,
+      tokenVersionId: tokenVersion.id,
+      authMethod: AuthMethod.EMAIL,
+      organizationId: orgId,
+      accessVersion: 1
+    },
+    process.env.AUTH_SECRET as string,
+    { expiresIn: "1h" }
+  );
 };
 
 describe("Org-wide secret value tracking", () => {
@@ -271,49 +348,7 @@ describe("Org-wide secret value tracking", () => {
     });
 
     // A member of the org with no project membership at all.
-    const username = `value-tracking-outsider-${Date.now()}@example.com`;
-    const [user] = await testDb(TableName.Users)
-      .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
-      .returning("*");
-    const [orgMembership] = await testDb(TableName.Membership)
-      .insert({
-        scope: AccessScope.Organization,
-        scopeOrgId: orgId,
-        actorUserId: user.id,
-        status: OrgMembershipStatus.Accepted,
-        isActive: true
-      })
-      .returning("*");
-    await testDb(TableName.MembershipRole).insert({
-      membershipId: orgMembership.id,
-      role: OrgMembershipRole.Member
-    });
-    const [tokenVersion] = await testDb(TableName.AuthTokenSession)
-      .insert({
-        userId: user.id,
-        ip: "127.0.0.1",
-        userAgent: "test",
-        accessVersion: 1,
-        refreshVersion: 1,
-        lastUsed: new Date()
-      })
-      .returning("*");
-
-    // Signed with jsonwebtoken directly rather than through the crypto wrapper: that module is a
-    // singleton the spec worker has not initialised, and this only needs the same claims the test
-    // environment mints for the seeded user.
-    const outsiderToken = jwt.sign(
-      {
-        authTokenType: AuthTokenType.ACCESS_TOKEN,
-        userId: user.id,
-        tokenVersionId: tokenVersion.id,
-        authMethod: AuthMethod.EMAIL,
-        organizationId: orgId,
-        accessVersion: 1
-      },
-      process.env.AUTH_SECRET as string,
-      { expiresIn: "1h" }
-    );
+    const outsiderToken = await createOrgMemberToken(orgId, "value-tracking-outsider");
 
     const owner = await searchByValue(shared, authToken);
     expect(
@@ -326,6 +361,51 @@ describe("Org-wide secret value tracking", () => {
     const outsider = await searchByValue(shared, outsiderToken);
     expect(outsider.statusCode).toBe(200);
     expect(outsider.json().secrets).toEqual([]);
+  });
+
+  test("reading insights is not enough to see or start the backfill", async () => {
+    const readerToken = await createOrgMemberToken(orgId, "value-tracking-reader", [
+      OrgPermissionSecretsManagementInsightsActions.Read
+    ]);
+
+    expect((await enable(readerToken)).statusCode).toBe(403);
+
+    const statusRes = await testServer.inject({
+      method: "GET",
+      url: "/api/v1/organization/secret-value-tracking/status",
+      headers: { authorization: `Bearer ${readerToken}` }
+    });
+    expect(statusRes.statusCode).toBe(403);
+  });
+
+  test("searching all secret values finds hits in projects the searcher is not a member of", async () => {
+    const shared = `search-all-${Date.now()}`;
+
+    const otherProjectRes = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/projects",
+      headers: { authorization: `Bearer ${authToken}` },
+      body: { projectName: `value-tracking-search-all-${Date.now()}` }
+    });
+    expect(otherProjectRes.statusCode).toBe(200);
+    const otherProjectId = otherProjectRes.json().project.id as string;
+
+    await createSecretV2({
+      workspaceId: otherProjectId,
+      environmentSlug: ENV,
+      secretPath: "/",
+      key: "IN_A_PROJECT_THEY_ARE_NOT_IN",
+      value: shared,
+      authToken
+    });
+
+    const searcherToken = await createOrgMemberToken(orgId, "value-tracking-searcher", [
+      OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues
+    ]);
+
+    const res = await searchByValue(shared, searcherToken);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().secrets.map((s: { key: string }) => s.key)).toEqual(["IN_A_PROJECT_THEY_ARE_NOT_IN"]);
   });
 
   test("a second enable while a run is moving does not start a second walk", async () =>

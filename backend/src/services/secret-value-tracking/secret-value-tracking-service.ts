@@ -37,10 +37,10 @@ export const secretValueTrackingServiceFactory = ({
       actorOrgId: actor.orgId,
       scope: OrganizationActionScope.Any
     });
-    // The permission that grants org-wide secrets insights also grants turning the index on: the
-    // backfill unlocks exactly the reads this permission already allows, and nothing else.
+    // Whoever may search every secret value may also turn the index on: the backfill unlocks exactly
+    // the searches this permission already allows, and nothing else.
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSecretsManagementInsightsActions.Read,
+      OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
       OrgPermissionSubjects.SecretsManagementInsights
     );
 
@@ -71,7 +71,7 @@ export const secretValueTrackingServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSecretsManagementInsightsActions.Read,
+      OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
       OrgPermissionSubjects.SecretsManagementInsights
     );
 

@@ -518,6 +518,11 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           orgWideSecretValueTrackingEnabled: z.boolean(),
+          computedAt: z
+            .string()
+            .datetime()
+            .nullable()
+            .describe("When the groups were computed. Null when detection is not enabled."),
           groups: z.array(
             z.object({
               projectCount: z.number(),
