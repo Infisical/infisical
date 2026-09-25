@@ -18,6 +18,7 @@ import {
   TAltNameType
 } from "../certificate/certificate-types";
 import { CERT_CLOCK_SKEW_MS, DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
+import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
 import { buildHsmCaSigner, buildLocalCaSigner, caKeyAlgorithmToHsmShape, TCaSigner } from "./ca-signer";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
@@ -741,6 +742,21 @@ export const buildCrlDistributionPointUrls = (
     acc.push(trimmed);
     return acc;
   }, []);
+};
+
+export const assertNoCertificateProfilesUsingCa = async (
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "find">,
+  caId: string,
+  caName: string
+) => {
+  const profiles = await certificateProfileDAL.find({ caId });
+  if (profiles.length > 0) {
+    const profileNames = profiles.map((profile) => profile.slug || profile.id).join(", ");
+
+    throw new BadRequestError({
+      message: `Cannot delete CA '${caName}' as it is currently in use by the following certificate profiles: ${profileNames}. Please remove this CA from these profiles before deleting it.`
+    });
+  }
 };
 
 export const rethrowCaDeleteError = (error: unknown): never => {
