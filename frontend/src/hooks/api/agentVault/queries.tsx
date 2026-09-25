@@ -18,6 +18,7 @@ import {
   TAgentVaultActivityLoggingCorsProbe,
   TAgentVaultActivityLoggingHealth,
   TAgentVaultActivityLoggingSettings,
+  TAgentVaultActivityReadAccess,
   TAgentVaultActivityTailPage,
   TAgentVaultDecryptedActivityPage,
   TAgentVaultMember,
@@ -254,21 +255,29 @@ export const useGetAgentVaultActivityLoggingHealth = (enabled = true) => {
   });
 };
 
+export const fetchAgentVaultActivityReadAccess =
+  async (): Promise<TAgentVaultActivityReadAccess | null> => {
+    const { data } = await apiRequest.get<{ probe: TAgentVaultActivityLoggingCorsProbe }>(
+      "/api/v1/agent-vault/settings/activity-logging/cors-probe"
+    );
+    if (!data.probe) return null;
+    // The probed object never exists. S3 adds CORS headers to its 404 and to a 403 alike, so fetch
+    // rejects only when the rule is missing, and a 403 means the connection may not read the bucket.
+    try {
+      const res = await fetch(data.probe.url, { mode: "cors", credentials: "omit" });
+      return res.status === 403 ? "access-denied" : "readable";
+    } catch {
+      return "cors-missing";
+    }
+  };
+
 export const useGetAgentVaultActivityLoggingCorsProbe = (enabled = true) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
     queryKey: agentVaultKeys.activityLoggingCorsProbe(currentOrg.id),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ probe: TAgentVaultActivityLoggingCorsProbe }>(
-        "/api/v1/agent-vault/settings/activity-logging/cors-probe"
-      );
-      return data.probe;
-    },
+    queryFn: fetchAgentVaultActivityReadAccess,
     enabled,
-    // The link is presigned for minutes, so every open fetches a fresh one.
-    staleTime: 0,
-    gcTime: 0,
     retry: false
   });
 };

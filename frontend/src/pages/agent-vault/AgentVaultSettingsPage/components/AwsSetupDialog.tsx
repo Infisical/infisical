@@ -84,60 +84,61 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   bucket: string | null;
   keyPrefix: string | null;
+  isUnsaved?: boolean;
 };
 
-export const AwsSetupDialog = ({ isOpen, onOpenChange, bucket, keyPrefix }: Props) => {
+export const AwsSetupDialog = ({
+  isOpen,
+  onOpenChange,
+  bucket,
+  keyPrefix,
+  isUnsaved = false
+}: Props) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
-  const probe = useGetAgentVaultActivityLoggingCorsProbe(isOpen);
-  // The dialog stays mounted while closed, so a link from an earlier open must not be probed again.
-  const corsProbeUrl = isOpen && !probe.isFetching ? (probe.data?.url ?? null) : null;
+  const { data: savedReadAccess } = useGetAgentVaultActivityLoggingCorsProbe(isOpen && !isUnsaved);
+  // The check reads the saved bucket, so it says nothing about a bucket that is only typed in.
+  const readAccess = isUnsaved ? null : savedReadAccess;
+  const isCorsMissing = readAccess === "cors-missing";
+  // Any answer S3 let the browser read proves the CORS rule is already attached.
+  const hasCorsRule = readAccess === "access-denied" || readAccess === "readable";
   const [tab, setTab] = useState<TabValue>("policy");
   const [hasPickedTab, setHasPickedTab] = useState(false);
-  const [isCorsMissing, setIsCorsMissing] = useState(false);
 
   const pickTab = (next: TabValue) => {
     setHasPickedTab(true);
     setTab(next);
   };
 
-  useEffect(() => {
-    if (!isOpen) {
-      queryClient.removeQueries({
+  const handleOpenChange = (next: boolean) => {
+    // Re-checked on close, so the page's warning clears once the rule or policy is attached.
+    if (!next) {
+      queryClient.invalidateQueries({
         queryKey: agentVaultKeys.activityLoggingCorsProbe(currentOrg.id)
       });
-      return;
     }
-    setTab("policy");
-    setHasPickedTab(false);
-  }, [isOpen]);
+    onOpenChange(next);
+  };
 
   useEffect(() => {
-    setIsCorsMissing(false);
-    if (!isOpen || !corsProbeUrl) return undefined;
-
-    let isCurrent = true;
-    // S3 adds CORS headers even to this probe's 404; fetch rejects only when the rule is missing.
-    fetch(corsProbeUrl, { mode: "cors", credentials: "omit" }).catch(() => {
-      if (isCurrent) setIsCorsMissing(true);
-    });
-    return () => {
-      isCurrent = false;
-    };
-  }, [isOpen, corsProbeUrl]);
+    if (!isOpen) return;
+    setTab(isCorsMissing ? "cors" : "policy");
+    setHasPickedTab(false);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isCorsMissing && !hasPickedTab) setTab("cors");
   }, [isCorsMissing, hasPickedTab]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>AWS Setup</DialogTitle>
           <DialogDescription>
-            Two things to set up in AWS so Infisical can write records, and so your browser can read
-            them back.
+            {isUnsaved
+              ? "Saving with logging enabled checks that Infisical can write to the bucket, so attach the IAM policy first. The CORS rule lets your browser read records back."
+              : "Two things to set up in AWS so Infisical can write records, and so your browser can read them back."}
           </DialogDescription>
         </DialogHeader>
 
@@ -149,6 +150,16 @@ export const AwsSetupDialog = ({ isOpen, onOpenChange, bucket, keyPrefix }: Prop
             </TabsList>
 
             <TabsContent value="policy" className="space-y-4">
+              {readAccess === "access-denied" && (
+                <Alert variant="warning">
+                  <AlertTriangleIcon />
+                  <AlertTitle>This connection is not allowed to read from this bucket.</AlertTitle>
+                  <AlertDescription>
+                    Nobody can read session logs back until this policy is attached, and new logs
+                    may not be stored.
+                  </AlertDescription>
+                </Alert>
+              )}
               <Steps
                 items={[
                   "In AWS, open IAM, then Policies, then Create policy.",
@@ -168,7 +179,7 @@ export const AwsSetupDialog = ({ isOpen, onOpenChange, bucket, keyPrefix }: Prop
                   <AlertTriangleIcon />
                   <AlertTitle>This bucket is not allowing requests from this origin.</AlertTitle>
                   <AlertDescription>
-                    Activity is still stored, but nobody can read it back until this rule is
+                    Session logs are still stored, but nobody can read them back until this rule is
                     attached.
                   </AlertDescription>
                 </Alert>
@@ -189,12 +200,12 @@ export const AwsSetupDialog = ({ isOpen, onOpenChange, bucket, keyPrefix }: Prop
         </DialogBody>
 
         <DialogFooter>
-          {tab === "policy" ? (
+          {tab === "policy" && !hasCorsRule ? (
             <Button variant="av" type="button" onClick={() => pickTab("cors")}>
               Next
             </Button>
           ) : (
-            <Button variant="av" type="button" onClick={() => onOpenChange(false)}>
+            <Button variant="av" type="button" onClick={() => handleOpenChange(false)}>
               Done
             </Button>
           )}

@@ -143,7 +143,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             .describe(AGENT_VAULT.PROXY.sessionToken)
         })
         .passthrough(),
-      // Nullish, not optional: proxies predating activity logging send no body, which arrives as null.
+      // Nullish, not optional: proxies predating session logging send no body, which arrives as null.
       body: z
         .object({
           hasActivityKey: z.boolean().default(false).describe(AGENT_VAULT.ACTIVITY.hasActivityKey)

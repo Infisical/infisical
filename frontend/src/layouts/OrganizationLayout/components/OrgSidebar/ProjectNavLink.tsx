@@ -74,7 +74,7 @@ export const ProjectNavLink = ({
             <span
               aria-hidden
               className={twMerge(
-                "ml-auto size-1.5 shrink-0 rounded-full",
+                "ml-auto size-2 shrink-0 rounded-full",
                 item.dotVariant === "danger" ? "bg-danger" : "bg-warning"
               )}
             />
@@ -123,7 +123,7 @@ export const ProjectNavLink = ({
             <span
               aria-hidden
               className={twMerge(
-                "ml-auto size-1.5 shrink-0 rounded-full",
+                "ml-auto size-2 shrink-0 rounded-full",
                 item.dotVariant === "danger" ? "bg-danger" : "bg-warning"
               )}
             />

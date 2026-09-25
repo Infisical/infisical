@@ -292,7 +292,7 @@ describe("Agent Vault activity", async () => {
       expect(JSON.parse(res.payload).message).toContain("a bucket");
     });
 
-    test("a connection activity logging uses cannot be deleted, and the refusal says why", async () => {
+    test("a connection session logging uses cannot be deleted, and the refusal says why", async () => {
       await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1" });
 
       const res = await testServer.inject({
@@ -301,7 +301,7 @@ describe("Agent Vault activity", async () => {
         headers: { authorization: `Bearer ${jwtAuthToken}` }
       });
       expect(res.statusCode).toBe(400);
-      expect(JSON.parse(res.payload).message).toContain("Agent Vault activity logging");
+      expect(JSON.parse(res.payload).message).toContain("Agent Vault session logging");
 
       const config = await testDb("agent_vault_activity_configs").where({ projectId }).first();
       expect(config.appConnectionId).toBe(connectionId);
@@ -312,7 +312,7 @@ describe("Agent Vault activity", async () => {
 
       const whileOn = await saveConfig({ appConnectionId: null });
       expect(whileOn.statusCode).toBe(400);
-      expect(JSON.parse(whileOn.payload).message).toContain("Turn off activity logging");
+      expect(JSON.parse(whileOn.payload).message).toContain("Turn off session logging");
 
       const whileOff = await saveConfig({ enabled: false, appConnectionId: null });
       expect(whileOff.statusCode).toBe(200);
@@ -604,7 +604,7 @@ describe("Agent Vault activity", async () => {
       expect(JSON.parse((await proxy.resolve(session.token, true)).payload).activity.enabled).toBe(false);
     });
 
-    test("a proxy that predates activity logging sends no body and still resolves", async () => {
+    test("a proxy that predates session logging sends no body and still resolves", async () => {
       await configure();
       const { session, proxy } = await setup("legacy");
 

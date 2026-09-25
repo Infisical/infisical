@@ -4,15 +4,17 @@ import { useTranslation } from "react-i18next";
 import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
-  ActivityIcon,
   BanIcon,
   BotIcon,
+  CircleAlertIcon,
   FilterIcon,
   IdCardIcon,
+  LogsIcon,
   MoreHorizontalIcon,
   PackageIcon,
   PlusIcon,
   SearchIcon,
+  TriangleAlertIcon,
   UserIcon
 } from "lucide-react";
 
@@ -83,6 +85,7 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
+import { SessionLoggingReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLoggingReadAccessAlert";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
@@ -134,8 +137,8 @@ export const AgentVaultSessionsPage = () => {
     offset: (page - 1) * perPage
   });
   const { data: accessBundles } = useListAgentVaultAccessBundles({ limit: 1 });
-  const { data: activityLogging } = useGetAgentVaultActivityLoggingSettings(isAdmin);
-  const { data: activityLoggingHealth } = useGetAgentVaultActivityLoggingHealth(isAdmin);
+  const { data: sessionLogging } = useGetAgentVaultActivityLoggingSettings(isAdmin);
+  const { data: sessionLoggingHealth } = useGetAgentVaultActivityLoggingHealth(isAdmin);
 
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -182,37 +185,40 @@ export const AgentVaultSessionsPage = () => {
         description="Create sessions that let your agents reach the services in an access bundle."
       />
 
-      {activityLoggingHealth?.isStorageFull &&
-        activityLogging &&
-        isAgentVaultRecording(activityLogging) && (
+      {sessionLoggingHealth?.isStorageFull &&
+        sessionLogging &&
+        isAgentVaultRecording(sessionLogging) && (
           <Alert variant="danger">
+            <CircleAlertIcon />
             <AlertDescription>
-              Activity logging has reached its limit for this organization. Contact Infisical
+              Session logging has reached its limit for this organization. Contact Infisical
               support.
             </AlertDescription>
           </Alert>
         )}
 
-      {activityLogging && !isAgentVaultRecording(activityLogging) && (
+      {sessionLogging && !isAgentVaultRecording(sessionLogging) && (
         <Alert variant="warning">
+          <TriangleAlertIcon />
           <AlertDescription>
             <p>
-              Session activity isn&apos;t being recorded, so there is no record of what your agents
-              reached.
+              Sessions aren&apos;t being logged, so there is no record of what your agents reached.
             </p>
             <AlertAction>
               <Button variant="outline" size="sm" asChild>
                 <Link
-                  to="/organizations/$orgId/agent-vault/activity-logs"
+                  to="/organizations/$orgId/agent-vault/settings"
                   params={{ orgId: currentOrg.id }}
                 >
-                  Go to Activity Logs
+                  Go to Settings
                 </Link>
               </Button>
             </AlertAction>
           </AlertDescription>
         </Alert>
       )}
+
+      {isAdmin && <SessionLoggingReadAccessAlert />}
 
       <Card>
         <CardHeader>
@@ -416,39 +422,35 @@ export const AgentVaultSessionsPage = () => {
                             <IconButton
                               variant="ghost"
                               size="xs"
-                              aria-label="View session activity logs"
+                              aria-label="View session logs"
                               onClick={() => openSheet(session.id)}
                             >
-                              <ActivityIcon />
+                              <LogsIcon />
                             </IconButton>
                           </TooltipTrigger>
-                          <TooltipContent>View Activity Logs</TooltipContent>
+                          <TooltipContent>View Session Logs</TooltipContent>
                         </Tooltip>
-                        {session.status === AgentVaultSessionStatus.Active && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                variant="ghost"
-                                size="xs"
-                                aria-label="Open session actions"
-                              >
-                                <MoreHorizontalIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent sideOffset={2} align="end">
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={() => setSessionToRevoke(session)}
-                              >
-                                <BanIcon />
-                                Revoke Session
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                        {session.status !== AgentVaultSessionStatus.Active && (
-                          <span aria-hidden className="size-7 shrink-0" />
-                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton variant="ghost" size="xs" aria-label="Open session actions">
+                              <MoreHorizontalIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent sideOffset={2} align="end">
+                            <DropdownMenuItem onClick={() => openSheet(session.id)}>
+                              <LogsIcon />
+                              View Session Logs
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="danger"
+                              isDisabled={session.status !== AgentVaultSessionStatus.Active}
+                              onClick={() => setSessionToRevoke(session)}
+                            >
+                              <BanIcon />
+                              Revoke Session
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -498,7 +500,11 @@ export const AgentVaultSessionsPage = () => {
         }}
       />
 
-      <SessionDetailSheet session={openSession} isPending={isOpenSessionPending} />
+      <SessionDetailSheet
+        session={openSession}
+        isPending={isOpenSessionPending}
+        onRevoke={setSessionToRevoke}
+      />
     </div>
   );
 };

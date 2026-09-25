@@ -21,7 +21,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       operationId: "getAgentVaultActivityLoggingSettings",
-      description: "Gets the activity logging settings",
+      description: "Gets the session logging settings",
       tags: [ApiDocsTags.AgentVaultSettings],
       response: { 200: AgentVaultActivityLoggingSettingsResponseSchema }
     },
@@ -46,7 +46,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       hide: false,
       operationId: "updateAgentVaultActivityLoggingSettings",
       description:
-        "Updates the activity logging settings. If activity logging is on, Infisical checks that the AWS connection can reach the bucket and write to it before saving.",
+        "Updates the session logging settings. If session logging is on, Infisical checks that the AWS connection can reach the bucket and write to it before saving.",
       tags: [ApiDocsTags.AgentVaultSettings],
       body: AgentVaultActivityLoggingSettingsUpdateSchema,
       response: { 200: AgentVaultActivityLoggingSettingsResponseSchema }
@@ -104,7 +104,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       hide: false,
       operationId: "getAgentVaultActivityLoggingHealth",
       description:
-        "Gets whether activity logging has reached its storage limit, and whether Infisical can use the AWS connection",
+        "Gets whether session logging has reached its storage limit, and whether Infisical can use the AWS connection",
       tags: [ApiDocsTags.AgentVaultSettings],
       response: { 200: AgentVaultActivityLoggingHealthResponseSchema }
     },

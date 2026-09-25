@@ -2,7 +2,18 @@ import { ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from
 import { Link } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { format } from "date-fns";
-import { CirclePlusIcon, SearchIcon, XIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  CircleHelpIcon,
+  CircleXIcon,
+  KeyRoundIcon,
+  type LucideIcon,
+  PlusIcon,
+  SearchIcon,
+  ShieldBanIcon,
+  TriangleAlertIcon,
+  XIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
@@ -55,7 +66,8 @@ import {
 } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
-import { chunkIdTime, findRowShift } from "./ActivityTab.utils";
+import { chunkIdTime, findRowShift, httpStatusLabel } from "./ActivityTab.utils";
+import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
 
 const ALL_PROXIES = "all";
 
@@ -90,16 +102,32 @@ type DecisionFilter = "all" | AgentVaultActivityDecision;
 
 const DECISION_PRESENTATION: Record<
   AgentVaultActivityDecision,
-  { label: string; variant: "success" | "neutral" | "warning" | "danger" }
+  { label: string; variant: "success" | "neutral" | "warning" | "danger"; icon: LucideIcon }
 > = {
-  [AgentVaultActivityDecision.Brokered]: { label: "Brokered", variant: "success" },
-  [AgentVaultActivityDecision.Passthrough]: { label: "Passthrough", variant: "neutral" },
-  [AgentVaultActivityDecision.Blocked]: { label: "Blocked", variant: "warning" },
-  [AgentVaultActivityDecision.Error]: { label: "Error", variant: "danger" }
+  [AgentVaultActivityDecision.Brokered]: {
+    label: "Brokered",
+    variant: "success",
+    icon: KeyRoundIcon
+  },
+  [AgentVaultActivityDecision.Passthrough]: {
+    label: "Passthrough",
+    variant: "neutral",
+    icon: ArrowRightIcon
+  },
+  [AgentVaultActivityDecision.Blocked]: {
+    label: "Blocked",
+    variant: "warning",
+    icon: ShieldBanIcon
+  },
+  [AgentVaultActivityDecision.Error]: { label: "Error", variant: "danger", icon: CircleXIcon }
 };
 
 const decisionPresentation = (decision: AgentVaultActivityDecision) =>
-  DECISION_PRESENTATION[decision] ?? { label: decision || "Unknown", variant: "neutral" as const };
+  DECISION_PRESENTATION[decision] ?? {
+    label: decision || "Unknown",
+    variant: "neutral" as const,
+    icon: CircleHelpIcon
+  };
 
 const GAP_EXPLANATION: Record<TAgentVaultActivityGapReason, string> = {
   repointed: "Stored in a bucket this project no longer uses",
@@ -116,8 +144,19 @@ const GAP_EXPLANATION: Record<TAgentVaultActivityGapReason, string> = {
 const statusTone = (status: number) => {
   if (status >= 500) return "text-danger";
   if (status >= 400) return "text-warning";
-  if (status === 0) return "text-muted";
   return "text-foreground";
+};
+
+// Agent Vault answers Blocked and Error requests itself, so their status is its own reply, not the
+// upstream's.
+const isProxyAnswered = (decision: AgentVaultActivityDecision) =>
+  decision === AgentVaultActivityDecision.Blocked || decision === AgentVaultActivityDecision.Error;
+
+const proxyAnswerDescription = (record: TAgentVaultActivityRecord) => {
+  const answer = `Agent Vault returned ${httpStatusLabel(record.status)}`;
+  return record.decision === AgentVaultActivityDecision.Blocked
+    ? `${answer} without sending this request to ${record.host}`
+    : `${answer} with no response from ${record.host}`;
 };
 
 // A host pattern without a port means 443, and an IPv6 literal needs its brackets back.
@@ -138,14 +177,16 @@ export const ActivityTab = ({ session }: Props) => {
   // picker here: the rows offering Add Service matched no service, so they name no bundle.
   const accessBundle = session.accessBundles[0];
   const canAddService = isAdmin && Boolean(accessBundle?.id);
+  // Not cleared on close: a prefilled host drops the sheet's template step, so clearing the host
+  // while the sheet animates out would change the step on screen.
   const [serviceHost, setServiceHost] = useState<string | null>(null);
+  const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [addedHosts, setAddedHosts] = useState<Set<string>>(() => new Set());
 
   const [search, setSearch] = useState("");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
   const [proxyFilter, setProxyFilter] = useState(ALL_PROXIES);
   const [range, setRange] = useState<DateRangeFilterResult | null>(null);
-  const [rangeKey, setRangeKey] = useState(0);
   const seenProxiesSessionId = useRef(session.id);
 
   const [isRangeOpen, setIsRangeOpen] = useState(true);
@@ -169,6 +210,9 @@ export const ActivityTab = ({ session }: Props) => {
   }
   const isLivePausedForBudget = budgetLatch.scope === liveScope && budgetLatch.isOver;
   const isLive = isActive && isRangeOpen && !isLivePausedForBudget;
+  let liveState: LiveState | null = null;
+  if (isActive && isRangeOpen && isLivePausedForBudget) liveState = "paused";
+  else if (isLive) liveState = "live";
   const { history, arrived } = useGetAgentVaultSessionActivity(session.id, {
     isLive,
     from: range?.startDate,
@@ -299,16 +343,48 @@ export const ActivityTab = ({ session }: Props) => {
   ]);
   const columnCount = proxies.length > 1 ? 8 : 7;
   const overflows = rowVirtualizer.getTotalSize() > (rowVirtualizer.scrollRect?.height ?? Infinity);
+  const newRequestsKey = `${session.id}|${filterKey}`;
+  const [newRequests, setNewRequests] = useState({ key: newRequestsKey, count: 0 });
+  if (newRequests.key !== newRequestsKey) {
+    setNewRequests({ key: newRequestsKey, count: 0 });
+  }
+
   const shownBefore = useRef(visible);
+  // Only arrivals stamped since the last change count, so rows a filter change reveals aren't new.
+  const countedAt = useRef(Date.now());
   useLayoutEffect(() => {
     const before = shownBefore.current;
     shownBefore.current = visible;
+    const since = countedAt.current;
+    countedAt.current = Date.now();
     const scroller = scrollRef.current;
     if (!scroller || scroller.scrollTop === 0) return;
     const top = Math.floor(scroller.scrollTop / ACTIVITY_ROW_HEIGHT);
     const shift = findRowShift(before, visible, top);
-    if (shift) scroller.scrollTop += shift * ACTIVITY_ROW_HEIGHT;
-  }, [visible]);
+    if (!shift) return;
+    scroller.scrollTop += shift * ACTIVITY_ROW_HEIGHT;
+    if (shift < 0) return;
+    const landedAbove = visible.slice(0, top + shift).filter((record) => {
+      const key = activityRecordKey(record);
+      return (arrivals.get(key) ?? 0) > since;
+    }).length;
+    if (landedAbove) setNewRequests((prev) => ({ ...prev, count: prev.count + landedAbove }));
+  }, [visible, arrivals]);
+
+  const hasNewRequests = newRequests.count > 0;
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller || !hasNewRequests) return undefined;
+    const clearAtTop = () => {
+      if (scroller.scrollTop < 1) setNewRequests((prev) => ({ ...prev, count: 0 }));
+    };
+    scroller.addEventListener("scroll", clearAtTop, { passive: true });
+    return () => scroller.removeEventListener("scroll", clearAtTop);
+  }, [hasNewRequests]);
+  const showNewRequests = () => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    setNewRequests((prev) => ({ ...prev, count: 0 }));
+  };
 
   const padTop = virtualRows.length ? virtualRows[0].start : 0;
   const padBottom = virtualRows.length
@@ -327,11 +403,12 @@ export const ActivityTab = ({ session }: Props) => {
 
   let noRecordsTitle: string;
   let noRecordsDescription: string;
+  let noRecordsLiveState: LiveState | null = null;
   if (isOpening) {
     noRecordsTitle = "Loading requests";
     noRecordsDescription = "";
   } else if (isLoadError) {
-    noRecordsTitle = "Failed to load activity";
+    noRecordsTitle = "Failed to load session logs";
     noRecordsDescription = "Something went wrong while loading this session's requests.";
   } else if (isSearchFailed) {
     noRecordsTitle = "Failed to search older requests";
@@ -340,8 +417,8 @@ export const ActivityTab = ({ session }: Props) => {
     noRecordsTitle = "Searching older requests";
     noRecordsDescription = "";
   } else if (hasChunks && records.length === 0) {
-    noRecordsTitle = "Activity unavailable";
-    noRecordsDescription = "None of this session's activity could be loaded.";
+    noRecordsTitle = "Session logs unavailable";
+    noRecordsDescription = "None of this session's logs could be loaded.";
   } else if (isSearchPaused && searchedBackTo) {
     noRecordsTitle = `No matching requests since ${format(searchedBackTo, "MMM d, h:mm a")}`;
     noRecordsDescription = "Older requests have not been searched yet.";
@@ -354,6 +431,10 @@ export const ActivityTab = ({ session }: Props) => {
   } else if (isFiltered) {
     noRecordsTitle = "No requests match these filters";
     noRecordsDescription = "Try a different search term, outcome, proxy or time range.";
+  } else if (liveState === "live") {
+    noRecordsLiveState = liveState;
+    noRecordsTitle = "Waiting for requests";
+    noRecordsDescription = "Requests made through a proxy show up here within about a minute.";
   } else {
     noRecordsTitle = isActive ? "Nothing recorded yet" : "No activity recorded";
     noRecordsDescription = isActive
@@ -381,14 +462,14 @@ export const ActivityTab = ({ session }: Props) => {
     if (isAdmin) {
       unreadableDescription = isConnectionUnusable
         ? (storageUnavailable.message ??
-          "Activity logging's AWS connection can't be used right now.")
-        : "Activity logging has no AWS connection, so this session's recorded requests can't be loaded.";
+          "Session logging's AWS connection can't be used right now.")
+        : "Session logging has no AWS connection, so this session's recorded requests can't be loaded.";
     }
 
     return (
       <Empty className="border">
         <EmptyHeader>
-          <EmptyTitle>Activity can&apos;t be read</EmptyTitle>
+          <EmptyTitle>Session logs can&apos;t be read</EmptyTitle>
           <EmptyDescription>{unreadableDescription}</EmptyDescription>
         </EmptyHeader>
         {isAdmin && (
@@ -396,10 +477,10 @@ export const ActivityTab = ({ session }: Props) => {
             {isConnectionUnusable && retryButton}
             <Button variant="av" asChild>
               <Link
-                to="/organizations/$orgId/agent-vault/activity-logs"
+                to="/organizations/$orgId/agent-vault/settings"
                 params={{ orgId: currentOrg.id }}
               >
-                Go to Activity Logs
+                Go to Settings
               </Link>
             </Button>
           </div>
@@ -410,22 +491,19 @@ export const ActivityTab = ({ session }: Props) => {
 
   if (!isPending && !isPlaceholderData && !isLoadError && !isEnabled && !hasChunks && !range) {
     const offDescription = isAdmin
-      ? "Point Agent Vault at a bucket under Activity Logs to start recording what your agents reach."
+      ? "Point Agent Vault at a bucket under Settings to start recording what your agents reach."
       : "Ask an Agent Vault administrator to turn it on.";
 
     return (
       <Empty className="border">
         <EmptyHeader>
-          <EmptyTitle>Activity logging is off</EmptyTitle>
+          <EmptyTitle>Session logging is off</EmptyTitle>
           <EmptyDescription>{offDescription}</EmptyDescription>
         </EmptyHeader>
         {isAdmin && (
           <Button variant="av" asChild>
-            <Link
-              to="/organizations/$orgId/agent-vault/activity-logs"
-              params={{ orgId: currentOrg.id }}
-            >
-              Go to Activity Logs
+            <Link to="/organizations/$orgId/agent-vault/settings" params={{ orgId: currentOrg.id }}>
+              Go to Settings
             </Link>
           </Button>
         )}
@@ -477,24 +555,14 @@ export const ActivityTab = ({ session }: Props) => {
           </SelectContent>
         </Select>
         <DateRangeFilter
-          key={rangeKey}
           accent="av"
           className="h-9"
           isActive={Boolean(range)}
+          inactiveLabel="Entire Session"
+          showTimezoneToggle={false}
           onChange={(result) => applyRange(result)}
+          onClear={() => applyRange(null)}
         />
-        {range && (
-          <IconButton
-            variant="ghost"
-            aria-label="Clear time range"
-            onClick={() => {
-              applyRange(null);
-              setRangeKey((key) => key + 1);
-            }}
-          >
-            <XIcon />
-          </IconButton>
-        )}
         <Select value={proxyFilter} onValueChange={setProxyFilter}>
           <SelectTrigger aria-label="Filter by proxy">
             <SelectValue />
@@ -508,21 +576,16 @@ export const ActivityTab = ({ session }: Props) => {
             ))}
           </SelectContent>
         </Select>
-        {isLive && (
-          <span className="flex items-center gap-1.5 text-xs text-success">
-            <span aria-hidden className="size-1.5 shrink-0 animate-pulse rounded-full bg-current" />
-            Live
-          </span>
-        )}
       </div>
 
       {isUnreachable && (
         <Alert variant="warning">
+          <TriangleAlertIcon />
           <AlertDescription>
             <div className="flex flex-col gap-1">
               <p>
-                None of this session&apos;s activity could be read from the bucket. The bucket has
-                to allow requests from this origin.
+                None of this session&apos;s logs could be read from the bucket. The bucket has to
+                allow requests from this origin.
               </p>
               {!isAdmin && (
                 <p>Ask an Agent Vault administrator to check the bucket&apos;s CORS rule.</p>
@@ -533,10 +596,10 @@ export const ActivityTab = ({ session }: Props) => {
               {isAdmin && (
                 <Button variant="outline" size="sm" asChild>
                   <Link
-                    to="/organizations/$orgId/agent-vault/activity-logs"
+                    to="/organizations/$orgId/agent-vault/settings"
                     params={{ orgId: currentOrg.id }}
                   >
-                    Go to Activity Logs
+                    Go to Settings
                   </Link>
                 </Button>
               )}
@@ -547,6 +610,7 @@ export const ActivityTab = ({ session }: Props) => {
 
       {!isUnreachable && gaps.length > 0 && (
         <Alert variant="warning">
+          <TriangleAlertIcon />
           <AlertDescription>
             <div className="flex flex-col gap-1">
               {gaps.slice(0, 5).map((gap) => (
@@ -577,6 +641,7 @@ export const ActivityTab = ({ session }: Props) => {
         <Empty className="border">
           <EmptyHeader>
             {(isOpening || isStillSearching) && <Spinner size="sm" />}
+            {noRecordsLiveState && <LiveStateBadge state={noRecordsLiveState} />}
             <EmptyTitle>{noRecordsTitle}</EmptyTitle>
             {noRecordsDescription && <EmptyDescription>{noRecordsDescription}</EmptyDescription>}
           </EmptyHeader>
@@ -609,19 +674,33 @@ export const ActivityTab = ({ session }: Props) => {
       ) : (
         <Table
           ref={scrollRef}
-          containerClassName="min-h-0 thin-scrollbar flex-1 overflow-auto [overflow-anchor:none]"
+          // Auto layout sizes columns from only the rows the virtualizer has mounted, so they
+          // would shift as rows scroll in and out
+          className={twMerge("w-full table-fixed", proxies.length > 1 ? "min-w-280" : "min-w-240")}
+          containerClassName="min-h-0 thin-scrollbar overflow-auto [overflow-anchor:none]"
         >
-          <TableHeader className="sticky top-0 z-10 bg-container">
+          <TableHeader sticky>
             <TableRow>
-              <TableHead>Time</TableHead>
-              {proxies.length > 1 && <TableHead>Proxy</TableHead>}
-              <TableHead>Method</TableHead>
+              <TableHead className="w-48">Time</TableHead>
+              {proxies.length > 1 && <TableHead className="w-40">Proxy</TableHead>}
+              <TableHead className="w-24">Method</TableHead>
               <TableHead>Host</TableHead>
               <TableHead>Path</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Outcome</TableHead>
-              <TableHead variant="action" />
+              <TableHead className="w-24">Upstream</TableHead>
+              <TableHead className="w-36">Outcome</TableHead>
+              <TableHead variant="action" className={canAddService ? "w-36" : "w-12"} />
             </TableRow>
+            {liveState && (
+              <LiveStatusRow
+                state={liveState}
+                columnCount={columnCount}
+                recordCount={records.length}
+                isRetrying={isRefetching}
+                onRetry={() => refetch().catch(() => {})}
+                newRequestCount={newRequests.count}
+                onShowNewRequests={showNewRequests}
+              />
+            )}
           </TableHeader>
           <TableBody>
             {padTop > 0 && <tr style={{ height: padTop }} />}
@@ -634,10 +713,20 @@ export const ActivityTab = ({ session }: Props) => {
                 (record.decision === AgentVaultActivityDecision.Blocked ||
                   record.decision === AgentVaultActivityDecision.Passthrough) &&
                 !addedHosts.has(hostPatternFor(record));
+              const proxyName = seenProxies.current.get(record.proxyId);
+              const proxyAnswered = isProxyAnswered(record.decision);
+              const outcome = (
+                <Badge variant={presentation.variant}>
+                  <presentation.icon />
+                  {presentation.label}
+                </Badge>
+              );
               const host = (
-                <span className="flex w-fit items-center gap-2 text-sm">
+                <span className="flex w-fit max-w-full items-center gap-2 text-sm">
                   <ServiceIcon hostPattern={record.host} />
-                  {record.host}
+                  <span className="truncate" title={record.service ? undefined : record.host}>
+                    {record.host}
+                  </span>
                 </span>
               );
               return (
@@ -659,7 +748,9 @@ export const ActivityTab = ({ session }: Props) => {
                   </TableCell>
                   {proxies.length > 1 && (
                     <TableCell className="text-xs text-muted">
-                      {seenProxies.current.get(record.proxyId)}
+                      <span className="block truncate" title={proxyName}>
+                        {proxyName}
+                      </span>
                     </TableCell>
                   )}
                   <TableCell className="font-mono text-xs">{record.method}</TableCell>
@@ -674,26 +765,49 @@ export const ActivityTab = ({ session }: Props) => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <span className="block max-w-80 truncate font-mono text-xs" title={record.path}>
+                    <span className="block truncate" title={record.path}>
                       {record.path}
                     </span>
                   </TableCell>
-                  <TableCell className={`font-mono text-xs ${statusTone(record.status)}`}>
-                    {record.status || "—"}
+                  <TableCell className="font-mono text-xs">
+                    {!proxyAnswered && record.status ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className={statusTone(record.status)}>{record.status}</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {record.host} returned {httpStatusLabel(record.status)}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={presentation.variant}>{presentation.label}</Badge>
+                    {proxyAnswered && record.status ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>{outcome}</TooltipTrigger>
+                        <TooltipContent className="max-w-sm">
+                          {proxyAnswerDescription(record)}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      outcome
+                    )}
                   </TableCell>
                   <TableCell variant="action">
                     {isAddable && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="xs"
-                            onClick={() => setServiceHost(hostPatternFor(record))}
+                            onClick={() => {
+                              setServiceHost(hostPatternFor(record));
+                              setIsServiceSheetOpen(true);
+                            }}
                           >
-                            <CirclePlusIcon />
+                            <PlusIcon />
                             Add Service
                           </Button>
                         </TooltipTrigger>
@@ -732,18 +846,18 @@ export const ActivityTab = ({ session }: Props) => {
         </Table>
       )}
 
-      {isTruncated && (
+      {isTruncated && !(liveState === "paused" && visible.length > 0) && (
         <p className="text-xs text-muted">
           Showing the most recent {records.length.toLocaleString()} requests. Pick a time range to
           see further back.
-          {isActive && isRangeOpen && isLivePausedForBudget && " Live updates are paused."}
+          {liveState === "paused" && " Live updates are paused."}
         </p>
       )}
 
       {canAddService && accessBundle.id && (
         <ServiceSheet
-          isOpen={Boolean(serviceHost)}
-          onOpenChange={(open) => !open && setServiceHost(null)}
+          isOpen={isServiceSheetOpen}
+          onOpenChange={setIsServiceSheetOpen}
           accessBundleId={accessBundle.id}
           prefillHost={serviceHost ?? undefined}
           onSaved={() => {

@@ -8,6 +8,7 @@ import { createNotification } from "@app/components/notifications";
 import { AwsRegionSelect } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/shared";
 import {
   Alert,
+  AlertAction,
   AlertDescription,
   Button,
   Combobox,
@@ -46,6 +47,7 @@ import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/qu
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
+import { AwsSetupDialog } from "./AwsSetupDialog";
 
 const NO_CONNECTION = "none";
 const CREATE_CONNECTION = "_create";
@@ -76,7 +78,7 @@ const buildSchema = (hasSavedBucket: boolean) =>
         )
     })
     .refine((values) => !values.enabled || values.appConnectionId !== NO_CONNECTION, {
-      message: "Activity logging needs an AWS connection",
+      message: "Session logging needs an AWS connection",
       path: ["appConnectionId"]
     })
     .superRefine((values, ctx) => {
@@ -91,7 +93,7 @@ const buildSchema = (hasSavedBucket: boolean) =>
         ctx.addIssue({
           code: "custom",
           path: ["bucket"],
-          message: "Activity logging needs a bucket"
+          message: "Session logging needs a bucket"
         });
       } else if (length > 0 && !S3_BUCKET_NAME.test(values.bucket)) {
         ctx.addIssue({
@@ -109,9 +111,15 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSaved: (settings: TAgentVaultActivityLoggingSettings) => void;
+  onEditCredentials?: () => void;
 };
 
-export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) => {
+export const SessionLoggingModal = ({
+  isOpen,
+  onOpenChange,
+  onSaved,
+  onEditCredentials
+}: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const { data: settings } = useGetAgentVaultActivityLoggingSettings();
@@ -120,7 +128,10 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
     currentProject.id
   );
   const updateConfig = useUpdateAgentVaultActivityLoggingSettings();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addConnection"] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    "addConnection",
+    "awsSetup"
+  ] as const);
 
   const {
     control,
@@ -178,7 +189,7 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
         region: values.region,
         keyPrefix: values.keyPrefix
       });
-      createNotification({ text: "Activity logging settings saved", type: "success" });
+      createNotification({ text: "Session logging settings saved", type: "success" });
       onOpenChange(false);
       onSaved(result);
     } catch {
@@ -192,8 +203,8 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
         <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-col gap-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              Activity Logging
-              <DocumentationLinkBadge href={AgentVaultDocsUrls.activityLogs} />
+              Session Logs
+              <DocumentationLinkBadge href={AgentVaultDocsUrls.sessionLogs} />
             </DialogTitle>
             <DialogDescription>
               The bucket records are written to, and the credentials that reach it.
@@ -208,13 +219,13 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                 render={({ field }) => (
                   <Field orientation="horizontal">
                     <FieldContent>
-                      <Label htmlFor="agent-vault-activity-enabled">Enable</Label>
+                      <Label htmlFor="agent-vault-session-logging-enabled">Enable</Label>
                       <FieldDescription>
                         When enabled, requests made by the agents are saved to the bucket below.
                       </FieldDescription>
                     </FieldContent>
                     <Toggle
-                      id="agent-vault-activity-enabled"
+                      id="agent-vault-session-logging-enabled"
                       variant="av"
                       checked={field.value ?? false}
                       onCheckedChange={field.onChange}
@@ -232,7 +243,17 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                 name="appConnectionId"
                 render={({ field, fieldState }) => (
                   <Field>
-                    <FieldLabel>AWS Connection</FieldLabel>
+                    <div className="flex items-center justify-between gap-2">
+                      <FieldLabel>AWS Connection</FieldLabel>
+                      <Button
+                        variant="link"
+                        size="xs"
+                        type="button"
+                        onClick={() => handlePopUpOpen("awsSetup")}
+                      >
+                        View AWS Setup
+                      </Button>
+                    </div>
                     <FieldContent>
                       <Combobox
                         value={connectionOptions.find((option) => option.id === field.value)}
@@ -290,8 +311,8 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                       />
                       <FieldDescription>
                         {isDetaching
-                          ? "Without a connection, recorded activity can't be read. The bucket is kept, so attaching a connection later brings the history back."
-                          : "Its credentials write the records, and read them back when you open a session's activity."}
+                          ? "Without a connection, session logs can't be read. The bucket is kept, so attaching a connection later brings the history back."
+                          : "Its credentials write the records, and read them back when you open a session's logs."}
                       </FieldDescription>
                       <FieldError>{fieldState.error?.message}</FieldError>
                     </FieldContent>
@@ -305,18 +326,18 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                 render={({ field, fieldState }) => (
                   <Field>
                     <FieldLabel
-                      id="agent-vault-activity-region-label"
-                      htmlFor="agent-vault-activity-region"
+                      id="agent-vault-session-logging-region-label"
+                      htmlFor="agent-vault-session-logging-region"
                     >
                       Region
                     </FieldLabel>
                     <FieldContent>
                       <AwsRegionSelect
-                        id="agent-vault-activity-region"
+                        id="agent-vault-session-logging-region"
                         value={field.value}
                         onChange={field.onChange}
                         isError={Boolean(fieldState.error)}
-                        aria-labelledby="agent-vault-activity-region-label"
+                        aria-labelledby="agent-vault-session-logging-region-label"
                       />
                       <FieldError>{fieldState.error?.message}</FieldError>
                     </FieldContent>
@@ -334,7 +355,7 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                       <FieldContent>
                         <Input
                           {...field}
-                          placeholder="acme-agent-vault-activity"
+                          placeholder="acme-agent-vault-session-logs"
                           isError={Boolean(fieldState.error)}
                         />
                         <FieldError>{fieldState.error?.message}</FieldError>
@@ -375,6 +396,18 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                       longer read it. To rotate credentials, update the AWS connection instead of
                       moving the bucket.
                     </p>
+                    {onEditCredentials && (
+                      <AlertAction>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          type="button"
+                          onClick={onEditCredentials}
+                        >
+                          Edit AWS Credentials
+                        </Button>
+                      </AlertAction>
+                    )}
                   </AlertDescription>
                 </Alert>
               )}
@@ -405,12 +438,20 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
         }}
       />
 
+      <AwsSetupDialog
+        isOpen={popUp.awsSetup.isOpen}
+        onOpenChange={(isSetupOpen) => handlePopUpToggle("awsSetup", isSetupOpen)}
+        bucket={bucket.trim()}
+        keyPrefix={keyPrefix.trim()}
+        isUnsaved
+      />
+
       <DiscardChangesAlertDialog
         open={isDiscardDialogOpen}
         onOpenChange={setIsDiscardDialogOpen}
         onDiscard={confirmDiscard}
         title="Discard Changes?"
-        description="Your changes to the activity logging settings will be lost."
+        description="Your changes to the session logging settings will be lost."
       />
     </Dialog>
   );

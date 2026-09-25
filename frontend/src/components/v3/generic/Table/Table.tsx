@@ -36,7 +36,10 @@ function TableHeader({
       data-slot="table-header"
       className={cn(
         "text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent",
-        sticky && "sticky top-0 z-10 bg-container",
+        // collapsed borders are painted by the table and scroll away under a sticky header,
+        // so the header draws its bottom border as an inset shadow that moves with it
+        sticky &&
+          "sticky top-0 z-10 bg-container [&_th]:border-b-0 [&_th]:shadow-[inset_0_-1px_0_var(--color-border)] [&_tr]:border-b-0",
         className
       )}
       {...props}

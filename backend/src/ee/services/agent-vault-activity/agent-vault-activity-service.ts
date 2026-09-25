@@ -146,7 +146,7 @@ export const agentVaultActivityServiceFactory = ({
     const { isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
     if (!isAdmin) {
       throw new ForbiddenRequestError({
-        message: "Only an Agent Vault administrator can view or change activity logging settings"
+        message: "Only an Agent Vault administrator can view or change session logging settings"
       });
     }
   };
@@ -180,7 +180,7 @@ export const agentVaultActivityServiceFactory = ({
     if (!config || !config.enabled || !storage) {
       throw new BadRequestError({
         name: AgentVaultActivityErrorName.Disabled,
-        message: "Activity logging is not enabled for this project"
+        message: "Session logging is not enabled for this project"
       });
     }
 
@@ -261,7 +261,7 @@ export const agentVaultActivityServiceFactory = ({
       if (stored > AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS) {
         throw new BadRequestError({
           name: AgentVaultActivityErrorName.CeilingReached,
-          message: "Activity logging has reached its limit for this organization. Contact Infisical support."
+          message: "Session logging has reached its limit for this organization. Contact Infisical support."
         });
       }
       return created;
@@ -527,7 +527,7 @@ export const agentVaultActivityServiceFactory = ({
 
     if (next.enabled) {
       if (!next.appConnectionId && current.enabled && current.appConnectionId) {
-        throw new BadRequestError({ message: "Turn off activity logging before removing its AWS connection." });
+        throw new BadRequestError({ message: "Turn off session logging before removing its AWS connection." });
       }
       const missing = (
         [
@@ -540,7 +540,7 @@ export const agentVaultActivityServiceFactory = ({
         .map(([, label]) => label);
       if (missing.length) {
         throw new BadRequestError({
-          message: `Activity logging needs ${missing.join(", ").replace(/, ([^,]*)$/, " and $1")}.`
+          message: `Session logging needs ${missing.join(", ").replace(/, ([^,]*)$/, " and $1")}.`
         });
       }
     }
@@ -562,7 +562,7 @@ export const agentVaultActivityServiceFactory = ({
         saved = await agentVaultActivityConfigDAL.create(values);
       } catch (err) {
         if (isUniqueViolation(err)) {
-          throw new BadRequestError({ message: "Activity logging settings were just changed. Reload and try again." });
+          throw new BadRequestError({ message: "Session logging settings were just changed. Reload and try again." });
         }
         throw err;
       }

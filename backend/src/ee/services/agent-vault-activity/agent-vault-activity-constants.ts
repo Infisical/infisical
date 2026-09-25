@@ -12,7 +12,7 @@ export const AGENT_VAULT_ACTIVITY_MAX_CHUNK_AGE_MS = 30 * 24 * 60 * 60_000; // 3
 // Per-org cap on stored chunks; internal only, customers see "contact support".
 export const AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS = 100_000;
 
-// Bucket key prefix length. Mirrored in ActivityLoggingModal.tsx.
+// Bucket key prefix length. Mirrored in SessionLoggingModal.tsx.
 export const AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH = 512; // characters
 
 // S3 access: presigned URL lifetime and how long a built S3 client is reused.

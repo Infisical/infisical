@@ -58,7 +58,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
 
 To revoke a session before it expires, go to the **Sessions** page, open the session's menu, and select **Revoke Session**. The proxy stops applying credentials for it on its next poll.
 
-The **Sessions** page shows each session as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions so you can audit what an agent had access to during the session. A session with [activity logs](/documentation/platform/agent-vault/activity-logs) is kept indefinitely, and one without is removed 30 days after it ends:
+The **Sessions** page shows each session as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions so you can audit what an agent had access to during the session. A session with [session logs](/documentation/platform/agent-vault/session-logs) is kept indefinitely, and one without is removed 30 days after it ends:
 
 <Frame>
   <img src="/images/platform/agent-vault/sessions-list.png" alt="The Sessions page listing active, revoked, and expired sessions with their access bundle and expiry" />
@@ -80,4 +80,4 @@ In the first two cases, the agent's requests still go out. However, whether they
 
 When you create or revoke a session, Infisical writes an audit event. To review these events, open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
 
-Audit events cover what you changed in Infisical. To see what an agent reached while its session was running, turn on [activity logs](/documentation/platform/agent-vault/activity-logs) and select the session to open its **Activity Logs**.
+Audit events cover what you changed in Infisical. To see what an agent reached while its session was running, turn on [session logging](/documentation/platform/agent-vault/session-logs) and select the session to open its **Session Logs**.

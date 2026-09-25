@@ -300,6 +300,8 @@ export type TAgentVaultActivityLoggingCorsProbe = {
   expiresInSeconds: number;
 } | null;
 
+export type TAgentVaultActivityReadAccess = "readable" | "cors-missing" | "access-denied";
+
 export const isAgentVaultRecording = (settings: TAgentVaultActivityLoggingSettings) =>
   Boolean(settings.enabled && settings.appConnectionId && settings.bucket && settings.region);
 

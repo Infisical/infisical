@@ -87,8 +87,7 @@ export const buildActivityStorage = async (
   const raw = await appConnectionDAL.findById(config.appConnectionId);
   if (!raw) {
     throw new BadRequestError({
-      message:
-        "The AWS connection used for activity logging no longer exists. Choose another on the Activity Logs page."
+      message: "The AWS connection used for session logging no longer exists. Choose another on the Settings page."
     });
   }
   if (raw.orgId !== orgId) {
@@ -96,7 +95,7 @@ export const buildActivityStorage = async (
   }
   if (raw.app !== AppConnection.AWS) {
     throw new BadRequestError({
-      message: `The connection used for activity logging is a ${raw.app} connection. Activity logging requires an AWS connection`
+      message: `The connection used for session logging is a ${raw.app} connection. Session logging requires an AWS connection`
     });
   }
 
@@ -111,7 +110,7 @@ export const buildActivityStorage = async (
         ? err.message
         : "Infisical could not load its credentials";
     throw new BadRequestError({
-      message: `Couldn't use the AWS connection '${raw.name}' for activity logging: ${reason}`
+      message: `Couldn't use the AWS connection '${raw.name}' for session logging: ${reason}`
     });
   }
 

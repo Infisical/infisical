@@ -1,4 +1,4 @@
-import { ActivityIcon, FileText, IdCard, Info, Package, Server, Shield } from "lucide-react";
+import { FileText, IdCard, Info, Package, Server, Settings, Shield } from "lucide-react";
 
 import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
 import {
@@ -22,8 +22,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   const { hasProjectRole } = useProjectPermission();
   const { setOpen: setIsIntroOpen } = useAgentVaultIntro();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
-  const { data: activityLogging } = useGetAgentVaultActivityLoggingSettings(isAdmin);
-  const { data: activityLoggingHealth } = useGetAgentVaultActivityLoggingHealth(isAdmin);
+  const { data: sessionLogging } = useGetAgentVaultActivityLoggingSettings(isAdmin);
+  const { data: sessionLoggingHealth } = useGetAgentVaultActivityLoggingHealth(isAdmin);
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
@@ -34,9 +34,9 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
     { label: "Proxies", icon: Server, pathSuffix: "proxies" }
   ];
 
-  let activityDot: NavItem["dotVariant"];
-  if (activityLogging && !isAgentVaultRecording(activityLogging)) activityDot = "warning";
-  else if (activityLoggingHealth?.isStorageFull) activityDot = "danger";
+  let settingsDot: NavItem["dotVariant"];
+  if (sessionLogging && !isAgentVaultRecording(sessionLogging)) settingsDot = "warning";
+  else if (sessionLoggingHealth?.isStorageFull) settingsDot = "danger";
 
   const administrationItems: NavItem[] = isAdmin
     ? [
@@ -46,13 +46,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
           pathSuffix: "access-management",
           activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
         },
-        {
-          label: "Activity Logs",
-          icon: ActivityIcon,
-          pathSuffix: "activity-logs",
-          dotVariant: activityDot
-        },
-        { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" }
+        { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
+        { label: "Settings", icon: Settings, pathSuffix: "settings", dotVariant: settingsDot }
       ]
     : [];
 

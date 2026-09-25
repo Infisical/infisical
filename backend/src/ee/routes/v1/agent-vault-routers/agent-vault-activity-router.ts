@@ -22,7 +22,7 @@ export const registerAgentVaultActivityRouter = async (server: FastifyZodProvide
       hide: false,
       operationId: "getAgentVaultSessionActivity",
       description:
-        "Lists a session's activity in chunks, newest first. A chunk is an encrypted batch of [records](/documentation/platform/agent-vault/activity-logs#whats-recorded) that a proxy uploaded. To decrypt the chunks, follow [Reading activity through the API](/documentation/platform/agent-vault/activity-logs#reading-activity-through-the-api). To keep receiving new activity, pass `liveCursor` to [the endpoint that tails session activity](/api-reference/endpoints/agent-vault-activity/tail-session-activity).",
+        "Lists a session's activity in chunks, newest first. A chunk is an encrypted batch of [records](/documentation/platform/agent-vault/session-logs#whats-recorded) that a proxy uploaded. To decrypt the chunks, follow [Reading session logs through the API](/documentation/platform/agent-vault/session-logs#reading-session-logs-through-the-api). To keep receiving new activity, pass `liveCursor` to [the endpoint that tails session activity](/api-reference/endpoints/agent-vault-activity/tail-session-activity).",
       tags: [ApiDocsTags.AgentVaultActivity],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       querystring: AgentVaultActivityHistoryQuerySchema,

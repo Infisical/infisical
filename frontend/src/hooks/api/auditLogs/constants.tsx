@@ -480,7 +480,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
   [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",
   [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy",
-  [EventType.AGENT_VAULT_ACTIVITY_LOGGING_SETTINGS_UPDATE]: "Update activity logging settings"
+  [EventType.AGENT_VAULT_ACTIVITY_LOGGING_SETTINGS_UPDATE]: "Update session logging settings"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

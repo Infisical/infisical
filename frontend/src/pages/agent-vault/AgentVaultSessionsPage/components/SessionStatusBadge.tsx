@@ -1,4 +1,4 @@
-import { BanIcon, CircleCheckIcon, CircleSlashIcon } from "lucide-react";
+import { ActivityIcon, BanIcon, TimerIcon } from "lucide-react";
 
 import { Badge } from "@app/components/v3";
 import { AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
@@ -7,7 +7,7 @@ export const SESSION_STATUS_PRESENTATION = {
   [AgentVaultSessionStatus.Active]: {
     label: "Active",
     variant: "success",
-    icon: CircleCheckIcon,
+    icon: ActivityIcon,
     iconClassName: "text-success"
   },
   [AgentVaultSessionStatus.Revoked]: {
@@ -19,7 +19,7 @@ export const SESSION_STATUS_PRESENTATION = {
   [AgentVaultSessionStatus.Expired]: {
     label: "Expired",
     variant: "neutral",
-    icon: CircleSlashIcon,
+    icon: TimerIcon,
     iconClassName: "text-neutral"
   }
 } as const;

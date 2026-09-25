@@ -376,7 +376,8 @@ export const useUpdateAgentVaultActivityLoggingSettings = () => {
     },
     onSuccess: (settings) => {
       queryClient.setQueryData(agentVaultKeys.activityLogging(currentOrg.id), settings);
-      queryClient.removeQueries({
+      // Reset, not invalidate: the cached result may be for the previous bucket.
+      queryClient.resetQueries({
         queryKey: agentVaultKeys.activityLoggingCorsProbe(currentOrg.id)
       });
       queryClient.invalidateQueries({

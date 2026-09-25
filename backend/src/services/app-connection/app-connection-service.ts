@@ -1133,7 +1133,7 @@ export const appConnectionServiceFactory = ({
         if ((err.error as { table?: string })?.table === TableName.AgentVaultActivityConfig) {
           throw new BadRequestError({
             message:
-              "This connection is used by Agent Vault activity logging, so it can't be deleted. An Agent Vault administrator can switch activity logging to another connection, or remove it, first."
+              "This connection is used by Agent Vault session logging, so it can't be deleted. An Agent Vault administrator can switch session logging to another connection, or remove it, first."
           });
         }
         throw new BadRequestError({

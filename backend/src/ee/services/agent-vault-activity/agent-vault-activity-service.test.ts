@@ -561,6 +561,6 @@ describe("updateActivityLoggingSettings: two first saves at once", () => {
         actor: { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never,
         enabled: false
       })
-    ).rejects.toThrow("Activity logging settings were just changed. Reload and try again.");
+    ).rejects.toThrow("Session logging settings were just changed. Reload and try again.");
   });
 });

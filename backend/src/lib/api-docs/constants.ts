@@ -4374,7 +4374,7 @@ export const AGENT_VAULT = {
     lastSeq: "The sequence number of the last record in the chunk. Each proxy numbers its own records.",
     recordCount: "The number of records in the chunk.",
     droppedCount:
-      "The number of records the proxy discarded before this chunk, for example because its buffer was full or activity logging was off.",
+      "The number of records the proxy discarded before this chunk, for example because its buffer was full or session logging was off.",
     ciphertextBytes: "The size of the encrypted chunk, in bytes.",
     iv: "The AES-GCM initialization vector for the chunk, as base64.",
     ciphertextSha256:
@@ -4388,7 +4388,7 @@ export const AGENT_VAULT = {
     sessionKey: "The key that decrypts every chunk in this response, as base64. Null if no chunk can be read.",
     storageUnavailable: "The reason the chunks can't be downloaded right now. Null if they can.",
     storageUnavailableReason:
-      "`no-connection` if activity logging has no AWS connection, or `connection-unusable` if Infisical can't use the AWS connection.",
+      "`no-connection` if session logging has no AWS connection, or `connection-unusable` if Infisical can't use the AWS connection.",
     storageUnavailableMessage: "The error Infisical got from the AWS connection. Returned only to Agent Vault admins.",
     activity: "The session details you need to read the chunks.",
     projectId: "The ID of the project the session belongs to. Part of the associated data for decrypting each chunk.",
@@ -4403,8 +4403,8 @@ export const AGENT_VAULT = {
     limit: "The number of records to aim for on each page. A page can hold more, because chunks aren't split.",
     from: "Return only chunks with records at or after this time.",
     to: "Return only chunks with records at or before this time.",
-    enabled: "Whether activity logging is on.",
-    configEnabled: "Whether activity logging is on. Turning it off stops recording, and deletes nothing.",
+    enabled: "Whether session logging is on.",
+    configEnabled: "Whether session logging is on. Turning it off stops recording, and deletes nothing.",
     appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
     bucket:
       "The name of the S3 bucket. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",

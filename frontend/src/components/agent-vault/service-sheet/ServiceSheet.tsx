@@ -133,10 +133,15 @@ export const ServiceSheet = ({
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
 
+  // A prefilled host has already been matched against the templates, and anything picked on the
+  // template step would replace that host.
+  const hasTemplateStep = !isUpdate && !prefillHost;
   const steps = useMemo(
     () =>
-      isUpdate ? SERVICE_STEPS.filter((meta) => meta.step !== ServiceStep.Template) : SERVICE_STEPS,
-    [isUpdate]
+      hasTemplateStep
+        ? SERVICE_STEPS
+        : SERVICE_STEPS.filter((meta) => meta.step !== ServiceStep.Template),
+    [hasTemplateStep]
   );
   const stepKeys = useMemo(() => steps.map((meta) => meta.step), [steps]);
 
@@ -230,7 +235,6 @@ export const ServiceSheet = ({
                 .replace(/-+$/, "")
             }
       );
-      setStep(1);
     } else {
       reset(BLANK_SERVICE_FORM);
     }

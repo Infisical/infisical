@@ -59,8 +59,11 @@ type Props = {
   defaultValue?: DateRangeFilterValue;
   defaultIsUtc?: boolean;
   onChange: (value: DateRangeFilterResult) => void;
+  onClear?: () => void;
   accent?: DateRangeFilterAccent;
   isActive?: boolean;
+  inactiveLabel?: string;
+  showTimezoneToggle?: boolean;
   className?: string;
 };
 
@@ -176,8 +179,11 @@ export function DateRangeFilter({
   defaultValue,
   defaultIsUtc = false,
   onChange,
+  onClear,
   accent = "primary",
   isActive = true,
+  inactiveLabel = "Custom",
+  showTimezoneToggle = true,
   className
 }: Props) {
   const initialValue = defaultValue ?? { type: DateRangeFilterType.Last, value: "1h" };
@@ -254,6 +260,11 @@ export function DateRangeFilter({
     setIsOpen(false);
   };
 
+  const handleClear = () => {
+    onClear?.();
+    setIsOpen(false);
+  };
+
   const today = new Date();
 
   const calendarDefaultMonth = pendingRange?.from ? pendingRange.from : addMonths(today, -1);
@@ -294,7 +305,7 @@ export function DateRangeFilter({
       return (
         <Button variant="outline" size="sm" className={cn("gap-1.5 font-normal", className)}>
           <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
-          Custom
+          {inactiveLabel}
         </Button>
       );
     }
@@ -513,37 +524,42 @@ export function DateRangeFilter({
 
           {/* Footer */}
           <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-3">
-            {mode === DateRangeFilterType.Fixed ? (
-              <div className="flex shrink-0 cursor-pointer items-center gap-2 select-none">
-                <span
-                  className={cn(
-                    "text-sm transition-colors",
-                    !pendingIsUtc ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  Local
-                </span>
-                <Toggle
-                  id="date-range-utc-toggle"
-                  checked={pendingIsUtc}
-                  onCheckedChange={setPendingIsUtc}
-                  size="sm"
-                  className={accentStyles.switchChecked}
-                />
-                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label
-                  htmlFor="date-range-utc-toggle"
-                  className={cn(
-                    "cursor-pointer text-sm transition-colors",
-                    pendingIsUtc ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  UTC
-                </label>
-              </div>
-            ) : (
-              <div />
-            )}
+            <div className="flex items-center gap-4">
+              {onClear && isActive && (
+                <Button variant="ghost" size="sm" onClick={handleClear}>
+                  Clear
+                </Button>
+              )}
+              {mode === DateRangeFilterType.Fixed && showTimezoneToggle && (
+                <div className="flex shrink-0 cursor-pointer items-center gap-2 select-none">
+                  <span
+                    className={cn(
+                      "text-sm transition-colors",
+                      !pendingIsUtc ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    Local
+                  </span>
+                  <Toggle
+                    id="date-range-utc-toggle"
+                    checked={pendingIsUtc}
+                    onCheckedChange={setPendingIsUtc}
+                    size="sm"
+                    className={accentStyles.switchChecked}
+                  />
+                  {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                  <label
+                    htmlFor="date-range-utc-toggle"
+                    className={cn(
+                      "cursor-pointer text-sm transition-colors",
+                      pendingIsUtc ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    UTC
+                  </label>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>
                 Cancel

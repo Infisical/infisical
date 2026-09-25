@@ -112,7 +112,7 @@ describe("buildActivityStorage", () => {
     await expect(buildActivityStorage(config, "org-1", deps)).rejects.toMatchObject({
       name: "BadRequest",
       message:
-        "Couldn't use the AWS connection 'prod-logs' for activity logging: User is not authorized to perform: sts:AssumeRole"
+        "Couldn't use the AWS connection 'prod-logs' for session logging: User is not authorized to perform: sts:AssumeRole"
     });
   });
 
@@ -120,7 +120,7 @@ describe("buildActivityStorage", () => {
     vi.mocked(getAwsConnectionConfig).mockRejectedValueOnce(new Error("kms_keys row missing"));
     await expect(buildActivityStorage(config, "org-1", deps)).rejects.toMatchObject({
       message:
-        "Couldn't use the AWS connection 'prod-logs' for activity logging: Infisical could not load its credentials"
+        "Couldn't use the AWS connection 'prod-logs' for session logging: Infisical could not load its credentials"
     });
   });
 });
