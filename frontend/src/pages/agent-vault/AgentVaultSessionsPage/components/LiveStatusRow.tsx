@@ -8,6 +8,7 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { Badge, Button, TableCell, TableRow } from "@app/components/v3";
+import { AGENT_VAULT_ACTIVITY_LIVE_POLL_MS } from "@app/hooks/api/agentVault";
 
 export type LiveState = "live" | "reconnecting" | "paused" | "ended";
 
@@ -62,7 +63,7 @@ export const LiveStateBadge = ({ state }: { state: LiveState }) => {
 const liveStateDescription = (state: LiveState, recordCount: number) => {
   if (state === "live") return "New requests show up here within about a minute.";
   if (state === "reconnecting")
-    return "Couldn't check for new requests. Trying again every 15 seconds.";
+    return `Couldn't check for new requests. Trying again every ${AGENT_VAULT_ACTIVITY_LIVE_POLL_MS / 1000} seconds.`;
   if (state === "paused")
     return `Showing the most recent ${recordCount.toLocaleString()} requests. Pick a time range to see further back.`;
   return "Its last requests can take up to a minute to show up.";

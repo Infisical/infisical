@@ -45,7 +45,7 @@ const ACTIVITY_LIVE_RECORDS = 1000;
 
 const ACTIVITY_LIVE_MAX_READS = 10;
 
-const ACTIVITY_LIVE_POLL_MS = 15_000;
+export const AGENT_VAULT_ACTIVITY_LIVE_POLL_MS = 15_000;
 
 export const agentVaultKeys = {
   all: (orgId: string) => ["agent-vault", orgId] as const,
@@ -373,10 +373,10 @@ export const useGetAgentVaultSessionActivity = (
       }
       return arrived as TAgentVaultDecryptedActivityPage<TAgentVaultActivityTailPage>;
     },
-    refetchInterval: ACTIVITY_LIVE_POLL_MS,
+    refetchInterval: AGENT_VAULT_ACTIVITY_LIVE_POLL_MS,
     staleTime: 0,
     gcTime: 0
   });
 
-  return { history, arrived: live.data };
+  return { history, live, arrived: live.data };
 };

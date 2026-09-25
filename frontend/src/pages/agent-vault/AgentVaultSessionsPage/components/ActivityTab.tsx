@@ -53,6 +53,7 @@ import {
 import { useOrganization, useProjectPermission } from "@app/context";
 import {
   activityRecordKey,
+  AGENT_VAULT_ACTIVITY_LIVE_POLL_MS,
   AgentVaultActivityDecision,
   AgentVaultSessionStatus,
   isRetryableActivityGap,
@@ -165,6 +166,17 @@ const hostPatternFor = (record: TAgentVaultActivityRecord) => {
   return record.port === "443" ? host : `${host}:${record.port}`;
 };
 
+// A proxy uploads what it still holds on its next flush, up to a minute after the session ends, so
+// the view keeps checking for new requests a while longer.
+const SESSION_END_TAIL_MS = 2 * 60_000;
+
+const endTailDeadline = (session: TAgentVaultSession) => {
+  const endedAt =
+    session.revokedAt ??
+    (session.status === AgentVaultSessionStatus.Expired ? session.expiresAt : null);
+  return endedAt ? new Date(endedAt).getTime() + SESSION_END_TAIL_MS : null;
+};
+
 type Props = {
   session: TAgentVaultSession;
 };
@@ -203,21 +215,44 @@ export const ActivityTab = ({ session }: Props) => {
   }, [range, isRangeOpen]);
 
   const isActive = session.status === AgentVaultSessionStatus.Active;
+  const tailEndsAt = endTailDeadline(session);
+  const [endTail, setEndTail] = useState(() => ({
+    endsAt: tailEndsAt,
+    isOpen: tailEndsAt !== null && tailEndsAt > Date.now()
+  }));
+  if (endTail.endsAt !== tailEndsAt) {
+    setEndTail({ endsAt: tailEndsAt, isOpen: tailEndsAt !== null && tailEndsAt > Date.now() });
+  }
+  useEffect(() => {
+    const { endsAt, isOpen } = endTail;
+    if (endsAt === null || !isOpen) return undefined;
+    const timer = setTimeout(
+      () => setEndTail({ endsAt, isOpen: false }),
+      Math.max(endsAt - Date.now(), 0)
+    );
+    return () => clearTimeout(timer);
+  }, [endTail]);
+  const isTailingEnd = endTail.endsAt === tailEndsAt && endTail.isOpen;
+
   const liveScope = [session.id, range?.startDate.getTime(), range?.endDate.getTime()].join("|");
   const [budgetLatch, setBudgetLatch] = useState({ scope: liveScope, isOver: false });
   if (budgetLatch.scope !== liveScope) {
     setBudgetLatch({ scope: liveScope, isOver: false });
   }
   const isLivePausedForBudget = budgetLatch.scope === liveScope && budgetLatch.isOver;
-  const isLive = isActive && isRangeOpen && !isLivePausedForBudget;
-  let liveState: LiveState | null = null;
-  if (isActive && isRangeOpen && isLivePausedForBudget) liveState = "paused";
-  else if (isLive) liveState = "live";
-  const { history, arrived } = useGetAgentVaultSessionActivity(session.id, {
+  const canTail = (isActive || isTailingEnd) && isRangeOpen;
+  const isLive = canTail && !isLivePausedForBudget;
+  const { history, live, arrived } = useGetAgentVaultSessionActivity(session.id, {
     isLive,
     from: range?.startDate,
     to: range?.endDate
   });
+  let liveState: LiveState | null = null;
+  if (canTail && isLivePausedForBudget) liveState = "paused";
+  else if (isLive && live.isError) liveState = "reconnecting";
+  else if (isLive && !isActive) liveState = "ended";
+  else if (isLive) liveState = "live";
+  const retryLive = () => live.refetch().catch(() => {});
   const {
     data,
     isPending,
@@ -435,6 +470,14 @@ export const ActivityTab = ({ session }: Props) => {
     noRecordsLiveState = liveState;
     noRecordsTitle = "Waiting for requests";
     noRecordsDescription = "Requests made through a proxy show up here within about a minute.";
+  } else if (liveState === "reconnecting") {
+    noRecordsLiveState = liveState;
+    noRecordsTitle = "Couldn't check for new requests";
+    noRecordsDescription = `Trying again every ${AGENT_VAULT_ACTIVITY_LIVE_POLL_MS / 1000} seconds.`;
+  } else if (liveState === "ended") {
+    noRecordsLiveState = liveState;
+    noRecordsTitle = "Nothing recorded yet";
+    noRecordsDescription = "Its last requests can take up to a minute to show up.";
   } else {
     noRecordsTitle = isActive ? "Nothing recorded yet" : "No activity recorded";
     noRecordsDescription = isActive
@@ -645,6 +688,11 @@ export const ActivityTab = ({ session }: Props) => {
             <EmptyTitle>{noRecordsTitle}</EmptyTitle>
             {noRecordsDescription && <EmptyDescription>{noRecordsDescription}</EmptyDescription>}
           </EmptyHeader>
+          {noRecordsLiveState === "reconnecting" && (
+            <Button variant="outline" size="sm" isPending={live.isFetching} onClick={retryLive}>
+              Retry
+            </Button>
+          )}
           {isSearchPaused && !isSearchFailed && (
             <Button variant="outline" size="sm" onClick={searchOlder}>
               Search older requests
@@ -695,8 +743,8 @@ export const ActivityTab = ({ session }: Props) => {
                 state={liveState}
                 columnCount={columnCount}
                 recordCount={records.length}
-                isRetrying={isRefetching}
-                onRetry={() => refetch().catch(() => {})}
+                isRetrying={live.isFetching}
+                onRetry={retryLive}
                 newRequestCount={newRequests.count}
                 onShowNewRequests={showNewRequests}
               />
