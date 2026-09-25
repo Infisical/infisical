@@ -33,7 +33,7 @@ import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-ap
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, SymmetricKeySize } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -636,7 +636,8 @@ export const secretServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     includeImports,
-    recursive
+    recursive,
+    abortSignal
   }: TGetSecretsDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -695,12 +696,15 @@ export const secretServiceFactory = ({
 
     const groupedPaths = groupBy(paths, (p) => p.folderId);
 
+    throwIfClientDisconnected(abortSignal);
+
     const secrets = await secretDAL.findByFolderIds(
       paths.map((p) => p.folderId),
       actorId
     );
 
     if (includeImports) {
+      throwIfClientDisconnected(abortSignal);
       const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
       const allowedImports = secretImports.filter(({ importEnv, importPath, isReplication }) =>
         !isReplication &&
@@ -1510,8 +1514,11 @@ export const secretServiceFactory = ({
       actorAuthMethod,
       path,
       includeImports,
-      recursive
+      recursive,
+      abortSignal
     });
+
+    throwIfClientDisconnected(abortSignal);
 
     const decryptedSecrets = secrets.map((el) => decryptSecretRaw({ ...el, secretValueHidden: false }, botKey));
     const filteredSecrets = tagSlugs.length
@@ -1572,10 +1579,12 @@ export const secretServiceFactory = ({
       folderDAL,
       projectId,
       secretDAL,
-      secretEncKey: botKey
+      secretEncKey: botKey,
+      abortSignal
     });
 
     if (expandSecretReferences) {
+      throwIfClientDisconnected(abortSignal);
       const secretsGroupByPath = groupBy(filteredSecrets, (i) => i.secretPath);
       await Promise.allSettled(
         Object.keys(secretsGroupByPath).map((groupedPath) =>
@@ -1611,6 +1620,7 @@ export const secretServiceFactory = ({
           )
         )
       );
+      throwIfClientDisconnected(abortSignal);
     }
 
     return {

@@ -17,7 +17,7 @@ import { ProjectPermissionSecretActions } from "@app/ee/services/permission/proj
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName } from "@app/lib/crypto";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
@@ -153,13 +153,20 @@ type TInterpolateSecretArg = {
   secretEncKey: string;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  abortSignal?: AbortSignal;
 };
 
 const MAX_SECRET_REFERENCE_DEPTH = 5;
 const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.]+)}`;
 const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
 
-export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderDAL }: TInterpolateSecretArg) => {
+export const interpolateSecrets = ({
+  projectId,
+  secretEncKey,
+  secretDAL,
+  folderDAL,
+  abortSignal
+}: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, string>> = {};
   const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
 
@@ -227,6 +234,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
     let expandedValue = value;
     if (refs.length > 0) {
       for (const interpolationSyntax of refs) {
+        throwIfClientDisconnected(abortSignal);
         const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
         const entities = interpolationKey.trim().split(".");
 

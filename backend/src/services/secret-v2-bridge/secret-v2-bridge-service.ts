@@ -1649,7 +1649,8 @@ export const secretV2BridgeServiceFactory = ({
       kmsService,
       // mainExpanderSecretDAL may be import-aware in relative mode. Keep cross-project
       // reads on the raw DAL so source imports are not resolved through this target project.
-      crossProjectSecretDAL: secretDAL
+      crossProjectSecretDAL: secretDAL,
+      abortSignal
     });
 
     if (shouldExpandSecretReferences) {
@@ -1657,7 +1658,8 @@ export const secretV2BridgeServiceFactory = ({
       const errors = await expandSecretReferencesGroupedByPath({
         secrets: decryptedSecrets,
         environment,
-        expandSecretReferences
+        expandSecretReferences,
+        abortSignal
       });
       if (errors.length > 0) {
         throw new ForbiddenRequestError({
@@ -1704,7 +1706,8 @@ export const secretV2BridgeServiceFactory = ({
           secretName: expandSecretKey,
           secretTags: expandSecretTags
         }),
-      userId: expandPersonalOverrides ? actorId : undefined
+      userId: expandPersonalOverrides ? actorId : undefined,
+      abortSignal
     });
 
     const importedSecrets = await fnSecretsV2FromImports({
@@ -1760,6 +1763,8 @@ export const secretV2BridgeServiceFactory = ({
       orgDAL,
       kmsService
     });
+
+    throwIfClientDisconnected(abortSignal);
 
     const payload = { secrets: decryptedSecrets, imports: importedSecrets };
     const serializedPayload = Buffer.from(JSON.stringify(payload));

@@ -20,7 +20,7 @@ import {
   InternalMetadataType,
   TInternalMetadata
 } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -564,14 +564,17 @@ type TExpandableSecret = {
 export type TSecretReferenceExpansionError = { path: string; error: string };
 
 // Expands every secret's value in place and returns one entry per failed expansion, tagged with the
-// secret's path.
+// secret's path. Throws ClientClosedRequestError instead when abortSignal fired, since expansions cut
+// short by the disconnect would otherwise be reported as reference errors.
 export const expandSecretReferencesGroupedByPath = async <T extends TExpandableSecret>({
   secrets,
   environment,
-  expandSecretReferences
+  expandSecretReferences,
+  abortSignal
 }: {
   secrets: T[];
   environment: string;
+  abortSignal?: AbortSignal;
   expandSecretReferences: (input: {
     value?: string;
     secretPath: string;
@@ -601,6 +604,8 @@ export const expandSecretReferencesGroupedByPath = async <T extends TExpandableS
       )
     )
   );
+
+  throwIfClientDisconnected(abortSignal);
 
   const errors: TSecretReferenceExpansionError[] = [];
   settledPromises.forEach((outerResult, outerIndex) => {
@@ -1455,6 +1460,7 @@ type TCreateRelativeImportExpanderArg = {
   decryptSecretValue: (value?: Buffer | null) => string;
   canExpandValue: (environment: string, secretPath: string, secretKey: string, secretTagSlugs: string[]) => boolean;
   userId?: string;
+  abortSignal?: AbortSignal;
 };
 
 export const createRelativeImportExpander = ({
@@ -1466,7 +1472,8 @@ export const createRelativeImportExpander = ({
   folderDAL,
   decryptSecretValue,
   canExpandValue,
-  userId
+  userId,
+  abortSignal
 }: TCreateRelativeImportExpanderArg): {
   expandImportedSecretReferences: (inputSecret: {
     value?: string;
@@ -1545,7 +1552,8 @@ export const createRelativeImportExpander = ({
         }
         return canExpandValue(environment, secretPath, secretKey, secretTagSlugs);
       },
-      userId
+      userId,
+      abortSignal
     });
 
     relativeImportExpanders.set(expanderKey, expander);

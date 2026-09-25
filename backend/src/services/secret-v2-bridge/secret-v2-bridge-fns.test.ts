@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { TSecretFolders } from "@app/db/schemas";
+import { ClientClosedRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { buildHierarchy, expandSecretReferencesGroupedByPath, generatePaths } from "./secret-v2-bridge-fns";
@@ -278,6 +279,23 @@ describe("expandSecretReferencesGroupedByPath", () => {
 
     expect(secrets.find((s) => s.secretKey === "A1")?.secretValue).toBe("ok-A1");
     expect(secrets.find((s) => s.secretKey === "B2")?.secretValue).toBe("ref-B2");
+  });
+
+  test("throws ClientClosedRequestError instead of reporting expansions cut short by a disconnect", async () => {
+    const controller = new AbortController();
+    const secrets = [makeSecret("/a", "A1"), makeSecret("/b", "B1")];
+
+    await expect(
+      expandSecretReferencesGroupedByPath({
+        secrets,
+        environment: "dev",
+        abortSignal: controller.signal,
+        expandSecretReferences: async () => {
+          controller.abort();
+          throw new ClientClosedRequestError();
+        }
+      })
+    ).rejects.toBeInstanceOf(ClientClosedRequestError);
   });
 
   test("keeps the mapping correct across many paths", async () => {

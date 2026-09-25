@@ -123,6 +123,7 @@ export type TGetSecretsDTO = {
   recursive?: boolean;
   limit?: number;
   offset?: number;
+  abortSignal?: AbortSignal;
 } & TProjectPermission;
 
 export type TGetASecretDTO = {
