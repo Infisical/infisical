@@ -22,7 +22,7 @@ export const registerAgentVaultActivityRouter = async (server: FastifyZodProvide
       hide: false,
       operationId: "getAgentVaultSessionActivity",
       description:
-        "Page back through a session's activity, newest first. Chunks come back sealed, with a presigned URL to fetch each one and the key to open them: the bytes are fetched and decrypted by the caller, never by Infisical. To follow the session live, pass `liveCursor` to the activity tail endpoint.",
+        "Lists a session's activity in chunks, newest first. A chunk is an encrypted batch of [records](/documentation/platform/agent-vault/activity-logs#whats-recorded) that a proxy uploaded. To decrypt the chunks, follow [Reading activity through the API](/documentation/platform/agent-vault/activity-logs#reading-activity-through-the-api). To keep receiving new activity, pass `liveCursor` to [the endpoint that tails session activity](/api-reference/endpoints/agent-vault-activity/tail-session-activity).",
       tags: [ApiDocsTags.AgentVaultActivity],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       querystring: AgentVaultActivityHistoryQuerySchema,
@@ -56,7 +56,7 @@ export const registerAgentVaultActivityRouter = async (server: FastifyZodProvide
       hide: false,
       operationId: "tailAgentVaultSessionActivity",
       description:
-        "Follow a session live: the activity that arrived since an earlier read, oldest first. Call it again with `nextCursor`, straight away while `hasMore` is true and on an interval once it is false. A read can return chunks you already hold, so drop repeats by `chunkId`.",
+        "Lists the chunks of a session's activity that Infisical received after a cursor, oldest first. The same chunk can appear in more than one response, so skip any `chunkId` you've already read. The chunks decrypt the same way as the ones from [the endpoint that lists session activity](/api-reference/endpoints/agent-vault-activity/get-session-activity).",
       tags: [ApiDocsTags.AgentVaultActivity],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       querystring: AgentVaultActivityTailQuerySchema,

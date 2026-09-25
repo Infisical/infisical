@@ -21,7 +21,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       operationId: "getAgentVaultActivityLoggingSettings",
-      description: "Read where this project's session activity is stored, and whether activity logging is on",
+      description: "Gets the activity logging settings",
       tags: [ApiDocsTags.AgentVaultSettings],
       response: { 200: AgentVaultActivityLoggingSettingsResponseSchema }
     },
@@ -46,7 +46,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       hide: false,
       operationId: "updateAgentVaultActivityLoggingSettings",
       description:
-        "Point this project's session activity at an S3 bucket, or turn logging on and off. The bucket is checked for reachability and write access before the change is saved.",
+        "Updates the activity logging settings. If activity logging is on, Infisical checks that the AWS connection can reach the bucket and write to it before saving.",
       tags: [ApiDocsTags.AgentVaultSettings],
       body: AgentVaultActivityLoggingSettingsUpdateSchema,
       response: { 200: AgentVaultActivityLoggingSettingsResponseSchema }
@@ -104,7 +104,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       hide: false,
       operationId: "getAgentVaultActivityLoggingHealth",
       description:
-        "Check whether activity logging is working: whether it has reached its storage limit, and whether Infisical can use its AWS connection",
+        "Gets whether activity logging has reached its storage limit, and whether Infisical can use the AWS connection",
       tags: [ApiDocsTags.AgentVaultSettings],
       response: { 200: AgentVaultActivityLoggingHealthResponseSchema }
     },
@@ -130,7 +130,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     schema: {
       hide: true,
       operationId: "getAgentVaultActivityLoggingCorsProbe",
-      description: "Get a short-lived link the browser fetches to check that the bucket allows cross-origin reads",
+      description: "Gets a presigned URL for checking the bucket's CORS rule",
       tags: [ApiDocsTags.AgentVaultSettings],
       response: { 200: AgentVaultActivityLoggingCorsProbeResponseSchema }
     },

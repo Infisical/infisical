@@ -184,7 +184,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
           activity: z.object({
             enabled: z.boolean().describe(AGENT_VAULT.ACTIVITY.enabled),
             sessionKey: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.sessionKey),
-            projectId: z.string().describe("The project the session belongs to. Part of the sealing context.")
+            projectId: z.string().describe(AGENT_VAULT.ACTIVITY.projectId)
           })
         })
       }
@@ -208,7 +208,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "createAgentVaultActivityChunk",
       description:
-        "Record one sealed chunk of session activity and get a presigned URL to upload it to. The row is written before the object exists, so a failed upload is a visible gap rather than a silent one. Re-sending the same chunkId is idempotent.",
+        "Records an encrypted activity chunk and returns a presigned URL to upload the chunk to. If you send the same `chunkId` again, you get a new URL for the same chunk.",
       tags: [ApiDocsTags.AgentVaultActivity],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       body: AgentVaultActivityChunkCreateSchema,

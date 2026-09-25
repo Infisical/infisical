@@ -51,7 +51,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
     schema: {
       hide: false,
       operationId: "listAgentVaultAwsAppConnections",
-      description: "List the AWS Connections scoped to this organization's Agent Vault",
+      description: "Lists the AWS connections scoped to Agent Vault",
       tags: [ApiDocsTags.AgentVaultAppConnections],
       response: { 200: z.object({ appConnections: SanitizedAwsConnectionSchema.array() }) }
     },
@@ -89,8 +89,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
     schema: {
       hide: false,
       operationId: "createAgentVaultAwsAppConnection",
-      description:
-        "Create an AWS Connection scoped to this organization's Agent Vault. Only Agent Vault can use it; organization-level connections remain available too.",
+      description: "Creates an AWS connection scoped to Agent Vault. Only Agent Vault can use the connection.",
       tags: [ApiDocsTags.AgentVaultAppConnections],
       body: AgentVaultAwsConnectionCreateSchema,
       response: { 200: z.object({ appConnection: SanitizedAwsConnectionSchema }) }
@@ -147,7 +146,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
     schema: {
       hide: false,
       operationId: "getAgentVaultAwsAppConnection",
-      description: "Read an AWS Connection scoped to this organization's Agent Vault",
+      description: "Gets an AWS connection scoped to Agent Vault",
       tags: [ApiDocsTags.AgentVaultAppConnections],
       params: z.object({
         connectionId: z.string().uuid().describe(AppConnections.GET_BY_ID(AppConnection.AWS).connectionId)
@@ -179,7 +178,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
     schema: {
       hide: false,
       operationId: "updateAgentVaultAwsAppConnection",
-      description: "Update an AWS Connection scoped to this organization's Agent Vault",
+      description: "Updates an AWS connection scoped to Agent Vault",
       tags: [ApiDocsTags.AgentVaultAppConnections],
       params: z.object({
         connectionId: z.string().uuid().describe(AppConnections.UPDATE(AppConnection.AWS).connectionId)
@@ -236,7 +235,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "deleteAgentVaultAwsAppConnection",
       description:
-        "Delete an AWS Connection scoped to this organization's Agent Vault. A connection activity logging uses can't be deleted; switch activity logging to another connection, or turn off activity logging and remove the connection from it, first.",
+        "Deletes an AWS connection scoped to Agent Vault. If activity logging uses the connection, switch activity logging to another connection or to none first.",
       tags: [ApiDocsTags.AgentVaultAppConnections],
       params: z.object({
         connectionId: z.string().uuid().describe(AppConnections.DELETE(AppConnection.AWS).connectionId)

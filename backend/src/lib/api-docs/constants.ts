@@ -4365,63 +4365,60 @@ export const AGENT_VAULT = {
     createdAt: "When the proxy was registered."
   },
   ACTIVITY: {
-    chunkId: "The ID of the activity chunk, a ULID that is unique per session and sorts by time.",
-    proxyId: "The ID of the proxy that recorded the chunk.",
-    proxyName: "The proxy's current name, or the name it had when it recorded the chunk if it has since been deleted.",
-    startedAt: "When the first request in the chunk was recorded.",
-    endedAt: "When the last request in the chunk was recorded.",
-    firstSeq: "The sequence number of the first record in the chunk, counted per proxy.",
-    lastSeq: "The sequence number of the last record in the chunk, counted per proxy.",
-    recordCount: "How many records the chunk holds.",
+    chunkId: "The ID of the chunk, a ULID.",
+    proxyId: "The ID of the proxy that uploaded the chunk.",
+    proxyName: "The name of the proxy that uploaded the chunk. If the proxy was deleted, the name it had at the time.",
+    startedAt: "The time of the first record in the chunk.",
+    endedAt: "The time of the last record in the chunk.",
+    firstSeq: "The sequence number of the first record in the chunk. Each proxy numbers its own records.",
+    lastSeq: "The sequence number of the last record in the chunk. Each proxy numbers its own records.",
+    recordCount: "The number of records in the chunk.",
     droppedCount:
-      "How many records the proxy discarded before this chunk, because its buffer filled or logging was paused or switched off.",
-    ciphertextBytes: "The exact size of the encrypted chunk, in bytes.",
-    iv: "The AES-GCM initialisation vector, base64 encoded.",
+      "The number of records the proxy discarded before this chunk, for example because its buffer was full or activity logging was off.",
+    ciphertextBytes: "The size of the encrypted chunk, in bytes.",
+    iv: "The AES-GCM initialization vector for the chunk, as base64.",
     ciphertextSha256:
-      "The SHA-256 of the encrypted chunk, unpadded base64. The browser checks the downloaded object against it before decrypting.",
-    objectKey: "Where the encrypted chunk lives in the configured bucket.",
-    uploadUrl: "A presigned URL to PUT the encrypted chunk to. Accepts exactly ciphertextBytes bytes.",
+      "The SHA-256 digest of the encrypted chunk, as base64 without padding. If the downloaded chunk has a different digest, the chunk was changed after it was uploaded.",
+    objectKey: "The key of the chunk's object in the bucket.",
+    uploadUrl:
+      "The URL to upload the encrypted chunk to with a PUT request. The body must be exactly `ciphertextBytes` bytes.",
     presignedGetUrl:
-      "A presigned URL to GET the encrypted chunk from. Null when the chunk was written under an earlier storage configuration, or when `storageUnavailable` is set.",
-    expiresInSeconds: "How long the presigned URL stays valid.",
-    sessionKey:
-      "The session's activity key, base64 encoded. Decrypts every chunk in this response. Null when there is nothing to decrypt.",
-    storageUnavailable:
-      "Set when the session recorded activity that cannot be read right now. The chunks are listed without URLs to fetch them. Null otherwise.",
+      "The URL to download the chunk from. Null if the chunk is in a bucket other than the current one, or if `activity.storageUnavailable` is set.",
+    expiresInSeconds: "The number of seconds before the URL expires.",
+    sessionKey: "The key that decrypts every chunk in this response, as base64. Null if no chunk can be read.",
+    storageUnavailable: "The reason the chunks can't be downloaded right now. Null if they can.",
     storageUnavailableReason:
-      "`no-connection` when activity logging has no AWS connection, `connection-unusable` when Infisical could not use it.",
-    storageUnavailableMessage: "Why the connection could not be used. Only returned to administrators.",
-    activity:
-      "The session's activity context: what a caller needs to decrypt the chunks, and whether they can be read.",
-    projectId: "The project the session belongs to. Part of the decryption context.",
-    historyCursor:
-      "Leave out for the newest page. Pass the `nextCursor` of the previous response to fetch the next, older page.",
-    historyNextCursor: "Pass as `cursor` to fetch the next, older page. Null when there are no older chunks.",
-    liveCursor: "Pass as `cursor` to the activity tail endpoint to follow the session live from this read onwards.",
+      "`no-connection` if activity logging has no AWS connection, or `connection-unusable` if Infisical can't use the AWS connection.",
+    storageUnavailableMessage: "The error Infisical got from the AWS connection. Returned only to Agent Vault admins.",
+    activity: "The session details you need to read the chunks.",
+    projectId: "The ID of the project the session belongs to. Part of the associated data for decrypting each chunk.",
+    historyCursor: "The `nextCursor` from the previous response. Leave it out to get the newest page.",
+    historyNextCursor: "The cursor for the next, older page. Null if there are no older chunks.",
+    liveCursor:
+      "The cursor to pass to [the endpoint that tails session activity](/api-reference/endpoints/agent-vault-activity/tail-session-activity) to get activity that arrives after this response.",
     tailCursor:
-      "Where to continue from: the `liveCursor` of a history read, or the `nextCursor` of the previous tail read. Leave out to start from now.",
-    tailNextCursor: "Pass as `cursor` on the next tail read.",
-    tailHasMore:
-      "True when more chunks are already waiting, so call again straight away. False when you are caught up.",
-    limit: "Roughly how many activity records to return. Chunks are returned whole, so a page can hold more.",
-    from: "Only return chunks holding records at or after this time. A chunk that overlaps the window is included whole.",
-    to: "Only return chunks holding records at or before this time. A chunk that overlaps the window is included whole.",
-    enabled: "Whether activity logging is on for this project.",
-    configEnabled:
-      "Turn activity logging on or off. Turning it off stops new records being accepted; it deletes nothing.",
-    appConnectionId: "The AWS connection whose credentials write to and read from the bucket.",
+      "The `liveCursor` from [the endpoint that lists session activity](/api-reference/endpoints/agent-vault-activity/get-session-activity), or the `nextCursor` from the previous response. Leave it out to start from now.",
+    tailNextCursor: "The cursor for the next call.",
+    tailHasMore: "Whether more chunks are waiting. If false, wait a few seconds before the next call.",
+    limit: "The number of records to aim for on each page. A page can hold more, because chunks aren't split.",
+    from: "Return only chunks with records at or after this time.",
+    to: "Return only chunks with records at or before this time.",
+    enabled: "Whether activity logging is on.",
+    configEnabled: "Whether activity logging is on. Turning it off stops recording, and deletes nothing.",
+    appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
     bucket:
-      "The S3 bucket activity is stored in. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",
-    region: "The region the bucket lives in.",
+      "The name of the S3 bucket. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",
+    region: "The AWS region of the bucket.",
     keyPrefix:
-      "An optional prefix every object key is written under, saved as sent. Folder names separated by single slashes, with no slash at the start or end, like `logs/agent-vault`. Letters, numbers and `! - _ . ' ( ) /` only, with no `.` or `..` folder, up to 512 characters.",
-    corsProbeUrl: "A presigned URL the browser fetches to check that the bucket allows cross-origin reads.",
+      "The folder in the bucket to store activity in, such as `logs/agent-vault`. Up to 512 characters: letters, numbers and `! - _ . ' ( ) /`, with no slash at the start or end, no empty folder name, and no folder named `.` or `..`.",
+    corsProbeUrl: "A URL that fails to load in a browser if the bucket's CORS rule doesn't allow Infisical.",
     connectionError:
-      "Why Infisical could not use the configured AWS connection, for example because AWS refused to let it assume its role. Null when it could, or when there is nothing to check.",
+      "The error Infisical got when it tried to use the AWS connection, for example because AWS refused to let it assume the role. Null if there's no error or no connection.",
     isStorageFull:
-      "Whether activity logging has reached its limit for this organization. Contact Infisical support to raise it.",
-    hasActivityKey: "Whether the proxy already holds this session's activity key. When true the key is not sent again."
+      "Whether your organization has reached its activity storage limit. If true, new activity is refused until Infisical support raises the limit.",
+    hasActivityKey: "Whether the proxy already has this session's activity key. If true, the key isn't returned again."
   },
+
   SESSION: {
     sessionId: "The ID of the session.",
     accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
@@ -4429,7 +4426,8 @@ export const AGENT_VAULT = {
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
-    status: "Filter by session status: active, revoked or expired. Separate several with commas to match any of them.",
+    status:
+      "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
     search: "Match sessions by actor name, actor email or access bundle name.",
     limit: "The maximum number of sessions to return.",
     offset: "How many sessions to skip."
