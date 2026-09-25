@@ -137,6 +137,14 @@ Infisical currently supports three methods for connecting to Azure DevOps, which
                     <Tip>
                         You can find the **Organization Name** on https://dev.azure.com/
                     </Tip>
+
+                    <Info>
+                        If you use Infisical Cloud, the OAuth flow requests every permission on Infisical's shared Azure app registration (the `.default` scope), including the permissions for Azure App Configuration. If your Azure tenant doesn't have the Azure App Configuration service principal, the OAuth flow fails. To create the service principal, run the following [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) command, then try to connect again:
+
+                        ```bash
+                        az ad sp create --id 35ffadb3-7fc1-497e-b61b-381d28e744cc
+                        ```
+                    </Info>
                 </Step>
                 <Step title="Grant Access">
                     You will then be redirected to Azure to grant Infisical access to your Azure account. Once granted,
