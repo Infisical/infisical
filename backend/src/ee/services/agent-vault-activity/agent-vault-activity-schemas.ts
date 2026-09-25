@@ -117,8 +117,7 @@ export const AgentVaultActivityConfigResponseSchema = z.object({
   config: AgentVaultActivityConfigViewSchema,
   isStorageFull: z.boolean().describe(AGENT_VAULT.ACTIVITY.isStorageFull),
   corsProbeUrl: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.corsProbeUrl),
-  connectionError: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.connectionError),
-  lastRecordedAt: z.date().nullable().describe(AGENT_VAULT.ACTIVITY.lastRecordedAt)
+  connectionError: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.connectionError)
 });
 
 export const AgentVaultActivityConfigUpdateSchema = z

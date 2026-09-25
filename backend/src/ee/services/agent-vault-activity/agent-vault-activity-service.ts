@@ -62,7 +62,7 @@ type TAgentVaultActivityServiceFactoryDep = {
   agentVaultActivityChunkDAL: TAgentVaultActivityChunkDALFactory;
   agentVaultActivityConfigDAL: TAgentVaultActivityConfigDALFactory;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findOne">;
-  agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg" | "findLastActivityUploadAt">;
+  agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -435,8 +435,7 @@ export const agentVaultActivityServiceFactory = ({
         },
         isStorageFull: false,
         corsProbeUrl: null,
-        connectionError: null,
-        lastRecordedAt: null
+        connectionError: null
       };
     }
 
@@ -458,8 +457,7 @@ export const agentVaultActivityServiceFactory = ({
       config: toConfigView(config),
       isStorageFull: toCount(config.storedChunkCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
       corsProbeUrl,
-      connectionError,
-      lastRecordedAt: await agentVaultProxyDAL.findLastActivityUploadAt(projectId, config.destinationChangedAt ?? null)
+      connectionError
     };
   };
 
@@ -531,12 +529,7 @@ export const agentVaultActivityServiceFactory = ({
     const activityStorage = storage ? await buildActivityStorage(storage, ctx.actorOrgId, $storageDeps) : null;
     if (activityStorage) await activityStorage.validate();
 
-    const values = {
-      ...next,
-      projectId,
-      // Only uploads after this count toward lastRecordedAt, so a move doesn't inherit the old bucket's.
-      ...(relocated || !existing ? { destinationChangedAt: new Date() } : {})
-    };
+    const values = { ...next, projectId };
 
     let saved: TAgentVaultActivityConfigs;
     if (existing) {
@@ -572,7 +565,6 @@ export const agentVaultActivityServiceFactory = ({
       isStorageFull: toCount(saved.storedChunkCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
       corsProbeUrl,
       connectionError: null,
-      lastRecordedAt: await agentVaultProxyDAL.findLastActivityUploadAt(projectId, saved.destinationChangedAt ?? null),
       relocated,
       appConnectionName
     };

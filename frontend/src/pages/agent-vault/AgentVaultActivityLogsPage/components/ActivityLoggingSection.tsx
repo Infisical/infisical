@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { formatDistanceToNow } from "date-fns";
 
 import {
   Badge,
@@ -101,20 +100,12 @@ export const ActivityLoggingSection = () => {
 
             {!isPending && hasDestination && config && (
               <DetailGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Detail>
+                <Detail className="sm:col-span-2">
                   <DetailLabel>Status</DetailLabel>
                   <DetailValue>
                     <Badge variant={config.enabled ? "success" : "neutral"}>
                       {config.enabled ? "Enabled" : "Disabled"}
                     </Badge>
-                  </DetailValue>
-                </Detail>
-                <Detail>
-                  <DetailLabel>Last Recorded</DetailLabel>
-                  <DetailValue>
-                    {data?.lastRecordedAt
-                      ? formatDistanceToNow(new Date(data.lastRecordedAt), { addSuffix: true })
-                      : "Never"}
                   </DetailValue>
                 </Detail>
 

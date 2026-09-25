@@ -115,13 +115,6 @@ const createProxy = async (name: string) => {
         headers: { authorization: `Bearer ${accessToken}` },
         body: chunk
       }),
-    heartbeat: (body?: { activityUploaded: boolean }) =>
-      testServer.inject({
-        method: "POST",
-        url: "/api/v1/agent-vault/proxy/heartbeat",
-        headers: { authorization: `Bearer ${accessToken}` },
-        ...(body ? { body } : {})
-      }),
     resolve: (sessionToken: string, hasActivityKey?: boolean) =>
       testServer.inject({
         method: "POST",
@@ -423,27 +416,6 @@ describe("Agent Vault activity", async () => {
       expect(fakeActivityStorage.objectKeys(BUCKET)).toEqual([row.objectKey]);
 
       expect(() => fakeActivityStorage.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES + 1))).toThrow();
-    });
-
-    test("reports when a proxy last uploaded, and forgets it once the destination moves", async () => {
-      const readLastRecordedAt = async () => {
-        const res = await inject("GET", "/api/v1/agent-vault/activity/config");
-        expect(res.statusCode).toBe(200);
-        return (JSON.parse(res.payload) as { lastRecordedAt: string | null }).lastRecordedAt;
-      };
-
-      await configure();
-      expect(await readLastRecordedAt()).toBeNull();
-
-      const proxy = await createProxy(`activity-last-${Date.now()}`);
-      expect((await proxy.heartbeat()).statusCode).toBe(200);
-      expect(await readLastRecordedAt()).toBeNull();
-
-      expect((await proxy.heartbeat({ activityUploaded: true })).statusCode).toBe(200);
-      expect(await readLastRecordedAt()).not.toBeNull();
-
-      await configure({ bucket: `${BUCKET}-moved` });
-      expect(await readLastRecordedAt()).toBeNull();
     });
 
     test("counts each chunk once against the org, whatever it holds", async () => {

@@ -118,20 +118,10 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       operationId: "agentVaultProxyHeartbeat",
       description: "Report a proxy as alive and read back its settings",
       tags: [ApiDocsTags.AgentVaultProxies],
-      // Nullish, not optional: proxies predating activity logging send no body, which arrives as null.
-      body: z
-        .object({
-          activityUploaded: z.boolean().default(false).describe(AGENT_VAULT.ACTIVITY.activityUploaded)
-        })
-        .nullish(),
       response: { 200: z.object({ config: ProxyConfigSchema }) }
     },
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
-    handler: async (req) =>
-      server.services.agentVaultProxy.heartbeat({
-        proxyId: req.permission.id,
-        activityUploaded: req.body?.activityUploaded ?? false
-      })
+    handler: async (req) => server.services.agentVaultProxy.heartbeat({ proxyId: req.permission.id })
   });
 
   server.route({

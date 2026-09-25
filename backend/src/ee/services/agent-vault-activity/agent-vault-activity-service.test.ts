@@ -119,8 +119,7 @@ const build = (overrides: TOverrides = {}) => {
       findOne: vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()))
     } as never,
     agentVaultProxyDAL: {
-      findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY)),
-      findLastActivityUploadAt: vi.fn(async () => null)
+      findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY))
     } as never,
     appConnectionDAL: { findById: findConnection } as never,
     appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,

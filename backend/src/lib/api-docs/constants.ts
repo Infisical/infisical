@@ -4416,10 +4416,7 @@ export const AGENT_VAULT = {
       "Why Infisical could not use the configured AWS connection, for example because AWS refused to let it assume its role. Null when it could, or when there is nothing to check.",
     isStorageFull:
       "Whether activity logging has reached its limit for this organization. Contact Infisical support to raise it.",
-    hasActivityKey: "Whether the proxy already holds this session's activity key. When true the key is not sent again.",
-    lastRecordedAt:
-      "When a proxy last reported uploading activity to the current bucket and prefix, to within one poll interval. Null when none has since the destination was last changed.",
-    activityUploaded: "Whether the proxy has uploaded any activity since its last heartbeat that Infisical answered."
+    hasActivityKey: "Whether the proxy already holds this session's activity key. When true the key is not sent again."
   },
   SESSION: {
     sessionId: "The ID of the session.",
