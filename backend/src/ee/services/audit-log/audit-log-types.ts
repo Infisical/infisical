@@ -68,7 +68,10 @@ import {
   TSecretSyncRaw,
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
-import { TDuplicateSecretAttributes } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import {
+  SecretValueSearchScope,
+  TDuplicateSecretAttributes
+} from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 import { TSignerExternalConfigurationInput } from "@app/services/signer/signer-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
@@ -204,6 +207,7 @@ export enum EventType {
   UPDATE_SECRET = "update-secret",
   UPDATE_SECRETS = "update-secrets",
   MOVE_SECRETS = "move-secrets",
+  SEARCH_SECRETS_BY_VALUE = "search-secrets-by-value",
   DUPLICATE_SECRET = "duplicate-secret",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
@@ -681,6 +685,7 @@ export enum EventType {
   SECRET_SCANNING_CONFIG_UPDATE = "secret-scanning-config-update",
 
   UPDATE_ORG = "update-org",
+  ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
@@ -712,6 +717,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
+  VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION = "view-insights-org-secrets-duplication",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE = "view-insights-secrets-management-usage",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS = "view-insights-secrets-management-project-warnings",
@@ -1269,6 +1275,25 @@ interface MoveSecretsEvent {
     destinationEnvironment: string;
     destinationSecretPath: string;
     secretIds: string[];
+  };
+}
+
+// The searched value is never recorded, only how many places it was found in. An audit log is read by
+// more people than the search itself is run by, so logging the value would widen who learns it.
+interface SearchSecretsByValueEvent {
+  type: EventType.SEARCH_SECRETS_BY_VALUE;
+  metadata: {
+    scope: SecretValueSearchScope;
+    projectId?: string;
+    projectName?: string;
+    matchCount: number;
+  };
+}
+
+interface EnableOrgWideSecretValueTrackingEvent {
+  type: EventType.ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING;
+  metadata: {
+    projectsTotal: number;
   };
 }
 
@@ -5865,6 +5890,13 @@ interface ViewSecretManagementInsightsSummaryEvent {
   };
 }
 
+interface ViewInsightsOrgSecretsDuplicationEvent {
+  type: EventType.VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION;
+  metadata: {
+    groupCount: number;
+  };
+}
+
 interface ViewInsightsSecretsDuplicationEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION;
   metadata: {
@@ -7826,6 +7858,8 @@ export type Event =
   | UpdateSecretEvent
   | UpdateSecretBatchEvent
   | MoveSecretsEvent
+  | SearchSecretsByValueEvent
+  | EnableOrgWideSecretValueTrackingEvent
   | DuplicateSecretEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
@@ -8283,6 +8317,7 @@ export type Event =
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
   | ViewInsightsSecretsDuplicationEvent
+  | ViewInsightsOrgSecretsDuplicationEvent
   | ViewSecretManagementInsightsCountsEvent
   | ViewSecretManagementInsightsUsageEvent
   | ViewSecretManagementInsightsProjectWarningsEvent

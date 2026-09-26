@@ -25,6 +25,7 @@ import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
+import { TSecretValueBlindIndexes } from "./secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
@@ -185,18 +186,27 @@ export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
 
 export type TSecretReference = { environment: string; secretPath: string; secretKey: string };
 
+export enum SecretValueSearchScope {
+  Organization = "organization",
+  Project = "project"
+}
+
+export type TFindSecretsByValueDTO = {
+  secretValue: string;
+} & ({ scope: SecretValueSearchScope.Organization } | { scope: SecretValueSearchScope.Project; projectId: string });
+
 export type TFnSecretBulkInsert = {
   folderId: string;
   orgId: string;
   tx?: Knex;
   commitChanges?: TCommitResourceChangeDTO[];
   inputSecrets: Array<
-    Omit<TSecretsV2Insert, "folderId" | "metadata"> & {
+    Omit<TSecretsV2Insert, "folderId" | "metadata" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"> & {
       tagIds?: string[];
       references: TSecretReference[];
       secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
       parentSecretVersionId?: string;
-      secretValueBlindIndex?: string | null;
+      blindIndexes: TSecretValueBlindIndexes | null;
     }
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
@@ -212,15 +222,15 @@ export type TFnSecretBulkInsert = {
 };
 
 type TRequireReferenceIfValue =
-  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
+  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"> & {
       encryptedValue: Buffer | null;
       references: TSecretReference[];
-      secretValueBlindIndex?: string | null;
+      blindIndexes: TSecretValueBlindIndexes | null;
     })
-  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
+  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"> & {
       encryptedValue?: never;
       references?: never;
-      secretValueBlindIndex?: never;
+      blindIndexes?: never;
     });
 
 export type TFnSecretBulkUpdate = {

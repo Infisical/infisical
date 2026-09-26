@@ -22,10 +22,7 @@ const unreachable = (method: string) => (): never => {
 };
 
 // Specs supply their own getOrgPermission; this fills the other half of the permissionService contract.
-const unreachableGetProjectPermission: Pick<
-  TInsightsServiceFactoryDep["permissionService"],
-  "getProjectPermission"
-> = {
+const unreachableGetProjectPermission: Pick<TInsightsServiceFactoryDep["permissionService"], "getProjectPermission"> = {
   getProjectPermission: unreachable("permissionService.getProjectPermission")
 };
 
@@ -63,6 +60,7 @@ export const projectScopedInsightsDepStubs: Pick<
     findStaleByProject: unreachable("secretV2BridgeDAL.findStaleByProject"),
     countStaleByProject: unreachable("secretV2BridgeDAL.countStaleByProject"),
     findDuplicatedSecretValues: unreachable("secretV2BridgeDAL.findDuplicatedSecretValues"),
+    findDuplicatedSecretValuesInOrg: unreachable("secretV2BridgeDAL.findDuplicatedSecretValuesInOrg"),
     countByProject: unreachable("secretV2BridgeDAL.countByProject")
   },
   dynamicSecretDAL: {
@@ -93,7 +91,8 @@ export const usageInsightsDepStubs: Pick<
   "orgDAL" | "identityOrgMembershipDAL" | "dynamicSecretLeaseDAL"
 > = {
   orgDAL: {
-    countSecretManagerProjectMembers: unreachable("orgDAL.countSecretManagerProjectMembers")
+    countSecretManagerProjectMembers: unreachable("orgDAL.countSecretManagerProjectMembers"),
+    findById: unreachable("orgDAL.findById")
   },
   identityOrgMembershipDAL: {
     countSecretManagerProjectIdentities: unreachable("identityOrgMembershipDAL.countSecretManagerProjectIdentities")
@@ -147,5 +146,6 @@ export const buildOrgInsightsGateStubs = () => {
 export const passThroughKeyStore: TInsightsServiceFactoryDep["keyStore"] = {
   getItem: async () => null,
   setItemWithExpiry: async () => "OK",
-  ttl: async () => -2
+  ttl: async () => -2,
+  deleteItem: async () => 1
 };

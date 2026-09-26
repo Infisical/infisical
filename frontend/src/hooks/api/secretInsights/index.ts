@@ -1,12 +1,19 @@
 export {
+  useEnableOrgSecretValueTracking,
+  useRefreshOrgSecretsDuplication,
+  useSearchSecretsByValue
+} from "./mutations";
+export {
   secretInsightsKeys,
   useGetAuthMethodDistribution,
   useGetCalendarInsights,
   useGetInsightsSummary,
   useGetOrgAuthMethodDistribution,
   useGetOrgSecretsAccessVolume,
+  useGetOrgSecretsDuplication,
   useGetOrgSecretsProjects,
   useGetOrgSecretsSummary,
+  useGetOrgSecretValueTrackingStatus,
   useGetOrgStaticSecretsUsage,
   // useGetSecretAccessLocations,
   useGetSecretAccessVolume,
@@ -24,7 +31,9 @@ export type {
   TGetAuthMethodDistributionResponse,
   TGetCalendarInsightsDTO,
   TGetCalendarInsightsResponse,
+  TGetOrgSecretsDuplicationResponse,
   TGetOrgSecretsProjectsDTO,
+  TGetOrgSecretValueTrackingStatusResponse,
   TGetSecretAccessLocationsDTO,
   TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
@@ -32,12 +41,16 @@ export type {
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
   TOrgAuthMethodUsage,
+  TOrgDuplicatedSecretEntry,
+  TOrgDuplicatedSecretGroup,
   TOrgProjectInsight,
   TOrgProjectInsightWarnings,
   TOrgProjectsInsights,
   TOrgSecretAccessVolume,
   TOrgSecretsSummary,
   TOrgStaticSecretUsage,
+  TSearchSecretsByValueResponse,
   TSecretAccessVolumeActor,
-  TSecretAccessVolumeDay
+  TSecretAccessVolumeDay,
+  TSecretValueMatch
 } from "./types";

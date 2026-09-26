@@ -4,12 +4,18 @@ import { z } from "zod";
 
 import {
   ActionProjectType,
+  OrganizationActionScope,
   ProjectMembershipRole,
+  ProjectType,
   SecretsV2Schema,
   SecretType,
   TableName,
   TSecretsV2
 } from "@app/db/schemas";
+import {
+  OrgPermissionSecretsManagementInsightsActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -46,6 +52,7 @@ import {
   SecretCacheAccessResult,
   SecretEtagMissReason
 } from "@app/lib/telemetry/metrics";
+import { OrgServiceActor } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -76,6 +83,7 @@ import {
 } from "../secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
+import { createOrgSecretBlindIndexer, createSecretBlindIndexer } from "./secret-blind-index-fns";
 import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
@@ -99,6 +107,7 @@ import {
 } from "./secret-v2-bridge-fns";
 import {
   SecretUpdateMode,
+  SecretValueSearchScope,
   TBackFillSecretReferencesDTO,
   TCreateManySecretDTO,
   TCreateSecretDTO,
@@ -106,6 +115,7 @@ import {
   TDeleteSecretDTO,
   TDispatchSecretCreateSideEffectsDTO,
   TDispatchSecretMoveSideEffectsDTO,
+  TFindSecretsByValueDTO,
   TGetAccessibleSecretsDTO,
   TGetASecretDTO,
   TGetSecretReferencesTreeDTO,
@@ -149,7 +159,10 @@ type TSecretV2BridgeServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionFingerprint">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getProjectPermissionFingerprint" | "getOrgPermission"
+  >;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
@@ -187,7 +200,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -195,6 +208,10 @@ export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServ
 /*
  * This service is a bridge from our old architecture towards the new architecture
  */
+// One value genuinely can sit in thousands of places in a large org, and the caller is chasing a
+// leak rather than paginating, so the answer is bounded and the response says when it was cut off.
+const SECRET_VALUE_SEARCH_LIMIT = 1000;
+
 export const secretV2BridgeServiceFactory = ({
   secretDAL,
   projectDAL,
@@ -469,14 +486,14 @@ export const secretV2BridgeServiceFactory = ({
 
     await $validateSecretReferences(projectId, permission, allSecretReferences);
 
-    const { encryptor: secretManagerEncryptor, generateSecretBlindIndex } =
-      await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-    const secretValueBlindIndex = inputSecretData.secretValue
-      ? await generateSecretBlindIndex(Buffer.from(inputSecretData.secretValue))
-      : undefined;
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
+    const blindIndexes = await (inputSecretData.secretValue
+      ? blindIndexer.generateBlindIndexes(Buffer.from(inputSecretData.secretValue))
+      : null);
     const secret = await secretDAL.transaction(async (tx) => {
       const [createdSecret] = await fnSecretBulkInsert({
         folderId,
@@ -492,7 +509,7 @@ export const secretV2BridgeServiceFactory = ({
             encryptedValue: inputSecretData.secretValue
               ? secretManagerEncryptor({ plainText: Buffer.from(inputSecretData.secretValue) }).cipherTextBlob
               : undefined,
-            secretValueBlindIndex,
+            blindIndexes,
             skipMultilineEncoding: inputSecretData.skipMultilineEncoding,
             key: secretName,
             userId: inputSecret.type === SecretType.Personal ? actorId : null,
@@ -763,20 +780,18 @@ export const secretV2BridgeServiceFactory = ({
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
-    const {
-      encryptor: secretManagerEncryptor,
-      decryptor: secretManagerDecryptor,
-      generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
     const encryptedValue =
       typeof secretValue === "string"
         ? {
             encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secretValue) }).cipherTextBlob,
             references: getAllSecretReferences(secretValue).nestedReferences,
-            secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(secretValue))
+            blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(secretValue))
           }
         : {};
 
@@ -844,7 +859,7 @@ export const secretV2BridgeServiceFactory = ({
           secretQueueService,
           encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
           decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-          generateSecretBlindIndex,
+          blindIndexer,
           tx
         });
       }
@@ -2303,19 +2318,22 @@ export const secretV2BridgeServiceFactory = ({
     });
     await $validateSecretReferences(projectId, permission, secretReferences, providedTx);
 
-    const {
-      encryptor: secretManagerEncryptor,
-      decryptor: secretManagerDecryptor,
-      generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, providedTx);
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, providedTx);
+    const blindIndexer = await createSecretBlindIndexer({
+      projectId,
+      orgId: actorOrgId,
+      kmsService,
+      tx: providedTx
+    });
 
     const executeBulkInsert = async (tx: Knex) => {
       const inputSecretsWithBlindIndex = await Promise.all(
         deduplicatedSecrets.map(async (el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
-          const secretValueBlindIndex = el.secretValue
-            ? await generateSecretBlindIndex(Buffer.from(el.secretValue))
-            : null;
+          const blindIndexes = await (el.secretValue
+            ? blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
+            : null);
 
           return {
             version: 1,
@@ -2337,7 +2355,7 @@ export const secretV2BridgeServiceFactory = ({
                 : meta.value
             })),
             type: SecretType.Shared,
-            secretValueBlindIndex
+            blindIndexes
           };
         })
       );
@@ -2467,11 +2485,14 @@ export const secretV2BridgeServiceFactory = ({
     );
     const secretPaths = Object.keys(secretsToUpdateGroupByPath);
 
-    const {
-      encryptor: secretManagerEncryptor,
-      decryptor: secretManagerDecryptor,
-      generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const blindIndexer = await createSecretBlindIndexer({
+      projectId,
+      orgId: actorOrgId,
+      kmsService,
+      tx: providedTx
+    });
 
     // Function to execute the bulk update operation
     const executeBulkUpdate = async (tx: Knex) => {
@@ -2712,7 +2733,7 @@ export const secretV2BridgeServiceFactory = ({
                 ? {
                     encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob,
                     references: secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences,
-                    secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(el.secretValue))
+                    blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
                   }
                 : {};
 
@@ -2774,7 +2795,7 @@ export const secretV2BridgeServiceFactory = ({
               secretQueueService,
               encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
               decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-              generateSecretBlindIndex,
+              blindIndexer,
               tx
             });
           }
@@ -2792,9 +2813,9 @@ export const secretV2BridgeServiceFactory = ({
           const inputSecretsForCreate = await Promise.all(
             secretsToCreate.map(async (el) => {
               const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
-              const secretValueBlindIndex = el.secretValue
-                ? await generateSecretBlindIndex(Buffer.from(el.secretValue))
-                : null;
+              const blindIndexes = await (el.secretValue
+                ? blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
+                : null);
 
               return {
                 version: 1,
@@ -2816,7 +2837,7 @@ export const secretV2BridgeServiceFactory = ({
                     : meta.value
                 })),
                 type: SecretType.Shared,
-                secretValueBlindIndex
+                blindIndexes
               };
             })
           );
@@ -3969,6 +3990,7 @@ export const secretV2BridgeServiceFactory = ({
     const updatedSecretVersion = await secretVersionDAL.updateById(versionId, {
       encryptedValue,
       secretValueBlindIndex: null,
+      secretValueOrgBlindIndex: null,
       isRedacted: true,
       redactedAt: new Date(),
       redactedByUserId: actorId
@@ -4032,6 +4054,92 @@ export const secretV2BridgeServiceFactory = ({
     };
   };
 
+  // Answers "is this value in use anywhere", the question someone asks when they learn a value is
+  // compromised. The caller supplies the value, so nothing here reveals a value that was not already
+  // known; what it reveals is the locations, in every project of the org. That is exactly what Search
+  // All Secret Values grants, so it is the only way in: a narrower per-project filter would have to
+  // honour every environment, path, name and tag condition a role can carry, and still leak through
+  // timing whatever it filtered out after the query.
+  const findSecretsByValue = async (dto: TFindSecretsByValueDTO, actor: OrgServiceActor) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+      OrgPermissionSubjects.SecretsManagementInsights
+    );
+
+    // findById rather than findOrgById: findOrgById takes no tx and reads the replica, which is the
+    // deadlock trigger CODE_QUALITY.md warns about if this ever moves inside a transaction.
+    const org = await orgDAL.findById(actor.orgId);
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });
+
+    // Both scopes match on the org digest, so both are only trustworthy once the org is complete.
+    // A partial index answering "this value is used nowhere" is the wrong answer to give someone
+    // chasing a leaked credential.
+    if (!org.orgWideSecretValueTrackingEnabled) {
+      throw new BadRequestError({
+        message:
+          "Enable org-wide secret value tracking for this organization before searching for a secret by its value"
+      });
+    }
+
+    const candidates =
+      dto.scope === SecretValueSearchScope.Project
+        ? await projectDAL.find({ id: dto.projectId, orgId: actor.orgId, type: ProjectType.SecretManager })
+        : await projectDAL.find({ orgId: actor.orgId, type: ProjectType.SecretManager });
+
+    if (dto.scope === SecretValueSearchScope.Project && !candidates.length) {
+      throw new NotFoundError({ message: `Secrets management project with ID '${dto.projectId}' not found` });
+    }
+
+    // Named so the audit entry for a project-scoped search can say which project, not just its id.
+    const searchedProject =
+      dto.scope === SecretValueSearchScope.Project ? { id: candidates[0].id, name: candidates[0].name } : undefined;
+
+    const projectIds = candidates.map((project) => project.id);
+    if (!projectIds.length) return { secrets: [], searchedProject };
+
+    // Every project in an org shares the org data key, so one digest answers for all of them.
+    const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({ orgId: actor.orgId, kmsService });
+    const secretValueDigest = await generateOrgLevelBlindIndex(Buffer.from(dto.secretValue));
+
+    const visible = await secretDAL.findSecretsWithMatchingValue({
+      orgId: actor.orgId,
+      projectIds,
+      secretValueDigest,
+      limit: SECRET_VALUE_SEARCH_LIMIT
+    });
+    if (!visible.length) return { secrets: [], searchedProject };
+
+    const pathsByProject = await Promise.all(
+      [...new Set(visible.map((match) => match.projectId))].map((projectId) => {
+        const folderIds = [...new Set(visible.filter((m) => m.projectId === projectId).map((m) => m.folderId))];
+        return folderDAL.findSecretPathByFolderIds(projectId, folderIds);
+      })
+    );
+    const pathByFolderId = new Map<string, string>();
+    pathsByProject.flat().forEach((folder) => {
+      if (folder) pathByFolderId.set(folder.id, folder.path);
+    });
+
+    return {
+      searchedProject,
+      secrets: visible.map((match) => ({
+        key: match.key,
+        projectId: match.projectId,
+        projectName: match.projectName,
+        environment: { name: match.environmentName, slug: match.environment },
+        secretPath: pathByFolderId.get(match.folderId) ?? "/"
+      }))
+    };
+  };
+
   return {
     createSecret: withSecretMetrics(createSecret, { duration: "write", write: "create" }),
     deleteSecret: withSecretMetrics(deleteSecret, { duration: "delete", write: "delete" }),
@@ -4057,6 +4165,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretMetadata,
     getSecretVersionsByIds,
     findSecretIdsByFolderIdAndKeys,
+    findSecretsByValue,
     $validateSecretReferences,
     redactSecretVersionValue
   };

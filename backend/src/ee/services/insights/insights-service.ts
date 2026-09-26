@@ -22,7 +22,7 @@ import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
@@ -56,6 +56,7 @@ import {
   TGetInsightsCalendarDTO,
   TGetInsightsCountsDTO,
   TGetInsightsSummaryDTO,
+  TGetOrgSecretsDuplicationDTO,
   TGetSecretsDuplicationDTO,
   TGetSecretsProjectWarningsDTO,
   TOrgAccessVolume,
@@ -79,7 +80,11 @@ export type TInsightsServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "countByProject">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "findStaleByProject" | "countStaleByProject" | "findDuplicatedSecretValues" | "countByProject"
+    | "findStaleByProject"
+    | "countStaleByProject"
+    | "findDuplicatedSecretValues"
+    | "findDuplicatedSecretValuesInOrg"
+    | "countByProject"
   >;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "countByProject">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByProjectId">;
@@ -87,8 +92,8 @@ export type TInsightsServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
-  orgDAL: Pick<TOrgDALFactory, "countSecretManagerProjectMembers">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl" | "deleteItem">;
+  orgDAL: Pick<TOrgDALFactory, "countSecretManagerProjectMembers" | "findById">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countSecretManagerProjectIdentities">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "countLeasesForOrg">;
   insightsDAL: Pick<
@@ -158,8 +163,11 @@ export const insightsServiceFactory = ({
   dynamicSecretLeaseDAL,
   insightsDAL
 }: TInsightsServiceFactoryDep) => {
-  // Gate for every org-wide aggregate: the org-level read permission plus the insights entitlement.
-  const assertOrgInsightsRead = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TOrgInsightsDTO) => {
+  // Gate for every org-wide aggregate: an org-level insights permission plus the insights entitlement.
+  const assertOrgInsightsRead = async (
+    { actor, actorId, orgId, actorAuthMethod, actorOrgId }: TOrgInsightsDTO,
+    action = OrgPermissionSecretsManagementInsightsActions.Read
+  ) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor,
@@ -169,10 +177,7 @@ export const insightsServiceFactory = ({
       actorOrgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSecretsManagementInsightsActions.Read,
-      OrgPermissionSubjects.SecretsManagementInsights
-    );
+    ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.SecretsManagementInsights);
 
     await assertInsightsPlanEnabled(licenseService, orgId);
   };
@@ -479,6 +484,110 @@ export const insightsServiceFactory = ({
     });
   };
 
+  // The org-wide view of the same question the project card answers. The groups name every project
+  // a value lives in, so this needs SearchAllSecretValues rather than the page's plain read, and
+  // there is no per-project filter: holding it is the grant to see across projects.
+  const getOrgSecretsDuplication = async (dto: TGetOrgSecretsDuplicationDTO) => {
+    await assertOrgInsightsRead(dto, OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues);
+
+    const org = await orgDAL.findById(dto.orgId);
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${dto.orgId}' not found` });
+
+    // Org-scoped digests only exist once the backfill has run, so an empty answer before then would
+    // read as "no duplicates" when it means "nothing has been indexed".
+    if (!org.orgWideSecretValueTrackingEnabled) {
+      return { result: { orgWideSecretValueTrackingEnabled: false as const, groups: [], computedAt: null } };
+    }
+
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, "org-secrets-duplication");
+    if (dto.refresh) await keyStore.deleteItem(cacheKey);
+
+    const result = await withCache({
+      keyStore,
+      key: cacheKey,
+      ttlSeconds: KeyStoreTtls.InsightsDuplicationCacheInSeconds,
+      fetcher: async () => {
+        const computedAt = new Date().toISOString();
+        const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValuesInOrg(dto.orgId);
+        if (!rawGroups.length) return { orgWideSecretValueTrackingEnabled: true as const, groups: [], computedAt };
+
+        // One decryptor per project rather than per group: the value is encrypted under the owning
+        // project's data key, and resolving that key can reach an external KMS.
+        const decryptors = new Map<string, (input: { cipherTextBlob: Buffer }) => Buffer>();
+        const $decryptorFor = async (projectId: string) => {
+          const cached = decryptors.get(projectId);
+          if (cached) return cached;
+          const { decryptor } = await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId
+          });
+          decryptors.set(projectId, decryptor);
+          return decryptor;
+        };
+
+        const filteredGroups: typeof rawGroups = [];
+        for await (const group of rawGroups) {
+          const first = group.secrets[0];
+          if (!first) continue;
+          if (!first.encryptedValue) {
+            filteredGroups.push(group);
+            continue;
+          }
+          const decryptor = await $decryptorFor(first.projectId);
+          const value = decryptor({ cipherTextBlob: first.encryptedValue }).toString();
+          if (!containsSecretReference(value)) filteredGroups.push(group);
+        }
+
+        // Paths resolve per project, since a folder id only means something inside its own project.
+        const folderIdsByProject = new Map<string, Set<string>>();
+        filteredGroups.forEach((group) =>
+          group.secrets.forEach((secret) => {
+            const forProject = folderIdsByProject.get(secret.projectId) ?? new Set<string>();
+            forProject.add(secret.folderId);
+            folderIdsByProject.set(secret.projectId, forProject);
+          })
+        );
+
+        const pathByFolderId = new Map<string, string>();
+        await Promise.all(
+          [...folderIdsByProject].map(async ([projectId, folderIds]) => {
+            const folders = await folderDAL.findSecretPathByFolderIds(projectId, [...folderIds]);
+            folders.forEach((folder) => {
+              if (folder) pathByFolderId.set(folder.id, folder.path);
+            });
+          })
+        );
+
+        const groups = filteredGroups
+          .map((group) => ({
+            projectCount: new Set(group.secrets.map((secret) => secret.projectId)).size,
+            locationCount: new Set(
+              group.secrets.map(
+                (secret) => `${secret.projectId}:${secret.environment}:${pathByFolderId.get(secret.folderId) ?? "/"}`
+              )
+            ).size,
+            secrets: group.secrets.map((secret) => ({
+              key: secret.key,
+              projectId: secret.projectId,
+              projectName: secret.projectName,
+              environment: { name: secret.environmentName, slug: secret.environment },
+              secretPath: pathByFolderId.get(secret.folderId) ?? "/"
+            }))
+          }))
+          // Blast radius first: a value in three projects needs three teams to agree a rotation
+          // window, which is a different problem from three copies inside one project.
+          .sort((a, b) => b.projectCount - a.projectCount || b.locationCount - a.locationCount);
+
+        return { orgWideSecretValueTrackingEnabled: true as const, groups, computedAt };
+      }
+    });
+
+    const remainingTTL = await getCacheTtl(keyStore, cacheKey);
+
+    // An entry cached before computedAt existed lacks it until it expires.
+    return { result: { ...result, computedAt: result.computedAt ?? null }, remainingTTL };
+  };
+
   const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
@@ -773,6 +882,7 @@ export const insightsServiceFactory = ({
     getAuthMethodDistribution,
     getSummary,
     getSecretsDuplication,
+    getOrgSecretsDuplication,
     getCounts,
     getSecretsUsageInsights,
     getSecretsProjects,

@@ -11,7 +11,9 @@ import {
   TGetInsightsCountsResponse,
   TGetInsightsSummaryDTO,
   TGetInsightsSummaryResponse,
+  TGetOrgSecretsDuplicationResponse,
   TGetOrgSecretsProjectsDTO,
+  TGetOrgSecretValueTrackingStatusResponse,
   // TGetSecretAccessLocationsDTO,
   // TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
@@ -56,7 +58,11 @@ export const secretInsightsKeys = {
   orgStaticSecretsUsage: (orgId: string) =>
     [...secretInsightsKeys.all(), "org-static-secrets-usage", { orgId }] as const,
   orgAccessVolume: (orgId: string) =>
-    [...secretInsightsKeys.all(), "org-access-volume", { orgId }] as const
+    [...secretInsightsKeys.all(), "org-access-volume", { orgId }] as const,
+  orgSecretsDuplication: (orgId: string) =>
+    [...secretInsightsKeys.all(), "org-secrets-duplication", { orgId }] as const,
+  orgSecretValueTrackingStatus: (orgId: string) =>
+    [...secretInsightsKeys.all(), "org-secret-value-tracking-status", { orgId }] as const
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
@@ -324,5 +330,40 @@ export const useGetOrgSecretsAccessVolume = (orgId: string, options?: { enabled?
     },
     enabled: Boolean(orgId) && (options?.enabled ?? true),
     staleTime: INSIGHTS_STALE_TIME
+  });
+};
+
+export const fetchOrgSecretsDuplication = async (refresh = false) => {
+  const { data } = await apiRequest.get<TGetOrgSecretsDuplicationResponse>(
+    "/api/v1/insights/secrets/secrets-duplication",
+    { params: { refresh } }
+  );
+  return data;
+};
+
+export const useGetOrgSecretsDuplication = (orgId: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgSecretsDuplication(orgId),
+    queryFn: () => fetchOrgSecretsDuplication(),
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
+    staleTime: INSIGHTS_STALE_TIME
+  });
+};
+
+export const useGetOrgSecretValueTrackingStatus = (
+  orgId: string,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgSecretValueTrackingStatus(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetOrgSecretValueTrackingStatusResponse>(
+        "/api/v1/organization/secret-value-tracking/status"
+      );
+      return data;
+    },
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
+    staleTime: 0,
+    refetchInterval: (query) => (query.state.data?.status === "pending" ? 2000 : false)
   });
 };

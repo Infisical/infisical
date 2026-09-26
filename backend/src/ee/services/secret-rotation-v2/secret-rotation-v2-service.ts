@@ -85,6 +85,7 @@ import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
   fnSecretBulkDelete,
@@ -688,9 +689,15 @@ export const secretRotationV2ServiceFactory = ({
 
           const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
 
-          const { encryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+          const { encryptor } = await kmsService.createCipherPairWithDataKey({
             type: KmsDataKey.SecretManager,
             projectId
+          });
+          const blindIndexer = await createSecretBlindIndexer({
+            projectId,
+            orgId: actor.orgId,
+            kmsService,
+            tx
           });
 
           const inputSecretsWithBlindIndex = await Promise.all(
@@ -699,7 +706,7 @@ export const secretRotationV2ServiceFactory = ({
               encryptedValue: encryptor({
                 plainText: Buffer.from(value)
               }).cipherTextBlob,
-              secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(value)),
+              blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(value)),
               references: []
             }))
           );
@@ -1095,14 +1102,12 @@ export const secretRotationV2ServiceFactory = ({
 
     const mappedKeys = Object.values(secretsMapping as TSecretRotationV2["secretsMapping"]);
 
-    const {
-      encryptor: secretManagerEncryptor,
-      decryptor: secretManagerDecryptor,
-      generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
 
     const updatedRotation = await secretRotationV2DAL.transaction(async (tx) => {
       const conflictingRotation = await secretRotationV2DAL.findOne({
@@ -1198,7 +1203,7 @@ export const secretRotationV2ServiceFactory = ({
             secretQueueService,
             encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
             decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-            generateSecretBlindIndex,
+            blindIndexer,
             tx
           });
         }
@@ -1355,9 +1360,15 @@ export const secretRotationV2ServiceFactory = ({
           return secretRotationV2DAL.transaction(async (tx) => {
             const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
 
-            const { encryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+            const { encryptor } = await kmsService.createCipherPairWithDataKey({
               type: KmsDataKey.SecretManager,
               projectId
+            });
+            const blindIndexer = await createSecretBlindIndexer({
+              projectId,
+              orgId: connection.orgId,
+              kmsService,
+              tx
             });
 
             // update mapped secrets with new credential values
@@ -1372,7 +1383,7 @@ export const secretRotationV2ServiceFactory = ({
                   encryptedValue: encryptor({
                     plainText: Buffer.from(value)
                   }).cipherTextBlob,
-                  secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(value)),
+                  blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(value)),
                   references: []
                 }
               }))
@@ -2078,9 +2089,15 @@ export const secretRotationV2ServiceFactory = ({
         });
 
         return secretRotationV2DAL.transaction(async (tx) => {
-          const { encryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+          const { encryptor } = await kmsService.createCipherPairWithDataKey({
             type: KmsDataKey.SecretManager,
             projectId
+          });
+          const blindIndexer = await createSecretBlindIndexer({
+            projectId,
+            orgId: actor.orgId,
+            kmsService,
+            tx
           });
 
           // Update the password secret with the new value
@@ -2102,7 +2119,7 @@ export const secretRotationV2ServiceFactory = ({
                   encryptedValue: encryptor({
                     plainText: passwordBuffer
                   }).cipherTextBlob,
-                  secretValueBlindIndex: await generateSecretBlindIndex(passwordBuffer),
+                  blindIndexes: await blindIndexer.generateBlindIndexes(passwordBuffer),
                   references: []
                 }
               }

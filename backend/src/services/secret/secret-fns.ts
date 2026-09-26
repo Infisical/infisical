@@ -35,6 +35,7 @@ import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
@@ -806,11 +807,11 @@ export const createManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor, generateSecretBlindIndex } =
-        await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
-        });
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
 
       const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -825,7 +826,7 @@ export const createManySecretsRawFnFactory = ({
         });
 
       const blindIndexes = await Promise.all(
-        secrets.map((secret) => generateSecretBlindIndex(Buffer.from(secret.secretValue)))
+        secrets.map((secret) => blindIndexer.generateBlindIndexes(Buffer.from(secret.secretValue)))
       );
 
       const inputSecrets = secrets.map((secret, idx) => {
@@ -835,7 +836,7 @@ export const createManySecretsRawFnFactory = ({
           userId: secret.type === SecretType.Personal ? userId : null,
           key: secret.secretName,
           encryptedValue,
-          secretValueBlindIndex: blindIndexes[idx],
+          blindIndexes: blindIndexes[idx],
           encryptedComent: secret.secretComment
             ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
             : null,
@@ -997,11 +998,11 @@ export const updateManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor, generateSecretBlindIndex } =
-        await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
-        });
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
 
       const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -1033,7 +1034,7 @@ export const updateManySecretsRawFnFactory = ({
       const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdate, (i) => i.key);
 
       const blindIndexes = await Promise.all(
-        secrets.map((secret) => generateSecretBlindIndex(Buffer.from(secret.secretValue)))
+        secrets.map((secret) => blindIndexer.generateBlindIndexes(Buffer.from(secret.secretValue)))
       );
 
       const inputSecrets = secrets.map((secret, idx) => {
@@ -1047,7 +1048,7 @@ export const updateManySecretsRawFnFactory = ({
           userId: secret.type === SecretType.Personal ? userId : null,
           key: secret.newSecretName || secret.secretName,
           encryptedValue,
-          secretValueBlindIndex: blindIndexes[idx],
+          blindIndexes: blindIndexes[idx],
           encryptedComent: secret.secretComment
             ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
             : null,

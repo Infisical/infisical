@@ -217,6 +217,37 @@ export type TOrgStaticSecretUsage = {
   weeks: { weekStart: string; totalSecrets: number; isPartial: boolean }[];
 };
 
+export type TOrgDuplicatedSecretEntry = TDuplicatedSecretEntry & {
+  projectId: string;
+  projectName: string;
+};
+
+export type TOrgDuplicatedSecretGroup = {
+  projectCount: number;
+  locationCount: number;
+  secrets: TOrgDuplicatedSecretEntry[];
+};
+
+export type TGetOrgSecretsDuplicationResponse = {
+  orgWideSecretValueTrackingEnabled: boolean;
+  groups: TOrgDuplicatedSecretGroup[];
+  computedAt: string | null;
+};
+
+export type TGetOrgSecretValueTrackingStatusResponse = {
+  status: "not-found" | "pending" | "completed" | "failed";
+  message?: string;
+  projectsTotal: number;
+  projectsDone: number;
+  secretsProcessed: number;
+};
+
+export type TSecretValueMatch = TOrgDuplicatedSecretEntry;
+
+export type TSearchSecretsByValueResponse = {
+  secrets: TSecretValueMatch[];
+};
+
 export type TOrgSecretAccessVolume = {
   days: { date: string; total: number }[];
 };

@@ -45,6 +45,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
   AuthMethodsCard,
+  DuplicatedSecretsCard,
   InsightsCard,
   RequestOrgAuditReportModal,
   SecretAccessVolumeCard,
@@ -252,6 +253,7 @@ export const SecretInsightsPage = withPermission(
                   isPlanRestricted={!hasInsightsPlan}
                 />
               )}
+              <DuplicatedSecretsCard isPlanRestricted={!hasInsightsPlan} />
               <div
                 className={
                   showAuthMethodsSlot ? "grid gap-4 xl:grid-cols-[1fr_1.35fr]" : "grid gap-4"
