@@ -4,8 +4,8 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.AgentVaultActivityConfig))) {
-    await knex.schema.createTable(TableName.AgentVaultActivityConfig, (t) => {
+  if (!(await knex.schema.hasTable(TableName.AgentVaultSessionLogConfig))) {
+    await knex.schema.createTable(TableName.AgentVaultSessionLogConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
       t.string("projectId", 36).notNullable().unique();
@@ -26,11 +26,11 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    await createOnUpdateTrigger(knex, TableName.AgentVaultActivityConfig);
+    await createOnUpdateTrigger(knex, TableName.AgentVaultSessionLogConfig);
   }
 
-  if (!(await knex.schema.hasTable(TableName.AgentVaultActivityChunk))) {
-    await knex.schema.createTable(TableName.AgentVaultActivityChunk, (t) => {
+  if (!(await knex.schema.hasTable(TableName.AgentVaultSessionLogChunk))) {
+    await knex.schema.createTable(TableName.AgentVaultSessionLogChunk, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
       t.string("chunkId", 26).notNullable();
@@ -70,14 +70,14 @@ export async function up(knex: Knex): Promise<void> {
       t.index(["projectId"]);
     });
 
-    await createOnUpdateTrigger(knex, TableName.AgentVaultActivityChunk);
+    await createOnUpdateTrigger(knex, TableName.AgentVaultSessionLogChunk);
   }
 
   if (await knex.schema.hasTable(TableName.AgentVaultSession)) {
-    const hasActivityKey = await knex.schema.hasColumn(TableName.AgentVaultSession, "encryptedActivityKey");
-    if (!hasActivityKey) {
+    const hasSessionLogKey = await knex.schema.hasColumn(TableName.AgentVaultSession, "encryptedSessionLogKey");
+    if (!hasSessionLogKey) {
       await knex.schema.alterTable(TableName.AgentVaultSession, (t) => {
-        t.binary("encryptedActivityKey");
+        t.binary("encryptedSessionLogKey");
       });
     }
   }
@@ -85,17 +85,17 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.AgentVaultSession)) {
-    const hasActivityKey = await knex.schema.hasColumn(TableName.AgentVaultSession, "encryptedActivityKey");
-    if (hasActivityKey) {
+    const hasSessionLogKey = await knex.schema.hasColumn(TableName.AgentVaultSession, "encryptedSessionLogKey");
+    if (hasSessionLogKey) {
       await knex.schema.alterTable(TableName.AgentVaultSession, (t) => {
-        t.dropColumn("encryptedActivityKey");
+        t.dropColumn("encryptedSessionLogKey");
       });
     }
   }
 
-  await dropOnUpdateTrigger(knex, TableName.AgentVaultActivityChunk);
-  await knex.schema.dropTableIfExists(TableName.AgentVaultActivityChunk);
+  await dropOnUpdateTrigger(knex, TableName.AgentVaultSessionLogChunk);
+  await knex.schema.dropTableIfExists(TableName.AgentVaultSessionLogChunk);
 
-  await dropOnUpdateTrigger(knex, TableName.AgentVaultActivityConfig);
-  await knex.schema.dropTableIfExists(TableName.AgentVaultActivityConfig);
+  await dropOnUpdateTrigger(knex, TableName.AgentVaultSessionLogConfig);
+  await knex.schema.dropTableIfExists(TableName.AgentVaultSessionLogConfig);
 }

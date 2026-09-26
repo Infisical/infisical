@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const AgentVaultActivityConfigsSchema = z.object({
+export const AgentVaultSessionLogConfigsSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string(),
   enabled: z.boolean().default(false),
@@ -20,8 +20,11 @@ export const AgentVaultActivityConfigsSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TAgentVaultActivityConfigs = z.infer<typeof AgentVaultActivityConfigsSchema>;
-export type TAgentVaultActivityConfigsInsert = Omit<z.input<typeof AgentVaultActivityConfigsSchema>, TImmutableDBKeys>;
-export type TAgentVaultActivityConfigsUpdate = Partial<
-  Omit<z.input<typeof AgentVaultActivityConfigsSchema>, TImmutableDBKeys>
+export type TAgentVaultSessionLogConfigs = z.infer<typeof AgentVaultSessionLogConfigsSchema>;
+export type TAgentVaultSessionLogConfigsInsert = Omit<
+  z.input<typeof AgentVaultSessionLogConfigsSchema>,
+  TImmutableDBKeys
+>;
+export type TAgentVaultSessionLogConfigsUpdate = Partial<
+  Omit<z.input<typeof AgentVaultSessionLogConfigsSchema>, TImmutableDBKeys>
 >;

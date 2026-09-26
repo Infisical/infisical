@@ -1,14 +1,14 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAgentVaultActivityChunks, TAgentVaultActivityChunksInsert } from "@app/db/schemas";
+import { TableName, TAgentVaultSessionLogChunks, TAgentVaultSessionLogChunksInsert } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-export type TAgentVaultActivityChunkDALFactory = ReturnType<typeof agentVaultActivityChunkDALFactory>;
+export type TAgentVaultSessionLogChunkDALFactory = ReturnType<typeof agentVaultSessionLogChunkDALFactory>;
 
-export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
-  const orm = ormify(db, TableName.AgentVaultActivityChunk);
+export const agentVaultSessionLogChunkDALFactory = (db: TDbClient) => {
+  const orm = ormify(db, TableName.AgentVaultSessionLogChunk);
 
   // Ordered and cursored on chunkId, never startedAt: proxies seal out of order, so mixing the two skips rows.
   const findForSessionPage = async (
@@ -30,9 +30,9 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
       to?: Date;
     },
     tx?: Knex
-  ): Promise<{ chunks: TAgentVaultActivityChunks[]; hasMore: boolean }> => {
+  ): Promise<{ chunks: TAgentVaultSessionLogChunks[]; hasMore: boolean }> => {
     try {
-      const query = (tx || db.replicaNode())(TableName.AgentVaultActivityChunk)
+      const query = (tx || db.replicaNode())(TableName.AgentVaultSessionLogChunk)
         .where({ sessionId })
         .orderBy("chunkId", "desc")
         .limit(maxChunks);
@@ -42,11 +42,11 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
       if (from) void query.andWhere("endedAt", ">=", from);
       if (to) void query.andWhere("startedAt", "<=", to);
 
-      const rows = (await query) as TAgentVaultActivityChunks[];
+      const rows = (await query) as TAgentVaultSessionLogChunks[];
 
       let taken = 0;
       let bytes = 0;
-      const page: TAgentVaultActivityChunks[] = [];
+      const page: TAgentVaultSessionLogChunks[] = [];
       for (const row of rows) {
         page.push(row);
         taken += row.recordCount;
@@ -56,7 +56,7 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
 
       return { chunks: page, hasMore: page.length < rows.length || rows.length === maxChunks };
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find agent vault activity chunks" });
+      throw new DatabaseError({ error, name: "Find agent vault session log chunks" });
     }
   };
 
@@ -69,20 +69,20 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
       maxChunks
     }: { sessionId: string; receivedAfter: Date; recordBudget: number; byteBudget: number; maxChunks: number },
     tx?: Knex
-  ): Promise<{ chunks: TAgentVaultActivityChunks[]; hasMore: boolean }> => {
+  ): Promise<{ chunks: TAgentVaultSessionLogChunks[]; hasMore: boolean }> => {
     try {
-      const rows = (await (tx || db.replicaNode())(TableName.AgentVaultActivityChunk)
+      const rows = (await (tx || db.replicaNode())(TableName.AgentVaultSessionLogChunk)
         .where({ sessionId })
         .andWhere("createdAt", ">=", receivedAfter)
         .orderBy([
           { column: "createdAt", order: "asc" },
           { column: "chunkId", order: "asc" }
         ])
-        .limit(maxChunks)) as TAgentVaultActivityChunks[];
+        .limit(maxChunks)) as TAgentVaultSessionLogChunks[];
 
       let taken = 0;
       let bytes = 0;
-      const page: TAgentVaultActivityChunks[] = [];
+      const page: TAgentVaultSessionLogChunks[] = [];
       for (const row of rows) {
         page.push(row);
         // The chunk exactly at receivedAfter resends the last read's; counting it could stall paging forever.
@@ -95,23 +95,23 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
 
       return { chunks: page, hasMore: page.length < rows.length || rows.length === maxChunks };
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find received agent vault activity chunks" });
+      throw new DatabaseError({ error, name: "Find received agent vault session log chunks" });
     }
   };
 
   const createIfAbsent = async (
-    values: TAgentVaultActivityChunksInsert,
+    values: TAgentVaultSessionLogChunksInsert,
     tx?: Knex
-  ): Promise<TAgentVaultActivityChunks | undefined> => {
+  ): Promise<TAgentVaultSessionLogChunks | undefined> => {
     try {
-      const [row] = (await (tx || db)(TableName.AgentVaultActivityChunk)
+      const [row] = (await (tx || db)(TableName.AgentVaultSessionLogChunk)
         .insert(values)
         .onConflict(["sessionId", "chunkId"])
         .ignore()
-        .returning("*")) as TAgentVaultActivityChunks[];
+        .returning("*")) as TAgentVaultSessionLogChunks[];
       return row;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Create agent vault activity chunk" });
+      throw new DatabaseError({ error, name: "Create agent vault session log chunk" });
     }
   };
 

@@ -44,7 +44,7 @@ export const HistoryCursorSchema = z
         code: z.ZodIssueCode.custom,
         message:
           modeOf(payload) === "t"
-            ? "This cursor is for reading live activity. Pass it to the activity tail endpoint instead"
+            ? "This cursor is for reading new logs as they arrive. Pass it to the session logs tail endpoint instead"
             : "Invalid cursor. Pass the nextCursor of a previous response unchanged"
       });
       return z.NEVER;
@@ -64,7 +64,7 @@ export const TailCursorSchema = z
         code: z.ZodIssueCode.custom,
         message:
           modeOf(payload) === "h"
-            ? "This cursor is for paging back through activity. Pass it to the session activity endpoint instead"
+            ? "This cursor is for paging back through logs. Pass it to the session logs endpoint instead"
             : "Invalid cursor. Pass the liveCursor or nextCursor of a previous response unchanged"
       });
       return z.NEVER;

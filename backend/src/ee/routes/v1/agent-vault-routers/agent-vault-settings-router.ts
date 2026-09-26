@@ -1,9 +1,9 @@
 import {
-  AgentVaultActivityLoggingCorsProbeResponseSchema,
-  AgentVaultActivityLoggingHealthResponseSchema,
-  AgentVaultActivityLoggingSettingsResponseSchema,
-  AgentVaultActivityLoggingSettingsUpdateSchema
-} from "@app/ee/services/agent-vault-activity/agent-vault-activity-schemas";
+  AgentVaultSessionLogCorsProbeResponseSchema,
+  AgentVaultSessionLogHealthResponseSchema,
+  AgentVaultSessionLogSettingsResponseSchema,
+  AgentVaultSessionLogSettingsUpdateSchema
+} from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -16,18 +16,18 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/activity-logging",
+    url: "/session-logs",
     config: { rateLimit: readLimit },
     schema: {
       hide: false,
-      operationId: "getAgentVaultActivityLoggingSettings",
-      description: "Gets the session logging settings",
+      operationId: "getAgentVaultSessionLogSettings",
+      description: "Gets the session log settings",
       tags: [ApiDocsTags.AgentVaultSettings],
-      response: { 200: AgentVaultActivityLoggingSettingsResponseSchema }
+      response: { 200: AgentVaultSessionLogSettingsResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) =>
-      server.services.agentVaultActivity.getActivityLoggingSettings({
+      server.services.agentVaultSessionLog.getSessionLogSettings({
         projectId: req.internalAgentVaultProjectId,
         ctx: {
           actorId: req.permission.id,
@@ -40,21 +40,21 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
 
   server.route({
     method: "PATCH",
-    url: "/activity-logging",
+    url: "/session-logs",
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
-      operationId: "updateAgentVaultActivityLoggingSettings",
+      operationId: "updateAgentVaultSessionLogSettings",
       description:
-        "Updates the session logging settings. If session logging is on, Infisical checks that the AWS connection can reach the bucket and write to it before saving.",
+        "Updates the session log settings. If session logs are on, Infisical checks that the AWS connection can reach the bucket and write to it before saving.",
       tags: [ApiDocsTags.AgentVaultSettings],
-      body: AgentVaultActivityLoggingSettingsUpdateSchema,
-      response: { 200: AgentVaultActivityLoggingSettingsResponseSchema }
+      body: AgentVaultSessionLogSettingsUpdateSchema,
+      response: { 200: AgentVaultSessionLogSettingsResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { settings, relocated, appConnectionName } =
-        await server.services.agentVaultActivity.updateActivityLoggingSettings({
+        await server.services.agentVaultSessionLog.updateSessionLogSettings({
           projectId: req.internalAgentVaultProjectId,
           ctx: {
             actorId: req.permission.id,
@@ -78,13 +78,13 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_ACTIVITY_LOGGING_SETTINGS_UPDATE,
+          type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE,
           metadata: { ...settings, appConnectionName, relocated }
         }
       });
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultActivityConfigUpdated,
+        event: PostHogEventTypes.AgentVaultSessionLogSettingsUpdated,
         properties: {
           enabled: settings.enabled,
           hasDestination: Boolean(settings.bucket),
@@ -98,20 +98,20 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
 
   server.route({
     method: "GET",
-    url: "/activity-logging/health",
+    url: "/session-logs/health",
     config: { rateLimit: readLimit },
     schema: {
       hide: true,
-      operationId: "getAgentVaultActivityLoggingHealth",
+      operationId: "getAgentVaultSessionLogHealth",
       description:
-        "Gets whether session logging has reached its storage limit, and whether Infisical can use the AWS connection",
+        "Gets whether session logs have reached their storage limit, and whether Infisical can use the AWS connection",
       tags: [ApiDocsTags.AgentVaultSettings],
-      response: { 200: AgentVaultActivityLoggingHealthResponseSchema }
+      response: { 200: AgentVaultSessionLogHealthResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
       addNoCacheHeaders(reply);
-      return server.services.agentVaultActivity.getActivityLoggingHealth({
+      return server.services.agentVaultSessionLog.getSessionLogHealth({
         projectId: req.internalAgentVaultProjectId,
         ctx: {
           actorId: req.permission.id,
@@ -125,19 +125,19 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
 
   server.route({
     method: "GET",
-    url: "/activity-logging/cors-probe",
+    url: "/session-logs/cors-probe",
     config: { rateLimit: readLimit },
     schema: {
       hide: true,
-      operationId: "getAgentVaultActivityLoggingCorsProbe",
+      operationId: "getAgentVaultSessionLogCorsProbe",
       description: "Gets a presigned URL for checking the bucket's CORS rule",
       tags: [ApiDocsTags.AgentVaultSettings],
-      response: { 200: AgentVaultActivityLoggingCorsProbeResponseSchema }
+      response: { 200: AgentVaultSessionLogCorsProbeResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, reply) => {
       addNoCacheHeaders(reply);
-      return server.services.agentVaultActivity.getActivityLoggingCorsProbe({
+      return server.services.agentVaultSessionLog.getSessionLogCorsProbe({
         projectId: req.internalAgentVaultProjectId,
         ctx: {
           actorId: req.permission.id,

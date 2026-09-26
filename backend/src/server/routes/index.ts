@@ -30,9 +30,6 @@ import { agentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vau
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
-import { agentVaultActivityChunkDALFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-chunk-dal";
-import { agentVaultActivityConfigDALFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-config-dal";
-import { agentVaultActivityServiceFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-service";
 import { agentVaultMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-member-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
@@ -42,6 +39,9 @@ import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/
 import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { agentVaultSessionLogChunkDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-chunk-dal";
+import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
+import { agentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-service";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { clickhouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
@@ -1855,8 +1855,8 @@ export const registerRoutes = async (
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
-  const agentVaultActivityChunkDAL = agentVaultActivityChunkDALFactory(db);
-  const agentVaultActivityConfigDAL = agentVaultActivityConfigDALFactory(db);
+  const agentVaultSessionLogChunkDAL = agentVaultSessionLogChunkDALFactory(db);
+  const agentVaultSessionLogConfigDAL = agentVaultSessionLogConfigDALFactory(db);
 
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL,
@@ -1986,7 +1986,7 @@ export const registerRoutes = async (
     agentVaultServiceCustomHeaderDAL,
     agentVaultServiceSubstitutionDAL,
     agentVaultSessionDAL,
-    agentVaultActivityConfigDAL,
+    agentVaultSessionLogConfigDAL,
     membershipDAL,
     orgDAL,
     permissionService,
@@ -3183,9 +3183,9 @@ export const registerRoutes = async (
     keyStore
   });
 
-  const agentVaultActivityService = agentVaultActivityServiceFactory({
-    agentVaultActivityChunkDAL,
-    agentVaultActivityConfigDAL,
+  const agentVaultSessionLogService = agentVaultSessionLogServiceFactory({
+    agentVaultSessionLogChunkDAL,
+    agentVaultSessionLogConfigDAL,
     agentVaultSessionDAL,
     agentVaultProxyDAL,
     appConnectionDAL,
@@ -4311,7 +4311,7 @@ export const registerRoutes = async (
     agentVaultAccessBundle: agentVaultAccessBundleService,
     agentVaultProxy: agentVaultProxyService,
     agentVaultSession: agentVaultSessionService,
-    agentVaultActivity: agentVaultActivityService,
+    agentVaultSessionLog: agentVaultSessionLogService,
     agentVaultMembership: agentVaultMembershipService,
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,

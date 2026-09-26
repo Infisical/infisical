@@ -2,9 +2,9 @@ import { OrgServiceActor } from "@app/lib/types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
 import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
-import { AgentVaultActivityStorageUnavailableReason } from "./agent-vault-activity-constants";
+import { AgentVaultSessionLogStorageUnavailableReason } from "./agent-vault-session-log-constants";
 
-export type TAgentVaultActivityChunkInput = {
+export type TAgentVaultSessionLogChunkInput = {
   chunkId: string;
   startedAt: Date;
   endedAt: Date;
@@ -20,35 +20,35 @@ export type TAgentVaultActivityChunkInput = {
 export type TRecordChunkDTO = {
   proxyId: string;
   sessionId: string;
-  chunk: TAgentVaultActivityChunkInput;
+  chunk: TAgentVaultSessionLogChunkInput;
 };
 
-export type TSessionActivityScope = {
+export type TSessionLogsScope = {
   projectId: string;
   ctx: TAgentVaultActorContext;
   sessionId: string;
 };
 
-type TSessionActivityDTO = TSessionActivityScope & {
+type TSessionLogsDTO = TSessionLogsScope & {
   limit: number;
 };
 
-export type TListSessionActivityDTO = TSessionActivityDTO & {
+export type TListSessionLogsDTO = TSessionLogsDTO & {
   before?: string;
   from?: Date;
   to?: Date;
 };
 
-export type TTailSessionActivityDTO = TSessionActivityDTO & {
+export type TTailSessionLogsDTO = TSessionLogsDTO & {
   receivedAfter?: Date;
 };
 
-export type TActivityLoggingDTO = {
+export type TSessionLogSettingsDTO = {
   projectId: string;
   ctx: TAgentVaultActorContext;
 };
 
-export type TUpdateActivityLoggingSettingsDTO = TActivityLoggingDTO & {
+export type TUpdateSessionLogSettingsDTO = TSessionLogSettingsDTO & {
   actor: OrgServiceActor;
   enabled?: boolean;
   appConnectionId?: string | null;
@@ -57,14 +57,14 @@ export type TUpdateActivityLoggingSettingsDTO = TActivityLoggingDTO & {
   keyPrefix?: string;
 };
 
-export type TResolvedActivityStorageConfig = {
+export type TResolvedSessionLogStorageConfig = {
   appConnectionId: string;
   bucket: string;
   region: AWSRegion;
   keyPrefix: string | null;
 };
 
-export type TAgentVaultActivityStorageUnavailable = {
-  reason: (typeof AgentVaultActivityStorageUnavailableReason)[keyof typeof AgentVaultActivityStorageUnavailableReason];
+export type TAgentVaultSessionLogStorageUnavailable = {
+  reason: (typeof AgentVaultSessionLogStorageUnavailableReason)[keyof typeof AgentVaultSessionLogStorageUnavailableReason];
   message: string | null;
 };

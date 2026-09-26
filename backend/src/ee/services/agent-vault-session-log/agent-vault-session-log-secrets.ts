@@ -4,7 +4,7 @@ import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-export const AGENT_VAULT_ACTIVITY_KEY_BYTES = 32;
+export const AGENT_VAULT_SESSION_LOG_KEY_BYTES = 32;
 
 const LABEL_BYTES = 32;
 
@@ -14,41 +14,43 @@ type TKmsDep = Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 // session's row fails to open there instead of being handed out.
 const sessionLabel = (sessionId: string) => crypto.nativeCrypto.createHash("sha256").update(`${sessionId}|v1`).digest();
 
-export const generateActivityKey = () => crypto.randomBytes(AGENT_VAULT_ACTIVITY_KEY_BYTES);
+export const generateSessionLogKey = () => crypto.randomBytes(AGENT_VAULT_SESSION_LOG_KEY_BYTES);
 
-export const wrapActivityKey = async (
-  { projectId, sessionId, activityKey }: { projectId: string; sessionId: string; activityKey: Buffer },
+export const wrapSessionLogKey = async (
+  { projectId, sessionId, sessionLogKey }: { projectId: string; sessionId: string; sessionLogKey: Buffer },
   kmsService: TKmsDep
 ) => {
   const { encryptor } = await kmsService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
-  return encryptor({ plainText: Buffer.concat([sessionLabel(sessionId), activityKey]) }).cipherTextBlob;
+  return encryptor({ plainText: Buffer.concat([sessionLabel(sessionId), sessionLogKey]) }).cipherTextBlob;
 };
 
-export const openActivityKey = ({ sessionId, payload }: { sessionId: string; payload: Buffer }) => {
+export const openSessionLogKey = ({ sessionId, payload }: { sessionId: string; payload: Buffer }) => {
   const belongs =
-    payload.length === LABEL_BYTES + AGENT_VAULT_ACTIVITY_KEY_BYTES &&
+    payload.length === LABEL_BYTES + AGENT_VAULT_SESSION_LOG_KEY_BYTES &&
     crypto.nativeCrypto.timingSafeEqual(payload.subarray(0, LABEL_BYTES), sessionLabel(sessionId));
   if (!belongs) {
-    logger.error(`agentVaultActivity: stored activity key does not belong to its session [sessionId=${sessionId}]`);
-    throw new InternalServerError({ message: "This session's activity key could not be used" });
+    logger.error(
+      `agentVaultSessionLog: stored session log key does not belong to its session [sessionId=${sessionId}]`
+    );
+    throw new InternalServerError({ message: "This session's log key could not be used" });
   }
   return payload.subarray(LABEL_BYTES);
 };
 
-export const unwrapActivityKey = async (
+export const unwrapSessionLogKey = async (
   {
     projectId,
     sessionId,
-    encryptedActivityKey
-  }: { projectId: string; sessionId: string; encryptedActivityKey: Buffer },
+    encryptedSessionLogKey
+  }: { projectId: string; sessionId: string; encryptedSessionLogKey: Buffer },
   kmsService: TKmsDep
 ) => {
   const { decryptor } = await kmsService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
-  return openActivityKey({ sessionId, payload: decryptor({ cipherTextBlob: encryptedActivityKey }) });
+  return openSessionLogKey({ sessionId, payload: decryptor({ cipherTextBlob: encryptedSessionLogKey }) });
 };

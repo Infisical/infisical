@@ -323,7 +323,7 @@ export enum PostHogEventTypes {
   AgentVaultAccessBundleMemberRemoved = "Agent Vault Access Bundle Member Removed",
   AgentVaultSessionCreated = "Agent Vault Session Created",
   AgentVaultSessionRevoked = "Agent Vault Session Revoked",
-  AgentVaultActivityConfigUpdated = "Agent Vault Activity Config Updated",
+  AgentVaultSessionLogSettingsUpdated = "Agent Vault Session Log Settings Updated",
   AgentVaultProxyRegistered = "Agent Vault Proxy Registered",
   AgentVaultProxyUpdated = "Agent Vault Proxy Updated",
   AgentVaultProxyDeleted = "Agent Vault Proxy Deleted",
@@ -2489,8 +2489,8 @@ export type TAgentVaultSessionRevokedEvent = {
   properties: TAgentVaultEventBase & { sessionId: string };
 };
 
-export type TAgentVaultActivityConfigUpdatedEvent = {
-  event: PostHogEventTypes.AgentVaultActivityConfigUpdated;
+export type TAgentVaultSessionLogSettingsUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultSessionLogSettingsUpdated;
   properties: TAgentVaultEventBase & {
     enabled: boolean;
     hasDestination: boolean;
@@ -2567,7 +2567,7 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultAccessBundleMemberRemovedEvent
   | TAgentVaultSessionCreatedEvent
   | TAgentVaultSessionRevokedEvent
-  | TAgentVaultActivityConfigUpdatedEvent
+  | TAgentVaultSessionLogSettingsUpdatedEvent
   | TAgentVaultProxyRegisteredEvent
   | TAgentVaultProxyUpdatedEvent
   | TAgentVaultProxyDeletedEvent

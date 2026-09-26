@@ -1,11 +1,11 @@
 import { describe, expect, test, vi } from "vitest";
 
 import {
-  generateActivityKey,
-  openActivityKey,
-  unwrapActivityKey,
-  wrapActivityKey
-} from "./agent-vault-activity-secrets";
+  generateSessionLogKey,
+  openSessionLogKey,
+  unwrapSessionLogKey,
+  wrapSessionLogKey
+} from "./agent-vault-session-log-secrets";
 
 vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn() } }));
 
@@ -17,33 +17,33 @@ const passThroughKms = {
   })
 } as never;
 
-describe("activity keys", () => {
+describe("session log keys", () => {
   test("a key opens for the session it was wrapped for", async () => {
-    const activityKey = generateActivityKey();
-    const encryptedActivityKey = await wrapActivityKey(
-      { projectId: "proj-1", sessionId: "sess-a", activityKey },
+    const sessionLogKey = generateSessionLogKey();
+    const encryptedSessionLogKey = await wrapSessionLogKey(
+      { projectId: "proj-1", sessionId: "sess-a", sessionLogKey },
       passThroughKms
     );
 
-    const opened = await unwrapActivityKey(
-      { projectId: "proj-1", sessionId: "sess-a", encryptedActivityKey },
+    const opened = await unwrapSessionLogKey(
+      { projectId: "proj-1", sessionId: "sess-a", encryptedSessionLogKey },
       passThroughKms
     );
-    expect(opened.equals(activityKey)).toBe(true);
+    expect(opened.equals(sessionLogKey)).toBe(true);
   });
 
   test("a key copied onto another session's row is refused rather than handed out", async () => {
-    const encryptedActivityKey = await wrapActivityKey(
-      { projectId: "proj-1", sessionId: "sess-a", activityKey: generateActivityKey() },
+    const encryptedSessionLogKey = await wrapSessionLogKey(
+      { projectId: "proj-1", sessionId: "sess-a", sessionLogKey: generateSessionLogKey() },
       passThroughKms
     );
 
     await expect(
-      unwrapActivityKey({ projectId: "proj-1", sessionId: "sess-b", encryptedActivityKey }, passThroughKms)
+      unwrapSessionLogKey({ projectId: "proj-1", sessionId: "sess-b", encryptedSessionLogKey }, passThroughKms)
     ).rejects.toMatchObject({ name: "InternalServerError" });
   });
 
   test("a stored key without its session label is refused", () => {
-    expect(() => openActivityKey({ sessionId: "sess-a", payload: generateActivityKey() })).toThrow();
+    expect(() => openSessionLogKey({ sessionId: "sess-a", payload: generateSessionLogKey() })).toThrow();
   });
 });

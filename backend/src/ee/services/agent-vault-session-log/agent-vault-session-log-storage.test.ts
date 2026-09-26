@@ -6,11 +6,11 @@ import { AppConnection, AWSRegion } from "@app/services/app-connection/app-conne
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 
 import {
-  buildActivityObjectKey,
-  buildActivityStorage,
-  presignActivityPut,
+  buildSessionLogObjectKey,
+  buildSessionLogStorage,
+  presignSessionLogPut,
   resolveStorageConfig
-} from "./agent-vault-activity-storage";
+} from "./agent-vault-session-log-storage";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} }
@@ -22,7 +22,7 @@ vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
   getAwsConnectionConfig: vi.fn()
 }));
 
-describe("buildActivityObjectKey", () => {
+describe("buildSessionLogObjectKey", () => {
   const base = {
     projectId: "proj-1",
     sessionId: "sess-1",
@@ -32,19 +32,19 @@ describe("buildActivityObjectKey", () => {
   };
 
   test("lays out prefix, project, session, proxy, date and chunk", () => {
-    expect(buildActivityObjectKey({ ...base, keyPrefix: "logs" })).toBe(
+    expect(buildSessionLogObjectKey({ ...base, keyPrefix: "logs" })).toBe(
       "logs/proj-1/sess-1/proxy-1/2026-09-16/01K5ABCDEFGHJKMNPQRSTVWXYZ.json.enc"
     );
   });
 
   test("omits the prefix segment entirely when there is no prefix", () => {
-    expect(buildActivityObjectKey({ ...base, keyPrefix: null })).toBe(
+    expect(buildSessionLogObjectKey({ ...base, keyPrefix: null })).toBe(
       "proj-1/sess-1/proxy-1/2026-09-16/01K5ABCDEFGHJKMNPQRSTVWXYZ.json.enc"
     );
   });
 
   test("dates by UTC, so a chunk near midnight does not land in the reader's day", () => {
-    const key = buildActivityObjectKey({ ...base, startedAt: new Date("2026-09-16T23:59:59.999Z") });
+    const key = buildSessionLogObjectKey({ ...base, startedAt: new Date("2026-09-16T23:59:59.999Z") });
     expect(key).toContain("/2026-09-16/");
   });
 });
@@ -75,7 +75,7 @@ describe("resolveStorageConfig", () => {
   });
 });
 
-describe("presignActivityPut", () => {
+describe("presignSessionLogPut", () => {
   const client = new S3Client({
     region: "us-east-1",
     credentials: { accessKeyId: "AKIAEXAMPLE", secretAccessKey: "example-secret" }
@@ -83,7 +83,7 @@ describe("presignActivityPut", () => {
 
   test("signs the length and a create-only condition, so neither can be dropped or changed", async () => {
     const url = new URL(
-      await presignActivityPut(client, { bucket: "my-bucket", objectKey: "logs/a.json.enc", ciphertextBytes: 42 })
+      await presignSessionLogPut(client, { bucket: "my-bucket", objectKey: "logs/a.json.enc", ciphertextBytes: 42 })
     );
     const signed = (url.searchParams.get("X-Amz-SignedHeaders") ?? "").split(";");
     expect(signed).toContain("content-length");
@@ -91,14 +91,14 @@ describe("presignActivityPut", () => {
   });
 });
 
-describe("buildActivityStorage", () => {
+describe("buildSessionLogStorage", () => {
   const config = { appConnectionId: "conn-1", bucket: "logs", region: AWSRegion.US_EAST_1, keyPrefix: null };
   const deps = {
     appConnectionDAL: {
       findById: vi.fn(async () => ({ id: "conn-1", name: "prod-logs", orgId: "org-1", app: AppConnection.AWS }))
     },
     kmsService: {}
-  } as unknown as Parameters<typeof buildActivityStorage>[2];
+  } as unknown as Parameters<typeof buildSessionLogStorage>[2];
 
   test("says which connection could not be used and what AWS said", async () => {
     vi.mocked(getAwsConnectionConfig).mockRejectedValueOnce(
@@ -109,18 +109,17 @@ describe("buildActivityStorage", () => {
         message: "User is not authorized to perform: sts:AssumeRole"
       })
     );
-    await expect(buildActivityStorage(config, "org-1", deps)).rejects.toMatchObject({
+    await expect(buildSessionLogStorage(config, "org-1", deps)).rejects.toMatchObject({
       name: "BadRequest",
       message:
-        "Couldn't use the AWS connection 'prod-logs' for session logging: User is not authorized to perform: sts:AssumeRole"
+        "Couldn't use the AWS connection 'prod-logs' for session logs: User is not authorized to perform: sts:AssumeRole"
     });
   });
 
   test("keeps anything that is not from AWS out of the message", async () => {
     vi.mocked(getAwsConnectionConfig).mockRejectedValueOnce(new Error("kms_keys row missing"));
-    await expect(buildActivityStorage(config, "org-1", deps)).rejects.toMatchObject({
-      message:
-        "Couldn't use the AWS connection 'prod-logs' for session logging: Infisical could not load its credentials"
+    await expect(buildSessionLogStorage(config, "org-1", deps)).rejects.toMatchObject({
+      message: "Couldn't use the AWS connection 'prod-logs' for session logs: Infisical could not load its credentials"
     });
   });
 });

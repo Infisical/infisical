@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const AgentVaultActivityChunksSchema = z.object({
+export const AgentVaultSessionLogChunksSchema = z.object({
   id: z.string().uuid(),
   chunkId: z.string(),
   sessionId: z.string().uuid(),
@@ -29,8 +29,11 @@ export const AgentVaultActivityChunksSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TAgentVaultActivityChunks = z.infer<typeof AgentVaultActivityChunksSchema>;
-export type TAgentVaultActivityChunksInsert = Omit<z.input<typeof AgentVaultActivityChunksSchema>, TImmutableDBKeys>;
-export type TAgentVaultActivityChunksUpdate = Partial<
-  Omit<z.input<typeof AgentVaultActivityChunksSchema>, TImmutableDBKeys>
+export type TAgentVaultSessionLogChunks = z.infer<typeof AgentVaultSessionLogChunksSchema>;
+export type TAgentVaultSessionLogChunksInsert = Omit<
+  z.input<typeof AgentVaultSessionLogChunksSchema>,
+  TImmutableDBKeys
+>;
+export type TAgentVaultSessionLogChunksUpdate = Partial<
+  Omit<z.input<typeof AgentVaultSessionLogChunksSchema>, TImmutableDBKeys>
 >;

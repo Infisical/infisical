@@ -291,13 +291,13 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
               void inner.whereNull("userId").whereNull("identityId").where("createdAt", "<", cutoff);
             });
         })
-        // Never prune a session that recorded activity: its row holds the only key that decrypts it.
+        // Never prune a session that recorded session logs: its row holds the only key that decrypts it.
         .whereNotExists((qb) => {
           void qb
             .select(db.raw("1"))
-            .from(TableName.AgentVaultActivityChunk)
+            .from(TableName.AgentVaultSessionLogChunk)
             .whereRaw(`??.?? = ??.??`, [
-              TableName.AgentVaultActivityChunk,
+              TableName.AgentVaultSessionLogChunk,
               "sessionId",
               TableName.AgentVaultSession,
               "id"
@@ -309,7 +309,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  // The id is chosen by the caller because the activity key is wrapped with it before the row exists.
+  // The id is chosen by the caller because the session log key is wrapped with it before the row exists.
   const createWithId = async (data: TAgentVaultSessionsInsert & { id: string }, tx?: Knex) => {
     try {
       const [session] = await (tx || db)(TableName.AgentVaultSession)

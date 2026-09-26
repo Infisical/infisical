@@ -3,19 +3,22 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 
-import { AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS, AgentVaultActivityErrorName } from "./agent-vault-activity-constants";
-import { encodeTailCursor } from "./agent-vault-activity-cursor";
-import { agentVaultActivityServiceFactory } from "./agent-vault-activity-service";
-import { buildActivityObjectKey, buildActivityStorage } from "./agent-vault-activity-storage";
+import {
+  AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS,
+  AgentVaultSessionLogErrorName
+} from "./agent-vault-session-log-constants";
+import { encodeTailCursor } from "./agent-vault-session-log-cursor";
+import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
+import { buildSessionLogObjectKey, buildSessionLogStorage } from "./agent-vault-session-log-storage";
 
-const CEILING = AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS;
+const CEILING = AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS;
 
 const presignPut = vi.fn(async () => "https://bucket.s3.amazonaws.com/signed-put");
-vi.mock("./agent-vault-activity-storage", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./agent-vault-activity-storage")>();
+vi.mock("./agent-vault-session-log-storage", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./agent-vault-session-log-storage")>();
   return {
     ...actual,
-    buildActivityStorage: vi.fn(async () => ({
+    buildSessionLogStorage: vi.fn(async () => ({
       presignPut,
       presignGet: vi.fn(async () => "https://bucket.s3.amazonaws.com/signed-get"),
       mintCorsProbeUrl: vi.fn(async () => "https://bucket.s3.amazonaws.com/probe"),
@@ -34,7 +37,7 @@ const liveSession = () => ({
   expiresAt: null,
   revokedAt: null,
   updatedAt: new Date(Date.now() - 60_000),
-  encryptedActivityKey: Buffer.alloc(32)
+  encryptedSessionLogKey: Buffer.alloc(32)
 });
 
 const enabledConfig = () => ({
@@ -95,8 +98,8 @@ const build = (overrides: TOverrides = {}) => {
   const findConnection = vi.fn(async () => overrides.connection);
   const config = "config" in overrides ? overrides.config : enabledConfig();
 
-  const service = agentVaultActivityServiceFactory({
-    agentVaultActivityChunkDAL: {
+  const service = agentVaultSessionLogServiceFactory({
+    agentVaultSessionLogChunkDAL: {
       createIfAbsent,
       findOne: findChunk,
       updateById: repointChunk,
@@ -104,7 +107,7 @@ const build = (overrides: TOverrides = {}) => {
       findForSessionPage: vi.fn(async () => ({ chunks: overrides.pageRows ?? [], hasMore: false })),
       findReceivedForSession: vi.fn(async () => ({ chunks: overrides.pageRows ?? [], hasMore: false }))
     } as never,
-    agentVaultActivityConfigDAL: {
+    agentVaultSessionLogConfigDAL: {
       findOne: vi.fn(async () => config),
       findByProjectIdFromPrimary: vi.fn(async () => config),
       recordStoredChunk,
@@ -144,7 +147,7 @@ const record = (service: ReturnType<typeof build>["service"], chunk = validChunk
 const atCurrentDestination = (chunk: ReturnType<typeof validChunk>) => ({
   ...chunk,
   bucket: "my-bucket",
-  objectKey: buildActivityObjectKey({
+  objectKey: buildSessionLogObjectKey({
     keyPrefix: "logs",
     projectId: "proj-1",
     sessionId: "sess-1",
@@ -205,7 +208,7 @@ describe("recordChunk: the retirement grace window", () => {
   ])("refuses a chunk from a session $why more than a day ago", async ({ session }) => {
     const { service } = build({ session: { ...liveSession(), ...session } });
     await expect(record(service)).rejects.toMatchObject({
-      message: "Session retired too long ago to accept activity"
+      message: "Session ended too long ago to accept session logs"
     });
   });
 
@@ -214,7 +217,7 @@ describe("recordChunk: the retirement grace window", () => {
       session: { ...liveSession(), revokedAt: new Date(Date.now() - 60_000), expiresAt: hoursAgo(24 * 7) }
     });
     await expect(record(service)).rejects.toMatchObject({
-      message: "Session retired too long ago to accept activity"
+      message: "Session ended too long ago to accept session logs"
     });
   });
 
@@ -230,7 +233,7 @@ describe("recordChunk: the retirement grace window", () => {
       session: { ...liveSession(), userId: null, identityId: null, updatedAt: hoursAgo(25) }
     });
     await expect(record(service)).rejects.toMatchObject({
-      message: "Session retired too long ago to accept activity"
+      message: "Session ended too long ago to accept session logs"
     });
   });
 
@@ -242,7 +245,7 @@ describe("recordChunk: the retirement grace window", () => {
   });
 });
 
-describe("recordChunk: when logging is off", () => {
+describe("recordChunk: when session logs are off", () => {
   test.each([
     { why: "there is no config row", config: undefined },
     { why: "the switch is off", config: { ...enabledConfig(), enabled: false } },
@@ -250,7 +253,7 @@ describe("recordChunk: when logging is off", () => {
     { why: "the connection was detached", config: { ...enabledConfig(), appConnectionId: null } }
   ])("refuses with the named error when $why", async ({ config }) => {
     const { service, createIfAbsent } = build({ config });
-    await expect(record(service)).rejects.toMatchObject({ name: AgentVaultActivityErrorName.Disabled });
+    await expect(record(service)).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.Disabled });
     expect(createIfAbsent).not.toHaveBeenCalled();
   });
 });
@@ -296,7 +299,7 @@ describe("recordChunk: semantic validation", () => {
   test("a proxy clock too far ahead is refused with the named error, saying how far", async () => {
     const { service, createIfAbsent } = build();
     const refusal = record(service, { ...validChunk(), endedAt: new Date(Date.now() + 10 * 60_000) });
-    await expect(refusal).rejects.toMatchObject({ name: AgentVaultActivityErrorName.ClockSkew });
+    await expect(refusal).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.ClockSkew });
     await expect(refusal).rejects.toThrow(/about 10 minutes ahead/);
     expect(createIfAbsent).not.toHaveBeenCalled();
   });
@@ -324,7 +327,7 @@ describe("recordChunk: semantic validation", () => {
 describe("recordChunk: the organization ceiling", () => {
   test("refuses with the named error once the increment carries the org past the limit", async () => {
     const { service } = build({ storedAfterIncrement: CEILING + 1 });
-    await expect(record(service)).rejects.toMatchObject({ name: AgentVaultActivityErrorName.CeilingReached });
+    await expect(record(service)).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.CeilingReached });
   });
 
   test("the refusal is thrown from inside the transaction, so the row is rolled back with it", async () => {
@@ -417,7 +420,7 @@ describe("recordChunk: re-sending a chunk", () => {
   test("a row that vanished between the insert and the read is a 500, not a silent success", async () => {
     const { service } = build({ isReplay: true, existingChunk: null });
     await expect(record(service)).rejects.toMatchObject({
-      message: "Activity chunk vanished between insert and read"
+      message: "Session log chunk vanished between insert and read"
     });
   });
 
@@ -445,57 +448,57 @@ describe("when the AWS connection can't be used", () => {
     sessionId: "sess-1",
     limit: 100
   };
-  const readActivity = (service: ReturnType<typeof build>["service"]) => service.listSessionActivity(scope);
-  const tailActivity = (service: ReturnType<typeof build>["service"], receivedAfter: Date) =>
-    service.tailSessionActivity({ ...scope, receivedAfter });
+  const readSessionLogs = (service: ReturnType<typeof build>["service"]) => service.listSessionLogs(scope);
+  const tailSessionLogs = (service: ReturnType<typeof build>["service"], receivedAfter: Date) =>
+    service.tailSessionLogs({ ...scope, receivedAfter });
 
   test("a chunk is refused as a retryable 500 before any row is written", async () => {
-    vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
+    vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { service, createIfAbsent } = build();
     await expect(record(service)).rejects.toMatchObject({ name: "InternalServerError", message: unusable.message });
     expect(createIfAbsent).not.toHaveBeenCalled();
   });
 
   test("a read lists the chunks without links and tells an admin why", async () => {
-    vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
+    vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { service } = build({ pageRows: [storedRow()] });
-    const page = await readActivity(service);
-    expect(page.activity.storageUnavailable).toEqual({ reason: "connection-unusable", message: unusable.message });
-    expect(page.activity.sessionKey).toBeNull();
+    const page = await readSessionLogs(service);
+    expect(page.sessionLogs.storageUnavailable).toEqual({ reason: "connection-unusable", message: unusable.message });
+    expect(page.sessionLogs.sessionKey).toBeNull();
     expect(page.chunks.map((chunk) => chunk.presignedGetUrl)).toEqual([null]);
   });
 
   test("a live read holds its cursor so nothing is skipped once the connection is back", async () => {
-    vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
+    vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { service } = build({ pageRows: [storedRow()] });
     const since = new Date(Date.now() - 60_000);
-    const page = await tailActivity(service, since);
+    const page = await tailSessionLogs(service, since);
     expect(page.chunks).toEqual([]);
     expect(page.nextCursor).toBe(encodeTailCursor(since));
     expect(page.hasMore).toBe(false);
   });
 
   test("a read names each chunk's proxy by its current name", async () => {
-    vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
+    vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { service } = build({ pageRows: [storedRow()], proxies: [{ ...PROXY, name: "proxy-renamed" }] });
-    const page = await readActivity(service);
+    const page = await readSessionLogs(service);
     expect(page.chunks.map((chunk) => chunk.proxyName)).toEqual(["proxy-renamed"]);
   });
 
   test("a read falls back to the stored name once the proxy is deleted", async () => {
-    vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
+    vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { service } = build({ pageRows: [storedRow()], proxies: [] });
-    const page = await readActivity(service);
+    const page = await readSessionLogs(service);
     expect(page.chunks.map((chunk) => chunk.proxyName)).toEqual(["proxy-one"]);
   });
 });
 
-describe("updateActivityLoggingSettings: when the connection is checked again", () => {
+describe("updateSessionLogSettings: when the connection is checked again", () => {
   const ctx = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never;
   const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
 
   const save = (service: ReturnType<typeof build>["service"], patch: Record<string, unknown>) =>
-    service.updateActivityLoggingSettings({ projectId: "proj-1", ctx, actor, ...patch });
+    service.updateSessionLogSettings({ projectId: "proj-1", ctx, actor, ...patch });
 
   test.each([
     { use: "a different connection", patch: { appConnectionId: "5c6fd1a9-3c89-4a64-9e5f-6b7cfe0f1a2b" } },
@@ -540,27 +543,27 @@ describe("the storage cache", () => {
     });
     await record(service);
     await record(service);
-    expect(buildActivityStorage).toHaveBeenCalledTimes(1);
+    expect(buildSessionLogStorage).toHaveBeenCalledTimes(1);
 
     findConnection.mockResolvedValue({ id: "conn-1", updatedAt: new Date("2026-09-24T10:05:00.000Z") });
     await record(service);
-    expect(buildActivityStorage).toHaveBeenCalledTimes(2);
+    expect(buildSessionLogStorage).toHaveBeenCalledTimes(2);
   });
 });
 
-describe("updateActivityLoggingSettings: two first saves at once", () => {
+describe("updateSessionLogSettings: two first saves at once", () => {
   test("the one that loses reads as a clash to retry, not a server error", async () => {
     const { service } = build({
       config: undefined,
       configCreateThrows: new DatabaseError({ error: { code: "23505" }, name: "create" })
     });
     await expect(
-      service.updateActivityLoggingSettings({
+      service.updateSessionLogSettings({
         projectId: "proj-1",
         ctx: { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never,
         actor: { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never,
         enabled: false
       })
-    ).rejects.toThrow("Session logging settings were just changed. Reload and try again.");
+    ).rejects.toThrow("Session log settings were just changed. Reload and try again.");
   });
 });

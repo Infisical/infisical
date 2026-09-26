@@ -281,8 +281,8 @@ export enum TableName {
   AgentVaultSession = "agent_vault_sessions",
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultProxy = "agent_vault_proxies",
-  AgentVaultActivityConfig = "agent_vault_activity_configs",
-  AgentVaultActivityChunk = "agent_vault_activity_chunks",
+  AgentVaultSessionLogConfig = "agent_vault_session_log_configs",
+  AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
   ExternalMigrationConfig = "external_migration_configs",

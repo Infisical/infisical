@@ -70,7 +70,7 @@ describe("the sealed chunk wire contract", () => {
     expect(() => open(KEY, IV, buildAad(CONTEXT), sealed)).toThrow();
   });
 
-  // Go's TestSealMatchesNodeVector and the browser's decryptActivityPage test both use these exact bytes.
+  // Go's TestSealMatchesNodeVector and the browser's decryptSessionLogPage test both use these exact bytes.
   test("matches the pinned vector the Go proxy and the browser are checked against", () => {
     expect(buildAad(CONTEXT).toString("hex")).toBe("0bc4c5b3d6ea7cd6bfc440da46d6ce9b73f17c5efa64e90e88373ee8ba09a837");
     expect(IV.toString("base64").replace(/=+$/, "")).toBe("qrvM3e7/ABEiM0RV");

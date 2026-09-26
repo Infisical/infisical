@@ -1,20 +1,20 @@
 import { z } from "zod";
 
 import { AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
-import {
-  AgentVaultActivityChunkCreateResponseSchema,
-  AgentVaultActivityChunkCreateSchema
-} from "@app/ee/services/agent-vault-activity/agent-vault-activity-schemas";
 import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
+import {
+  AgentVaultSessionLogChunkCreateResponseSchema,
+  AgentVaultSessionLogChunkCreateSchema
+} from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { logger } from "@app/lib/logger";
 import {
-  agentVaultActivityChunkLimit,
   agentVaultHeartbeatLimit,
   agentVaultResolveLimit,
+  agentVaultSessionLogChunkLimit,
   writeLimit
 } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -143,10 +143,10 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             .describe(AGENT_VAULT.PROXY.sessionToken)
         })
         .passthrough(),
-      // Nullish, not optional: proxies predating session logging send no body, which arrives as null.
+      // Nullish, not optional: proxies predating session logs send no body, which arrives as null.
       body: z
         .object({
-          hasActivityKey: z.boolean().default(false).describe(AGENT_VAULT.ACTIVITY.hasActivityKey)
+          hasSessionLogKey: z.boolean().default(false).describe(AGENT_VAULT.SESSION_LOGS.hasSessionLogKey)
         })
         .nullish(),
       response: {
@@ -181,9 +181,9 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
                 .array()
             })
             .array(),
-          activity: z.object({
-            enabled: z.boolean().describe(AGENT_VAULT.ACTIVITY.enabled),
-            sessionKey: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.sessionKey)
+          sessionLogs: z.object({
+            enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.enabled),
+            sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.sessionKey)
           })
         })
       }
@@ -195,27 +195,27 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         proxyId: req.permission.id,
         orgId: req.permission.orgId,
         sessionToken: req.headers[SESSION_HEADER],
-        hasActivityKey: req.body?.hasActivityKey ?? false
+        hasSessionLogKey: req.body?.hasSessionLogKey ?? false
       });
     }
   });
 
   server.route({
     method: "POST",
-    url: "/sessions/:sessionId/activity/chunks",
-    config: { rateLimit: agentVaultActivityChunkLimit },
+    url: "/sessions/:sessionId/logs/chunks",
+    config: { rateLimit: agentVaultSessionLogChunkLimit },
     schema: {
-      operationId: "createAgentVaultActivityChunk",
+      operationId: "createAgentVaultSessionLogChunk",
       description:
-        "Records an encrypted activity chunk and returns a presigned URL to upload the chunk to. If you send the same `chunkId` again, you get a new URL for the same chunk.",
-      tags: [ApiDocsTags.AgentVaultActivity],
+        "Records an encrypted session log chunk and returns a presigned URL to upload the chunk to. If you send the same `chunkId` again, you get a new URL for the same chunk.",
+      tags: [ApiDocsTags.AgentVaultSessionLogs],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
-      body: AgentVaultActivityChunkCreateSchema,
-      response: { 200: AgentVaultActivityChunkCreateResponseSchema }
+      body: AgentVaultSessionLogChunkCreateSchema,
+      response: { 200: AgentVaultSessionLogChunkCreateResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.agentVaultActivity.recordChunk({
+      return server.services.agentVaultSessionLog.recordChunk({
         proxyId: req.permission.id,
         sessionId: req.params.sessionId,
         chunk: req.body

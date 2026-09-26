@@ -16,7 +16,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultProjectAuthority, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
-import { generateActivityKey, wrapActivityKey } from "../agent-vault-activity/agent-vault-activity-secrets";
+import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory } from "./agent-vault-session-dal";
 import { deriveSessionStatus, generateSessionToken, isSessionOwnedBy } from "./agent-vault-session-fns";
@@ -96,8 +96,8 @@ export const agentVaultSessionServiceFactory = ({
     const { token, tokenHash } = generateSessionToken();
 
     const sessionId = crypto.nativeCrypto.randomUUID();
-    const encryptedActivityKey = await wrapActivityKey(
-      { projectId, sessionId, activityKey: generateActivityKey() },
+    const encryptedSessionLogKey = await wrapSessionLogKey(
+      { projectId, sessionId, sessionLogKey: generateSessionLogKey() },
       kmsService
     );
 
@@ -112,7 +112,7 @@ export const agentVaultSessionServiceFactory = ({
           actorEmail,
           tokenHash,
           expiresAt,
-          encryptedActivityKey
+          encryptedSessionLogKey
         },
         tx
       );

@@ -23,12 +23,6 @@ import {
   TAgentVaultAccessBundles,
   TAgentVaultAccessBundlesInsert,
   TAgentVaultAccessBundlesUpdate,
-  TAgentVaultActivityChunks,
-  TAgentVaultActivityChunksInsert,
-  TAgentVaultActivityChunksUpdate,
-  TAgentVaultActivityConfigs,
-  TAgentVaultActivityConfigsInsert,
-  TAgentVaultActivityConfigsUpdate,
   TAgentVaultProxies,
   TAgentVaultProxiesInsert,
   TAgentVaultProxiesUpdate,
@@ -44,6 +38,12 @@ import {
   TAgentVaultSessionAccessBundles,
   TAgentVaultSessionAccessBundlesInsert,
   TAgentVaultSessionAccessBundlesUpdate,
+  TAgentVaultSessionLogChunks,
+  TAgentVaultSessionLogChunksInsert,
+  TAgentVaultSessionLogChunksUpdate,
+  TAgentVaultSessionLogConfigs,
+  TAgentVaultSessionLogConfigsInsert,
+  TAgentVaultSessionLogConfigsUpdate,
   TAgentVaultSessions,
   TAgentVaultSessionsInsert,
   TAgentVaultSessionsUpdate,
@@ -1830,15 +1830,15 @@ declare module "knex/types/tables" {
       TAgentVaultProxiesInsert,
       TAgentVaultProxiesUpdate
     >;
-    [TableName.AgentVaultActivityConfig]: KnexOriginal.CompositeTableType<
-      TAgentVaultActivityConfigs,
-      TAgentVaultActivityConfigsInsert,
-      TAgentVaultActivityConfigsUpdate
+    [TableName.AgentVaultSessionLogConfig]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionLogConfigs,
+      TAgentVaultSessionLogConfigsInsert,
+      TAgentVaultSessionLogConfigsUpdate
     >;
-    [TableName.AgentVaultActivityChunk]: KnexOriginal.CompositeTableType<
-      TAgentVaultActivityChunks,
-      TAgentVaultActivityChunksInsert,
-      TAgentVaultActivityChunksUpdate
+    [TableName.AgentVaultSessionLogChunk]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionLogChunks,
+      TAgentVaultSessionLogChunksInsert,
+      TAgentVaultSessionLogChunksUpdate
     >;
     [TableName.PamAccountPolicy]: KnexOriginal.CompositeTableType<
       TPamAccountPolicies,

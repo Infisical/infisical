@@ -7,7 +7,6 @@ import { seedData1 } from "@app/db/seed-data";
 import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
-import { agentVaultActivityConfigDALFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-config-dal";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import {
   AGENT_VAULT_MAX_PROXIES_PER_ORG,
@@ -17,6 +16,7 @@ import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/
 import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -1723,7 +1723,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
-        agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
+        agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         permissionService: buildPermissionService(),
@@ -1765,7 +1765,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
-        agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
+        agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         permissionService: buildPermissionService(),
@@ -1780,7 +1780,7 @@ describe("Agent Vault V1 Router", async () => {
         proxyId: proxy.id,
         orgId: seedData1.organization.id,
         sessionToken: session.token,
-        hasActivityKey: false
+        hasSessionLogKey: false
       });
 
       expect(resolved.services).toHaveLength(1);
@@ -1818,7 +1818,7 @@ describe("Agent Vault V1 Router", async () => {
           proxyId: proxy.id,
           orgId: seedData1.organization.id,
           sessionToken: session.token,
-          hasActivityKey: false
+          hasSessionLogKey: false
         });
 
       const membership = await testDb("memberships")
@@ -1856,7 +1856,7 @@ describe("Agent Vault V1 Router", async () => {
           proxyId: proxy.id,
           orgId: seedData1.organization.id,
           sessionToken: session.token,
-          hasActivityKey: false
+          hasSessionLogKey: false
         });
 
       const [doomed] = (await testDb("users")
@@ -1887,7 +1887,7 @@ describe("Agent Vault V1 Router", async () => {
           proxyId: proxy.id,
           orgId: seedData1.organization.id,
           sessionToken: session.token,
-          hasActivityKey: false
+          hasSessionLogKey: false
         });
 
       const identity = await createOrgIdentity(`doomed-${crypto.randomUUID()}`);
@@ -1923,7 +1923,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
-        agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
+        agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         permissionService: buildPermissionService(),
@@ -1937,7 +1937,7 @@ describe("Agent Vault V1 Router", async () => {
           proxyId: proxy.id,
           orgId: seedData1.organization.id,
           sessionToken: session.token,
-          hasActivityKey: false
+          hasSessionLogKey: false
         });
 
       const membership = await testDb("memberships")
@@ -2608,7 +2608,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
-          agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
+          agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
           permissionService: buildPermissionService(),
@@ -2622,7 +2622,7 @@ describe("Agent Vault V1 Router", async () => {
             proxyId: proxy.id,
             orgId: seedData1.organization.id,
             sessionToken: session.token,
-            hasActivityKey: false
+            hasSessionLogKey: false
           });
 
         expect((await resolve()).services).toHaveLength(1);
@@ -2705,7 +2705,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
-          agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
+          agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
           permissionService: buildPermissionService(),
@@ -2719,7 +2719,7 @@ describe("Agent Vault V1 Router", async () => {
             proxyId: proxy.id,
             orgId: seedData1.organization.id,
             sessionToken: session.token,
-            hasActivityKey: false
+            hasSessionLogKey: false
           });
         expect((await resolve()).services).toHaveLength(1);
 

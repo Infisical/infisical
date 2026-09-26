@@ -1,14 +1,14 @@
 import { BadRequestError } from "@app/lib/errors";
 
-import type * as RealStorage from "../../src/ee/services/agent-vault-activity/agent-vault-activity-storage";
+import type * as RealStorage from "../../src/ee/services/agent-vault-session-log/agent-vault-session-log-storage";
 import {
-  buildActivityObjectKey,
+  buildSessionLogObjectKey,
   resolveStorageConfig,
   withKeyPrefix
-} from "../../src/ee/services/agent-vault-activity/agent-vault-activity-storage";
-import type { TResolvedActivityStorageConfig } from "../../src/ee/services/agent-vault-activity/agent-vault-activity-types";
+} from "../../src/ee/services/agent-vault-session-log/agent-vault-session-log-storage";
+import type { TResolvedSessionLogStorageConfig } from "../../src/ee/services/agent-vault-session-log/agent-vault-session-log-types";
 
-export { buildActivityObjectKey, resolveStorageConfig, withKeyPrefix };
+export { buildSessionLogObjectKey, resolveStorageConfig, withKeyPrefix };
 
 type TFakeState = {
   objects: Map<string, Buffer>;
@@ -30,13 +30,13 @@ const freshState = (): TFakeState => ({
   nextUrlId: 0
 });
 
-const globalScope = globalThis as typeof globalThis & { infisicalFakeActivityStorage?: TFakeState };
-globalScope.infisicalFakeActivityStorage ??= freshState();
-const state = globalScope.infisicalFakeActivityStorage;
+const globalScope = globalThis as typeof globalThis & { infisicalFakeSessionLogStorage?: TFakeState };
+globalScope.infisicalFakeSessionLogStorage ??= freshState();
+const state = globalScope.infisicalFakeSessionLogStorage;
 
 const objectId = (bucket: string, objectKey: string) => `${bucket}/${objectKey}`;
 
-export const fakeActivityStorage = {
+export const fakeSessionLogStorage = {
   reset: () => {
     Object.assign(state, freshState());
   },
@@ -80,7 +80,7 @@ export const fakeActivityStorage = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const buildActivityStorage = (config: TResolvedActivityStorageConfig, _orgId: string) => {
+export const buildSessionLogStorage = (config: TResolvedSessionLogStorageConfig, _orgId: string) => {
   if (state.buildError) return Promise.reject(new BadRequestError({ message: state.buildError }));
   const { bucket, keyPrefix } = config;
 
@@ -121,15 +121,15 @@ export const buildActivityStorage = (config: TResolvedActivityStorageConfig, _or
 
 export const assertFakeMatchesRealStorage: Pick<
   typeof RealStorage,
-  "buildActivityObjectKey" | "resolveStorageConfig" | "withKeyPrefix"
+  "buildSessionLogObjectKey" | "resolveStorageConfig" | "withKeyPrefix"
 > = {
-  buildActivityObjectKey,
+  buildSessionLogObjectKey,
   resolveStorageConfig,
   withKeyPrefix
 };
 
 export const assertFakeStorageShapeMatches: {
-  [K in keyof RealStorage.TAgentVaultActivityStorage]: unknown;
+  [K in keyof RealStorage.TAgentVaultSessionLogStorage]: unknown;
 } = {
   presignPut: null,
   presignGet: null,
