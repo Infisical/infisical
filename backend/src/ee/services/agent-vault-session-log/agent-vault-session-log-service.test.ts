@@ -452,9 +452,9 @@ describe("when the AWS connection can't be used", () => {
   test("a chunk is refused as a retryable 500 before any row is written, without the connection's details", async () => {
     vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { service, createIfAbsent } = build();
-    const refusal = record(service);
-    await expect(refusal).rejects.toMatchObject({ name: "InternalServerError" });
-    await expect(refusal).rejects.not.toMatchObject({ message: expect.stringContaining("prod-logs") });
+    const error = (await record(service).catch((err: unknown) => err)) as Error;
+    expect(error.name).toBe("InternalServerError");
+    expect(error.message).not.toContain("prod-logs");
     expect(createIfAbsent).not.toHaveBeenCalled();
   });
 
