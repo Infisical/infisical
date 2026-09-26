@@ -70,6 +70,10 @@ type Props = {
   environments: { name: string; slug: string }[];
   isSelected: boolean;
   onToggleSecretSelect: (key: string, isShiftKey: boolean) => void;
+  isExpanded: boolean;
+  onToggleExpand: (key: string) => void;
+  isSecretVisible: boolean;
+  onToggleSecretVisible: (key: string) => void;
   getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   onSecretCreate: (env: string, key: string, value: string, type?: SecretType) => Promise<void>;
   onSecretUpdate: (params: {
@@ -140,6 +144,10 @@ export const SecretTableRow = ({
   tableWidth,
   onToggleSecretSelect,
   isSelected,
+  isExpanded,
+  onToggleExpand,
+  isSecretVisible,
+  onToggleSecretVisible,
   importedBy,
   isSingleEnvSecretsVisible,
   isBatchMode,
@@ -149,9 +157,7 @@ export const SecretTableRow = ({
   activityId,
   onActivityChange
 }: Props) => {
-  const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 2; // secret key row + icon
-  const [isSecretVisible, setIsSecretVisible] = useToggle();
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
   const [isSingleEnvBaseActive, setIsSingleEnvBaseActive] = useState(false);
   const [isSingleEnvOverrideActive, setIsSingleEnvOverrideActive] = useState(false);
@@ -162,7 +168,7 @@ export const SecretTableRow = ({
   const isSingleEnvView = environments.length === 1;
   const isRowActive = isSingleEnvView
     ? isSingleEnvBaseActive || isSingleEnvOverrideActive
-    : isFormExpanded;
+    : isExpanded;
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
 
@@ -295,7 +301,7 @@ export const SecretTableRow = ({
   return (
     <>
       <TableRow
-        onClick={isSingleEnvView ? undefined : () => setIsFormExpanded.toggle()}
+        onClick={isSingleEnvView ? undefined : () => onToggleExpand(secretKey)}
         className={twMerge(
           "group hover:z-10",
           (isSingleEnvView ? isSingleEnvBaseActive || isSelected : isRowActive || isSelected) &&
@@ -309,7 +315,7 @@ export const SecretTableRow = ({
             !isSingleEnvView && "sticky left-0 z-10",
             !singleEnvPendingAction &&
               "bg-container transition-colors duration-75 group-hover:bg-container-hover",
-            !isSingleEnvView && isFormExpanded && "border-b-0 bg-container-hover",
+            !isSingleEnvView && isExpanded && "border-b-0 bg-container-hover",
             isSingleEnvView && singleEnvShowOverride && "border-b-border/50",
             isSingleEnvView && "relative",
             pendingActionBorderClass(singleEnvPendingAction)
@@ -330,7 +336,7 @@ export const SecretTableRow = ({
                 isSelected && "flex"
               )}
             />
-            {!isSingleEnvView && isFormExpanded ? (
+            {!isSingleEnvView && isExpanded ? (
               <ChevronDownIcon
                 className={twMerge(
                   "block",
@@ -436,7 +442,7 @@ export const SecretTableRow = ({
             isTruncatable
             className={twMerge(
               "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover",
-              isFormExpanded && "border-r-0 border-b-0 bg-container-hover"
+              isExpanded && "border-r-0 border-b-0 bg-container-hover"
             )}
           >
             <div className="flex min-w-0 items-center gap-2">
@@ -449,7 +455,7 @@ export const SecretTableRow = ({
               >
                 {secretKey}
               </span>
-              {!isFormExpanded &&
+              {!isExpanded &&
                 environments.some(
                   ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
                 ) && (
@@ -507,7 +513,7 @@ export const SecretTableRow = ({
         )}
         {environments.length > 1 &&
           environments.map(({ slug }, i) => {
-            if (isFormExpanded)
+            if (isExpanded)
               return (
                 <TableCell
                   key={`sec-overview-${slug}-${i + 1}-expanded`}
@@ -606,7 +612,7 @@ export const SecretTableRow = ({
           </DialogContent>
         </Dialog>
       )}
-      {!isSingleEnvView && isFormExpanded && (
+      {!isSingleEnvView && isExpanded && (
         <TableRow
           className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
         >
@@ -634,7 +640,11 @@ export const SecretTableRow = ({
                     </TableHead>
                     <TableHead className="w-full">Value</TableHead>
                     <TableHead variant="action" className="w-px">
-                      <Button variant="ghost" size="xs" onClick={() => setIsSecretVisible.toggle()}>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => onToggleSecretVisible(secretKey)}
+                      >
                         {isSecretVisible ? (
                           <>
                             <EyeOffIcon />
