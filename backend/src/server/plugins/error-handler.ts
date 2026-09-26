@@ -1,5 +1,6 @@
 import { ForbiddenError, PureAbility } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
+import { errorCodes, FastifyError } from "fastify";
 import fastifyPlugin from "fastify-plugin";
 import jwt from "jsonwebtoken";
 import { ZodError } from "zod";
@@ -53,6 +54,19 @@ enum HttpStatusCodes {
   TooManyRequests = 429
 }
 
+const BODY_PARSER_ERRORS = [
+  errorCodes.FST_ERR_CTP_EMPTY_JSON_BODY,
+  errorCodes.FST_ERR_CTP_INVALID_JSON_BODY,
+  errorCodes.FST_ERR_CTP_INVALID_MEDIA_TYPE,
+  errorCodes.FST_ERR_CTP_BODY_TOO_LARGE,
+  errorCodes.FST_ERR_CTP_INVALID_CONTENT_LENGTH
+];
+
+const isBodyParserError = (error: Error): error is FastifyError =>
+  BODY_PARSER_ERRORS.some((BodyParserError) => error instanceof BodyParserError);
+
+const API_REFERENCE_DOCS_URL = "https://infisical.com/docs/api-reference";
+
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
 
@@ -68,6 +82,17 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     unit: "{error}"
   });
 
+  // only undefined routes include documentationUrl in the response; a "NotFounDerror" thrown by a handler means the route exists = not included
+  server.setNotFoundHandler((req, res) => {
+    void res.status(HttpStatusCodes.NotFound).send({
+      reqId: req.id,
+      statusCode: HttpStatusCodes.NotFound,
+      message: `Route ${req.method}:${req.url} not found`,
+      error: "Not Found",
+      documentationUrl: API_REFERENCE_DOCS_URL
+    });
+  });
+
   server.setErrorHandler((error: Error, req, res) => {
     // Expected client errors don't need stack traces. Log them without the Error object to
     // avoid stack serialization; keep full-stack logging for unexpected / server errors.
@@ -80,6 +105,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       error instanceof ForbiddenRequestError ||
       error instanceof PermissionBoundaryError ||
       error instanceof ZodError ||
+      isBodyParserError(error) ||
       (error instanceof OauthTokenError && error.statusCode < HttpStatusCodes.InternalServerError) ||
       error instanceof RateLimitError ||
       error instanceof PolicyViolationError ||
@@ -379,6 +405,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message:
           "Invalid JSON in request body. If you are sending a Certificate Signing Request (CSR), ensure newlines are escaped as \\n characters, not literal line breaks.",
         error: "BadRequestError"
+      });
+    } else if (isBodyParserError(error)) {
+      void res.status(error.statusCode ?? HttpStatusCodes.BadRequest).send({
+        reqId: req.id,
+        statusCode: error.statusCode ?? HttpStatusCodes.BadRequest,
+        message: error.message,
+        error: "BodyParserError"
       });
     } else {
       void res.status(HttpStatusCodes.InternalServerError).send({

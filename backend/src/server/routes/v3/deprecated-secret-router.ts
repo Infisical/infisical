@@ -60,9 +60,10 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use PATCH /api/v4/secrets/:secretName and set tagIds instead.",
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Attach tags to a secret",
       security: [
         {
           bearerAuth: []
@@ -117,9 +118,10 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use PATCH /api/v4/secrets/:secretName and set tagIds instead.",
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Detach tags from a secret",
       security: [
         {
           bearerAuth: []
@@ -174,9 +176,10 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use GET /api/v4/secrets instead.",
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "List secrets",
       security: [
         {
           bearerAuth: []
@@ -393,6 +396,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
+      deprecated: true,
+      description: "Deprecated. Use GET /api/v4/secrets/id/:secretId instead.",
       params: z.object({
         secretId: z.string()
       }),
@@ -430,7 +435,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Get a secret by name",
+      deprecated: true,
+      description: "Deprecated. Use GET /api/v4/secrets/:secretName instead.",
       security: [
         {
           bearerAuth: []
@@ -563,7 +569,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Create secret",
+      deprecated: true,
+      description: "Deprecated. Use POST /api/v4/secrets/:secretName instead.",
       security: [
         {
           bearerAuth: []
@@ -718,7 +725,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Update secret",
+      deprecated: true,
+      description: "Deprecated. Use PATCH /api/v4/secrets/:secretName instead.",
       security: [
         {
           bearerAuth: []
@@ -882,7 +890,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Delete secret",
+      deprecated: true,
+      description: "Deprecated. Use DELETE /api/v4/secrets/:secretName instead.",
       security: [
         {
           bearerAuth: []
@@ -1006,6 +1015,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use GET /api/v4/secrets instead.",
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -1123,6 +1134,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use GET /api/v4/secrets/:secretName instead.",
       params: z.object({
         secretName: z.string().trim()
       }),
@@ -1209,6 +1222,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use POST /api/v4/secrets/:secretName instead.",
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -1391,6 +1406,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use PATCH /api/v4/secrets/:secretName instead.",
       params: z.object({
         secretName: z.string()
       }),
@@ -1591,6 +1608,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use DELETE /api/v4/secrets/:secretName instead.",
       params: z.object({
         secretName: z.string()
       }),
@@ -1726,6 +1745,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use POST /api/v4/secrets/move instead.",
       hide: false,
       tags: [ApiDocsTags.Secrets],
       body: z.object({
@@ -1783,6 +1804,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use POST /api/v4/secrets/batch instead.",
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -1920,6 +1943,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use PATCH /api/v4/secrets/batch instead.",
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -2060,6 +2085,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use DELETE /api/v4/secrets/batch instead.",
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -2194,7 +2221,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Create many secrets",
+      deprecated: true,
+      description: "Deprecated. Use POST /api/v4/secrets/batch instead.",
       security: [
         {
           bearerAuth: []
@@ -2333,7 +2361,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Update many secrets",
+      deprecated: true,
+      description: "Deprecated. Use PATCH /api/v4/secrets/batch instead.",
       security: [
         {
           bearerAuth: []
@@ -2545,7 +2574,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Delete many secrets",
+      deprecated: true,
+      description: "Deprecated. Use DELETE /api/v4/secrets/batch instead.",
       security: [
         {
           bearerAuth: []
