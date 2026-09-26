@@ -387,7 +387,16 @@ export const useMoveSecrets = ({
 
       return data;
     },
-    onSuccess: (_, { projectId, sourceEnvironment, sourceSecretPath, destinationSecretPath }) => {
+    onSuccess: (
+      _,
+      {
+        projectId,
+        sourceEnvironment,
+        sourceSecretPath,
+        destinationEnvironment,
+        destinationSecretPath
+      }
+    ) => {
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({
           projectId,
@@ -409,6 +418,18 @@ export const useMoveSecrets = ({
           secretPath: sourceSecretPath
         })
       });
+      if (
+        destinationEnvironment !== sourceEnvironment ||
+        destinationSecretPath !== sourceSecretPath
+      ) {
+        queryClient.invalidateQueries({
+          queryKey: secretKeys.getProjectSecret({
+            projectId,
+            environment: destinationEnvironment,
+            secretPath: destinationSecretPath
+          })
+        });
+      }
       queryClient.invalidateQueries({
         queryKey: commitKeys.count({
           projectId,

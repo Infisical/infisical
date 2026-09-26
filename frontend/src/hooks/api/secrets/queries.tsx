@@ -38,7 +38,15 @@ export const secretKeys = {
     secretPath,
     viewSecretValue
   }: TGetProjectSecretsKey) =>
-    [{ projectId, environment, secretPath, viewSecretValue }, "secrets"] as const,
+    [
+      {
+        projectId,
+        environment,
+        secretPath,
+        ...(viewSecretValue === undefined ? {} : { viewSecretValue })
+      },
+      "secrets"
+    ] as const,
   getProjectSecretExportPreflight: ({
     projectId,
     environment,
