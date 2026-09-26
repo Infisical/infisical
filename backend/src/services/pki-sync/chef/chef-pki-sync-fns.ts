@@ -73,6 +73,8 @@ type TChefPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -296,6 +298,8 @@ export const chefPkiSyncFactory = ({
           ...(caCertificate && { [fieldMappings.caCertificate]: caCertificate })
         };
 
+        await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, targetItemName);
+
         const itemExists = chefDataBagItems[targetItemName] === true;
 
         if (itemExists) {
@@ -375,20 +379,22 @@ export const chefPkiSyncFactory = ({
     let failedRemovals: Array<{ name: string; error: string }> = [];
 
     if (canRemoveCertificates) {
-      const itemsToRemove: string[] = [];
-
       const trackedExternalIds = new Set(
         existingSyncRecords.map((record) => record.externalIdentifier).filter((id): id is string => Boolean(id))
       );
       const allowPatternCleanup = !certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema);
 
-      Object.keys(chefDataBagItems).forEach((itemName) => {
-        if (activeExternalIdentifiers.has(itemName)) return;
-        const isTracked = trackedExternalIds.has(itemName);
-        if (isTracked || (allowPatternCleanup && isInfisicalManagedCertificate(itemName, pkiSync))) {
-          itemsToRemove.push(itemName);
-        }
+      const removalCandidates = Object.keys(chefDataBagItems).filter(
+        (itemName) =>
+          !activeExternalIdentifiers.has(itemName) &&
+          (trackedExternalIds.has(itemName) ||
+            (allowPatternCleanup && isInfisicalManagedCertificate(itemName, pkiSync)))
+      );
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(removalCandidates, {
+        excludePkiSyncId: pkiSync.id,
+        destination: pkiSync.destination
       });
+      const itemsToRemove = removalCandidates.filter((itemName) => !ownedByOtherSync.has(itemName));
 
       if (itemsToRemove.length > 0) {
         const removalPromises = itemsToRemove.map(async (itemName) => {

@@ -61,6 +61,8 @@ type TAzureKeyVaultPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
 };
@@ -440,31 +442,35 @@ export const azureKeyVaultPkiSyncFactory = ({
     const certificatesToRemove: string[] = [];
 
     if (canRemoveCertificates) {
+      const removalCandidates = new Set<string>();
       existingSyncRecords.forEach((syncRecord) => {
-        if (syncRecord.externalIdentifier && !activeExternalIdentifiers.has(syncRecord.externalIdentifier)) {
-          if (vaultCertificates[syncRecord.externalIdentifier]) {
-            certificatesToRemove.push(syncRecord.externalIdentifier);
-          }
+        if (
+          syncRecord.externalIdentifier &&
+          !activeExternalIdentifiers.has(syncRecord.externalIdentifier) &&
+          vaultCertificates[syncRecord.externalIdentifier]
+        ) {
+          removalCandidates.add(syncRecord.externalIdentifier);
         }
       });
 
       if (!certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema)) {
         Object.keys(vaultCertificates).forEach((certificateName) => {
-          const isInfisicalManaged = isInfisicalManagedCertificate(certificateName, pkiSync);
-
-          if (isInfisicalManaged) {
-            const isTrackedInSyncRecords = existingSyncRecords.some(
-              (record) => record.externalIdentifier === certificateName
-            );
-
-            const isInActiveSet = activeExternalIdentifiers.has(certificateName);
-
-            if (!isTrackedInSyncRecords && !isInActiveSet && !certificatesToRemove.includes(certificateName)) {
-              certificatesToRemove.push(certificateName);
-            }
+          if (
+            isInfisicalManagedCertificate(certificateName, pkiSync) &&
+            !activeExternalIdentifiers.has(certificateName)
+          ) {
+            removalCandidates.add(certificateName);
           }
         });
       }
+
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse([...removalCandidates], {
+        excludePkiSyncId: pkiSync.id,
+        destination: pkiSync.destination
+      });
+      certificatesToRemove.push(
+        ...[...removalCandidates].filter((certificateName) => !ownedByOtherSync.has(certificateName))
+      );
     }
 
     // Upload certificates to Azure Key Vault with rate limiting
@@ -520,6 +526,10 @@ export const azureKeyVaultPkiSyncFactory = ({
               exportable: true
             }
           };
+
+          if (certificateId) {
+            await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, key);
+          }
 
           const response = await request.post(
             `${destinationConfig.vaultBaseUrl}/certificates/${encodeURIComponent(key)}/import?api-version=7.4`,

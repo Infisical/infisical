@@ -46,6 +46,8 @@ type TKempLoadMasterPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -497,6 +499,10 @@ export const kempLoadMasterPkiSyncFactory = ({
       oldCertificateIdToRemove
     } of certificatesToUpload) {
       try {
+        if (certificateId) {
+          await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, targetIdentifier);
+        }
+
         const bundle = buildCertificateBundle(cert, privateKey, certificateChain);
         await upsertCertificate(
           makeRequest,
@@ -616,6 +622,7 @@ export const kempLoadMasterPkiSyncFactory = ({
 
     const identifiersToRemove = new Set<string>();
     if (canRemoveCertificates) {
+      const removalCandidates = new Set<string>();
       for (const syncRecord of existingSyncRecords) {
         if (
           syncRecord.externalIdentifier &&
@@ -623,7 +630,7 @@ export const kempLoadMasterPkiSyncFactory = ({
           existingCertNames.has(syncRecord.externalIdentifier) &&
           !(syncRecord.certificateId && managedCertificateIds.has(syncRecord.certificateId))
         ) {
-          identifiersToRemove.add(syncRecord.externalIdentifier);
+          removalCandidates.add(syncRecord.externalIdentifier);
         }
       }
 
@@ -637,8 +644,18 @@ export const kempLoadMasterPkiSyncFactory = ({
             !activeIdentifiers.has(certName) &&
             !attemptedIdentifiers.has(certName)
           ) {
-            identifiersToRemove.add(certName);
+            removalCandidates.add(certName);
           }
+        }
+      }
+
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse([...removalCandidates], {
+        excludePkiSyncId: pkiSync.id,
+        destination: pkiSync.destination
+      });
+      for (const identifier of removalCandidates) {
+        if (!ownedByOtherSync.has(identifier)) {
+          identifiersToRemove.add(identifier);
         }
       }
 

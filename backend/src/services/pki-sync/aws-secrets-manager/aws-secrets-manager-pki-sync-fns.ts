@@ -52,11 +52,10 @@ const isInfisicalManagedCertificate = (secretName: string, pkiSync: TPkiSyncWith
   const syncOptions = pkiSync.syncOptions as { certificateNameSchema?: string } | undefined;
   const certificateNameSchema = syncOptions?.certificateNameSchema;
 
-  if (certificateNameSchema) {
-    return matchesCertificateNameSchema(secretName, certificateNameSchema);
-  }
-
-  return secretName.startsWith(AWS_SECRETS_MANAGER_PKI_SYNC_DEFAULTS.INFISICAL_PREFIX);
+  return matchesCertificateNameSchema(
+    secretName,
+    certificateNameSchema || AWS_SECRETS_MANAGER_PKI_SYNC_DEFAULTS.DEFAULT_CERTIFICATE_NAME_SCHEMA
+  );
 };
 
 const parseErrorMessage = (error: unknown): string => {
@@ -110,6 +109,8 @@ type TAwsSecretsManagerPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
 };
 
@@ -346,6 +347,8 @@ export const awsSecretsManagerPkiSyncFactory = ({
         const configKeyId: unknown = awsPkiSync.destinationConfig.keyId;
         const keyId: string = typeof configKeyId === "string" ? configKeyId : "alias/aws/secretsmanager";
 
+        await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, targetSecretName);
+
         if (isUpdate) {
           await withRateLimitRetry(
             () =>
@@ -381,34 +384,18 @@ export const awsSecretsManagerPkiSyncFactory = ({
           result.uploaded += 1;
         }
 
-        const existingRecord = syncRecordsByCertId.get(certificateId);
-        if (existingRecord?.id) {
-          await certificateSyncDAL.updateById(existingRecord.id, {
+        const certSync = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
+        if (certSync?.id) {
+          await certificateSyncDAL.updateById(certSync.id, {
             externalIdentifier: targetSecretName,
             syncStatus: CertificateSyncStatus.Succeeded,
             lastSyncedAt: new Date(),
             lastSyncMessage: "Certificate successfully synced to AWS Secrets Manager"
           });
+        }
 
-          if (oldCertificateIdToRemove && oldCertificateIdToRemove !== certificateId) {
-            await certificateSyncDAL.removeCertificates(pkiSync.id, [oldCertificateIdToRemove]);
-          }
-        } else {
-          await certificateSyncDAL.addCertificates(pkiSync.id, [
-            {
-              certificateId,
-              externalIdentifier: targetSecretName
-            }
-          ]);
-
-          const newCertSync = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
-          if (newCertSync?.id) {
-            await certificateSyncDAL.updateById(newCertSync.id, {
-              syncStatus: CertificateSyncStatus.Succeeded,
-              lastSyncedAt: new Date(),
-              lastSyncMessage: "Certificate successfully synced to AWS Secrets Manager"
-            });
-          }
+        if (oldCertificateIdToRemove && oldCertificateIdToRemove !== certificateId) {
+          await certificateSyncDAL.removeCertificates(pkiSync.id, [oldCertificateIdToRemove]);
         }
       } catch (error) {
         result.details?.failedUploads?.push({
@@ -425,9 +412,9 @@ export const awsSecretsManagerPkiSyncFactory = ({
           "Failed to sync certificate"
         );
 
-        const existingRecord = syncRecordsByCertId.get(certificateId);
-        if (existingRecord?.id) {
-          await certificateSyncDAL.updateById(existingRecord.id, {
+        const failedCertSync = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
+        if (failedCertSync?.id) {
+          await certificateSyncDAL.updateById(failedCertSync.id, {
             syncStatus: CertificateSyncStatus.Failed,
             lastSyncMessage: parseErrorMessage(error)
           });
@@ -441,12 +428,17 @@ export const awsSecretsManagerPkiSyncFactory = ({
       );
       const allowPatternCleanup = !certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema);
 
-      for (const [secretName] of Object.entries(existingSecrets)) {
-        if (!activeExternalIdentifiers.has(secretName)) {
-          if (!allowPatternCleanup && !trackedExternalIds.has(secretName)) {
-            // eslint-disable-next-line no-continue
-            continue;
-          }
+      const orphanedSecretNames = Object.keys(existingSecrets).filter(
+        (secretName) =>
+          !activeExternalIdentifiers.has(secretName) && (allowPatternCleanup || trackedExternalIds.has(secretName))
+      );
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(orphanedSecretNames, {
+        excludePkiSyncId: pkiSync.id,
+        destination: pkiSync.destination
+      });
+
+      for (const secretName of orphanedSecretNames) {
+        if (!ownedByOtherSync.has(secretName)) {
           try {
             await withRateLimitRetry(
               () =>
