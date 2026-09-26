@@ -52,22 +52,27 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
 import {
-  activityRecordKey,
-  AGENT_VAULT_ACTIVITY_LIVE_POLL_MS,
-  AgentVaultActivityDecision,
+  AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
+  AgentVaultSessionLogDecision,
   AgentVaultSessionStatus,
-  useAgentVaultActivityTimeline,
-  useGetAgentVaultSessionActivity
+  sessionLogRecordKey,
+  useAgentVaultSessionLogTimeline,
+  useGetAgentVaultSessionLogs
 } from "@app/hooks/api/agentVault";
 import {
-  TAgentVaultActivityGapReason,
-  TAgentVaultActivityRecord,
-  TAgentVaultSession
+  TAgentVaultSession,
+  TAgentVaultSessionLogGapReason,
+  TAgentVaultSessionLogRecord
 } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
-import { chunkIdTime, findRowShift, groupActivityGaps, httpStatusLabel } from "./ActivityTab.utils";
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
+import {
+  chunkIdTime,
+  findRowShift,
+  groupSessionLogGaps,
+  httpStatusLabel
+} from "./SessionLogsPanel.utils";
 
 const ALL_PROXIES = "all";
 
@@ -96,40 +101,40 @@ const ArrivingRow = ({ arrivedAt, children }: { arrivedAt?: number; children: Re
 
 const FILTER_SEARCH_STEP = 5000;
 
-const ACTIVITY_ROW_HEIGHT = 41;
+const SESSION_LOG_ROW_HEIGHT = 41;
 
-type DecisionFilter = "all" | AgentVaultActivityDecision;
+type DecisionFilter = "all" | AgentVaultSessionLogDecision;
 
 const DECISION_PRESENTATION: Record<
-  AgentVaultActivityDecision,
+  AgentVaultSessionLogDecision,
   { label: string; variant: "success" | "neutral" | "warning" | "danger"; icon: LucideIcon }
 > = {
-  [AgentVaultActivityDecision.Brokered]: {
+  [AgentVaultSessionLogDecision.Brokered]: {
     label: "Brokered",
     variant: "success",
     icon: KeyRoundIcon
   },
-  [AgentVaultActivityDecision.Passthrough]: {
+  [AgentVaultSessionLogDecision.Passthrough]: {
     label: "Passthrough",
     variant: "neutral",
     icon: ArrowRightIcon
   },
-  [AgentVaultActivityDecision.Blocked]: {
+  [AgentVaultSessionLogDecision.Blocked]: {
     label: "Blocked",
     variant: "warning",
     icon: ShieldBanIcon
   },
-  [AgentVaultActivityDecision.Error]: { label: "Error", variant: "danger", icon: CircleXIcon }
+  [AgentVaultSessionLogDecision.Error]: { label: "Error", variant: "danger", icon: CircleXIcon }
 };
 
-const decisionPresentation = (decision: AgentVaultActivityDecision) =>
+const decisionPresentation = (decision: AgentVaultSessionLogDecision) =>
   DECISION_PRESENTATION[decision] ?? {
     label: decision || "Unknown",
     variant: "neutral" as const,
     icon: CircleHelpIcon
   };
 
-const GAP_EXPLANATION: Record<TAgentVaultActivityGapReason, { one: string; many: string }> = {
+const GAP_EXPLANATION: Record<TAgentVaultSessionLogGapReason, { one: string; many: string }> = {
   repointed: {
     one: "is stored in a bucket this project no longer uses",
     many: "are stored in a bucket this project no longer uses"
@@ -161,18 +166,19 @@ const statusTone = (status: number) => {
 
 // Agent Vault answers Blocked and Error requests itself, so their status is its own reply, not the
 // upstream's.
-const isProxyAnswered = (decision: AgentVaultActivityDecision) =>
-  decision === AgentVaultActivityDecision.Blocked || decision === AgentVaultActivityDecision.Error;
+const isProxyAnswered = (decision: AgentVaultSessionLogDecision) =>
+  decision === AgentVaultSessionLogDecision.Blocked ||
+  decision === AgentVaultSessionLogDecision.Error;
 
-const proxyAnswerDescription = (record: TAgentVaultActivityRecord) => {
+const proxyAnswerDescription = (record: TAgentVaultSessionLogRecord) => {
   const answer = `Agent Vault returned ${httpStatusLabel(record.status)}`;
-  return record.decision === AgentVaultActivityDecision.Blocked
+  return record.decision === AgentVaultSessionLogDecision.Blocked
     ? `${answer} without sending this request to ${record.host}`
     : `${answer} with no response from ${record.host}`;
 };
 
 // A host pattern without a port means 443, and an IPv6 literal needs its brackets back.
-const hostPatternFor = (record: TAgentVaultActivityRecord) => {
+const hostPatternFor = (record: TAgentVaultSessionLogRecord) => {
   const host = record.host.includes(":") ? `[${record.host}]` : record.host;
   return record.port === "443" ? host : `${host}:${record.port}`;
 };
@@ -192,7 +198,7 @@ type Props = {
   session: TAgentVaultSession;
 };
 
-export const ActivityTab = ({ session }: Props) => {
+export const SessionLogsPanel = ({ session }: Props) => {
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
@@ -253,7 +259,7 @@ export const ActivityTab = ({ session }: Props) => {
   const isLivePausedForBudget = budgetLatch.scope === liveScope && budgetLatch.isOver;
   const canTail = (isActive || isTailingEnd) && isRangeOpen;
   const isLive = canTail && !isLivePausedForBudget;
-  const { history, live, arrived } = useGetAgentVaultSessionActivity(session.id, {
+  const { history, live, arrived } = useGetAgentVaultSessionLogs(session.id, {
     isLive,
     from: range?.startDate,
     to: range?.endDate
@@ -283,17 +289,17 @@ export const ActivityTab = ({ session }: Props) => {
     return arrived ? [arrived, ...data.pages] : data.pages;
   }, [data, arrived]);
   const { records, gaps, arrivals, isTruncated, isOverByteBudget } =
-    useAgentVaultActivityTimeline(pages);
+    useAgentVaultSessionLogTimeline(pages);
   if (isOverByteBudget && !isPlaceholderData && !isLivePausedForBudget) {
     setBudgetLatch({ scope: liveScope, isOver: true });
   }
   const isLoadError = isError && !data;
 
-  const isEnabled = pages?.[0]?.activity.enabled ?? false;
+  const isEnabled = pages?.[0]?.sessionLogs.enabled ?? false;
   const hasChunks = (pages ?? []).some((page) => page.chunks.length > 0);
   const storageUnavailable =
-    data?.pages.find((page) => page.activity.storageUnavailable)?.activity.storageUnavailable ??
-    null;
+    data?.pages.find((page) => page.sessionLogs.storageUnavailable)?.sessionLogs
+      .storageUnavailable ?? null;
 
   const seenProxies = useRef(new Map<string, string>());
   if (seenProxiesSessionId.current !== session.id) {
@@ -364,7 +370,7 @@ export const ActivityTab = ({ session }: Props) => {
   const rowVirtualizer = useVirtualizer({
     count: visible.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => ACTIVITY_ROW_HEIGHT,
+    estimateSize: () => SESSION_LOG_ROW_HEIGHT,
     overscan: 16
   });
   const virtualRows = rowVirtualizer.getVirtualItems();
@@ -404,13 +410,13 @@ export const ActivityTab = ({ session }: Props) => {
     countedAt.current = Date.now();
     const scroller = scrollRef.current;
     if (!scroller || scroller.scrollTop === 0) return;
-    const top = Math.floor(scroller.scrollTop / ACTIVITY_ROW_HEIGHT);
+    const top = Math.floor(scroller.scrollTop / SESSION_LOG_ROW_HEIGHT);
     const shift = findRowShift(before, visible, top);
     if (!shift) return;
-    scroller.scrollTop += shift * ACTIVITY_ROW_HEIGHT;
+    scroller.scrollTop += shift * SESSION_LOG_ROW_HEIGHT;
     if (shift < 0) return;
     const landedAbove = visible.slice(0, top + shift).filter((record) => {
-      const key = activityRecordKey(record);
+      const key = sessionLogRecordKey(record);
       return (arrivals.get(key) ?? 0) > since;
     }).length;
     if (landedAbove) setNewRequests((prev) => ({ ...prev, count: prev.count + landedAbove }));
@@ -468,7 +474,7 @@ export const ActivityTab = ({ session }: Props) => {
     noRecordsTitle = `No matching requests since ${format(searchedBackTo, "MMM d, h:mm a")}`;
     noRecordsDescription = "Older requests have not been searched yet.";
   } else if (range && (!hasChunks || !hasBrowserFilter)) {
-    noRecordsTitle = "No activity in this range";
+    noRecordsTitle = "No requests in this range";
     noRecordsDescription = `This session recorded nothing between ${format(
       range.startDate,
       "MMM d, yyyy HH:mm"
@@ -483,13 +489,13 @@ export const ActivityTab = ({ session }: Props) => {
   } else if (liveState === "reconnecting") {
     noRecordsLiveState = liveState;
     noRecordsTitle = "Couldn't check for new requests";
-    noRecordsDescription = `Trying again every ${AGENT_VAULT_ACTIVITY_LIVE_POLL_MS / 1000} seconds.`;
+    noRecordsDescription = `Trying again every ${AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS / 1000} seconds.`;
   } else if (liveState === "ended") {
     noRecordsLiveState = liveState;
     noRecordsTitle = "Nothing recorded yet";
     noRecordsDescription = "Its last requests can take up to a minute to show up.";
   } else {
-    noRecordsTitle = isActive ? "Nothing recorded yet" : "No activity recorded";
+    noRecordsTitle = isActive ? "Nothing recorded yet" : "No requests recorded";
     noRecordsDescription = isActive
       ? "Requests this session makes through a proxy will appear here shortly after."
       : "This session ended without making any requests through a proxy.";
@@ -515,8 +521,8 @@ export const ActivityTab = ({ session }: Props) => {
     if (isAdmin) {
       unreadableDescription = isConnectionUnusable
         ? (storageUnavailable.message ??
-          "Session logging's AWS connection can't be used right now.")
-        : "Session logging has no AWS connection, so this session's recorded requests can't be loaded.";
+          "The AWS connection for session logs can't be used right now.")
+        : "No AWS connection is set for session logs, so this session's recorded requests can't be loaded.";
     }
 
     return (
@@ -550,7 +556,7 @@ export const ActivityTab = ({ session }: Props) => {
     return (
       <Empty className="border">
         <EmptyHeader>
-          <EmptyTitle>Session logging is off</EmptyTitle>
+          <EmptyTitle>Session logs are off</EmptyTitle>
           <EmptyDescription>{offDescription}</EmptyDescription>
         </EmptyHeader>
         {isAdmin && (
@@ -666,7 +672,7 @@ export const ActivityTab = ({ session }: Props) => {
           <TriangleAlertIcon />
           <AlertDescription>
             <div className="flex flex-col gap-1">
-              {groupActivityGaps(gaps).map(({ reason, recordCount }) => (
+              {groupSessionLogGaps(gaps).map(({ reason, recordCount }) => (
                 <span key={reason}>
                   {recordCount.toLocaleString()} {recordCount === 1 ? "request" : "requests"}{" "}
                   {GAP_EXPLANATION[reason][recordCount === 1 ? "one" : "many"]}.
@@ -753,13 +759,13 @@ export const ActivityTab = ({ session }: Props) => {
           <TableBody>
             {padTop > 0 && <tr style={{ height: padTop }} />}
             {virtualRows.map((virtualRow) => {
-              const record = visible[virtualRow.index] as TAgentVaultActivityRecord;
+              const record = visible[virtualRow.index] as TAgentVaultSessionLogRecord;
               const presentation = decisionPresentation(record.decision);
               const isAddable =
                 canAddService &&
                 !record.service &&
-                (record.decision === AgentVaultActivityDecision.Blocked ||
-                  record.decision === AgentVaultActivityDecision.Passthrough) &&
+                (record.decision === AgentVaultSessionLogDecision.Blocked ||
+                  record.decision === AgentVaultSessionLogDecision.Passthrough) &&
                 !addedHosts.has(hostPatternFor(record));
               const proxyName = seenProxies.current.get(record.proxyId);
               const proxyAnswered = isProxyAnswered(record.decision);
@@ -779,8 +785,8 @@ export const ActivityTab = ({ session }: Props) => {
               );
               return (
                 <ArrivingRow
-                  key={activityRecordKey(record)}
-                  arrivedAt={arrivals.get(activityRecordKey(record))}
+                  key={sessionLogRecordKey(record)}
+                  arrivedAt={arrivals.get(sessionLogRecordKey(record))}
                 >
                   <TableCell>
                     <Tooltip>

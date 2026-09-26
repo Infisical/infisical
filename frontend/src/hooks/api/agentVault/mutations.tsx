@@ -10,7 +10,6 @@ import {
   TAddAgentVaultMembersDTO,
   TAddAgentVaultProductMembersDTO,
   TAgentVaultAccessBundle,
-  TAgentVaultActivityLoggingSettings,
   TAgentVaultActorIdsDTO,
   TAgentVaultActorRef,
   TAgentVaultEnrollment,
@@ -19,13 +18,14 @@ import {
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
   TAgentVaultService,
+  TAgentVaultSessionLogSettings,
   TAgentVaultWrittenMember,
   TCreateAgentVaultAccessBundleDTO,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TUpdateAgentVaultAccessBundleDTO,
-  TUpdateAgentVaultActivityLoggingSettingsDTO,
-  TUpdateAgentVaultServiceDTO
+  TUpdateAgentVaultServiceDTO,
+  TUpdateAgentVaultSessionLogSettingsDTO
 } from "./types";
 
 export const useCreateAgentVaultAccessBundle = () => {
@@ -362,26 +362,26 @@ export const useRevokeAgentVaultMembers = () => {
   });
 };
 
-export const useUpdateAgentVaultActivityLoggingSettings = () => {
+export const useUpdateAgentVaultSessionLogSettings = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params: TUpdateAgentVaultActivityLoggingSettingsDTO) => {
-      const { data } = await apiRequest.patch<{ settings: TAgentVaultActivityLoggingSettings }>(
-        "/api/v1/agent-vault/settings/activity-logging",
+    mutationFn: async (params: TUpdateAgentVaultSessionLogSettingsDTO) => {
+      const { data } = await apiRequest.patch<{ settings: TAgentVaultSessionLogSettings }>(
+        "/api/v1/agent-vault/settings/session-logs",
         params
       );
       return data.settings;
     },
     onSuccess: (settings) => {
-      queryClient.setQueryData(agentVaultKeys.activityLogging(currentOrg.id), settings);
+      queryClient.setQueryData(agentVaultKeys.sessionLogSettings(currentOrg.id), settings);
       // Reset, not invalidate: the cached result may be for the previous bucket.
       queryClient.resetQueries({
-        queryKey: agentVaultKeys.activityLoggingCorsProbe(currentOrg.id)
+        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id)
       });
       queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.activityLoggingHealth(currentOrg.id)
+        queryKey: agentVaultKeys.sessionLogHealth(currentOrg.id)
       });
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
     }

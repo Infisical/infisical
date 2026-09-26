@@ -2,18 +2,18 @@ import { CircleAlertIcon, TriangleAlertIcon } from "lucide-react";
 
 import { Alert, AlertDescription } from "@app/components/v3";
 import {
-  useGetAgentVaultActivityLoggingCorsProbe,
-  useGetAgentVaultActivityLoggingHealth,
-  useGetAgentVaultActivityLoggingSettings
+  useGetAgentVaultSessionLogCorsProbe,
+  useGetAgentVaultSessionLogHealth,
+  useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
 import { isAgentVaultRecording } from "@app/hooks/api/agentVault/types";
 
-import { SessionLoggingReadAccessAlert } from "./SessionLoggingReadAccessAlert";
+import { SessionLogReadAccessAlert } from "./SessionLogReadAccessAlert";
 
-export const SessionLoggingAlerts = () => {
-  const { data: config, isPending: isSettingsPending } = useGetAgentVaultActivityLoggingSettings();
-  const { data: health, isPending: isHealthPending } = useGetAgentVaultActivityLoggingHealth();
-  const { data: readAccess } = useGetAgentVaultActivityLoggingCorsProbe();
+export const SessionLogAlerts = () => {
+  const { data: config, isPending: isSettingsPending } = useGetAgentVaultSessionLogSettings();
+  const { data: health, isPending: isHealthPending } = useGetAgentVaultSessionLogHealth();
+  const { data: readAccess } = useGetAgentVaultSessionLogCorsProbe();
 
   const hasDestination = Boolean(config?.bucket);
   const isRecording = config ? isAgentVaultRecording(config) : false;
@@ -21,17 +21,17 @@ export const SessionLoggingAlerts = () => {
 
   const notRecordingReason = (() => {
     if (!hasDestination) {
-      return "Session logging isn't set up. Choose an AWS connection and a bucket to start recording what your agents reach.";
+      return "Session logs aren't set up. Choose an AWS connection and a bucket to start recording what your agents reach.";
     }
     if (!config?.enabled) {
       if (!config?.appConnectionId) {
-        return "Session logging is off, and without an AWS connection the logs already in the bucket can't be read.";
+        return "Session logs are off, and without an AWS connection the logs already in the bucket can't be read.";
       }
       if (health?.connectionError || isReadBlocked)
-        return "Session logging is off, so nothing new is being stored.";
-      return "Session logging is off. Logs already in the bucket are still readable, but nothing new is being stored.";
+        return "Session logs are off, so nothing new is being stored.";
+      return "Session logs are off. Logs already in the bucket are still readable, but nothing new is being stored.";
     }
-    return "Session logging is enabled, but Storage isn't complete, so nothing is being written to the bucket.";
+    return "Session logs are on, but Storage isn't complete, so nothing is being written to the bucket.";
   })();
 
   return (
@@ -47,7 +47,7 @@ export const SessionLoggingAlerts = () => {
         <Alert variant="danger">
           <CircleAlertIcon />
           <AlertDescription>
-            Session logging has reached its limit for this organization. Contact Infisical support.
+            Session logs have reached their limit for this organization. Contact Infisical support.
           </AlertDescription>
         </Alert>
       )}
@@ -59,7 +59,7 @@ export const SessionLoggingAlerts = () => {
         </Alert>
       )}
 
-      <SessionLoggingReadAccessAlert />
+      <SessionLogReadAccessAlert />
     </>
   );
 };

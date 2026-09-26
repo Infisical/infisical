@@ -1,19 +1,19 @@
-import { activityRecordKey } from "@app/hooks/api/agentVault/activityDecrypt";
+import { sessionLogRecordKey } from "@app/hooks/api/agentVault/sessionLogDecrypt";
 import {
-  TAgentVaultActivityGap,
-  TAgentVaultActivityGapReason,
-  TAgentVaultActivityRecord
+  TAgentVaultSessionLogGap,
+  TAgentVaultSessionLogGapReason,
+  TAgentVaultSessionLogRecord
 } from "@app/hooks/api/agentVault/types";
 
 export const findRowShift = (
-  before: TAgentVaultActivityRecord[],
-  after: TAgentVaultActivityRecord[],
+  before: TAgentVaultSessionLogRecord[],
+  after: TAgentVaultSessionLogRecord[],
   index: number
 ): number | null => {
   const row = before[index];
   if (!row) return null;
-  const key = activityRecordKey(row);
-  const moved = after.findIndex((record) => activityRecordKey(record) === key);
+  const key = sessionLogRecordKey(row);
+  const moved = after.findIndex((record) => sessionLogRecordKey(record) === key);
   return moved < 0 ? null : moved - index;
 };
 
@@ -94,8 +94,8 @@ export const chunkIdTime = (chunkId: string) =>
     )
   );
 
-export const groupActivityGaps = (gaps: TAgentVaultActivityGap[]) => {
-  const byReason = new Map<TAgentVaultActivityGapReason, number>();
+export const groupSessionLogGaps = (gaps: TAgentVaultSessionLogGap[]) => {
+  const byReason = new Map<TAgentVaultSessionLogGapReason, number>();
   gaps.forEach((gap) =>
     byReason.set(gap.reason, (byReason.get(gap.reason) ?? 0) + gap.recordCount)
   );

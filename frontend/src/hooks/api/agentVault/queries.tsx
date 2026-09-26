@@ -4,28 +4,28 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
-import {
-  createActivityChunkCache,
-  decryptActivityPage,
-  mergeActivityPages,
-  TAgentVaultActivityChunkCache
-} from "./activityDecrypt";
 import { AgentVaultMemberType } from "./enums";
+import {
+  createSessionLogChunkCache,
+  decryptSessionLogPage,
+  mergeSessionLogPages,
+  TAgentVaultSessionLogChunkCache
+} from "./sessionLogDecrypt";
 import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
-  TAgentVaultActivityHistoryPage,
-  TAgentVaultActivityLoggingCorsProbe,
-  TAgentVaultActivityLoggingHealth,
-  TAgentVaultActivityLoggingSettings,
-  TAgentVaultActivityReadAccess,
-  TAgentVaultActivityTailPage,
-  TAgentVaultDecryptedActivityPage,
+  TAgentVaultDecryptedSessionLogPage,
   TAgentVaultMember,
   TAgentVaultProductActor,
   TAgentVaultProductMemberOf,
   TAgentVaultProxy,
   TAgentVaultSession,
+  TAgentVaultSessionLogCorsProbe,
+  TAgentVaultSessionLogHealth,
+  TAgentVaultSessionLogHistoryPage,
+  TAgentVaultSessionLogReadAccess,
+  TAgentVaultSessionLogSettings,
+  TAgentVaultSessionLogTailPage,
   TListAgentVaultAccessBundlesDTO,
   TListAgentVaultMembersDTO,
   TListAgentVaultProxiesDTO,
@@ -39,13 +39,13 @@ export const fetchAgentVaultProjectId = async () => {
 
 // Every key carries the org, because Agent Vault is org-scoped through the JWT rather than through a
 // path parameter: without it a switch to another org would serve the previous org's data from cache.
-const ACTIVITY_PAGE_RECORDS = 200;
+const SESSION_LOG_PAGE_RECORDS = 200;
 
-const ACTIVITY_LIVE_RECORDS = 1000;
+const SESSION_LOG_LIVE_RECORDS = 1000;
 
-const ACTIVITY_LIVE_MAX_READS = 10;
+const SESSION_LOG_LIVE_MAX_READS = 10;
 
-export const AGENT_VAULT_ACTIVITY_LIVE_POLL_MS = 15_000;
+export const AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS = 15_000;
 
 export const agentVaultKeys = {
   all: (orgId: string) => ["agent-vault", orgId] as const,
@@ -78,16 +78,16 @@ export const agentVaultKeys = {
   availableMembers: (orgId: string) => [...agentVaultKeys.members(orgId), "available"] as const,
   availableMemberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.availableMembers(orgId), params] as const,
-  activityLogging: (orgId: string) =>
-    [...agentVaultKeys.all(orgId), "settings", "activity-logging"] as const,
-  activityLoggingHealth: (orgId: string) =>
-    [...agentVaultKeys.activityLogging(orgId), "health"] as const,
-  activityLoggingCorsProbe: (orgId: string) =>
-    [...agentVaultKeys.activityLogging(orgId), "cors-probe"] as const,
-  sessionActivity: (orgId: string, sessionId: string, range?: { from?: string; to?: string }) =>
-    [...agentVaultKeys.sessions(orgId), sessionId, "activity", range ?? {}] as const,
-  sessionActivityLive: (orgId: string, sessionId: string, range?: { from?: string; to?: string }) =>
-    [...agentVaultKeys.sessions(orgId), sessionId, "activity-live", range ?? {}] as const
+  sessionLogSettings: (orgId: string) =>
+    [...agentVaultKeys.all(orgId), "settings", "session-logs"] as const,
+  sessionLogHealth: (orgId: string) =>
+    [...agentVaultKeys.sessionLogSettings(orgId), "health"] as const,
+  sessionLogCorsProbe: (orgId: string) =>
+    [...agentVaultKeys.sessionLogSettings(orgId), "cors-probe"] as const,
+  sessionLogs: (orgId: string, sessionId: string, range?: { from?: string; to?: string }) =>
+    [...agentVaultKeys.sessions(orgId), sessionId, "logs", range ?? {}] as const,
+  sessionLogsLive: (orgId: string, sessionId: string, range?: { from?: string; to?: string }) =>
+    [...agentVaultKeys.sessions(orgId), sessionId, "logs-live", range ?? {}] as const
 };
 
 export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentVaultMemberType>(
@@ -225,14 +225,14 @@ export const useListAgentVaultProxies = (params: TListAgentVaultProxiesDTO = {})
   });
 };
 
-export const useGetAgentVaultActivityLoggingSettings = (enabled = true) => {
+export const useGetAgentVaultSessionLogSettings = (enabled = true) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
-    queryKey: agentVaultKeys.activityLogging(currentOrg.id),
+    queryKey: agentVaultKeys.sessionLogSettings(currentOrg.id),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ settings: TAgentVaultActivityLoggingSettings }>(
-        "/api/v1/agent-vault/settings/activity-logging"
+      const { data } = await apiRequest.get<{ settings: TAgentVaultSessionLogSettings }>(
+        "/api/v1/agent-vault/settings/session-logs"
       );
       return data.settings;
     },
@@ -240,14 +240,14 @@ export const useGetAgentVaultActivityLoggingSettings = (enabled = true) => {
   });
 };
 
-export const useGetAgentVaultActivityLoggingHealth = (enabled = true) => {
+export const useGetAgentVaultSessionLogHealth = (enabled = true) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
-    queryKey: agentVaultKeys.activityLoggingHealth(currentOrg.id),
+    queryKey: agentVaultKeys.sessionLogHealth(currentOrg.id),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ health: TAgentVaultActivityLoggingHealth }>(
-        "/api/v1/agent-vault/settings/activity-logging/health"
+      const { data } = await apiRequest.get<{ health: TAgentVaultSessionLogHealth }>(
+        "/api/v1/agent-vault/settings/session-logs/health"
       );
       return data.health;
     },
@@ -255,10 +255,10 @@ export const useGetAgentVaultActivityLoggingHealth = (enabled = true) => {
   });
 };
 
-export const fetchAgentVaultActivityReadAccess =
-  async (): Promise<TAgentVaultActivityReadAccess | null> => {
-    const { data } = await apiRequest.get<{ probe: TAgentVaultActivityLoggingCorsProbe }>(
-      "/api/v1/agent-vault/settings/activity-logging/cors-probe"
+export const fetchAgentVaultSessionLogReadAccess =
+  async (): Promise<TAgentVaultSessionLogReadAccess | null> => {
+    const { data } = await apiRequest.get<{ probe: TAgentVaultSessionLogCorsProbe }>(
+      "/api/v1/agent-vault/settings/session-logs/cors-probe"
     );
     if (!data.probe) return null;
     // The probed object never exists. S3 adds CORS headers to its 404 and to a 403 alike, so fetch
@@ -271,12 +271,12 @@ export const fetchAgentVaultActivityReadAccess =
     }
   };
 
-export const useGetAgentVaultActivityLoggingCorsProbe = (enabled = true) => {
+export const useGetAgentVaultSessionLogCorsProbe = (enabled = true) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
-    queryKey: agentVaultKeys.activityLoggingCorsProbe(currentOrg.id),
-    queryFn: fetchAgentVaultActivityReadAccess,
+    queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id),
+    queryFn: fetchAgentVaultSessionLogReadAccess,
     enabled,
     retry: false
   });
@@ -299,7 +299,7 @@ export const useGetAgentVaultSession = (sessionId: string | undefined, enabled =
   });
 };
 
-export const useGetAgentVaultSessionActivity = (
+export const useGetAgentVaultSessionLogs = (
   sessionId: string | undefined,
   {
     enabled = true,
@@ -312,31 +312,31 @@ export const useGetAgentVaultSessionActivity = (
   const queryClient = useQueryClient();
 
   const range = { from: from?.toISOString(), to: to?.toISOString() };
-  const url = `/api/v1/agent-vault/sessions/${sessionId}/activity`;
+  const url = `/api/v1/agent-vault/sessions/${sessionId}/logs`;
   const tailUrl = `${url}/tail`;
 
   // Reset during render so neither query fetches a new session into the old one's cache.
-  const chunkCache = useRef<TAgentVaultActivityChunkCache | null>(null);
+  const chunkCache = useRef<TAgentVaultSessionLogChunkCache | null>(null);
   if (!chunkCache.current || chunkCache.current.sessionId !== sessionId) {
-    chunkCache.current = createActivityChunkCache(sessionId ?? "");
+    chunkCache.current = createSessionLogChunkCache(sessionId ?? "");
   }
 
   const history = useInfiniteQuery({
-    queryKey: agentVaultKeys.sessionActivity(currentOrg.id, sessionId ?? "", range),
+    queryKey: agentVaultKeys.sessionLogs(currentOrg.id, sessionId ?? "", range),
     enabled: enabled && Boolean(sessionId),
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam, signal }) => {
-      const cache = chunkCache.current as TAgentVaultActivityChunkCache;
-      const { data } = await apiRequest.get<TAgentVaultActivityHistoryPage>(url, {
+      const cache = chunkCache.current as TAgentVaultSessionLogChunkCache;
+      const { data } = await apiRequest.get<TAgentVaultSessionLogHistoryPage>(url, {
         params: {
-          limit: ACTIVITY_PAGE_RECORDS,
+          limit: SESSION_LOG_PAGE_RECORDS,
           ...(pageParam ? { cursor: pageParam } : {}),
           ...(range.from ? { from: range.from } : {}),
           ...(range.to ? { to: range.to } : {})
         },
         signal
       });
-      return decryptActivityPage(data, cache, signal);
+      return decryptSessionLogPage(data, cache, signal);
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     placeholderData: (prev, prevQuery) =>
@@ -347,33 +347,33 @@ export const useGetAgentVaultSessionActivity = (
   });
 
   const liveFrom = history.isPlaceholderData ? undefined : history.data?.pages[0]?.liveCursor;
-  const liveKey = agentVaultKeys.sessionActivityLive(currentOrg.id, sessionId ?? "", range);
+  const liveKey = agentVaultKeys.sessionLogsLive(currentOrg.id, sessionId ?? "", range);
 
   const live = useQuery({
     queryKey: liveKey,
     enabled: enabled && isLive && Boolean(sessionId) && Boolean(liveFrom),
     queryFn: async ({ signal }) => {
-      const cache = chunkCache.current as TAgentVaultActivityChunkCache;
+      const cache = chunkCache.current as TAgentVaultSessionLogChunkCache;
       let arrived =
-        queryClient.getQueryData<TAgentVaultDecryptedActivityPage<TAgentVaultActivityTailPage>>(
+        queryClient.getQueryData<TAgentVaultDecryptedSessionLogPage<TAgentVaultSessionLogTailPage>>(
           liveKey
         );
       let cursor = arrived?.nextCursor ?? liveFrom;
       let hasMore = true;
-      for (let read = 0; hasMore && read < ACTIVITY_LIVE_MAX_READS; read += 1) {
+      for (let read = 0; hasMore && read < SESSION_LOG_LIVE_MAX_READS; read += 1) {
         // eslint-disable-next-line no-await-in-loop
-        const { data } = await apiRequest.get<TAgentVaultActivityTailPage>(tailUrl, {
-          params: { limit: ACTIVITY_LIVE_RECORDS, cursor },
+        const { data } = await apiRequest.get<TAgentVaultSessionLogTailPage>(tailUrl, {
+          params: { limit: SESSION_LOG_LIVE_RECORDS, cursor },
           signal
         });
         // eslint-disable-next-line no-await-in-loop
-        arrived = mergeActivityPages(arrived, await decryptActivityPage(data, cache, signal));
+        arrived = mergeSessionLogPages(arrived, await decryptSessionLogPage(data, cache, signal));
         cursor = data.nextCursor;
         ({ hasMore } = data);
       }
-      return arrived as TAgentVaultDecryptedActivityPage<TAgentVaultActivityTailPage>;
+      return arrived as TAgentVaultDecryptedSessionLogPage<TAgentVaultSessionLogTailPage>;
     },
-    refetchInterval: AGENT_VAULT_ACTIVITY_LIVE_POLL_MS,
+    refetchInterval: AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
     staleTime: 0,
     gcTime: 0
   });

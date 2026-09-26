@@ -7,8 +7,8 @@ import { useProjectPermission } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
-import { SessionLoggingAlerts } from "./components/SessionLoggingAlerts";
-import { SessionLoggingSection } from "./components/SessionLoggingSection";
+import { SessionLogAlerts } from "./components/SessionLogAlerts";
+import { SessionLogSection } from "./components/SessionLogSection";
 
 export const AgentVaultSettingsPage = () => {
   const { t } = useTranslation();
@@ -27,18 +27,18 @@ export const AgentVaultSettingsPage = () => {
             scope={ProjectType.AgentVault}
             icon={SettingsIcon}
             title="Settings"
-            description="Configure session logging and the connections Agent Vault uses."
+            description="Configure session logs and the connections Agent Vault uses."
           />
-          <SessionLoggingAlerts />
-          <SessionLoggingSection />
+          <SessionLogAlerts />
+          <SessionLogSection />
         </>
       ) : (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>Settings are administrator only</EmptyTitle>
             <EmptyDescription>
-              Ask an Agent Vault administrator to configure session logging and manage the
-              connections it uses.
+              Ask an Agent Vault administrator to configure session logs and manage the connections
+              it uses.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

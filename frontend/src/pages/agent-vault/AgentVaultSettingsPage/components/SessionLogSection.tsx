@@ -39,12 +39,12 @@ import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermi
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   agentVaultKeys,
-  fetchAgentVaultActivityReadAccess,
-  useGetAgentVaultActivityLoggingSettings
+  fetchAgentVaultSessionLogReadAccess,
+  useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
 import {
   isAgentVaultRecording,
-  TAgentVaultActivityLoggingSettings
+  TAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault/types";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -55,12 +55,12 @@ import { EditAppConnectionCredentialsModal } from "@app/pages/organization/AppCo
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 import { AwsSetupDialog } from "./AwsSetupDialog";
-import { SessionLoggingConnectionsSheet } from "./SessionLoggingConnectionsSheet";
-import { SessionLoggingModal } from "./SessionLoggingModal";
+import { SessionLogConnectionsSheet } from "./SessionLogConnectionsSheet";
+import { SessionLogModal } from "./SessionLogModal";
 
 const AWS_CONNECTION = APP_CONNECTION_MAP[AppConnection.AWS];
 
-export const SessionLoggingSection = () => {
+export const SessionLogSection = () => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
@@ -72,7 +72,7 @@ export const SessionLoggingSection = () => {
     bucket: string | null;
     keyPrefix: string | null;
   } | null>(null);
-  const { data: config, isPending } = useGetAgentVaultActivityLoggingSettings();
+  const { data: config, isPending } = useGetAgentVaultSessionLogSettings();
   const { data: connections } = useListAvailableAppConnections(
     AppConnection.AWS,
     currentProject.id
@@ -81,14 +81,14 @@ export const SessionLoggingSection = () => {
 
   const hasDestination = Boolean(config?.bucket);
 
-  // Saving with logging enabled already proved Infisical can write, so the dialog only opens for a
+  // Saving with session logs on already proved Infisical can write, so the dialog only opens for a
   // step the read check finds missing.
-  const offerAwsSetup = async (settings: TAgentVaultActivityLoggingSettings) => {
+  const offerAwsSetup = async (settings: TAgentVaultSessionLogSettings) => {
     if (!isAgentVaultRecording(settings)) return;
     const readAccess = await queryClient
       .fetchQuery({
-        queryKey: agentVaultKeys.activityLoggingCorsProbe(currentOrg.id),
-        queryFn: fetchAgentVaultActivityReadAccess
+        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id),
+        queryFn: fetchAgentVaultSessionLogReadAccess
       })
       .catch(() => null);
     if (readAccess === "cors-missing" || readAccess === "access-denied") {
@@ -124,7 +124,7 @@ export const SessionLoggingSection = () => {
           <CardAction>
             <ButtonGroup>
               <Button variant="av" isDisabled={isPending} onClick={() => setIsModalOpen(true)}>
-                {!config || hasDestination ? "Configure" : "Set Up Logging"}
+                {!config || hasDestination ? "Configure" : "Set Up Session Logs"}
               </Button>
               {hasConnectionMenu && (
                 <DropdownMenu>
@@ -153,8 +153,8 @@ export const SessionLoggingSection = () => {
                         </TooltipTrigger>
                         {isOrgConnection && (
                           <TooltipContent side="left">
-                            Session logging uses an organization connection. Edit its credentials
-                            under Integrations.
+                            Session logs use an organization connection. Edit its credentials under
+                            Integrations.
                           </TooltipContent>
                         )}
                       </Tooltip>
@@ -215,7 +215,7 @@ export const SessionLoggingSection = () => {
         )}
       </Card>
 
-      <SessionLoggingModal
+      <SessionLogModal
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
         onSaved={offerAwsSetup}
@@ -235,7 +235,7 @@ export const SessionLoggingSection = () => {
         appConnection={editableConnection}
       />
 
-      <SessionLoggingConnectionsSheet
+      <SessionLogConnectionsSheet
         isOpen={isConnectionsSheetOpen}
         onOpenChange={setIsConnectionsSheetOpen}
       />

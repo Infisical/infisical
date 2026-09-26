@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { afterEach, describe, it, vi } from "vitest";
 
 import {
-  createActivityChunkCache,
-  decryptActivityPage,
-  parseActivityRecords,
+  createSessionLogChunkCache,
+  decryptSessionLogPage,
+  parseSessionLogRecords,
   recordsMatchChunk
-} from "./activityDecrypt";
-import { TAgentVaultActivityPage } from "./types";
+} from "./sessionLogDecrypt";
+import { TAgentVaultSessionLogPage } from "./types";
 
 const record = {
   ts: "2026-09-23T10:00:00.000Z",
@@ -23,27 +23,27 @@ const record = {
   accessBundle: null
 };
 
-describe("parseActivityRecords", () => {
+describe("parseSessionLogRecords", () => {
   it("accepts records in the shape the proxy writes", () => {
-    assert.deepEqual(parseActivityRecords([record]), [record]);
+    assert.deepEqual(parseSessionLogRecords([record]), [record]);
   });
 
   it("refuses a record whose host is not a string, which search would throw on", () => {
-    assert.equal(parseActivityRecords([record, { ...record, host: 42 }]), null);
+    assert.equal(parseSessionLogRecords([record, { ...record, host: 42 }]), null);
   });
 
   it("refuses a record whose timestamp is not a date, which the table would throw on", () => {
-    assert.equal(parseActivityRecords([{ ...record, ts: "nope" }]), null);
+    assert.equal(parseSessionLogRecords([{ ...record, ts: "nope" }]), null);
   });
 
   it("refuses anything that is not an array of records", () => {
-    assert.equal(parseActivityRecords({ records: [record] }), null);
+    assert.equal(parseSessionLogRecords({ records: [record] }), null);
   });
 });
 
 describe("recordsMatchChunk", () => {
   const chunk = { proxyId: "proxy-1", recordCount: 2, firstSeq: 10, lastSeq: 12 };
-  const records = parseActivityRecords([
+  const records = parseSessionLogRecords([
     { ...record, seq: 10 },
     { ...record, seq: 12 }
   ])!;
@@ -68,10 +68,10 @@ describe("recordsMatchChunk", () => {
   });
 });
 
-describe("decryptActivityPage", () => {
+describe("decryptSessionLogPage", () => {
   const chunkId = "01K5ABCDEFGHJKMNPQRSTVWXYZ";
-  const page: TAgentVaultActivityPage = {
-    activity: {
+  const page: TAgentVaultSessionLogPage = {
+    sessionLogs: {
       enabled: true,
       sessionKey: btoa("\0".repeat(32)),
       storageUnavailable: null
@@ -102,9 +102,9 @@ describe("decryptActivityPage", () => {
   const openTwice = async (download: () => Promise<Response>) => {
     const fetchMock = vi.fn(download);
     vi.stubGlobal("fetch", fetchMock);
-    const cache = createActivityChunkCache("session-1");
-    const first = await decryptActivityPage(page, cache);
-    await decryptActivityPage(page, cache);
+    const cache = createSessionLogChunkCache("session-1");
+    const first = await decryptSessionLogPage(page, cache);
+    await decryptSessionLogPage(page, cache);
     return { reason: first.decrypted[chunkId].gap?.reason, downloads: fetchMock.mock.calls.length };
   };
 
@@ -138,7 +138,7 @@ describe("decryptActivityPage", () => {
     });
   });
 
-  // The pinned vector from agent-vault-activity-crypto.test.ts and Go's TestSealMatchesNodeVector.
+  // The pinned vector from agent-vault-session-log-crypto.test.ts and Go's TestSealMatchesNodeVector.
   it("opens a chunk sealed with the pinned vector", async () => {
     const sealed = Uint8Array.from(
       atob(
@@ -150,8 +150,8 @@ describe("decryptActivityPage", () => {
       "fetch",
       vi.fn(async () => new Response(sealed))
     );
-    const vectorPage: TAgentVaultActivityPage = {
-      activity: {
+    const vectorPage: TAgentVaultSessionLogPage = {
+      sessionLogs: {
         enabled: true,
         sessionKey: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
         storageUnavailable: null
@@ -169,7 +169,7 @@ describe("decryptActivityPage", () => {
       ]
     };
 
-    const result = await decryptActivityPage(vectorPage, createActivityChunkCache("sess-1"));
+    const result = await decryptSessionLogPage(vectorPage, createSessionLogChunkCache("sess-1"));
 
     assert.equal(result.decrypted[chunkId].gap, null);
     assert.equal(result.decrypted[chunkId].records[0].path, "/zen");

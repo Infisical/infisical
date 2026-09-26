@@ -2,24 +2,24 @@ import { useMemo } from "react";
 import { z } from "zod";
 
 import {
-  TAgentVaultActivityChunk,
-  TAgentVaultActivityGap,
-  TAgentVaultActivityGapReason,
-  TAgentVaultActivityPage,
-  TAgentVaultActivityRecord,
-  TAgentVaultDecryptedActivityPage,
-  TAgentVaultDecryptedChunk
+  TAgentVaultDecryptedChunk,
+  TAgentVaultDecryptedSessionLogPage,
+  TAgentVaultSessionLogChunk,
+  TAgentVaultSessionLogGap,
+  TAgentVaultSessionLogGapReason,
+  TAgentVaultSessionLogPage,
+  TAgentVaultSessionLogRecord
 } from "./types";
 
-export const AGENT_VAULT_ACTIVITY_MAX_RECORDS = 100_000;
+export const AGENT_VAULT_SESSION_LOG_MAX_RECORDS = 100_000;
 
-export const AGENT_VAULT_ACTIVITY_MAX_LOADED_BYTES = 64 * 1024 * 1024;
+export const AGENT_VAULT_SESSION_LOG_MAX_LOADED_BYTES = 64 * 1024 * 1024;
 
 const CHUNK_DOWNLOAD_TIMEOUT_MS = 60_000;
 
 const AAD_VERSION = "v1";
 
-export const activityRecordKey = (record: TAgentVaultActivityRecord) =>
+export const sessionLogRecordKey = (record: TAgentVaultSessionLogRecord) =>
   `${record.proxyId}-${record.seq}-${record.ts}`;
 
 const base64ToBytes = (value: string) => {
@@ -36,7 +36,7 @@ const buildAad = async (sessionId: string, chunkId: string) =>
     new TextEncoder().encode(`${sessionId}|${chunkId}|${AAD_VERSION}`)
   );
 
-const ActivityRecordsSchema = z.array(
+const SessionLogRecordsSchema = z.array(
   z.object({
     ts: z.string().refine((value) => !Number.isNaN(Date.parse(value))),
     seq: z.number().int().nonnegative(),
@@ -52,14 +52,14 @@ const ActivityRecordsSchema = z.array(
   })
 );
 
-export const parseActivityRecords = (json: unknown): TAgentVaultActivityRecord[] | null => {
-  const parsed = ActivityRecordsSchema.safeParse(json);
-  return parsed.success ? (parsed.data as TAgentVaultActivityRecord[]) : null;
+export const parseSessionLogRecords = (json: unknown): TAgentVaultSessionLogRecord[] | null => {
+  const parsed = SessionLogRecordsSchema.safeParse(json);
+  return parsed.success ? (parsed.data as TAgentVaultSessionLogRecord[]) : null;
 };
 
 export const recordsMatchChunk = (
-  records: TAgentVaultActivityRecord[],
-  chunk: Pick<TAgentVaultActivityChunk, "proxyId" | "recordCount" | "firstSeq" | "lastSeq">
+  records: TAgentVaultSessionLogRecord[],
+  chunk: Pick<TAgentVaultSessionLogChunk, "proxyId" | "recordCount" | "firstSeq" | "lastSeq">
 ) =>
   records.length === chunk.recordCount &&
   records.every(
@@ -70,8 +70,8 @@ export const recordsMatchChunk = (
   );
 
 const gapFor = (
-  chunk: TAgentVaultActivityChunk,
-  reason: TAgentVaultActivityGapReason
+  chunk: TAgentVaultSessionLogChunk,
+  reason: TAgentVaultSessionLogGapReason
 ): TAgentVaultDecryptedChunk => ({
   records: [],
   gap: {
@@ -85,7 +85,7 @@ const gapFor = (
   arrivedAt: null
 });
 
-export const isRetryableActivityGap = (reason?: TAgentVaultActivityGapReason) =>
+export const isRetryableSessionLogGap = (reason?: TAgentVaultSessionLogGapReason) =>
   reason === "fetch" || reason === "missing" || reason === "refused";
 
 const withTimeout = (signal: AbortSignal | undefined, ms: number) => {
@@ -104,7 +104,7 @@ const withTimeout = (signal: AbortSignal | undefined, ms: number) => {
 };
 
 const openChunk = async (
-  chunk: TAgentVaultActivityChunk,
+  chunk: TAgentVaultSessionLogChunk,
   key: CryptoKey,
   sessionId: string,
   signal?: AbortSignal
@@ -151,7 +151,7 @@ const openChunk = async (
   }
 
   try {
-    const records = parseActivityRecords(JSON.parse(new TextDecoder().decode(plaintext)));
+    const records = parseSessionLogRecords(JSON.parse(new TextDecoder().decode(plaintext)));
     if (!records) return gapFor(chunk, "json");
     if (!recordsMatchChunk(records, chunk)) return gapFor(chunk, "mismatch");
     return {
@@ -164,7 +164,7 @@ const openChunk = async (
   }
 };
 
-export const createActivityChunkCache = (sessionId: string) => {
+export const createSessionLogChunkCache = (sessionId: string) => {
   let isSettled = false;
   return {
     sessionId,
@@ -177,18 +177,18 @@ export const createActivityChunkCache = (sessionId: string) => {
   };
 };
 
-export type TAgentVaultActivityChunkCache = ReturnType<typeof createActivityChunkCache>;
+export type TAgentVaultSessionLogChunkCache = ReturnType<typeof createSessionLogChunkCache>;
 
-export const decryptActivityPage = async <P extends TAgentVaultActivityPage>(
+export const decryptSessionLogPage = async <P extends TAgentVaultSessionLogPage>(
   page: P,
-  cache: TAgentVaultActivityChunkCache,
+  cache: TAgentVaultSessionLogChunkCache,
   signal?: AbortSignal
-): Promise<TAgentVaultDecryptedActivityPage<P>> => {
+): Promise<TAgentVaultDecryptedSessionLogPage<P>> => {
   const decrypted: Record<string, TAgentVaultDecryptedChunk> = {};
-  const { sessionKey } = page.activity;
+  const { sessionKey } = page.sessionLogs;
   if (!sessionKey || !page.chunks.length) {
     // Rows that could not be opened have not been shown, so the load that finally opens them is the first one.
-    if (!page.activity.storageUnavailable) cache.settle();
+    if (!page.sessionLogs.storageUnavailable) cache.settle();
     return { ...page, decrypted };
   }
 
@@ -212,7 +212,7 @@ export const decryptActivityPage = async <P extends TAgentVaultActivityPage>(
         ? await openChunk(chunk, key, cache.sessionId, signal)
         : gapFor(chunk, "gcm");
       // Failed downloads stay uncached so the next fetch retries with a freshly presigned URL.
-      if (!isRetryableActivityGap(result.gap?.reason)) cache.chunks.set(chunk.chunkId, result);
+      if (!isRetryableSessionLogGap(result.gap?.reason)) cache.chunks.set(chunk.chunkId, result);
       decrypted[chunk.chunkId] = result;
       opened.push(chunk.chunkId);
     })
@@ -231,10 +231,10 @@ export const decryptActivityPage = async <P extends TAgentVaultActivityPage>(
   return { ...page, decrypted };
 };
 
-export const mergeActivityPages = <P extends TAgentVaultActivityPage>(
-  previous: TAgentVaultDecryptedActivityPage<P> | undefined,
-  page: TAgentVaultDecryptedActivityPage<P>
-): TAgentVaultDecryptedActivityPage<P> => {
+export const mergeSessionLogPages = <P extends TAgentVaultSessionLogPage>(
+  previous: TAgentVaultDecryptedSessionLogPage<P> | undefined,
+  page: TAgentVaultDecryptedSessionLogPage<P>
+): TAgentVaultDecryptedSessionLogPage<P> => {
   if (!previous) return page;
   const reread = new Set(page.chunks.map((chunk) => chunk.chunkId));
   return {
@@ -244,17 +244,17 @@ export const mergeActivityPages = <P extends TAgentVaultActivityPage>(
   };
 };
 
-export type TAgentVaultActivityTimeline = {
-  records: TAgentVaultActivityRecord[];
-  gaps: TAgentVaultActivityGap[];
+export type TAgentVaultSessionLogTimeline = {
+  records: TAgentVaultSessionLogRecord[];
+  gaps: TAgentVaultSessionLogGap[];
   arrivals: Map<string, number>;
   isTruncated: boolean;
   isOverByteBudget: boolean;
 };
 
-export const useAgentVaultActivityTimeline = (
-  pages: TAgentVaultDecryptedActivityPage[] | undefined
-): TAgentVaultActivityTimeline =>
+export const useAgentVaultSessionLogTimeline = (
+  pages: TAgentVaultDecryptedSessionLogPage[] | undefined
+): TAgentVaultSessionLogTimeline =>
   useMemo(() => {
     const opened = new Map<string, TAgentVaultDecryptedChunk>();
     const openedBytes = new Map<string, number>();
@@ -265,7 +265,8 @@ export const useAgentVaultActivityTimeline = (
         const known = opened.get(chunk.chunkId);
         if (
           known &&
-          (!isRetryableActivityGap(known.gap?.reason) || isRetryableActivityGap(result.gap?.reason))
+          (!isRetryableSessionLogGap(known.gap?.reason) ||
+            isRetryableSessionLogGap(result.gap?.reason))
         )
           return;
         opened.set(chunk.chunkId, result);
@@ -273,8 +274,8 @@ export const useAgentVaultActivityTimeline = (
       })
     );
 
-    const records: TAgentVaultActivityRecord[] = [];
-    const gaps: TAgentVaultActivityGap[] = [];
+    const records: TAgentVaultSessionLogRecord[] = [];
+    const gaps: TAgentVaultSessionLogGap[] = [];
     const arrivals = new Map<string, number>();
     let loadedBytes = 0;
 
@@ -283,12 +284,12 @@ export const useAgentVaultActivityTimeline = (
       if (!result.gap) loadedBytes += openedBytes.get(chunkId) ?? 0;
       if (result.arrivedAt !== null) {
         const { arrivedAt } = result;
-        result.records.forEach((record) => arrivals.set(activityRecordKey(record), arrivedAt));
+        result.records.forEach((record) => arrivals.set(sessionLogRecordKey(record), arrivedAt));
       }
       if (result.gap) gaps.push(result.gap);
     });
 
-    const times = new Map<TAgentVaultActivityRecord, number>();
+    const times = new Map<TAgentVaultSessionLogRecord, number>();
     records.forEach((record) => times.set(record, Date.parse(record.ts)));
     records.sort((a, b) => {
       const byTime = (times.get(b) as number) - (times.get(a) as number);
@@ -297,12 +298,12 @@ export const useAgentVaultActivityTimeline = (
       return b.seq - a.seq;
     });
 
-    const isOverByteBudget = loadedBytes >= AGENT_VAULT_ACTIVITY_MAX_LOADED_BYTES;
+    const isOverByteBudget = loadedBytes >= AGENT_VAULT_SESSION_LOG_MAX_LOADED_BYTES;
     return {
-      records: records.slice(0, AGENT_VAULT_ACTIVITY_MAX_RECORDS),
+      records: records.slice(0, AGENT_VAULT_SESSION_LOG_MAX_RECORDS),
       gaps,
       arrivals,
-      isTruncated: records.length > AGENT_VAULT_ACTIVITY_MAX_RECORDS || isOverByteBudget,
+      isTruncated: records.length > AGENT_VAULT_SESSION_LOG_MAX_RECORDS || isOverByteBudget,
       isOverByteBudget
     };
   }, [pages]);

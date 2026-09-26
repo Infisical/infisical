@@ -9,8 +9,8 @@ import {
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
 import {
-  useGetAgentVaultActivityLoggingHealth,
-  useGetAgentVaultActivityLoggingSettings
+  useGetAgentVaultSessionLogHealth,
+  useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
 import { isAgentVaultRecording } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -22,8 +22,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   const { hasProjectRole } = useProjectPermission();
   const { setOpen: setIsIntroOpen } = useAgentVaultIntro();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
-  const { data: sessionLogging } = useGetAgentVaultActivityLoggingSettings(isAdmin);
-  const { data: sessionLoggingHealth } = useGetAgentVaultActivityLoggingHealth(isAdmin);
+  const { data: sessionLogSettings } = useGetAgentVaultSessionLogSettings(isAdmin);
+  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
@@ -35,8 +35,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   ];
 
   let settingsDot: NavItem["dotVariant"];
-  if (sessionLogging && !isAgentVaultRecording(sessionLogging)) settingsDot = "warning";
-  else if (sessionLoggingHealth?.isStorageFull) settingsDot = "danger";
+  if (sessionLogSettings && !isAgentVaultRecording(sessionLogSettings)) settingsDot = "warning";
+  else if (sessionLogHealth?.isStorageFull) settingsDot = "danger";
 
   const administrationItems: NavItem[] = isAdmin
     ? [

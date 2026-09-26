@@ -43,7 +43,7 @@ export enum AgentVaultSessionScope {
   All = "all"
 }
 
-export enum AgentVaultActivityDecision {
+export enum AgentVaultSessionLogDecision {
   Brokered = "brokered",
   Passthrough = "passthrough",
   Blocked = "blocked",

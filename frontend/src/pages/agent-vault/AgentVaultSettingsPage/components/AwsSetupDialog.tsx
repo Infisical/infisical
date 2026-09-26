@@ -21,10 +21,7 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import {
-  agentVaultKeys,
-  useGetAgentVaultActivityLoggingCorsProbe
-} from "@app/hooks/api/agentVault";
+import { agentVaultKeys, useGetAgentVaultSessionLogCorsProbe } from "@app/hooks/api/agentVault";
 
 export const iamPolicyFor = (bucket: string, keyPrefix: string) => {
   const objects = `arn:aws:s3:::${bucket || "<bucket>"}/${keyPrefix ? `${keyPrefix}/` : ""}*`;
@@ -96,7 +93,7 @@ export const AwsSetupDialog = ({
 }: Props) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
-  const { data: savedReadAccess } = useGetAgentVaultActivityLoggingCorsProbe(isOpen && !isUnsaved);
+  const { data: savedReadAccess } = useGetAgentVaultSessionLogCorsProbe(isOpen && !isUnsaved);
   // The check reads the saved bucket, so it says nothing about a bucket that is only typed in.
   const readAccess = isUnsaved ? null : savedReadAccess;
   const isCorsMissing = readAccess === "cors-missing";
@@ -114,7 +111,7 @@ export const AwsSetupDialog = ({
     // Re-checked on close, so the page's warning clears once the rule or policy is attached.
     if (!next) {
       queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.activityLoggingCorsProbe(currentOrg.id)
+        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id)
       });
     }
     onOpenChange(next);
@@ -137,7 +134,7 @@ export const AwsSetupDialog = ({
           <DialogTitle>AWS Setup</DialogTitle>
           <DialogDescription>
             {isUnsaved
-              ? "Saving with logging enabled checks that Infisical can write to the bucket, so attach the IAM policy first. The CORS rule lets your browser read records back."
+              ? "Saving with session logs on checks that Infisical can write to the bucket, so attach the IAM policy first. The CORS rule lets your browser read records back."
               : "Two things to set up in AWS so Infisical can write records, and so your browser can read them back."}
           </DialogDescription>
         </DialogHeader>

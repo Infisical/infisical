@@ -44,7 +44,7 @@ import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/con
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { usePopUp } from "@app/hooks";
-import { useGetAgentVaultActivityLoggingSettings } from "@app/hooks/api/agentVault";
+import { useGetAgentVaultSessionLogSettings } from "@app/hooks/api/agentVault";
 import { useListAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
@@ -61,10 +61,10 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
 };
 
-export const SessionLoggingConnectionsSheet = ({ isOpen, onOpenChange }: Props) => {
+export const SessionLogConnectionsSheet = ({ isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const { data: settings } = useGetAgentVaultActivityLoggingSettings();
+  const { data: settings } = useGetAgentVaultSessionLogSettings();
   const { data: connections = [], isPending } = useListAppConnections(currentProject.id);
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addConnection",
@@ -117,7 +117,7 @@ export const SessionLoggingConnectionsSheet = ({ isOpen, onOpenChange }: Props) 
               <EmptyHeader>
                 <EmptyTitle>No connections yet</EmptyTitle>
                 <EmptyDescription>
-                  Add an AWS connection, then choose it when you configure session logging.
+                  Add an AWS connection, then choose it when you set up session logs.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -221,8 +221,8 @@ export const SessionLoggingConnectionsSheet = ({ isOpen, onOpenChange }: Props) 
                               </TooltipTrigger>
                               {isInUse && (
                                 <TooltipContent side="left">
-                                  Session logging uses this connection. Choose another one in
-                                  Configure before deleting it.
+                                  Session logs use this connection. Choose another one in Configure
+                                  before deleting it.
                                 </TooltipContent>
                               )}
                             </Tooltip>

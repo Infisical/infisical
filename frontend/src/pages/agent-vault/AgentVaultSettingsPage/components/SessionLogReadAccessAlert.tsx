@@ -3,15 +3,15 @@ import { TriangleAlertIcon } from "lucide-react";
 
 import { Alert, AlertAction, AlertDescription, Button } from "@app/components/v3";
 import {
-  useGetAgentVaultActivityLoggingCorsProbe,
-  useGetAgentVaultActivityLoggingSettings
+  useGetAgentVaultSessionLogCorsProbe,
+  useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultActivityReadAccess } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultSessionLogReadAccess } from "@app/hooks/api/agentVault/types";
 
 import { AwsSetupDialog } from "./AwsSetupDialog";
 
 const READ_ACCESS_ALERTS: Record<
-  Exclude<TAgentVaultActivityReadAccess, "readable">,
+  Exclude<TAgentVaultSessionLogReadAccess, "readable">,
   { message: string; action: string }
 > = {
   "cors-missing": {
@@ -26,10 +26,10 @@ const READ_ACCESS_ALERTS: Record<
   }
 };
 
-export const SessionLoggingReadAccessAlert = () => {
+export const SessionLogReadAccessAlert = () => {
   const [isAwsSetupOpen, setIsAwsSetupOpen] = useState(false);
-  const { data: config } = useGetAgentVaultActivityLoggingSettings();
-  const { data: readAccess } = useGetAgentVaultActivityLoggingCorsProbe();
+  const { data: config } = useGetAgentVaultSessionLogSettings();
+  const { data: readAccess } = useGetAgentVaultSessionLogCorsProbe();
   const readAlert = readAccess && readAccess !== "readable" ? READ_ACCESS_ALERTS[readAccess] : null;
 
   return (

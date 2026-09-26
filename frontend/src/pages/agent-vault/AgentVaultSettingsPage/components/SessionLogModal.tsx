@@ -38,10 +38,10 @@ import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermi
 import { APP_CONNECTION_MAP, AWS_REGIONS } from "@app/helpers/appConnections";
 import { useDiscardChangesGuard, usePopUp } from "@app/hooks";
 import {
-  useGetAgentVaultActivityLoggingSettings,
-  useUpdateAgentVaultActivityLoggingSettings
+  useGetAgentVaultSessionLogSettings,
+  useUpdateAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultActivityLoggingSettings } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultSessionLogSettings } from "@app/hooks/api/agentVault/types";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
@@ -78,7 +78,7 @@ const buildSchema = (hasSavedBucket: boolean) =>
         )
     })
     .refine((values) => !values.enabled || values.appConnectionId !== NO_CONNECTION, {
-      message: "Session logging needs an AWS connection",
+      message: "Session logs need an AWS connection",
       path: ["appConnectionId"]
     })
     .superRefine((values, ctx) => {
@@ -93,7 +93,7 @@ const buildSchema = (hasSavedBucket: boolean) =>
         ctx.addIssue({
           code: "custom",
           path: ["bucket"],
-          message: "Session logging needs a bucket"
+          message: "Session logs need a bucket"
         });
       } else if (length > 0 && !S3_BUCKET_NAME.test(values.bucket)) {
         ctx.addIssue({
@@ -110,24 +110,19 @@ type FormData = z.infer<ReturnType<typeof buildSchema>>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSaved: (settings: TAgentVaultActivityLoggingSettings) => void;
+  onSaved: (settings: TAgentVaultSessionLogSettings) => void;
   onEditCredentials?: () => void;
 };
 
-export const SessionLoggingModal = ({
-  isOpen,
-  onOpenChange,
-  onSaved,
-  onEditCredentials
-}: Props) => {
+export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentials }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const { data: settings } = useGetAgentVaultActivityLoggingSettings();
+  const { data: settings } = useGetAgentVaultSessionLogSettings();
   const { data: connections, isPending: isLoadingConnections } = useListAvailableAppConnections(
     AppConnection.AWS,
     currentProject.id
   );
-  const updateConfig = useUpdateAgentVaultActivityLoggingSettings();
+  const updateConfig = useUpdateAgentVaultSessionLogSettings();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addConnection",
     "awsSetup"
@@ -189,7 +184,7 @@ export const SessionLoggingModal = ({
         region: values.region,
         keyPrefix: values.keyPrefix
       });
-      createNotification({ text: "Session logging settings saved", type: "success" });
+      createNotification({ text: "Session log settings saved", type: "success" });
       onOpenChange(false);
       onSaved(result);
     } catch {
@@ -219,13 +214,13 @@ export const SessionLoggingModal = ({
                 render={({ field }) => (
                   <Field orientation="horizontal">
                     <FieldContent>
-                      <Label htmlFor="agent-vault-session-logging-enabled">Enable</Label>
+                      <Label htmlFor="agent-vault-session-log-enabled">Enable</Label>
                       <FieldDescription>
                         When enabled, requests made by the agents are saved to the bucket below.
                       </FieldDescription>
                     </FieldContent>
                     <Toggle
-                      id="agent-vault-session-logging-enabled"
+                      id="agent-vault-session-log-enabled"
                       variant="av"
                       checked={field.value ?? false}
                       onCheckedChange={field.onChange}
@@ -326,18 +321,18 @@ export const SessionLoggingModal = ({
                 render={({ field, fieldState }) => (
                   <Field>
                     <FieldLabel
-                      id="agent-vault-session-logging-region-label"
-                      htmlFor="agent-vault-session-logging-region"
+                      id="agent-vault-session-log-region-label"
+                      htmlFor="agent-vault-session-log-region"
                     >
                       Region
                     </FieldLabel>
                     <FieldContent>
                       <AwsRegionSelect
-                        id="agent-vault-session-logging-region"
+                        id="agent-vault-session-log-region"
                         value={field.value}
                         onChange={field.onChange}
                         isError={Boolean(fieldState.error)}
-                        aria-labelledby="agent-vault-session-logging-region-label"
+                        aria-labelledby="agent-vault-session-log-region-label"
                       />
                       <FieldError>{fieldState.error?.message}</FieldError>
                     </FieldContent>
@@ -451,7 +446,7 @@ export const SessionLoggingModal = ({
         onOpenChange={setIsDiscardDialogOpen}
         onDiscard={confirmDiscard}
         title="Discard Changes?"
-        description="Your changes to the session logging settings will be lost."
+        description="Your changes to the session log settings will be lost."
       />
     </Dialog>
   );

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
-import { AgentVaultActivityDecision } from "@app/hooks/api/agentVault/enums";
-import { TAgentVaultActivityRecord } from "@app/hooks/api/agentVault/types";
+import { AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault/enums";
+import { TAgentVaultSessionLogRecord } from "@app/hooks/api/agentVault/types";
 
-import { chunkIdTime, findRowShift, groupActivityGaps } from "./ActivityTab.utils";
+import { chunkIdTime, findRowShift, groupSessionLogGaps } from "./SessionLogsPanel.utils";
 
-const record = (seq: number): TAgentVaultActivityRecord => ({
+const record = (seq: number): TAgentVaultSessionLogRecord => ({
   ts: new Date(Date.UTC(2026, 8, 23, 10, 0, 0, seq)).toISOString(),
   seq,
   proxyId: "proxy-1",
@@ -15,7 +15,7 @@ const record = (seq: number): TAgentVaultActivityRecord => ({
   port: "443",
   path: "/",
   status: 200,
-  decision: AgentVaultActivityDecision.Passthrough,
+  decision: AgentVaultSessionLogDecision.Passthrough,
   service: null,
   accessBundle: null
 });
@@ -61,7 +61,7 @@ describe("chunkIdTime", () => {
   });
 });
 
-describe("groupActivityGaps", () => {
+describe("groupSessionLogGaps", () => {
   const gap = (reason: "gcm" | "missing", recordCount: number, chunkId: string) => ({
     chunkId,
     proxyId: "proxy-1",
@@ -73,7 +73,7 @@ describe("groupActivityGaps", () => {
 
   it("adds up the requests for each reason, in the order the reasons first appear", () => {
     assert.deepEqual(
-      groupActivityGaps([
+      groupSessionLogGaps([
         gap("gcm", 10, "a"),
         gap("gcm", 11, "b"),
         gap("missing", 3, "c"),

@@ -71,9 +71,9 @@ import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
-  useGetAgentVaultActivityLoggingHealth,
-  useGetAgentVaultActivityLoggingSettings,
   useGetAgentVaultSession,
+  useGetAgentVaultSessionLogHealth,
+  useGetAgentVaultSessionLogSettings,
   useListAgentVaultAccessBundles,
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
@@ -85,7 +85,7 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
-import { SessionLoggingReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLoggingReadAccessAlert";
+import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogReadAccessAlert";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
@@ -137,8 +137,8 @@ export const AgentVaultSessionsPage = () => {
     offset: (page - 1) * perPage
   });
   const { data: accessBundles } = useListAgentVaultAccessBundles({ limit: 1 });
-  const { data: sessionLogging } = useGetAgentVaultActivityLoggingSettings(isAdmin);
-  const { data: sessionLoggingHealth } = useGetAgentVaultActivityLoggingHealth(isAdmin);
+  const { data: sessionLogSettings } = useGetAgentVaultSessionLogSettings(isAdmin);
+  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
 
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -185,19 +185,19 @@ export const AgentVaultSessionsPage = () => {
         description="Create sessions that let your agents reach the services in an access bundle."
       />
 
-      {sessionLoggingHealth?.isStorageFull &&
-        sessionLogging &&
-        isAgentVaultRecording(sessionLogging) && (
+      {sessionLogHealth?.isStorageFull &&
+        sessionLogSettings &&
+        isAgentVaultRecording(sessionLogSettings) && (
           <Alert variant="danger">
             <CircleAlertIcon />
             <AlertDescription>
-              Session logging has reached its limit for this organization. Contact Infisical
+              Session logs have reached their limit for this organization. Contact Infisical
               support.
             </AlertDescription>
           </Alert>
         )}
 
-      {sessionLogging && !isAgentVaultRecording(sessionLogging) && (
+      {sessionLogSettings && !isAgentVaultRecording(sessionLogSettings) && (
         <Alert variant="warning">
           <TriangleAlertIcon />
           <AlertDescription>
@@ -218,7 +218,7 @@ export const AgentVaultSessionsPage = () => {
         </Alert>
       )}
 
-      {isAdmin && <SessionLoggingReadAccessAlert />}
+      {isAdmin && <SessionLogReadAccessAlert />}
 
       <Card>
         <CardHeader>

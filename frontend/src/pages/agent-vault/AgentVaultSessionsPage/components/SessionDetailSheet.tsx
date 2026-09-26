@@ -24,8 +24,8 @@ import { AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
-import { ActivityTab } from "./ActivityTab";
 import { SessionExpiry } from "./SessionExpiry";
+import { SessionLogsPanel } from "./SessionLogsPanel";
 import { SessionStatusBadge } from "./SessionStatusBadge";
 
 type Props = {
@@ -170,7 +170,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke }: Pro
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col">
-                <ActivityTab session={session} />
+                <SessionLogsPanel session={session} />
               </div>
             </div>
           </>
