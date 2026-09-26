@@ -24,7 +24,7 @@ const open = (key: Buffer, iv: Buffer, aad: Buffer, sealed: Buffer) => {
 
 const CONTEXT = {
   sessionId: "sess-1",
-  chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ"
+  chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab"
 };
 
 const KEY = Buffer.from("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", "hex");
@@ -72,12 +72,12 @@ describe("the sealed chunk wire contract", () => {
 
   // Go's TestSealMatchesNodeVector and the browser's decryptSessionLogPage test both use these exact bytes.
   test("matches the pinned vector the Go proxy and the browser are checked against", () => {
-    expect(buildAad(CONTEXT).toString("hex")).toBe("0bc4c5b3d6ea7cd6bfc440da46d6ce9b73f17c5efa64e90e88373ee8ba09a837");
+    expect(buildAad(CONTEXT).toString("hex")).toBe("38d8f3b86fbbd1061f9d2a8bd91e6c49c51b6231936a7ecfc21c56e129f37a1c");
     expect(IV.toString("base64").replace(/=+$/, "")).toBe("qrvM3e7/ABEiM0RV");
 
     const sealed = seal(KEY, IV, buildAad(CONTEXT), Buffer.from(JSON.stringify(RECORDS)));
     expect(sealed.toString("base64")).toBe(
-      "PLRwxBbgu+W68Br1N9gY1oUy8wjJxQClAtBh0NfJS1UcWOCPn3laS615sIqwFONhPIPNWRI3CA+a5tUJ7aoim0sQkE4d9gzou2mc/AWiCdToVBJPtdumA9jIzh3yAI81YPwcoDXEVnq2+7ooNNJShGdLX95itbrna/t4nFKRKSSgNzbH23eMtSMcSo72puk/2iwh4sVbTKzC2kwvbf1U6Mgd21zkIq2jDKKwhcT6mTfjPivW4FzmmkspQVMoWwANRX+QVyXzrMipZfoq5N/UcUI6rCu64JVIU0dTBbrrs+2AuZxL"
+      "PLRwxBbgu+W68Br1N9gY1oUy8wjJxQClAtBh0NfJS1UcWOCPn3laS615sIqwFONhPIPNWRI3CA+a5tUJ7aoim0sQkE4d9gzou2mc/AWiCdToVBJPtdumA9jIzh3yAI81YPwcoDXEVnq2+7ooNNJShGdLX95itbrna/t4nFKRKSSgNzbH23eMtSMcSo72puk/2iwh4sVbTKzC2kwvbf1U6Mgd21zkIq2jDKKwhcT6mTfjPivW4FzmmkspQVMoWwANRX+QVyXzrMipZfoq5N/UcUI6rCvRUkqg+3ST5GVMelW0mjOO"
     );
   });
 });

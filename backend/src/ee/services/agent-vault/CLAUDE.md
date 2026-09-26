@@ -193,7 +193,7 @@ hostile input: it must never be able to erase or hide its own records.
   create-only so a replay cannot replace a stored chunk (the proxy reads 412 as already uploaded).
 - **A session keeps accepting late chunks for a day after it ends**: revoked, expired, or its owner deleted
   (read from `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
-- **History (`/logs`) orders and cursors on `chunkId`** (a ULID, unique per session); split them and pages
+- **History (`/logs`) orders and cursors on `chunkId`** (a UUIDv7 the proxy mints, unique per session); split them and pages
   drop chunks. The tail (`/logs/tail`) reads by our `createdAt` instead, overlapping by
   `AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS`, so repeats are expected and deduped by chunk id. Both cursors are
   opaque and mode-tagged (`agent-vault-session-log-cursor.ts`); a history read hands out `liveCursor` to start a tail.

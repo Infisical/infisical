@@ -5,6 +5,7 @@ import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
 import { hasTraversalSegment } from "../agent-vault/agent-vault-path-prefix";
 import {
+  AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX,
   AGENT_VAULT_SESSION_LOG_DEFAULT_PAGE_RECORDS,
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES,
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS,
@@ -29,7 +30,10 @@ const CiphertextSha256Schema = z
   .describe(AGENT_VAULT.SESSION_LOGS.ciphertextSha256);
 
 export const AgentVaultSessionLogChunkCreateSchema = z.object({
-  chunkId: z.string().ulid().describe(AGENT_VAULT.SESSION_LOGS.chunkId),
+  chunkId: z
+    .string()
+    .regex(AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX, "Must be a lowercase UUIDv7")
+    .describe(AGENT_VAULT.SESSION_LOGS.chunkId),
   startedAt: z.coerce.date().describe(AGENT_VAULT.SESSION_LOGS.startedAt),
   endedAt: z.coerce.date().describe(AGENT_VAULT.SESSION_LOGS.endedAt),
   firstSeq: z.number().int().min(0).safe().describe(AGENT_VAULT.SESSION_LOGS.firstSeq),

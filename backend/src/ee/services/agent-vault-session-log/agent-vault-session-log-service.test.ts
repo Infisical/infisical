@@ -52,7 +52,7 @@ const enabledConfig = () => ({
 });
 
 const validChunk = () => ({
-  chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ",
+  chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab",
   startedAt: new Date(Date.now() - 60_000),
   endedAt: new Date(Date.now() - 1_000),
   firstSeq: 0,
@@ -167,12 +167,12 @@ describe("recordChunk: who is allowed to write", () => {
     const result = await record(service);
 
     expect(result.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
-    expect(result.chunkId).toBe("01K5ABCDEFGHJKMNPQRSTVWXYZ");
+    expect(result.chunkId).toBe("01a0a9c5-231d-7abc-8def-0123456789ab");
     expect(recordStoredChunk).toHaveBeenCalledWith("cfg-1", expect.anything());
 
     const values = createIfAbsent.mock.calls[0][0];
     expect(String(values.objectKey)).toMatch(
-      /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01K5ABCDEFGHJKMNPQRSTVWXYZ\.json\.enc$/
+      /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01a0a9c5-231d-7abc-8def-0123456789ab\.json\.enc$/
     );
     expect(values.bucket).toBe("my-bucket");
     expect(values.proxyName).toBe("proxy-one");
@@ -199,7 +199,7 @@ describe("recordChunk: the retirement grace window", () => {
     { why: "revoked 23 hours ago", session: { revokedAt: hoursAgo(23), expiresAt: null } }
   ])("still accepts a chunk from a session $why", async ({ session }) => {
     const { service } = build({ session: { ...liveSession(), ...session } });
-    await expect(record(service)).resolves.toMatchObject({ chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ" });
+    await expect(record(service)).resolves.toMatchObject({ chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab" });
   });
 
   test.each([
@@ -225,7 +225,7 @@ describe("recordChunk: the retirement grace window", () => {
     const { service } = build({
       session: { ...liveSession(), userId: null, identityId: null, updatedAt: hoursAgo(23) }
     });
-    await expect(record(service)).resolves.toMatchObject({ chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ" });
+    await expect(record(service)).resolves.toMatchObject({ chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab" });
   });
 
   test("a session whose owner was deleted more than a day ago is refused", async () => {
@@ -359,10 +359,10 @@ describe("recordChunk: re-sending a chunk", () => {
 
     const result = await record(service, chunk);
 
-    expect(result.chunkId).toBe("01K5ABCDEFGHJKMNPQRSTVWXYZ");
+    expect(result.chunkId).toBe("01a0a9c5-231d-7abc-8def-0123456789ab");
     expect(result.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
     expect(findChunk).toHaveBeenCalledWith(
-      { sessionId: "sess-1", chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ" },
+      { sessionId: "sess-1", chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab" },
       expect.anything()
     );
     expect(recordStoredChunk).not.toHaveBeenCalled();
@@ -387,7 +387,7 @@ describe("recordChunk: re-sending a chunk", () => {
     expect(id).toBe("row-1");
     expect(values.bucket).toBe("my-bucket");
     expect(String(values.objectKey)).toMatch(
-      /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01K5[^/]+\.json\.enc$/
+      /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01a0a9c5-231d-7abc-8def-0123456789ab\.json\.enc$/
     );
     expect(presignPut).toHaveBeenCalledWith({ objectKey: values.objectKey, ciphertextBytes: 4096 });
   });

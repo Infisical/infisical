@@ -28,18 +28,18 @@ describe("buildSessionLogObjectKey", () => {
     sessionId: "sess-1",
     proxyId: "proxy-1",
     startedAt: new Date("2026-09-16T10:31:04.221Z"),
-    chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ"
+    chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab"
   };
 
   test("lays out prefix, project, session, proxy, date and chunk", () => {
     expect(buildSessionLogObjectKey({ ...base, keyPrefix: "logs" })).toBe(
-      "logs/proj-1/sess-1/proxy-1/2026-09-16/01K5ABCDEFGHJKMNPQRSTVWXYZ.json.enc"
+      "logs/proj-1/sess-1/proxy-1/2026-09-16/01a0a9c5-231d-7abc-8def-0123456789ab.json.enc"
     );
   });
 
   test("omits the prefix segment entirely when there is no prefix", () => {
     expect(buildSessionLogObjectKey({ ...base, keyPrefix: null })).toBe(
-      "proj-1/sess-1/proxy-1/2026-09-16/01K5ABCDEFGHJKMNPQRSTVWXYZ.json.enc"
+      "proj-1/sess-1/proxy-1/2026-09-16/01a0a9c5-231d-7abc-8def-0123456789ab.json.enc"
     );
   });
 

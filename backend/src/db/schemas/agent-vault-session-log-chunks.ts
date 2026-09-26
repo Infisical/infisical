@@ -9,7 +9,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultSessionLogChunksSchema = z.object({
   id: z.string().uuid(),
-  chunkId: z.string(),
+  chunkId: z.string().uuid(),
   sessionId: z.string().uuid(),
   projectId: z.string(),
   proxyId: z.string(),

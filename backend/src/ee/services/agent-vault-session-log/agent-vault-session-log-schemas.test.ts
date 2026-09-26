@@ -14,7 +14,7 @@ import {
 } from "./agent-vault-session-log-schemas";
 
 const validChunk = {
-  chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ",
+  chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab",
   startedAt: "2026-09-16T10:30:00.000Z",
   endedAt: "2026-09-16T10:31:00.000Z",
   firstSeq: 0,
@@ -34,8 +34,13 @@ describe("the chunk create body", () => {
   });
 
   test.each([
-    { field: "chunkId", value: "not-a-ulid", why: "a chunk id has to be a ULID so it sorts by time" },
-    { field: "chunkId", value: "01K5ABCDEFGHJKMNPQRSTVWXY", why: "a ULID is exactly 26 characters" },
+    { field: "chunkId", value: "not-a-uuid", why: "a chunk id has to be a UUIDv7 so it sorts by time" },
+    { field: "chunkId", value: "3f2b8c1e-9d4a-4e6b-a1c7-5f0e2d9b8a64", why: "a v4 UUID does not sort by time" },
+    {
+      field: "chunkId",
+      value: "01A0A9C5-231D-7ABC-8DEF-0123456789AB",
+      why: "Postgres returns lowercase, so an uppercase id would never decrypt"
+    },
     { field: "recordCount", value: 0, why: "an empty chunk is never worth a row" },
     { field: "recordCount", value: AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS + 1, why: "over the slice size" },
     { field: "recordCount", value: 1.5, why: "not an integer" },
@@ -92,16 +97,19 @@ describe("the session logs history query", () => {
   });
 
   test("reads a cursor back as the chunk to page before", () => {
-    const cursor = encodeHistoryCursor("01K5ABCDEFGHJKMNPQRSTVWXYZ");
-    expect(AgentVaultSessionLogHistoryQuerySchema.parse({ cursor }).cursor).toBe("01K5ABCDEFGHJKMNPQRSTVWXYZ");
+    const cursor = encodeHistoryCursor("01a0a9c5-231d-7abc-8def-0123456789ab");
+    expect(AgentVaultSessionLogHistoryQuerySchema.parse({ cursor }).cursor).toBe(
+      "01a0a9c5-231d-7abc-8def-0123456789ab"
+    );
   });
 
-  test.each(["yesterday", Buffer.from('{"v":1,"m":"h","id":"not-a-ulid"}').toString("base64url")])(
-    "rejects a cursor it did not issue: %s",
-    (cursor) => {
-      expect(AgentVaultSessionLogHistoryQuerySchema.safeParse({ cursor }).success).toBe(false);
-    }
-  );
+  test.each([
+    "yesterday",
+    Buffer.from('{"v":1,"m":"h","id":"not-a-uuid"}').toString("base64url"),
+    Buffer.from('{"v":1,"m":"h","id":"3f2b8c1e-9d4a-4e6b-a1c7-5f0e2d9b8a64"}').toString("base64url")
+  ])("rejects a cursor it did not issue: %s", (cursor) => {
+    expect(AgentVaultSessionLogHistoryQuerySchema.safeParse({ cursor }).success).toBe(false);
+  });
 
   test("says where a tail cursor belongs", () => {
     const result = AgentVaultSessionLogHistoryQuerySchema.safeParse({ cursor: encodeTailCursor(new Date()) });
@@ -129,7 +137,7 @@ describe("the session logs tail query", () => {
 
   test("says where a history cursor belongs", () => {
     const result = AgentVaultSessionLogTailQuerySchema.safeParse({
-      cursor: encodeHistoryCursor("01K5ABCDEFGHJKMNPQRSTVWXYZ")
+      cursor: encodeHistoryCursor("01a0a9c5-231d-7abc-8def-0123456789ab")
     });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].message).toMatch(/session logs endpoint instead/);

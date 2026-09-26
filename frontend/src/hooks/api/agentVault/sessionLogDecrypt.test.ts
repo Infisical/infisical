@@ -69,7 +69,7 @@ describe("recordsMatchChunk", () => {
 });
 
 describe("decryptSessionLogPage", () => {
-  const chunkId = "01K5ABCDEFGHJKMNPQRSTVWXYZ";
+  const chunkId = "01a0a9c5-231d-7abc-8def-0123456789ab";
   const page: TAgentVaultSessionLogPage = {
     sessionLogs: {
       enabled: true,
@@ -142,7 +142,7 @@ describe("decryptSessionLogPage", () => {
   it("opens a chunk sealed with the pinned vector", async () => {
     const sealed = Uint8Array.from(
       atob(
-        "PLRwxBbgu+W68Br1N9gY1oUy8wjJxQClAtBh0NfJS1UcWOCPn3laS615sIqwFONhPIPNWRI3CA+a5tUJ7aoim0sQkE4d9gzou2mc/AWiCdToVBJPtdumA9jIzh3yAI81YPwcoDXEVnq2+7ooNNJShGdLX95itbrna/t4nFKRKSSgNzbH23eMtSMcSo72puk/2iwh4sVbTKzC2kwvbf1U6Mgd21zkIq2jDKKwhcT6mTfjPivW4FzmmkspQVMoWwANRX+QVyXzrMipZfoq5N/UcUI6rCu64JVIU0dTBbrrs+2AuZxL"
+        "PLRwxBbgu+W68Br1N9gY1oUy8wjJxQClAtBh0NfJS1UcWOCPn3laS615sIqwFONhPIPNWRI3CA+a5tUJ7aoim0sQkE4d9gzou2mc/AWiCdToVBJPtdumA9jIzh3yAI81YPwcoDXEVnq2+7ooNNJShGdLX95itbrna/t4nFKRKSSgNzbH23eMtSMcSo72puk/2iwh4sVbTKzC2kwvbf1U6Mgd21zkIq2jDKKwhcT6mTfjPivW4FzmmkspQVMoWwANRX+QVyXzrMipZfoq5N/UcUI6rCvRUkqg+3ST5GVMelW0mjOO"
       ),
       (char) => char.charCodeAt(0)
     );
@@ -164,7 +164,7 @@ describe("decryptSessionLogPage", () => {
           firstSeq: 1,
           lastSeq: 1,
           ciphertextBytes: sealed.length,
-          ciphertextSha256: "zAJPi40E84EYY5c5Ru/eFd89CdaUv/c147qBlQjf8V8"
+          ciphertextSha256: "hCxLSvbYPNaExgeFuyNQJ/UtIKUlYGqj5YpXOeyJPSo"
         }
       ]
     };

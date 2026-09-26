@@ -49,15 +49,11 @@ describe("findRowShift", () => {
 });
 
 describe("chunkIdTime", () => {
-  it("reads the time from the example id in the ULID spec", () => {
+  it("reads the time from the example UUIDv7 in RFC 9562", () => {
     assert.equal(
-      chunkIdTime("01ARZ3NDEKTSV4RRFFQ69G5FAV").toISOString(),
-      "2016-07-30T23:54:10.259Z"
+      chunkIdTime("017f22e2-79b0-7cc3-98c4-dc0c0c07398f").toISOString(),
+      "2022-02-22T19:22:22.000Z"
     );
-  });
-
-  it("reads a lowercase id the same way", () => {
-    assert.equal(chunkIdTime("01arz3ndektsv4rrffq69g5fav").getTime(), 1469922850259);
   });
 });
 

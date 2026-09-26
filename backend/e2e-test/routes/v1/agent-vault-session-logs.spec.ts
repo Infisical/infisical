@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import * as x509 from "@peculiar/x509";
 import { fakeSessionLogStorage } from "e2e-test/fakes/agent-vault-session-log-storage";
 import { createAwsAppConnection, deleteAppConnection } from "e2e-test/testUtils/secret-syncs";
+import { v7 as uuidv7 } from "uuid";
 
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
@@ -129,11 +130,7 @@ const createProxy = async (name: string) => {
   };
 };
 
-let ulidCounter = 0;
-const nextChunkId = () => {
-  ulidCounter += 1;
-  return `01K5${ulidCounter.toString().padStart(22, "0")}`.toUpperCase();
-};
+const nextChunkId = () => uuidv7();
 
 const CHUNK_BYTES = 1024;
 const CHUNK_SHA256 = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU";
@@ -631,7 +628,8 @@ describe("Agent Vault session logs", async () => {
     };
 
     test.each([
-      { why: "the chunk id is not a ULID", patch: { chunkId: "nope" } },
+      { why: "the chunk id is not a UUID", patch: { chunkId: "nope" } },
+      { why: "the chunk id is a v4 UUID", patch: { chunkId: crypto.randomUUID() } },
       { why: "the record count is over the slice size", patch: { recordCount: 1001 } },
       { why: "the record count is zero", patch: { recordCount: 0 } },
       { why: "the IV is the wrong width", patch: { iv: "short" } },
@@ -920,7 +918,11 @@ describe("Agent Vault session logs", async () => {
       expect(firstBody.chunks).toHaveLength(2);
       expect(typeof firstBody.liveCursor).toBe("string");
 
-      const late = await recordChunk(proxy, session.id, chunkBody({ chunkId: `01K4${"0".repeat(21)}1` }));
+      const late = await recordChunk(
+        proxy,
+        session.id,
+        chunkBody({ chunkId: uuidv7({ msecs: Date.now() - 60 * 60_000 }) })
+      );
       fakeSessionLogStorage.put(late.uploadUrl, Buffer.alloc(CHUNK_BYTES));
 
       const newest = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs?limit=20`);

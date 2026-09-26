@@ -33,7 +33,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.AgentVaultSessionLogChunk, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
-      t.string("chunkId", 26).notNullable();
+      t.uuid("chunkId").notNullable();
 
       t.uuid("sessionId").notNullable();
       t.foreign("sessionId").references("id").inTable(TableName.AgentVaultSession).onDelete("CASCADE");

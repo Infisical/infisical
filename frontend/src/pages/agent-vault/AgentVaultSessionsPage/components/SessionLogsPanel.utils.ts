@@ -84,15 +84,8 @@ const HTTP_STATUS_TEXT: Record<number, string> = {
 export const httpStatusLabel = (status: number) =>
   HTTP_STATUS_TEXT[status] ? `${status} ${HTTP_STATUS_TEXT[status]}` : String(status);
 
-const CROCKFORD_BASE32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-
 export const chunkIdTime = (chunkId: string) =>
-  new Date(
-    [...chunkId.slice(0, 10).toUpperCase()].reduce(
-      (ms, char) => ms * 32 + CROCKFORD_BASE32.indexOf(char),
-      0
-    )
-  );
+  new Date(parseInt(chunkId.replace(/-/g, "").slice(0, 12), 16));
 
 export const groupSessionLogGaps = (gaps: TAgentVaultSessionLogGap[]) => {
   const byReason = new Map<TAgentVaultSessionLogGapReason, number>();

@@ -1,12 +1,14 @@
 import { z } from "zod";
 
+import { AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX } from "./agent-vault-session-log-constants";
+
 const CURSOR_VERSION = 1;
 const MAX_CURSOR_LENGTH = 256;
 
 const HistoryCursorPayloadSchema = z.object({
   v: z.literal(CURSOR_VERSION),
   m: z.literal("h"),
-  id: z.string().ulid()
+  id: z.string().regex(AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX)
 });
 
 const TailCursorPayloadSchema = z.object({

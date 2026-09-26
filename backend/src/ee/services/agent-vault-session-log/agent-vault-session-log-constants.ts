@@ -4,6 +4,11 @@ export const AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES = 18; // an empty "[]" plus
 export const AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES = 8 * 1024 * 1024; // 8 MiB
 export const AGENT_VAULT_SESSION_LOG_MIN_BYTES_PER_RECORD = 60; // well under the smallest real record, so only a lying count trips it
 
+// Lowercase because Postgres returns uuids that way and the browser rebuilds the AAD from that string. v7 because
+// history pages in chunk id order.
+export const AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
 // When a chunk upload is accepted, relative to Infisical's clock and the session's end.
 export const AGENT_VAULT_SESSION_LOG_CLOCK_SKEW_MS = 5 * 60_000; // 5 minutes
 export const AGENT_VAULT_SESSION_LOG_LATE_CHUNK_GRACE_MS = 24 * 60 * 60_000; // 24 hours: after a session ends, its proxy has one more day to upload what it still holds
