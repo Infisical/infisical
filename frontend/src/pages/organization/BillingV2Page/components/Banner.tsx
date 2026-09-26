@@ -52,14 +52,14 @@ const PAYMENT_ALERT: Record<
     icon: TriangleAlert,
     title: "Your bank needs you to approve your renewal payment",
     body: "Approve the payment to keep your products active.",
-    actionLabel: "Approve payment"
+    actionLabel: "Approve Payment"
   },
   failed: {
     variant: "danger",
     icon: CircleAlert,
     title: "Your last payment failed",
     body: "Pay the open invoice or update your payment method to avoid losing access.",
-    actionLabel: "Pay invoice"
+    actionLabel: "Pay Invoice"
   }
 };
 
@@ -88,7 +88,11 @@ export const Banner = ({
   }
 
   if (paymentAlert) {
-    const alert = PAYMENT_ALERT[paymentAlert.state];
+    // Access is already paused when suspended, so keep that copy and only borrow the payment action.
+    const alert =
+      subState === "suspended"
+        ? { ...PAYMENT_ALERT[paymentAlert.state], ...DUNNING.suspended }
+        : PAYMENT_ALERT[paymentAlert.state];
     const AlertIcon = alert.icon;
     return (
       <Alert variant={alert.variant}>
@@ -109,7 +113,7 @@ export const Banner = ({
               {paymentAlert.state === "failed" && (
                 <Button variant="outline" size="sm" onClick={onUpdatePayment}>
                   <CreditCard />
-                  Update payment method
+                  Update Payment Method
                 </Button>
               )}
             </div>

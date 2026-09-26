@@ -196,6 +196,16 @@ export const Overview = ({
           onUpdatePayment={onUpdatePayment}
           onManageSubscription={onManageSubscription}
         />
+        <TrialBanners
+          overview={overview}
+          catalog={catalog}
+          readOnly={productsReadOnly}
+          onManage={onUpgrade}
+          onUpdatePayment={onUpdatePayment}
+          onContact={onContact}
+          onCompleteTrialPayment={onCompleteTrialPayment}
+          isCompletingTrialPayment={isCompletingTrialPayment}
+        />
         <ProductsCard
           key="products"
           overview={overview}

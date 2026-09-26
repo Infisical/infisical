@@ -108,7 +108,7 @@ export const TrialBanners = ({
                   isPending={isCompletingTrialPayment}
                   onClick={onCompleteTrialPayment}
                 >
-                  Complete payment
+                  Complete Payment
                 </Button>
               </div>
             )}
@@ -163,7 +163,7 @@ export const TrialBanners = ({
             {canAct && (
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button variant="ghost" size="xs" onClick={() => onManage(trial.productKey)}>
-                  View plans
+                  View Plans
                 </Button>
               </div>
             )}

@@ -352,7 +352,7 @@ export const PaymentActionRequiredNotice = ({ orgId }: { orgId: string }) => {
               )
             }
           >
-            Open billing portal
+            Open Billing Portal
           </Button>
         </div>
       </AlertDescription>
@@ -373,7 +373,7 @@ export const PaymentApprovalNotice = ({ paymentUrl }: { paymentUrl: string }) =>
           onClick={() => window.open(paymentUrl, "_blank", "noopener,noreferrer")}
         >
           <ExternalLink />
-          Approve payment
+          Approve Payment
         </Button>
       </div>
     </AlertDescription>
