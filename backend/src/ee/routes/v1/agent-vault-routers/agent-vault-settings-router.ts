@@ -42,8 +42,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       operationId: "updateAgentVaultSessionLogSettings",
-      description:
-        "Updates the session log settings. If session logs are on, Infisical checks that the AWS connection can reach the bucket and write to it before saving.",
+      description: "Updates the session log settings",
       tags: [ApiDocsTags.AgentVaultSettings],
       body: AgentVaultSessionLogSettingsUpdateSchema,
       response: { 200: AgentVaultSessionLogSettingsResponseSchema }
