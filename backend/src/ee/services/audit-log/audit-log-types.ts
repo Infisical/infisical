@@ -1285,6 +1285,7 @@ interface SearchSecretsByValueEvent {
   metadata: {
     scope: SecretValueSearchScope;
     projectId?: string;
+    projectName?: string;
     matchCount: number;
   };
 }

@@ -4056,9 +4056,24 @@ export const secretV2BridgeServiceFactory = ({
 
   // Answers "is this value in use anywhere", the question someone asks when they learn a value is
   // compromised. The caller supplies the value, so nothing here reveals a value that was not already
-  // known; what it reveals is the locations, which is why each hit is filtered against the actor's
-  // permission on the project holding it.
+  // known; what it reveals is the locations, in every project of the org. That is exactly what Search
+  // All Secret Values grants, so it is the only way in: a narrower per-project filter would have to
+  // honour every environment, path, name and tag condition a role can carry, and still leak through
+  // timing whatever it filtered out after the query.
   const findSecretsByValue = async (dto: TFindSecretsByValueDTO, actor: OrgServiceActor) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+      OrgPermissionSubjects.SecretsManagementInsights
+    );
+
     // findById rather than findOrgById: findOrgById takes no tx and reads the replica, which is the
     // deadlock trigger CODE_QUALITY.md warns about if this ever moves inside a transaction.
     const org = await orgDAL.findById(actor.orgId);
@@ -4083,51 +4098,12 @@ export const secretV2BridgeServiceFactory = ({
       throw new NotFoundError({ message: `Secrets management project with ID '${dto.projectId}' not found` });
     }
 
-    // Resolving what the caller may see BEFORE the search, rather than filtering matches after, is
-    // what keeps this from being an oracle: a value held only in projects they cannot read costs the
-    // same work, and takes the same time, as a value held nowhere. It also bounds the query, which
-    // would otherwise fan out across every project in the org for a value like "true".
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
-    // Holding this is the grant to see a value's locations in every project, member or not.
-    const canSearchAllProjects = orgPermission.can(
-      OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
-      OrgPermissionSubjects.SecretsManagementInsights
-    );
+    // Named so the audit entry for a project-scoped search can say which project, not just its id.
+    const searchedProject =
+      dto.scope === SecretValueSearchScope.Project ? { id: candidates[0].id, name: candidates[0].name } : undefined;
 
-    const readableProjectIds: string[] = canSearchAllProjects ? candidates.map((project) => project.id) : [];
-    await Promise.all(
-      (canSearchAllProjects ? [] : candidates).map(async (project) => {
-        try {
-          const { permission } = await permissionService.getProjectPermission({
-            actor: actor.type,
-            actorId: actor.id,
-            projectId: project.id,
-            actorAuthMethod: actor.authMethod,
-            actorOrgId: actor.orgId,
-            actionProjectType: ActionProjectType.SecretManager
-          });
-          // DescribeSecret, not a read of the value: this answers where a value the caller already has
-          // is used, so the permission that matters is whether they may know the secret exists.
-          if (permission.can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets)) {
-            readableProjectIds.push(project.id);
-          }
-        } catch (error) {
-          // Only a refusal means "not a member, so this project is simply absent from their results".
-          // Anything else is an infrastructure failure, and answering "your value is used nowhere"
-          // because the database was busy is the one answer this feature must never give.
-          if (!(error instanceof ForbiddenRequestError) && !(error instanceof NotFoundError)) throw error;
-        }
-      })
-    );
-
-    if (!readableProjectIds.length) return { secrets: [] };
+    const projectIds = candidates.map((project) => project.id);
+    if (!projectIds.length) return { secrets: [], searchedProject };
 
     // Every project in an org shares the org data key, so one digest answers for all of them.
     const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({ orgId: actor.orgId, kmsService });
@@ -4135,11 +4111,11 @@ export const secretV2BridgeServiceFactory = ({
 
     const visible = await secretDAL.findSecretsWithMatchingValue({
       orgId: actor.orgId,
-      projectIds: readableProjectIds,
+      projectIds,
       secretValueDigest,
       limit: SECRET_VALUE_SEARCH_LIMIT
     });
-    if (!visible.length) return { secrets: [] };
+    if (!visible.length) return { secrets: [], searchedProject };
 
     const pathsByProject = await Promise.all(
       [...new Set(visible.map((match) => match.projectId))].map((projectId) => {
@@ -4153,6 +4129,7 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     return {
+      searchedProject,
       secrets: visible.map((match) => ({
         key: match.key,
         projectId: match.projectId,

@@ -1,5 +1,5 @@
 import { createFakeWebhookServer, TFakeWebhookServer } from "e2e-test/fakes/webhook-destination";
-import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
+import { createIsolatedOrgAndProject, createProject } from "e2e-test/testUtils/fixtures";
 import { createFolder } from "e2e-test/testUtils/folders";
 import { createSecretV2, deleteSecretV2, updateSecretV2 } from "e2e-test/testUtils/secrets";
 import { createWebhook, waitForWebhookRun } from "e2e-test/testUtils/webhooks";
@@ -288,14 +288,7 @@ describe("Secrets management", () => {
     test("a value held in a second project of the same org is found in both, and project scope narrows it", async () => {
       const shared = `across-projects-${Date.now()}`;
 
-      const secondProjectRes = await testServer.inject({
-        method: "POST",
-        url: "/api/v1/projects",
-        headers: { authorization: `Bearer ${authToken}` },
-        body: { projectName: "secrets-management-e2e-second" }
-      });
-      expect(secondProjectRes.statusCode).toBe(200);
-      const secondProjectId = secondProjectRes.json().project.id as string;
+      const secondProjectId = await createProject(authToken, "secrets-management-e2e-second");
 
       await createSecretV2({
         workspaceId: projectId,

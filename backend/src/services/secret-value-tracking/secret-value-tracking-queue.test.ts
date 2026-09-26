@@ -163,7 +163,9 @@ describe("the backfill job", () => {
     expect(harness.flaggedOrgs).toEqual([ORG_ID]);
   });
 
-  test("a project with no folders at all is skipped rather than flagged", async () => {
+  // A project with no folders holds no secrets to index, and every secret written later carries both
+  // digests, so leaving it unflagged would only keep project duplicate detection off for no reason.
+  test("a project with no folders at all is still flagged", async () => {
     const harness = makeHarness({
       projectIds: ["empty", "p2"],
       foldersByProject: { empty: [], p2: ["f2"] },
@@ -172,7 +174,15 @@ describe("the backfill job", () => {
 
     await harness.run();
 
-    expect(harness.flaggedProjects).toEqual(["p2"]);
+    expect([...harness.flaggedProjects].sort()).toEqual(["empty", "p2"]);
+  });
+
+  test("an org with no secrets management projects is still flagged", async () => {
+    const harness = makeHarness({ projectIds: [], foldersByProject: {} });
+
+    await harness.run();
+
+    expect(harness.flaggedOrgs).toEqual([ORG_ID]);
   });
 
   test("an org with nothing in it still finishes and is flagged", async () => {

@@ -113,6 +113,8 @@ export const secretValueTrackingQueueFactory = ({
           : await projectDAL.find({ orgId: scope.orgId, type: ProjectType.SecretManager });
 
       if (!projects.length) {
+        // Nothing to index is still a finished org: every secret it writes from here carries both digests.
+        if (scope.scope === "org") await orgDAL.updateById(scope.orgId, { orgWideSecretValueTrackingEnabled: true });
         logger.info(`SecretValueTrackingBackfill: nothing to walk [scopeId=${scopeId}]`);
         return;
       }
@@ -154,7 +156,9 @@ export const secretValueTrackingQueueFactory = ({
         return pair;
       };
 
+      const markedProjectIds = new Set<string>();
       const $markProjectComplete = async (projectId: string) => {
+        markedProjectIds.add(projectId);
         await projectDAL.updateById(projectId, { secretBlindIndexEnabled: true });
         await keyStore.deleteItems({ pattern: `${KeyStorePrefixes.InsightsCache(projectId, "secrets-duplication")}*` });
       };
@@ -226,6 +230,15 @@ export const secretValueTrackingQueueFactory = ({
         await new Promise((resolve) => {
           setTimeout(resolve, PAUSE_BETWEEN_BATCHES_MS);
         });
+      }
+
+      // The cursor steps over projects with no folders, so they are never finished inside the walk.
+      // They hold nothing to index, and every secret written to them later carries both digests.
+      for await (const projectId of projectIds) {
+        if (!markedProjectIds.has(projectId)) {
+          await $markProjectComplete(projectId);
+          projectsDone += 1;
+        }
       }
 
       if (scope.scope === "org") await orgDAL.updateById(scope.orgId, { orgWideSecretValueTrackingEnabled: true });

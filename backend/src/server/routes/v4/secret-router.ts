@@ -1640,7 +1640,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       operationId: "searchByValue",
       tags: [ApiDocsTags.Secrets],
       description:
-        "Find every secret holding the supplied value, across the organization or within one project, in projects the caller can read.",
+        "Find every secret holding the supplied value, across the organization or within one project. Requires the Search All Secret Values organization permission, and returns matches in every project, including ones the caller is not a member of.",
       security: [{ bearerAuth: [] }],
       body: z
         .object({
@@ -1683,7 +1683,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { secretValue, scope, projectId } = req.body;
-      const result = await server.services.secret.findSecretsByValue(
+      const { secrets, searchedProject } = await server.services.secret.findSecretsByValue(
         scope === SecretValueSearchScope.Project && projectId
           ? { secretValue, scope, projectId }
           : { secretValue, scope: SecretValueSearchScope.Organization },
@@ -1697,13 +1697,14 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           type: EventType.SEARCH_SECRETS_BY_VALUE,
           metadata: {
             scope,
-            projectId,
-            matchCount: result.secrets.length
+            projectId: searchedProject?.id,
+            projectName: searchedProject?.name,
+            matchCount: secrets.length
           }
         }
       });
 
-      return result;
+      return { secrets };
     }
   });
 };

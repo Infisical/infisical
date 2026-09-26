@@ -78,7 +78,7 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
 
     if (!search.data) {
       return (
-        <Empty className="bg-transparent shadow-none">
+        <Empty variant="unstyled">
           <EmptyHeader>
             <EmptyTitle>Enter a secret value to find where it is used</EmptyTitle>
             <EmptyDescription>
@@ -92,7 +92,7 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
 
     if (matches.length === 0) {
       return (
-        <Empty className="bg-transparent shadow-none">
+        <Empty variant="unstyled">
           <EmptyHeader>
             <EmptyTitle>No secret in the organization holds this value</EmptyTitle>
             <EmptyDescription>Personal overrides are not searched.</EmptyDescription>
@@ -227,7 +227,7 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
 
 export const SecretValueSearchSheet = ({ orgId, isOpen, onOpenChange }: Props) => (
   <Sheet open={isOpen} onOpenChange={onOpenChange}>
-    <SheetContent className="flex flex-col overflow-hidden sm:max-w-7xl">
+    <SheetContent size="workspace" className="flex flex-col overflow-hidden">
       <SheetHeader>
         <SheetTitle>Search by Secret Value</SheetTitle>
         <SheetDescription>
