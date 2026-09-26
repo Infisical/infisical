@@ -4425,7 +4425,6 @@ interface GetAppConnectionsEvent {
     app?: AppConnection;
     count: number;
     connectionIds: string[];
-    connectionNames?: string[];
   };
 }
 
@@ -4442,7 +4441,6 @@ interface GetAppConnectionEvent {
   type: EventType.GET_APP_CONNECTION;
   metadata: {
     connectionId: string;
-    connectionName?: string;
   };
 }
 
@@ -4469,7 +4467,6 @@ interface UpdateAppConnectionEvent {
   type: EventType.UPDATE_APP_CONNECTION;
   metadata: Omit<TUpdateAppConnectionDTO, "credentials" | "projectId"> & {
     connectionId: string;
-    connectionName?: string;
     credentialsUpdated: boolean;
   };
 }
@@ -4478,7 +4475,6 @@ interface DeleteAppConnectionEvent {
   type: EventType.DELETE_APP_CONNECTION;
   metadata: {
     connectionId: string;
-    connectionName?: string;
   };
 }
 
@@ -4486,7 +4482,6 @@ interface RotateAppConnectionCredentialsEvent {
   type: EventType.ROTATE_APP_CONNECTION_CREDENTIALS;
   metadata: {
     connectionId: string;
-    connectionName?: string;
   };
 }
 
