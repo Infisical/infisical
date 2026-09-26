@@ -1,7 +1,6 @@
-import { OrgServiceActor } from "@app/lib/types";
+import { OrgServiceActor, TGenericPermission } from "@app/lib/types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
 import { AgentVaultSessionLogStorageUnavailableReason } from "./agent-vault-session-log-enums";
 
 export type TAgentVaultSessionLogChunkInput = {
@@ -25,7 +24,7 @@ export type TRecordChunkDTO = {
 
 export type TSessionLogsScope = {
   projectId: string;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
   sessionId: string;
 };
 
@@ -45,7 +44,7 @@ export type TTailSessionLogsDTO = TSessionLogsDTO & {
 
 export type TSessionLogSettingsDTO = {
   projectId: string;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
 };
 
 export type TUpdateSessionLogSettingsDTO = TSessionLogSettingsDTO & {

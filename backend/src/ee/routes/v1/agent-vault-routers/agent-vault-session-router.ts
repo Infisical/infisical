@@ -23,6 +23,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { actorContext } from "./agent-vault-router-fns";
+
 const SessionAccessBundleSchema = z.object({
   id: z.string().uuid().nullable(),
   name: z.string(),
@@ -86,12 +88,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       const { status, ...query } = req.query;
       return server.services.agentVaultSession.listSessions({
         projectId: req.internalAgentVaultProjectId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
+        ctx: actorContext(req),
         statuses: status,
         ...query
       });
@@ -117,12 +114,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       server.services.agentVaultSession.getSessionById({
         projectId: req.internalAgentVaultProjectId,
         sessionId: req.params.sessionId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        }
+        ctx: actorContext(req)
       })
   });
 
@@ -198,12 +190,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         actorName,
         actorEmail,
         projectId: req.internalAgentVaultProjectId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
+        ctx: actorContext(req),
         ...req.body
       });
 
@@ -251,12 +238,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { session, revokedNow } = await server.services.agentVaultSession.revokeSession({
         projectId: req.internalAgentVaultProjectId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
+        ctx: actorContext(req),
         sessionId: req.params.sessionId
       });
 

@@ -13,6 +13,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { actorContext } from "./agent-vault-router-fns";
+
 export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -29,12 +31,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     handler: async (req) =>
       server.services.agentVaultSessionLog.getSessionLogSettings({
         projectId: req.internalAgentVaultProjectId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        }
+        ctx: actorContext(req)
       })
   });
 
@@ -55,12 +52,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { settings, appConnectionName } = await server.services.agentVaultSessionLog.updateSessionLogSettings({
         projectId: req.internalAgentVaultProjectId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
+        ctx: actorContext(req),
         actor: {
           type: req.permission.type,
           id: req.permission.id,
@@ -111,12 +103,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       addNoCacheHeaders(reply);
       return server.services.agentVaultSessionLog.getSessionLogHealth({
         projectId: req.internalAgentVaultProjectId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        }
+        ctx: actorContext(req)
       });
     }
   });
@@ -137,12 +124,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       addNoCacheHeaders(reply);
       return server.services.agentVaultSessionLog.getSessionLogCorsProbe({
         projectId: req.internalAgentVaultProjectId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        }
+        ctx: actorContext(req)
       });
     }
   });

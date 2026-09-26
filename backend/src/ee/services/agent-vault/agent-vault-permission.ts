@@ -3,10 +3,9 @@ import { Knex } from "knex";
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TGenericPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-
-import { TAgentVaultActorContext } from "./agent-vault-actor-types";
 
 type TProjectPermissionResult = Awaited<ReturnType<TPermissionServiceFactory["getProjectPermission"]>>;
 
@@ -56,7 +55,7 @@ export const findReachableAccessBundleIds = async (
 
 export const getAgentVaultProjectAuthority = async (
   { permissionService }: { permissionService: TPermissionDep },
-  { projectId, ctx }: { projectId: string; ctx: TAgentVaultActorContext }
+  { projectId, ctx }: { projectId: string; ctx: TGenericPermission }
 ): Promise<{ permission: TProjectPermissionResult["permission"]; isAdmin: boolean }> => {
   const { permission, hasRole } = await permissionService.getProjectPermission({
     actor: ctx.actor,
@@ -73,7 +72,7 @@ export const getAgentVaultProjectAuthority = async (
 // username and metadata.
 export const getAgentVaultReachability = async (
   { permissionService, membershipDAL }: { permissionService: TPermissionDep; membershipDAL: TMembershipDep },
-  { projectId, ctx }: { projectId: string; ctx: TAgentVaultActorContext },
+  { projectId, ctx }: { projectId: string; ctx: TGenericPermission },
   tx?: Knex
 ): Promise<TAgentVaultReachability> => {
   const { permission, hasRole, memberships } = await permissionService.getProjectPermission({

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { agentVaultPathPrefixListSchema, normalizePathPrefix } from "./agent-vault-path-prefix";
+import { agentVaultPathPrefixListSchema, normalizePathPrefix } from "./agent-vault-path-prefix-schemas";
 
 describe("agent vault path prefixes", () => {
   describe("grammar", () => {

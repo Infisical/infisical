@@ -13,6 +13,8 @@ import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+import { actorContext } from "./agent-vault-router-fns";
+
 export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -33,12 +35,7 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
       addNoCacheHeaders(reply);
       return server.services.agentVaultSessionLog.listSessionLogs({
         projectId: req.internalAgentVaultProjectId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
+        ctx: actorContext(req),
         sessionId: req.params.sessionId,
         limit: req.query.limit,
         before: req.query.cursor,
@@ -67,12 +64,7 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
       addNoCacheHeaders(reply);
       return server.services.agentVaultSessionLog.tailSessionLogs({
         projectId: req.internalAgentVaultProjectId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
+        ctx: actorContext(req),
         sessionId: req.params.sessionId,
         limit: req.query.limit,
         receivedAfter: req.query.cursor

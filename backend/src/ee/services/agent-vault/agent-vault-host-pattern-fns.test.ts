@@ -7,7 +7,7 @@ import {
   matchesHost,
   parseHostPatterns,
   relateHostPatterns
-} from "./agent-vault-host-pattern";
+} from "./agent-vault-host-pattern-fns";
 
 const parseOne = (raw: string) => {
   const { patterns, errors } = parseHostPatterns(raw);

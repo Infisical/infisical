@@ -116,13 +116,13 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 
 ## Host and path grammar
 
-`agent-vault-host-pattern.ts` is the grammar of record. The CLI matcher (`packages/agentvault/match.go`) does
+`agent-vault-host-pattern-fns.ts` is the grammar of record. The CLI matcher (`packages/agentvault/match.go`) does
 the matching at runtime and reimplements the same rules, so a change here needs the same change there.
 
 - Paths are rejected *in a host pattern*; `allowedPathPrefixes` is a separate filter that never decodes.
   A filter is judged by what it *allows*, so the refusals are the load-bearing half. The grammar is an
   allowlist because a prefix is compared against the escaped path: one carrying anything Go's encoder
-  rewrites could never match. `agent-vault-path-prefix.ts` is the grammar of record, `policy.go` the match.
+  rewrites could never match. `agent-vault-path-prefix-schemas.ts` is the grammar of record, `policy.go` the match.
 - Methods and path prefixes are filters on a service that already matched, **not** part of the match key,
   so the same-bundle host conflict rule stays host-only. Two services on one host differing only by method
   is still a hard reject.

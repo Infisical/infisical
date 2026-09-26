@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
-import { buildHostPatternSchema, parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
+import { buildHostPatternSchema, parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";

@@ -11,8 +11,8 @@ import {
   AgentVaultMemberType,
   AgentVaultSubstitutionSurface
 } from "@app/ee/services/agent-vault/agent-vault-enums";
-import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
-import { agentVaultPathPrefixListSchema } from "@app/ee/services/agent-vault/agent-vault-path-prefix";
+import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
+import { agentVaultPathPrefixListSchema } from "@app/ee/services/agent-vault/agent-vault-path-prefix-schemas";
 import {
   addDuplicateCustomHeaderNameIssues,
   addDuplicatePlaceholderIssues,

@@ -1,9 +1,10 @@
-import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
+import { TGenericPermission } from "@app/lib/types";
+
 import { AgentVaultSessionScope, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
 
 export type TMintSessionDTO = {
   projectId: string;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
   accessBundles: string[];
   actorName: string;
   actorEmail: string | null;
@@ -12,7 +13,7 @@ export type TMintSessionDTO = {
 
 export type TListSessionsDTO = {
   projectId: string;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
   scope: AgentVaultSessionScope;
   statuses?: AgentVaultSessionStatus[];
   limit: number;
@@ -22,7 +23,7 @@ export type TListSessionsDTO = {
 
 export type TRevokeSessionDTO = {
   projectId: string;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
   sessionId: string;
 };
 
