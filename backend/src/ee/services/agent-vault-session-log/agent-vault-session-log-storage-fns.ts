@@ -4,7 +4,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -51,13 +51,15 @@ export const buildSessionLogStorage = async (
   { appConnectionDAL, kmsService }: TStorageDeps
 ) => {
   const raw = await appConnectionDAL.findById(config.appConnectionId);
-  if (!raw) {
+  if (raw && raw.orgId !== orgId) {
+    logger.error(
+      `Agent Vault session log connection is in another organization [appConnectionId=${raw.id}] [orgId=${orgId}]`
+    );
+  }
+  if (!raw || raw.orgId !== orgId) {
     throw new BadRequestError({
       message: "The AWS connection used for session logs no longer exists. Choose another on the Settings page."
     });
-  }
-  if (raw.orgId !== orgId) {
-    throw new InternalServerError({ message: "Session log storage connection belongs to a different organization" });
   }
   if (raw.app !== AppConnection.AWS) {
     throw new BadRequestError({
