@@ -9,6 +9,7 @@ import {
   catalogResponseSchema,
   checkoutResultSchema,
   cloudPlanResponseSchema,
+  confirmTrialPaymentResultSchema,
   entitlementsResponseSchema,
   sessionResponseSchema,
   subscriptionPreviewResponseSchema,
@@ -20,6 +21,8 @@ import {
   TChangeCommitmentsPayload,
   TCheckoutResult,
   TCloudPlanResponse,
+  TConfirmTrialPaymentPayload,
+  TConfirmTrialPaymentResult,
   TCreatePortalPayload,
   TEntitlementOrg,
   TEntitlementsResponse,
@@ -96,7 +99,8 @@ const BILLING_ERROR_MESSAGES: Record<string, string> = {
   dimension_not_priced: "That plan doesn't price something you're billed for today. Contact support to switch.",
   no_payment_method: "Add a payment method before making this change.",
   subscription_syncing: "Your billing details are still syncing. Please try again in a moment.",
-  plan_deprecated: "This plan is being retired and is no longer available."
+  plan_deprecated: "This plan is being retired and is no longer available.",
+  no_trial_awaiting_payment: "There's no trial payment waiting to be completed. It may have already gone through."
 };
 
 const throwIfResponseError = async (res: Response): Promise<void> => {
@@ -106,15 +110,14 @@ const throwIfResponseError = async (res: Response): Promise<void> => {
   const requestId = readLicenseRequestId(res);
   if (res.status >= 400 && res.status < 500) {
     const body = (await res.json().catch(() => null)) as {
-      error?: string;
       message?: string;
       details?: { code?: string };
     } | null;
     // Resolve the contract's machine code (details.code) to friendly copy so the message thrown here is
-    // user-facing; keep the code in details for any caller that still branches on it. The envelope uses
-    // `error`; older servers used `message`, so read both as the fallback.
+    // user-facing; keep the code in details for any caller that still branches on it. Otherwise fall back
+    // to the envelope's `message`, which is written for the customer (`error` is the class name).
     const code = body?.details?.code;
-    const message = (code && BILLING_ERROR_MESSAGES[code]) || body?.error || body?.message;
+    const message = (code && BILLING_ERROR_MESSAGES[code]) || body?.message;
     logger.warn(licenseErrorMessage(requestId, `request rejected [status=${res.status}] [code=${code ?? "none"}]`));
     throw new BadRequestError({
       name: LICENSE_SERVER_ERROR_NAME,
@@ -358,6 +361,22 @@ export const licenseServerBackend = (
     return trialCancelResultSchema.parse(body);
   },
 
+  confirmTrialPayment: async (
+    orgId: string,
+    payload: TConfirmTrialPaymentPayload
+  ): Promise<TConfirmTrialPaymentResult> => {
+    const url = new URL(orgScoped(orgId, "/subscription/trials/confirm-payment"), serverUrl);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ returnUrl: payload.returnUrl }),
+      redirect: "manual"
+    });
+    await throwIfResponseError(res);
+    const body: unknown = await res.json();
+    return confirmTrialPaymentResultSchema.parse(body);
+  },
+
   // The org's trial history. 404 (org has no license yet) degrades to an empty history.
   fetchTrials: async (orgId: string): Promise<TTrialsResponse> => {
     const url = new URL(orgScoped(orgId, "/billing/trials"), serverUrl);
@@ -483,6 +502,7 @@ export const licenseServerSelfHostedBackend = (
     changeCommitments: notSupportedOnSelfHosted("changeCommitments"),
     startTrial: notSupportedOnSelfHosted("startTrial"),
     cancelTrial: notSupportedOnSelfHosted("cancelTrial"),
+    confirmTrialPayment: notSupportedOnSelfHosted("confirmTrialPayment"),
     fetchTrials: notSupportedOnSelfHosted("fetchTrials"),
     cancelSubscription: notSupportedOnSelfHosted("cancelSubscription"),
     resumeSubscription: notSupportedOnSelfHosted("resumeSubscription")

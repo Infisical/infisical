@@ -73,3 +73,67 @@ describe("licenseServerBackend region on license-creating calls", () => {
     expect(readBody(fetchMock)).not.toHaveProperty("region");
   });
 });
+
+describe("licenseServerBackend confirmTrialPayment", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test("posts the return URL to the org's trial confirm-payment endpoint", async () => {
+    const fetchMock = mockFetchReturning({
+      outcome: "checkout_created",
+      checkoutUrl: "https://checkout.stripe.com/c/1"
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await licenseServerBackend(SERVER_URL, "key", "eu").confirmTrialPayment(ORG_ID, {
+      returnUrl: "https://app.infisical.com/organizations/org-1/billing"
+    });
+
+    const [url, init] = vi.mocked(fetchMock).mock.calls[0];
+    expect(String(url)).toBe(`${SERVER_URL}/v1/organizations/${ORG_ID}/subscription/trials/confirm-payment`);
+    expect(init?.method).toBe("POST");
+    expect(readBody(fetchMock)).toEqual({ returnUrl: "https://app.infisical.com/organizations/org-1/billing" });
+    expect(result).toMatchObject({ outcome: "checkout_created", checkoutUrl: "https://checkout.stripe.com/c/1" });
+  });
+});
+
+describe("licenseServerBackend payment_action_required", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test("changeCommitments accepts the approval outcome and its payment URL", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetchReturning({
+        outcome: "payment_action_required",
+        paymentUrl: "https://invoice.stripe.com/i/1",
+        subscriptionId: "sub_1",
+        request_id: "req-1"
+      })
+    );
+
+    const result = await licenseServerBackend(SERVER_URL, "key").changeCommitments(ORG_ID, {
+      productId: "boost",
+      dimensions: []
+    });
+
+    expect(result).toMatchObject({ outcome: "payment_action_required", paymentUrl: "https://invoice.stripe.com/i/1" });
+  });
+
+  test("upgradeProduct accepts the approval outcome", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetchReturning({ outcome: "payment_action_required", paymentUrl: "https://invoice.stripe.com/i/1" })
+    );
+
+    const result = await licenseServerBackend(SERVER_URL, "key").upgradeProduct(ORG_ID, {
+      productId: "boost",
+      plan: "enterprise",
+      expectedPlanVersionId: "v1"
+    });
+
+    expect(result.outcome).toBe("payment_action_required");
+  });
+});

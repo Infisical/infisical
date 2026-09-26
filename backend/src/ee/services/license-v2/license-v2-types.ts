@@ -144,6 +144,7 @@ export type BillingV2Entitlement = {
   trialPlanName?: string;
   trialPlanEndsAt?: string | null;
   trialPlanDaysLeft?: number | null;
+  trialPaymentDueAt?: string | null;
   // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
   // the product has no dated line (e.g. feature-only entitlements).
   renewsOn?: string | null;
@@ -181,6 +182,7 @@ export type BillingV2Trial = {
   planTier: string | null;
   basePlanTier: string | null;
   outcome: string;
+  endedReason: string | null;
   endedDetail: string | null;
   endedAt: string | null;
   endedDaysAgo: number | null;
@@ -212,6 +214,10 @@ export type BillingV2Overview = {
   trials: BillingV2Trial[];
   // Total monthly on-demand overage across all products (dollars), for the summary's on-demand note.
   onDemandAmount: number;
+  // Earliest trial payment deadline across products, for the page banner; null when none is waiting.
+  trialPaymentDue: { dueAt: string; productKeys: string[] } | null;
+  // A renewal invoice that needs approval or was declined. Named apart from `payment` (the card on file).
+  paymentAlert: { state: "needs_action" | "failed"; actionUrl: string } | null;
   checkoutFrozen: boolean;
   selfServe: boolean;
 };
@@ -319,6 +325,7 @@ export type TRemoveBillingV2ProductDTO = {
 // prices at the current server time; a client-supplied proration instant is never accepted. productId
 // is required: it names the product so the server resolves the trialing plan and creates/attaches the
 // subscription when there isn't one yet (a trialing org). Not trialing it → product_not_trialing.
+// Checkout also happens when the card on file needs the customer to approve the charge.
 export type TChangeBillingV2CommitmentDTO = {
   orgId: string;
   actor: OrgServiceActor;
@@ -339,6 +346,12 @@ export type TCancelBillingV2TrialDTO = {
   orgId: string;
   actor: OrgServiceActor;
   productId: string;
+};
+
+export type TConfirmBillingV2TrialPaymentDTO = {
+  orgId: string;
+  actor: OrgServiceActor;
+  returnPath?: string;
 };
 
 export type TBillingV2SubscriptionLifecycleDTO = {

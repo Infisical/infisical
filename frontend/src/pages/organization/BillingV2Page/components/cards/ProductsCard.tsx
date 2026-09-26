@@ -80,6 +80,8 @@ const ActiveProductCard = ({
     ? (entitlement.trialPlanName ?? trialedPlan?.name ?? tierLabel(entitlement.trialPlan))
     : null;
   const trialDaysLeft = entitlement?.trialPlanDaysLeft;
+  // Past trialEndsAt but still usable: the conversion charge is waiting on the customer's bank.
+  const trialPaymentDueAt = entitlement?.trialPaymentDueAt;
 
   // The headline figure steps down a size when a second amount line shares the block.
   const priceLines = [annualCommitted > 0, monthlyRecurring > 0, onDemand > 0].filter(
@@ -97,7 +99,11 @@ const ActiveProductCard = ({
 
   // Cadence and renewal (or trial) as one muted subline under the product name.
   let subline: ReactNode = null;
-  if (isTrialing) {
+  if (trialPaymentDueAt) {
+    subline = (
+      <span className="text-warning">Payment needed · access until {trialPaymentDueAt}</span>
+    );
+  } else if (isTrialing) {
     subline = entitlement?.trialEndsAt ? (
       <span>Trial ends {entitlement.trialEndsAt}</span>
     ) : (
@@ -166,7 +172,10 @@ const ActiveProductCard = ({
               <Clock className="size-3.5 shrink-0 text-warning" />
               Trialing {trialPlanName}
             </span>
-            {trialDaysLeft !== null && trialDaysLeft !== undefined && (
+            {trialPaymentDueAt && (
+              <span className="shrink-0 text-xs font-medium text-warning">Payment needed</span>
+            )}
+            {!trialPaymentDueAt && trialDaysLeft !== null && trialDaysLeft !== undefined && (
               <span className="shrink-0 text-xs font-medium text-warning tabular-nums">
                 {trialDaysLeft === 0
                   ? "Ends today"
@@ -175,8 +184,16 @@ const ActiveProductCard = ({
             )}
           </div>
           <span className="text-[11px] text-muted">
-            {entitlement?.trialPlanEndsAt ? `Trial ends ${entitlement.trialPlanEndsAt} · ` : ""}
-            upgrades to {trialPlanName} automatically when it ends
+            {trialPaymentDueAt ? (
+              <>
+                Access until {trialPaymentDueAt} · confirm payment to upgrade to {trialPlanName}
+              </>
+            ) : (
+              <>
+                {entitlement?.trialPlanEndsAt ? `Trial ends ${entitlement.trialPlanEndsAt} · ` : ""}
+                upgrades to {trialPlanName} automatically when it ends
+              </>
+            )}
           </span>
         </div>
       )}

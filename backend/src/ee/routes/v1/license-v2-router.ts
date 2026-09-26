@@ -127,6 +127,7 @@ const BillingV2EntitlementSchema = z.object({
   trialPlanName: z.string().optional(),
   trialPlanEndsAt: z.string().nullable().optional(),
   trialPlanDaysLeft: z.number().nullable().optional(),
+  trialPaymentDueAt: z.string().nullable().optional(),
   renewsOn: z.string().nullable().optional(),
   deprecation: BillingV2DeprecationSchema.extend({
     kind: z.enum(["product", "plan"])
@@ -141,6 +142,7 @@ const BillingV2TrialSchema = z.object({
   planTier: z.string().nullable(),
   basePlanTier: z.string().nullable(),
   outcome: z.string(),
+  endedReason: z.string().nullable(),
   endedDetail: z.string().nullable(),
   endedAt: z.string().nullable(),
   endedDaysAgo: z.number().nullable()
@@ -189,6 +191,8 @@ const BillingV2OverviewSchema = z.object({
   trialedProductKeys: z.string().array(),
   trials: BillingV2TrialSchema.array(),
   onDemandAmount: z.number(),
+  trialPaymentDue: z.object({ dueAt: z.string(), productKeys: z.string().array() }).nullable(),
+  paymentAlert: z.object({ state: z.enum(["needs_action", "failed"]), actionUrl: z.string() }).nullable(),
   checkoutFrozen: z.boolean(),
   selfServe: z.boolean()
 });
@@ -530,8 +534,9 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          outcome: z.enum(["checkout_created", "subscription_updated"]),
+          outcome: z.enum(["checkout_created", "subscription_updated", "payment_action_required"]),
           checkoutUrl: z.string().optional(),
+          paymentUrl: z.string().optional(),
           subscriptionId: z.string().optional()
         })
       }
@@ -551,6 +556,10 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         email,
         returnPath: req.body.returnPath
       });
+
+      if (result.outcome === "payment_action_required") {
+        return { outcome: result.outcome, paymentUrl: result.paymentUrl };
+      }
 
       void server.services.telemetry
         .sendPostHogEvents({
@@ -591,7 +600,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          outcome: z.literal("upgraded"),
+          outcome: z.enum(["upgraded", "payment_action_required"]),
+          paymentUrl: z.string().optional(),
           subscriptionId: z.string().optional(),
           fromPlanKey: z.string().optional(),
           toPlanKey: z.string().optional()
@@ -608,6 +618,11 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         expectedPlanVersionId: req.body.expectedPlanVersionId,
         prorationDate: req.body.prorationDate
       });
+
+      // Nothing is upgraded until the bank approves the charge.
+      if (result.outcome === "payment_action_required") {
+        return result;
+      }
 
       void server.services.telemetry
         .sendPostHogEvents({
@@ -665,8 +680,9 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          outcome: z.enum(["checkout_created", "subscription_updated"]),
+          outcome: z.enum(["checkout_created", "subscription_updated", "payment_action_required"]),
           checkoutUrl: z.string().optional(),
+          paymentUrl: z.string().optional(),
           subscriptionId: z.string().optional()
         })
       }
@@ -758,6 +774,35 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         productId: req.body.productId
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:organizationId/billing/v2/trial/confirm-payment",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "confirmBillingTrialPayment",
+      description:
+        "Open a Stripe Checkout where the customer approves a trial conversion charge their bank is holding (for example 3D Secure). The trial converts once the checkout completes.",
+      params: z.object({ organizationId: z.string().trim().uuid() }),
+      body: z.object({ returnPath: ReturnPathSchema }),
+      response: {
+        200: z.object({
+          outcome: z.literal("checkout_created"),
+          checkoutUrl: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.licenseV2.confirmTrialPayment({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission),
+        returnPath: req.body.returnPath
       });
     }
   });
