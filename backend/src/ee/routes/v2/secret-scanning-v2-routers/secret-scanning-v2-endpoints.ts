@@ -57,7 +57,7 @@ export const registerSecretScanningEndpoints = <
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: `list${sourceTypeId}DataSources`,
       tags: [ApiDocsTags.SecretScanning],
       description: `List the ${sourceType} Data Sources for the specified project.`,
@@ -107,7 +107,7 @@ export const registerSecretScanningEndpoints = <
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: `get${sourceTypeId}DataSource`,
       tags: [ApiDocsTags.SecretScanning],
       description: `Get the specified ${sourceType} Data Source by ID.`,
@@ -150,7 +150,7 @@ export const registerSecretScanningEndpoints = <
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: `get${sourceTypeId}DataSourceByName`,
       tags: [ApiDocsTags.SecretScanning],
       description: `Get the specified ${sourceType} Data Source by name and project ID.`,
@@ -205,7 +205,7 @@ export const registerSecretScanningEndpoints = <
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: `create${sourceTypeId}DataSource`,
       tags: [ApiDocsTags.SecretScanning],
       description: `Create ${
@@ -260,7 +260,7 @@ export const registerSecretScanningEndpoints = <
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: `update${sourceTypeId}DataSource`,
       tags: [ApiDocsTags.SecretScanning],
       description: `Update the specified ${sourceType} Data Source.`,
@@ -305,7 +305,7 @@ export const registerSecretScanningEndpoints = <
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: `delete${sourceTypeId}DataSource`,
       tags: [ApiDocsTags.SecretScanning],
       description: `Delete the specified ${sourceType} Data Source.`,
@@ -348,7 +348,7 @@ export const registerSecretScanningEndpoints = <
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: `trigger${sourceTypeId}DataSourceScan`,
       tags: [ApiDocsTags.SecretScanning],
       description: `Trigger a scan for the specified ${sourceType} Data Source.`,
@@ -391,7 +391,7 @@ export const registerSecretScanningEndpoints = <
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: `trigger${sourceTypeId}DataSourceResourceScan`,
       tags: [ApiDocsTags.SecretScanning],
       description: `Trigger a scan for the specified ${sourceType} Data Source resource.`,
@@ -436,7 +436,7 @@ export const registerSecretScanningEndpoints = <
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: `list${sourceTypeId}DataSourceResources`,
       tags: [ApiDocsTags.SecretScanning],
       description: `Get the resources associated with the specified ${sourceType} Data Source by ID.`,
@@ -481,7 +481,7 @@ export const registerSecretScanningEndpoints = <
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: `list${sourceTypeId}DataSourceScans`,
       tags: [ApiDocsTags.SecretScanning],
       description: `Get the scans associated with the specified ${sourceType} Data Source by ID.`,
