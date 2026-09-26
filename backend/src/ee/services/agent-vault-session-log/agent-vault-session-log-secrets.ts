@@ -4,7 +4,7 @@ import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-export const AGENT_VAULT_SESSION_LOG_KEY_BYTES = 32;
+const AGENT_VAULT_SESSION_LOG_KEY_BYTES = 32;
 
 const LABEL_BYTES = 32;
 
