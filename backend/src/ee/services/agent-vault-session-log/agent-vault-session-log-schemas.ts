@@ -8,7 +8,6 @@ import {
   AGENT_VAULT_SESSION_LOG_DEFAULT_PAGE_RECORDS,
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES,
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS,
-  AGENT_VAULT_SESSION_LOG_MAX_KEY_PREFIX_LENGTH,
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_RECORDS,
   AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES
 } from "./agent-vault-session-log-constants";
@@ -168,10 +167,7 @@ export const AgentVaultSessionLogSettingsUpdateSchema = z
     keyPrefix: z
       .string()
       .trim()
-      .max(
-        AGENT_VAULT_SESSION_LOG_MAX_KEY_PREFIX_LENGTH,
-        `May be at most ${AGENT_VAULT_SESSION_LOG_MAX_KEY_PREFIX_LENGTH} characters`
-      )
+      .max(512, "May be at most 512 characters")
       .regex(/^[A-Za-z0-9!\-_.'()/]*$/, "May only contain letters, numbers and ! - _ . ' ( ) /")
       .refine(
         (v) => v === "" || v.split("/").every(Boolean),

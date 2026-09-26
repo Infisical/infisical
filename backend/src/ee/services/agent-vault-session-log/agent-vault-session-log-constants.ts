@@ -17,9 +17,6 @@ export const AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS = 30 * 24 * 60 * 60_000; /
 // Per-org cap on stored chunks; internal only, customers see "contact support".
 export const AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS = 100_000;
 
-// Bucket key prefix length. Mirrored in SessionLogModal.tsx.
-export const AGENT_VAULT_SESSION_LOG_MAX_KEY_PREFIX_LENGTH = 512; // characters
-
 // S3 access: presigned URL lifetime and how long a built S3 client is reused.
 export const AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS = 300; // 5 minutes
 export const AGENT_VAULT_SESSION_LOG_STORAGE_CACHE_MS = 5 * 60_000; // 5 minutes
