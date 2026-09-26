@@ -16,6 +16,7 @@ import {
   TFindOpt
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
+import { SecretSortField } from "@app/services/secret/secret-types";
 import type { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 export const SecretServiceCacheKeys = {
@@ -728,6 +729,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     filters?: TFindSecretsByFolderIdsFilter;
   }) => {
     const { folderIds, tx, filters } = dto;
+    const timestampOrderBy =
+      filters?.orderBy === SecretSortField.CreatedAt || filters?.orderBy === SecretSortField.UpdatedAt
+        ? filters.orderBy
+        : undefined;
+    const sortDirection = filters?.orderDirection ?? OrderByDirection.ASC;
     let { userId } = dto;
     try {
       // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
@@ -800,14 +806,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             });
           }
         })
-        .select(
-          selectAllTableCols(TableName.SecretV2),
-          db.raw(
-            `DENSE_RANK() OVER (ORDER BY "${TableName.SecretV2}".key ${
-              filters?.orderDirection ?? OrderByDirection.ASC
-            }) as rank`
-          )
-        )
+        .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.Reminder).as("reminderId"))
         .select(db.ref("message").withSchema(TableName.Reminder).as("reminderNote"))
         .select(db.ref("repeatDays").withSchema(TableName.Reminder).as("reminderRepeatDays"))
@@ -848,9 +847,51 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .orderBy(`${TableName.SecretTag}.createdAt`, "asc", "first")
         .orderBy(`${TableName.SecretTag}.id`, "asc", "first");
 
+      if (timestampOrderBy) {
+        const sortFolderIds = filters?.sortFolderIds ?? folderIds;
+        const timestampValue = sortFolderIds.length
+          ? db.raw(
+              `MAX(CASE WHEN ?? IN (${sortFolderIds.map(() => "?").join(", ")}) THEN ?? END) OVER (PARTITION BY ??) AS "sortValue"`,
+              [
+                `${TableName.SecretV2}.folderId`,
+                ...sortFolderIds,
+                `${TableName.SecretV2}.${timestampOrderBy}`,
+                `${TableName.SecretV2}.key`
+              ]
+            )
+          : db.raw('NULL AS "sortValue"');
+        void query.select(timestampValue);
+      } else {
+        void query.select(db.raw(`DENSE_RANK() OVER (ORDER BY "${TableName.SecretV2}".key ${sortDirection}) as rank`));
+      }
+
       let secs: Awaited<typeof query>;
 
-      if (filters?.limit) {
+      if (timestampOrderBy) {
+        const rankedQuery = (tx || db)
+          .with("matching", query)
+          .with("ranked", (qb) =>
+            qb
+              .select("matching.*")
+              .select(db.raw(`DENSE_RANK() OVER (ORDER BY "sortValue" ${sortDirection} NULLS LAST, "key" ASC) AS rank`))
+              .from("matching")
+          )
+          .select("*")
+          .from<Awaited<typeof query>[number]>("ranked")
+          .orderBy("sortValue", sortDirection, "last")
+          .orderBy("key", OrderByDirection.ASC)
+          .orderBy("id", OrderByDirection.ASC)
+          .orderBy("metadataCreatedAt", "asc", "first")
+          .orderBy("metadataId", "asc", "first")
+          .orderBy("tagCreatedAt", "asc", "first")
+          .orderBy("tagId", "asc", "first");
+
+        if (filters?.limit) {
+          const rankOffset = (filters.offset ?? 0) + 1;
+          void rankedQuery.where("rank", ">=", rankOffset).andWhere("rank", "<", rankOffset + filters.limit);
+        }
+        secs = await rankedQuery;
+      } else if (filters?.limit) {
         const rankOffset = (filters?.offset ?? 0) + 1; // ranks start at 1
         secs = await (tx || db)
           .with("w", query)

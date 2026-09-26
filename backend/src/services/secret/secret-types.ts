@@ -193,6 +193,12 @@ export enum SecretsOrderBy {
   Name = "name" // "key" for secrets but using name for use across resources
 }
 
+export enum SecretSortField {
+  Name = "name",
+  CreatedAt = "createdAt",
+  UpdatedAt = "updatedAt"
+}
+
 export enum PersonalOverridesBehavior {
   Priority = "priority", // used in v4 router when includePersonalOverrides is true
   IncludeAll = "include-all", // used in deprecated v3 secret router to keep existing behavior

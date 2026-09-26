@@ -85,6 +85,7 @@ import { TSecretQueueFactory } from "./secret-queue";
 import {
   SecretOperations,
   SecretProtectionType,
+  SecretSortField,
   TAttachSecretTagsDTO,
   TBackFillSecretReferencesDTO,
   TCreateBulkSecretDTO,
@@ -1254,9 +1255,11 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     environments,
     ...params
-  }: Omit<TGetSecretsRawDTO, "environment" | "includeImports" | "expandSecretReferences" | "recursive"> & {
+  }: Omit<TGetSecretsRawDTO, "environment" | "includeImports" | "expandSecretReferences" | "recursive" | "orderBy"> & {
     environments: string[];
     isInternal?: boolean;
+    orderBy?: SecretSortField;
+    sortEnvironment?: string;
   }) => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 

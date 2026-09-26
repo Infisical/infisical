@@ -15,7 +15,8 @@ import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
-  SecretsOrderBy
+  type SecretsOrderBy,
+  SecretSortField
 } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
@@ -490,8 +491,9 @@ export type TGetSecretReferencesDTO = {
 export type TFindSecretsByFolderIdsFilter = {
   limit?: number;
   offset?: number;
-  orderBy?: SecretsOrderBy;
+  orderBy?: SecretsOrderBy | SecretSortField;
   orderDirection?: OrderByDirection;
+  sortFolderIds?: string[];
   search?: string;
   tagSlugs?: string[];
   metadataFilter?: { key?: string; value?: string }[];
@@ -499,6 +501,26 @@ export type TFindSecretsByFolderIdsFilter = {
   includeMetadataInSearch?: boolean;
   keys?: string[];
   excludeRotatedSecrets?: boolean;
+};
+
+export type TGetSecretsMultiEnvDTO = Pick<
+  TGetSecretsDTO,
+  | "actorId"
+  | "actor"
+  | "path"
+  | "projectId"
+  | "actorOrgId"
+  | "actorAuthMethod"
+  | "search"
+  | "tagSlugs"
+  | "orderDirection"
+  | "limit"
+  | "offset"
+> & {
+  orderBy?: SecretSortField;
+  sortEnvironment?: string;
+  environments: string[];
+  isInternal?: boolean;
 };
 
 export type TGetSecretsRawByFolderMappingsDTO = {
