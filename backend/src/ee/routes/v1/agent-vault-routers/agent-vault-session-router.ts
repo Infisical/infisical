@@ -26,7 +26,6 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 const SessionAccessBundleSchema = z.object({
   id: z.string().uuid().nullable(),
   name: z.string(),
-  description: z.string().nullable(),
   position: z.number()
 });
 

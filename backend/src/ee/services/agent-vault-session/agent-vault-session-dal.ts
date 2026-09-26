@@ -20,7 +20,7 @@ export type TAgentVaultSessionListRow = {
   expiresAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
-  accessBundles: { id: string | null; name: string; description: string | null; position: number }[];
+  accessBundles: { id: string | null; name: string; position: number }[];
 };
 
 // Mirrors deriveSessionStatus: a session with neither actor id counts as revoked.
@@ -206,7 +206,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("accessBundleId").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName"),
-          db.ref("description").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleDescription"),
           db.ref("position").withSchema(TableName.AgentVaultSessionAccessBundle)
         )
         .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")
@@ -226,7 +225,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         accessBundleId: string | null;
         accessBundleName: string | null;
         liveAccessBundleName: string | null;
-        accessBundleDescription: string | null;
         position: number | null;
       }[];
 
@@ -251,7 +249,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         session.accessBundles.push({
           id: row.accessBundleId,
           name: row.liveAccessBundleName ?? row.accessBundleName,
-          description: row.accessBundleDescription ?? null,
           position: row.position
         });
       });

@@ -181,7 +181,6 @@ export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
 export type TAgentVaultSessionAccessBundle = {
   id: string | null;
   name: string;
-  description: string | null;
   position: number;
 };
 

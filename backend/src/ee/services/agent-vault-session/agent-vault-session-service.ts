@@ -138,7 +138,6 @@ export const agentVaultSessionServiceFactory = ({
         accessBundles: accessBundles.map((name, position) => ({
           id: bundlesByName.get(name)!.id,
           name,
-          description: bundlesByName.get(name)!.description ?? null,
           position
         }))
       },
