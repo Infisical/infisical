@@ -9,6 +9,13 @@ on:
       - "frontend/src/index.css"
       - "frontend/.storybook/**"
       - "frontend/package-lock.json"
+      - "frontend/package.json"
+      - "frontend/.npmrc"
+      - ".npmrc"
+      - ".nvmrc"
+      - "build-versions.env"
+      - "scripts/check-node-toolchain.mjs"
+      - ".github/actions/setup-node-toolchain/**"
       - ".github/workflows/publish-storybook-chromatic.yml"
 
 concurrency:
@@ -33,17 +40,15 @@ jobs:
         with:
           # Chromatic needs full git history to find the baseline build
           fetch-depth: 0
-      - name: 🔧 Setup Node 22
+      - name: 🔧 Setup Node toolchain
         id: setup-node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: "22"
+        uses: ./.github/actions/setup-node-toolchain
       - name: 📦 Cache node_modules
         id: cache-node-modules
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: frontend/node_modules
-          key: frontend-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('frontend/package-lock.json') }}
+          key: frontend-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-npm${{ steps.setup-node.outputs.npm-version }}-${{ hashFiles('frontend/package-lock.json', 'frontend/.npmrc', '.npmrc') }}
       - name: 📦 Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
