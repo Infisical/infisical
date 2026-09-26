@@ -371,14 +371,22 @@ export const DynamicSecretTableRow = ({
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
               className="sticky left-0 border-y border-border"
             >
-              <Table containerClassName="rounded-none border-0">
+              <Table
+                className="w-full min-w-[calc(var(--name-column-width,180px)+24rem)] table-fixed"
+                containerClassName="rounded-none border-0"
+              >
+                <colgroup>
+                  <col className="w-10" />
+                  <col className="w-[var(--name-column-width,180px)]" />
+                  <col />
+                </colgroup>
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
                       Environment
                     </TableHead>
-                    <TableHead className="w-full" />
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
