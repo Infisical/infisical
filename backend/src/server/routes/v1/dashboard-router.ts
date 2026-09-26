@@ -38,7 +38,7 @@ import {
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SecretMetadataQuerySchema, SecretMetadataResponseSchema } from "./dashboard-secret-metadata-schemas";
-import { isSecretPathMatch, resolveSecretDeepSearch } from "./dashboard-secret-search-fns";
+import { isInSecretSearchScope, resolveSecretDeepSearch } from "./dashboard-secret-search-fns";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
 const DEEP_SEARCH_DEFAULT_PAGE_LIMIT = 25;
@@ -1694,7 +1694,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       const matchedSecrets = searchPath
-        ? secrets.filter((secret) => isSecretPathMatch(secret.secretPath, searchPath))
+        ? secrets.filter((secret) => isInSecretSearchScope(secret.secretPath, searchPath, secretPath))
         : secrets;
 
       // page secrets by rendered entry (env + path + key): a shared secret and its personal override
@@ -1713,11 +1713,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const secretUnits = [...secretUnitsByEntry.values()];
 
       const matchedDynamicSecrets = searchPath
-        ? dynamicSecrets.filter((dynamicSecret) => isSecretPathMatch(dynamicSecret.path, searchPath))
+        ? dynamicSecrets.filter((dynamicSecret) => isInSecretSearchScope(dynamicSecret.path, searchPath, secretPath))
         : dynamicSecrets;
 
       const matchedSecretRotations = searchPath
-        ? secretRotations.filter((rotation) => isSecretPathMatch(rotation.folder.path, searchPath))
+        ? secretRotations.filter((rotation) => isInSecretSearchScope(rotation.folder.path, searchPath, secretPath))
         : secretRotations;
 
       const matchedFolders = allFolders.filter((folder) => {
@@ -1727,7 +1727,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         if (searchPath) {
           if (searchPath === "/") {
             // only show root folders if no folder name search
-            if (!searchName) return folderPath === searchPath;
+            if (!searchName) return isInSecretSearchScope(folderPath, searchPath, secretPath);
 
             // start partial match on root folders
             return folderName.toLowerCase().startsWith(searchName.toLowerCase());
@@ -1735,7 +1735,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
           // support ending partial path match
           return (
-            isSecretPathMatch(folderPath, searchPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase())
+            isInSecretSearchScope(folderPath, searchPath, secretPath) &&
+            folderName.toLowerCase().startsWith(searchName.toLowerCase())
           );
         }
 

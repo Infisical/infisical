@@ -1,4 +1,9 @@
-import { isSecretPathMatch, parseSecretPathSearch, resolveSecretDeepSearch } from "./dashboard-secret-search-fns";
+import {
+  isInSecretSearchScope,
+  isSecretPathMatch,
+  parseSecretPathSearch,
+  resolveSecretDeepSearch
+} from "./dashboard-secret-search-fns";
 
 describe("parseSecretPathSearch", () => {
   test.each([
@@ -23,6 +28,25 @@ describe("isSecretPathMatch", () => {
     expect(isSecretPathMatch("/Prod", "/prod")).toBe(true);
     expect(isSecretPathMatch("/eu/Prod", "/prod")).toBe(true);
     expect(isSecretPathMatch("/production", "/prod")).toBe(false);
+  });
+});
+
+describe("isInSecretSearchScope", () => {
+  test("scopes a root search path to the environment root", () => {
+    expect(isInSecretSearchScope("/", "/", "/")).toBe(true);
+    expect(isInSecretSearchScope("/db", "/", "/")).toBe(false);
+  });
+
+  test("scopes a root search path to a nested search root", () => {
+    expect(isInSecretSearchScope("/app/backend", "/", "/app/backend")).toBe(true);
+    expect(isInSecretSearchScope("/App/Backend", "/", "/app/backend")).toBe(true);
+    expect(isInSecretSearchScope("/app/backend/db", "/", "/app/backend")).toBe(false);
+    expect(isInSecretSearchScope("/", "/", "/app/backend")).toBe(false);
+  });
+
+  test("matches an ending path segment for any other search path", () => {
+    expect(isInSecretSearchScope("/app/backend/db", "/db", "/app/backend")).toBe(true);
+    expect(isInSecretSearchScope("/app/backend", "/db", "/app/backend")).toBe(false);
   });
 });
 

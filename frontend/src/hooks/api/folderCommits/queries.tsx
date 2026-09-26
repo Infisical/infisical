@@ -54,16 +54,14 @@ export const commitKeys = {
   rollbackPreview: ({
     folderId,
     commitId,
-    envSlug,
     projectId,
     deepRollback
   }: {
     folderId: string;
     commitId: string;
-    envSlug: string;
     projectId: string;
     deepRollback: boolean;
-  }) => [{ folderId, commitId, envSlug, projectId, deepRollback }, "rollback-preview"] as const
+  }) => [{ folderId, commitId, projectId, deepRollback }, "rollback-preview"] as const
 };
 
 const fetchFolderCommitsCount = async ({
@@ -156,19 +154,15 @@ export const fetchCommitDetails = async (projectId: string, commitId: string) =>
 export const fetchRollbackPreview = async (
   folderId: string,
   commitId: string,
-  envSlug: string,
   projectId: string,
-  deepRollback: boolean,
-  secretPath: string
+  deepRollback: boolean
 ): Promise<RollbackPreview[]> => {
   const { data } = await apiRequest.get<RollbackPreview[]>(
     `/api/v1/pit/commits/${commitId}/compare`,
     {
       params: {
         folderId,
-        environment: envSlug,
         deepRollback,
-        secretPath,
         projectId
       }
     }
@@ -376,15 +370,12 @@ export const useGetCommitDetails = (projectId: string, commitId: string) => {
 export const useGetRollbackPreview = (
   folderId: string,
   commitId: string,
-  envSlug: string,
   projectId: string,
-  deepRollback: boolean,
-  secretPath: string
+  deepRollback: boolean
 ) => {
   return useQuery({
-    queryKey: commitKeys.rollbackPreview({ folderId, commitId, envSlug, projectId, deepRollback }),
-    queryFn: () =>
-      fetchRollbackPreview(folderId, commitId, envSlug, projectId, deepRollback, secretPath),
+    queryKey: commitKeys.rollbackPreview({ folderId, commitId, projectId, deepRollback }),
+    queryFn: () => fetchRollbackPreview(folderId, commitId, projectId, deepRollback),
     enabled: Boolean(folderId) && Boolean(commitId),
     // Toggling deep rollback swaps query keys, so hold the previous preview instead of
     // tearing the whole panel down to skeletons on every toggle
