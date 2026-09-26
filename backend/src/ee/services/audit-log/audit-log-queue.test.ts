@@ -404,4 +404,80 @@ describe("audit-log-queue unified consumer", () => {
 
     expect(release).toHaveBeenCalledTimes(1);
   });
+
+  describe("free-text normalization reaches both sinks", () => {
+    const NUL = String.fromCharCode(0);
+    const ESC = String.fromCharCode(0x1b);
+    const RLO = String.fromCodePoint(0x202e);
+
+    const hostileEntry = () =>
+      streamEntry({
+        projectId: "p1",
+        projectName: `proj${RLO}x`,
+        ipAddress: `1.1.1.1${String.fromCharCode(0x9b)}[31m`,
+        userAgent: `Agent/1.0${ESC}[31m`,
+        actor: { type: "user", metadata: { name: `svc${NUL}acct` } },
+        event: {
+          type: "test-event",
+          metadata: { reason: `approved by${String.fromCharCode(10)}ops`, nested: { note: `a${RLO}b` } }
+        }
+      });
+
+    // projectName is only carried on the postgres path, so the clickhouse case opts out of it.
+    const expectClean = (row: Record<string, unknown>, { withProjectName = true } = {}) => {
+      if (withProjectName) expect(row.projectName).toBe("projx");
+      expect(row.ipAddress).toBe("1.1.1.1[31m");
+      expect(row.userAgent).toBe("Agent/1.0");
+      expect((row.actorMetadata as Record<string, unknown>).name).toBe("svcacct");
+
+      const eventMetadata = row.eventMetadata as Record<string, unknown>;
+      expect(eventMetadata.reason).toBe("approved by ops");
+      expect((eventMetadata.nested as Record<string, unknown>).note).toBe("ab");
+    };
+
+    test("the postgres insert receives normalized values", async () => {
+      const { consumer, auditLogDAL, keyStore } = await createHarness();
+      keyStore.streamCollect.mockResolvedValueOnce(collectResult([hostileEntry()]));
+
+      await consumer();
+
+      expectClean(auditLogDAL.batchCreate.mock.calls[0][0][0]);
+    });
+
+    test("the stream outbox receives the same normalized rows", async () => {
+      const { consumer, auditLogStreamOutboxService, keyStore } = await createHarness({ streamsEnabled: true });
+      keyStore.streamCollect.mockResolvedValueOnce(collectResult([hostileEntry()]));
+
+      await consumer();
+
+      expect(auditLogStreamOutboxService.enqueueForLogs).toHaveBeenCalledTimes(1);
+      expectClean(auditLogStreamOutboxService.enqueueForLogs.mock.calls[0][0][0] as Record<string, unknown>);
+    });
+
+    test("the clickhouse insert receives normalized values", async () => {
+      const { consumer, clickhouseClient, keyStore } = await createHarness({ clickhouse: true });
+      keyStore.streamCollect.mockResolvedValueOnce(collectResult([hostileEntry()]));
+
+      await consumer();
+
+      expectClean(clickhouseClient!.insert.mock.calls[0][0].values[0], { withProjectName: false });
+    });
+
+    test("legitimate nesting survives the walk intact", async () => {
+      const { consumer, auditLogDAL, keyStore } = await createHarness();
+      let claims: Record<string, unknown> = { sub: `id${NUL}1`, keep: 7 };
+      for (let i = 0; i < 20; i += 1) claims = { nested: claims };
+      keyStore.streamCollect.mockResolvedValueOnce(
+        collectResult([streamEntry({ event: { type: "test-event", metadata: { oidcClaimsReceived: claims } } })])
+      );
+
+      await consumer();
+
+      const row = auditLogDAL.batchCreate.mock.calls[0][0][0];
+      let cursor = (row.eventMetadata as Record<string, unknown>).oidcClaimsReceived as Record<string, unknown>;
+      for (let i = 0; i < 20; i += 1) cursor = cursor.nested as Record<string, unknown>;
+      expect(cursor.sub).toBe("id1");
+      expect(cursor.keep).toBe(7);
+    });
+  });
 });
