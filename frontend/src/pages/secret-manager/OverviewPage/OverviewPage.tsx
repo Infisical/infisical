@@ -34,6 +34,11 @@ import {
   HoneyTokenDetailsDrawer,
   RevokeHoneyTokenModal
 } from "@app/components/honey-tokens";
+import {
+  DynamicSecretsUpgradeIntent,
+  UpgradeContinuation,
+  UpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -179,6 +184,7 @@ import {
 import { useCheckSecretRotationV2Credentials } from "@app/hooks/api/secretRotationsV2/mutations";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
+import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 import {
   ApiErrorTypes,
   ProjectEnv,
@@ -329,6 +335,8 @@ const OverviewPageContent = () => {
       search: el.search,
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
+      upgradeContinuation: el.upgradeContinuation,
+      checkout: el.checkout,
       honeyTokenId: el.honeyTokenId,
       tags: el.tags,
       filterBy: el.filterBy
@@ -1156,6 +1164,74 @@ const OverviewPageContent = () => {
     "revokeHoneyToken",
     "createEnvironment"
   ] as const);
+  const [isDynamicSecretsUpgradeOpen, setIsDynamicSecretsUpgradeOpen] = useState(false);
+
+  const clearUpgradeContinuation = useCallback(() => {
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        upgradeContinuation: undefined,
+        checkout: undefined
+      }),
+      replace: true
+    });
+  }, [navigate]);
+
+  const handleDynamicSecretsGranted = useCallback(() => {
+    const refreshSubscription = async (attempt = 0): Promise<void> => {
+      const refreshedSubscription = await fetchOrgSubscription(orgId, true);
+      queryClient.setQueryData(
+        subscriptionQueryKeys.getOrgSubsription(orgId),
+        refreshedSubscription
+      );
+
+      if (refreshedSubscription.dynamicSecret) {
+        setIsDynamicSecretsUpgradeOpen(false);
+        handlePopUpOpen("addDynamicSecret");
+        clearUpgradeContinuation();
+        return;
+      }
+
+      if (attempt < 4) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, 1000);
+        });
+        await refreshSubscription(attempt + 1);
+        return;
+      }
+
+      createNotification({
+        type: "info",
+        text: "Your trial is still being activated. Reload this page in a moment to continue."
+      });
+    };
+
+    refreshSubscription().catch(() => {
+      createNotification({
+        type: "error",
+        text: "Failed to refresh your subscription. Try adding a dynamic secret again."
+      });
+    });
+  }, [clearUpgradeContinuation, handlePopUpOpen, orgId, queryClient]);
+
+  useEffect(() => {
+    if (routerSearch.upgradeContinuation !== UpgradeContinuation.CreateDynamicSecret) {
+      return;
+    }
+
+    if (routerSearch.checkout === "canceled") {
+      createNotification({ type: "info", text: "Trial setup was canceled." });
+      clearUpgradeContinuation();
+      return;
+    }
+
+    handleDynamicSecretsGranted();
+  }, [
+    clearUpgradeContinuation,
+    handleDynamicSecretsGranted,
+    routerSearch.checkout,
+    routerSearch.upgradeContinuation
+  ]);
 
   const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
   const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
@@ -2633,10 +2709,7 @@ const OverviewPageContent = () => {
         handlePopUpOpen("addDynamicSecret");
         return;
       }
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Upgrade to the Infisical Secret Management advanced plan to unlock dynamic secrets."
-      });
+      setIsDynamicSecretsUpgradeOpen(true);
     },
     onAddSecretRotation: () => {
       if (subscription?.secretRotation) {
@@ -3816,6 +3889,12 @@ const OverviewPageContent = () => {
           text={popUp.upgradePlan.data?.text}
         />
       )}
+      <UpgradeGate
+        intent={DynamicSecretsUpgradeIntent}
+        isOpen={isDynamicSecretsUpgradeOpen}
+        onOpenChange={setIsDynamicSecretsUpgradeOpen}
+        onGranted={handleDynamicSecretsGranted}
+      />
       <AddEnvironmentModal
         isOpen={popUp.createEnvironment.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("createEnvironment", isOpen)}
