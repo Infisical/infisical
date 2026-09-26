@@ -1058,7 +1058,7 @@ export const secretFolderServiceFactory = ({
     return folders;
   };
 
-  const getProjectEnvironmentsFolders = async (projectId: string, actor: OrgServiceActor) => {
+  const getProjectEnvironmentsFolders = async (projectId: string, actor: OrgServiceActor, environment?: string) => {
     // folder list is allowed to be read by anyone
     // permission is to check if user has access
     await permissionService.getProjectPermission({
@@ -1070,7 +1070,7 @@ export const secretFolderServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const environments = await projectEnvDAL.find({ projectId });
+    const environments = await projectEnvDAL.find({ projectId, ...(environment && { slug: environment }) });
 
     const folders = await folderDAL.find({
       $in: {

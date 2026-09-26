@@ -1503,6 +1503,10 @@ export const SECRET_IMPORTS = {
 } as const;
 
 export const DASHBOARD = {
+  SECRET_METADATA_SEARCH: {
+    searchLimit: "The candidate limit applied independently to plaintext matches and encrypted metadata candidates.",
+    tags: "The tags attached to the secret, including each tag's ID and slug."
+  },
   SECRET_METADATA_LIST: {
     projectId: "The ID of the project containing the secrets.",
     environment: "The slug of the environment containing the secrets.",
