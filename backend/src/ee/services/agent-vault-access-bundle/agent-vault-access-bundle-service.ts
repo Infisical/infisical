@@ -38,6 +38,7 @@ import {
   AgentVaultSubstitutionSurface
 } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
 import { TAgentVaultAccessBundleActorRef, TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-dal";
 import {
   TAddMembersDTO,
@@ -72,6 +73,7 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
     "findOne" | "find" | "insertMany" | "delete" | "deleteById" | "transaction" | "findResourceMembershipsForActor"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany">;
+  agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
 };
@@ -80,6 +82,12 @@ export type TAgentVaultAccessBundleServiceFactory = ReturnType<typeof agentVault
 
 // The old shape capped the array at 100 entries; the cap moves here now that the body is three lists.
 export const AGENT_VAULT_MAX_GRANTEES = 100;
+
+const ALL_GRANTEE_ACTOR_TYPES = [
+  AgentVaultMemberType.User,
+  AgentVaultMemberType.Group,
+  AgentVaultMemberType.MachineIdentity
+];
 
 export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBundleServiceFactoryDep) => {
   const {
@@ -91,6 +99,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     kmsService,
     membershipDAL,
     membershipRoleDAL,
+    agentVaultMemberDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL
   } = deps;
@@ -922,6 +931,26 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
   };
 
+  // The candidates for a grant are the product's own members, since addMembers refuses anyone else, minus
+  // whoever already holds this bundle. A member reaching it only through a granted group stays a
+  // candidate: an individual grant is a different thing, and it outlives the group membership.
+  const listAvailableMembers = async ({ accessBundleId, search, limit, offset, ...rest }: TListMembersDTO) => {
+    const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+      ProjectPermissionSub.AgentVaultAccessBundles
+    );
+    return agentVaultMemberDAL.findProductMembers({
+      projectId: rest.projectId,
+      orgId: rest.ctx.actorOrgId,
+      actorTypes: ALL_GRANTEE_ACTOR_TYPES,
+      search,
+      limit,
+      offset,
+      excludeAccessBundleId: bundle.id
+    });
+  };
+
   const addMembers = async ({ accessBundleId, userIds, groupIds, machineIdentityIds, ...rest }: TAddMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
@@ -1068,6 +1097,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     updateService,
     deleteService,
     listMembers,
+    listAvailableMembers,
     addMembers,
     revokeMembers
   };

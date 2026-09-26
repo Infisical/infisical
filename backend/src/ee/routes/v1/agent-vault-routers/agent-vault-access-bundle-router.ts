@@ -32,6 +32,7 @@ import {
   AgentVaultMemberRevokeIdsSchema,
   AgentVaultMemberSchema,
   AgentVaultNameSchema,
+  AgentVaultProductMemberSchema,
   AgentVaultRemovedMemberSchema,
   AgentVaultServiceSchema,
   AgentVaultSubstitutionsInputSchema,
@@ -512,6 +513,33 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) =>
       server.services.agentVaultAccessBundle.listMembers({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        ...req.query
+      })
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accessBundleId/members/available",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listAvailableAgentVaultAccessBundleMembers",
+      description: "List the Agent Vault members who can still be granted an access bundle",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+      }),
+      querystring: z.object(agentVaultListQuery(AGENT_VAULT.AVAILABLE_GRANTEE)),
+      response: {
+        200: z.object({ members: AgentVaultProductMemberSchema.array(), totalCount: z.number() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.agentVaultAccessBundle.listAvailableMembers({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,

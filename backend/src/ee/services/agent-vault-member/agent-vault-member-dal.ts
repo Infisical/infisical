@@ -1,7 +1,14 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  RESOURCE_SCOPE,
+  ResourceType,
+  TableName
+} from "@app/db/schemas";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
@@ -88,19 +95,30 @@ type TFindProductMembersDTO = {
   search?: string;
   limit: number;
   offset: number;
+  // Set to list the members who could still be granted that bundle.
+  excludeAccessBundleId?: string;
 };
 
-type TFindAvailableActorsDTO = TFindProductMembersDTO;
+type TFindAvailableActorsDTO = Omit<TFindProductMembersDTO, "excludeAccessBundleId">;
 
 export const agentVaultMemberDALFactory = (db: TDbClient) => {
   const findProductMembers = async (
-    { projectId, orgId, actorTypes, search, limit, offset }: TFindProductMembersDTO,
+    { projectId, orgId, actorTypes, search, limit, offset, excludeAccessBundleId }: TFindProductMembersDTO,
     tx?: Knex
   ): Promise<{ members: TAgentVaultProductMember[]; totalCount: number }> => {
     if (!actorTypes.length) return { members: [], totalCount: 0 };
 
     try {
       const conn = tx || db.replicaNode();
+
+      const alreadyGranted = (column: (typeof ACTOR_COLUMN)[AgentVaultMemberType]) =>
+        conn(TableName.Membership)
+          .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
+          .where(`${TableName.Membership}.scopeProjectId`, projectId)
+          .where(`${TableName.Membership}.scopeResourceType`, ResourceType.AgentVaultAccessBundle)
+          .where(`${TableName.Membership}.scopeResourceId`, excludeAccessBundleId!)
+          .whereNotNull(`${TableName.Membership}.${column}`)
+          .select(column);
 
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query
@@ -114,7 +132,15 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
 
         void query.where((qb) => {
           actorTypes.forEach((type) => {
-            void qb.orWhereNotNull(`${TableName.Membership}.${ACTOR_COLUMN[type]}`);
+            const column = ACTOR_COLUMN[type];
+            void qb.orWhere((typeQb) => {
+              void typeQb.whereNotNull(`${TableName.Membership}.${column}`);
+              // Inside the block, where the column is known non-null: a bare whereNotIn would read
+              // NULL NOT IN (...) as NULL for the other two types and drop every one of their rows.
+              if (excludeAccessBundleId) {
+                void typeQb.whereNotIn(`${TableName.Membership}.${column}`, alreadyGranted(column));
+              }
+            });
           });
         });
 
