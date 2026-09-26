@@ -109,6 +109,8 @@ export type TestConnectionRequest =
       username: string;
       password?: string;
       database: string;
+      httpPort?: number;
+      nativePort?: number;
       sslEnabled?: boolean;
       sslRejectUnauthorized?: boolean;
       sslCertificate?: string;
@@ -140,7 +142,12 @@ export const buildGatewayConnectionTest = async (
   orgId: string,
   // Off for account create and update, which must not fail against a gateway predating the test they need.
   opts?: { allowNewerGatewayTests?: boolean }
-): Promise<{ host: string; port: number; request: TestConnectionRequest } | null> => {
+): Promise<{
+  host: string;
+  port: number;
+  request: TestConnectionRequest;
+  additionalPorts?: number[];
+} | null> => {
   const creds = credentials && isCredentialConfigured(accountType, credentials) ? credentials : null;
 
   const target =
@@ -384,6 +391,8 @@ export const buildGatewayConnectionTest = async (
     case PamAccountType.ClickHouse: {
       const cd = connectionDetails as {
         database: string;
+        port?: number;
+        nativePort?: number;
         sslEnabled?: boolean;
         sslRejectUnauthorized?: boolean;
         sslCertificate?: string;
@@ -393,11 +402,14 @@ export const buildGatewayConnectionTest = async (
       return {
         host,
         port,
+        additionalPorts: [cd.port, cd.nativePort].filter((p): p is number => typeof p === "number"),
         request: {
           mode: TestConnectionMode.ClickHouse,
           username: c.username,
           password: c.password,
           database: cd.database,
+          httpPort: cd.port,
+          nativePort: cd.nativePort,
           sslEnabled: cd.sslEnabled,
           sslRejectUnauthorized: cd.sslRejectUnauthorized,
           sslCertificate: cd.sslCertificate

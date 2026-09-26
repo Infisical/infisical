@@ -29,7 +29,7 @@ import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { testConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
+import { testBuiltConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
 import {
   accountTypeSupportsSessionLogMasking,
   PamAccessStatus,
@@ -78,6 +78,7 @@ import {
   ACCOUNT_TYPE_CONFIGS,
   applyForcedFields,
   gatewaySupportsAccountType,
+  gatewaySupportsClickHouseNative,
   getAccountAccessibilityIssues,
   hasRevealableCredential,
   isCredentialConfigured,
@@ -86,6 +87,7 @@ import {
   ORACLE_MAX_PASSWORD_LENGTH,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
+  requiresClickHouseNative,
   sanitizeCredentials,
   suppliesCredentialSecret,
   type TSshInternalMetadata,
@@ -628,24 +630,27 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
 
     const attachedGateway = await gatewayV2DAL.findOne({ id: gatewayId });
-    const capabilities = attachedGateway?.capabilities as { supported_account_types?: string[] } | null;
+    const capabilities = attachedGateway?.capabilities as {
+      supported_account_types?: string[];
+      clickhouseNativeProtocol?: boolean;
+    } | null;
     if (!gatewaySupportsAccountType(accountType, capabilities?.supported_account_types)) {
       throw new BadRequestError({
         message: `Gateway '${attachedGateway?.name ?? gatewayId}' does not support ${ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType].name} accounts. Update the gateway, then try again.`
       });
     }
 
+    // Otherwise this passes over HTTP and every native client fails at session time, with nothing to point at.
+    if (requiresClickHouseNative(accountType, connectionDetails) && !gatewaySupportsClickHouseNative(capabilities)) {
+      throw new BadRequestError({
+        message: `Gateway '${attachedGateway?.name ?? gatewayId}' does not support ClickHouse's native protocol. Update the gateway, or clear the native port to use this account over HTTP only.`
+      });
+    }
+
     const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials, orgId);
     if (!test) return false;
 
-    const result = await testConnectionWithGateway(
-      test.host,
-      test.port,
-      gatewayId,
-      gatewayV2Service,
-      test.request,
-      CONNECTION_TEST_TIMEOUT_MS
-    );
+    const result = await testBuiltConnectionWithGateway(test, gatewayId, gatewayV2Service, CONNECTION_TEST_TIMEOUT_MS);
 
     // a null result means the gateway couldn't be reached (offline / pre-protocol) — skip rather than block
     if (result && !result.ok) {
@@ -974,9 +979,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       const oldConn = validateConnectionDetails(accountType, existingConnectionDetails) as {
         host?: string;
         port?: number;
+        nativePort?: number;
       };
-      const newConn = effectiveConnectionDetails as { host?: string; port?: number };
-      if (oldConn.host !== newConn.host || oldConn.port !== newConn.port) connectionTargetChanged = true;
+      const newConn = effectiveConnectionDetails as { host?: string; port?: number; nativePort?: number };
+      // Re-pointing nativePort sends the stored credential somewhere new on the next heartbeat.
+      if (oldConn.host !== newConn.host || oldConn.port !== newConn.port || oldConn.nativePort !== newConn.nativePort)
+        connectionTargetChanged = true;
 
       const oldUsername = (existingCredentials as { username?: string }).username;
       const newUsername = (effectiveCredentials as { username?: string }).username;

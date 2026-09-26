@@ -138,11 +138,17 @@ live in a process-wide map keyed by the driver's request id rather than on the p
 test compares the login's `sessionInfo` against what was asked for, because Snowflake accepts a warehouse
 or role the credential can't use and silently leaves it unset.
 
-**ClickHouse is brokered over its HTTP interface (8123/8443), never the native protocol on 9000**, so the
-gateway can read the statement as text to block and record it (CLI `packages/pam/handlers/clickhouse/`).
-Only the first megabyte of a request body is inspected, so an account carrying a command-blocking policy
-refuses a body longer than that rather than forward the remainder unread. Databases stand in for schemas, and the explorer grid is read-only for every table
-(`supportsRowEditing`): `is_in_primary_key` is a sorting key, not a unique constraint.
+**ClickHouse is brokered over both its interfaces, HTTP (8123/8443) and the native TCP protocol
+(9000/9440)**, and an account may carry either port or both. One local port serves both: the gateway
+routes a connection by its first byte (CLI `packages/pam/handlers/clickhouse/`). Over HTTP the statement
+is read as text, and only the first megabyte of a request body is inspected, so an account carrying a
+command-blocking policy refuses a longer body rather than forward the remainder unread. Over native the
+statement arrives in its own Query packet; a packet the gateway cannot parse ends the session rather than
+being relayed uninspected. Two consequences worth knowing: **Web Access needs the HTTP port**, because the
+browser client speaks HTTP and nothing translates for it (`webAccessUnavailableReason`), and a native port
+may only be saved against a gateway advertising the `clickhouseNativeProtocol` capability. Databases stand
+in for schemas, and the explorer grid is read-only for every table (`supportsRowEditing`):
+`is_in_primary_key` is a sorting key, not a unique constraint.
 
 ## Policies & Settings
 
