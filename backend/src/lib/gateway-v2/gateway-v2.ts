@@ -9,6 +9,7 @@ import {
   assertHostNotInfisicalInfrastructure,
   verifyHostInputValidity
 } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { GATEWAY_IDENTITY_URI_PREFIX } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { splitPemChain } from "@app/services/certificate/certificate-fns";
 
@@ -130,8 +131,17 @@ const GATEWAY_IDLE_TIMEOUT_MS = 120000;
 
 const DIRECT_HANDSHAKE_TIMEOUT_MS = 3000;
 
+const checkGatewayIdentity = (gatewayId: string, cert: tls.PeerCertificate) => {
+  const identities = (cert.subjectaltname ?? "")
+    .split(", ")
+    .filter((name) => name.startsWith(`URI:${GATEWAY_IDENTITY_URI_PREFIX}`));
+  if (!identities.length || identities.includes(`URI:${GATEWAY_IDENTITY_URI_PREFIX}${gatewayId}`)) return undefined;
+  return new Error(`The connection reached a gateway other than '${gatewayId}'`);
+};
+
 export const createGatewayConnection = async (
   transportConn: net.Socket,
+  gatewayId: string,
   gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string },
   protocol: GatewayProxyProtocol,
   tunnelId?: string,
@@ -170,7 +180,13 @@ export const createGatewayConnection = async (
     host: isIpLiteral ? serverName : undefined,
     servername: isIpLiteral ? undefined : serverName,
     ALPNProtocols: protocolToAlpn[protocol],
-    checkServerIdentity: appCfg.isDevelopmentMode ? () => undefined : tls.checkServerIdentity
+    checkServerIdentity: (hostname, cert) => {
+      if (!appCfg.isDevelopmentMode) {
+        const hostnameError = tls.checkServerIdentity(hostname, cert);
+        if (hostnameError) return hostnameError;
+      }
+      return checkGatewayIdentity(gatewayId, cert);
+    }
   };
 
   return new Promise((resolve, reject) => {
@@ -288,6 +304,7 @@ export const setupGatewayProxy = async ({
       try {
         const gwConn = await createGatewayConnection(
           conn,
+          gatewayId,
           gateway,
           protocol,
           tunnelId,
