@@ -38,6 +38,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
@@ -64,6 +65,7 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
+  ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProject,
@@ -117,10 +119,12 @@ const CLOSED_REQUEST_FILTERS: { label: string; value: ClosedRequestFilter }[] = 
 
 export const AccessApprovalRequest = ({
   projectSlug,
-  projectId
+  projectId,
+  onConfigurePolicies
 }: {
   projectSlug: string;
   projectId: string;
+  onConfigurePolicies: () => void;
 }) => {
   const [selectedRequest, setSelectedRequest] = useState<
     | (TAccessApprovalRequest & {
@@ -210,9 +214,15 @@ export const AccessApprovalRequest = ({
     projectSlug
   });
 
-  const { data: policies, isPending: policiesLoading } = useGetAccessApprovalPolicies({
-    projectSlug
-  });
+  const {
+    data: policies,
+    isPending: policiesLoading,
+    isSuccess: arePoliciesLoaded
+  } = useGetAccessApprovalPolicies({ projectSlug });
+  const canCreatePolicies = permission.can(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.SecretApproval
+  );
 
   const {
     data: requests,
@@ -690,6 +700,14 @@ export const AccessApprovalRequest = ({
                     : "Approved, rejected, revoked, or expired access requests will appear here."}
                 </EmptyDescription>
               </EmptyHeader>
+              {canCreatePolicies && arePoliciesLoaded && !policies?.length && (
+                <EmptyContent>
+                  <Button variant="project" size="sm" onClick={onConfigurePolicies}>
+                    <PlusIcon />
+                    Configure Policy
+                  </Button>
+                </EmptyContent>
+              )}
             </Empty>
           )}
           {Boolean(!filteredRequests?.length && isFiltered && !areRequestsPending) && (
