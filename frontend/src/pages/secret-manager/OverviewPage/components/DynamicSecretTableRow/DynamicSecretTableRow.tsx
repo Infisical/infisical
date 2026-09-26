@@ -31,6 +31,7 @@ import { useToggle } from "@app/hooks";
 import { DynamicSecretStatus, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
@@ -77,6 +78,11 @@ export const DynamicSecretTableRow = ({
   const [isExpanded, setIsExpanded] = useToggle(false);
 
   const isSingleEnvView = environments.length === 1;
+  // The action bar only exists in the single-environment view, where the row itself holds
+  // nothing focusable. The multi-environment row has no bar to reach.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: isSingleEnvView
+  });
   const totalCols = environments.length + 2;
 
   const statuses = getDynamicSecretStatusesByName(dynamicSecretName);
@@ -274,7 +280,8 @@ export const DynamicSecretTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge(groupClassName, "hover:z-10")}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -318,7 +325,7 @@ export const DynamicSecretTableRow = ({
               </Badge>
               {renderStatusIndicator(singleEnvDynamicSecret)}
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                {renderActionButtons(singleEnvDynamicSecret)}
+                {shouldRenderActions && renderActionButtons(singleEnvDynamicSecret)}
               </div>
             </div>
           ) : (

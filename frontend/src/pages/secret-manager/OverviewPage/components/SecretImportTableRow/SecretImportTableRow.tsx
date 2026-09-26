@@ -50,6 +50,7 @@ import { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { SecretV3RawSanitized } from "@app/hooks/api/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME,
@@ -117,6 +118,11 @@ export const SecretImportTableRow = ({
   const [selectedReplicationEnv, setSelectedReplicationEnv] = useState<string>("");
   const { currentProject } = useProject();
   const resyncSecretReplication = useResyncSecretReplication();
+  // The action bar only exists in the single-environment view, where the row already renders a
+  // focusable drag handle that mounts it, so the row needs no tab stop of its own.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: false
+  });
 
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2;
@@ -765,10 +771,12 @@ export const SecretImportTableRow = ({
         ref={isSingleEnvView ? (sortableRef as React.Ref<HTMLTableRowElement>) : undefined}
         onClick={handleRowClick}
         className={twMerge(
-          "group hover:z-10",
+          groupClassName,
+          "hover:z-10",
           isExpanded && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
           isDragging && "opacity-50"
         )}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -866,7 +874,8 @@ export const SecretImportTableRow = ({
               )}
             {isSingleEnvView && (
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                {renderSingleEnvActions()}
+                {(shouldRenderActions || resyncSecretReplication.isPending) &&
+                  renderSingleEnvActions()}
               </div>
             )}
           </div>

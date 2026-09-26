@@ -32,6 +32,7 @@ import { useToggle } from "@app/hooks";
 import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
@@ -73,6 +74,11 @@ export const ProxiedServiceTableRow = ({
   const [isExpanded, setIsExpanded] = useToggle(false);
 
   const isSingleEnvView = environments.length === 1;
+  // The action bar only exists in the single-environment view, where the row itself holds
+  // nothing focusable. The multi-environment row has no bar to reach.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: isSingleEnvView
+  });
   const totalCols = environments.length + 2;
 
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
@@ -188,7 +194,8 @@ export const ProxiedServiceTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge(groupClassName, "hover:z-10")}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -229,7 +236,7 @@ export const ProxiedServiceTableRow = ({
               <span className="truncate">{proxiedServiceName}</span>
               {renderInlineDetails(singleEnvService)}
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                {renderActionButtons(singleEnvService)}
+                {shouldRenderActions && renderActionButtons(singleEnvService)}
               </div>
             </div>
           ) : (

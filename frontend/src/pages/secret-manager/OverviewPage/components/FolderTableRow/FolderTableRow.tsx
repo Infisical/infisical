@@ -23,6 +23,7 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
@@ -78,15 +79,19 @@ export const FolderTableRow = ({
   };
 
   const isSingleEnvView = environments.length === 1;
+  // A folder row holds nothing focusable in either view, so it keeps the default tab stop.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions();
 
   return (
     <TableRow
       className={twMerge(
-        "group hover:z-10",
+        groupClassName,
+        "hover:z-10",
         isSelected && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
         pendingActionRowClass(pendingAction)
       )}
       onClick={handleClick}
+      {...rowHoverProps}
     >
       <TableCell
         className={twMerge(
@@ -149,118 +154,124 @@ export const FolderTableRow = ({
             </Tooltip>
           )}
         </div>
-        <div
-          className={twMerge(
-            "absolute z-20",
-            "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-            TABLE_ROW_ACTION_BAR_CLASS_NAME,
-            isSingleEnvView
-              ? "top-1/2 right-[2px] -translate-y-1/2"
-              : "top-1/2 right-[3px] -translate-y-1/2"
-          )}
-        >
-          {pendingAction !== PendingAction.Delete && (
-            <Tooltip disableHoverableContent>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="Move folder"
-                  variant="ghost"
-                  size="xs"
-                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  isDisabled={!canEditFolder}
-                  onClick={(e) => {
-                    onToggleFolderMove(folderName);
-                    e.stopPropagation();
-                  }}
-                >
-                  <FolderInputIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>{canEditFolder ? "Move Folder" : "Access Restricted"}</TooltipContent>
-            </Tooltip>
-          )}
-          {pendingAction !== PendingAction.Delete && (
-            <Tooltip disableHoverableContent>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="Edit folder"
-                  variant="ghost"
-                  size="xs"
-                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  isDisabled={!canEditFolder}
-                  onClick={(e) => {
-                    onToggleFolderEdit(folderName);
-                    e.stopPropagation();
-                  }}
-                >
-                  <EditIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>{canEditFolder ? "Edit Folder" : "Access Restricted"}</TooltipContent>
-            </Tooltip>
-          )}
-          {onToggleFolderAccess &&
-            canManageFolderAccess &&
-            pendingAction !== PendingAction.Delete && (
+        {shouldRenderActions && (
+          <div
+            className={twMerge(
+              "absolute z-20",
+              "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+              TABLE_ROW_ACTION_BAR_CLASS_NAME,
+              isSingleEnvView
+                ? "top-1/2 right-[2px] -translate-y-1/2"
+                : "top-1/2 right-[3px] -translate-y-1/2"
+            )}
+          >
+            {pendingAction !== PendingAction.Delete && (
               <Tooltip disableHoverableContent>
                 <TooltipTrigger>
                   <IconButton
-                    aria-label="Manage folder access"
+                    aria-label="Move folder"
                     variant="ghost"
                     size="xs"
                     className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                    isDisabled={!canEditFolder}
                     onClick={(e) => {
-                      onToggleFolderAccess(folderName);
+                      onToggleFolderMove(folderName);
                       e.stopPropagation();
                     }}
                   >
-                    <UsersIcon />
+                    <FolderInputIcon />
                   </IconButton>
                 </TooltipTrigger>
-                <TooltipContent>Manage Access</TooltipContent>
+                <TooltipContent>
+                  {canEditFolder ? "Move Folder" : "Access Restricted"}
+                </TooltipContent>
               </Tooltip>
             )}
-          {pendingAction ? (
-            <Tooltip disableHoverableContent>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="Discard pending folder changes"
-                  variant="ghost"
-                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
-                  size="xs"
-                  onClick={(e) => {
-                    onBatchRevert?.(folderName);
-                    e.stopPropagation();
-                  }}
-                >
-                  <Undo2Icon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Discard pending changes</TooltipContent>
-            </Tooltip>
-          ) : (
-            <Tooltip disableHoverableContent>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="Delete folder"
-                  variant="ghost"
-                  size="xs"
-                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
-                  isDisabled={!canDeleteFolder}
-                  onClick={(e) => {
-                    onToggleFolderDelete(folderName);
-                    e.stopPropagation();
-                  }}
-                >
-                  <TrashIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>
-                {canDeleteFolder ? "Delete Folder" : "Access Restricted"}
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
+            {pendingAction !== PendingAction.Delete && (
+              <Tooltip disableHoverableContent>
+                <TooltipTrigger>
+                  <IconButton
+                    aria-label="Edit folder"
+                    variant="ghost"
+                    size="xs"
+                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                    isDisabled={!canEditFolder}
+                    onClick={(e) => {
+                      onToggleFolderEdit(folderName);
+                      e.stopPropagation();
+                    }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {canEditFolder ? "Edit Folder" : "Access Restricted"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {onToggleFolderAccess &&
+              canManageFolderAccess &&
+              pendingAction !== PendingAction.Delete && (
+                <Tooltip disableHoverableContent>
+                  <TooltipTrigger>
+                    <IconButton
+                      aria-label="Manage folder access"
+                      variant="ghost"
+                      size="xs"
+                      className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                      onClick={(e) => {
+                        onToggleFolderAccess(folderName);
+                        e.stopPropagation();
+                      }}
+                    >
+                      <UsersIcon />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Manage Access</TooltipContent>
+                </Tooltip>
+              )}
+            {pendingAction ? (
+              <Tooltip disableHoverableContent>
+                <TooltipTrigger>
+                  <IconButton
+                    aria-label="Discard pending folder changes"
+                    variant="ghost"
+                    className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
+                    size="xs"
+                    onClick={(e) => {
+                      onBatchRevert?.(folderName);
+                      e.stopPropagation();
+                    }}
+                  >
+                    <Undo2Icon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Discard pending changes</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Tooltip disableHoverableContent>
+                <TooltipTrigger>
+                  <IconButton
+                    aria-label="Delete folder"
+                    variant="ghost"
+                    size="xs"
+                    className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
+                    isDisabled={!canDeleteFolder}
+                    onClick={(e) => {
+                      onToggleFolderDelete(folderName);
+                      e.stopPropagation();
+                    }}
+                  >
+                    <TrashIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {canDeleteFolder ? "Delete Folder" : "Access Restricted"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        )}
       </TableCell>
       {!isSingleEnvView &&
         environments.map(({ slug }, i) => {
