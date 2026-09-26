@@ -9,7 +9,6 @@ import {
   UpdateAwsConnectionSchema,
   ValidateAwsConnectionCredentialsSchema
 } from "@app/services/app-connection/aws";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const AgentVaultAwsConnectionCreateSchema = ValidateAwsConnectionCredentialsSchema.and(
   z.object({
@@ -34,7 +33,6 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
       resolveProjectId: (req) => req.internalAgentVaultProjectId,
       operationIdPrefix: "AgentVault",
       tags: [ApiDocsTags.AgentVaultAppConnections],
-      authModes: [AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN],
       descriptions: {
         list: "Lists the AWS connections scoped to Agent Vault",
         get: "Gets an AWS connection scoped to Agent Vault",

@@ -25,7 +25,6 @@ type TAppConnectionProductScope = {
   resolveProjectId: (req: FastifyRequest) => string;
   operationIdPrefix: string;
   tags: ApiDocsTags[];
-  authModes: AuthMode[];
   descriptions: Record<TProductScopedRoute, string>;
 };
 
@@ -86,7 +85,6 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(""));
   const tags = productScope?.tags ?? [ApiDocsTags.AppConnections];
-  const authModes = productScope?.authModes ?? [AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH];
 
   const $getProductScope = (req: FastifyRequest) => {
     if (!productScope) return undefined;
@@ -146,7 +144,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           200: z.object({ appConnections: sanitizedResponseSchema.array() })
         }
       },
-      onRequest: verifyAuth(authModes),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => $listAppConnections(req, $getProductScope(req)?.projectId)
     });
   } else {
@@ -168,7 +166,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           200: z.object({ appConnections: sanitizedResponseSchema.array() })
         }
       },
-      onRequest: verifyAuth(authModes),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => $listAppConnections(req, req.query.projectId)
     });
   }
@@ -248,7 +246,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
-    onRequest: verifyAuth(authModes),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -349,7 +347,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
-    onRequest: verifyAuth(authModes),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         name,
@@ -435,7 +433,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
-    onRequest: verifyAuth(authModes),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         name,
@@ -515,7 +513,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
-    onRequest: verifyAuth(authModes),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
