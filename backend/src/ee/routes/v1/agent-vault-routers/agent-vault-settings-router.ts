@@ -53,25 +53,24 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { settings, relocated, appConnectionName } =
-        await server.services.agentVaultSessionLog.updateSessionLogSettings({
-          projectId: req.internalAgentVaultProjectId,
-          ctx: {
-            actorId: req.permission.id,
-            actor: req.permission.type,
-            actorOrgId: req.permission.orgId,
-            actorAuthMethod: req.permission.authMethod
-          },
-          actor: {
-            type: req.permission.type,
-            id: req.permission.id,
-            authMethod: req.permission.authMethod,
-            orgId: req.permission.orgId,
-            rootOrgId: req.permission.rootOrgId,
-            parentOrgId: req.permission.parentOrgId
-          },
-          ...req.body
-        });
+      const { settings, appConnectionName } = await server.services.agentVaultSessionLog.updateSessionLogSettings({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: {
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        },
+        actor: {
+          type: req.permission.type,
+          id: req.permission.id,
+          authMethod: req.permission.authMethod,
+          orgId: req.permission.orgId,
+          rootOrgId: req.permission.rootOrgId,
+          parentOrgId: req.permission.parentOrgId
+        },
+        ...req.body
+      });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -79,7 +78,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE,
-          metadata: { ...settings, appConnectionName, relocated }
+          metadata: { ...settings, appConnectionName }
         }
       });
 
@@ -87,8 +86,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
         event: PostHogEventTypes.AgentVaultSessionLogSettingsUpdated,
         properties: {
           enabled: settings.enabled,
-          hasDestination: Boolean(settings.bucket),
-          relocated
+          hasDestination: Boolean(settings.bucket)
         }
       });
 

@@ -2494,7 +2494,6 @@ export type TAgentVaultSessionLogSettingsUpdatedEvent = {
   properties: TAgentVaultEventBase & {
     enabled: boolean;
     hasDestination: boolean;
-    relocated: boolean;
   };
 };
 

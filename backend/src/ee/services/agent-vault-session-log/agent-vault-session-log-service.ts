@@ -538,9 +538,6 @@ export const agentVaultSessionLogServiceFactory = ({
       }
     }
 
-    const relocated =
-      Boolean(existing) && (next.bucket !== (current.bucket ?? null) || next.keyPrefix !== (current.keyPrefix ?? null));
-
     const storage = next.enabled ? resolveStorageConfig(next) : null;
     const sessionLogStorage = storage ? await buildSessionLogStorage(storage, ctx.actorOrgId, $storageDeps) : null;
     if (sessionLogStorage) await sessionLogStorage.validate();
@@ -570,7 +567,7 @@ export const agentVaultSessionLogServiceFactory = ({
       appConnectionName = (await appConnectionDAL.findById(saved.appConnectionId))?.name ?? null;
     }
 
-    return { settings: toSettingsView(saved), relocated, appConnectionName };
+    return { settings: toSettingsView(saved), appConnectionName };
   };
 
   return {

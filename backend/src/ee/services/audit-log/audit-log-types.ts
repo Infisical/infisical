@@ -6310,7 +6310,6 @@ interface AgentVaultSessionLogSettingsUpdateEvent {
     bucket: string | null;
     region: string | null;
     keyPrefix: string | null;
-    relocated: boolean;
   };
 }
 
