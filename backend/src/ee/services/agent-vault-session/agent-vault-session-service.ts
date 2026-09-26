@@ -14,7 +14,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
-import { getAgentVaultProjectAuthority, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
@@ -146,7 +146,7 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const listSessions = async ({ projectId, ctx, scope, statuses, search, limit, offset }: TListSessionsDTO) => {
-    const { permission, isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
+    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionSub.AgentVaultSessions
@@ -174,7 +174,7 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const getSessionById = async ({ projectId, ctx, sessionId }: TGetSessionByIdDTO) => {
-    const { permission, isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
+    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionSub.AgentVaultSessions
@@ -195,7 +195,7 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const revokeSession = async ({ projectId, ctx, sessionId }: TRevokeSessionDTO) => {
-    const { permission, isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
+    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Revoke,
       ProjectPermissionSub.AgentVaultSessions

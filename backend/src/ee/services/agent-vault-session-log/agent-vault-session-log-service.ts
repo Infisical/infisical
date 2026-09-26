@@ -21,7 +21,7 @@ import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-c
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
-import { getAgentVaultProjectAuthority } from "../agent-vault/agent-vault-permission";
+import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { isOwnerlessSession, isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
@@ -143,7 +143,7 @@ export const agentVaultSessionLogServiceFactory = ({
   });
 
   const $requireAdmin = async ({ projectId, ctx }: TSessionLogSettingsDTO) => {
-    const { isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
+    const { isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     if (!isAdmin) {
       throw new ForbiddenRequestError({
         message: "Only an Agent Vault administrator can view or change session log settings"
@@ -280,7 +280,7 @@ export const agentVaultSessionLogServiceFactory = ({
   };
 
   const $loadSessionLogs = async ({ projectId, ctx, sessionId }: TSessionLogsScope) => {
-    const { permission, isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
+    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionSub.AgentVaultSessions
