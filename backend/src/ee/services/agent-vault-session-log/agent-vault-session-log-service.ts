@@ -53,12 +53,12 @@ import {
 import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import { buildSessionLogStorage, TAgentVaultSessionLogStorage } from "./agent-vault-session-log-storage-fns";
 import {
+  TAgentVaultSessionLogScoped,
   TAgentVaultSessionLogStorageUnavailable,
+  TAgentVaultSessionScoped,
   TListSessionLogsDTO,
   TRecordChunkDTO,
   TResolvedSessionLogStorageConfig,
-  TSessionLogSettingsDTO,
-  TSessionLogsScope,
   TTailSessionLogsDTO,
   TUpdateSessionLogSettingsDTO
 } from "./agent-vault-session-log-types";
@@ -142,7 +142,7 @@ export const agentVaultSessionLogServiceFactory = ({
     keyPrefix: config.keyPrefix ?? null
   });
 
-  const $requireAdmin = async ({ projectId, ctx }: TSessionLogSettingsDTO) => {
+  const $requireAdmin = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
     const { isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     if (!isAdmin) {
       throw new ForbiddenRequestError({
@@ -279,7 +279,7 @@ export const agentVaultSessionLogServiceFactory = ({
     };
   };
 
-  const $loadSessionLogs = async ({ projectId, ctx, sessionId }: TSessionLogsScope) => {
+  const $loadSessionLogs = async ({ projectId, ctx, sessionId }: TAgentVaultSessionScoped) => {
     const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
@@ -305,7 +305,8 @@ export const agentVaultSessionLogServiceFactory = ({
     config,
     isAdmin,
     rows
-  }: TSessionLogsScope & Awaited<ReturnType<typeof $loadSessionLogs>> & { rows: TAgentVaultSessionLogChunks[] }) => {
+  }: TAgentVaultSessionScoped &
+    Awaited<ReturnType<typeof $loadSessionLogs>> & { rows: TAgentVaultSessionLogChunks[] }) => {
     const unreadSessionLogs = {
       enabled: isSessionLogIngestEnabled(config),
       sessionKey: null,
@@ -429,7 +430,7 @@ export const agentVaultSessionLogServiceFactory = ({
     };
   };
 
-  const getSessionLogSettings = async ({ projectId, ctx }: TSessionLogSettingsDTO) => {
+  const getSessionLogSettings = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
     await $requireAdmin({ projectId, ctx });
 
     const config = await agentVaultSessionLogConfigDAL.findOne({ projectId });
@@ -440,7 +441,7 @@ export const agentVaultSessionLogServiceFactory = ({
     };
   };
 
-  const getSessionLogHealth = async ({ projectId, ctx }: TSessionLogSettingsDTO) => {
+  const getSessionLogHealth = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
     await $requireAdmin({ projectId, ctx });
 
     const config = await agentVaultSessionLogConfigDAL.findOne({ projectId });
@@ -465,7 +466,7 @@ export const agentVaultSessionLogServiceFactory = ({
     };
   };
 
-  const getSessionLogCorsProbe = async ({ projectId, ctx }: TSessionLogSettingsDTO) => {
+  const getSessionLogCorsProbe = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
     await $requireAdmin({ projectId, ctx });
 
     const config = await agentVaultSessionLogConfigDAL.findOne({ projectId });

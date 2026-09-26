@@ -1,61 +1,43 @@
+import { z } from "zod";
+
 import { OrgServiceActor, TGenericPermission } from "@app/lib/types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
 import { AgentVaultSessionLogStorageUnavailableReason } from "./agent-vault-session-log-enums";
+import type {
+  AgentVaultSessionLogChunkCreateSchema,
+  AgentVaultSessionLogSettingsUpdateSchema
+} from "./agent-vault-session-log-schemas";
 
-export type TAgentVaultSessionLogChunkInput = {
-  chunkId: string;
-  startedAt: Date;
-  endedAt: Date;
-  firstSeq: number;
-  lastSeq: number;
-  recordCount: number;
-  droppedCount: number;
-  ciphertextBytes: number;
-  iv: string;
-  ciphertextSha256: string;
-};
+// Who is asking. Every method's input starts from one of these.
+export type TAgentVaultSessionLogScoped = { projectId: string; ctx: TGenericPermission };
 
+export type TAgentVaultSessionScoped = TAgentVaultSessionLogScoped & { sessionId: string };
+
+// One input per service method, named after the method.
 export type TRecordChunkDTO = {
   proxyId: string;
   sessionId: string;
-  chunk: TAgentVaultSessionLogChunkInput;
+  chunk: z.infer<typeof AgentVaultSessionLogChunkCreateSchema>;
 };
 
-export type TSessionLogsScope = {
-  projectId: string;
-  ctx: TGenericPermission;
-  sessionId: string;
-};
-
-type TSessionLogsDTO = TSessionLogsScope & {
+export type TListSessionLogsDTO = TAgentVaultSessionScoped & {
   limit: number;
-};
-
-export type TListSessionLogsDTO = TSessionLogsDTO & {
   before?: string;
   from?: Date;
   to?: Date;
 };
 
-export type TTailSessionLogsDTO = TSessionLogsDTO & {
+export type TTailSessionLogsDTO = TAgentVaultSessionScoped & {
+  limit: number;
   receivedAfter?: Date;
 };
 
-export type TSessionLogSettingsDTO = {
-  projectId: string;
-  ctx: TGenericPermission;
-};
-
-export type TUpdateSessionLogSettingsDTO = TSessionLogSettingsDTO & {
+export type TUpdateSessionLogSettingsDTO = TAgentVaultSessionLogScoped & {
   actor: OrgServiceActor;
-  enabled?: boolean;
-  appConnectionId?: string | null;
-  bucket?: string;
-  region?: AWSRegion;
-  keyPrefix?: string;
-};
+} & z.infer<typeof AgentVaultSessionLogSettingsUpdateSchema>;
 
+// Storage: a bucket setup with every required field filled in, and why a session's logs can't be read.
 export type TResolvedSessionLogStorageConfig = {
   appConnectionId: string;
   bucket: string;
