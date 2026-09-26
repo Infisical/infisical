@@ -4415,7 +4415,9 @@ export const AGENT_VAULT = {
     connectionError:
       "The error Infisical got when it tried to use the AWS connection, for example because AWS refused to let it assume the role. Null if there's no error or no connection.",
     isStorageFull: "Whether your organization has reached its session log storage limit.",
-    hasSessionLogKey: "Whether the proxy already has this session's log key. If true, the key isn't returned again."
+    hasSessionLogKey: "Whether the proxy already has this session's log key. If true, the key isn't returned again.",
+    proxySessionKey:
+      "The session's log key, as base64, sent once. Null when session logs are off or the proxy already has it."
   },
 
   SESSION: {

@@ -186,7 +186,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             .array(),
           sessionLogs: z.object({
             enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.enabled),
-            sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.sessionKey)
+            sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.proxySessionKey)
           })
         })
       }
