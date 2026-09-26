@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import {
   CheckCircleIcon,
+  CheckIcon,
   CircleAlertIcon,
+  FolderIcon,
   InfoIcon,
   LoaderCircleIcon,
   TriangleAlertIcon
@@ -20,7 +22,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
-  Checkbox,
+  Combobox,
   Dialog,
   DialogClose,
   DialogContent,
@@ -32,23 +34,28 @@ import {
   FieldContent,
   FieldDescription,
   FieldLabel,
+  InputGroup,
+  InputGroupAddon,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
-import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
-import { ProjectPermissionSub, useProjectPermission } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
 import { removeTrailingSlash } from "@app/helpers/string";
-import { useDebounce } from "@app/hooks";
 import { useMoveSecrets } from "@app/hooks/api";
-import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
 import {
+  dashboardKeys,
   FolderMoveBlockedDestination,
   useGetFoldersMoveDestinationEligibility,
   useGetFoldersMoveEligibility
@@ -58,7 +65,12 @@ import {
   TFolderMoveDestinationCheck
 } from "@app/hooks/api/dashboard/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
-import { useMoveFolder } from "@app/hooks/api/secretFolders";
+import {
+  folderQueryKeys,
+  useGetOrCreateFolder,
+  useListProjectEnvironmentsFolders,
+  useMoveFolder
+} from "@app/hooks/api/secretFolders/queries";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2, useMoveSecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
@@ -69,6 +81,7 @@ type Props = {
   environments: ProjectEnv[];
   visibleEnvs: ProjectEnv[];
   projectId: string;
+  projectName: string;
   projectSlug: string;
   sourceSecretPath: string;
   secrets: Record<string, Record<string, SecretV3RawSanitized>>;
@@ -82,14 +95,411 @@ type ContentProps = Omit<Props, "isOpen" | "onOpenChange"> & {
   foldersWithRbacPolicies: string[];
 };
 
-type OptionValue = { secretPath: string };
+type FolderOptionValue = {
+  kind: "folder";
+  secretPath: string;
+};
+
+type CreateOptionValue = {
+  kind: "create";
+  secretPath: string;
+  createDisabledReason?: string;
+};
+
+type OptionValue = FolderOptionValue | CreateOptionValue;
 
 const joinSecretPath = (basePath: string, name: string) =>
   basePath === "/" ? `/${name}` : `${basePath}/${name}`;
 
+const folderNameRegex = /^[a-zA-Z0-9-_]+$/;
+
+const stripLeadingSlashes = (path: string) => path.replace(/^\/+/, "");
+
+const normalizeFolderPathInput = (path: string) => stripLeadingSlashes(path).replace(/\s+/g, "-");
+
+const getPathSegments = (path: string) => stripLeadingSlashes(path.trim()).split("/");
+
+const getAbsolutePath = (path: string) => {
+  const pathWithoutRoot = stripLeadingSlashes(path.trim());
+  return pathWithoutRoot ? `/${pathWithoutRoot}` : "/";
+};
+
+const isValidFolderPath = (path: string) => {
+  const segments = getPathSegments(path);
+  return (
+    segments.length > 0 &&
+    segments.every(
+      (segment) => segment.length > 0 && segment.length <= 255 && folderNameRegex.test(segment)
+    )
+  );
+};
+
+const PathValue = ({ secretPath }: { secretPath: string }) => {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <FolderIcon className="size-4 shrink-0 text-folder" aria-hidden="true" />
+      <span className="truncate font-mono text-xs">{secretPath}</span>
+    </span>
+  );
+};
+
+const StaticLocationValue = ({
+  accessibleLabel,
+  children
+}: {
+  accessibleLabel: string;
+  children: ReactNode;
+}) => {
+  return (
+    <div className="flex h-9 min-w-0 items-center rounded-md border border-border bg-container px-3 text-sm text-foreground">
+      <span className="sr-only">{accessibleLabel}: </span>
+      {children}
+    </div>
+  );
+};
+
+const MoveLocationLayout = ({
+  sourceEnvironment,
+  sourceSecretPath,
+  destinationEnvironment,
+  destinationPath
+}: {
+  sourceEnvironment: ReactNode;
+  sourceSecretPath: string;
+  destinationEnvironment: ReactNode;
+  destinationPath: ReactNode;
+}) => (
+  <div className="flex min-w-0 flex-col gap-3">
+    <div
+      className="grid min-w-0 grid-cols-[minmax(7.5rem,0.8fr)_minmax(0,1.2fr)] gap-2"
+      role="group"
+      aria-label="Source location"
+    >
+      {sourceEnvironment}
+      <StaticLocationValue accessibleLabel="Source folder">
+        <PathValue secretPath={sourceSecretPath} />
+      </StaticLocationValue>
+    </div>
+    <div
+      className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,4fr)] items-center gap-3"
+      aria-hidden="true"
+    >
+      <span className="h-px bg-border" />
+      <span className="text-xs font-medium text-muted">Move to</span>
+      <span className="h-px bg-border" />
+    </div>
+    <div
+      className="grid min-w-0 grid-cols-[minmax(7.5rem,0.8fr)_minmax(0,1.2fr)] gap-2"
+      role="group"
+      aria-label="Destination location"
+    >
+      {destinationEnvironment}
+      {destinationPath}
+    </div>
+  </div>
+);
+
 // mirrors the backend cyclic-move rule: a folder cannot be moved into itself or one of its own subfolders.
 const isPathInsideFolder = (destinationPath: string, folderPath: string) =>
   destinationPath === folderPath || destinationPath.startsWith(`${folderPath}/`);
+
+const DestinationPathField = ({
+  pathEnvironments,
+  creationEnvironments,
+  projectId,
+  inputId,
+  value,
+  onChange,
+  isCreating,
+  onCreatingChange,
+  isCandidateBlocked,
+  hideLabel = false
+}: {
+  pathEnvironments: ProjectEnv[];
+  creationEnvironments: ProjectEnv[];
+  projectId: string;
+  inputId: string;
+  value: OptionValue | null;
+  onChange: (newValue: OptionValue | null) => void;
+  isCreating: boolean;
+  onCreatingChange: (isCreating: boolean) => void;
+  isCandidateBlocked: (destinationPath: string) => boolean;
+  hideLabel?: boolean;
+}) => {
+  const { permission } = useProjectPermission();
+  const getOrCreateFolder = useGetOrCreateFolder();
+  const queryClient = useQueryClient();
+  const createRequestRef = useRef(false);
+  const [inputPath, setInputPath] = useState("");
+  const candidatePath = getAbsolutePath(inputPath);
+  const candidateSegments = getPathSegments(inputPath);
+  const candidateParentPaths = candidateSegments.map((_, index) =>
+    index === 0 ? "/" : `/${candidateSegments.slice(0, index).join("/")}`
+  );
+  const isCandidateValid = isValidFolderPath(inputPath);
+  const isRootPath = inputPath.trim() === "";
+  const {
+    data: environmentFolders,
+    isPending: isFolderTreePending,
+    isFetching: isFolderTreeFetching,
+    isError: isFolderTreeError
+  } = useListProjectEnvironmentsFolders(projectId, { staleTime: 0 });
+
+  const isCheckingFolderTree = isFolderTreePending || isFolderTreeFetching;
+  const folderPathsByEnvironment = useMemo(
+    () =>
+      new Map(
+        pathEnvironments.map((environment) => [
+          environment.slug,
+          new Set(
+            (environmentFolders?.[environment.slug]?.folders ?? []).map(({ path }) =>
+              removeTrailingSlash(path)
+            )
+          )
+        ])
+      ),
+    [environmentFolders, pathEnvironments]
+  );
+  const allFolderPaths = useMemo(() => {
+    const folderPaths = new Set<string>();
+    folderPathsByEnvironment.forEach((environmentPaths) => {
+      environmentPaths.forEach((folderPath) => folderPaths.add(folderPath));
+    });
+    return Array.from(folderPaths);
+  }, [folderPathsByEnvironment]);
+  const normalizedInputPath = inputPath.toLocaleLowerCase();
+  const folderOptions = useMemo<FolderOptionValue[]>(
+    () =>
+      allFolderPaths
+        .filter(
+          (secretPath) =>
+            secretPath !== "/" &&
+            (!normalizedInputPath ||
+              secretPath.toLocaleLowerCase().includes(normalizedInputPath)) &&
+            (creationEnvironments.length === 0 ||
+              creationEnvironments.every((environment) =>
+                folderPathsByEnvironment.get(environment.slug)?.has(secretPath)
+              ))
+        )
+        .sort((left, right) => left.localeCompare(right))
+        .map((secretPath) => ({ kind: "folder", secretPath })),
+    [allFolderPaths, creationEnvironments, folderPathsByEnvironment, normalizedInputPath]
+  );
+  const missingCreationTargets = isRootPath
+    ? []
+    : creationEnvironments
+        .map((environment) => ({
+          environment,
+          missingParentPaths: candidateParentPaths.filter((_, index) => {
+            const folderPath = `/${candidateSegments.slice(0, index + 1).join("/")}`;
+            return !folderPathsByEnvironment.get(environment.slug)?.has(folderPath);
+          })
+        }))
+        .filter(({ missingParentPaths }) => missingParentPaths.length > 0);
+  const matchesExistingFolder =
+    !isRootPath && creationEnvironments.length > 0 && missingCreationTargets.length === 0;
+  const isCandidateMoveBlocked = isCandidateBlocked(candidatePath);
+
+  const restrictedEnvironments = isCandidateValid
+    ? missingCreationTargets.filter(({ environment, missingParentPaths }) =>
+        missingParentPaths.some((parentPath) =>
+          permission.cannot(
+            ProjectPermissionActions.Create,
+            subject(ProjectPermissionSub.SecretFolders, {
+              environment: environment.slug,
+              secretPath: parentPath
+            })
+          )
+        )
+      )
+    : [];
+
+  const canCreate =
+    isCandidateValid &&
+    !matchesExistingFolder &&
+    !isCandidateMoveBlocked &&
+    !isCheckingFolderTree &&
+    !isFolderTreeError &&
+    !isCreating &&
+    missingCreationTargets.length > 0 &&
+    restrictedEnvironments.length === 0;
+
+  let disabledReason = "Type a new folder name";
+  if (creationEnvironments.length === 0) {
+    disabledReason = "No selected environments can create this folder";
+  } else if (inputPath && !isCandidateValid) {
+    disabledReason = "Folder names can only contain letters, numbers, dashes, and underscores";
+  } else if (isRootPath) {
+    disabledReason = "Type a new folder name";
+  } else if (isFolderTreeError) {
+    disabledReason = "Could not check existing folders";
+  } else if (isCheckingFolderTree) {
+    disabledReason = "Checking whether this folder already exists";
+  } else if (isCandidateMoveBlocked) {
+    disabledReason = "Folders can't be moved into themselves or their subfolders";
+  } else if (restrictedEnvironments.length > 0) {
+    disabledReason = `You don't have permission to create folders in ${restrictedEnvironments
+      .map(({ environment }) => environment.name)
+      .join(", ")}`;
+  } else if (matchesExistingFolder) {
+    disabledReason = "This folder already exists";
+  } else if (isCreating) {
+    disabledReason = "Creating folder";
+  }
+
+  const rootOption: FolderOptionValue = {
+    kind: "folder",
+    secretPath: "/"
+  };
+  const createOption: CreateOptionValue | null =
+    !isRootPath && !matchesExistingFolder
+      ? {
+          kind: "create",
+          secretPath: candidatePath,
+          createDisabledReason: canCreate ? undefined : disabledReason
+        }
+      : null;
+  const options: OptionValue[] = [
+    rootOption,
+    ...folderOptions,
+    ...(createOption ? [createOption] : [])
+  ];
+
+  const handleCreatePath = async (path: string) => {
+    const absolutePath = getAbsolutePath(path);
+    if (!canCreate || absolutePath !== candidatePath || createRequestRef.current) return;
+
+    createRequestRef.current = true;
+    onCreatingChange(true);
+
+    try {
+      let parentPath = "/";
+      let didCreateAllFolders = true;
+
+      // Create each segment in order so a typed path such as /apps/api creates both levels.
+      // The get-or-create mutation keeps retries idempotent after a partial failure.
+      // eslint-disable-next-line no-restricted-syntax
+      for await (const segment of getPathSegments(path)) {
+        const currentParentPath = parentPath;
+        const environmentsMissingSegment = missingCreationTargets
+          .filter(({ missingParentPaths }) => missingParentPaths.includes(currentParentPath))
+          .map(({ environment }) => environment);
+        const results = await Promise.allSettled(
+          environmentsMissingSegment.map((environment) =>
+            getOrCreateFolder.mutateAsync({
+              name: segment,
+              description: null,
+              environment: environment.slug,
+              path: currentParentPath,
+              projectId
+            })
+          )
+        );
+
+        if (results.some((result) => result.status === "rejected")) {
+          didCreateAllFolders = false;
+          break;
+        }
+
+        parentPath = joinSecretPath(parentPath, segment);
+      }
+
+      if (!didCreateAllFolders) {
+        await queryClient.invalidateQueries({
+          queryKey: folderQueryKeys.getProjectEnvironmentsFolders(projectId)
+        });
+        return;
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: "/" })
+        }),
+        queryClient.invalidateQueries({
+          queryKey: folderQueryKeys.getProjectEnvironmentsFolders(projectId)
+        })
+      ]);
+      setInputPath("");
+      onChange({
+        kind: "folder",
+        secretPath: absolutePath
+      });
+    } finally {
+      createRequestRef.current = false;
+      onCreatingChange(false);
+    }
+  };
+
+  return (
+    <Field>
+      <FieldLabel htmlFor={inputId} className={hideLabel ? "sr-only" : undefined}>
+        Destination folder
+      </FieldLabel>
+      <FieldContent>
+        <InputGroup data-disabled={isCreating || undefined}>
+          <InputGroupAddon align="inline-start" className="pr-0 [&>svg]:text-folder">
+            <FolderIcon aria-hidden="true" />
+          </InputGroupAddon>
+          <Combobox
+            id={inputId}
+            variant="input-group"
+            modal
+            options={options}
+            value={value}
+            isDisabled={isCreating}
+            isLoading={isCreating || isFolderTreePending}
+            shouldFilter={false}
+            includeMissingSelectedOptions={!inputPath}
+            placeholder="Select a destination folder..."
+            searchPlaceholder="Search or create a folder..."
+            searchAriaLabel="Search destination folders"
+            emptyMessage="No folders found. Type a path to create one."
+            loadingMessage={isCreating ? "Creating folder..." : "Loading folders..."}
+            getOptionValue={(option) =>
+              option.kind === "create" ? `create:${option.secretPath}` : option.secretPath
+            }
+            getOptionLabel={(option) => option.secretPath}
+            isOptionDisabled={(option) =>
+              option.kind === "create" ? !canCreate : isCandidateBlocked(option.secretPath)
+            }
+            renderOption={(option) => (
+              <span className="min-w-0 truncate font-mono text-xs">{option.secretPath}</span>
+            )}
+            renderOptionIndicator={(option, { isSelected }) => {
+              if (option.kind === "folder") {
+                return isSelected ? <CheckIcon className="size-4" /> : null;
+              }
+
+              return (
+                <span
+                  className="max-w-56 truncate text-xs text-muted"
+                  title={option.createDisabledReason}
+                >
+                  {option.createDisabledReason ?? "New Folder"}
+                </span>
+              );
+            }}
+            onInputValueChange={(nextValue) => {
+              const normalizedPath = normalizeFolderPathInput(nextValue);
+              setInputPath(normalizedPath);
+              if (normalizedPath && value && getAbsolutePath(normalizedPath) !== value.secretPath) {
+                onChange(null);
+              }
+            }}
+            onClear={() => onChange(null)}
+            onValueChange={async (option) => {
+              if (option.kind === "create") {
+                await handleCreatePath(option.secretPath);
+                return;
+              }
+              onChange(option);
+            }}
+          />
+        </InputGroup>
+      </FieldContent>
+    </Field>
+  );
+};
 
 type MovedFolder = {
   folderId: string;
@@ -158,58 +568,6 @@ const useDestinationMoveGuard = ({
   };
 };
 
-const FolderPathSelect = ({
-  environments,
-  projectId,
-  value,
-  onChange
-}: {
-  environments: ProjectEnv[];
-  projectId: string;
-  value: OptionValue | null;
-  onChange: (newValue: OptionValue | null) => void;
-}) => {
-  const [search, setSearch] = useState("/");
-  const [debouncedSearch] = useDebounce(search);
-  const [previousValue, setPreviousValue] = useState<OptionValue | null>(value);
-
-  const { data, isPending, isLoading, isFetching } = useGetProjectSecretsQuickSearch({
-    secretPath: "/",
-    environments: environments.map((env) => env.slug),
-    projectId,
-    search: debouncedSearch,
-    tags: {}
-  });
-
-  const { folders = {} } = data ?? {};
-
-  return (
-    <FilterableSelect
-      isLoading={isPending || isLoading || isFetching || search !== debouncedSearch}
-      options={Object.keys(folders).map((path) => ({
-        secretPath: path
-      }))}
-      onMenuOpen={() => {
-        setPreviousValue(value);
-        setSearch(value?.secretPath ?? "/");
-        onChange(null);
-      }}
-      onMenuClose={() => {
-        if (!value) onChange(previousValue);
-      }}
-      inputValue={search}
-      onInputChange={setSearch}
-      value={value}
-      onChange={(newValue) => {
-        setPreviousValue(value);
-        onChange(newValue as SingleValue<OptionValue>);
-      }}
-      getOptionLabel={(option) => option.secretPath}
-      getOptionValue={(option) => option.secretPath}
-    />
-  );
-};
-
 enum MoveResult {
   Success = "success",
   Info = "info",
@@ -262,8 +620,7 @@ const MoveResultsView = ({
 }) => {
   return (
     <div className="w-full">
-      <div className="mb-2 text-sm font-medium">Results</div>
-      <div className="mb-4 flex flex-col divide-y divide-border rounded-md border border-border bg-container px-2 py-2">
+      <div className="mb-4 divide-y divide-border">
         {moveResults.map(({ id, name, status, message }) => {
           let resultClassName: string;
           let Icon: typeof CheckCircleIcon;
@@ -284,11 +641,12 @@ const MoveResultsView = ({
           }
 
           return (
-            <div key={id} className="flex items-start gap-2 p-2 text-sm">
-              <Icon className={twMerge(resultClassName, "mt-0.5 size-3.5 shrink-0")} />
-              <span>
-                {name}: {message}
-              </span>
+            <div key={id} className="flex items-start gap-3 py-3">
+              <Icon className={twMerge(resultClassName, "mt-0.5 size-4 shrink-0")} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">{name}</p>
+                <p className="text-sm text-accent">{message}</p>
+              </div>
             </div>
           );
         })}
@@ -296,7 +654,7 @@ const MoveResultsView = ({
       <DialogFooter>
         <DialogClose asChild>
           <Button variant="outline" onClick={() => onComplete()}>
-            Dismiss
+            Close
           </Button>
         </DialogClose>
       </DialogFooter>
@@ -337,7 +695,7 @@ const MoveBlockAlerts = ({
 
   if (isSelfMove) {
     return (
-      <Alert variant="danger" className="mt-4">
+      <Alert variant="danger">
         <CircleAlertIcon />
         <AlertTitle>This move is not allowed</AlertTitle>
         <AlertDescription>
@@ -349,7 +707,7 @@ const MoveBlockAlerts = ({
 
   if (blockedDestinations.length === 0) {
     return (
-      <Alert variant="danger" className="mt-4">
+      <Alert variant="danger">
         <CircleAlertIcon />
         <AlertTitle>Could not verify the destination</AlertTitle>
         <AlertDescription>
@@ -372,7 +730,7 @@ const MoveBlockAlerts = ({
   }
 
   return (
-    <Alert variant="danger" className="mt-4">
+    <Alert variant="danger">
       <CircleAlertIcon />
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>
@@ -394,7 +752,7 @@ const FolderRbacPoliciesWarning = ({ folderNames }: { folderNames: string[] }) =
   const isSingle = folderNames.length === 1;
 
   return (
-    <Alert variant="warning" className="mt-4">
+    <Alert variant="warning">
       <TriangleAlertIcon />
       <AlertTitle>
         Folder permissions will move with {isSingle ? "this folder" : "these folders"}
@@ -408,6 +766,43 @@ const FolderRbacPoliciesWarning = ({ folderNames }: { folderNames: string[] }) =
     </Alert>
   );
 };
+
+const OverwriteControl = ({
+  id,
+  isChecked,
+  isDisabled,
+  onCheckedChange
+}: {
+  id: string;
+  isChecked: boolean;
+  isDisabled: boolean;
+  onCheckedChange: (isChecked: boolean) => void;
+}) => (
+  <div className="mr-auto flex min-w-0 items-center gap-2">
+    <Toggle
+      id={id}
+      variant="danger"
+      checked={isChecked}
+      disabled={isDisabled}
+      onCheckedChange={onCheckedChange}
+    />
+    <Label htmlFor={id}>Overwrite existing secrets</Label>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="rounded-sm text-muted focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="About overwriting existing secrets"
+        >
+          <InfoIcon className="size-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>
+        Overwrite matching destination keys, including keys hidden by your access.
+      </TooltipContent>
+    </Tooltip>
+  </div>
+);
 
 const SingleEnvContent = ({
   onComplete,
@@ -429,8 +824,10 @@ const SingleEnvContent = ({
   const moveSecretRotation = useMoveSecretRotation();
   const moveFolder = useMoveFolder();
   const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
+    kind: "folder",
     secretPath: "/"
   });
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
   const {
     handleSubmit,
@@ -448,7 +845,10 @@ const SingleEnvContent = ({
   const selectedEnvironment = watch("environment");
 
   useEffect(() => {
-    setSelectedPath({ secretPath: "/" });
+    setSelectedPath({
+      kind: "folder",
+      secretPath: "/"
+    });
   }, [selectedEnvironment]);
 
   const destinationSelected =
@@ -641,49 +1041,64 @@ const SingleEnvContent = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)}>
-      <Controller
-        control={control}
-        name="environment"
-        render={({ field: { onChange, value } }) => (
-          <Field>
-            <FieldLabel>Environment</FieldLabel>
-            <FieldContent>
-              <Select value={value} onValueChange={onChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select environment" />
-                </SelectTrigger>
-                <SelectContent position="popper" className="w-full">
-                  {environments.map(({ name, slug }) => (
-                    <SelectItem value={slug} key={slug}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FieldContent>
-          </Field>
-        )}
-      />
-      <Field className="mt-4">
-        <FieldLabel>Secret Path</FieldLabel>
-        <FieldContent>
-          <FolderPathSelect
+    <div className="flex flex-col gap-4">
+      <MoveLocationLayout
+        sourceEnvironment={
+          <StaticLocationValue accessibleLabel="Source environment">
+            <span className="truncate">{sourceEnv.name}</span>
+          </StaticLocationValue>
+        }
+        sourceSecretPath={sourceSecretPath}
+        destinationEnvironment={
+          <Controller
+            control={control}
+            name="environment"
+            render={({ field: { onChange, value } }) => (
+              <Field>
+                <FieldLabel htmlFor="move-destination-environment" className="sr-only">
+                  Destination environment
+                </FieldLabel>
+                <FieldContent>
+                  <Select value={value} onValueChange={onChange} disabled={isCreatingFolder}>
+                    <SelectTrigger id="move-destination-environment" className="w-full">
+                      <SelectValue placeholder="Environment..." />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="w-full">
+                      {environments.map(({ name, slug }) => (
+                        <SelectItem value={slug} key={slug}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
+            )}
+          />
+        }
+        destinationPath={
+          <DestinationPathField
             key={selectedEnvironment}
-            environments={
+            hideLabel
+            inputId="move-secret-path-single"
+            pathEnvironments={
               selectedEnvironment
-                ? environments.filter((e) => e.slug === selectedEnvironment)
+                ? environments.filter((environment) => environment.slug === selectedEnvironment)
                 : environments
             }
+            creationEnvironments={environments.filter(({ slug }) => slug === selectedEnvironment)}
             projectId={projectId}
             value={selectedPath}
             onChange={setSelectedPath}
+            isCreating={isCreatingFolder}
+            onCreatingChange={setIsCreatingFolder}
+            isCandidateBlocked={(destinationPath) =>
+              buildDestinationTargets({ movedFolders, sourceSecretPath, destinationPath })
+                .isSelfMove
+            }
           />
-          <FieldDescription>
-            Nested folders will be displayed as secret path is typed
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+        }
+      />
       <MoveBlockAlerts
         isSelfMove={isSelfMove}
         isDestinationBlocked={isDestinationBlocked}
@@ -691,45 +1106,33 @@ const SingleEnvContent = ({
         environments={environments}
       />
       <FolderRbacPoliciesWarning folderNames={foldersWithRbacPolicies} />
-      {showOverwriteOption && (
-        <Controller
-          control={control}
-          name="shouldOverwrite"
-          render={({ field: { onBlur, value, onChange } }) => (
-            <Field className="mt-4">
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="overwrite-checkbox"
-                  isChecked={value}
-                  onCheckedChange={onChange}
-                  onBlur={onBlur}
-                  variant="project"
-                />
-                <FieldLabel htmlFor="overwrite-checkbox" className="cursor-pointer">
-                  Overwrite existing secrets
-                </FieldLabel>
-              </Field>
-              <FieldDescription>
-                {value
-                  ? "Secrets with conflicting keys at the destination will be overwritten"
-                  : "Secrets with conflicting keys at the destination will not be overwritten"}
-              </FieldDescription>
-            </Field>
-          )}
-        />
-      )}
-      <DialogFooter className="mt-6">
+      <DialogFooter className="items-center">
+        {showOverwriteOption && (
+          <Controller
+            control={control}
+            name="shouldOverwrite"
+            render={({ field: { value, onChange } }) => (
+              <OverwriteControl
+                id="overwrite-checkbox"
+                isChecked={value}
+                isDisabled={isSubmitting || isCreatingFolder}
+                onCheckedChange={onChange}
+              />
+            )}
+          />
+        )}
         <DialogClose asChild>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
         </DialogClose>
         <Button
-          type="submit"
           variant="project"
+          onClick={handleSubmit(handleFormSubmit)}
           isDisabled={
             !destinationSelected ||
             isSubmitting ||
+            isCreatingFolder ||
             isSelfMove ||
             isCheckingDestination ||
             isDestinationBlocked
@@ -739,7 +1142,7 @@ const SingleEnvContent = ({
           {moveCopy.action}
         </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 };
 
@@ -752,6 +1155,7 @@ type TMultiEnvFormSchema = z.infer<typeof multiEnvFormSchema>;
 const MultiEnvContent = ({
   onComplete,
   onClose,
+  onResults,
   secrets,
   rotations,
   folders,
@@ -760,7 +1164,7 @@ const MultiEnvContent = ({
   projectSlug,
   sourceSecretPath,
   foldersWithRbacPolicies
-}: ContentProps) => {
+}: ContentProps & { onResults: () => void }) => {
   const moveSecrets = useMoveSecrets();
   const moveSecretRotation = useMoveSecretRotation();
   const moveFolder = useMoveFolder();
@@ -769,8 +1173,10 @@ const MultiEnvContent = ({
   const { permission } = useProjectPermission();
   const [moveResults, setMoveResults] = useState<MoveResults | null>(null);
   const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
+    kind: "folder",
     secretPath: "/"
   });
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
   const {
     handleSubmit,
@@ -808,6 +1214,25 @@ const MultiEnvContent = ({
       ])
     );
   }, [permission, environments, sourceSecretPath]);
+
+  const folderCreationEnvironments = useMemo(
+    () =>
+      environments.filter((environment) => {
+        const envSlug = environment.slug;
+        const hasMovableSecrets =
+          Object.values(secrets).some((secretRecord) => Boolean(secretRecord[envSlug])) &&
+          !moveEligibility[envSlug].cannotMoveSecrets;
+        const hasMovableRotations =
+          Object.values(rotations).some((rotationRecord) => Boolean(rotationRecord[envSlug])) &&
+          !moveEligibility[envSlug].cannotMoveRotations;
+        const hasFolders = Object.values(folders).some((folderRecord) =>
+          Boolean(folderRecord[envSlug])
+        );
+
+        return hasMovableSecrets || hasMovableRotations || hasFolders;
+      }),
+    [environments, folders, moveEligibility, rotations, secrets]
+  );
 
   const destinationSelected =
     Boolean(selectedPath?.secretPath) && sourceSecretPath !== selectedPath?.secretPath;
@@ -875,6 +1300,15 @@ const MultiEnvContent = ({
     }
 
     const results: MoveResults = [];
+    const selectedCount =
+      Object.keys(secrets).length + Object.keys(rotations).length + Object.keys(folders).length;
+    let selectedPluralNoun = moveCopy.noun;
+    let selectedNoun = selectedPluralNoun.slice(0, -1);
+    if (moveCopy.noun === "items") selectedNoun = "item";
+    if (Object.keys(rotations).length === selectedCount) {
+      selectedNoun = "secret rotation";
+      selectedPluralNoun = "secret rotations";
+    }
 
     const secretsByEnv: Record<string, SecretV3RawSanitized[]> = Object.fromEntries(
       environments.map((env) => [env.slug, []])
@@ -926,7 +1360,10 @@ const MultiEnvContent = ({
       if (!secretsToMove.length && !rotationsToMove.length && !foldersToMove.length) {
         results.push({
           name: environment.name,
-          message: "Nothing selected in environment",
+          message:
+            selectedCount === 1
+              ? `The selected ${selectedNoun} isn't in this environment.`
+              : `None of the selected ${selectedPluralNoun} are in this environment.`,
           status: MoveResult.Info,
           id: environment.id
         });
@@ -951,7 +1388,7 @@ const MultiEnvContent = ({
           let status: MoveResult = MoveResult.Info;
 
           if (isDestinationUpdated && isSourceUpdated) {
-            message = "Successfully moved selected secrets";
+            message = `${secretsToMove.length} ${secretsToMove.length === 1 ? "secret" : "secrets"} moved.`;
             status = MoveResult.Success;
           } else if (isDestinationUpdated) {
             message =
@@ -1000,7 +1437,7 @@ const MultiEnvContent = ({
 
           results.push({
             name: `${environment.name} / ${rotation.name}`,
-            message: "Successfully moved secret rotation",
+            message: "Secret rotation moved.",
             status: MoveResult.Success,
             id: `${environment.id}-${rotation.id}`
           });
@@ -1037,7 +1474,7 @@ const MultiEnvContent = ({
             name: `${environment.name} / ${folder.name}`,
             message: hasApprovalRequests
               ? "Folder moved. Approval requests were generated for change-policy protected paths."
-              : "Successfully moved folder",
+              : "Folder moved.",
             status: hasApprovalRequests ? MoveResult.Info : MoveResult.Success,
             id: `${environment.id}-folder-${folder.id}`
           });
@@ -1059,6 +1496,7 @@ const MultiEnvContent = ({
     }
 
     setMoveResults(results);
+    onResults();
   };
 
   useEffect(() => {
@@ -1081,29 +1519,44 @@ const MultiEnvContent = ({
   }
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)}>
-      <Alert variant="info" className="mb-4">
-        <InfoIcon />
-        <AlertTitle>
-          Select a single environment to move {moveCopy.noun} across environments.
-        </AlertTitle>
-      </Alert>
-      <Field>
-        <FieldLabel>Secret Path</FieldLabel>
-        <FieldContent>
-          <FolderPathSelect
-            environments={environments}
-            projectId={projectId}
-            value={selectedPath}
-            onChange={setSelectedPath}
-          />
-          <FieldDescription>
-            Nested folders will be displayed as secret path is typed
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <MoveLocationLayout
+          sourceEnvironment={
+            <StaticLocationValue accessibleLabel="Source environments">
+              <span className="truncate">{environments.length} environments</span>
+            </StaticLocationValue>
+          }
+          sourceSecretPath={sourceSecretPath}
+          destinationEnvironment={
+            <StaticLocationValue accessibleLabel="Destination environments">
+              <span className="truncate">Same environments</span>
+            </StaticLocationValue>
+          }
+          destinationPath={
+            <DestinationPathField
+              hideLabel
+              inputId="move-secret-path-multi"
+              pathEnvironments={environments}
+              creationEnvironments={folderCreationEnvironments}
+              projectId={projectId}
+              value={selectedPath}
+              onChange={setSelectedPath}
+              isCreating={isCreatingFolder}
+              onCreatingChange={setIsCreatingFolder}
+              isCandidateBlocked={(destinationPath) =>
+                buildDestinationTargets({ movedFolders, sourceSecretPath, destinationPath })
+                  .isSelfMove
+              }
+            />
+          }
+        />
+        <FieldDescription isOpen>
+          This will create one commit per selected environment.
+        </FieldDescription>
+      </div>
       {Boolean(environmentsToBeSkipped.length) && (
-        <Alert variant="danger" className="mt-4">
+        <Alert variant="danger">
           <CircleAlertIcon />
           <AlertTitle>The following environments will not be affected</AlertTitle>
           <AlertDescription>
@@ -1122,45 +1575,33 @@ const MultiEnvContent = ({
         environments={environments}
       />
       <FolderRbacPoliciesWarning folderNames={foldersWithRbacPolicies} />
-      {showOverwriteOption && (
-        <Controller
-          control={control}
-          name="shouldOverwrite"
-          render={({ field: { onBlur, value, onChange } }) => (
-            <Field className="mt-4">
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="overwrite-checkbox-multi"
-                  isChecked={value}
-                  onCheckedChange={onChange}
-                  onBlur={onBlur}
-                  variant="project"
-                />
-                <FieldLabel htmlFor="overwrite-checkbox-multi" className="cursor-pointer">
-                  Overwrite existing secrets
-                </FieldLabel>
-              </Field>
-              <FieldDescription>
-                {value
-                  ? "Secrets with conflicting keys at the destination will be overwritten"
-                  : "Secrets with conflicting keys at the destination will not be overwritten"}
-              </FieldDescription>
-            </Field>
-          )}
-        />
-      )}
-      <DialogFooter className="mt-6">
+      <DialogFooter className="items-center">
+        {showOverwriteOption && (
+          <Controller
+            control={control}
+            name="shouldOverwrite"
+            render={({ field: { value, onChange } }) => (
+              <OverwriteControl
+                id="overwrite-checkbox-multi"
+                isChecked={value}
+                isDisabled={isSubmitting || isCreatingFolder}
+                onCheckedChange={onChange}
+              />
+            )}
+          />
+        )}
         <DialogClose asChild>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
         </DialogClose>
         <Button
-          type="submit"
           variant="project"
+          onClick={handleSubmit(handleFormSubmit)}
           isDisabled={
             !destinationSelected ||
             isSubmitting ||
+            isCreatingFolder ||
             isSelfMove ||
             isCheckingDestination ||
             isDestinationBlocked
@@ -1170,7 +1611,7 @@ const MultiEnvContent = ({
           {moveCopy.action}
         </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 };
 
@@ -1240,6 +1681,10 @@ const FolderMoveBlockedView = ({
 };
 
 export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }: Props) => {
+  const [hasMoveResults, setHasMoveResults] = useState(false);
+  useEffect(() => {
+    if (!isOpen) setHasMoveResults(false);
+  }, [isOpen]);
   // the dialog plays a close animation, but the props that drive the body (folders/secrets/rotations)
   // are cleared the instant the modal closes (the popup's `data` is dropped). snapshot the props while
   // the modal is open so the body keeps rendering the same view through the close animation rather than
@@ -1247,10 +1692,23 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
   const snapshotRef = useRef(props);
   if (isOpen) snapshotRef.current = props;
   const contentProps = snapshotRef.current;
-  const { folders } = contentProps;
+  const { folders, rotations, secrets, environments } = contentProps;
 
   const isSingleEnvMode = visibleEnvs.length === 1;
   const moveCopy = getMoveSelectionCopy(contentProps);
+  let dialogDescription = isSingleEnvMode
+    ? `Move the selected ${moveCopy.noun} to another project location.`
+    : `Move the selected ${moveCopy.noun} to the same folder location across environments.`;
+  if (
+    !isSingleEnvMode &&
+    Object.keys(secrets).length > 0 &&
+    !Object.keys(folders).length &&
+    !Object.keys(rotations).length
+  ) {
+    const selectedCount = Object.keys(secrets).length;
+    dialogDescription = `Synchronously move ${selectedCount} selected secret${selectedCount === 1 ? "" : "s"} across ${environments.length} environments to the same destination.`;
+  }
+  if (hasMoveResults) dialogDescription = "Review what happened in each environment.";
 
   const folderIds = Object.values(folders).flatMap((perEnv) =>
     Object.values(perEnv).map((folder) => folder.id)
@@ -1298,6 +1756,7 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
         visibleEnvs={visibleEnvs}
         foldersWithRbacPolicies={foldersWithRbacPolicies}
         onClose={() => onOpenChange(false)}
+        onResults={() => setHasMoveResults(true)}
       />
     );
   };
@@ -1306,18 +1765,14 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) onOpenChange(false);
-        else onOpenChange(open);
+        if (open) setHasMoveResults(false);
+        onOpenChange(open);
       }}
     >
       <DialogContent className="max-w-xl [&>*]:min-w-0">
         <DialogHeader>
-          <DialogTitle>{moveCopy.title}</DialogTitle>
-          <DialogDescription>
-            {isSingleEnvMode
-              ? `Move the selected ${moveCopy.noun} to a new environment and folder location`
-              : `Move the selected ${moveCopy.noun} across all environments to a new folder location`}
-          </DialogDescription>
+          <DialogTitle>{hasMoveResults ? "Move summary" : moveCopy.title}</DialogTitle>
+          <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
         {renderContent()}
       </DialogContent>

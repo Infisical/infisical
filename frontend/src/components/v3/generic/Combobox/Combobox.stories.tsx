@@ -8,6 +8,7 @@ import {
   useState
 } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { FolderIcon } from "lucide-react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { useDebounce } from "@app/hooks";
@@ -24,6 +25,7 @@ import {
 } from "../Dialog";
 import { Field, FieldError, FieldLabel } from "../Field";
 import { Input } from "../Input";
+import { InputGroup, InputGroupAddon } from "../InputGroup";
 import { TextArea } from "../TextArea";
 import { Combobox, type ComboboxDialogCreationRenderProps, type ComboboxProps } from ".";
 
@@ -169,6 +171,36 @@ const meta = {
 
 export default meta;
 type Story = StoryObj;
+
+const InputGroupRender = () => {
+  const [value, setValue] = useState<(typeof ENVIRONMENTS)[number] | null>(ENVIRONMENTS[0]);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-input-group">Environment</FieldLabel>
+      <InputGroup>
+        <InputGroupAddon align="inline-start">
+          <FolderIcon />
+        </InputGroupAddon>
+        <Combobox
+          id="combobox-input-group"
+          variant="input-group"
+          options={ENVIRONMENTS}
+          value={value}
+          onValueChange={setValue}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          placeholder="Select environment..."
+          searchAriaLabel="Search environments"
+        />
+      </InputGroup>
+    </Field>
+  );
+};
+
+export const InputGroupComposition: Story = {
+  render: () => <InputGroupRender />
+};
 
 const DefaultRender = () => {
   const [value, setValue] = useState<(typeof ENVIRONMENTS)[number] | null>(null);
