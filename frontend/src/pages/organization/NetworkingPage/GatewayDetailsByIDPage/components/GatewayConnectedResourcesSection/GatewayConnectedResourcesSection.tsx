@@ -7,11 +7,6 @@ import {
   AccordionItem,
   AccordionTrigger,
   Badge,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -70,14 +65,17 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
   const total = totalCountOf(resources);
 
   return (
-    <Card className="min-w-0" aria-labelledby="gateway-connected-resources-title">
-      <CardHeader>
-        <CardTitle>
-          <h2 id="gateway-connected-resources-title">Connected Resources</h2>
-        </CardTitle>
-        <CardDescription>Resources currently routing through this gateway</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <section
+      className="min-w-0 text-foreground"
+      aria-labelledby="gateway-connected-resources-title"
+    >
+      <header className="space-y-2 border-b border-border pb-4">
+        <h2 id="gateway-connected-resources-title" className="text-lg leading-none font-semibold">
+          Connected Resources
+        </h2>
+        <p className="text-sm text-accent">Resources currently routing through this gateway</p>
+      </header>
+      <div className="pt-5">
         {isPending && (
           <div className="space-y-2" aria-label="Loading connected resources">
             <Skeleton className="h-10 w-full" />
@@ -192,7 +190,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
             )}
           </Accordion>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 };

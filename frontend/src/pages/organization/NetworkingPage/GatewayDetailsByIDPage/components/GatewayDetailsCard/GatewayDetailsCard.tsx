@@ -79,9 +79,11 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
   const transportHealth = getGatewayTransportHealth(gateway);
 
   return (
-    <Card className="w-full">
+    <Card className="w-full" aria-labelledby="gateway-details-title">
       <CardHeader className="border-b">
-        <CardTitle>Details</CardTitle>
+        <CardTitle>
+          <h2 id="gateway-details-title">Details</h2>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <DetailGroup>

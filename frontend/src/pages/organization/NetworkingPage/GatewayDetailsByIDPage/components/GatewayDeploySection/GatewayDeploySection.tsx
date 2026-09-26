@@ -8,12 +8,6 @@ import {
   AlertTitle,
   Badge,
   Button,
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   DocumentationLinkBadge,
   Field,
   FieldContent,
@@ -143,19 +137,23 @@ export const GatewayDeploySection = ({
 
   return (
     <Tabs value={activeTab} onValueChange={setDeploymentMethod} className="min-w-0">
-      <Card className="min-w-0" aria-labelledby="gateway-deployment-title">
-        <CardHeader>
-          <CardTitle>
-            <h2 id="gateway-deployment-title">Deployment</h2>
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/gateways/gateway-deployment" />
-          </CardTitle>
-          <CardDescription>
-            {isKubernetes
-              ? "Run this gateway in your Kubernetes cluster."
-              : "Run this gateway on a target host."}
-          </CardDescription>
+      <section className="min-w-0 text-foreground" aria-labelledby="gateway-deployment-title">
+        <header className="flex flex-col gap-4 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <h2 id="gateway-deployment-title" className="text-lg leading-none font-semibold">
+                Deployment
+              </h2>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/gateways/gateway-deployment" />
+            </div>
+            <p className="text-sm text-accent">
+              {isKubernetes
+                ? "Run this gateway in your Kubernetes cluster."
+                : "Run this gateway on a target host."}
+            </p>
+          </div>
           {canEditGateway && showDeploymentControls && (
-            <CardAction>
+            <div className="shrink-0">
               <TabsList variant="filled" aria-label="Deployment method">
                 {isKubernetes && (
                   <>
@@ -171,10 +169,10 @@ export const GatewayDeploySection = ({
                   </>
                 )}
               </TabsList>
-            </CardAction>
+            </div>
           )}
-        </CardHeader>
-        <CardContent className="space-y-4">
+        </header>
+        <div className="space-y-4 pt-5">
           {!canEditGateway ? (
             <Alert variant="warning" appearance="borderless">
               <LockKeyholeIcon />
@@ -304,8 +302,8 @@ export const GatewayDeploySection = ({
               )}
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </Tabs>
   );
 };
