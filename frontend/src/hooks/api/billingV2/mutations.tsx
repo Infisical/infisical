@@ -1,4 +1,5 @@
 import { QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 
@@ -6,6 +7,8 @@ import { subscriptionQueryKeys } from "../subscriptions/queries";
 import { billingV2Keys } from "./queries";
 import {
   BillingV2CheckoutResult,
+  BillingV2ConfirmTrialPaymentResult,
+  BillingV2ErrorCode,
   BillingV2MutationResult,
   BillingV2Preview,
   BillingV2TrialCancelResult,
@@ -16,6 +19,7 @@ import {
   TBuyBillingV2ProductDTO,
   TCancelBillingV2TrialDTO,
   TChangeBillingV2CommitmentDTO,
+  TConfirmBillingV2TrialPaymentDTO,
   TCreateBillingV2PortalSessionDTO,
   TPreviewBillingV2ChangeDTO,
   TRemoveBillingV2ProductDTO,
@@ -181,6 +185,31 @@ export const useStartBillingV2Trial = () => {
     },
     onSuccess: (_data, { orgId }) => {
       invalidateBillingV2(queryClient, orgId);
+    }
+  });
+};
+
+// Opens a Stripe Checkout where the customer approves a trial conversion charge their bank is holding.
+// A no_trial_awaiting_payment error means the payment already went through, so refetch to drop the
+// stale banner; the global handler still shows the message.
+export const useConfirmBillingV2TrialPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, returnPath }: TConfirmBillingV2TrialPaymentDTO) => {
+      const { data } = await apiRequest.post<BillingV2ConfirmTrialPaymentResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/trial/confirm-payment`,
+        { returnPath }
+      );
+
+      return data;
+    },
+    onError: (error, { orgId }) => {
+      if (
+        axios.isAxiosError<{ details?: { code?: string } }>(error) &&
+        error.response?.data?.details?.code === BillingV2ErrorCode.NoTrialAwaitingPayment
+      ) {
+        invalidateBillingV2(queryClient, orgId);
+      }
     }
   });
 };

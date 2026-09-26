@@ -169,6 +169,7 @@ const subscriptionItemSchema = z
     trialEndsAt: z.number().nullish(),
     trialPlan: z.string().nullish(),
     trialPlanEndsAt: z.number().nullish(),
+    trialPaymentDueAt: z.number().nullish(),
     // Present only when this item's product OR plan is deprecated (product supersedes plan). The item
     // keeps working; this carries the contract-specific message (the sunset date comes from the catalog).
     deprecation: z.object({ reason: z.string().nullish(), nextSteps: z.string().nullish() }).nullish(),
@@ -224,6 +225,7 @@ export const subscriptionResponseSchema = z
     currentPeriodEnd: z.number().nullish(),
     recurringTotal: z.number().nullish(),
     billing: subscriptionBillingSchema.nullish(),
+    payment: z.object({ state: z.string(), actionUrl: z.string() }).passthrough().nullish(),
     tier: z.string().optional(),
     items: z.array(subscriptionItemSchema)
   })
@@ -238,11 +240,14 @@ export const sessionResponseSchema = z
 // Result of a checkout / add / remove / commitment change. Checkout either needs the customer to
 // complete a Stripe Checkout (checkout_created) or is applied directly to an existing subscription
 // (subscription_updated). Removing the last product cancels the whole subscription
-// (subscription_canceled).
+// (subscription_canceled). payment_action_required: the card's bank wants the customer to approve the
+// charge on the Stripe invoice at paymentUrl. paymentUrl stays a plain string so a bad value can't fail
+// the parse; the service validates it.
 export const checkoutResultSchema = z
   .object({
-    outcome: z.enum(["checkout_created", "subscription_updated", "subscription_canceled"]),
+    outcome: z.enum(["checkout_created", "subscription_updated", "subscription_canceled", "payment_action_required"]),
     checkoutUrl: z.string().optional(),
+    paymentUrl: z.string().optional(),
     subscriptionId: z.string().optional()
   })
   .passthrough();
@@ -276,7 +281,8 @@ export const subscriptionPreviewResponseSchema = z
 
 export const upgradeResultSchema = z
   .object({
-    outcome: z.literal("upgraded"),
+    outcome: z.enum(["upgraded", "payment_action_required"]),
+    paymentUrl: z.string().optional(),
     subscriptionId: z.string().optional(),
     fromPlanKey: z.string().optional(),
     toPlanKey: z.string().optional(),
@@ -429,7 +435,8 @@ export type TCreatePortalPayload = {
 // The license server prices at its current time; the app never forwards a client-supplied instant.
 // productId is required: it names the product so the server can resolve the trialing plan and
 // create/attach the subscription when there isn't one yet (a trialing org) instead of having to infer
-// it. Not trialing the named product → product_not_trialing.
+// it. Not trialing the named product → product_not_trialing. Returns checkout_created when the org
+// has no subscription yet or when the card needs the customer to approve the charge.
 export type TChangeCommitmentsPayload = {
   productId: string;
   dimensions: TCommitmentChange[];
@@ -469,6 +476,26 @@ export type TCancelTrialPayload = {
   productKey: string;
 };
 
+export type TConfirmTrialPaymentPayload = {
+  returnUrl: string;
+};
+
+// A Stripe Checkout that runs the bank's approval step for a trial conversion charge. 409
+// no_trial_awaiting_payment when nothing is waiting.
+const confirmTrialPaymentResultSchema = z
+  .object({
+    outcome: z.literal("checkout_created"),
+    checkoutUrl: z
+      .string()
+      .url()
+      .refine((val) => val.startsWith("http://") || val.startsWith("https://"), {
+        message: "URL must start with http:// or https://"
+      })
+  })
+  .passthrough();
+export type TConfirmTrialPaymentResult = z.infer<typeof confirmTrialPaymentResultSchema>;
+export { confirmTrialPaymentResultSchema };
+
 // Revokes the trialing entitlement immediately (product → free) and marks the trial completed so it
 // never converts. Idempotent-ish: the server 404s when there's no active trial to cancel.
 const trialCancelResultSchema = z.object({ outcome: z.literal("trial_completed") }).passthrough();
@@ -484,6 +511,9 @@ const trialHistoryItemSchema = z
     base_plan_key: z.string().nullish(),
     // trialing | converted | expired | canceled | completed | reverted
     outcome: z.string(),
+    // Why the trial ended (e.g. payment_not_completed). ended_detail is a machine code only on
+    // `reverted`; on `canceled` it is free text.
+    ended_reason: z.string().nullish(),
     ended_detail: z.string().nullish(),
     started_at: z.number().nullish(),
     trial_ends_at: z.number().nullish(),
@@ -516,6 +546,7 @@ export type TLicenseClientBackend = {
   startTrial: (orgId: string, payload: TStartTrialPayload) => Promise<TTrialResult>;
   // Cancel an in-progress trial for a product (product → free; the trial never converts).
   cancelTrial: (orgId: string, payload: TCancelTrialPayload) => Promise<TTrialCancelResult>;
+  confirmTrialPayment: (orgId: string, payload: TConfirmTrialPaymentPayload) => Promise<TConfirmTrialPaymentResult>;
   // The org's trial history, used to tell which products have already used their one-time trial.
   fetchTrials: (orgId: string) => Promise<TTrialsResponse>;
   cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;

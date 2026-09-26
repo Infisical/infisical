@@ -16,6 +16,7 @@ import { useDebounce } from "@app/hooks";
 import {
   BillingV2BreakdownScopeKind,
   useAddBillingV2PaymentMethod,
+  useConfirmBillingV2TrialPayment,
   useCreateBillingV2PortalSession,
   useGetBillingV2Catalog,
   useGetBillingV2Organizations,
@@ -83,6 +84,7 @@ export const BillingV2Page = () => {
   const { data: catalog = [] } = useGetBillingV2Catalog(selectedOrgId);
   const createPortalSession = useCreateBillingV2PortalSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
+  const confirmTrialPayment = useConfirmBillingV2TrialPayment();
 
   // More than one organization means the server decided this caller may switch: an instance admin on
   // self-hosted, where one licence spans every org on the box. Cloud is bounded to the logged-in root
@@ -183,6 +185,20 @@ export const BillingV2Page = () => {
     );
   };
 
+  const onCompleteTrialPayment = () => {
+    confirmTrialPayment.mutate(
+      {
+        orgId: selectedOrgId,
+        returnPath: window.location.pathname
+      },
+      {
+        onSuccess: ({ checkoutUrl }) => {
+          window.location.href = checkoutUrl;
+        }
+      }
+    );
+  };
+
   // Billing name/email and address are edited in the Stripe billing portal.
   const onEditDetails = () => {
     redirectToPortal();
@@ -244,6 +260,8 @@ export const BillingV2Page = () => {
               onUpdatePayment={onUpdatePayment}
               onEditDetails={onEditDetails}
               onContact={onContact}
+              onCompleteTrialPayment={onCompleteTrialPayment}
+              isCompletingTrialPayment={confirmTrialPayment.isPending}
               onRetry={onRetry}
               canManageBilling={canManageBilling}
             />

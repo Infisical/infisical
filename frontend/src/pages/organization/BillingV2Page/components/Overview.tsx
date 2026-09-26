@@ -36,6 +36,8 @@ export type OverviewProps = {
   onUpdatePayment: () => void;
   onEditDetails: () => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
+  onCompleteTrialPayment: () => void;
+  isCompletingTrialPayment: boolean;
   onRetry: () => void;
   canManageBilling: boolean;
 };
@@ -60,6 +62,8 @@ export const Overview = ({
   onUpdatePayment,
   onEditDetails,
   onContact,
+  onCompleteTrialPayment,
+  isCompletingTrialPayment,
   onRetry,
   canManageBilling
 }: OverviewProps) => {
@@ -188,8 +192,19 @@ export const Overview = ({
           mode={mode}
           subState={subState}
           canManage={canManageBilling}
+          paymentAlert={overview.paymentAlert}
           onUpdatePayment={onUpdatePayment}
           onManageSubscription={onManageSubscription}
+        />
+        <TrialBanners
+          overview={overview}
+          catalog={catalog}
+          readOnly={productsReadOnly}
+          onManage={onUpgrade}
+          onUpdatePayment={onUpdatePayment}
+          onContact={onContact}
+          onCompleteTrialPayment={onCompleteTrialPayment}
+          isCompletingTrialPayment={isCompletingTrialPayment}
         />
         <ProductsCard
           key="products"
@@ -215,6 +230,7 @@ export const Overview = ({
         mode={mode}
         subState={subState}
         canManage={canManageBilling}
+        paymentAlert={overview.paymentAlert}
         onUpdatePayment={onUpdatePayment}
         onManageSubscription={onManageSubscription}
       />
@@ -225,6 +241,8 @@ export const Overview = ({
         onManage={onUpgrade}
         onUpdatePayment={onUpdatePayment}
         onContact={onContact}
+        onCompleteTrialPayment={onCompleteTrialPayment}
+        isCompletingTrialPayment={isCompletingTrialPayment}
       />
       <BillingHeaderCard overview={overview} catalog={catalog} />
       <ProductsCard
