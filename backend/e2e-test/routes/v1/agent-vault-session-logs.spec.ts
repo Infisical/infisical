@@ -1079,8 +1079,6 @@ describe("Agent Vault session logs", async () => {
     test("when the connection can't be used, a session lists what it recorded and says why", async () => {
       await configure();
       const { session } = await seedChunks(1);
-      // A successful save empties the storage cache the seeding filled, so the next read builds it again.
-      expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
       fakeSessionLogStorage.failsBuildWith("AWS refused to assume the role");
 
       const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);

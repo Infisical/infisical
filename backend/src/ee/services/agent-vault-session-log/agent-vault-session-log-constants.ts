@@ -28,11 +28,8 @@ export const AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS = 30 * 24 * 60 * 60_000; /
 // published, so the error doesn't state it.
 export const AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS = 100_000;
 
-// To download a chunk, the browser gets a link that expires after 5 minutes. For uploads and downloads, Infisical
-// reuses the S3 client it built for the bucket for up to 5 minutes. Saving the settings or editing the connection
-// replaces it at once.
+// A link to upload or download a chunk expires after 5 minutes.
 export const AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS = 300; // 5 minutes
-export const AGENT_VAULT_SESSION_LOG_STORAGE_CACHE_MS = 5 * 60_000; // 5 minutes
 
 // A page of session logs has 1,000 records by default, and the caller can ask for up to 5,000. A page can end
 // sooner if it reaches 200 chunks or 16 MiB, and the next page picks up where it stopped. A live tail reads the

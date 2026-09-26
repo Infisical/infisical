@@ -36,8 +36,7 @@ import {
   AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS,
   AGENT_VAULT_SESSION_LOG_MIN_BYTES_PER_RECORD,
   AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS,
-  AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS,
-  AGENT_VAULT_SESSION_LOG_STORAGE_CACHE_MS
+  AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS
 } from "./agent-vault-session-log-constants";
 import {
   AgentVaultSessionLogErrorName,
@@ -58,7 +57,6 @@ import {
   TAgentVaultSessionScoped,
   TListSessionLogsDTO,
   TRecordChunkDTO,
-  TResolvedSessionLogStorageConfig,
   TTailSessionLogsDTO,
   TUpdateSessionLogSettingsDTO
 } from "./agent-vault-session-log-types";
@@ -86,35 +84,7 @@ export const agentVaultSessionLogServiceFactory = ({
   permissionService,
   kmsService
 }: TAgentVaultSessionLogServiceFactoryDep) => {
-  const $storageDeps = { kmsService };
-
-  const storageCache = new Map<string, { storage: TAgentVaultSessionLogStorage; expiresAt: number }>();
-
-  const $getStorage = async (config: TResolvedSessionLogStorageConfig, orgId: string) => {
-    // Read on every call so an edited connection is used at once: every edit bumps updatedAt, which is in the key.
-    const connection = await appConnectionDAL.findById(config.appConnectionId);
-    const key = [
-      orgId,
-      config.appConnectionId,
-      connection?.updatedAt.getTime() ?? "",
-      config.bucket,
-      config.region,
-      config.keyPrefix ?? ""
-    ].join("|");
-    const cached = storageCache.get(key);
-    if (cached && cached.expiresAt > Date.now()) return cached.storage;
-
-    const storage = await buildSessionLogStorage(config, orgId, connection, $storageDeps);
-    storageCache.set(key, { storage, expiresAt: Date.now() + AGENT_VAULT_SESSION_LOG_STORAGE_CACHE_MS });
-
-    if (storageCache.size > 512) {
-      for (const [entryKey, entry] of storageCache) {
-        if (entry.expiresAt <= Date.now()) storageCache.delete(entryKey);
-      }
-    }
-
-    return storage;
-  };
+  const $storageDeps = { appConnectionDAL, kmsService };
 
   const toCount = (value: number | string) => Number(value);
 
@@ -211,7 +181,7 @@ export const agentVaultSessionLogServiceFactory = ({
 
     let sessionLogStorage: TAgentVaultSessionLogStorage;
     try {
-      sessionLogStorage = await $getStorage(storage, proxy.orgId);
+      sessionLogStorage = await buildSessionLogStorage(storage, proxy.orgId, $storageDeps);
     } catch (error) {
       // A 400 would read to the proxy as a malformed chunk to drop; a connection that can't be used is worth a retry.
       // The detail can name the connection and AWS account, and whoever runs the proxy may not be an admin.
@@ -347,7 +317,7 @@ export const agentVaultSessionLogServiceFactory = ({
 
     let sessionLogStorage: TAgentVaultSessionLogStorage;
     try {
-      sessionLogStorage = await $getStorage(storage, ctx.actorOrgId);
+      sessionLogStorage = await buildSessionLogStorage(storage, ctx.actorOrgId, $storageDeps);
     } catch (error) {
       if (!(error instanceof BadRequestError)) throw error;
       return unreadable({
@@ -455,7 +425,7 @@ export const agentVaultSessionLogServiceFactory = ({
     let connectionError: string | null = null;
     if (storage) {
       try {
-        await $getStorage(storage, ctx.actorOrgId);
+        await buildSessionLogStorage(storage, ctx.actorOrgId, $storageDeps);
       } catch (error) {
         logger.warn(error, `agentVaultSessionLog: could not use the session log connection [projectId=${projectId}]`);
         connectionError =
@@ -478,7 +448,7 @@ export const agentVaultSessionLogServiceFactory = ({
     const storage = resolveStorageConfig(config);
     if (!storage) return { probe: null };
 
-    const sessionLogStorage = await $getStorage(storage, ctx.actorOrgId);
+    const sessionLogStorage = await buildSessionLogStorage(storage, ctx.actorOrgId, $storageDeps);
     return {
       probe: {
         url: await sessionLogStorage.mintCorsProbeUrl(),
@@ -539,14 +509,7 @@ export const agentVaultSessionLogServiceFactory = ({
     }
 
     const storage = next.enabled ? resolveStorageConfig(next) : null;
-    const sessionLogStorage = storage
-      ? await buildSessionLogStorage(
-          storage,
-          ctx.actorOrgId,
-          await appConnectionDAL.findById(storage.appConnectionId),
-          $storageDeps
-        )
-      : null;
+    const sessionLogStorage = storage ? await buildSessionLogStorage(storage, ctx.actorOrgId, $storageDeps) : null;
     if (sessionLogStorage) await sessionLogStorage.validate();
 
     const values = { ...next, projectId };
@@ -564,8 +527,6 @@ export const agentVaultSessionLogServiceFactory = ({
         throw err;
       }
     }
-
-    storageCache.clear();
 
     let appConnectionName: string | null = null;
     if (validatedConnection) {

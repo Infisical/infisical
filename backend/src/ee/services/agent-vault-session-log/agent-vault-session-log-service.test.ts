@@ -535,21 +535,6 @@ describe("updateSessionLogSettings: when the connection is checked again", () =>
   });
 });
 
-describe("the storage cache", () => {
-  test("an edited connection is used at once, not after the cache expires", async () => {
-    const { service, findConnection } = build({
-      connection: { id: "conn-1", updatedAt: new Date("2026-09-24T10:00:00.000Z") }
-    });
-    await record(service);
-    await record(service);
-    expect(buildSessionLogStorage).toHaveBeenCalledTimes(1);
-
-    findConnection.mockResolvedValue({ id: "conn-1", updatedAt: new Date("2026-09-24T10:05:00.000Z") });
-    await record(service);
-    expect(buildSessionLogStorage).toHaveBeenCalledTimes(2);
-  });
-});
-
 describe("updateSessionLogSettings: two first saves at once", () => {
   test("the one that loses reads as a clash to retry, not a server error", async () => {
     const { service } = build({
