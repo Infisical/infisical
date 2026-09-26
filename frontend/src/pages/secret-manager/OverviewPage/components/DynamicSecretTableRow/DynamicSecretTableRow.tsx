@@ -371,7 +371,10 @@ export const DynamicSecretTableRow = ({
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
               className="sticky left-0 border-y border-border"
             >
-              <Table className="w-full table-fixed" containerClassName="rounded-none border-0">
+              <Table
+                className="w-full min-w-[calc(var(--name-column-width,180px)+24rem)] table-fixed"
+                containerClassName="rounded-none border-0"
+              >
                 <colgroup>
                   <col className="w-10" />
                   <col className="w-[var(--name-column-width,180px)]" />
