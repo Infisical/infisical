@@ -20,6 +20,7 @@ import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { logger } from "@app/lib/logger";
 import { createSshKeyPair, SshCertKeyAlgorithm } from "@app/lib/ssh";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -32,7 +33,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { testConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
 import {
   accountTypeSupportsSessionLogMasking,
-  PamAccessStatus,
   PamAccessType,
   PamAccountType,
   PamAccountWarning,
@@ -427,13 +427,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         requiresApproval,
         supportsCredentialReveal: revealableById.get(a.id) ?? false,
         requireReason,
-        accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
+        accessStatus: requiresApproval
+          ? (statusEntry?.accessStatus ?? ApprovalAccessStatus.None)
+          : ApprovalAccessStatus.None,
         grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
         pendingRequestId: statusEntry?.pendingRequestId ?? null,
         canBreakGlass: allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId),
         credentialAccessStatus: requiresApproval
-          ? (credentialStatusEntry?.accessStatus ?? PamAccessStatus.None)
-          : PamAccessStatus.None,
+          ? (credentialStatusEntry?.accessStatus ?? ApprovalAccessStatus.None)
+          : ApprovalAccessStatus.None,
         credentialPendingRequestId: credentialStatusEntry?.pendingRequestId ?? null,
         permissions: permissionsByAccountId.get(a.id) ?? [],
         createdAt: a.createdAt,
@@ -1323,7 +1325,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           // Machine identities cannot satisfy MFA, so launch rejects them outright (see
           // pam-session-service). Callers acting as an identity should treat this as unusable.
           requireMfa,
-          accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
+          accessStatus: requiresApproval
+            ? (statusEntry?.accessStatus ?? ApprovalAccessStatus.None)
+            : ApprovalAccessStatus.None,
           grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
           pendingRequestId: statusEntry?.pendingRequestId ?? null,
           canBreakGlass: allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId),

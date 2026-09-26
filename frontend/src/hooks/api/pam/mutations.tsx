@@ -831,10 +831,10 @@ export const useReviewPamAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ requestId, status, comment }: TReviewPamAccessRequestDTO) => {
-      const { data } = await apiRequest.post(`/api/v1/pam/access-requests/${requestId}/review`, {
-        status,
-        comment
-      });
+      const { data } = await apiRequest.post(
+        `/api/v1/approval-policies/pam-access/requests/${requestId}/${status === "approved" ? "approve" : "reject"}`,
+        { comment }
+      );
       return data;
     },
     onSuccess: () => {
@@ -847,8 +847,11 @@ export const useReviewPamAccessRequest = () => {
 export const useRevokePamAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ requestId }: TRevokePamAccessRequestDTO) => {
-      const { data } = await apiRequest.post(`/api/v1/pam/access-requests/${requestId}/revoke`);
+    mutationFn: async ({ grantId }: TRevokePamAccessRequestDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/approval-policies/pam-access/grants/${grantId}/revoke`,
+        { revocationReason: "Revoked by admin" }
+      );
       return data;
     },
     onSuccess: () => {
@@ -863,7 +866,7 @@ export const useBreakGlassPamAccessRequest = () => {
   return useMutation({
     mutationFn: async ({ requestId, bypassReason }: TBreakGlassPamAccessRequestDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/pam/access-requests/${requestId}/break-glass`,
+        `/api/v1/approval-policies/pam-access/requests/${requestId}/approve`,
         { bypassReason }
       );
       return data;

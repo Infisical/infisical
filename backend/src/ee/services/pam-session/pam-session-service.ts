@@ -8,6 +8,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
+import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -21,7 +22,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import {
   accountTypeSupportsSessionLogMasking,
   PamAccessMethod,
-  PamAccessStatus,
   PamAccountType,
   PamPostgresAuthMethod,
   PamProductRole,
@@ -552,7 +552,7 @@ export const pamSessionServiceFactory = ({
           message: "Access request required",
           details: {
             requireReason: policy.requireReason,
-            hasPendingRequest: statusMap.get(account.id)?.accessStatus === PamAccessStatus.Pending,
+            hasPendingRequest: statusMap.get(account.id)?.accessStatus === ApprovalAccessStatus.Pending,
             hasApprovalPolicy: Boolean(account.folderId && foldersWithApprovalPolicy.has(account.folderId))
           }
         });
