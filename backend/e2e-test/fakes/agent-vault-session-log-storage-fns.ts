@@ -1,14 +1,8 @@
 import { BadRequestError } from "@app/lib/errors";
 
-import type * as RealStorage from "../../src/ee/services/agent-vault-session-log/agent-vault-session-log-storage";
-import {
-  buildSessionLogObjectKey,
-  resolveStorageConfig,
-  withKeyPrefix
-} from "../../src/ee/services/agent-vault-session-log/agent-vault-session-log-storage";
+import { withKeyPrefix } from "../../src/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
+import type * as RealStorage from "../../src/ee/services/agent-vault-session-log/agent-vault-session-log-storage-fns";
 import type { TResolvedSessionLogStorageConfig } from "../../src/ee/services/agent-vault-session-log/agent-vault-session-log-types";
-
-export { buildSessionLogObjectKey, resolveStorageConfig, withKeyPrefix };
 
 type TFakeState = {
   objects: Map<string, Buffer>;
@@ -119,13 +113,8 @@ export const buildSessionLogStorage = (config: TResolvedSessionLogStorageConfig,
   });
 };
 
-export const assertFakeMatchesRealStorage: Pick<
-  typeof RealStorage,
-  "buildSessionLogObjectKey" | "resolveStorageConfig" | "withKeyPrefix"
-> = {
-  buildSessionLogObjectKey,
-  resolveStorageConfig,
-  withKeyPrefix
+export const assertFakeMatchesRealStorage: Pick<typeof RealStorage, "buildSessionLogStorage"> = {
+  buildSessionLogStorage
 };
 
 export const assertFakeStorageShapeMatches: {

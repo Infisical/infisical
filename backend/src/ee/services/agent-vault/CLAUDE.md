@@ -196,7 +196,7 @@ hostile input: it must never be able to erase or hide its own records.
 - **History (`/logs`) orders and cursors on `chunkId`** (a UUIDv7 the proxy mints, unique per session); split them and pages
   drop chunks. The tail (`/logs/tail`) reads by our `createdAt` instead, overlapping by
   `AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS`, so repeats are expected and deduped by chunk id. Both cursors are
-  opaque and mode-tagged (`agent-vault-session-log-cursor.ts`); a history read hands out `liveCursor` to start a tail.
+  opaque and mode-tagged (`agent-vault-session-log-fns.ts`); a history read hands out `liveCursor` to start a tail.
 - **The org ceiling counts chunks** (`AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS`) and is internal: no env var, no
   docs, and the API reports only `isStorageFull` (on `/settings/session-logs/health`). At the limit writes are refused, never drop-oldest, which
   would be an evidence-eviction primitive.

@@ -30,15 +30,3 @@ export const AGENT_VAULT_SESSION_LOG_MAX_PAGE_RECORDS = 5000;
 export const AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS = 200;
 export const AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES = 16 * 1024 * 1024; // 16 MiB of ciphertext
 export const AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS = 2 * 60_000; // 2 minutes
-
-export const AgentVaultSessionLogStorageUnavailableReason = {
-  NoConnection: "no-connection",
-  ConnectionUnusable: "connection-unusable"
-} as const;
-
-// Wire contract: the Go proxy (cli/packages/agentvault/session_log.go) switches on these APIError.Name values.
-export const AgentVaultSessionLogErrorName = {
-  CeilingReached: "AgentVaultSessionLogCeilingReached",
-  Disabled: "AgentVaultSessionLogDisabled",
-  ClockSkew: "AgentVaultSessionLogClockSkew"
-} as const;

@@ -37,18 +37,21 @@ import {
   AGENT_VAULT_SESSION_LOG_MIN_BYTES_PER_RECORD,
   AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS,
   AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS,
-  AGENT_VAULT_SESSION_LOG_STORAGE_CACHE_MS,
+  AGENT_VAULT_SESSION_LOG_STORAGE_CACHE_MS
+} from "./agent-vault-session-log-constants";
+import {
   AgentVaultSessionLogErrorName,
   AgentVaultSessionLogStorageUnavailableReason
-} from "./agent-vault-session-log-constants";
-import { encodeHistoryCursor, encodeTailCursor } from "./agent-vault-session-log-cursor";
-import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
+} from "./agent-vault-session-log-enums";
 import {
   buildSessionLogObjectKey,
-  buildSessionLogStorage,
-  resolveStorageConfig,
-  TAgentVaultSessionLogStorage
-} from "./agent-vault-session-log-storage";
+  encodeHistoryCursor,
+  encodeTailCursor,
+  isSessionLogIngestEnabled,
+  resolveStorageConfig
+} from "./agent-vault-session-log-fns";
+import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
+import { buildSessionLogStorage, TAgentVaultSessionLogStorage } from "./agent-vault-session-log-storage-fns";
 import {
   TAgentVaultSessionLogStorageUnavailable,
   TListSessionLogsDTO,
@@ -138,9 +141,6 @@ export const agentVaultSessionLogServiceFactory = ({
     region: config.region ?? null,
     keyPrefix: config.keyPrefix ?? null
   });
-
-  const isIngestEnabled = (config?: TAgentVaultSessionLogConfigs) =>
-    Boolean(config?.enabled && resolveStorageConfig(config));
 
   const $requireAdmin = async ({ projectId, ctx }: TSessionLogSettingsDTO) => {
     const { isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
@@ -307,7 +307,7 @@ export const agentVaultSessionLogServiceFactory = ({
     rows
   }: TSessionLogsScope & Awaited<ReturnType<typeof $loadSessionLogs>> & { rows: TAgentVaultSessionLogChunks[] }) => {
     const unreadSessionLogs = {
-      enabled: isIngestEnabled(config),
+      enabled: isSessionLogIngestEnabled(config),
       sessionKey: null,
       storageUnavailable: null
     };

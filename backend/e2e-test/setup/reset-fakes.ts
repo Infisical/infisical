@@ -1,4 +1,4 @@
-import { fakeSessionLogStorage } from "e2e-test/fakes/agent-vault-session-log-storage";
+import { fakeSessionLogStorage } from "e2e-test/fakes/agent-vault-session-log-storage-fns";
 import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
 

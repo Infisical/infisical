@@ -1,18 +1,18 @@
 import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
-import { fakeSessionLogStorage } from "e2e-test/fakes/agent-vault-session-log-storage";
+import { fakeSessionLogStorage } from "e2e-test/fakes/agent-vault-session-log-storage-fns";
 import { createAwsAppConnection, deleteAppConnection } from "e2e-test/testUtils/secret-syncs";
 import { v7 as uuidv7 } from "uuid";
 
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
-import { AgentVaultSessionLogErrorName } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-constants";
+import { AgentVaultSessionLogErrorName } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-enums";
 import {
   encodeHistoryCursor,
   encodeTailCursor
-} from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-cursor";
+} from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
 import { initLogger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 

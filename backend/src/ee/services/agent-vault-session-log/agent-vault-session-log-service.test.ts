@@ -3,21 +3,17 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 
-import {
-  AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS,
-  AgentVaultSessionLogErrorName
-} from "./agent-vault-session-log-constants";
-import { encodeTailCursor } from "./agent-vault-session-log-cursor";
+import { AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS } from "./agent-vault-session-log-constants";
+import { AgentVaultSessionLogErrorName } from "./agent-vault-session-log-enums";
+import { buildSessionLogObjectKey, encodeTailCursor } from "./agent-vault-session-log-fns";
 import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
-import { buildSessionLogObjectKey, buildSessionLogStorage } from "./agent-vault-session-log-storage";
+import { buildSessionLogStorage } from "./agent-vault-session-log-storage-fns";
 
 const CEILING = AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS;
 
 const presignPut = vi.fn(async () => "https://bucket.s3.amazonaws.com/signed-put");
-vi.mock("./agent-vault-session-log-storage", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./agent-vault-session-log-storage")>();
+vi.mock("./agent-vault-session-log-storage-fns", () => {
   return {
-    ...actual,
     buildSessionLogStorage: vi.fn(async () => ({
       presignPut,
       presignGet: vi.fn(async () => "https://bucket.s3.amazonaws.com/signed-get"),

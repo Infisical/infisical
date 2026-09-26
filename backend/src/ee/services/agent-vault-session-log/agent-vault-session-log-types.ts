@@ -2,7 +2,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
 import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
-import { AgentVaultSessionLogStorageUnavailableReason } from "./agent-vault-session-log-constants";
+import { AgentVaultSessionLogStorageUnavailableReason } from "./agent-vault-session-log-enums";
 
 export type TAgentVaultSessionLogChunkInput = {
   chunkId: string;
@@ -65,6 +65,6 @@ export type TResolvedSessionLogStorageConfig = {
 };
 
 export type TAgentVaultSessionLogStorageUnavailable = {
-  reason: (typeof AgentVaultSessionLogStorageUnavailableReason)[keyof typeof AgentVaultSessionLogStorageUnavailableReason];
+  reason: AgentVaultSessionLogStorageUnavailableReason;
   message: string | null;
 };

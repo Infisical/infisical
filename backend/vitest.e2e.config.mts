@@ -80,8 +80,8 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "./e2e-test/fakes/aws-connection-fns")
       },
       {
-        find: "./agent-vault-session-log-storage",
-        replacement: path.resolve(__dirname, "./e2e-test/fakes/agent-vault-session-log-storage")
+        find: "./agent-vault-session-log-storage-fns",
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/agent-vault-session-log-storage-fns")
       }
     ]
   },

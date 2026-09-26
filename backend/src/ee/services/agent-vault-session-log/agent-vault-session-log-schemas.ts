@@ -3,7 +3,6 @@ import { z } from "zod";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import { hasTraversalSegment } from "../agent-vault/agent-vault-path-prefix";
 import {
   AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX,
   AGENT_VAULT_SESSION_LOG_DEFAULT_PAGE_RECORDS,
@@ -11,10 +10,10 @@ import {
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS,
   AGENT_VAULT_SESSION_LOG_MAX_KEY_PREFIX_LENGTH,
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_RECORDS,
-  AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES,
-  AgentVaultSessionLogStorageUnavailableReason
+  AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES
 } from "./agent-vault-session-log-constants";
-import { HistoryCursorSchema, TailCursorSchema } from "./agent-vault-session-log-cursor";
+import { AgentVaultSessionLogStorageUnavailableReason } from "./agent-vault-session-log-enums";
+import { HistoryCursorSchema, TailCursorSchema } from "./agent-vault-session-log-fns";
 
 const BUCKET_NAME_RULE =
   "Must be 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number";
@@ -178,7 +177,10 @@ export const AgentVaultSessionLogSettingsUpdateSchema = z
         (v) => v === "" || v.split("/").every(Boolean),
         "Must be folder names separated by single slashes, with no slash at the start or end, like 'logs/agent-vault'"
       )
-      .refine((v) => !hasTraversalSegment(v), "May not use '.' or '..' as a folder name")
+      .refine(
+        (v) => !v.split("/").some((folder) => folder === "." || folder === ".."),
+        "May not use '.' or '..' as a folder name"
+      )
       .describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)
   })
   .partial();

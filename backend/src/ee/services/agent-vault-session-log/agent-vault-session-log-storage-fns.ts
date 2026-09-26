@@ -2,54 +2,20 @@ import { GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from 
 import { STSServiceException } from "@aws-sdk/client-sts";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-import { TAgentVaultSessionLogConfigs } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS } from "./agent-vault-session-log-constants";
+import { withKeyPrefix } from "./agent-vault-session-log-fns";
 import { TResolvedSessionLogStorageConfig } from "./agent-vault-session-log-types";
-
-export const withKeyPrefix = (keyPrefix: string | null | undefined, key: string) =>
-  keyPrefix ? `${keyPrefix}/${key}` : key;
-
-export const buildSessionLogObjectKey = ({
-  keyPrefix,
-  projectId,
-  sessionId,
-  proxyId,
-  startedAt,
-  chunkId
-}: {
-  keyPrefix?: string | null;
-  projectId: string;
-  sessionId: string;
-  proxyId: string;
-  startedAt: Date;
-  chunkId: string;
-}) => {
-  const day = startedAt.toISOString().slice(0, 10);
-  return withKeyPrefix(keyPrefix, `${projectId}/${sessionId}/${proxyId}/${day}/${chunkId}.json.enc`);
-};
-
-export const resolveStorageConfig = (
-  config: Pick<TAgentVaultSessionLogConfigs, "appConnectionId" | "bucket" | "region" | "keyPrefix">
-): TResolvedSessionLogStorageConfig | null => {
-  if (!config.appConnectionId || !config.bucket || !config.region) return null;
-  return {
-    appConnectionId: config.appConnectionId,
-    bucket: config.bucket,
-    region: config.region as AWSRegion,
-    keyPrefix: config.keyPrefix ?? null
-  };
-};
 
 // Both headers are signed so S3 enforces them: the link cannot carry more than the declared size, and
 // If-None-Match stops a link re-minted for a retried chunk from overwriting one already stored.

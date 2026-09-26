@@ -11,8 +11,7 @@ export const AGENT_VAULT_MAX_PATH_PREFIXES = 20;
 // since matching is by whole segment and `/Products` never covers `/Products(1)`.
 const PATH_PREFIX_RE = new RE2(/^\/[A-Za-z0-9\-._~$&+/:=@]*$/);
 
-export const hasTraversalSegment = (value: string) =>
-  value.split("/").some((segment) => segment === "." || segment === "..");
+const hasTraversalSegment = (value: string) => value.split("/").some((segment) => segment === "." || segment === "..");
 
 // '/' keeps its trailing slash: stripping it would leave an empty string, which means nothing.
 export const normalizePathPrefix = (value: string) => {

@@ -30,8 +30,8 @@ import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
+import { isSessionLogIngestEnabled } from "../agent-vault-session-log/agent-vault-session-log-fns";
 import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
-import { resolveStorageConfig } from "../agent-vault-session-log/agent-vault-session-log-storage";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { parseRootCaCertificate } from "./agent-vault-ca-fns";
@@ -418,9 +418,7 @@ export const agentVaultProxyServiceFactory = ({
     ]);
 
     const sessionLogConfig = await agentVaultSessionLogConfigDAL.findOne({ projectId: session.projectId });
-    const sessionLogsEnabled = Boolean(
-      sessionLogConfig?.enabled && resolveStorageConfig(sessionLogConfig) && session.encryptedSessionLogKey
-    );
+    const sessionLogsEnabled = isSessionLogIngestEnabled(sessionLogConfig) && Boolean(session.encryptedSessionLogKey);
     const sessionLogKeyNeeded = sessionLogsEnabled && !hasSessionLogKey;
 
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be

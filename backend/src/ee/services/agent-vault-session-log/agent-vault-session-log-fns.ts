@@ -1,6 +1,47 @@
 import { z } from "zod";
 
+import { TAgentVaultSessionLogConfigs } from "@app/db/schemas";
+import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
+
 import { AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX } from "./agent-vault-session-log-constants";
+import { TResolvedSessionLogStorageConfig } from "./agent-vault-session-log-types";
+
+export const withKeyPrefix = (keyPrefix: string | null | undefined, key: string) =>
+  keyPrefix ? `${keyPrefix}/${key}` : key;
+
+export const buildSessionLogObjectKey = ({
+  keyPrefix,
+  projectId,
+  sessionId,
+  proxyId,
+  startedAt,
+  chunkId
+}: {
+  keyPrefix?: string | null;
+  projectId: string;
+  sessionId: string;
+  proxyId: string;
+  startedAt: Date;
+  chunkId: string;
+}) => {
+  const day = startedAt.toISOString().slice(0, 10);
+  return withKeyPrefix(keyPrefix, `${projectId}/${sessionId}/${proxyId}/${day}/${chunkId}.json.enc`);
+};
+
+export const resolveStorageConfig = (
+  config: Pick<TAgentVaultSessionLogConfigs, "appConnectionId" | "bucket" | "region" | "keyPrefix">
+): TResolvedSessionLogStorageConfig | null => {
+  if (!config.appConnectionId || !config.bucket || !config.region) return null;
+  return {
+    appConnectionId: config.appConnectionId,
+    bucket: config.bucket,
+    region: config.region as AWSRegion,
+    keyPrefix: config.keyPrefix ?? null
+  };
+};
+
+export const isSessionLogIngestEnabled = (config?: TAgentVaultSessionLogConfigs) =>
+  Boolean(config?.enabled && resolveStorageConfig(config));
 
 const CURSOR_VERSION = 1;
 const MAX_CURSOR_LENGTH = 256;
