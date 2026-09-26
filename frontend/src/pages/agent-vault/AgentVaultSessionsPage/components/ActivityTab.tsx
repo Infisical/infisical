@@ -56,7 +56,6 @@ import {
   AGENT_VAULT_ACTIVITY_LIVE_POLL_MS,
   AgentVaultActivityDecision,
   AgentVaultSessionStatus,
-  isRetryableActivityGap,
   useAgentVaultActivityTimeline,
   useGetAgentVaultSessionActivity
 } from "@app/hooks/api/agentVault";
@@ -506,7 +505,7 @@ export const ActivityTab = ({ session }: Props) => {
       isPending={isRefetching}
       onClick={() => refetch().catch(() => {})}
     >
-      Retry
+      Reload
     </Button>
   );
 
@@ -674,7 +673,7 @@ export const ActivityTab = ({ session }: Props) => {
                 </span>
               ))}
             </div>
-            {gaps.some((gap) => isRetryableActivityGap(gap.reason)) && (
+            {gaps.some((gap) => gap.reason === "fetch" || gap.reason === "refused") && (
               <AlertAction>{retryButton}</AlertAction>
             )}
           </AlertDescription>
@@ -691,7 +690,7 @@ export const ActivityTab = ({ session }: Props) => {
           </EmptyHeader>
           {noRecordsLiveState === "reconnecting" && (
             <Button variant="outline" size="sm" isPending={live.isFetching} onClick={retryLive}>
-              Retry
+              Check Now
             </Button>
           )}
           {isSearchPaused && !isSearchFailed && (
@@ -706,7 +705,7 @@ export const ActivityTab = ({ session }: Props) => {
               isPending={isFetchingNextPage}
               onClick={() => fetchNextPage().catch(() => {})}
             >
-              Retry
+              Search Again
             </Button>
           )}
           {isLoadError && (
@@ -716,7 +715,7 @@ export const ActivityTab = ({ session }: Props) => {
               isPending={isFetching}
               onClick={() => refetch().catch(() => {})}
             >
-              Retry
+              Reload
             </Button>
           )}
         </Empty>

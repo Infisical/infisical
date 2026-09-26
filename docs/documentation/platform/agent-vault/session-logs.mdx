@@ -115,7 +115,7 @@ A session token works on any enrolled proxy, so several proxies can serve one se
 If a record couldn't be kept, the sheet shows a notice instead of leaving a silent gap:
 
 - **Records not kept:** if a proxy can't reach Infisical or your bucket for long enough, it drops the oldest records it's holding, and the sheet shows how many
-- **Unreadable batch:** if a batch is missing from the bucket, the bucket refuses the download, or the batch is the wrong size, was changed after it was uploaded, or fails decryption, the sheet marks the batch and shows the rest (select **Retry** to try a missing, refused, or failed download again)
+- **Unreadable batch:** if a batch is missing from the bucket, the bucket refuses the download, or the batch is the wrong size, was changed after it was uploaded, or fails decryption, the sheet marks the batch and shows the rest (select **Reload** to try a refused or failed download again)
 - **Batch in another bucket:** if you changed the bucket, batches recorded before the change are marked as stored in a bucket the project no longer uses, and become readable again if you switch back
 
 ### Reading session logs through the API

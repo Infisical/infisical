@@ -108,7 +108,7 @@ export const LiveStatusRow = ({
             isPending={isRetrying}
             onClick={onRetry}
           >
-            Retry
+            Check Now
           </Button>
         )}
       </div>
