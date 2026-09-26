@@ -28,14 +28,15 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
-  AGENT_VAULT_APP_CONNECTIONS,
   decryptAppConnection,
   decryptAppConnectionCredentials,
   encryptAppConnectionConfiguration,
   encryptAppConnectionCredentials,
   enterpriseAppCheck,
   getAppConnectionMethodName,
+  isAppConnectionAllowedInProject,
   listAppConnectionOptions,
+  PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES,
   TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
@@ -552,9 +553,13 @@ export const appConnectionServiceFactory = ({
         ProjectPermissionSub.AppConnections
       );
 
-      if (project.type === ProjectType.AgentVault && !AGENT_VAULT_APP_CONNECTIONS.includes(app)) {
+      if (
+        PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES.includes(project.type as ProjectType) &&
+        !isAppConnectionAllowedInProject(app, project.type as ProjectType)
+      ) {
+        const supported = listAppConnectionOptions(project.type as ProjectType).map((option) => option.name);
         throw new BadRequestError({
-          message: `${APP_CONNECTION_NAME_MAP[app]} Connections can't be used in Agent Vault. Agent Vault supports AWS Connections only.`
+          message: `${APP_CONNECTION_NAME_MAP[app]} Connections can't be used in this project. It supports: ${supported.join(", ")}.`
         });
       }
     } else {

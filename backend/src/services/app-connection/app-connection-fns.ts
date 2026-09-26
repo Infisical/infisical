@@ -347,7 +347,35 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.MicrosoftIntune
 ];
 
-export const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
+const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
+
+export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
+  switch (projectType) {
+    case ProjectType.SecretManager:
+      return (
+        Boolean(SECRET_SYNC_APP_CONNECTION_MAP[app]) ||
+        Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[app]) ||
+        EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(app)
+      );
+    case ProjectType.SecretScanning:
+      return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[app]);
+    case ProjectType.CertificateManager:
+      return PKI_APP_CONNECTIONS.includes(app);
+    case ProjectType.KMS:
+      return false;
+    case ProjectType.PAM:
+      return false;
+    case ProjectType.AgentVault:
+      return AGENT_VAULT_APP_CONNECTIONS.includes(app);
+    default:
+      return true;
+  }
+};
+
+// The options API filters every product's picker by its list; create only refuses a type for these.
+// Others still accept any type, because enforcing would break existing API callers. Add a product
+// once its list is derived from the features that use it and nothing relies on the looser behaviour.
+export const PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES = [ProjectType.AgentVault];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
   return [
@@ -437,28 +465,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSpaceliftConnectionListItem(),
     getDaytonaConnectionListItem()
   ]
-    .filter((option) => {
-      switch (projectType) {
-        case ProjectType.SecretManager:
-          return (
-            Boolean(SECRET_SYNC_APP_CONNECTION_MAP[option.app]) ||
-            Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[option.app]) ||
-            EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(option.app)
-          );
-        case ProjectType.SecretScanning:
-          return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[option.app]);
-        case ProjectType.CertificateManager:
-          return PKI_APP_CONNECTIONS.includes(option.app);
-        case ProjectType.KMS:
-          return false;
-        case ProjectType.PAM:
-          return false;
-        case ProjectType.AgentVault:
-          return AGENT_VAULT_APP_CONNECTIONS.includes(option.app);
-        default:
-          return true;
-      }
-    })
+    .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
