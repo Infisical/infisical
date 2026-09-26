@@ -3559,7 +3559,13 @@ const OverviewPageContent = () => {
         open={popUp.addSecretsInAllEnvs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
       >
-        <SheetContent className="flex h-full min-h-0 flex-col gap-y-0 overflow-hidden sm:max-w-lg">
+        <SheetContent
+          className="flex h-full min-h-0 flex-col gap-y-0 overflow-hidden sm:max-w-lg"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            document.getElementById("create-secret-0-key")?.focus();
+          }}
+        >
           <SheetHeader className="border-b">
             <SheetTitle>Create Secret</SheetTitle>
           </SheetHeader>
