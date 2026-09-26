@@ -10,6 +10,7 @@ import {
   ValidateAwsConnectionCredentialsSchema
 } from "@app/services/app-connection/aws";
 
+// Not CreateAwsConnectionSchema: the server sets projectId here, and AWS supports none of its other extra fields.
 const AgentVaultAwsConnectionCreateSchema = ValidateAwsConnectionCredentialsSchema.and(
   z.object({
     name: slugSchema({ field: "name" }).describe(AppConnections.CREATE(AppConnection.AWS).name),
