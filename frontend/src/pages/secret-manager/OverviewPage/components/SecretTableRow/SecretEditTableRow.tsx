@@ -47,6 +47,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   Badge,
+  Button,
   DeleteConfirmDialog,
   Dialog,
   DialogContent,
@@ -173,7 +174,7 @@ type Props = {
   isBatchMode?: boolean;
   isPendingCreate?: boolean;
   isPendingDelete?: boolean;
-  onBatchRevert?: (env: string, key: string) => void;
+  onBatchRevert?: (env: string, key: string, valueOnly?: boolean) => void;
   hasPendingChange?: boolean;
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
@@ -237,6 +238,8 @@ export const SecretEditTableRow = ({
   const isPendingBatchChange = isBatchMode && hasPendingChange;
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
+  const [editingField, setEditingField] = useState<"key" | "value" | null>(null);
+  const [selectedField, setSelectedField] = useState<"key" | "value" | null>(null);
   const [isResolvedValueOpen, setIsResolvedValueOpen] = useToggle();
   const isFieldActive = isFieldFocused || isResolvedValueOpen;
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
@@ -269,7 +272,7 @@ export const SecretEditTableRow = ({
     isError: isErrorFetchingSharedValue,
     refetch: refetchSharedValue
   } = useGetSecretValue(fetchSharedValueParams, {
-    enabled: canFetchSharedValue && (isVisible || isFieldActive)
+    enabled: canFetchSharedValue && (isVisible || isFieldActive || editingField === "value")
   });
 
   const isFetchingSharedValue = canFetchSharedValue && isPendingSharedValue;
@@ -278,6 +281,7 @@ export const SecretEditTableRow = ({
     handleSubmit,
     control,
     reset,
+    resetField,
     setValue,
     setFocus,
     getFieldState,
@@ -423,6 +427,7 @@ export const SecretEditTableRow = ({
           }
         : {})
     });
+    setEditingField(null);
   };
 
   // Debounced auto-apply for batch mode: watch form values and apply after 500ms
@@ -449,6 +454,17 @@ export const SecretEditTableRow = ({
     tags: undefined,
     metadata: undefined
   });
+
+  const handleFieldEscape = (field: "key" | "value") => {
+    resetField(field, {
+      defaultValue: field === "key" ? secretName : originalValueRef.current
+    });
+    if (field === "value" && isBatchMode && hasPendingValueChange) {
+      onBatchRevert?.(environment, secretName, true);
+      lastAppliedRef.current.value = undefined;
+    }
+    setEditingField(null);
+  };
 
   const areTagsEqual = (a: { id: string; slug: string }[], b: { id: string; slug: string }[]) => {
     if (a.length !== b.length) return false;
@@ -815,6 +831,7 @@ export const SecretEditTableRow = ({
         ...(isSingleEnvView ? { key: key || secretName } : {})
       });
     }
+    setEditingField(null);
   };
 
   const submitForm = handleSubmit(handleFormSubmit);
@@ -848,6 +865,7 @@ export const SecretEditTableRow = ({
         value: secretValue,
         ...(isSingleEnvView ? { key: newKey || secretName } : {})
       });
+      setEditingField(null);
       handlePopUpClose("editSecret");
     } finally {
       setIsEditing.off();
@@ -917,6 +935,35 @@ export const SecretEditTableRow = ({
     isFetchingSharedValue ||
     isErrorFetchingSharedValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
+  const canEnterValueEdit =
+    !isPendingDelete &&
+    !isImportedSecret &&
+    !isManagedSecret &&
+    (isCreatable ? canCreate : canEditSecretValue);
+
+  useEffect(() => {
+    if (editingField) setFocus(editingField);
+  }, [editingField, setFocus]);
+
+  const enterEdit = (field: "key" | "value") => {
+    if (
+      field === "value"
+        ? !canEnterValueEdit
+        : isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue
+    )
+      return;
+    setSelectedField(null);
+    setEditingField(field);
+  };
+
+  const previewKeys = (field: "key" | "value") => (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Enter" || event.key === "F2") {
+      event.preventDefault();
+      enterEdit(field);
+    } else if (event.key === "Escape") {
+      event.currentTarget.blur();
+    }
+  };
 
   const shouldStayExpanded =
     isCommentOpen || isTagOpen || isMetadataOpen || isReminderOpen || isDropdownOpen;
@@ -940,42 +987,84 @@ export const SecretEditTableRow = ({
     return "Share Secret";
   };
 
-  const nameInput = isSingleEnvView ? (
-    <Controller
-      control={control}
-      name="key"
-      render={({ field, fieldState: { error } }) => (
-        <Input
-          autoComplete="off"
-          readOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
-          placeholder={error?.message || "Secret name"}
-          title={field.value ?? secretName}
-          isError={Boolean(error)}
-          {...field}
-          value={field.value ?? ""}
-          className={twMerge(
-            "h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
-            isPendingDelete && "text-danger/75 line-through"
-          )}
-          onChange={(event) => {
-            const value = currentProject?.autoCapitalization
-              ? event.currentTarget.value.toUpperCase()
-              : event.currentTarget.value;
-            field.onChange(value);
-          }}
-          onFocus={() => setIsFieldFocused.on()}
-          onKeyDown={handleEditShortcut}
-          onBlur={(e) => {
-            field.onBlur();
-            if (!isBatchMode && field.onChange) field.onChange(e);
-            setIsFieldFocused.off();
-          }}
-        />
-      )}
-    />
-  ) : null;
+  let nameInput = null;
+  if (isSingleEnvView && editingField !== "key")
+    nameInput = (
+      <div className="flex min-w-0 items-center gap-1">
+        <span
+          role="button"
+          tabIndex={0}
+          aria-label={`Edit secret name ${secretName}`}
+          className="min-w-0 grow truncate outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={(event) => event.currentTarget.focus()}
+          onFocus={() => setSelectedField("key")}
+          onBlur={() => setSelectedField(null)}
+          onDoubleClick={() => enterEdit("key")}
+          onKeyDown={previewKeys("key")}
+        >
+          {pendingKeyName ?? secretName}
+        </span>
+        {!isPendingDelete && !isImportedSecret && !isManagedSecret && canEditSecretValue && (
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            onClick={() => enterEdit("key")}
+            aria-label={`Edit secret name ${secretName}`}
+          >
+            Edit
+          </Button>
+        )}
+      </div>
+    );
+  if (isSingleEnvView && editingField === "key")
+    nameInput = (
+      <Controller
+        control={control}
+        name="key"
+        render={({ field, fieldState: { error } }) => (
+          <Input
+            autoComplete="off"
+            readOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
+            placeholder={error?.message || "Secret name"}
+            title={field.value ?? secretName}
+            isError={Boolean(error)}
+            {...field}
+            value={field.value ?? ""}
+            className={twMerge(
+              "h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
+              isPendingDelete && "text-danger/75 line-through"
+            )}
+            onChange={(event) => {
+              const value = currentProject?.autoCapitalization
+                ? event.currentTarget.value.toUpperCase()
+                : event.currentTarget.value;
+              field.onChange(value);
+            }}
+            onFocus={() => setIsFieldFocused.on()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                handleFieldEscape("key");
+              } else handleEditShortcut(event);
+            }}
+            onBlur={(e) => {
+              field.onBlur();
+              if (!isBatchMode && field.onChange) field.onChange(e);
+              setIsFieldFocused.off();
+              if (!isDirty) setEditingField(null);
+            }}
+          />
+        )}
+      />
+    );
 
   const secretHasReference = hasSecretReference(watchedValue as string);
+  let previewValue = "EMPTY";
+  if (isFetchingSharedValue) previewValue = HIDDEN_SECRET_VALUE;
+  else if (isErrorFetchingSharedValue) previewValue = "Error fetching secret value...";
+  else if (watchedValue)
+    previewValue = isVisible && !secretValueHidden ? watchedValue : HIDDEN_SECRET_VALUE;
 
   const valueContent = (
     <>
@@ -1019,40 +1108,64 @@ export const SecretEditTableRow = ({
               isDisabled={isDirtyState || hasPendingValueChange}
             />
           )}
-          <Controller
-            control={control}
-            name="value"
-            render={({ field }) => (
-              <InfisicalSecretInput
-                {...field}
-                variant="plain"
-                isReadOnly={isReadOnly}
-                value={
-                  secretValueHidden
-                    ? ((field.value as string) ?? "")
-                    : isFetchingSharedValue
-                      ? HIDDEN_SECRET_VALUE
-                      : isErrorFetchingSharedValue
-                        ? "Error fetching secret value..."
-                        : (field.value as string)
-                }
-                key="secret-input-shared"
-                isVisible={isVisible || isResolvedValueOpen}
-                secretPath={secretPath}
-                environment={environment}
-                isImport={isImportedSecret}
-                defaultValue={secretValueHidden ? "" : undefined}
-                canEditButNotView={secretValueHidden && !isManagedSecret}
-                onFocus={() => setIsFieldFocused.on()}
-                containerClassName={secretHasReference && isFieldActive ? "pl-6" : ""}
-                onBlur={() => {
-                  field.onBlur();
-                  setIsFieldFocused.off();
-                }}
-                onKeyDown={handleEditShortcut}
-              />
-            )}
-          />
+          {editingField === "value" ? (
+            <Controller
+              control={control}
+              name="value"
+              render={({ field }) => (
+                <InfisicalSecretInput
+                  {...field}
+                  variant="plain"
+                  isReadOnly={isReadOnly}
+                  value={
+                    secretValueHidden
+                      ? ((field.value as string) ?? "")
+                      : isFetchingSharedValue
+                        ? HIDDEN_SECRET_VALUE
+                        : isErrorFetchingSharedValue
+                          ? "Error fetching secret value..."
+                          : (field.value as string)
+                  }
+                  key="secret-input-shared"
+                  isVisible={isVisible || isResolvedValueOpen}
+                  secretPath={secretPath}
+                  environment={environment}
+                  isImport={isImportedSecret}
+                  defaultValue={secretValueHidden ? "" : undefined}
+                  canEditButNotView={secretValueHidden && !isManagedSecret}
+                  onFocus={() => setIsFieldFocused.on()}
+                  containerClassName={secretHasReference && isFieldActive ? "pl-6" : ""}
+                  onBlur={() => {
+                    field.onBlur();
+                    setIsFieldFocused.off();
+                    if (!isDirty) setEditingField(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      handleFieldEscape("value");
+                    } else handleEditShortcut(event);
+                  }}
+                />
+              )}
+            />
+          ) : (
+            <div className="flex min-w-0 items-center gap-1">
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label={`Edit secret value in ${environmentName}`}
+                className="ph-no-capture min-w-0 grow text-sm break-all whitespace-pre-wrap outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={(event) => event.currentTarget.focus()}
+                onFocus={() => setSelectedField("value")}
+                onBlur={() => setSelectedField(null)}
+                onDoubleClick={() => enterEdit("value")}
+                onKeyDown={previewKeys("value")}
+              >
+                {previewValue}
+              </span>
+            </div>
+          )}
         </div>
         {!isDirtyState && !isFieldActive && (
           <div className="pointer-events-none flex w-fit items-start justify-end self-start pl-2 opacity-0 transition-opacity duration-300 motion-reduce:transition-none [@media(hover:hover)]:pointer-events-auto [@media(hover:hover)]:opacity-100 [@media(hover:hover)]:group-focus-within:pointer-events-none [@media(hover:hover)]:group-focus-within:opacity-0 [@media(hover:hover)]:group-hover:pointer-events-none [@media(hover:hover)]:group-hover:opacity-0">
@@ -1383,7 +1496,7 @@ export const SecretEditTableRow = ({
                   (isCreatable ? !canCreate : !canEditSecretValue)
                 }
                 onClick={() => {
-                  setFocus("value", { shouldSelect: true });
+                  enterEdit("value");
                 }}
               >
                 <EditIcon className="size-3.5" />
@@ -1968,13 +2081,20 @@ export const SecretEditTableRow = ({
           isTruncatable
           className={twMerge(
             "border-r",
-            isOverride && "border-l border-b-border/50 border-l-override"
+            isOverride && "border-l border-b-border/50 border-l-override",
+            (selectedField === "key" || editingField === "key") &&
+              "bg-project/20 outline outline-2 -outline-offset-2 outline-project"
           )}
         >
           {nameInput}
         </TableCell>
         <TableCell
-          className={twMerge("relative w-full max-w-0", isOverride && "border-b-border/50")}
+          className={twMerge(
+            "relative w-full max-w-0",
+            isOverride && "border-b-border/50",
+            (selectedField === "value" || editingField === "value") &&
+              "bg-project/20 outline outline-2 -outline-offset-2 outline-project"
+          )}
         >
           <div data-table-row-filter-contents className="flex w-full flex-col gap-y-2 !filter-none">
             {valueContent}
@@ -1987,7 +2107,11 @@ export const SecretEditTableRow = ({
   return (
     <div
       data-table-row-filter-contents
-      className="relative flex w-full flex-col gap-y-2 py-1.5 !filter-none"
+      className={twMerge(
+        "relative flex w-full flex-col gap-y-2 py-1.5 !filter-none",
+        (selectedField === "value" || editingField === "value") &&
+          "bg-project/20 outline outline-2 -outline-offset-2 outline-project"
+      )}
     >
       {valueContent}
     </div>

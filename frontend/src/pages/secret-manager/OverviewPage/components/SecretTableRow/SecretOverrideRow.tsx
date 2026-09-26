@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { CopyIcon, GitBranchIcon, TrashIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -13,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  Button,
   IconButton,
   InfisicalSecretInput,
   SecretInputActions,
@@ -83,6 +85,11 @@ export const SecretOverrideRow = ({
     { environment, secretPath, secretName, secretTags: ["*"] }
   );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEditingValue, setIsEditingValue] = useState(false);
+  const [isSelected, setIsSelected] = useState(false);
+  const [savedOverrideValue, setSavedOverrideValue] = useState<string | null>(null);
+
+  useEffect(() => setSavedOverrideValue(null), [idOverride, valueOverride]);
 
   const fetchOverrideValueParams = {
     environment,
@@ -103,6 +110,13 @@ export const SecretOverrideRow = ({
   });
 
   const isFetchingOverrideValue = canFetchOverrideValue && isPendingOverrideValue;
+  let previewOverrideValue = "EMPTY";
+  if (isFetchingOverrideValue) previewOverrideValue = HIDDEN_SECRET_VALUE;
+  else if (savedOverrideValue !== null || valueOverride || overrideValueData?.valueOverride) {
+    previewOverrideValue = isVisible
+      ? (savedOverrideValue ?? valueOverride ?? overrideValueData?.valueOverride ?? "")
+      : HIDDEN_SECRET_VALUE;
+  }
 
   const {
     handleSubmit,
@@ -126,11 +140,14 @@ export const SecretOverrideRow = ({
   }, [overrideValueData]);
 
   const handleFormReset = () => {
+    setIsEditingValue(false);
     if (isCreatingOverride) {
       onCreatingOverrideChange(false);
       reset({ value: null });
     } else {
-      reset({ value: overrideValueData?.valueOverride ?? (valueOverride || null) });
+      reset({
+        value: savedOverrideValue ?? valueOverride ?? overrideValueData?.valueOverride ?? null
+      });
     }
   };
 
@@ -164,9 +181,11 @@ export const SecretOverrideRow = ({
           type: SecretType.Personal,
           secretId: idOverride
         });
+        setSavedOverrideValue(value);
       }
     }
     reset({ value });
+    setIsEditingValue(false);
   };
 
   const submitForm = handleSubmit(handleFormSubmit);
@@ -190,11 +209,16 @@ export const SecretOverrideRow = ({
   // The parent sets isCreatingOverride=true and we reset the form here
   useEffect(() => {
     if (isCreatingOverride) {
+      setIsEditingValue(true);
       reset({ value: null });
       setValue("value", "", { shouldDirty: true });
       setTimeout(() => setFocus("value"), 250);
     }
   }, [isCreatingOverride]);
+
+  useEffect(() => {
+    if (isEditingValue) setFocus("value");
+  }, [isEditingValue, setFocus]);
 
   useEffect(
     () => () => {
@@ -205,7 +229,11 @@ export const SecretOverrideRow = ({
 
   return (
     <div
-      className="flex w-full cursor-text items-center gap-2"
+      className={twMerge(
+        "flex w-full cursor-text items-center gap-2",
+        (isSelected || isEditingValue) &&
+          "bg-project/20 outline outline-2 -outline-offset-2 outline-project"
+      )}
       onFocusCapture={() => onActiveChange?.(true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -219,29 +247,82 @@ export const SecretOverrideRow = ({
         </div>
       )}
       <div className="min-w-0 grow">
-        <Controller
-          control={control}
-          name="value"
-          render={({ field }) => (
-            <InfisicalSecretInput
-              {...field}
-              variant="plain"
-              isReadOnly={isFetchingOverrideValue}
-              value={isFetchingOverrideValue ? HIDDEN_SECRET_VALUE : (field.value as string)}
-              key="secret-input-override"
-              isVisible={isVisible}
-              secretPath={secretPath}
-              environment={environment}
-              containerClassName="[&_[aria-hidden]]:!text-override"
-              placeholder="Enter personal override..."
-              onFocus={() => {
-                if (canFetchOverrideValue && !overrideValueData) refetchOverrideValue();
+        {isEditingValue ? (
+          <Controller
+            control={control}
+            name="value"
+            render={({ field }) => (
+              <InfisicalSecretInput
+                {...field}
+                variant="plain"
+                isReadOnly={isFetchingOverrideValue}
+                value={isFetchingOverrideValue ? HIDDEN_SECRET_VALUE : (field.value as string)}
+                key="secret-input-override"
+                isVisible={isVisible}
+                secretPath={secretPath}
+                environment={environment}
+                containerClassName="[&_[aria-hidden]]:!text-override"
+                placeholder="Enter personal override..."
+                onFocus={() => {
+                  if (canFetchOverrideValue && !overrideValueData) refetchOverrideValue();
+                }}
+                onBlur={() => {
+                  field.onBlur();
+                  if (!isDirty) setIsEditingValue(false);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    handleFormReset();
+                  } else handleActionShortcut(event);
+                }}
+              />
+            )}
+          />
+        ) : (
+          <div className="flex items-center gap-1">
+            <span
+              role="button"
+              tabIndex={canSaveOverride ? 0 : -1}
+              aria-label={`Edit personal override in ${environment}`}
+              className="ph-no-capture min-w-0 grow text-sm break-all outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={(event) => event.currentTarget.focus()}
+              onFocus={() => setIsSelected(true)}
+              onBlur={() => setIsSelected(false)}
+              onDoubleClick={() => {
+                if (canSaveOverride) {
+                  setIsSelected(false);
+                  setIsEditingValue(true);
+                }
               }}
-              onBlur={field.onBlur}
-              onKeyDown={handleActionShortcut}
-            />
-          )}
-        />
+              onKeyDown={(event) => {
+                if (canSaveOverride && (event.key === "Enter" || event.key === "F2")) {
+                  event.preventDefault();
+                  setIsSelected(false);
+                  setIsEditingValue(true);
+                } else if (event.key === "Escape") {
+                  event.currentTarget.blur();
+                }
+              }}
+            >
+              {previewOverrideValue}
+            </span>
+            {canSaveOverride && (
+              <Button
+                type="button"
+                variant="link"
+                size="xs"
+                onClick={() => {
+                  setIsSelected(false);
+                  setIsEditingValue(true);
+                }}
+                aria-label={`Edit personal override in ${environment}`}
+              >
+                Edit
+              </Button>
+            )}
+          </div>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {isDirty ? (
