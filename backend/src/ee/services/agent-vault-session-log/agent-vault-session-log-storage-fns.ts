@@ -2,11 +2,11 @@ import { GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from 
 import { STSServiceException } from "@aws-sdk/client-sts";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+import { TAppConnections } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
@@ -39,18 +39,19 @@ export const presignSessionLogPut = (
   );
 
 type TStorageDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithInputKey">;
 };
 
 export type TAgentVaultSessionLogStorage = Awaited<ReturnType<typeof buildSessionLogStorage>>;
 
+// Takes the connection row rather than reading it, so a caller that keys a cache on the row's updatedAt builds from
+// that same row. Two reads could land on replicas at different points and pair a new key with old credentials.
 export const buildSessionLogStorage = async (
   config: TResolvedSessionLogStorageConfig,
   orgId: string,
-  { appConnectionDAL, kmsService }: TStorageDeps
+  raw: TAppConnections | undefined,
+  { kmsService }: TStorageDeps
 ) => {
-  const raw = await appConnectionDAL.findById(config.appConnectionId);
   if (raw && raw.orgId !== orgId) {
     logger.error(
       `Agent Vault session log connection is in another organization [appConnectionId=${raw.id}] [orgId=${orgId}]`

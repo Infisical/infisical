@@ -86,7 +86,7 @@ export const agentVaultSessionLogServiceFactory = ({
   permissionService,
   kmsService
 }: TAgentVaultSessionLogServiceFactoryDep) => {
-  const $storageDeps = { appConnectionDAL, kmsService };
+  const $storageDeps = { kmsService };
 
   const storageCache = new Map<string, { storage: TAgentVaultSessionLogStorage; expiresAt: number }>();
 
@@ -104,7 +104,7 @@ export const agentVaultSessionLogServiceFactory = ({
     const cached = storageCache.get(key);
     if (cached && cached.expiresAt > Date.now()) return cached.storage;
 
-    const storage = await buildSessionLogStorage(config, orgId, $storageDeps);
+    const storage = await buildSessionLogStorage(config, orgId, connection, $storageDeps);
     storageCache.set(key, { storage, expiresAt: Date.now() + AGENT_VAULT_SESSION_LOG_STORAGE_CACHE_MS });
 
     if (storageCache.size > 512) {
@@ -539,7 +539,14 @@ export const agentVaultSessionLogServiceFactory = ({
     }
 
     const storage = next.enabled ? resolveStorageConfig(next) : null;
-    const sessionLogStorage = storage ? await buildSessionLogStorage(storage, ctx.actorOrgId, $storageDeps) : null;
+    const sessionLogStorage = storage
+      ? await buildSessionLogStorage(
+          storage,
+          ctx.actorOrgId,
+          await appConnectionDAL.findById(storage.appConnectionId),
+          $storageDeps
+        )
+      : null;
     if (sessionLogStorage) await sessionLogStorage.validate();
 
     const values = { ...next, projectId };
