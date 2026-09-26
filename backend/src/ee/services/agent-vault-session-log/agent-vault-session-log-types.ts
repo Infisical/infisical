@@ -9,12 +9,10 @@ import type {
   AgentVaultSessionLogSettingsUpdateSchema
 } from "./agent-vault-session-log-schemas";
 
-// Who is asking. Every method's input starts from one of these.
 export type TAgentVaultSessionLogScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TAgentVaultSessionScoped = TAgentVaultSessionLogScoped & { sessionId: string };
 
-// One input per service method, named after the method.
 export type TRecordChunkDTO = {
   proxyId: string;
   sessionId: string;
@@ -37,7 +35,6 @@ export type TUpdateSessionLogSettingsDTO = TAgentVaultSessionLogScoped & {
   actor: OrgServiceActor;
 } & z.infer<typeof AgentVaultSessionLogSettingsUpdateSchema>;
 
-// Storage: a bucket setup with every required field filled in, and why a session's logs can't be read.
 export type TResolvedSessionLogStorageConfig = {
   appConnectionId: string;
   bucket: string;
