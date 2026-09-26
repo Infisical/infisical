@@ -40,8 +40,8 @@ revealing one is an intentional act.
 - Scope- and product-aware (org / sub-org / project / admin / PAM / Agent Vault)
 - Border-first depth with the shared `Card`'s `shadow-xs`; overlapping labels
   retain the shared Badge styling
-- Inter for product UI, Alliance for display typography, and distinct
-  functional and decorative monospace roles
+- IBM Plex Sans for product UI, Alliance No. 2 for headings, and JetBrains
+  Mono for monospaced content
 - Secrets masked by default; reveal is an act
 
 ## 2. Color Palette & Roles
@@ -125,28 +125,24 @@ for exact classes and supported variants.
 
 ## 3. Typography
 
-Typography uses several intentional families. Do not collapse them into one
-font or substitute one role for another:
+Typography uses three intentional families:
 
-- **Inter** (`font-inter`, `--font-inter`) is the default product and control
-  face. Body copy, forms, tables, buttons, labels, navigation, and dense product
-  surfaces inherit Inter unless a documented role below applies.
-- **Alliance No. 2** (`font-alliance`, `--font-alliance`) is the display face.
-  Use it selectively for prominent authentication, onboarding, and
-  brand-forward headings or supporting display copy—not routine product chrome.
-- **The existing application mono** (`font-mono`) is functional. Preserve it
-  for code, secret values, identifiers, timestamps, logs, and other content
-  whose character shapes and alignment carry meaning.
-- **JetBrains Mono** (`font-jetbrains-mono`, `--font-jetbrains-mono`) is a
-  decorative mono. Use it for short eyebrow labels, technical decals, and
-  brand-forward microcopy. It does not replace `font-mono` and should not be
-  used for code editors, data tables, IDs, logs, or secret values.
+- **IBM Plex Sans** (`font-sans`, `--font-sans`) is the default product UI face.
+  Body copy, forms, tables, buttons, labels, and navigation inherit it. Real
+  400, 500, 600, and 700 weights are bundled for UI hierarchy.
+- **Alliance No. 2** (`font-alliance`, `--font-alliance`) is the heading face.
+  Semantic headings and shared page, card, dialog, alert dialog, and sheet
+  titles use its bundled Regular weight. Do not use it for arbitrary bold body
+  text or request synthetic heavier weights.
+- **JetBrains Mono** (`font-mono`, `--font-mono`) is the functional and
+  decorative mono. Use it for code, secret values, identifiers, timestamps,
+  logs, and short technical microcopy.
 
 | Role                    | Class                                                                     | Notes                                                              |
 | ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Page title (h1)         | `text-2xl font-medium underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title |
+| Page title (h1)         | `font-alliance text-2xl font-normal underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title |
 | Page description        | `text-label`                                                              | Sits under the title, separated by the header's `gap-2`            |
-| Card title              | `text-lg font-semibold leading-none`                                      | `flex gap-1.5` so badges can sit inline                            |
+| Card title              | `font-alliance text-lg font-normal leading-none`                           | `flex gap-1.5` so badges can sit inline                            |
 | Card description        | `text-sm text-accent`                                                     |                                                                    |
 | Body                    | `text-sm`                                                                 | Default for table cells, form values, dialog content               |
 | Label / meta            | `text-xs text-accent`                                                     | Field labels, table column captions, metadata                      |
@@ -349,9 +345,9 @@ remain legible across the control edge.
   The documented brand-forward `text-highlight` treatment and deliberately
   branded `ButtonBadge` flags are narrow exceptions for authentication and
   onboarding surfaces.
-- **DON'T** mix font families arbitrarily. Choose the documented role: Inter
-  for product UI, Alliance for display type, `font-mono` for functional
-  monospaced content, and JetBrains Mono for decorative technical microcopy.
+- **DON'T** mix font families arbitrarily. Use IBM Plex Sans for UI and body
+  text, Alliance Regular for headings, and JetBrains Mono (`font-mono`) for
+  monospaced content.
 - **DON'T** animate for decoration. Motion should clarify state change only.
 
 ## 8. Voice & Content Tone

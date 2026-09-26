@@ -36,7 +36,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "flex flex-wrap items-center gap-1.5 text-lg leading-none font-semibold",
+        "flex flex-wrap items-center gap-1.5 font-alliance text-lg leading-none font-normal",
         className
       )}
       {...props}

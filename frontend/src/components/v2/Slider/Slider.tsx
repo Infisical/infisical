@@ -76,7 +76,7 @@ const sliderThumbVariants = cva(
   }
 );
 
-const sliderContainerVariants = cva("relative inline-flex font-inter", {
+const sliderContainerVariants = cva("relative inline-flex font-sans", {
   variants: {
     isFullWidth: {
       true: "w-full",

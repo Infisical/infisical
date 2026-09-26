@@ -25,7 +25,7 @@ export const VerificationCodeHeader = ({
         <div className="flex min-w-0 items-baseline justify-between gap-3">
           <div
             aria-label={recipient}
-            className="ml-0.5 min-w-0 flex-1 truncate font-alliance text-2xl font-normal text-foreground"
+            className="ml-0.5 min-w-0 flex-1 truncate font-sans text-2xl font-normal text-foreground"
             title={recipient}
           >
             {recipient}

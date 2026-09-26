@@ -23,7 +23,7 @@ export const Switch = ({
   thumbClassName,
   ...props
 }: SwitchProps): JSX.Element => (
-  <div className={twMerge("flex items-center font-inter text-label-secondary", containerClassName)}>
+  <div className={twMerge("flex items-center font-sans text-label-secondary", containerClassName)}>
     {children && (
       <label className="text-sm" htmlFor={id}>
         {children}

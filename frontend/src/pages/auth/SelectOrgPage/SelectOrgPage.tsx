@@ -385,7 +385,7 @@ export const SelectOrgPage = () => {
             {/* While searching, surface matching sub-orgs inline so they stay discoverable */}
             {isSearching && org.subOrganizations.length > 0 && (
               <div className="ml-4 flex flex-col gap-3 border-l border-border pl-4">
-                <p className="px-1 pt-1 font-jetbrains-mono text-xs tracking-widest text-muted uppercase">
+                <p className="px-1 pt-1 font-mono text-xs tracking-widest text-muted uppercase">
                   Sub-organizations
                 </p>
                 {org.subOrganizations.map((sub) => (
@@ -416,7 +416,7 @@ export const SelectOrgPage = () => {
           joinedAt={selectedRootOrg.userJoinedAt}
           onClick={() => handleSelectOrganization(selectedRootOrg)}
         />
-        <p className="px-1 pt-1 font-jetbrains-mono text-xs tracking-widest text-muted uppercase">
+        <p className="px-1 pt-1 font-mono text-xs tracking-widest text-muted uppercase">
           Sub-organizations
         </p>
         {filteredSubOrgs.length === 0 ? (

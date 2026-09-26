@@ -105,7 +105,7 @@ export const DatePicker = ({
       <PopoverContent
         {...popUpContentProps}
         className={twMerge(
-          "w-fit border border-border-control bg-surface-raised p-2 font-inter",
+          "w-fit border border-border-control bg-surface-raised p-2 font-sans",
           popUpContentProps.className
         )}
       >
@@ -115,7 +115,7 @@ export const DatePicker = ({
             mode="single"
             selected={value ? new TZDate(value, displayUtc ? "UTC" : undefined) : undefined}
             onSelect={(date) => handleDaySelect(date ? new TZDate(date, undefined) : undefined)}
-            className="font-inter text-foreground-secondary"
+            className="font-sans text-foreground-secondary"
             timeZone={displayUtc ? "UTC" : undefined}
             classNames={{
               today: "text-project border-project",

@@ -7,7 +7,7 @@ type Props = {
 };
 
 const FIELD_CLASSNAME =
-  "truncate rounded-md border border-border-subtle bg-surface-base px-3 py-2 font-inter text-sm text-foreground-soft";
+  "truncate rounded-md border border-border-subtle bg-surface-base px-3 py-2 font-sans text-sm text-foreground-soft";
 
 export const getIntegrationDestination = (integration: TIntegration) =>
   (integration.integration === "hashicorp-vault" &&
