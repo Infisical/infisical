@@ -22,7 +22,7 @@ agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-session/         mint, revoke, list, retention sweep
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           login (enrollment), heartbeat, resolve
-agent-vault-activity/        storage settings, chunk ingest, playback
+agent-vault-session-log/     storage settings, chunk ingest, playback
 ```
 
 Routes: `ee/routes/v1/agent-vault-routers/`, prefix `/api/v1/agent-vault`. CLI: `packages/cmd/agent_vault*.go`
@@ -96,7 +96,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
   actor id reads as revoked in the list, the status filter and the sweep, so they agree with resolve refusing
   it. Expiry is enforced against the clock on every resolve. `sweepRetiredSessions` exists only for the 30
-  day hard delete, which skips any session that recorded activity; there is no expiry audit event, matching
+  day hard delete, which skips any session that recorded session logs; there is no expiry audit event, matching
   every other product.
 
 ## Proxies
@@ -171,20 +171,20 @@ header" is the name in every layer; unqualified "header" means the credential's 
   leaves it alone. `$decryptCredential` reads NULL as passthrough, so a bearer row that lost its secret would
   silently stop attaching a credential.
 
-## Activity
+## Session logs
 
 Metadata only (method, host, path, status, decision), never bodies, headers or the query string. The agent is
 hostile input: it must never be able to erase or hide its own records.
 
 - **A customer S3 bucket is required**; there is no Postgres payload path. Infisical stores one index row per
   chunk (up to 1000 records) and seals or opens nothing; the bytes go proxy to bucket to browser.
-- **Two keys.** The project data key (`KmsDataKey.SecretManager`) wraps a per-session activity key on the
-  session row, and only the session key leaves the backend. It is minted at session create even while logging
-  is off; sessions minted before this shipped have none and never record.
+- **Two keys.** The project data key (`KmsDataKey.SecretManager`) wraps a per-session log key on the
+  session row, and only the session key leaves the backend. It is minted at session create even while session
+  logs are off; sessions minted before this shipped have none and never record.
 - **The AAD is `SHA-256("{sessionId}|{chunkId}|v1")`**, sealed AES-256-GCM with a 12-byte IV and the tag
   appended. Nothing more is needed: keys are per session and `(sessionId, chunkId)` is unique. The Go proxy and
-  the browser are both checked against the vector in `agent-vault-activity-crypto.test.ts`.
-  `agent_vault_activity_chunks.proxyId` has no FK because the browser checks each record's `proxyId` against it,
+  the browser are both checked against the vector in `agent-vault-session-log-crypto.test.ts`.
+  `agent_vault_session_log_chunks.proxyId` has no FK because the browser checks each record's `proxyId` against it,
   so `SET NULL` would make that proxy's chunks unreadable.
 - **Size is capped at every hop**: the proxy seals at 4 MiB against the server's 8 MiB, and reads stop at a
   byte budget as well as a record one. A chunk the server refuses counts as dropped on the next one.
@@ -193,14 +193,14 @@ hostile input: it must never be able to erase or hide its own records.
   create-only so a replay cannot replace a stored chunk (the proxy reads 412 as already uploaded).
 - **A session keeps accepting late chunks for a day after it ends**: revoked, expired, or its owner deleted
   (read from `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
-- **History (`/activity`) orders and cursors on `chunkId`** (a ULID, unique per session); split them and pages
-  drop chunks. The tail (`/activity/tail`) reads by our `createdAt` instead, overlapping by
-  `AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS`, so repeats are expected and deduped by chunk id. Both cursors are
-  opaque and mode-tagged (`agent-vault-activity-cursor.ts`); a history read hands out `liveCursor` to start a tail.
-- **The org ceiling counts chunks** (`AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS`) and is internal: no env var, no
-  docs, and the API reports only `isStorageFull` (on `/settings/activity-logging/health`). At the limit writes are refused, never drop-oldest, which
+- **History (`/logs`) orders and cursors on `chunkId`** (a ULID, unique per session); split them and pages
+  drop chunks. The tail (`/logs/tail`) reads by our `createdAt` instead, overlapping by
+  `AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS`, so repeats are expected and deduped by chunk id. Both cursors are
+  opaque and mode-tagged (`agent-vault-session-log-cursor.ts`); a history read hands out `liveCursor` to start a tail.
+- **The org ceiling counts chunks** (`AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS`) and is internal: no env var, no
+  docs, and the API reports only `isStorageFull` (on `/settings/session-logs/health`). At the limit writes are refused, never drop-oldest, which
   would be an evidence-eviction primitive.
-- **Infisical never deletes activity.** Sessions that recorded any skip the retention prune (their row holds
+- **Infisical never deletes session logs.** Sessions that recorded any skip the retention prune (their row holds
   the key), and nothing deletes from the bucket, so the policy asks for no `s3:DeleteObject`.
 - **A save re-checks the connection whenever it puts it to a new use** (connection, bucket, region, prefix, or
   recording turned on), never on a save that only turns recording off.
@@ -210,7 +210,7 @@ hostile input: it must never be able to erase or hide its own records.
 - **Each chunk carries `ciphertextSha256`**, set by the proxy at seal time and checked in the browser before
   decrypting, so an object edited in the bucket reads as changed, not as a decryption failure.
 - **The wrapped session key carries `sha256(sessionId|v1)` in front of the key**, because the KMS wrap takes
-  no context. Every unwrap goes through `openActivityKey`, including resolve, which shares its decryptor, so
+  no context. Every unwrap goes through `openSessionLogKey`, including resolve, which shares its decryptor, so
   a key copied onto another session's row is refused rather than handed out. The session id is minted
   before the insert (`createWithId`) so the key can be wrapped with it.
 - **App connections are the one CASL subject the admin role carries**, because the shared

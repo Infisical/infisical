@@ -46,7 +46,7 @@ Request and response bodies, headers, and query strings aren't recorded, because
 
 ## Setting up storage
 
-Go to **Settings** under Agent Vault and select **Set Up Logging** on the **Session Logs** card:
+Go to **Settings** under Agent Vault and select **Set Up Session Logs** on the **Session Logs** card:
 
 1. Turn on **Enable**.
 2. Pick the **AWS Connection** whose credentials write the records, or select **Create New Connection** to add one without leaving the dialog.
@@ -94,7 +94,7 @@ Add this CORS rule to the bucket, because your browser is what fetches the recor
 
 Use your own instance URL as the allowed origin. Without this rule the settings still save, but your browser can't load any session's logs. Each time the **AWS Setup** dialog opens, it checks whether the rule is in place and warns you if it isn't.
 
-Session logging starts within one poll interval on every proxy, and covers sessions that are already running.
+Session logs start within one poll interval on every proxy, and cover sessions that are already running.
 
 ## Reading a session's logs
 
@@ -124,16 +124,16 @@ The API returns a session's logs as chunks. A chunk is one encrypted batch of [r
 
 <Steps>
   <Step>
-    Call [the endpoint that lists session activity](/api-reference/endpoints/agent-vault-activity/get-session-activity). It returns the newest chunks first. To get older chunks, call it again with the response's `nextCursor` as `cursor`.
+    Call [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list). It returns the newest chunks first. To get older chunks, call it again with the response's `nextCursor` as `cursor`.
   </Step>
   <Step>
-    Download each chunk from its `presignedGetUrl` within 5 minutes, before the URL expires. If `presignedGetUrl` is null, either the chunk is in a bucket other than the current one, or `activity.storageUnavailable` says why the chunk can't be downloaded right now.
+    Download each chunk from its `presignedGetUrl` within 5 minutes, before the URL expires. If `presignedGetUrl` is null, either the chunk is in a bucket other than the current one, or `sessionLogs.storageUnavailable` says why the chunk can't be downloaded right now.
   </Step>
   <Step>
     Check that the SHA-256 digest of the downloaded bytes, as base64 without padding, matches `ciphertextSha256`. If the digests differ, the chunk was changed after the proxy uploaded it.
   </Step>
   <Step>
-    Decrypt the chunk with AES-256-GCM. The key is `activity.sessionKey` and the IV is the chunk's `iv`, both base64 decoded. The associated data is the SHA-256 digest of `<sessionId>|<chunkId>|v1`. The last 16 bytes of the chunk are the authentication tag.
+    Decrypt the chunk with AES-256-GCM. The key is `sessionLogs.sessionKey` and the IV is the chunk's `iv`, both base64 decoded. The associated data is the SHA-256 digest of `<sessionId>|<chunkId>|v1`. The last 16 bytes of the chunk are the authentication tag.
   </Step>
   <Step>
     Parse the decrypted bytes as JSON. Each chunk holds an array of records.
@@ -148,10 +148,10 @@ import { createDecipheriv, createHash } from "node:crypto";
 const token = "<your-access-token>";
 const sessionId = "<session-id>";
 
-const res = await fetch(`https://app.infisical.com/api/v1/agent-vault/sessions/${sessionId}/activity`, {
+const res = await fetch(`https://app.infisical.com/api/v1/agent-vault/sessions/${sessionId}/logs`, {
   headers: { Authorization: `Bearer ${token}` }
 });
-const { activity, chunks } = await res.json();
+const { sessionLogs, chunks } = await res.json();
 
 for (const chunk of chunks) {
   if (!chunk.presignedGetUrl) continue;
@@ -163,7 +163,7 @@ for (const chunk of chunks) {
   const aad = createHash("sha256").update(`${sessionId}|${chunk.chunkId}|v1`).digest();
   const decipher = createDecipheriv(
     "aes-256-gcm",
-    Buffer.from(activity.sessionKey, "base64"),
+    Buffer.from(sessionLogs.sessionKey, "base64"),
     Buffer.from(chunk.iv, "base64")
   );
   decipher.setAAD(aad);
@@ -176,7 +176,7 @@ for (const chunk of chunks) {
 
 The script runs outside a browser, so the bucket's CORS rule doesn't apply to it.
 
-To receive new logs as they arrive, pass the response's `liveCursor` as `cursor` to [the endpoint that tails session activity](/api-reference/endpoints/agent-vault-activity/tail-session-activity), then keep calling it with each response's `nextCursor`. If `hasMore` is true, call again right away. Otherwise, wait a few seconds before the next call. The same chunk can appear in more than one response, so skip any `chunkId` you've already read.
+To receive new logs as they arrive, pass the response's `liveCursor` as `cursor` to [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail), then keep calling it with each response's `nextCursor`. If `hasMore` is true, call again right away. Otherwise, wait a few seconds before the next call. The same chunk can appear in more than one response, so skip any `chunkId` you've already read.
 
 ## Changing where session logs are stored
 
@@ -192,9 +192,9 @@ Infisical never deletes session logs. A session that recorded logs is kept indef
 
 Infisical doesn't delete anything from your bucket either, and the [IAM policy](#setting-up-storage) doesn't allow it. To keep records for less time, add an S3 lifecycle rule. Object keys carry the date, as `<prefix>/<projectId>/<sessionId>/<proxyId>/<YYYY-MM-DD>/<chunkId>.json.enc`. If the rule removes a batch, the timeline marks the batch as no longer in the bucket.
 
-## When session logging reaches its limit
+## When session logs reach their limit
 
-If the **Settings** page shows that session logging has reached its limit for this organization, contact us.
+If the **Settings** page shows that session logs have reached their limit for this organization, contact us.
 
 ## Connections
 
@@ -240,7 +240,7 @@ These endpoints only reach Agent Vault's connections. An organization connection
 
 ### Deleting a connection
 
-You can't delete a connection that session logging uses, whether from Agent Vault's **Settings** page or from the organization's **Integrations**, because its credentials are what read the session logs back.
+You can't delete a connection that session logs use, whether from Agent Vault's **Settings** page or from the organization's **Integrations**, because its credentials are what read the session logs back.
 
 To replace the connection, select another one under **Configure** and save, then delete the old one.
 
@@ -252,4 +252,4 @@ If a proxy can't reach your bucket, it keeps retrying and logs the failure, but 
 
 If a proxy's clock runs more than 5 minutes ahead of Infisical's, Infisical refuses that proxy's session logs. The proxy logs how far ahead its clock is.
 
-Session logging is an organization-wide setting and can't be turned off on a single proxy, so the person being recorded can't switch it off.
+Session logs are an organization-wide setting and can't be turned off on a single proxy, so the person being recorded can't switch them off.

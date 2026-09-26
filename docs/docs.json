@@ -4495,15 +4495,15 @@
                   {
                     "group": "Session logs",
                     "pages": [
-                      "api-reference/endpoints/agent-vault-activity/get-session-activity",
-                      "api-reference/endpoints/agent-vault-activity/tail-session-activity"
+                      "api-reference/endpoints/agent-vault-session-logs/list",
+                      "api-reference/endpoints/agent-vault-session-logs/tail"
                     ]
                   },
                   {
                     "group": "Settings",
                     "pages": [
-                      "api-reference/endpoints/agent-vault-settings/get-activity-logging",
-                      "api-reference/endpoints/agent-vault-settings/update-activity-logging"
+                      "api-reference/endpoints/agent-vault-settings/get-session-log-settings",
+                      "api-reference/endpoints/agent-vault-settings/update-session-log-settings"
                     ]
                   },
                   {
