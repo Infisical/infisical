@@ -830,7 +830,8 @@ export enum DynamicSecretProviders {
   Milvus = "milvus",
   Ssh = "ssh",
   IbmApiConnect = "ibm-api-connect",
-  Tailscale = "tailscale"
+  Tailscale = "tailscale",
+  OAuth = "oauth"
 }
 
 export const DynamicSecretIbmApiConnectSchema = z.object({
@@ -973,6 +974,131 @@ export const DynamicSecretTailscaleSchema = z
     }
   });
 
+export enum OAuthGrantType {
+  ClientCredentials = "client-credentials"
+}
+
+export const OAUTH_MAX_EXTRA_PARAMS = 20;
+
+// Parameters Infisical sets itself or that carry client authentication; letting extra params
+// override them would change the grant or leak credentials into the request body.
+export const OAUTH_RESERVED_PARAMS = new Set([
+  "grant_type",
+  "scope",
+  "client_id",
+  "client_secret",
+  "client_assertion",
+  "client_assertion_type"
+]);
+
+// RFC 6749 section 3.3: scope-token = 1*( %x21 / %x23-5B / %x5D-7E )
+const OAUTH_SCOPE_TOKEN_REGEX = new RE2(/^[\x21\x23-\x5B\x5D-\x7E]+$/);
+const OAUTH_PARAM_KEY_REGEX = new RE2(/^[A-Za-z0-9._~:[\]-]+$/);
+const WHITESPACE_REGEX = new RE2(/\s+/);
+
+export const normalizeOAuthScope = (scope: string) =>
+  [...new Set(scope.split(WHITESPACE_REGEX).filter(Boolean))].join(" ");
+
+// RFC 7591 registry names, so they match what servers advertise in token_endpoint_auth_methods_supported
+export enum OAuthClientAuthMethod {
+  ClientSecretBasic = "client_secret_basic",
+  ClientSecretPost = "client_secret_post"
+}
+
+const OAuthClientSecretSchema = z
+  .string()
+  .trim()
+  .min(1, "Client secret is required")
+  .max(4096)
+  .describe("The OAuth client secret.");
+
+export const OAuthClientAuthSchema = z.discriminatedUnion("method", [
+  z.object({
+    method: z
+      .literal(OAuthClientAuthMethod.ClientSecretBasic)
+      .describe("Send the client credentials in an HTTP Basic Authorization header."),
+    clientSecret: OAuthClientSecretSchema
+  }),
+  z.object({
+    method: z
+      .literal(OAuthClientAuthMethod.ClientSecretPost)
+      .describe("Send the client credentials as client_id and client_secret form parameters."),
+    clientSecret: OAuthClientSecretSchema
+  })
+]);
+
+export const DynamicSecretOAuthSchema = z.discriminatedUnion("grantType", [
+  z.object({
+    grantType: z.literal(OAuthGrantType.ClientCredentials),
+    tokenUrl: z
+      .string()
+      .trim()
+      .max(2048)
+      .url("Token URL must be a valid URL")
+      .describe("The authorization server's token endpoint."),
+    revocationUrl: z
+      .string()
+      .trim()
+      .max(2048)
+      .url("Revocation URL must be a valid URL")
+      .describe("The authorization server's RFC 7009 token revocation endpoint."),
+    clientId: z.string().trim().min(1, "Client ID is required").max(1024).describe("The OAuth client ID."),
+    clientAuth: OAuthClientAuthSchema.describe(
+      "How Infisical authenticates the client to the token and revocation endpoints."
+    ),
+    scope: z
+      .string()
+      .trim()
+      .max(2048)
+      .superRefine((scope, ctx) => {
+        const invalidTokens = scope
+          .split(WHITESPACE_REGEX)
+          .filter((token) => token && !OAUTH_SCOPE_TOKEN_REGEX.test(token));
+        if (invalidTokens.length) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Scope contains invalid characters: ${invalidTokens.map((token) => `'${token}'`).join(", ")}`
+          });
+        }
+      })
+      .transform((scope) => normalizeOAuthScope(scope) || undefined)
+      .optional()
+      .describe("Space-separated scopes to request. Leave empty to use the client's default scopes."),
+    extraParams: z
+      .array(
+        z.object({
+          key: z
+            .string()
+            .trim()
+            .min(1, "Parameter name is required")
+            .max(128)
+            .refine((key) => OAUTH_PARAM_KEY_REGEX.test(key), "Parameter name contains invalid characters")
+            .refine(
+              (key) => !OAUTH_RESERVED_PARAMS.has(key.toLowerCase()),
+              (key) => ({ message: `'${key}' is set by Infisical and can't be used as an extra parameter` })
+            ),
+          value: z.string().trim().min(1, "Parameter value is required").max(2048)
+        })
+      )
+      .max(OAUTH_MAX_EXTRA_PARAMS, `At most ${OAUTH_MAX_EXTRA_PARAMS} extra parameters are allowed`)
+      .superRefine((params, ctx) => {
+        const seen = new Set<string>();
+        params.forEach(({ key }, index) => {
+          if (seen.has(key)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [index, "key"],
+              message: `Extra parameter '${key}' is set more than once`
+            });
+          }
+          seen.add(key);
+        });
+      })
+      .default([])
+      .describe("Additional form parameters sent with the token request, such as audience or resource.")
+  })
+]);
+
 export const DynamicSecretSshSchema = z.object({
   principals: z.array(z.string().trim().min(1)).min(1),
   keyAlgorithm: z.enum(SSH_CERT_KEY_ALGORITHMS).default(SshCertKeyAlgorithm.ED25519),
@@ -986,43 +1112,6 @@ export const SshStoredSchema = z.object({
   keyAlgorithm: z.enum(SSH_CERT_KEY_ALGORITHMS),
   caKeyAlgorithm: z.enum(SSH_CERT_KEY_ALGORITHMS).default(SshCertKeyAlgorithm.ED25519)
 });
-
-export const DYNAMIC_SECRET_SECRET_FIELDS: Record<DynamicSecretProviders, readonly string[]> = {
-  [DynamicSecretProviders.Ssh]: ["caPrivateKey"],
-  [DynamicSecretProviders.SqlDatabase]: [],
-  [DynamicSecretProviders.Clickhouse]: [],
-  [DynamicSecretProviders.Cassandra]: [],
-  [DynamicSecretProviders.AwsIam]: [],
-  [DynamicSecretProviders.Redis]: [],
-  [DynamicSecretProviders.AwsElastiCache]: [],
-  [DynamicSecretProviders.AwsMemoryDb]: [],
-  [DynamicSecretProviders.MongoAtlas]: [],
-  [DynamicSecretProviders.ElasticSearch]: [],
-  [DynamicSecretProviders.MongoDB]: [],
-  [DynamicSecretProviders.RabbitMq]: [],
-  [DynamicSecretProviders.AzureEntraID]: [],
-  [DynamicSecretProviders.AzureSqlDatabase]: [],
-  [DynamicSecretProviders.Ldap]: [],
-  [DynamicSecretProviders.SapHana]: [],
-  [DynamicSecretProviders.Snowflake]: [],
-  [DynamicSecretProviders.Totp]: [],
-  [DynamicSecretProviders.SapAse]: [],
-  [DynamicSecretProviders.Kubernetes]: [],
-  [DynamicSecretProviders.Vertica]: [],
-  [DynamicSecretProviders.GcpIam]: [],
-  [DynamicSecretProviders.Github]: [],
-  [DynamicSecretProviders.Couchbase]: [],
-  [DynamicSecretProviders.Milvus]: [],
-  [DynamicSecretProviders.IbmApiConnect]: [],
-  [DynamicSecretProviders.Tailscale]: []
-};
-
-export const redactStoredInputs = (type: DynamicSecretProviders, inputs: unknown): unknown => {
-  const secretFields = DYNAMIC_SECRET_SECRET_FIELDS[type];
-  if (!secretFields?.length || typeof inputs !== "object" || inputs === null) return inputs;
-
-  return Object.fromEntries(Object.entries(inputs).filter(([field]) => !secretFields.includes(field)));
-};
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.SqlDatabase), inputs: DynamicSecretSqlDBSchema }),
@@ -1054,7 +1143,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
     type: z.literal(DynamicSecretProviders.IbmApiConnect),
     inputs: DynamicSecretIbmApiConnectSchema
   }),
-  z.object({ type: z.literal(DynamicSecretProviders.Tailscale), inputs: DynamicSecretTailscaleSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Tailscale), inputs: DynamicSecretTailscaleSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.OAuth), inputs: DynamicSecretOAuthSchema })
 ]);
 
 // Extended metadata passed to a provider's create() call. When the project
@@ -1075,9 +1165,12 @@ export type TDynamicProviderValidateMetadata = {
   previousInputs?: object;
   defaultTTL?: string;
   maxTTL?: string | null;
+  hasActiveLeases?: boolean;
 };
 
 export type TDynamicProviderFns = {
+  // keys of create()'s `data` that revoke() needs; stored encrypted on the lease and passed back as metadata.leaseData
+  persistedLeaseFields?: string[];
   create: (arg: {
     inputs: unknown;
     expireAt: number;
@@ -1087,12 +1180,15 @@ export type TDynamicProviderFns = {
     metadata: TDynamicProviderCreateMetadata;
     config?: TDynamicSecretLeaseConfig;
   }) => Promise<{ entityId: string; data: unknown }>;
-  validateConnection: (inputs: unknown, metadata: { projectId: string }) => Promise<boolean>;
+  validateConnection: (
+    inputs: unknown,
+    metadata: { projectId: string; defaultTTL?: string; maxTTL?: string | null }
+  ) => Promise<boolean>;
   validateProviderInputs: (inputs: object, metadata: TDynamicProviderValidateMetadata) => Promise<unknown>;
   revoke: (
     inputs: unknown,
     entityId: string,
-    metadata: { projectId: string },
+    metadata: { projectId: string; leaseData?: Record<string, string> },
     config?: TDynamicSecretLeaseConfig
   ) => Promise<{ entityId: string }>;
   renew: (

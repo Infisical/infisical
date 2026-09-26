@@ -7,6 +7,7 @@ export const IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS = [
   DynamicSecretProviders.AzureEntraId,
   DynamicSecretProviders.Github,
   DynamicSecretProviders.Tailscale,
+  DynamicSecretProviders.OAuth,
   DynamicSecretProviders.Ssh,
   DynamicSecretProviders.Ldap
 ] as const;

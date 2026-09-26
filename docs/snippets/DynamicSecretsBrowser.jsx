@@ -37,6 +37,7 @@ export const DynamicSecretsBrowser = () => {
     {"name": "Milvus", "slug": "milvus", "path": "/documentation/platform/dynamic-secrets/milvus", "description": "Learn how to generate dynamic Milvus database credentials on-demand.", "category": "Databases"},
     {"name": "Tailscale", "slug": "tailscale", "path": "/documentation/platform/dynamic-secrets/tailscale", "description": "Learn how to generate dynamic Tailscale credentials on-demand.", "category": "Authentication"},
     {"name": "SSH", "slug": "ssh", "path": "/documentation/platform/dynamic-secrets/ssh", "description": "Learn how to generate dynamic SSH credentials on-demand.", "category": "Authentication"},
+    {"name": "OAuth 2.0", "slug": "oauth", "path": "/documentation/platform/dynamic-secrets/oauth", "description": "Learn how to issue short-lived OAuth 2.0 access tokens on-demand.", "category": "Authentication"},
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
