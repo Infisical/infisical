@@ -213,11 +213,16 @@ hostile input: it must never be able to erase or hide its own records.
   no context. Every unwrap goes through `openSessionLogKey`, including resolve, which shares its decryptor, so
   a key copied onto another session's row is refused rather than handed out. The session id is minted
   before the insert (`createWithId`) so the key can be wrapped with it.
-- **App connections are the one CASL subject the admin role carries**, because the shared
-  `AppConnectionsTable` reads CASL, not the role. Everything else here is `hasRole(Admin)`.
-- **Every by-id route under `/agent-vault/app-connections/aws/*` passes `findAppConnectionById` a `scope`**,
-  so a connection outside Agent Vault is a 404 before any permission or app check. Without it a delete here
-  could reach an org connection Secret Sync uses, and a 403 or 400 would confirm the id exists.
+- **App connections are the one CASL subject the admin role carries**, because the Settings page's
+  connection sheet and the shared connection modals read CASL, not the role. Everything else here is
+  `hasRole(Admin)`.
+- **`/agent-vault/app-connections/aws/*` is the shared `registerAppConnectionEndpoints` with a
+  `productScope`**: the project comes from the server, never the request, and every by-id route passes
+  `findAppConnectionById` a `scope`, so a connection outside Agent Vault is a 404 before any permission or app
+  check. Without it a delete here could reach an org connection Secret Sync uses, and a 403 or 400 would
+  confirm the id exists. The UI still uses the shared `/app-connections/aws` routes with the project id.
+- **The Agent Vault project holds AWS connections only.** `createAppConnection` refuses any other app there,
+  since the shared route would otherwise accept one.
 
 ## The CLI
 

@@ -347,7 +347,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.MicrosoftIntune
 ];
 
-const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
+export const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
   return [

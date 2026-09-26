@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, OrganizationActionScope, TableName, TAppConnections } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, ProjectType, TableName, TAppConnections } from "@app/db/schemas";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
@@ -28,6 +28,7 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
+  AGENT_VAULT_APP_CONNECTIONS,
   decryptAppConnection,
   decryptAppConnectionCredentials,
   encryptAppConnectionConfiguration,
@@ -550,6 +551,12 @@ export const appConnectionServiceFactory = ({
         ProjectPermissionAppConnectionActions.Create,
         ProjectPermissionSub.AppConnections
       );
+
+      if (project.type === ProjectType.AgentVault && !AGENT_VAULT_APP_CONNECTIONS.includes(app)) {
+        throw new BadRequestError({
+          message: `${APP_CONNECTION_NAME_MAP[app]} Connections can't be used in Agent Vault. Agent Vault supports AWS Connections only.`
+        });
+      }
     } else {
       ForbiddenError.from(orgPermission).throwUnlessCan(
         OrgPermissionAppConnectionActions.Create,

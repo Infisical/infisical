@@ -1369,6 +1369,21 @@ describe("Agent Vault V1 Router", async () => {
       const apps = (res.json().appConnectionOptions as { app: string }[]).map((option) => option.app);
       expect(apps).toEqual(["aws"]);
     });
+
+    test("the shared route refuses a non-AWS connection in the Agent Vault project", async () => {
+      const projectId = await getProjectId();
+
+      const res = await inject("POST", "/api/v1/app-connections/humanitec", {
+        name: `av-non-aws-${Date.now()}`,
+        method: "api-token",
+        credentials: { apiToken: "fake-api-token" },
+        projectId
+      });
+      expect(res.statusCode, res.payload).toBe(400);
+      expect(res.json().message).toBe(
+        "Humanitec Connections can't be used in Agent Vault. Agent Vault supports AWS Connections only."
+      );
+    });
   });
 
   describe("sessions", async () => {
