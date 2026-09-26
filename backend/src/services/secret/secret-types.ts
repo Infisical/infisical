@@ -123,6 +123,7 @@ export type TGetSecretsDTO = {
   recursive?: boolean;
   limit?: number;
   offset?: number;
+  abortSignal?: AbortSignal;
 } & TProjectPermission;
 
 export type TGetASecretDTO = {
@@ -244,6 +245,7 @@ export type TGetSecretsRawDTO = {
   includeMetadataInSearch?: boolean;
   excludeRotatedSecrets?: boolean;
   ifNoneMatch?: string;
+  abortSignal?: AbortSignal;
 } & TProjectPermission;
 
 export type TGetSecretAccessListDTO = {

@@ -36,6 +36,33 @@ export class GatewayTimeoutError extends Error {
   }
 }
 
+// Thrown to stop work for a request whose client has already disconnected. No one receives the response.
+export class ClientClosedRequestError extends Error {
+  name: string;
+
+  constructor({ message }: { message?: string } = {}) {
+    super(message || "The client closed the connection before the request completed");
+    this.name = "ClientClosedRequestError";
+  }
+}
+
+export const throwIfClientDisconnected = (signal?: AbortSignal) => {
+  if (signal?.aborted) {
+    throw new ClientClosedRequestError();
+  }
+};
+
+// For Promise.allSettled fan-outs, which swallow rejections: if any task stopped on a disconnect the combined
+// result is partial and must not be used. Checking the results rather than the signal keeps a result that
+// completed just before the client left.
+export const throwIfAnySettledClientClosed = (results: PromiseSettledResult<unknown>[]) => {
+  const closed = results.find(
+    (result): result is PromiseRejectedResult =>
+      result.status === "rejected" && result.reason instanceof ClientClosedRequestError
+  );
+  if (closed) throw closed.reason;
+};
+
 export class UnauthorizedError extends Error {
   name: string;
 

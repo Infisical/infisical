@@ -31,7 +31,7 @@ import { withCache } from "@app/lib/cache/with-cache";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { diff, groupBy, takeDistinctKeyScanWindow } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
@@ -88,6 +88,7 @@ import {
   buildHierarchy,
   createFetchFolderSecretsWithImports,
   createRelativeImportExpander,
+  expandSecretReferencesGroupedByPath,
   fnSecretBulkDelete,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
@@ -1336,6 +1337,7 @@ export const secretV2BridgeServiceFactory = ({
       personalOverridesBehavior,
       throwOnMissingReadValuePermission = true,
       ifNoneMatch,
+      abortSignal,
       ...params
     } = dto;
 
@@ -1494,6 +1496,8 @@ export const secretV2BridgeServiceFactory = ({
       filters: params
     });
 
+    throwIfClientDisconnected(abortSignal);
+
     let secrets: typeof unfilteredSecrets = [];
 
     if (personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll) {
@@ -1645,50 +1649,16 @@ export const secretV2BridgeServiceFactory = ({
       kmsService,
       // mainExpanderSecretDAL may be import-aware in relative mode. Keep cross-project
       // reads on the raw DAL so source imports are not resolved through this target project.
-      crossProjectSecretDAL: secretDAL
+      crossProjectSecretDAL: secretDAL,
+      abortSignal
     });
 
     if (shouldExpandSecretReferences) {
-      const secretsGroupByPath = groupBy(decryptedSecrets, (i) => i.secretPath);
-      const settledPromises = await Promise.allSettled(
-        Object.keys(secretsGroupByPath).map((groupedPath) =>
-          Promise.allSettled(
-            secretsGroupByPath[groupedPath].map(async (decryptedSecret, index) => {
-              const expandedSecretValue = await expandSecretReferences({
-                value: decryptedSecret.secretValue,
-                secretPath: groupedPath,
-                environment,
-                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding,
-                secretKey: decryptedSecret.secretKey
-              });
-              // eslint-disable-next-line no-param-reassign
-              secretsGroupByPath[groupedPath][index].secretValue = expandedSecretValue || "";
-            })
-          )
-        )
-      );
-      const errors: { path: string; error: string }[] = [];
-
-      settledPromises.forEach((outerResult: PromiseSettledResult<PromiseSettledResult<void>[]>, outerIndex) => {
-        const groupedPath = Object.keys(secretsGroupByPath)[outerIndex];
-
-        if (outerResult.status === "rejected") {
-          errors.push({
-            path: groupedPath,
-            error: `Failed to process secret group: ${outerResult.reason}`
-          });
-        } else {
-          // Check inner promise results
-          outerResult.value.forEach((innerResult: PromiseSettledResult<void>) => {
-            if (innerResult.status === "rejected") {
-              const reason = innerResult.reason as ForbiddenRequestError;
-              errors.push({
-                path: groupedPath,
-                error: reason.message
-              });
-            }
-          });
-        }
+      throwIfClientDisconnected(abortSignal);
+      const errors = await expandSecretReferencesGroupedByPath({
+        secrets: decryptedSecrets,
+        environment,
+        expandSecretReferences
       });
       if (errors.length > 0) {
         throw new ForbiddenRequestError({
@@ -1715,6 +1685,8 @@ export const secretV2BridgeServiceFactory = ({
       return { ...payload, etag: computedEtag };
     }
 
+    throwIfClientDisconnected(abortSignal);
+
     const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
     const allowedImports = secretImports.filter(({ isReplication }) => !isReplication);
 
@@ -1733,7 +1705,8 @@ export const secretV2BridgeServiceFactory = ({
           secretName: expandSecretKey,
           secretTags: expandSecretTags
         }),
-      userId: expandPersonalOverrides ? actorId : undefined
+      userId: expandPersonalOverrides ? actorId : undefined,
+      abortSignal
     });
 
     const importedSecrets = await fnSecretsV2FromImports({
@@ -1787,7 +1760,8 @@ export const secretV2BridgeServiceFactory = ({
       projectFolderGrantDAL,
       actorOrgId,
       orgDAL,
-      kmsService
+      kmsService,
+      abortSignal
     });
 
     const payload = { secrets: decryptedSecrets, imports: importedSecrets };
