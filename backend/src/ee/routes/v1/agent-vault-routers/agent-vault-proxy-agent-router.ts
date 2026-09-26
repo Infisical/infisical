@@ -35,6 +35,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     url: "/login",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: true,
       operationId: "loginAgentVaultProxy",
       description:
         "Proxy login. Body discriminates on `method`; token exchanges a one-time enrollment token for the proxy's access token.",
@@ -115,6 +116,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     url: "/heartbeat",
     config: { rateLimit: agentVaultHeartbeatLimit },
     schema: {
+      hide: true,
       operationId: "agentVaultProxyHeartbeat",
       description: "Report a proxy as alive and read back its settings",
       tags: [ApiDocsTags.AgentVaultProxies],
@@ -129,6 +131,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     url: "/resolve",
     config: { rateLimit: agentVaultResolveLimit },
     schema: {
+      hide: true,
       operationId: "resolveAgentVaultSession",
       description: "Resolve a session into the services and credentials the proxy should attach",
       tags: [ApiDocsTags.AgentVaultProxies],
@@ -205,6 +208,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     url: "/sessions/:sessionId/logs/chunks",
     config: { rateLimit: agentVaultSessionLogChunkLimit },
     schema: {
+      hide: true,
       operationId: "createAgentVaultSessionLogChunk",
       description:
         "Records an encrypted session log chunk and returns a presigned URL to upload the chunk to. If you send the same `chunkId` again, you get a new URL for the same chunk.",
