@@ -12,6 +12,7 @@ import { buildSessionLogStorage } from "./agent-vault-session-log-storage-fns";
 const CEILING = AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS;
 
 const presignPut = vi.fn(async () => "https://bucket.s3.amazonaws.com/signed-put");
+vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
 vi.mock("./agent-vault-session-log-storage-fns", () => {
   return {
     buildSessionLogStorage: vi.fn(async () => ({
@@ -448,10 +449,12 @@ describe("when the AWS connection can't be used", () => {
   const tailSessionLogs = (service: ReturnType<typeof build>["service"], receivedAfter: Date) =>
     service.tailSessionLogs({ ...scope, receivedAfter });
 
-  test("a chunk is refused as a retryable 500 before any row is written", async () => {
+  test("a chunk is refused as a retryable 500 before any row is written, without the connection's details", async () => {
     vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { service, createIfAbsent } = build();
-    await expect(record(service)).rejects.toMatchObject({ name: "InternalServerError", message: unusable.message });
+    const refusal = record(service);
+    await expect(refusal).rejects.toMatchObject({ name: "InternalServerError" });
+    await expect(refusal).rejects.not.toMatchObject({ message: expect.stringContaining("prod-logs") });
     expect(createIfAbsent).not.toHaveBeenCalled();
   });
 

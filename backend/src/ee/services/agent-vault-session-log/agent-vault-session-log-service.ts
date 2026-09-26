@@ -134,6 +134,8 @@ export const agentVaultSessionLogServiceFactory = ({
     presignedGetUrl
   });
 
+  const NO_SETTINGS = { enabled: false, appConnectionId: null, bucket: null, region: null, keyPrefix: null };
+
   const toSettingsView = (config: TAgentVaultSessionLogConfigs) => ({
     enabled: config.enabled,
     appConnectionId: config.appConnectionId ?? null,
@@ -177,7 +179,7 @@ export const agentVaultSessionLogServiceFactory = ({
 
     const config = await agentVaultSessionLogConfigDAL.findByProjectIdFromPrimary(proxy.projectId);
     const storage = resolveStorageConfig(config);
-    if (!config || !config.enabled || !storage) {
+    if (!config?.enabled || !storage) {
       throw new BadRequestError({
         name: AgentVaultSessionLogErrorName.Disabled,
         message: "Session logs aren't on for this project"
@@ -212,7 +214,14 @@ export const agentVaultSessionLogServiceFactory = ({
       sessionLogStorage = await $getStorage(storage, proxy.orgId);
     } catch (error) {
       // A 400 would read to the proxy as a malformed chunk to drop; a connection that can't be used is worth a retry.
-      if (error instanceof BadRequestError) throw new InternalServerError({ message: error.message });
+      // The detail can name the connection and AWS account, and whoever runs the proxy may not be an admin.
+      if (error instanceof BadRequestError) {
+        logger.warn(error, `agentVaultSessionLog: could not use the session log connection [proxyId=${proxyId}]`);
+        throw new InternalServerError({
+          message:
+            "Session logs can't use their AWS connection right now. An Agent Vault admin can check it in Settings."
+        });
+      }
       throw error;
     }
 
@@ -287,9 +296,7 @@ export const agentVaultSessionLogServiceFactory = ({
     );
 
     const session = await agentVaultSessionDAL.findOne({ id: sessionId, projectId });
-    if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
-
-    if (!isSessionOwnedBy(ctx, session) && !isAdmin) {
+    if (!session || (!isSessionOwnedBy(ctx, session) && !isAdmin)) {
       throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
     }
 
@@ -435,9 +442,7 @@ export const agentVaultSessionLogServiceFactory = ({
 
     const config = await agentVaultSessionLogConfigDAL.findOne({ projectId });
     return {
-      settings: config
-        ? toSettingsView(config)
-        : { enabled: false, appConnectionId: null, bucket: null, region: null, keyPrefix: null }
+      settings: config ? toSettingsView(config) : NO_SETTINGS
     };
   };
 
@@ -486,13 +491,7 @@ export const agentVaultSessionLogServiceFactory = ({
     await $requireAdmin({ projectId, ctx });
 
     const existing = await agentVaultSessionLogConfigDAL.findByProjectIdFromPrimary(projectId);
-    const current = existing ?? {
-      enabled: false,
-      appConnectionId: null,
-      bucket: null,
-      region: null,
-      keyPrefix: null
-    };
+    const current = existing ?? NO_SETTINGS;
 
     const next = {
       enabled: patch.enabled ?? current.enabled,
