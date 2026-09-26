@@ -176,7 +176,7 @@ export const agentVaultSessionLogServiceFactory = ({
     }
 
     const config = await agentVaultSessionLogConfigDAL.findByProjectIdFromPrimary(proxy.projectId);
-    const storage = config ? resolveStorageConfig(config) : null;
+    const storage = resolveStorageConfig(config);
     if (!config || !config.enabled || !storage) {
       throw new BadRequestError({
         name: AgentVaultSessionLogErrorName.Disabled,
@@ -445,7 +445,7 @@ export const agentVaultSessionLogServiceFactory = ({
     await $requireAdmin({ projectId, ctx });
 
     const config = await agentVaultSessionLogConfigDAL.findOne({ projectId });
-    const storage = config ? resolveStorageConfig(config) : null;
+    const storage = resolveStorageConfig(config);
 
     let connectionError: string | null = null;
     if (storage) {
@@ -470,7 +470,7 @@ export const agentVaultSessionLogServiceFactory = ({
     await $requireAdmin({ projectId, ctx });
 
     const config = await agentVaultSessionLogConfigDAL.findOne({ projectId });
-    const storage = config ? resolveStorageConfig(config) : null;
+    const storage = resolveStorageConfig(config);
     if (!storage) return { probe: null };
 
     const sessionLogStorage = await $getStorage(storage, ctx.actorOrgId);

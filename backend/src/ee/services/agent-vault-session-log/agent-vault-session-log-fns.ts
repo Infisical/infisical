@@ -29,9 +29,9 @@ export const buildSessionLogObjectKey = ({
 };
 
 export const resolveStorageConfig = (
-  config: Pick<TAgentVaultSessionLogConfigs, "appConnectionId" | "bucket" | "region" | "keyPrefix">
+  config: Pick<TAgentVaultSessionLogConfigs, "appConnectionId" | "bucket" | "region" | "keyPrefix"> | undefined
 ): TResolvedSessionLogStorageConfig | null => {
-  if (!config.appConnectionId || !config.bucket || !config.region) return null;
+  if (!config?.appConnectionId || !config.bucket || !config.region) return null;
   return {
     appConnectionId: config.appConnectionId,
     bucket: config.bucket,
