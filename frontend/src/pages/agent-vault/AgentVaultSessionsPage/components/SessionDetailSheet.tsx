@@ -49,7 +49,8 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke }: Pro
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeSheet()}>
       <SheetContent
-        className="flex h-full max-h-full w-full flex-col gap-y-0 sm:max-w-8xl"
+        size="workspace"
+        className="flex h-full max-h-full flex-col gap-y-0"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         {!session && isPending && (

@@ -85,7 +85,7 @@ export const SessionLogConnectionsSheet = ({ isOpen, onOpenChange }: Props) => {
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-[640px]">
+      <SheetContent size="form">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             Manage Connections
