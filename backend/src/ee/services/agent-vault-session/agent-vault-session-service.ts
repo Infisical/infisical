@@ -7,7 +7,6 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -38,8 +37,6 @@ type TAgentVaultSessionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
-
-const SESSION_RETENTION_DAYS = 30;
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
 
@@ -233,18 +230,10 @@ export const agentVaultSessionServiceFactory = ({
     return { session: withStatus(current ?? session), revokedNow: false };
   };
 
-  // Expiry needs no sweep: it is enforced against the clock on every resolve and derived per row on read.
-  const sweepRetiredSessions = async () => {
-    const cutoff = new Date(Date.now() - SESSION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    const pruned = await agentVaultSessionDAL.pruneRetiredBefore(cutoff);
-    logger.info(`agent-vault: session sweep pruned ${pruned} retired session(s)`);
-  };
-
   return {
     mintSession,
     listSessions,
     getSessionById,
-    revokeSession,
-    sweepRetiredSessions
+    revokeSession
   };
 };

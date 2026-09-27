@@ -7,7 +7,6 @@ import { v7 as uuidv7 } from "uuid";
 
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { AgentVaultSessionLogErrorName } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-enums";
 import {
   encodeHistoryCursor,
@@ -1124,46 +1123,6 @@ describe("Agent Vault session logs", async () => {
       const session = await mintSession(bundle.name);
       const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs?limit=${limit}`);
       expect(res.statusCode).toBe(422);
-    });
-  });
-
-  describe("retention", () => {
-    const configure = async () =>
-      saveConfig({
-        enabled: true,
-        appConnectionId: connectionId,
-        bucket: BUCKET,
-        region: "us-east-1",
-        keyPrefix: "logs"
-      });
-
-    const retire = async (sessionId: string, daysAgo: number) =>
-      testDb("agent_vault_sessions")
-        .where({ id: sessionId })
-        .update({ revokedAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000) });
-
-    test("the daily prune keeps a retired session that recorded session logs, and removes one that did not", async () => {
-      await configure();
-      const bundle = await createAccessBundle(`session-logs-prune-${Date.now()}`);
-      const withChunks = await mintSession(bundle.name);
-      const withoutChunks = await mintSession(bundle.name);
-      const proxy = await createProxy(`session-logs-prune-${Date.now()}`);
-
-      const { uploadUrl } = await recordChunk(proxy, withChunks.id);
-      fakeSessionLogStorage.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
-
-      await retire(withChunks.id, 31);
-      await retire(withoutChunks.id, 31);
-
-      const pruned = await agentVaultSessionDALFactory(testDb).pruneRetiredBefore(
-        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-      );
-
-      expect(pruned).toBeGreaterThanOrEqual(1);
-      expect(await testDb("agent_vault_sessions").where({ id: withoutChunks.id }).first()).toBeUndefined();
-      expect(await testDb("agent_vault_sessions").where({ id: withChunks.id }).first()).toBeTruthy();
-      expect(await testDb("agent_vault_session_log_chunks").where({ sessionId: withChunks.id })).toHaveLength(1);
-      expect(fakeSessionLogStorage.objectKeys(BUCKET)).toHaveLength(1);
     });
   });
 });

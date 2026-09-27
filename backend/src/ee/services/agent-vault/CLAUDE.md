@@ -19,7 +19,7 @@ never in anything the agent holds.
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles, services, credential encryption, grants
 agent-vault-member/          product membership (list, add, role, remove)
-agent-vault-session/         mint, revoke, list, retention sweep
+agent-vault-session/         mint, revoke, list
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           login (enrollment), heartbeat, resolve
 agent-vault-session-log/     storage settings, chunk ingest, playback
@@ -94,10 +94,10 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - Session actor columns are `SET NULL` so history survives the actor. Resolve refuses a session with neither
   id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
-  actor id reads as revoked in the list, the status filter and the sweep, so they agree with resolve refusing
-  it. Expiry is enforced against the clock on every resolve. `sweepRetiredSessions` exists only for the 30
-  day hard delete, which skips any session that recorded session logs; there is no expiry audit event, matching
-  every other product.
+  actor id reads as revoked in the list and the status filter, so they agree with resolve refusing it. Expiry
+  is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
+- **Sessions are never deleted.** Nothing prunes ended sessions, so the Sessions page stays a full history of
+  what was granted, and a session's row keeps the key that decrypts its session logs.
 
 ## Proxies
 
@@ -200,8 +200,8 @@ hostile input: it must never be able to erase or hide its own records.
 - **The org ceiling counts chunks** (`AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS`) and is internal: no env var, no
   docs, and the API reports only `isStorageFull` (on `/settings/session-logs/health`). At the limit writes are refused, never drop-oldest, which
   would be an evidence-eviction primitive.
-- **Infisical never deletes session logs.** Sessions that recorded any skip the retention prune (their row holds
-  the key), and nothing deletes from the bucket, so the policy asks for no `s3:DeleteObject`.
+- **Infisical never deletes session logs.** Nothing deletes from the bucket, so the policy asks for no
+  `s3:DeleteObject`.
 - **A save re-checks the connection whenever it puts it to a new use** (connection, bucket, region, prefix, or
   recording turned on), never on a save that only turns recording off.
 - **Each chunk stores the bucket it was written to**, and a read presigns only chunks in the current bucket,

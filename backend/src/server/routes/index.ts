@@ -3042,8 +3042,7 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    scepTransactionDAL,
-    agentVaultSessionService
+    scepTransactionDAL
   });
 
   const healthAlert = healthAlertServiceFactory({

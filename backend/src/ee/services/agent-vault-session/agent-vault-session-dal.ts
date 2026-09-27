@@ -273,39 +273,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  const pruneRetiredBefore = async (cutoff: Date, tx?: Knex) => {
-    try {
-      return await (tx || db)(TableName.AgentVaultSession)
-        .where((qb) => {
-          void qb
-            .where("revokedAt", "<", cutoff)
-            .orWhere((inner) => {
-              void inner.whereNull("revokedAt").where("expiresAt", "<", cutoff);
-            })
-            // An ownerless session stopped working the moment its actor was deleted, and nothing stamps
-            // that moment, so it goes by age: a never session would otherwise outlive the 30 days for good.
-            .orWhere((inner) => {
-              void inner.whereNull("userId").whereNull("identityId").where("createdAt", "<", cutoff);
-            });
-        })
-        // Never prune a session that recorded session logs: its row holds the only key that decrypts it.
-        .whereNotExists((qb) => {
-          void qb
-            .select(db.raw("1"))
-            .from(TableName.AgentVaultSessionLogChunk)
-            .whereRaw(`??.?? = ??.??`, [
-              TableName.AgentVaultSessionLogChunk,
-              "sessionId",
-              TableName.AgentVaultSession,
-              "id"
-            ]);
-        })
-        .del();
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Prune retired Agent Vault sessions" });
-    }
-  };
-
   // The id is chosen by the caller because the session log key is wrapped with it before the row exists.
   const createWithId = async (data: TAgentVaultSessionsInsert & { id: string }, tx?: Knex) => {
     try {
@@ -318,5 +285,5 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByTokenHash, findForList, revokeIfActive, pruneRetiredBefore, createWithId };
+  return { ...orm, findByTokenHash, findForList, revokeIfActive, createWithId };
 };

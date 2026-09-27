@@ -4,7 +4,6 @@ import { createAwsAppConnection, deleteAppConnection } from "e2e-test/testUtils/
 
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
@@ -13,9 +12,7 @@ import {
   agentVaultProxyServiceFactory
 } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
-import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
-import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
@@ -2079,61 +2076,6 @@ describe("Agent Vault V1 Router", async () => {
         .where({ id: proxy.id })
         .update({ heartbeat: new Date(Date.now() - 40_000), heartbeatTTL: 10 });
       expect(await isHealthy()).toBe(false);
-    });
-  });
-
-  describe("retention sweep", async () => {
-    test("reaps sessions a month after they stopped working and leaves live ones alone", async () => {
-      const bundle = await createAccessBundle("sweep-bundle");
-      const mintOne = async (ttl: string) => {
-        const res = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl });
-        expect(res.statusCode).toBe(200);
-        return (JSON.parse(res.payload) as { session: { id: string } }).session.id;
-      };
-      const longExpired = await mintOne("1h");
-      const longRevoked = await mintOne("never");
-      const recentlyExpired = await mintOne("1h");
-      const live = await mintOne("7d");
-      const neverEnding = await mintOne("never");
-      const oldOrphan = await mintOne("never");
-      const recentOrphan = await mintOne("never");
-
-      const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-      // Ownerless sessions go by age, since nothing records when their actor was deleted.
-      await testDb("agent_vault_sessions")
-        .where({ id: oldOrphan })
-        .update({ userId: null, identityId: null, createdAt: daysAgo(31) });
-      await testDb("agent_vault_sessions").where({ id: recentOrphan }).update({ userId: null, identityId: null });
-      await testDb("agent_vault_sessions")
-        .where({ id: longExpired })
-        .update({ expiresAt: daysAgo(31) });
-      await testDb("agent_vault_sessions")
-        .where({ id: longRevoked })
-        .update({ revokedAt: daysAgo(31) });
-      await testDb("agent_vault_sessions")
-        .where({ id: recentlyExpired })
-        .update({ expiresAt: new Date(Date.now() - 60 * 60 * 1000) });
-      const sweeper = agentVaultSessionServiceFactory({
-        agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
-        agentVaultSessionAccessBundleDAL: agentVaultSessionAccessBundleDALFactory(testDb),
-        agentVaultAccessBundleDAL: agentVaultAccessBundleDALFactory(testDb),
-        membershipDAL: membershipDALFactory(testDb),
-        permissionService: { getProjectPermission: () => Promise.reject(new Error("not used by the sweep")) },
-        kmsService: {} as never
-      });
-      await sweeper.sweepRetiredSessions();
-
-      const remaining = (await testDb("agent_vault_sessions")
-        .whereIn("id", [longExpired, longRevoked, recentlyExpired, live, neverEnding, oldOrphan, recentOrphan])
-        .select("id")) as { id: string }[];
-      expect(remaining.map((row) => row.id).sort()).toEqual([recentlyExpired, live, neverEnding, recentOrphan].sort());
-
-      const orphans = await testDb("agent_vault_session_access_bundles").whereIn("sessionId", [
-        longExpired,
-        longRevoked,
-        oldOrphan
-      ]);
-      expect(orphans).toHaveLength(0);
     });
   });
 
