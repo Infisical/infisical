@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, OrganizationActionScope, ProjectType, TableName, TAppConnections } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
@@ -1142,12 +1142,6 @@ export const appConnectionServiceFactory = ({
         err instanceof DatabaseError &&
         (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
       ) {
-        if ((err.error as { table?: string })?.table === TableName.AgentVaultSessionLogConfig) {
-          throw new BadRequestError({
-            message:
-              "This connection is used by Agent Vault session logs, so it can't be deleted. An Agent Vault administrator can switch session logs to another connection, or remove it, first."
-          });
-        }
         throw new BadRequestError({
           message:
             "Cannot delete App Connection with existing connections. Remove all existing connections and try again."
