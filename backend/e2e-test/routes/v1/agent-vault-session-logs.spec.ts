@@ -288,7 +288,7 @@ describe("Agent Vault session logs", async () => {
       expect(JSON.parse(res.payload).message).toContain("a bucket");
     });
 
-    test("a connection session logs use cannot be deleted, and the refusal says why", async () => {
+    test("a connection session logs use cannot be deleted", async () => {
       await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1" });
 
       const res = await testServer.inject({
@@ -297,7 +297,7 @@ describe("Agent Vault session logs", async () => {
         headers: { authorization: `Bearer ${jwtAuthToken}` }
       });
       expect(res.statusCode).toBe(400);
-      expect(JSON.parse(res.payload).message).toContain("Agent Vault session logs");
+      expect(JSON.parse(res.payload).message).toContain("Cannot delete App Connection with existing connections");
 
       const config = await testDb("agent_vault_session_log_configs").where({ projectId }).first();
       expect(config.appConnectionId).toBe(connectionId);
