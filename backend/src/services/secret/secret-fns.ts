@@ -1,5 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import path from "path";
+
+import { Knex } from "knex";
 import RE2 from "re2";
 
 import {
@@ -1253,20 +1255,27 @@ type TFnDeleteProjectSecretReminders = {
 
 export const fnDeleteProjectSecretReminders = async (
   projectId: string,
-  { secretDAL, secretV2BridgeDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
+  { secretDAL, secretV2BridgeDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders,
+  tx?: Knex
 ) => {
-  const projectFolders = await folderDAL.findByProjectId(projectId);
+  const projectFolders = await folderDAL.findByProjectId(projectId, tx);
   const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId, false);
 
   const projectSecrets = shouldUseSecretV2Bridge
-    ? await secretV2BridgeDAL.find({
-        $in: { folderId: projectFolders.map((folder) => folder.id) },
-        $notNull: ["reminderRepeatDays"]
-      })
-    : await secretDAL.find({
-        $in: { folderId: projectFolders.map((folder) => folder.id) },
-        $notNull: ["secretReminderRepeatDays"]
-      });
+    ? await secretV2BridgeDAL.find(
+        {
+          $in: { folderId: projectFolders.map((folder) => folder.id) },
+          $notNull: ["reminderRepeatDays"]
+        },
+        { tx }
+      )
+    : await secretDAL.find(
+        {
+          $in: { folderId: projectFolders.map((folder) => folder.id) },
+          $notNull: ["secretReminderRepeatDays"]
+        },
+        { tx }
+      );
 
   for await (const secret of projectSecrets) {
     const repeatDays = shouldUseSecretV2Bridge
@@ -1274,7 +1283,7 @@ export const fnDeleteProjectSecretReminders = async (
       : (secret as { secretReminderRepeatDays: number }).secretReminderRepeatDays;
 
     if (repeatDays) {
-      await reminderService.deleteReminderBySecretId(secret.id, projectId);
+      await reminderService.deleteReminderBySecretId(secret.id, projectId, tx);
     }
   }
 };
