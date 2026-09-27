@@ -7,7 +7,6 @@ import type { TResolvedSessionLogStorageConfig } from "../../src/ee/services/age
 type TFakeState = {
   objects: Map<string, Buffer>;
   validateError: string | null;
-  presignError: string | null;
   buildError: string | null;
   presignedPuts: Map<string, { bucket: string; objectKey: string; ciphertextBytes: number }>;
   presignedGets: Map<string, { bucket: string; objectKey: string }>;
@@ -17,7 +16,6 @@ type TFakeState = {
 const freshState = (): TFakeState => ({
   objects: new Map(),
   validateError: null,
-  presignError: null,
   buildError: null,
   presignedPuts: new Map(),
   presignedGets: new Map(),
@@ -37,10 +35,6 @@ export const fakeSessionLogStorage = {
 
   failsValidationWith: (message: string | null) => {
     state.validateError = message;
-  },
-
-  failsPresignWith: (message: string | null) => {
-    state.presignError = message;
   },
 
   failsBuildWith: (message: string | null) => {
@@ -85,14 +79,12 @@ export const buildSessionLogStorage = (config: TResolvedSessionLogStorageConfig,
 
   return Promise.resolve({
     presignPut: ({ objectKey, ciphertextBytes }: { objectKey: string; ciphertextBytes: number }) => {
-      if (state.presignError) throw new Error(state.presignError);
       const url = mintUrl("put");
       state.presignedPuts.set(url, { bucket, objectKey, ciphertextBytes });
       return Promise.resolve(url);
     },
 
     presignGet: (objectKey: string) => {
-      if (state.presignError) throw new Error(state.presignError);
       const url = mintUrl("get");
       state.presignedGets.set(url, { bucket, objectKey });
       return Promise.resolve(url);
