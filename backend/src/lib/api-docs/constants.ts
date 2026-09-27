@@ -4379,7 +4379,6 @@ export const AGENT_VAULT = {
     iv: "The AES-GCM initialization vector for the chunk, as base64.",
     ciphertextSha256:
       "The SHA-256 digest of the encrypted chunk, as base64 without padding. If the downloaded chunk has a different digest, the chunk was changed after it was uploaded.",
-    objectKey: "The key of the chunk's object in the bucket.",
     uploadUrl:
       "The URL to upload the encrypted chunk to with a PUT request. The body must be exactly `ciphertextBytes` bytes.",
     presignedGetUrl:
