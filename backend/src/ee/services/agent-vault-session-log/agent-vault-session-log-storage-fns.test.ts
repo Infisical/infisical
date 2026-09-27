@@ -64,4 +64,35 @@ describe("buildSessionLogStorage", () => {
       message: "Couldn't use the AWS connection 'prod-logs' for session logs: Infisical could not load its credentials"
     });
   });
+
+  test.each([
+    { why: "no longer exists", row: undefined },
+    {
+      why: "belongs to another organization",
+      row: { id: "conn-1", name: "theirs", orgId: "org-2", app: AppConnection.AWS }
+    }
+  ])("treats a connection that $why as missing", async ({ row }) => {
+    vi.mocked(getAwsConnectionConfig).mockClear();
+    vi.mocked(deps.appConnectionDAL.findById).mockResolvedValueOnce(row as never);
+    await expect(buildSessionLogStorage(config, "org-1", deps)).rejects.toMatchObject({
+      name: "BadRequest",
+      message: "The AWS connection used for session logs no longer exists. Choose another on the Settings page."
+    });
+    expect(getAwsConnectionConfig).not.toHaveBeenCalled();
+  });
+
+  test("refuses a connection that is not AWS", async () => {
+    vi.mocked(getAwsConnectionConfig).mockClear();
+    vi.mocked(deps.appConnectionDAL.findById).mockResolvedValueOnce({
+      id: "conn-1",
+      name: "github",
+      orgId: "org-1",
+      app: AppConnection.GitHub
+    } as never);
+    await expect(buildSessionLogStorage(config, "org-1", deps)).rejects.toMatchObject({
+      name: "BadRequest",
+      message: `The connection used for session logs is a ${AppConnection.GitHub} connection. Session logs require an AWS connection`
+    });
+    expect(getAwsConnectionConfig).not.toHaveBeenCalled();
+  });
 });

@@ -5,7 +5,7 @@ import { fakeSessionLogStorage } from "e2e-test/fakes/agent-vault-session-log-st
 import { createAwsAppConnection, deleteAppConnection } from "e2e-test/testUtils/secret-syncs";
 import { v7 as uuidv7 } from "uuid";
 
-import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { AgentVaultSessionLogErrorName } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-enums";
 import {
@@ -532,13 +532,36 @@ describe("Agent Vault session logs", async () => {
       expect(JSON.parse(res.payload).error).toBe(AgentVaultSessionLogErrorName.Disabled);
     });
 
-    test("a session in another project is a 404 that reads like a missing one", async () => {
+    test("a session in another organization is a 404 that reads like a missing one", async () => {
       await configure();
       const proxy = await createProxy(`session-logs-foreign-${Date.now()}`);
 
-      const res = await proxy.postChunk(crypto.randomUUID(), chunkBody());
-      expect(res.statusCode).toBe(404);
-      expect(JSON.parse(res.payload).message).toBe("Session not found");
+      const [foreignOrg] = (await testDb("organizations")
+        .insert({ name: "foreign org", slug: `foreign-org-${Date.now()}`, customerId: null })
+        .returning("*")) as { id: string }[];
+      try {
+        const [foreignProject] = (await testDb("projects")
+          .insert({
+            name: "foreign agent vault",
+            slug: `foreign-agent-vault-${Date.now()}`,
+            type: ProjectType.AgentVault,
+            orgId: foreignOrg.id,
+            version: 3
+          })
+          .returning("*")) as { id: string }[];
+        const [foreignSession] = (await testDb("agent_vault_sessions")
+          .insert({ projectId: foreignProject.id, actorName: "foreign actor", tokenHash: `foreign-${Date.now()}` })
+          .returning("*")) as { id: string }[];
+
+        const foreign = await proxy.postChunk(foreignSession.id, chunkBody());
+        const missing = await proxy.postChunk(crypto.randomUUID(), chunkBody());
+
+        expect([foreign.statusCode, missing.statusCode]).toEqual([404, 404]);
+        expect(JSON.parse(foreign.payload).message).toBe(JSON.parse(missing.payload).message);
+        expect(await testDb("agent_vault_session_log_chunks").where({ sessionId: foreignSession.id })).toHaveLength(0);
+      } finally {
+        await testDb("organizations").where({ id: foreignOrg.id }).delete();
+      }
     });
   });
 
@@ -1105,6 +1128,47 @@ describe("Agent Vault session logs", async () => {
         nextCursor: null,
         sessionLogs: { sessionKey: null }
       });
+    });
+
+    test("a member reads only their own session's logs; anyone else's is a 404 like a missing one", async () => {
+      await configure();
+      const { session: adminSession } = await seedChunks(1);
+
+      const member = await createMemberIdentity(`session-logs-reader-${Date.now()}`);
+      try {
+        const missingId = crypto.randomUUID();
+        for await (const suffix of ["logs", "logs/tail"]) {
+          const somebodyElses = await member.as("GET", `/api/v1/agent-vault/sessions/${adminSession.id}/${suffix}`);
+          const neverExisted = await member.as("GET", `/api/v1/agent-vault/sessions/${missingId}/${suffix}`);
+
+          expect([suffix, somebodyElses.statusCode, neverExisted.statusCode]).toEqual([suffix, 404, 404]);
+          expect(somebodyElses.json().message).toBe(`Session with ID '${adminSession.id}' not found`);
+          expect(neverExisted.json().message).toBe(`Session with ID '${missingId}' not found`);
+        }
+
+        const bundle = await createAccessBundle(`session-logs-reader-${Date.now()}`);
+        const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+          machineIdentityIds: [member.id]
+        });
+        expect(granted.statusCode).toBe(200);
+        const minted = await member.as("POST", "/api/v1/agent-vault/sessions", {
+          accessBundles: [bundle.name],
+          ttl: "1h"
+        });
+        expect(minted.statusCode, minted.payload).toBe(200);
+        const ownSession = minted.json().session as { id: string };
+
+        const proxy = await createProxy(`session-logs-reader-${Date.now()}`);
+        const { uploadUrl } = await recordChunk(proxy, ownSession.id);
+        fakeSessionLogStorage.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
+
+        const own = await member.as("GET", `/api/v1/agent-vault/sessions/${ownSession.id}/logs`);
+        expect(own.statusCode, own.payload).toBe(200);
+        expect(own.json().chunks).toHaveLength(1);
+        expect(typeof own.json().sessionLogs.sessionKey).toBe("string");
+      } finally {
+        await member.cleanup();
+      }
     });
 
     test("an unknown session is a 404", async () => {
