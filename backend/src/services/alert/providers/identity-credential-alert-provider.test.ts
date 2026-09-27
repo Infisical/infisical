@@ -15,7 +15,7 @@ import {
   MAX_DEDUP_WINDOW_HOURS,
   TAlertContext
 } from "../alert-types";
-import { TExpiringUaClientSecret } from "./identity-credential-alert-dal";
+import { TExpiringTokenAuthToken, TExpiringUaClientSecret } from "./identity-credential-alert-dal";
 import {
   IDENTITY_AUTH_METHOD_CHANGED_EVENT,
   IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
@@ -40,6 +40,15 @@ const sampleSecret = (overrides: Partial<TExpiringUaClientSecret> = {}): TExpiri
   ...overrides
 });
 
+const sampleToken = (overrides: Partial<TExpiringTokenAuthToken> = {}): TExpiringTokenAuthToken => ({
+  id: "tok-1",
+  name: "release-token",
+  identityId: "ident-1",
+  identityName: "ci-runner",
+  expiresAt: futureDate(5),
+  ...overrides
+});
+
 const alertContext = (overrides: Partial<TAlertContext> = {}): TAlertContext => ({
   id: "alert-1",
   name: "ua-expiry",
@@ -51,8 +60,19 @@ const alertContext = (overrides: Partial<TAlertContext> = {}): TAlertContext => 
   ...overrides
 });
 
+type TScanArgs = {
+  orgId: string;
+  projectId?: string | null;
+  identityId?: string | null;
+  alertBeforeInterval: string;
+  leadInterval: string;
+  asOf: Date;
+};
+
 const buildProvider = (opts?: {
   secrets?: TExpiringUaClientSecret[];
+  tokens?: TExpiringTokenAuthToken[];
+  onFindTokens?: (args: TScanArgs) => void;
   onFind?: (args: {
     orgId: string;
     projectId?: string | null;
@@ -88,6 +108,17 @@ const buildProvider = (opts?: {
     }) => {
       opts?.onFind?.(args);
       return opts?.secrets ?? [];
+    },
+    findExpiringTokenAuthTokens: async (args: {
+      orgId: string;
+      projectId?: string | null;
+      identityId?: string | null;
+      alertBeforeInterval: string;
+      leadInterval: string;
+      asOf: Date;
+    }) => {
+      opts?.onFindTokens?.(args);
+      return opts?.tokens ?? [];
     },
     findIdentityInOrg: async () =>
       (opts?.inOrg ?? true)
@@ -462,6 +493,84 @@ describe("identity credential alert provider", () => {
     const expires = item.fields?.find((f) => f.label === "Expires")?.value;
     expect(expires).toContain(String(expiresAt.getUTCFullYear()));
     expect(expires).toContain("UTC");
+  });
+
+  test("findDueTargets scans Token Auth tokens with the same window and scope as client secrets", async () => {
+    let secretArgs: TScanArgs | undefined;
+    let tokenArgs: TScanArgs | undefined;
+    const provider = buildProvider({
+      tokens: [sampleToken()],
+      onFind: (args) => {
+        secretArgs = args;
+      },
+      onFindTokens: (args) => {
+        tokenArgs = args;
+      }
+    });
+
+    const targets = await provider.findDueTargets({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceId: "ident-1",
+      eventType: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
+      condition: { alertBefore: "14d" },
+      asOf: new Date("2026-07-24T00:00:00.000Z")
+    });
+
+    expect(tokenArgs).toEqual(secretArgs);
+    expect(tokenArgs?.alertBeforeInterval).toBe("14 days");
+    expect(tokenArgs?.projectId).toBe("proj-1");
+    expect(tokenArgs?.identityId).toBe("ident-1");
+    expect(targets).toHaveLength(1);
+    expect(provider.targetId(targets[0])).toBe("token-auth-token:tok-1");
+  });
+
+  test("findDueTargets merges client secrets and tokens ordered by soonest expiry", async () => {
+    const provider = buildProvider({
+      secrets: [sampleSecret({ id: "sec-late", expiresAt: futureDate(20) })],
+      tokens: [
+        sampleToken({ id: "tok-soon", expiresAt: futureDate(2) }),
+        sampleToken({ id: "tok-mid", expiresAt: futureDate(10) })
+      ]
+    });
+
+    const targets = await provider.findDueTargets({
+      orgId: "org-1",
+      resourceId: null,
+      eventType: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
+      condition: { alertBefore: "30d" },
+      asOf: new Date()
+    });
+
+    expect(targets.map((target) => provider.targetId(target))).toEqual([
+      "token-auth-token:tok-soon",
+      "token-auth-token:tok-mid",
+      "ua-client-secret:sec-late"
+    ]);
+  });
+
+  test("buildPayload names a Token Auth token by its name and falls back to its id", async () => {
+    const provider = buildProvider();
+    const viewUrl = await provider.buildViewUrl(alertContext());
+    const named = {
+      kind: "expiring-credential" as const,
+      credentialType: "token-auth-token" as const,
+      ...sampleToken({ expiresAt: futureDate(10) })
+    };
+    const unnamed = {
+      kind: "expiring-credential" as const,
+      credentialType: "token-auth-token" as const,
+      ...sampleToken({ id: "tok-2", name: null, expiresAt: futureDate(10) })
+    };
+
+    const payload = provider.buildPayload(alertContext(), [named, unnamed], viewUrl);
+
+    expect(payload.severity).toBe("error"); // 10 days out
+    expect(payload.summary).toBe("2 machine identity authentication(s) expiring within 30 days");
+    expect(payload.items[0].fields?.find((f) => f.label === "Secret Name")?.value).toBe("release-token");
+    expect(payload.items[0].fields?.find((f) => f.label === "Secret Type")?.value).toBe("Token Auth Access Token");
+    expect(payload.items[1].id).toBe("token-auth-token:tok-2");
+    expect(payload.items[1].fields?.find((f) => f.label === "Secret Name")?.value).toBe("tok-2");
   });
 
   test("buildViewUrl points to the org identities tab for an org-scoped alert", async () => {

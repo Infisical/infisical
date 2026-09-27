@@ -64,6 +64,7 @@ import {
 } from "../../certificate-common/certificate-constants";
 import { appendCustomExtensions } from "../../certificate-common/certificate-extension-fns";
 import { validatePqcLicense } from "../../certificate-common/certificate-utils";
+import { TCertificateProfileDALFactory } from "../../certificate-profile/certificate-profile-dal";
 import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
 import { buildHsmCaSigner, buildLocalCaSigner, caKeyAlgorithmToHsmShape, TCaSigner } from "../ca-signer";
@@ -73,6 +74,7 @@ import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-ce
 import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa } from "../certificate-authority-dal";
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";
 import {
+  assertNoCertificateProfilesUsingCa,
   buildCrlDistributionPointUrls,
   createDistinguishedName,
   createSerialNumber,
@@ -82,6 +84,7 @@ import {
   getCaCertChains,
   getCaSigner,
   keyAlgorithmToAlgCfg,
+  rethrowCaDeleteError,
   signatureAlgorithmToAlgCfg,
   validateImportedCertificate
 } from "../certificate-authority-fns";
@@ -134,6 +137,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById" | "find">;
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByCaId">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
   certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -160,6 +164,7 @@ export const internalCertificateAuthorityServiceFactory = ({
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
   certificateTemplateDAL,
+  certificateProfileDAL,
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
@@ -749,7 +754,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
-    await certificateAuthorityDAL.deleteById(ca.id);
+    await assertNoCertificateProfilesUsingCa(certificateProfileDAL, ca.id, ca.name);
+
+    await certificateAuthorityDAL.deleteById(ca.id).catch(rethrowCaDeleteError);
 
     return expandInternalCa(ca);
   };

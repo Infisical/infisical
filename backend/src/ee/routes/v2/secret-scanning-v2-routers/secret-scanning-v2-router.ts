@@ -39,7 +39,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listSecretScanningDataSourceOptions",
       tags: [ApiDocsTags.SecretScanning],
       description: "List the available Secret Scanning Data Source Options.",
@@ -63,7 +63,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listSecretScanningDataSources",
       tags: [ApiDocsTags.SecretScanning],
       description: "List all the Secret Scanning Data Sources for the specified project.",
@@ -109,7 +109,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listSecretScanningFindings",
       tags: [ApiDocsTags.SecretScanning],
       description: "List all the Secret Scanning Findings for the specified project.",
@@ -155,7 +155,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "updateSecretScanningFinding",
       tags: [ApiDocsTags.SecretScanning],
       description: "Update the specified Secret Scanning Finding.",
@@ -217,7 +217,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "updateSecretScanningFindingsBatch",
       tags: [ApiDocsTags.SecretScanning],
       description: "Update one or more Secret Scanning Findings in a batch.",
@@ -268,7 +268,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "getSecretScanningConfig",
       tags: [ApiDocsTags.SecretScanning],
       description: "Get the Secret Scanning Config for the specified project.",
@@ -313,7 +313,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "updateSecretScanningConfig",
       tags: [ApiDocsTags.SecretScanning],
       description: "Update the specified Secret Scanning Configuration.",

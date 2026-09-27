@@ -112,7 +112,9 @@ export const validateKubernetesConfigReachable = async ({
           "The selected gateway could not review the token with its own service account. Gateway as Reviewer requires that gateway to run as a pod inside the cluster with the system:auth-delegator ClusterRole. Use the token reviewer JWT mode for a gateway outside the cluster."
       });
     }
-    if (err instanceof AxiosError) return handleAxiosError(err, { kubernetesHost: target }, context);
+    if (err instanceof AxiosError) {
+      return handleAxiosError(err, { kubernetesHost: target, credentials: [tokenReviewerJwt] }, context);
+    }
     return new BadRequestError({
       message: `Failed to reach the Kubernetes API server at ${target}: ${(err as Error).message}`
     });
@@ -246,7 +248,11 @@ export const reviewServiceAccountToken = async ({
         ? ResourceAuthLoginFailureReason.TokenReviewForbidden
         : ResourceAuthLoginFailureReason.TokenReviewRequestFailed;
     const message = isAxiosError
-      ? handleAxiosError(err, { kubernetesHost }, KubernetesAuthErrorContext.KubernetesApiServer).message
+      ? handleAxiosError(
+          err,
+          { kubernetesHost, credentials: [tokenReviewerJwt, jwt] },
+          KubernetesAuthErrorContext.KubernetesApiServer
+        ).message
       : `Could not reach the Kubernetes API server at ${kubernetesHost} to review the service account token.`;
 
     throw new UnauthorizedError({ message, detail: { reasonCode, ...errorContext } });

@@ -597,6 +597,7 @@ export const SelectionPanel = ({
         environments={userAvailableEnvs}
         visibleEnvs={visibleEnvs}
         projectId={projectId}
+        projectName={currentProject.name}
         projectSlug={currentProject.slug}
         sourceSecretPath={secretPath}
         secrets={selectedEntries[EntryType.SECRET]}

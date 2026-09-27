@@ -115,7 +115,7 @@ export const RequestToSignSheet = ({ isOpen, onOpenChange, signerId }: Props) =>
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1100px]">
+      <SheetContent size="wide" className="flex h-full max-h-full flex-col gap-y-0">
         <SheetHeader className="border-b">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">

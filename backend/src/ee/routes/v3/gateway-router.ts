@@ -336,23 +336,33 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       body: z.object({
+        name: slugSchema({ field: "name" }).optional().describe(GATEWAYS.UPDATE.name),
         authMethod: SettableAuthMethodInputSchema.optional().describe(GATEWAYS.UPDATE.authMethod)
       }),
       response: { 200: GatewayWithAuthMethodSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.body.authMethod) {
-        const setInput = toSetAuthMethodArg(req.body.authMethod);
+      // Before the auth method is touched, so the usual rejection leaves nothing applied.
+      if (req.body.name) {
+        await server.services.gatewayV2.assertGatewayNameAvailable({
+          orgPermission: req.permission,
+          gatewayId: req.params.gatewayId,
+          name: req.body.name
+        });
+      }
 
+      // Auth first: it is the half that fails, so a rejection cannot leave behind a rename.
+      if (req.body.authMethod) {
         const result = await server.services.resourceAuthMethod.setMethod({
           resource: { type: "gateway", id: req.params.gatewayId },
-          authMethod: setInput,
+          authMethod: toSetAuthMethodArg(req.body.authMethod),
           actor: req.permission
         });
 
         const updated = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
 
+        // Before the rename, so a failed rename cannot lose the record.
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
@@ -384,7 +394,30 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           });
       }
 
-      const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
+      // Held onto for the response: it comes from the primary, and a lagging replica read
+      // would hand back the old name.
+      let renamed;
+      if (req.body.name) {
+        const result = await server.services.gatewayV2.renameGateway({
+          orgPermission: req.permission,
+          gatewayId: req.params.gatewayId,
+          name: req.body.name
+        });
+        renamed = result.gateway;
+
+        if (result.previousName !== renamed.name) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            orgId: req.permission.orgId,
+            event: {
+              type: EventType.GATEWAY_UPDATE,
+              metadata: { gatewayId: renamed.id, name: renamed.name, previousName: result.previousName }
+            }
+          });
+        }
+      }
+
+      const gateway = renamed ?? (await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId }));
       const view = await server.services.resourceAuthMethod.getByGatewayId({
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission

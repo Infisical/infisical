@@ -1,6 +1,18 @@
 import { Link } from "@tanstack/react-router";
+import { FingerprintIcon } from "lucide-react";
 
-import { EmptyState } from "@app/components/v2";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle
+} from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
@@ -20,72 +32,62 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
 
   const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
 
-  // eslint-disable-next-line no-nested-ternary
-  return subscription?.auditLogs ? (
-    <div className="h-full w-full min-w-204 rounded-lg border border-border-control bg-surface-base p-4">
-      <div className="mb-4 flex items-center justify-between border-b border-border-emphasis pb-4">
-        <p className="text-lg font-medium text-foreground-cool">Integration Logs</p>
-        <p className="text-xs text-muted-cool">
-          Displaying audit logs from the last {Math.min(auditLogsRetentionDays, 60)} days
-        </p>
-      </div>
-      <LogsSection
-        refetchInterval={15_000}
-        showFilters={false}
-        project={currentProject}
-        presets={{
-          eventMetadata: { integrationId: integration.id },
-          startDate: new Date(
-            new Date().setDate(new Date().getDate() - Math.min(auditLogsRetentionDays, 60))
-          ),
-          eventType: INTEGRATION_EVENTS
-        }}
-      />
-    </div>
-  ) : (
-    <div className="h-full w-full min-w-204 rounded-lg border border-border-control bg-surface-base p-4 opacity-60">
-      <div className="mb-4 flex items-center justify-between border-b border-border-emphasis pb-4">
-        <p className="text-lg font-medium text-foreground-cool">Integration Logs</p>
-      </div>
-      <EmptyState
-        className="rounded-lg"
-        title={
-          <div>
-            <p>
-              Please{" "}
-              {subscription && subscription.slug !== null ? (
-                <Link
-                  to="/organizations/$orgId/billing"
-                  params={{ orgId: currentOrg.id }}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <a
-                    className="cursor-pointer font-medium text-project transition-all hover:text-project"
+  return (
+    <Card className="min-w-0">
+      <CardHeader>
+        <CardTitle>Integration Logs</CardTitle>
+        {subscription?.auditLogs && (
+          <CardDescription>
+            Displaying audit logs from the last {Math.min(auditLogsRetentionDays, 60)} days
+          </CardDescription>
+        )}
+      </CardHeader>
+      <CardContent>
+        {subscription?.auditLogs ? (
+          <LogsSection
+            refetchInterval={15_000}
+            showFilters={false}
+            project={currentProject}
+            presets={{
+              eventMetadata: { integrationId: integration.id },
+              startDate: new Date(
+                new Date().setDate(new Date().getDate() - Math.min(auditLogsRetentionDays, 60))
+              ),
+              eventType: INTEGRATION_EVENTS
+            }}
+          />
+        ) : (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FingerprintIcon />
+              </EmptyMedia>
+              <EmptyTitle>Audit logs require an upgrade</EmptyTitle>
+              <EmptyDescription>
+                {subscription && subscription.slug !== null ? (
+                  <Link
+                    to="/organizations/$orgId/billing"
+                    params={{ orgId: currentOrg.id }}
                     target="_blank"
+                    rel="noopener noreferrer"
                   >
-                    upgrade your subscription
-                  </a>
-                </Link>
-              ) : (
-                <a
-                  href="https://infisical.com/scheduledemo"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                    Upgrade your subscription
+                  </Link>
+                ) : (
                   <a
-                    className="cursor-pointer font-medium text-project transition-all hover:text-project"
+                    href="https://infisical.com/scheduledemo"
                     target="_blank"
+                    rel="noopener noreferrer"
                   >
-                    upgrade your subscription
+                    Upgrade your subscription
                   </a>
-                </a>
-              )}{" "}
-              to view integration logs
-            </p>
-          </div>
-        }
-      />
-    </div>
+                )}{" "}
+                to view integration logs.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+      </CardContent>
+    </Card>
   );
 };

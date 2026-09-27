@@ -93,18 +93,22 @@ An alert on a machine identity notifies your team through the channels you pick.
 
 | Event | When it fires |
 |-------|---------------|
-| **Client Secret Expiration** | A set number of days before a Universal Auth client secret expires, checked once a day |
+| **Credential Expiration** | A set number of days before a Universal Auth client secret or Token Auth access token expires, checked once a day |
 | **Auth Method Change** | Right after an auth method is added, updated, or removed, or a Universal Auth client secret or Token Auth token is created, updated, or revoked |
 
-### Client secret expiration
+### Credential expiration
 
-A machine identity whose credential expires unnoticed takes your workload down with it. This alert watches the Universal Auth client secrets attached to the identity and notifies your team a configurable number of days before they expire, so the credential gets rotated before anything breaks.
+A machine identity whose credential expires unnoticed takes your workload down with it. This alert watches the Universal Auth client secrets and Token Auth access tokens attached to the identity and notifies your team a configurable number of days before they expire, so the credential gets rotated before anything breaks.
 
 A client secret is only monitored when its TTL is greater than `0`, since one created with the default TTL of `0` never expires and has nothing to alert on. Revoked client secrets are skipped.
 
+The alert watches a Token Auth token's original expiry: when the token was created plus its access token TTL. That's when the token stops working if it isn't renewed. Renewing the token doesn't move that date, so a renewed token still triggers this alert on its original expiry and gets no alert after that date passes. Deleting the alert and creating a new one doesn't move it either, since the new alert watches the same date. To get alerts for a later expiry, create a new token. Revoked tokens are skipped.
+
+Unlike a client secret, a Token Auth token with an access token TTL of `0` still expires. Every access token is capped at a maximum lifetime, 90 days by default, so a token with a TTL of `0` or a TTL longer than the cap triggers this alert as it approaches that cap. Self-hosted instances can change the cap with the `MAX_MACHINE_IDENTITY_TOKEN_AGE` environment variable.
+
 <Note>
-  The alert watches the **client secret**, not the access tokens minted from it. Access tokens are
-  short-lived by design and are renewed programmatically. See
+  For Universal Auth, the alert watches the client secret, not the access tokens minted by logging
+  in with it. Those access tokens are short-lived by design and are renewed programmatically. See
   [Universal Auth](/documentation/platform/identities/universal-auth) for the difference between
   Client Secret TTL, Access Token TTL, and Access Token Max TTL.
 </Note>
@@ -119,7 +123,7 @@ Each notification names the auth method, the kind of change, the credential wher
 
 ### Create an alert
 
-Open the machine identity you want to monitor and select **Alert** in the top-right of the page to create one. An identity holds one alert, so pick the event you care about most.
+Open the machine identity you want to monitor and select **Alerts** in the top-right of the page. An identity can have one alert per event, so you can watch for both credential expiration and auth method changes. If the identity has no alerts yet, the alert form opens right away. Otherwise the list of its alerts opens, and **Add Alert** at the bottom creates another. **Add Alert** is hidden once every event has an alert.
 
 ![Create Machine Identity Alert](/images/platform/organization/mi-create-alert.png)
 
@@ -127,12 +131,16 @@ Open the machine identity you want to monitor and select **Alert** in the top-ri
 |-------|-------------|
 | **Name** | A name for the alert, e.g. `ua-secret-expiry` |
 | **Description** | Optional context about this alert |
-| **Event** | **Client Secret Expiration** or **Auth Method or Credential Change**. The event can't be changed after the alert is created; remove the alert and create a new one instead. |
-| **Condition** | For **Client Secret Expiration** only: how many days before expiration to notify, as a whole number from `1` to `90` |
-| **Daily Reminder** | For **Client Secret Expiration** only: if enabled, repeats the alert every day from the threshold until the credential expires |
+| **Event** | **Credential Expiration** or **Auth Method or Credential Change**. The event can't be changed after the alert is created; remove the alert and create a new one instead. |
+| **Condition** | For **Credential Expiration** only: how many days before expiration to notify, as a whole number from `1` to `90` |
+| **Daily Reminder** | For **Credential Expiration** only: if enabled, repeats the alert every day from the threshold until the credential expires |
 | **Enabled** | Turn the alert off without deleting it |
 
 With **Daily Reminder** off, each credential triggers the expiration alert once. Turn it on for credentials you can't afford to miss, and you'll get one notification per day until the credential expires or is rotated.
+
+### Manage alerts
+
+Select **Alerts** on the machine identity to see its alerts. The number next to **Alerts** counts the enabled ones. Use the toggle on a row to turn that alert on or off, or open the menu at the end of the row and select **Edit** or **Remove**. Removing an alert asks you to type its name to confirm.
 
 ### Notification channels
 
@@ -147,7 +155,7 @@ An alert delivers through one or more channels, up to 10 per alert. Add at least
 
 ### Webhook payload
 
-Webhook deliveries are [CloudEvents](https://cloudevents.io/) 1.0 JSON documents. The `type` names the event: `com.infisical.identity.authentication.expiration` for a client secret expiration and `com.infisical.identity.authentication.auth-method-changed` for an auth method change. Every credential due for this run, or the change that fired, is listed in `data.items`:
+Webhook deliveries are [CloudEvents](https://cloudevents.io/) 1.0 JSON documents. The `type` names the event: `com.infisical.identity.authentication.expiration` for a credential expiration and `com.infisical.identity.authentication.auth-method-changed` for an auth method change. Every credential due for this run, or the change that fired, is listed in `data.items`:
 
 ```json
 {
@@ -174,10 +182,19 @@ Webhook deliveries are [CloudEvents](https://cloudevents.io/) 1.0 JSON documents
           { "label": "Secret Type", "value": "Universal Auth Client Secret" },
           { "label": "Expires", "value": "August 23, 2026 at 04:15 PM UTC" }
         ]
+      },
+      {
+        "id": "token-auth-token:9d4b2e7a-3c1f-4a8e-b5d6-2f7c8e9a1b3d",
+        "title": "release-runner",
+        "fields": [
+          { "label": "Secret Name", "value": "release-token" },
+          { "label": "Secret Type", "value": "Token Auth Access Token" },
+          { "label": "Expires", "value": "August 21, 2026 at 09:00 AM UTC" }
+        ]
       }
     ],
     "metadata": {
-      "totalItems": 1,
+      "totalItems": 2,
       "viewUrl": "https://app.infisical.com/organizations/18b65352-ad1e-43d5-830f-65c72245c3a3/identities/c6002a8c-4571-4660-b169-f891f4734851"
     }
   }
