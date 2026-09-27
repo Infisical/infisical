@@ -1,8 +1,17 @@
+import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { ApiDocsTags, AppConnections } from "@app/lib/api-docs";
+import { InternalServerError } from "@app/lib/errors";
 import { slugSchema } from "@app/server/lib/schemas";
-import { registerAppConnectionEndpoints } from "@app/server/routes/v1/app-connection-routers/app-connection-endpoints";
+import {
+  buildAppConnectionRouteContext,
+  buildCreateAppConnectionRoute,
+  buildDeleteAppConnectionRoute,
+  buildGetAppConnectionRoute,
+  buildListAppConnectionsRoute,
+  buildUpdateAppConnectionRoute
+} from "@app/server/routes/v1/app-connection-routers/app-connection-endpoints";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   SanitizedAwsConnectionSchema,
@@ -24,24 +33,40 @@ const AgentVaultAwsConnectionCreateSchema = ValidateAwsConnectionCredentialsSche
 );
 
 export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodProvider) => {
-  registerAppConnectionEndpoints({
-    app: AppConnection.AWS,
+  const ctx = buildAppConnectionRouteContext({
     server,
+    app: AppConnection.AWS,
     sanitizedResponseSchema: SanitizedAwsConnectionSchema,
-    createSchema: AgentVaultAwsConnectionCreateSchema,
-    updateSchema: UpdateAwsConnectionSchema,
-    productScope: {
-      resolveProjectId: (req) => req.internalAgentVaultProjectId,
-      operationIdPrefix: "AgentVault",
-      tags: [ApiDocsTags.AgentVaultAppConnections],
-      descriptions: {
-        list: "Lists the AWS connections scoped to Agent Vault",
-        get: "Gets an AWS connection scoped to Agent Vault",
-        create: "Creates an AWS connection scoped to Agent Vault. Only Agent Vault can use the connection.",
-        update: "Updates an AWS connection scoped to Agent Vault",
-        delete:
-          "Deletes an AWS connection scoped to Agent Vault. If session logs use the connection, switch them to another connection or to none first."
-      }
+    operationIdPrefix: "AgentVault",
+    tags: [ApiDocsTags.AgentVaultAppConnections]
+  });
+
+  const resolveScope = (req: FastifyRequest) => {
+    const projectId = req.internalAgentVaultProjectId;
+    if (!projectId) {
+      throw new InternalServerError({
+        message:
+          "Could not determine which project these AWS Connections belong to. Try again, and contact support if it keeps happening."
+      });
     }
+    return { projectId };
+  };
+
+  buildListAppConnectionsRoute(ctx, { description: "Lists the AWS connections scoped to Agent Vault", resolveScope });
+  buildGetAppConnectionRoute(ctx, { description: "Gets an AWS connection scoped to Agent Vault", resolveScope });
+  buildCreateAppConnectionRoute(ctx, {
+    createSchema: AgentVaultAwsConnectionCreateSchema,
+    description: "Creates an AWS connection scoped to Agent Vault. Only Agent Vault can use the connection.",
+    resolveScope
+  });
+  buildUpdateAppConnectionRoute(ctx, {
+    updateSchema: UpdateAwsConnectionSchema,
+    description: "Updates an AWS connection scoped to Agent Vault",
+    resolveScope
+  });
+  buildDeleteAppConnectionRoute(ctx, {
+    description:
+      "Deletes an AWS connection scoped to Agent Vault. If session logs use the connection, switch them to another connection or to none first.",
+    resolveScope
   });
 };

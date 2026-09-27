@@ -216,8 +216,8 @@ hostile input: it must never be able to erase or hide its own records.
 - **App connections are the one CASL subject the admin role carries**, because the Settings page's
   connection sheet and the shared connection modals read CASL, not the role. Everything else here is
   `hasRole(Admin)`.
-- **`/agent-vault/app-connections/aws/*` is the shared `registerAppConnectionEndpoints` with a
-  `productScope`**: the project comes from the server, never the request, and every by-id route passes
+- **`/agent-vault/app-connections/aws/*` is the shared route builders in `app-connection-endpoints.ts`, called
+  with a `resolveScope`**: the project comes from the server, never the request, and every by-id route passes
   `findAppConnectionById` a `scope`, so a connection outside Agent Vault is a 404 before any permission or app
   check. Without it a delete here could reach an org connection Secret Sync uses, and a 403 or 400 would
   confirm the id exists. The UI still uses the shared `/app-connections/aws` routes with the project id.
