@@ -1,12 +1,12 @@
 import { CircleAlertIcon, TriangleAlertIcon } from "lucide-react";
 
 import { Alert, AlertDescription } from "@app/components/v3";
+import { areAgentVaultSessionLogsOn } from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogCorsProbe,
   useGetAgentVaultSessionLogHealth,
   useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
-import { isAgentVaultRecording } from "@app/hooks/api/agentVault/types";
 
 import { SessionLogReadAccessAlert } from "./SessionLogReadAccessAlert";
 
@@ -16,7 +16,7 @@ export const SessionLogAlerts = () => {
   const { data: readAccess } = useGetAgentVaultSessionLogCorsProbe();
 
   const hasDestination = Boolean(config?.bucket);
-  const isRecording = config ? isAgentVaultRecording(config) : false;
+  const isRecording = config ? areAgentVaultSessionLogsOn(config) : false;
   const isReadBlocked = readAccess === "cors-missing" || readAccess === "access-denied";
 
   const notRecordingReason = (() => {

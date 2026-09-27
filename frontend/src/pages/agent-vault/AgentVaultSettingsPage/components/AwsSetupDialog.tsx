@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangleIcon } from "lucide-react";
+import { TriangleAlertIcon } from "lucide-react";
 
 import {
   Alert,
@@ -23,7 +23,7 @@ import {
 import { useOrganization } from "@app/context";
 import { agentVaultKeys, useGetAgentVaultSessionLogCorsProbe } from "@app/hooks/api/agentVault";
 
-export const iamPolicyFor = (bucket: string, keyPrefix: string) => {
+const iamPolicyFor = (bucket: string, keyPrefix: string) => {
   const objects = `arn:aws:s3:::${bucket || "<bucket>"}/${keyPrefix ? `${keyPrefix}/` : ""}*`;
   return JSON.stringify(
     {
@@ -46,7 +46,7 @@ export const iamPolicyFor = (bucket: string, keyPrefix: string) => {
   );
 };
 
-export const corsPolicyFor = (origin: string) =>
+const corsPolicyFor = (origin: string) =>
   JSON.stringify(
     [
       {
@@ -149,7 +149,7 @@ export const AwsSetupDialog = ({
             <TabsContent value="policy" className="space-y-4">
               {readAccess === "access-denied" && (
                 <Alert variant="warning">
-                  <AlertTriangleIcon />
+                  <TriangleAlertIcon />
                   <AlertTitle>This connection is not allowed to read from this bucket.</AlertTitle>
                   <AlertDescription>
                     Nobody can read session logs back until this policy is attached, and new logs
@@ -173,7 +173,7 @@ export const AwsSetupDialog = ({
             <TabsContent value="cors" className="space-y-4">
               {isCorsMissing && (
                 <Alert variant="warning">
-                  <AlertTriangleIcon />
+                  <TriangleAlertIcon />
                   <AlertTitle>This bucket is not allowing requests from this origin.</AlertTitle>
                   <AlertDescription>
                     Session logs are still stored, but nobody can read them back until this rule is

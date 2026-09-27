@@ -37,8 +37,6 @@ export const fetchAgentVaultProjectId = async () => {
   return data.projectId;
 };
 
-// Every key carries the org, because Agent Vault is org-scoped through the JWT rather than through a
-// path parameter: without it a switch to another org would serve the previous org's data from cache.
 const SESSION_LOG_PAGE_RECORDS = 200;
 
 const SESSION_LOG_LIVE_RECORDS = 1000;
@@ -47,6 +45,8 @@ const SESSION_LOG_LIVE_MAX_READS = 10;
 
 export const AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS = 15_000;
 
+// Every key carries the org, because Agent Vault is org-scoped through the JWT rather than through a
+// path parameter: without it a switch to another org would serve the previous org's data from cache.
 export const agentVaultKeys = {
   all: (orgId: string) => ["agent-vault", orgId] as const,
   accessBundles: (orgId: string) => [...agentVaultKeys.all(orgId), "access-bundles"] as const,

@@ -1,31 +1,17 @@
-import { ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { format } from "date-fns";
-import {
-  ArrowRightIcon,
-  CircleHelpIcon,
-  CircleXIcon,
-  KeyRoundIcon,
-  type LucideIcon,
-  PlusIcon,
-  SearchIcon,
-  ShieldBanIcon,
-  TriangleAlertIcon,
-  XIcon
-} from "lucide-react";
+import { SearchIcon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
-import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Alert,
   AlertAction,
   AlertDescription,
-  Badge,
   Button,
   DateRangeFilter,
-  type DateRangeFilterResult,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -45,16 +31,12 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
   AgentVaultSessionLogDecision,
-  AgentVaultSessionStatus,
   sessionLogRecordKey,
   useAgentVaultSessionLogTimeline,
   useGetAgentVaultSessionLogs
@@ -67,72 +49,18 @@ import {
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
-import {
-  chunkIdTime,
-  findRowShift,
-  groupSessionLogGaps,
-  httpStatusLabel
-} from "./SessionLogsPanel.utils";
+import { DECISION_PRESENTATION, hostPatternFor, SessionLogRow } from "./SessionLogRow";
+import { chunkIdTime, groupSessionLogGaps } from "./SessionLogsPanel.utils";
+import { useNewRequestsCounter } from "./useNewRequestsCounter";
+import { useSessionLogsLiveTail } from "./useSessionLogsLiveTail";
 
 const ALL_PROXIES = "all";
-
-const ARRIVAL_HOLD_MS = 1200;
-
-const ArrivingRow = ({ arrivedAt, children }: { arrivedAt?: number; children: ReactNode }) => {
-  const [isArriving, setIsArriving] = useState(false);
-
-  useEffect(() => {
-    if (arrivedAt === undefined) return undefined;
-    const remaining = arrivedAt + ARRIVAL_HOLD_MS - Date.now();
-    if (remaining <= 0) return undefined;
-    setIsArriving(true);
-    const timer = setTimeout(() => setIsArriving(false), remaining);
-    return () => clearTimeout(timer);
-  }, [arrivedAt]);
-
-  return (
-    <TableRow
-      className={twMerge("transition-colors duration-700", isArriving && "bg-surface-active")}
-    >
-      {children}
-    </TableRow>
-  );
-};
 
 const FILTER_SEARCH_STEP = 5000;
 
 const SESSION_LOG_ROW_HEIGHT = 41;
 
 type DecisionFilter = "all" | AgentVaultSessionLogDecision;
-
-const DECISION_PRESENTATION: Record<
-  AgentVaultSessionLogDecision,
-  { label: string; variant: "success" | "neutral" | "warning" | "danger"; icon: LucideIcon }
-> = {
-  [AgentVaultSessionLogDecision.Brokered]: {
-    label: "Brokered",
-    variant: "success",
-    icon: KeyRoundIcon
-  },
-  [AgentVaultSessionLogDecision.Passthrough]: {
-    label: "Passthrough",
-    variant: "neutral",
-    icon: ArrowRightIcon
-  },
-  [AgentVaultSessionLogDecision.Blocked]: {
-    label: "Blocked",
-    variant: "warning",
-    icon: ShieldBanIcon
-  },
-  [AgentVaultSessionLogDecision.Error]: { label: "Error", variant: "danger", icon: CircleXIcon }
-};
-
-const decisionPresentation = (decision: AgentVaultSessionLogDecision) =>
-  DECISION_PRESENTATION[decision] ?? {
-    label: decision || "Unknown",
-    variant: "neutral" as const,
-    icon: CircleHelpIcon
-  };
 
 const GAP_EXPLANATION: Record<TAgentVaultSessionLogGapReason, { one: string; many: string }> = {
   repointed: {
@@ -158,40 +86,26 @@ const GAP_EXPLANATION: Record<TAgentVaultSessionLogGapReason, { one: string; man
   }
 };
 
-const statusTone = (status: number) => {
-  if (status >= 500) return "text-danger";
-  if (status >= 400) return "text-warning";
-  return "text-foreground";
-};
-
-// Agent Vault answers Blocked and Error requests itself, so their status is its own reply, not the
-// upstream's.
-const isProxyAnswered = (decision: AgentVaultSessionLogDecision) =>
-  decision === AgentVaultSessionLogDecision.Blocked ||
-  decision === AgentVaultSessionLogDecision.Error;
-
-const proxyAnswerDescription = (record: TAgentVaultSessionLogRecord) => {
-  const answer = `Agent Vault returned ${httpStatusLabel(record.status)}`;
-  return record.decision === AgentVaultSessionLogDecision.Blocked
-    ? `${answer} without sending this request to ${record.host}`
-    : `${answer} with no response from ${record.host}`;
-};
-
-// A host pattern without a port means 443, and an IPv6 literal needs its brackets back.
-const hostPatternFor = (record: TAgentVaultSessionLogRecord) => {
-  const host = record.host.includes(":") ? `[${record.host}]` : record.host;
-  return record.port === "443" ? host : `${host}:${record.port}`;
-};
-
-// A proxy uploads what it still holds on its next flush, up to a minute after the session ends, so
-// the view keeps checking for new requests a while longer.
-const SESSION_END_TAIL_MS = 2 * 60_000;
-
-const endTailDeadline = (session: TAgentVaultSession) => {
-  const endedAt =
-    session.revokedAt ??
-    (session.status === AgentVaultSessionStatus.Expired ? session.expiresAt : null);
-  return endedAt ? new Date(endedAt).getTime() + SESSION_END_TAIL_MS : null;
+// Every proxy that has sent this session a chunk, kept once seen so the proxy filter doesn't lose
+// options when a time range reloads the pages.
+const useSeenProxyNames = (
+  sessionId: string,
+  pages: { chunks: { proxyId: string; proxyName: string }[] }[] | undefined
+) => {
+  const [seen, setSeen] = useState({ sessionId, names: new Map<string, string>() });
+  const names = seen.sessionId === sessionId ? seen.names : new Map<string, string>();
+  const unseen = (pages ?? [])
+    .flatMap((page) => page.chunks)
+    .filter((chunk) => !names.has(chunk.proxyId));
+  if (seen.sessionId !== sessionId || unseen.length) {
+    const next = new Map(names);
+    unseen.forEach((chunk) => {
+      if (!next.has(chunk.proxyId)) next.set(chunk.proxyId, chunk.proxyName);
+    });
+    setSeen({ sessionId, names: next });
+    return next;
+  }
+  return names;
 };
 
 type Props = {
@@ -215,57 +129,15 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const [search, setSearch] = useState("");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
   const [proxyFilter, setProxyFilter] = useState(ALL_PROXIES);
-  const [range, setRange] = useState<DateRangeFilterResult | null>(null);
-  const seenProxiesSessionId = useRef(session.id);
-
-  const [isRangeOpen, setIsRangeOpen] = useState(true);
-  const applyRange = (next: DateRangeFilterResult | null) => {
-    setRange(next);
-    setIsRangeOpen(!next || next.endDate.getTime() > Date.now());
-  };
-  useEffect(() => {
-    if (!range || !isRangeOpen) return undefined;
-    const remaining = range.endDate.getTime() - Date.now();
-    if (remaining > 2 ** 31 - 1) return undefined;
-    const timer = setTimeout(() => setIsRangeOpen(false), Math.max(remaining, 0));
-    return () => clearTimeout(timer);
-  }, [range, isRangeOpen]);
-
-  const isActive = session.status === AgentVaultSessionStatus.Active;
-  const tailEndsAt = endTailDeadline(session);
-  const [endTail, setEndTail] = useState(() => ({
-    endsAt: tailEndsAt,
-    isOpen: tailEndsAt !== null && tailEndsAt > Date.now()
-  }));
-  if (endTail.endsAt !== tailEndsAt) {
-    setEndTail({ endsAt: tailEndsAt, isOpen: tailEndsAt !== null && tailEndsAt > Date.now() });
-  }
-  useEffect(() => {
-    const { endsAt, isOpen } = endTail;
-    if (endsAt === null || !isOpen) return undefined;
-    const timer = setTimeout(
-      () => setEndTail({ endsAt, isOpen: false }),
-      Math.max(endsAt - Date.now(), 0)
-    );
-    return () => clearTimeout(timer);
-  }, [endTail]);
-  const isTailingEnd = endTail.endsAt === tailEndsAt && endTail.isOpen;
-
-  const liveScope = [session.id, range?.startDate.getTime(), range?.endDate.getTime()].join("|");
-  const [budgetLatch, setBudgetLatch] = useState({ scope: liveScope, isOver: false });
-  if (budgetLatch.scope !== liveScope) {
-    setBudgetLatch({ scope: liveScope, isOver: false });
-  }
-  const isLivePausedForBudget = budgetLatch.scope === liveScope && budgetLatch.isOver;
-  const canTail = (isActive || isTailingEnd) && isRangeOpen;
-  const isLive = canTail && !isLivePausedForBudget;
+  const { range, applyRange, isActive, canTail, isLive, isPausedForBudget, pauseForBudget } =
+    useSessionLogsLiveTail(session);
   const { history, live, arrived } = useGetAgentVaultSessionLogs(session.id, {
     isLive,
     from: range?.startDate,
     to: range?.endDate
   });
   let liveState: LiveState | null = null;
-  if (canTail && isLivePausedForBudget) liveState = "paused";
+  if (canTail && isPausedForBudget) liveState = "paused";
   else if (isLive && live.isError) liveState = "reconnecting";
   else if (isLive && !isActive) liveState = "ended";
   else if (isLive) liveState = "live";
@@ -290,9 +162,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   }, [data, arrived]);
   const { records, gaps, arrivals, isTruncated, isOverByteBudget } =
     useAgentVaultSessionLogTimeline(pages);
-  if (isOverByteBudget && !isPlaceholderData && !isLivePausedForBudget) {
-    setBudgetLatch({ scope: liveScope, isOver: true });
-  }
+  if (isOverByteBudget && !isPlaceholderData && !isPausedForBudget) pauseForBudget();
   const isLoadError = isError && !data;
 
   const isEnabled = pages?.[0]?.sessionLogs.enabled ?? false;
@@ -301,19 +171,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
     data?.pages.find((page) => page.sessionLogs.storageUnavailable)?.sessionLogs
       .storageUnavailable ?? null;
 
-  const seenProxies = useRef(new Map<string, string>());
-  if (seenProxiesSessionId.current !== session.id) {
-    seenProxies.current = new Map();
-    seenProxiesSessionId.current = session.id;
-  }
-  (pages ?? []).forEach((page) =>
-    page.chunks.forEach((chunk) => {
-      if (!seenProxies.current.has(chunk.proxyId)) {
-        seenProxies.current.set(chunk.proxyId, chunk.proxyName);
-      }
-    })
-  );
-  const proxies = [...seenProxies.current.entries()].map(([id, name]) => ({ id, name }));
+  const proxyNames = useSeenProxyNames(session.id, pages);
+  const proxies = [...proxyNames.entries()].map(([id, name]) => ({ id, name }));
 
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -394,48 +253,13 @@ export const SessionLogsPanel = ({ session }: Props) => {
   ]);
   const columnCount = proxies.length > 1 ? 8 : 7;
   const overflows = rowVirtualizer.getTotalSize() > (rowVirtualizer.scrollRect?.height ?? Infinity);
-  const newRequestsKey = `${session.id}|${filterKey}`;
-  const [newRequests, setNewRequests] = useState({ key: newRequestsKey, count: 0 });
-  if (newRequests.key !== newRequestsKey) {
-    setNewRequests({ key: newRequestsKey, count: 0 });
-  }
-
-  const shownBefore = useRef(visible);
-  // Only arrivals stamped since the last change count, so rows a filter change reveals aren't new.
-  const countedAt = useRef(Date.now());
-  useLayoutEffect(() => {
-    const before = shownBefore.current;
-    shownBefore.current = visible;
-    const since = countedAt.current;
-    countedAt.current = Date.now();
-    const scroller = scrollRef.current;
-    if (!scroller || scroller.scrollTop === 0) return;
-    const top = Math.floor(scroller.scrollTop / SESSION_LOG_ROW_HEIGHT);
-    const shift = findRowShift(before, visible, top);
-    if (!shift) return;
-    scroller.scrollTop += shift * SESSION_LOG_ROW_HEIGHT;
-    if (shift < 0) return;
-    const landedAbove = visible.slice(0, top + shift).filter((record) => {
-      const key = sessionLogRecordKey(record);
-      return (arrivals.get(key) ?? 0) > since;
-    }).length;
-    if (landedAbove) setNewRequests((prev) => ({ ...prev, count: prev.count + landedAbove }));
-  }, [visible, arrivals]);
-
-  const hasNewRequests = newRequests.count > 0;
-  useEffect(() => {
-    const scroller = scrollRef.current;
-    if (!scroller || !hasNewRequests) return undefined;
-    const clearAtTop = () => {
-      if (scroller.scrollTop < 1) setNewRequests((prev) => ({ ...prev, count: 0 }));
-    };
-    scroller.addEventListener("scroll", clearAtTop, { passive: true });
-    return () => scroller.removeEventListener("scroll", clearAtTop);
-  }, [hasNewRequests]);
-  const showNewRequests = () => {
-    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    setNewRequests((prev) => ({ ...prev, count: 0 }));
-  };
+  const { newRequestCount, showNewRequests } = useNewRequestsCounter({
+    scrollRef,
+    visible,
+    arrivals,
+    resetKey: `${session.id}|${filterKey}`,
+    rowHeight: SESSION_LOG_ROW_HEIGHT
+  });
 
   const padTop = virtualRows.length ? virtualRows[0].start : 0;
   const padBottom = virtualRows.length
@@ -606,11 +430,16 @@ export const SessionLogsPanel = ({ session }: Props) => {
           </SelectTrigger>
           <SelectContent position="popper">
             <SelectItem value="all">All Outcomes</SelectItem>
-            {Object.entries(DECISION_PRESENTATION).map(([value, presentation]) => (
-              <SelectItem key={value} value={value}>
-                {presentation.label}
-              </SelectItem>
-            ))}
+            {Object.entries(DECISION_PRESENTATION).map(
+              ([value, { label, icon: Icon, iconClassName }]) => (
+                <SelectItem key={value} value={value}>
+                  <span className="flex items-center gap-2">
+                    <Icon className={iconClassName} />
+                    {label}
+                  </span>
+                </SelectItem>
+              )
+            )}
           </SelectContent>
         </Select>
         <DateRangeFilter
@@ -619,6 +448,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
           isActive={Boolean(range)}
           inactiveLabel="Entire Session"
           showTimezoneToggle={false}
+          earliestDate={new Date(session.createdAt)}
+          showRelativeRanges={isActive}
           onChange={(result) => applyRange(result)}
           onClear={() => applyRange(null)}
         />
@@ -701,7 +532,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
           )}
           {isSearchPaused && !isSearchFailed && (
             <Button variant="outline" size="sm" onClick={searchOlder}>
-              Search older requests
+              Search Older Requests
             </Button>
           )}
           {isSearchFailed && (
@@ -751,7 +582,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                 recordCount={records.length}
                 isRetrying={live.isFetching}
                 onRetry={retryLive}
-                newRequestCount={newRequests.count}
+                newRequestCount={newRequestCount}
                 onShowNewRequests={showNewRequests}
               />
             )}
@@ -760,118 +591,29 @@ export const SessionLogsPanel = ({ session }: Props) => {
             {padTop > 0 && <tr style={{ height: padTop }} />}
             {virtualRows.map((virtualRow) => {
               const record = visible[virtualRow.index] as TAgentVaultSessionLogRecord;
-              const presentation = decisionPresentation(record.decision);
               const isAddable =
                 canAddService &&
                 !record.service &&
                 (record.decision === AgentVaultSessionLogDecision.Blocked ||
                   record.decision === AgentVaultSessionLogDecision.Passthrough) &&
                 !addedHosts.has(hostPatternFor(record));
-              const proxyName = seenProxies.current.get(record.proxyId);
-              const proxyAnswered = isProxyAnswered(record.decision);
-              const outcome = (
-                <Badge variant={presentation.variant}>
-                  <presentation.icon />
-                  {presentation.label}
-                </Badge>
-              );
-              const host = (
-                <span className="flex w-fit max-w-full items-center gap-2 text-sm">
-                  <ServiceIcon hostPattern={record.host} />
-                  <span className="truncate" title={record.service ? undefined : record.host}>
-                    {record.host}
-                  </span>
-                </span>
-              );
               return (
-                <ArrivingRow
+                <SessionLogRow
                   key={sessionLogRecordKey(record)}
+                  record={record}
                   arrivedAt={arrivals.get(sessionLogRecordKey(record))}
-                >
-                  <TableCell>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="font-mono text-xs whitespace-nowrap">
-                          {format(new Date(record.ts), "MMM d, yyyy HH:mm:ss")}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {format(new Date(record.ts), "MMM d, yyyy HH:mm:ss.SSS (zzz)")}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TableCell>
-                  {proxies.length > 1 && (
-                    <TableCell className="text-xs text-muted">
-                      <span className="block truncate" title={proxyName}>
-                        {proxyName}
-                      </span>
-                    </TableCell>
-                  )}
-                  <TableCell className="font-mono text-xs">{record.method}</TableCell>
-                  <TableCell>
-                    {record.service ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>{host}</TooltipTrigger>
-                        <TooltipContent>{record.service}</TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      host
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className="block truncate" title={record.path}>
-                      {record.path}
-                    </span>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {!proxyAnswered && record.status ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className={statusTone(record.status)}>{record.status}</span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {record.host} returned {httpStatusLabel(record.status)}
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <span className="text-muted">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {proxyAnswered && record.status ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>{outcome}</TooltipTrigger>
-                        <TooltipContent className="max-w-sm">
-                          {proxyAnswerDescription(record)}
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      outcome
-                    )}
-                  </TableCell>
-                  <TableCell variant="action">
-                    {isAddable && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={() => {
-                              setServiceHost(hostPatternFor(record));
-                              setIsServiceSheetOpen(true);
-                            }}
-                          >
-                            <PlusIcon />
-                            Add Service
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Add {record.host} to {accessBundle.name}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </TableCell>
-                </ArrivingRow>
+                  proxyName={proxyNames.get(record.proxyId)}
+                  showProxy={proxies.length > 1}
+                  accessBundleName={accessBundle?.name}
+                  onAddService={
+                    isAddable
+                      ? () => {
+                          setServiceHost(hostPatternFor(record));
+                          setIsServiceSheetOpen(true);
+                        }
+                      : undefined
+                  }
+                />
               );
             })}
             {padBottom > 0 && <tr style={{ height: padBottom }} />}
@@ -888,7 +630,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                     <span className="flex items-center justify-center gap-1">
                       Searched back to {format(searchedBackTo, "MMM d, h:mm a")} ·
                       <Button variant="link" size="xs" onClick={searchOlder}>
-                        Search older requests
+                        Search Older Requests
                       </Button>
                     </span>
                   )}

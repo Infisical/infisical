@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { SettingsIcon } from "lucide-react";
 
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle, PageHeader } from "@app/components/v3";
+import { AccessRestrictedDialog, PageHeader } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -33,15 +33,7 @@ export const AgentVaultSettingsPage = () => {
           <SessionLogSection />
         </>
       ) : (
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>Settings are administrator only</EmptyTitle>
-            <EmptyDescription>
-              Ask an Agent Vault administrator to configure session logs and manage the connections
-              it uses.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <AccessRestrictedDialog />
       )}
     </div>
   );

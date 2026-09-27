@@ -8,11 +8,11 @@ import {
   SidebarMenuItem
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
+import { areAgentVaultSessionLogsOn } from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogHealth,
   useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
-import { isAgentVaultRecording } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProjectNavList } from "./ProjectNavLink";
@@ -35,7 +35,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   ];
 
   let settingsDot: NavItem["dotVariant"];
-  if (sessionLogSettings && !isAgentVaultRecording(sessionLogSettings)) settingsDot = "warning";
+  if (sessionLogSettings && !areAgentVaultSessionLogsOn(sessionLogSettings))
+    settingsDot = "warning";
   else if (sessionLogHealth?.isStorageFull) settingsDot = "danger";
 
   const administrationItems: NavItem[] = isAdmin

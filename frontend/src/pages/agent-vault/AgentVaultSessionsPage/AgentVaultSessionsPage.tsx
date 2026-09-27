@@ -62,6 +62,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
+import { areAgentVaultSessionLogsOn } from "@app/helpers/agentVaultSessionLogs";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -77,11 +78,7 @@ import {
   useListAgentVaultAccessBundles,
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
-import {
-  isAgentVaultRecording,
-  TAgentVaultMintedSession,
-  TAgentVaultSession
-} from "@app/hooks/api/agentVault/types";
+import { TAgentVaultMintedSession, TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
@@ -144,10 +141,8 @@ export const AgentVaultSessionsPage = () => {
   const totalCount = data?.totalCount ?? 0;
 
   const loadedOpenSession = sessions.find((session) => session.id === openSessionId);
-  const { data: fetchedOpenSession, isPending: isFetchingOpenSession } = useGetAgentVaultSession(
-    openSessionId,
-    Boolean(openSessionId)
-  );
+  const { data: fetchedOpenSession, isPending: isFetchingOpenSession } =
+    useGetAgentVaultSession(openSessionId);
   const openSession = fetchedOpenSession ?? loadedOpenSession;
   const isOpenSessionPending = Boolean(openSessionId) && !openSession && isFetchingOpenSession;
 
@@ -187,7 +182,7 @@ export const AgentVaultSessionsPage = () => {
 
       {sessionLogHealth?.isStorageFull &&
         sessionLogSettings &&
-        isAgentVaultRecording(sessionLogSettings) && (
+        areAgentVaultSessionLogsOn(sessionLogSettings) && (
           <Alert variant="danger">
             <CircleAlertIcon />
             <AlertDescription>
@@ -197,7 +192,7 @@ export const AgentVaultSessionsPage = () => {
           </Alert>
         )}
 
-      {sessionLogSettings && !isAgentVaultRecording(sessionLogSettings) && (
+      {sessionLogSettings && !areAgentVaultSessionLogsOn(sessionLogSettings) && (
         <Alert variant="warning">
           <TriangleAlertIcon />
           <AlertDescription>

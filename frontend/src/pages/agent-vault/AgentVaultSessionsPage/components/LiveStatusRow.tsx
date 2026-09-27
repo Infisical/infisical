@@ -42,7 +42,7 @@ const LIVE_STATE_PRESENTATION: Record<
   }
 };
 
-export const LiveDot = ({ className }: { className?: string }) => (
+const LiveDot = ({ className }: { className?: string }) => (
   <span aria-hidden className={twMerge("relative flex size-1.5 shrink-0", className)}>
     <span className="absolute inline-flex size-full rounded-full bg-current opacity-75 motion-safe:animate-ping" />
     <span className="relative inline-flex size-full rounded-full bg-current" />

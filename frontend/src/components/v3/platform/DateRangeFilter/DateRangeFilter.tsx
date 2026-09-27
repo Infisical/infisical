@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type DateRange } from "react-day-picker";
-import { addDays, addMonths, format, subMonths } from "date-fns";
+import { addDays, addMonths, format, max, startOfDay, subMonths } from "date-fns";
 import { ArrowRight, CalendarIcon } from "lucide-react";
 import ms from "ms";
 
@@ -64,6 +64,8 @@ type Props = {
   isActive?: boolean;
   inactiveLabel?: string;
   showTimezoneToggle?: boolean;
+  earliestDate?: Date;
+  showRelativeRanges?: boolean;
   className?: string;
 };
 
@@ -184,17 +186,31 @@ export function DateRangeFilter({
   isActive = true,
   inactiveLabel = "Custom",
   showTimezoneToggle = true,
+  earliestDate,
+  showRelativeRanges = true,
   className
 }: Props) {
-  const initialValue = defaultValue ?? { type: DateRangeFilterType.Last, value: "1h" };
+  const today = new Date();
+  const earliestDay = earliestDate ?? addDays(subMonths(today, MAX_RANGE_MONTHS), 1);
+  const modes = showRelativeRanges
+    ? [DateRangeFilterType.Last, DateRangeFilterType.Fixed]
+    : [DateRangeFilterType.Fixed];
+  const initialValue: DateRangeFilterValue =
+    defaultValue ??
+    (showRelativeRanges
+      ? { type: DateRangeFilterType.Last, value: "1h" }
+      : { type: DateRangeFilterType.Fixed, startDate: earliestDay, endDate: today });
   const [appliedValue, setAppliedValue] = useState<DateRangeFilterValue>(initialValue);
   const [appliedIsUtc, setAppliedIsUtc] = useState(defaultIsUtc);
   const [isOpen, setIsOpen] = useState(false);
-  const [mode, setMode] = useState<DateRangeFilterType>(
+  const [selectedMode, setMode] = useState<DateRangeFilterType>(
     initialValue.type === DateRangeFilterType.Fixed
       ? DateRangeFilterType.Fixed
       : DateRangeFilterType.Last
   );
+
+  // The tabs can change while mounted, so a hidden Last tab never stays selected.
+  const mode = showRelativeRanges ? selectedMode : DateRangeFilterType.Fixed;
 
   // Last mode state — seed from the initial value if it's a Last type
   const initialLastParsed =
@@ -265,9 +281,9 @@ export function DateRangeFilter({
     setIsOpen(false);
   };
 
-  const today = new Date();
-
-  const calendarDefaultMonth = pendingRange?.from ? pendingRange.from : addMonths(today, -1);
+  const calendarDefaultMonth = pendingRange?.from
+    ? pendingRange.from
+    : max([addMonths(today, -1), earliestDay]);
 
   const isInvalidFixedRange = useMemo(() => {
     if (mode !== DateRangeFilterType.Fixed || !pendingRange?.from || !pendingRange?.to)
@@ -351,7 +367,7 @@ export function DateRangeFilter({
           <div className="flex">
             {/* Left sidebar */}
             <div className="flex w-24 shrink-0 flex-col border-r border-border py-2">
-              {[DateRangeFilterType.Last, DateRangeFilterType.Fixed].map((m) => (
+              {modes.map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -470,12 +486,9 @@ export function DateRangeFilter({
                     numberOfMonths={2}
                     showOutsideDays={false}
                     captionLayout="dropdown"
-                    disabled={[
-                      { after: today },
-                      { before: addDays(subMonths(today, MAX_RANGE_MONTHS), 1) }
-                    ]}
+                    disabled={[{ after: today }, { before: startOfDay(earliestDay) }]}
                     defaultMonth={calendarDefaultMonth}
-                    startMonth={addDays(subMonths(today, MAX_RANGE_MONTHS), 1)}
+                    startMonth={earliestDay}
                     endMonth={today}
                     className="p-0"
                     classNames={{

@@ -36,16 +36,14 @@ import {
   useProjectPermission
 } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
+import { areAgentVaultSessionLogsOn } from "@app/helpers/agentVaultSessionLogs";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   agentVaultKeys,
   fetchAgentVaultSessionLogReadAccess,
   useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
-import {
-  isAgentVaultRecording,
-  TAgentVaultSessionLogSettings
-} from "@app/hooks/api/agentVault/types";
+import { TAgentVaultSessionLogSettings } from "@app/hooks/api/agentVault/types";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   useListAppConnections,
@@ -84,7 +82,7 @@ export const SessionLogSection = () => {
   // Saving with session logs on already proved Infisical can write, so the dialog only opens for a
   // step the read check finds missing.
   const offerAwsSetup = async (settings: TAgentVaultSessionLogSettings) => {
-    if (!isAgentVaultRecording(settings)) return;
+    if (!areAgentVaultSessionLogsOn(settings)) return;
     const readAccess = await queryClient
       .fetchQuery({
         queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id),

@@ -301,9 +301,6 @@ export type TAgentVaultSessionLogCorsProbe = {
 
 export type TAgentVaultSessionLogReadAccess = "readable" | "cors-missing" | "access-denied";
 
-export const isAgentVaultRecording = (settings: TAgentVaultSessionLogSettings) =>
-  Boolean(settings.enabled && settings.appConnectionId && settings.bucket && settings.region);
-
 export type TUpdateAgentVaultSessionLogSettingsDTO = {
   enabled?: boolean;
   appConnectionId?: string | null;

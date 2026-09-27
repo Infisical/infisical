@@ -11,9 +11,9 @@ import {
   TAgentVaultSessionLogRecord
 } from "./types";
 
-export const AGENT_VAULT_SESSION_LOG_MAX_RECORDS = 100_000;
+const AGENT_VAULT_SESSION_LOG_MAX_RECORDS = 100_000;
 
-export const AGENT_VAULT_SESSION_LOG_MAX_LOADED_BYTES = 64 * 1024 * 1024;
+const AGENT_VAULT_SESSION_LOG_MAX_LOADED_BYTES = 64 * 1024 * 1024;
 
 const CHUNK_DOWNLOAD_TIMEOUT_MS = 60_000;
 
@@ -85,7 +85,7 @@ const gapFor = (
   arrivedAt: null
 });
 
-export const isRetryableSessionLogGap = (reason?: TAgentVaultSessionLogGapReason) =>
+const isRetryableSessionLogGap = (reason?: TAgentVaultSessionLogGapReason) =>
   reason === "fetch" || reason === "missing" || reason === "refused";
 
 const withTimeout = (signal: AbortSignal | undefined, ms: number) => {
@@ -244,7 +244,7 @@ export const mergeSessionLogPages = <P extends TAgentVaultSessionLogPage>(
   };
 };
 
-export type TAgentVaultSessionLogTimeline = {
+type TAgentVaultSessionLogTimeline = {
   records: TAgentVaultSessionLogRecord[];
   gaps: TAgentVaultSessionLogGap[];
   arrivals: Map<string, number>;
