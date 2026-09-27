@@ -372,9 +372,8 @@ export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?
   }
 };
 
-// The options API filters every product's picker by its list; create only refuses a type for these.
-// Others still accept any type, because enforcing would break existing API callers. Add a product
-// once its list is derived from the features that use it and nothing relies on the looser behaviour.
+// Products whose allowed connection types are also enforced on create. Other products only use them to filter the picker.
+// Add a product only once nothing creates other connection types in it through the API.
 export const PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES = [ProjectType.AgentVault];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
