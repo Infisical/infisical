@@ -1381,7 +1381,7 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(res.statusCode, res.payload).toBe(400);
       expect(res.json().message).toBe(
-        "Humanitec Connections can't be used in Agent Vault. Agent Vault supports AWS Connections only."
+        "Humanitec Connections can't be used in this project. It supports: AWS."
       );
     });
   });
