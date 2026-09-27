@@ -2560,13 +2560,22 @@ const OverviewPageContent = () => {
   useEffect(() => {
     const element = tableRef.current;
     if (!element) return;
+    const nameHeader = element.querySelector(":scope > table > thead > tr > th:nth-child(2)");
 
     const handleResize = () => {
       setTableWidth(element.clientWidth);
+      if (nameHeader) {
+        element.style.setProperty(
+          "--name-column-width",
+          `${nameHeader.getBoundingClientRect().width}px`
+        );
+      }
     };
 
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(element);
+    if (nameHeader) resizeObserver.observe(nameHeader);
+    handleResize();
 
     // eslint-disable-next-line consistent-return
     return () => {
@@ -2936,7 +2945,7 @@ const OverviewPageContent = () => {
                       <TableHead
                         className={twMerge(
                           !isSingleEnvView && "sticky",
-                          "left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container p-0 lg:w-96 lg:max-w-96 lg:min-w-96"
+                          "left-10 z-10 min-w-[180px] border-r bg-container p-0"
                         )}
                       >
                         <DropdownMenu>
