@@ -1,255 +1,207 @@
 ---
 title: "Session logs"
-description: "Record what an agent reached through a proxy, store it encrypted in your own S3 bucket, and read it back on the session."
+description: "Keep an encrypted record of every request an AI agent makes, stored in your own Amazon S3 bucket."
 ---
 
 A session log is the per-request record of what an agent actually did: the method, host, path, status, and whether a credential went out with it. Every request that reaches a proxy is recorded, including requests to hosts that no access bundle covers.
 
-Records are encrypted before they leave the proxy and stored in an S3 bucket you own. Your browser fetches and decrypts them, so the records never pass through Infisical.
+Records are encrypted before they leave the proxy and stored in an Amazon S3 bucket you own.
 
-## What's recorded
-
-Each request produces one record:
-
-```json
-{
-  "ts": "2026-09-16T10:31:04.221Z",
-  "seq": 8412,
-  "proxyId": "7c1e…",
-  "method": "POST",
-  "host": "api.github.com",
-  "port": "443",
-  "path": "/repos/acme/web/issues",
-  "status": 201,
-  "decision": "brokered",
-  "service": "github",
-  "accessBundle": "code-review"
-}
-```
-
-`decision` is one of four outcomes:
-
-| Decision | What happened |
-| --- | --- |
-| `brokered` | A service matched and its credential went out with the request |
-| `passthrough` | No service matched, or the one that did carries no credential. The request went out untouched |
-| `blocked` | The traffic policy refused the request |
-| `error` | The proxy couldn't reach the upstream |
-
-Request and response bodies, headers, and query strings aren't recorded, because that's where credentials and tokens travel.
-
-## Prerequisites
-
-- An AWS connection, either organization-wide under **Integrations** or scoped to Agent Vault under [Settings](#connections)
-- An S3 bucket, in a region the connection can reach
-- Each proxy's clock set to within 5 minutes of Infisical's
-
-## Setting up storage
+## Setting up session logs
 
 Go to **Settings** under Agent Vault and select **Set Up Session Logs** on the **Session Logs** card:
 
 1. Turn on **Enable**.
-2. Pick the **AWS Connection** whose credentials write the records, or select **Create New Connection** to add one without leaving the dialog.
-3. Enter the **Bucket** and its **Region**.
+2. Pick the **AWS Connection** whose credentials write the records. It can be one from your organization or one created in Agent Vault, or select **Create New Connection** to add one.
+3. Enter the **Bucket** and **Region** of an S3 bucket you've already created.
 4. Optionally set a **Key Prefix**, so session log objects sit under one path in a bucket you use for other things.
 5. Select **Save**.
 
-When you save, Infisical checks that the bucket exists and writes a small test object, `.test/write-check`, under your prefix. Each save overwrites that object. If the check fails, the error says which step failed and what to grant.
+<Frame>
+  <img src="/images/platform/agent-vault/session-logs-setup.png" alt="The Session Logs dialog with Enable turned on and an AWS connection, region, bucket, and key prefix filled in" />
+</Frame>
 
-The connection needs an IAM policy and the bucket needs a CORS rule. The **AWS Setup** dialog shows both. It opens after a successful save with your bucket and prefix already filled in, and **View AWS Setup** in the **Session Logs** dialog reopens the **AWS Setup** dialog.
+When you save, Infisical checks that the bucket exists and that it can write to it.
 
-Attach this identity policy (not a bucket policy) to the user or role the connection authenticates as:
+The connection needs an IAM policy and the bucket needs a CORS rule. Select **View AWS Setup** in the **Session Logs** dialog to see both.
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
+<Tabs>
+  <Tab title="IAM policy">
+    Attach this identity policy (not a bucket policy) to the user or role the connection authenticates as:
+
+    ```json
     {
-      "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:GetObject"],
-      "Resource": "arn:aws:s3:::<bucket>/<prefix>/*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": ["s3:ListBucket"],
-      "Resource": "arn:aws:s3:::<bucket>"
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": ["s3:PutObject", "s3:GetObject"],
+          "Resource": "arn:aws:s3:::<bucket>/<prefix>/*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": ["s3:ListBucket"],
+          "Resource": "arn:aws:s3:::<bucket>"
+        }
+      ]
     }
-  ]
-}
-```
+    ```
+  </Tab>
+  <Tab title="CORS rule">
+    Add this CORS rule to the bucket, because your browser is what fetches the records:
 
-Add this CORS rule to the bucket, because your browser is what fetches the records:
+    ```json
+    [
+      {
+        "AllowedHeaders": ["*"],
+        "AllowedMethods": ["GET", "PUT"],
+        "AllowedOrigins": ["https://app.infisical.com"],
+        "ExposeHeaders": ["ETag"],
+        "MaxAgeSeconds": 3000
+      }
+    ]
+    ```
 
-```json
-[
-  {
-    "AllowedHeaders": ["*"],
-    "AllowedMethods": ["GET", "PUT"],
-    "AllowedOrigins": ["https://app.infisical.com"],
-    "ExposeHeaders": ["ETag"],
-    "MaxAgeSeconds": 3000
+    If you're on EU Cloud or a self-hosted instance, replace `https://app.infisical.com` with `https://eu.infisical.com` or your instance's URL. Without this rule the settings still save, but your browser can't load any session's logs.
+  </Tab>
+</Tabs>
+
+Session logs apply to every proxy in your organization. They start within one poll interval and cover sessions that are already running.
+
+## Viewing session logs
+
+Go to **Sessions** and select **View Session Logs** on the session's row. You can filter and search the requests, and while the session is active, new logs keep appearing.
+
+<Frame>
+  <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for an active session, listing each request's time, method, host, path, upstream status, and outcome" />
+</Frame>
+
+<Accordion title="Reading session logs through the API" id="reading-session-logs-through-the-api">
+  The API returns a session's logs as chunks. A chunk is one encrypted batch of [records](#what-gets-recorded) that a proxy uploaded to your bucket. You can read a session's logs if you created the session or you're an Agent Vault admin.
+
+  <Steps>
+    <Step>
+      Call [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list). It returns the newest chunks first. To get older chunks, call it again with the response's `nextCursor` as `cursor`.
+    </Step>
+    <Step>
+      Download each chunk from its `presignedGetUrl` within 5 minutes, before the URL expires. If `presignedGetUrl` is null, either the chunk is in a bucket other than the current one, or `sessionLogs.storageUnavailable` says why the chunk can't be downloaded right now.
+    </Step>
+    <Step>
+      Check that the SHA-256 digest of the downloaded bytes, as base64 without padding, matches `ciphertextSha256`. If the digests differ, the chunk was changed after the proxy uploaded it.
+    </Step>
+    <Step>
+      Decrypt the chunk with AES-256-GCM. The key is `sessionLogs.sessionKey` and the IV is the chunk's `iv`, both base64 decoded. The associated data is the SHA-256 digest of `<sessionId>|<chunkId>|v1`. The last 16 bytes of the chunk are the authentication tag.
+    </Step>
+    <Step>
+      Parse the decrypted bytes as JSON. Each chunk holds an array of records, and `decision` holds the [outcome](#what-gets-recorded) in lowercase:
+
+      ```json
+      {
+        "ts": "2026-09-16T10:31:04.221Z",
+        "seq": 8412,
+        "proxyId": "7c1e…",
+        "method": "POST",
+        "host": "api.github.com",
+        "port": "443",
+        "path": "/repos/acme/web/issues",
+        "status": 201,
+        "decision": "brokered",
+        "service": "github",
+        "accessBundle": "code-review"
+      }
+      ```
+    </Step>
+  </Steps>
+
+  This Node.js script reads the newest page of a session's logs:
+
+  ```javascript
+  import { createDecipheriv, createHash } from "node:crypto";
+
+  const token = "<your-access-token>";
+  const sessionId = "<session-id>";
+
+  const res = await fetch(`https://app.infisical.com/api/v1/agent-vault/sessions/${sessionId}/logs`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const { sessionLogs, chunks } = await res.json();
+
+  for (const chunk of chunks) {
+    if (!chunk.presignedGetUrl) continue;
+    const body = Buffer.from(await (await fetch(chunk.presignedGetUrl)).arrayBuffer());
+
+    const digest = createHash("sha256").update(body).digest("base64").replace(/=+$/, "");
+    if (digest !== chunk.ciphertextSha256) throw new Error(`Chunk ${chunk.chunkId} was changed`);
+
+    const aad = createHash("sha256").update(`${sessionId}|${chunk.chunkId}|v1`).digest();
+    const decipher = createDecipheriv(
+      "aes-256-gcm",
+      Buffer.from(sessionLogs.sessionKey, "base64"),
+      Buffer.from(chunk.iv, "base64")
+    );
+    decipher.setAAD(aad);
+    decipher.setAuthTag(body.subarray(-16));
+    const plaintext = Buffer.concat([decipher.update(body.subarray(0, -16)), decipher.final()]);
+
+    console.log(JSON.parse(plaintext.toString("utf8")));
   }
-]
-```
+  ```
 
-Use your own instance URL as the allowed origin. Without this rule the settings still save, but your browser can't load any session's logs. Each time the **AWS Setup** dialog opens, it checks whether the rule is in place and warns you if it isn't.
+  The script runs outside a browser, so the bucket's CORS rule doesn't apply to it.
 
-Session logs start within one poll interval on every proxy, and cover sessions that are already running.
+  To receive new logs as they arrive, pass the response's `liveCursor` as `cursor` to [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail), then keep calling it with each response's `nextCursor`. If `hasMore` is true, call again right away. Otherwise, wait a few seconds before the next call. The same chunk can appear in more than one response, so skip any `chunkId` you've already read.
+</Accordion>
 
-## Reading a session's logs
+## What gets recorded
 
-Go to **Sessions** and select a row. The **Session Logs** sheet shows the session's requests, newest first, and marks any host that no access bundle covers.
+Each request produces one record with:
 
-Filter by outcome or proxy, or search by host, path, method, or service. Filters apply to the requests already loaded, and load older ones if they match too few. Select **Search older requests** to go further back, or set a time range to reach an earlier part of a long session.
+| Field | What it holds |
+| --- | --- |
+| **Time** | When the request was made |
+| **Proxy** | The proxy that handled it |
+| **Method**, **Host**, **Path** | Where the request went, for example `POST api.github.com/repos/acme/web/issues` |
+| **Upstream status** | The HTTP status code the API returned, such as `201` |
+| **Outcome** | What the proxy did with the request |
+| **Service** | The service that matched the request, if any |
 
-While a session is active, new requests appear without a reload, usually within a minute.
+The outcome is one of four:
 
-There's no view across sessions, because each session's records are encrypted under a key of their own.
+| Outcome | What happened |
+| --- | --- |
+| **Brokered** | A service matched and its credential went out with the request |
+| **Passthrough** | No service matched, or the one that did carries no credential. The request went out untouched |
+| **Blocked** | The traffic policy refused the request |
+| **Error** | The proxy couldn't reach the upstream |
 
-### When several proxies serve one session
+Request and response bodies, headers, and query strings aren't recorded.
 
-A session token works on any enrolled proxy, so several proxies can serve one session at the same time. Their records merge into one timeline with a **Proxy** column and a filter. Records from different proxies are ordered by each machine's clock, so two adjacent lines from different machines can be a second out of order.
+## Managing session logs
 
-### Gaps in the timeline
+### Connections
 
-If a record couldn't be kept, the sheet shows a notice instead of leaving a silent gap:
+Session logs use one AWS connection at a time, which you pick in the **Session Logs** dialog. It can be one created in Agent Vault or one your organization already has under **Integrations**.
 
-- **Records not kept:** if a proxy can't reach Infisical or your bucket for long enough, it drops the oldest records it's holding, and the sheet shows how many
-- **Unreadable batch:** if a batch is missing from the bucket, the bucket refuses the download, or the batch is the wrong size, was changed after it was uploaded, or fails decryption, the sheet marks the batch and shows the rest (select **Reload** to try a refused or failed download again)
-- **Batch in another bucket:** if you changed the bucket, batches recorded before the change are marked as stored in a bucket the project no longer uses, and become readable again if you switch back
+To update its AWS credentials, open the menu next to **Configure** on the **Session Logs** card and select **Edit AWS Credentials**. For an organization connection, update the credentials under **Integrations** instead.
 
-### Reading session logs through the API
+To add or delete Agent Vault's AWS connections, select **Manage Connections** from the same menu:
 
-The API returns a session's logs as chunks. A chunk is one encrypted batch of [records](#whats-recorded) that a proxy uploaded to your bucket. You can read a session's logs if you created the session or you're an Agent Vault admin.
+<Frame>
+  <img src="/images/platform/agent-vault/session-logs-connections.png" alt="The Manage Connections sheet listing Agent Vault's AWS connections, with the one session logs use marked In Use" />
+</Frame>
 
-<Steps>
-  <Step>
-    Call [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list). It returns the newest chunks first. To get older chunks, call it again with the response's `nextCursor` as `cursor`.
-  </Step>
-  <Step>
-    Download each chunk from its `presignedGetUrl` within 5 minutes, before the URL expires. If `presignedGetUrl` is null, either the chunk is in a bucket other than the current one, or `sessionLogs.storageUnavailable` says why the chunk can't be downloaded right now.
-  </Step>
-  <Step>
-    Check that the SHA-256 digest of the downloaded bytes, as base64 without padding, matches `ciphertextSha256`. If the digests differ, the chunk was changed after the proxy uploaded it.
-  </Step>
-  <Step>
-    Decrypt the chunk with AES-256-GCM. The key is `sessionLogs.sessionKey` and the IV is the chunk's `iv`, both base64 decoded. The associated data is the SHA-256 digest of `<sessionId>|<chunkId>|v1`. The last 16 bytes of the chunk are the authentication tag.
-  </Step>
-  <Step>
-    Parse the decrypted bytes as JSON. Each chunk holds an array of records.
-  </Step>
-</Steps>
+You can't delete the connection session logs are using. Pick a different one in the **Session Logs** dialog first.
 
-This Node.js script reads the newest page of a session's logs:
+### Changing the bucket or prefix
 
-```javascript
-import { createDecipheriv, createHash } from "node:crypto";
+Changing the bucket copies nothing, so everything recorded before the change can't be read in Infisical until you switch back to that bucket.
 
-const token = "<your-access-token>";
-const sessionId = "<session-id>";
+Changing only the key prefix keeps earlier records readable, as long as the AWS connection can still read the old prefix. The [IAM policy](#setting-up-session-logs) on this page covers only the current prefix.
 
-const res = await fetch(`https://app.infisical.com/api/v1/agent-vault/sessions/${sessionId}/logs`, {
-  headers: { Authorization: `Bearer ${token}` }
-});
-const { sessionLogs, chunks } = await res.json();
+### Retention
 
-for (const chunk of chunks) {
-  if (!chunk.presignedGetUrl) continue;
-  const body = Buffer.from(await (await fetch(chunk.presignedGetUrl)).arrayBuffer());
+Infisical never deletes sessions or their session logs. To delete older logs automatically, add a lifecycle rule to the bucket in AWS.
 
-  const digest = createHash("sha256").update(body).digest("base64").replace(/=+$/, "");
-  if (digest !== chunk.ciphertextSha256) throw new Error(`Chunk ${chunk.chunkId} was changed`);
+## Troubleshooting
 
-  const aad = createHash("sha256").update(`${sessionId}|${chunk.chunkId}|v1`).digest();
-  const decipher = createDecipheriv(
-    "aes-256-gcm",
-    Buffer.from(sessionLogs.sessionKey, "base64"),
-    Buffer.from(chunk.iv, "base64")
-  );
-  decipher.setAAD(aad);
-  decipher.setAuthTag(body.subarray(-16));
-  const plaintext = Buffer.concat([decipher.update(body.subarray(0, -16)), decipher.final()]);
-
-  console.log(JSON.parse(plaintext.toString("utf8")));
-}
-```
-
-The script runs outside a browser, so the bucket's CORS rule doesn't apply to it.
-
-To receive new logs as they arrive, pass the response's `liveCursor` as `cursor` to [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail), then keep calling it with each response's `nextCursor`. If `hasMore` is true, call again right away. Otherwise, wait a few seconds before the next call. The same chunk can appear in more than one response, so skip any `chunkId` you've already read.
-
-## Changing where session logs are stored
-
-Rotating the AWS connection's credentials, or correcting the region, keeps every record readable. Rotate the connection rather than moving the bucket.
-
-Changing the bucket copies nothing, so everything recorded before the change can't be read in Infisical until you switch back to that bucket. The objects stay where they were, so you can still reach them with your own tooling.
-
-Changing only the key prefix keeps earlier records readable, as long as the AWS connection can still read the old prefix. The [IAM policy](#setting-up-storage) on this page covers only the current prefix.
-
-## Retention
-
-Infisical never deletes session logs. A session that recorded logs is kept indefinitely, along with its records. A session that recorded nothing is removed 30 days after it's revoked or expires.
-
-Infisical doesn't delete anything from your bucket either, and the [IAM policy](#setting-up-storage) doesn't allow it. To keep records for less time, add an S3 lifecycle rule. Object keys carry the date, as `<prefix>/<projectId>/<sessionId>/<proxyId>/<YYYY-MM-DD>/<chunkId>.json.enc`. If the rule removes a batch, the timeline marks the batch as no longer in the bucket.
-
-## When session logs reach their limit
-
-If the **Settings** page shows that session logs have reached their limit for this organization, contact us.
-
-## Connections
-
-The AWS credentials that write the records are stored as an [app connection](/documentation/getting-started/concepts/app-connections). Agent Vault's own connections are listed at the bottom of the **Settings** page, which only Agent Vault admins can see.
-
-### Two places a connection can live
-
-A connection is scoped either to your organization or to Agent Vault, and the choice decides which products can use it.
-
-| Scope | Where you create it | Which products can use it |
-| --- | --- | --- |
-| Organization | **Integrations** at the organization level | every product, including Agent Vault |
-| Agent Vault | **Settings** under Agent Vault | Agent Vault only |
-
-Agent Vault's connection dropdowns list both, with the organization's connections marked. Pick the Agent Vault scope when the credential exists only for session logs, so a secret sync can't reach the bucket. The scope is fixed when you create the connection; to move one, create it again in the other scope.
-
-### Adding a connection
-
-On the **Settings** page, select **Add Connection**. Agent Vault supports **AWS** connections.
-
-You can also select **Create New Connection** from the **AWS Connection** dropdown in the setup dialog. The new connection is scoped to Agent Vault and selected for you.
-
-### Managing connections through the API
-
-Use [Agent Vault's app connection endpoints](/api-reference/endpoints/agent-vault-app-connections/create) rather than the general ones, which need a project ID that Agent Vault doesn't expose:
-
-```bash
-curl --request POST \
-  --url https://app.infisical.com/api/v1/agent-vault/app-connections/aws \
-  --header 'Authorization: Bearer <token>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "name": "agent-vault-session-logs",
-    "method": "access-key",
-    "credentials": {
-      "accessKeyId": "<access-key-id>",
-      "secretAccessKey": "<secret-access-key>"
-    }
-  }'
-```
-
-These endpoints only reach Agent Vault's connections. An organization connection returns `404` here, so manage it through the organization's own endpoints.
-
-### Deleting a connection
-
-You can't delete a connection that session logs use, whether from Agent Vault's **Settings** page or from the organization's **Integrations**, because its credentials are what read the session logs back.
-
-To replace the connection, select another one under **Configure** and save, then delete the old one.
-
-To stop using a connection without replacing it, turn off **Enable**, set **AWS Connection** to **None**, and save. The bucket and prefix are kept, but session logs can't be read in Infisical until a connection is attached again.
-
-## What this doesn't cover
-
-If a proxy can't reach your bucket, it keeps retrying and logs the failure, but doesn't report the error to Infisical. If a session you expect to see session logs for shows none, check each proxy's logs.
-
-If a proxy's clock runs more than 5 minutes ahead of Infisical's, Infisical refuses that proxy's session logs. The proxy logs how far ahead its clock is.
-
-Session logs are an organization-wide setting and can't be turned off on a single proxy, so the person being recorded can't switch them off.
+If a session shows no session logs when you expect some, check the logs of each proxy the agent used.
