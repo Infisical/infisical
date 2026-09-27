@@ -7,6 +7,7 @@ import { v7 as uuidv7 } from "uuid";
 
 import { OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-constants";
 import { AgentVaultSessionLogErrorName } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-enums";
 import {
   encodeHistoryCursor,
@@ -530,6 +531,24 @@ describe("Agent Vault session logs", async () => {
       const res = await proxy.postChunk(session.id, chunkBody());
       expect(res.statusCode).toBe(400);
       expect(JSON.parse(res.payload).error).toBe(AgentVaultSessionLogErrorName.Disabled);
+    });
+
+    test("a chunk past the organization's limit is refused, and neither the row nor the count is kept", async () => {
+      await configure();
+      const bundle = await createAccessBundle(`session-logs-full-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`session-logs-full-${Date.now()}`);
+      await testDb("agent_vault_session_log_configs")
+        .where({ projectId })
+        .update({ storedChunkCount: AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS });
+
+      const res = await proxy.postChunk(session.id, chunkBody());
+      expect(res.statusCode, res.payload).toBe(400);
+      expect(JSON.parse(res.payload).error).toBe(AgentVaultSessionLogErrorName.CeilingReached);
+
+      expect(await testDb("agent_vault_session_log_chunks").where({ sessionId: session.id })).toHaveLength(0);
+      const config = await testDb("agent_vault_session_log_configs").where({ projectId }).first();
+      expect(Number(config.storedChunkCount)).toBe(AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS);
     });
 
     test("a session in another organization is a 404 that reads like a missing one", async () => {

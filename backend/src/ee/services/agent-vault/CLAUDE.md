@@ -183,7 +183,7 @@ hostile input: it must never be able to erase or hide its own records.
   logs are off; sessions minted before this shipped have none and never record.
 - **The AAD is `SHA-256("{sessionId}|{chunkId}|v1")`**, sealed AES-256-GCM with a 12-byte IV and the tag
   appended. Nothing more is needed: keys are per session and `(sessionId, chunkId)` is unique. The Go proxy and
-  the browser are both checked against the vector in `agent-vault-session-log-crypto.test.ts`.
+  the browser pin the same vector (`session_log_crypto_test.go`, `sessionLogDecrypt.test.ts`).
   `agent_vault_session_log_chunks.proxyId` has no FK because the browser checks each record's `proxyId` against it,
   so `SET NULL` would make that proxy's chunks unreadable.
 - **Size is capped at every hop**: the proxy seals at 4 MiB against the server's 8 MiB, and reads stop at a

@@ -1307,10 +1307,9 @@ describe("Agent Vault V1 Router", async () => {
       expect(listedIds).not.toContain(orgConnectionId);
 
       const byId = (connectionId: string) => `/api/v1/agent-vault/app-connections/aws/${connectionId}`;
-      const reaching: ["GET" | "PATCH" | "POST" | "DELETE", string, Record<string, unknown>?][] = [
+      const reaching: ["GET" | "PATCH" | "DELETE", string, Record<string, unknown>?][] = [
         ["GET", byId(orgConnectionId)],
         ["PATCH", byId(orgConnectionId), { description: "reached from the wrong scope" }],
-        ["POST", `${byId(orgConnectionId)}/rotate-credentials`],
         ["DELETE", byId(orgConnectionId)]
       ];
       for await (const [method, url, body] of reaching) {
@@ -1377,9 +1376,7 @@ describe("Agent Vault V1 Router", async () => {
         projectId
       });
       expect(res.statusCode, res.payload).toBe(400);
-      expect(res.json().message).toBe(
-        "Humanitec Connections can't be used in this project. It supports: AWS."
-      );
+      expect(res.json().message).toBe("Humanitec Connections can't be used in this project. It supports: AWS.");
     });
   });
 

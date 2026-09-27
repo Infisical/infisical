@@ -61,10 +61,12 @@ describe("recordsMatchChunk", () => {
 
   it("refuses more or fewer records than the batch counts", () => {
     assert.equal(recordsMatchChunk(records.slice(0, 1), chunk), false);
+    assert.equal(recordsMatchChunk([...records, { ...records[1], seq: 11 }], chunk), false);
   });
 
   it("refuses a sequence number outside the batch's range", () => {
     assert.equal(recordsMatchChunk([records[0], { ...records[1], seq: 13 }], chunk), false);
+    assert.equal(recordsMatchChunk([{ ...records[0], seq: 9 }, records[1]], chunk), false);
   });
 });
 
@@ -138,7 +140,7 @@ describe("decryptSessionLogPage", () => {
     });
   });
 
-  // The pinned vector from agent-vault-session-log-crypto.test.ts and Go's TestSealMatchesNodeVector.
+  // The same vector Go's TestSealMatchesTheBrowserVector seals.
   it("opens a chunk sealed with the pinned vector", async () => {
     const sealed = Uint8Array.from(
       atob(
