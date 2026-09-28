@@ -306,8 +306,13 @@ export const approvalPolicyServiceFactory = ({
 
     const resolveDomainScope = resources[policyType]?.resolveScope;
     if (resolveDomainScope) {
+      const expectedScope = resources[policyType]?.scopeType;
+      if (expectedScope && scope !== expectedScope) {
+        throw new BadRequestError({ message: `${policyType} policies must use the ${expectedScope} scope` });
+      }
+
       const { projectId } = await resolveDomainScope(scopeId);
-      return { projectId, scopeType: scope, scopeId };
+      return { projectId, scopeType: expectedScope ?? scope, scopeId };
     }
 
     throw new BadRequestError({ message: `Unsupported scope: ${String(scope)}` });
@@ -1600,6 +1605,15 @@ export const approvalPolicyServiceFactory = ({
       if (hasReadPermission) return requests;
 
       const userGroupIds = await ctx.getUserGroupIds();
+
+      const checkLiveApprover = resources[policyType]?.isLiveApprover;
+      if (
+        checkLiveApprover &&
+        dbScopeId &&
+        !(await checkLiveApprover({ projectId, scopeId: dbScopeId, actor, userGroupIds }))
+      ) {
+        return requests.filter((request) => $isRequester(request, actor));
+      }
 
       return requests.filter((request) => {
         if ($isRequester(request, actor)) return true;

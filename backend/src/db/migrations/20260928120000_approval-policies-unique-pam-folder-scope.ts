@@ -12,25 +12,32 @@ export async function up(knex: Knex): Promise<void> {
     .select("id", "scopeType", "scopeId", "createdAt")
     .orderBy([{ column: "scopeId" }, { column: "createdAt" }]);
 
-  const seen = new Set<string>();
-  const staleIds: string[] = [];
+  const survivorByScope = new Map<string, string>();
+  const stale: { id: string; survivorId: string }[] = [];
   for (const policy of duplicates) {
     const key = `${policy.scopeType as string}:${policy.scopeId as string}`;
-    if (seen.has(key)) staleIds.push(policy.id);
-    else seen.add(key);
+    const survivorId = survivorByScope.get(key);
+    if (survivorId) stale.push({ id: policy.id, survivorId });
+    else survivorByScope.set(key, policy.id);
   }
 
-  if (staleIds.length > 0) {
-    await knex(TableName.ApprovalRequests)
-      .whereIn("policyId", staleIds)
-      .where("status", "pending")
-      .update({ status: "cancelled" });
-    await knex(TableName.ApprovalPolicies).whereIn("id", staleIds).delete();
+  for (const { id, survivorId } of stale) {
+    // eslint-disable-next-line no-await-in-loop
+    await knex(TableName.ApprovalRequests).where("policyId", id).update({ policyId: survivorId });
+  }
+
+  if (stale.length > 0) {
+    await knex(TableName.ApprovalPolicies)
+      .whereIn(
+        "id",
+        stale.map((s) => s.id)
+      )
+      .delete();
   }
 
   await knex.raw(
-    `CREATE UNIQUE INDEX IF NOT EXISTS ?? ON ?? ("scopeType", "scopeId") WHERE type = ? AND "scopeId" IS NOT NULL`,
-    [INDEX_NAME, TableName.ApprovalPolicies, PAM_ACCESS]
+    `CREATE UNIQUE INDEX IF NOT EXISTS ?? ON ?? ("scopeType", "scopeId") WHERE type = '${PAM_ACCESS}' AND "scopeId" IS NOT NULL`,
+    [INDEX_NAME, TableName.ApprovalPolicies]
   );
 }
 

@@ -242,6 +242,9 @@ export type TApprovalResource<
 
   // Set where a scope may carry at most one policy, so creating a second is refused rather than ignored.
   singlePolicyPerScope?: boolean;
+
+  // The only scope this type's policies may be created against, paired with resolveScope.
+  scopeType?: ApprovalPolicyScope;
   verifyPolicyActors?: (args: {
     projectId: string;
     scopeId: string | null;

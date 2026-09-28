@@ -1063,6 +1063,7 @@ export const pamAccessApprovalResourceFactory = ({
     assertCanManagePolicy,
     canReadScope,
     singlePolicyPerScope: true,
+    scopeType: ApprovalPolicyScope.PamFolder,
     verifyPolicyActors,
     assertCanCreateRequest,
     assertCanReview,
