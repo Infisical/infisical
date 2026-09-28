@@ -36,6 +36,7 @@ export type TGetInsightsSummaryDTO = {
 
 export type TGetSecretsDuplicationDTO = {
   projectId: string;
+  refresh?: boolean;
 };
 
 export type TGetInsightsCountsDTO = {

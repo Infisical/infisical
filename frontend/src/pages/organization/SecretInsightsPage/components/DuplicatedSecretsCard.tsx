@@ -1,14 +1,12 @@
-import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatDistanceToNow } from "date-fns";
-import { AlertTriangleIcon, LockIcon, RefreshCwIcon } from "lucide-react";
+import { AlertTriangleIcon, LockIcon } from "lucide-react";
 
+import { CheckedAtButton } from "@app/components/secrets/CheckedAtButton";
 import {
   SecretValueTrackingPrompt,
   useOrgSecretValueTracking
 } from "@app/components/secrets/SecretValueTrackingGate";
 import {
-  Badge,
   Card,
   CardContent,
   CardDescription,
@@ -21,7 +19,6 @@ import {
   EmptyTitle,
   Skeleton
 } from "@app/components/v3";
-import { cn } from "@app/components/v3/utils";
 import { OrgPermissionSubjects, useOrganization, useOrgPermission } from "@app/context";
 import { OrgPermissionSecretsManagementInsightsActions } from "@app/context/OrgPermissionContext/types";
 import {
@@ -31,47 +28,6 @@ import {
 } from "@app/hooks/api/secretInsights";
 
 import { DuplicateGroupList } from "./DuplicateGroupList";
-
-// Keeps "Checked N minutes ago" honest while the page sits open.
-const useNow = (intervalMs: number) => {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return now;
-};
-
-const CheckedAtButton = ({
-  computedAt,
-  isRefreshing,
-  onRefresh
-}: {
-  computedAt: string;
-  isRefreshing: boolean;
-  onRefresh: () => void;
-}) => {
-  const now = useNow(30_000);
-  const computed = new Date(computedAt);
-  const label =
-    now - computed.getTime() < 60_000
-      ? "Checked just now"
-      : `Checked ${formatDistanceToNow(computed, { addSuffix: true })}`;
-
-  return (
-    <Badge variant="neutral" asChild className="ml-2 font-normal">
-      <button
-        type="button"
-        onClick={onRefresh}
-        disabled={isRefreshing}
-        aria-label={`${label}. Check again`}
-      >
-        <RefreshCwIcon className={cn(isRefreshing && "animate-spin")} />
-        {isRefreshing ? "Checking..." : label}
-      </button>
-    </Badge>
-  );
-};
 
 type Props = {
   isPlanRestricted: boolean;

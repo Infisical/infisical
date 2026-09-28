@@ -198,6 +198,14 @@ export const useGetInsightsCounts = (
   });
 };
 
+export const fetchSecretsDuplication = async (projectId: string, refresh = false) => {
+  const { data } = await apiRequest.get<TGetSecretsDuplicationResponse>(
+    `/api/v1/insights/${projectId}/secrets/secrets-duplication`,
+    { params: { refresh } }
+  );
+  return data;
+};
+
 export const useGetSecretsDuplication = (
   params: TGetSecretsDuplicationDTO,
   options?: Omit<
@@ -212,13 +220,7 @@ export const useGetSecretsDuplication = (
 ) => {
   return useQuery({
     queryKey: secretInsightsKeys.secretsDuplication(params),
-    queryFn: async () => {
-      const res = await apiRequest.get<TGetSecretsDuplicationResponse>(
-        `/api/v1/insights/${params.projectId}/secrets/secrets-duplication`
-      );
-      const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
-      return { ...res.data, remainingTtl };
-    },
+    queryFn: () => fetchSecretsDuplication(params.projectId),
     staleTime: INSIGHTS_STALE_TIME,
     ...options
   });

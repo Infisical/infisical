@@ -599,16 +599,20 @@ export const insightsServiceFactory = ({
       return {
         result: {
           secretBlindIndexEnabled: false,
-          groups: []
+          groups: [],
+          computedAt: null
         }
       };
     }
+
+    if (dto.refresh) await keyStore.deleteItem(cacheKey);
 
     const result = await withCache({
       keyStore,
       key: cacheKey,
       ttlSeconds: KeyStoreTtls.InsightsDuplicationCacheInSeconds,
       fetcher: async () => {
+        const computedAt = new Date().toISOString();
         const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValues(dto.projectId);
 
         const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -644,13 +648,14 @@ export const insightsServiceFactory = ({
           }))
         }));
 
-        return { secretBlindIndexEnabled: true as const, groups };
+        return { secretBlindIndexEnabled: true as const, groups, computedAt };
       }
     });
 
     const remainingTTL = await getCacheTtl(keyStore, cacheKey);
 
-    return { result, remainingTTL };
+    // An entry cached before computedAt existed lacks it until it expires.
+    return { result: { ...result, computedAt: result.computedAt ?? null }, remainingTTL };
   };
 
   const getCounts = async (dto: TGetInsightsCountsDTO, actorDto: OrgServiceActor) => {

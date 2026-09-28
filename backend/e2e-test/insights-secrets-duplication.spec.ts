@@ -21,9 +21,11 @@ import {
   OrgPermissionSet,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
+import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { orgDALFactory } from "@app/services/org/org-dal";
+import { projectDALFactory } from "@app/services/project/project-dal";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
@@ -57,10 +59,26 @@ const insightsService = insightsServiceFactory({
       ),
       memberships: [],
       hasRole: () => false
+    }),
+    getProjectPermission: async () => ({
+      permission: createMongoAbility([
+        { action: ProjectPermissionInsightsActions.Read, subject: ProjectPermissionSub.Insights }
+      ])
     })
-  } as TInsightsServiceFactoryDep["permissionService"],
+  } as unknown as TInsightsServiceFactoryDep["permissionService"],
   licenseService: gate.licenseService,
   orgDAL: { ...usageInsightsDepStubs.orgDAL, findById: orgDALFactory(testDb).findById },
+  projectDAL: { findById: projectDALFactory(testDb).findById },
+  // The project query builds its decryptor up front. No secret here carries an encrypted value, so
+  // it is never invoked.
+  kmsService: {
+    createCipherPairWithDataKey: async () =>
+      ({
+        decryptor: () => {
+          throw new Error("insights duplication spec: no secret carries an encrypted value to decrypt");
+        }
+      }) as never
+  },
   folderDAL: {
     ...projectScopedInsightsDepStubs.folderDAL,
     findSecretPathByFolderIds: secretFolderDALFactory(testDb).findSecretPathByFolderIds
@@ -78,8 +96,7 @@ const orgActor = {
   orgId: ORG_ID
 };
 
-// encryptedValue is left empty so the reference filter keeps every group without a KMS round trip,
-// which is why the kmsService stub is never reached.
+// encryptedValue is left empty so the reference filter keeps every group without a KMS round trip.
 const secret = (folderId: string, key: string, digest: string): TSecretsV2Insert & { id: string } => ({
   id: randomUUID(),
   key,
@@ -88,8 +105,18 @@ const secret = (folderId: string, key: string, digest: string): TSecretsV2Insert
   secretValueOrgBlindIndex: `org-${digest}`
 });
 
+const projectActor = {
+  type: ActorType.USER,
+  id: USER_ID,
+  authMethod: AuthMethod.EMAIL,
+  orgId: ORG_ID,
+  rootOrgId: ORG_ID,
+  parentOrgId: ORG_ID
+};
+
 const clearCaches = async () => {
   await testKeyStore.deleteItem(KeyStorePrefixes.InsightsCache(ORG_ID, "org-secrets-duplication"));
+  await testKeyStore.deleteItem(KeyStorePrefixes.InsightsCache(projects.here.projectId, "secrets-duplication"));
 };
 
 describe("insights secrets duplication", () => {
@@ -222,6 +249,36 @@ describe("insights secrets duplication", () => {
         expect(result).toEqual({ orgWideSecretValueTrackingEnabled: false, groups: [], computedAt: null });
       } finally {
         await testDb(TableName.Organization).where("id", ORG_ID).update({ orgWideSecretValueTrackingEnabled: true });
+      }
+    });
+  });
+
+  describe("project scope", () => {
+    const dto = { projectId: projects.here.projectId };
+
+    test("reports when the answer was computed", async () => {
+      const before = Date.now();
+      const { result } = await insightsService.getSecretsDuplication({ ...dto, refresh: true }, projectActor);
+
+      expect(result.computedAt).toEqual(expect.any(String));
+      expect(new Date(result.computedAt as string).getTime()).toBeGreaterThanOrEqual(before - 1000);
+    });
+
+    test("answers from the cache until asked to refresh", async () => {
+      await insightsService.getSecretsDuplication({ ...dto, refresh: true }, projectActor);
+
+      const extra = secret(projects.here.folderId, "LATE_LOCAL", "local");
+      await testDb(TableName.SecretV2).insert(extra);
+      try {
+        const localGroupSize = (r: Awaited<ReturnType<typeof insightsService.getSecretsDuplication>>) =>
+          r.result.groups.find((g) => g.secrets.some((s) => s.key === "LOCAL_A"))?.secrets.length;
+
+        expect(localGroupSize(await insightsService.getSecretsDuplication(dto, projectActor))).toBe(3);
+        expect(
+          localGroupSize(await insightsService.getSecretsDuplication({ ...dto, refresh: true }, projectActor))
+        ).toBe(4);
+      } finally {
+        await testDb(TableName.SecretV2).where("id", extra.id).delete();
       }
     });
   });

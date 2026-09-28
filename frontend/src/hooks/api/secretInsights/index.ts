@@ -1,6 +1,7 @@
 export {
   useEnableOrgSecretValueTracking,
   useRefreshOrgSecretsDuplication,
+  useRefreshSecretsDuplication,
   useSearchSecretsByValue
 } from "./mutations";
 export {

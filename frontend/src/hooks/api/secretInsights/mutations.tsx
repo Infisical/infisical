@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { fetchOrgSecretsDuplication, secretInsightsKeys } from "./queries";
+import { fetchOrgSecretsDuplication, fetchSecretsDuplication, secretInsightsKeys } from "./queries";
 import { TSearchSecretsByValueResponse } from "./types";
 
 export const useEnableOrgSecretValueTracking = () => {
@@ -24,6 +24,17 @@ export const useEnableOrgSecretValueTracking = () => {
 
 // Recomputes on the server rather than refetching, since a plain refetch answers from the
 // server's cache and would report the same stale result.
+export const useRefreshSecretsDuplication = () => {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, object, { projectId: string }>({
+    mutationFn: async ({ projectId }) => {
+      const data = await fetchSecretsDuplication(projectId, true);
+      queryClient.setQueryData(secretInsightsKeys.secretsDuplication({ projectId }), data);
+      return data;
+    }
+  });
+};
+
 export const useRefreshOrgSecretsDuplication = () => {
   const queryClient = useQueryClient();
   return useMutation<unknown, object, { orgId: string }>({
