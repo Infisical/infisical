@@ -24,7 +24,7 @@ import {
   ResourcePermissionApprovalPolicyActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -617,7 +617,8 @@ export const approvalPolicyServiceFactory = ({
       });
     }
 
-    if (resources[policyType]?.singlePolicyPerScope && dbScopeId) {
+    const onePolicyPerScope = Boolean(resources[policyType]?.singlePolicyPerScope && dbScopeId);
+    if (onePolicyPerScope) {
       const existing = await approvalPolicyDAL.findOne({
         type: policyType,
         scopeType: dbScopeType,
@@ -640,7 +641,7 @@ export const approvalPolicyServiceFactory = ({
       bypassers: bypassers ?? []
     });
 
-    const policy = await approvalPolicyDAL.transaction(async (tx) => {
+    const writePolicy = async (tx: Knex) => {
       const newPolicy = await approvalPolicyDAL.create(
         {
           projectId,
@@ -705,7 +706,18 @@ export const approvalPolicyServiceFactory = ({
       }
 
       return newPolicy;
-    });
+    };
+
+    const policy = await (onePolicyPerScope
+      ? approvalPolicyDAL.transaction(writePolicy).catch((err) => {
+          if (err instanceof DatabaseError && (err.error as { code?: string })?.code === "23505") {
+            throw new BadRequestError({
+              message: "An approval policy already governs this scope. Update it instead of creating another."
+            });
+          }
+          throw err;
+        })
+      : approvalPolicyDAL.transaction(writePolicy));
 
     return {
       policy: { ...policy, steps, bypassers: bypassers ?? [] }
@@ -926,7 +938,15 @@ export const approvalPolicyServiceFactory = ({
       policy.type as ApprovalPolicyType
     );
 
-    await approvalPolicyDAL.deleteById(policyId);
+    await approvalPolicyDAL.transaction(async (tx) => {
+      await approvalRequestDAL.update(
+        { policyId, status: ApprovalRequestStatus.Pending },
+        { status: ApprovalRequestStatus.Cancelled },
+        tx
+      );
+
+      await approvalPolicyDAL.deleteById(policyId, tx);
+    });
 
     return {
       policyId,
@@ -1050,7 +1070,7 @@ export const approvalPolicyServiceFactory = ({
       const errorMessage = constraintValidation.errors
         ? `Policy constraints not met: ${constraintValidation.errors.join("; ")}`
         : "Policy constraints not met";
-      throw new ForbiddenRequestError({ message: errorMessage });
+      throw new BadRequestError({ message: errorMessage });
     }
 
     if (assertDomainCanCreateRequest) {
