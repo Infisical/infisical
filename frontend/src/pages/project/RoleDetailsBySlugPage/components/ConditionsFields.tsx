@@ -610,8 +610,8 @@ export const ConditionsFields = ({
                                     {condition.lhs === "environment" ? "Environment" : "Tag"}
                                     {unknownSlugs.length > 1 ? "s" : ""}{" "}
                                     {unknownSlugs.map((slug) => JSON.stringify(slug)).join(", ")}{" "}
-                                    {unknownSlugs.length === 1 ? "isn't" : "aren't"} in the loaded
-                                    project. You can still save.
+                                    {unknownSlugs.length === 1 ? "isn't" : "aren't"} in the project
+                                    references currently loaded. You can still save.
                                   </p>
                                 ) : (
                                   <p className="text-muted" role="status">
