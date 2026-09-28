@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangleIcon, InfoIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { AlertTriangleIcon, InfoIcon, PlusIcon, RefreshCwIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -139,6 +139,11 @@ export const ConditionsFields = ({
     control,
     name: `permissions.${subject}.${position}.conditions` as const
   });
+  const conditionValues = watchedConditions as Array<{ lhs: string }> | undefined;
+  const hasReferenceConditions = conditionValues?.some(
+    ({ lhs }) => lhs === "environment" || lhs === "secretTags"
+  );
+  const hasTagCondition = conditionValues?.some(({ lhs }) => lhs === "secretTags");
 
   useEffect(() => {
     const conditions = watchedConditions as Array<{ lhs: string }> | undefined;
@@ -258,7 +263,7 @@ export const ConditionsFields = ({
 
   return (
     <div className="mt-6 border-t border-t-border bg-card pt-2">
-      <div className="flex w-full items-center justify-between">
+      <div className="flex w-full flex-wrap items-center justify-between gap-x-2">
         <div className="mt-2.5 flex items-center text-foreground">
           <span>Conditions</span>
           <Tooltip>
@@ -276,37 +281,55 @@ export const ConditionsFields = ({
             </TooltipContent>
           </Tooltip>
         </div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span>
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                className="mt-2"
-                isDisabled={isDisabled || !canAddCondition}
-                onClick={() => {
-                  const { lhs, operator } = getFirstAvailableCondition();
-                  items.append({
-                    lhs,
-                    operator,
-                    rhs: ""
-                  });
-                }}
-              >
-                <PlusIcon className="size-4" />
-                Add Condition
-              </Button>
-            </span>
-          </TooltipTrigger>
-          {!canAddCondition && !isDisabled && (
-            <TooltipContent side="top">
-              {allowedConditions.length === 0
-                ? "No conditions available for the selected group of actions."
-                : "All available conditions have been added"}
-            </TooltipContent>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {hasReferenceConditions && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="mt-2"
+              isDisabled={isProjectRefreshing || isTagsFetching}
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: projectKeys.getProjectById(projectId) });
+                if (hasTagCondition) refetchTags();
+              }}
+            >
+              <RefreshCwIcon />
+              Refresh References
+            </Button>
           )}
-        </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  className="mt-2"
+                  isDisabled={isDisabled || !canAddCondition}
+                  onClick={() => {
+                    const { lhs, operator } = getFirstAvailableCondition();
+                    items.append({
+                      lhs,
+                      operator,
+                      rhs: ""
+                    });
+                  }}
+                >
+                  <PlusIcon className="size-4" />
+                  Add Condition
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!canAddCondition && !isDisabled && (
+              <TooltipContent side="top">
+                {allowedConditions.length === 0
+                  ? "No conditions available for the selected group of actions."
+                  : "All available conditions have been added"}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </div>
       </div>
       {incompatibleConditions.length > 0 && (
         <Accordion type="single" collapsible className="mt-3 border-danger/35">
@@ -575,20 +598,25 @@ export const ConditionsFields = ({
                           (unknownSlugs.length > 0 ||
                             isTagLookupUnavailable ||
                             isReferenceRefreshing) && (
-                            <div className="flex items-start gap-2 pb-1 text-sm">
-                              <div className="w-1/4" />
-                              <div className="w-44" />
-                              <div className="grow">
+                            <div className="flex items-start gap-2 pb-1 text-xs">
+                              <div className="hidden w-1/4 xl:block" />
+                              <div className="hidden w-44 xl:block" />
+                              <div
+                                className={twMerge(
+                                  "min-w-0 grow basis-full rounded-md border px-2 py-1 xl:basis-0",
+                                  unknownSlugs.length > 0
+                                    ? "border-warning/20 bg-warning/5"
+                                    : "border-border bg-card"
+                                )}
+                              >
                                 {unknownSlugs.length > 0 ? (
-                                  <p className="flex items-start gap-1 text-warning" role="status">
-                                    <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
-                                    {condition.lhs === "environment"
-                                      ? "Environment"
-                                      : "Secret tag"}{" "}
+                                  <p className="break-words text-warning" role="status">
+                                    <AlertTriangleIcon className="mr-1 inline size-3.5 align-[-0.125em]" />
+                                    {condition.lhs === "environment" ? "Environment" : "Tag"}
+                                    {unknownSlugs.length > 1 ? "s" : ""}{" "}
                                     {unknownSlugs.map((slug) => JSON.stringify(slug)).join(", ")}{" "}
-                                    {unknownSlugs.length === 1 ? "was" : "were"} not found in the
-                                    loaded project values. You can still save this policy for future
-                                    references.
+                                    {unknownSlugs.length === 1 ? "isn't" : "aren't"} in the loaded
+                                    project. You can still save.
                                   </p>
                                 ) : (
                                   <p className="text-muted" role="status">
@@ -597,26 +625,8 @@ export const ConditionsFields = ({
                                       : "Could not check project secret tags. You can still save this policy."}
                                   </p>
                                 )}
-                                {!isReferenceRefreshing && !isTagsFetching && (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="xs"
-                                    onClick={() => {
-                                      if (condition.lhs === "environment") {
-                                        queryClient.invalidateQueries({
-                                          queryKey: projectKeys.getProjectById(projectId)
-                                        });
-                                      } else {
-                                        refetchTags();
-                                      }
-                                    }}
-                                  >
-                                    Refresh References
-                                  </Button>
-                                )}
                               </div>
-                              <div className="w-10" />
+                              <div className="hidden w-10 xl:block" />
                             </div>
                           )}
                       </div>
