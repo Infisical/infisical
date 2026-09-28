@@ -1981,3 +1981,419 @@ a.ifx-card__title:hover .ifx-card__chevron {
 .dark .ifx-avqs__reset:hover {
   color: #fef3c7;
 }
+
+/* CLI reference page (snippets/CLIPage.jsx) */
+.cli-ref {
+  --cli-top: 64px;
+  --cli-page: #ffffff;
+  --cli-ink: #171718;
+  --cli-text: #3f3f46;
+  --cli-muted: #6f6f6f;
+  --cli-line: #ebebeb;
+  --cli-soft: #f7f7f6;
+  --cli-accent: #dbf530;
+  --cli-accent-ink: #5f7000;
+  --cli-accent-soft: #fbfde9;
+  --cli-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  width: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 2.5rem 6rem;
+  container-type: inline-size;
+}
+
+@media (max-width: 767px) {
+  .cli-ref {
+    padding: 0 1rem 4rem;
+  }
+}
+
+.dark .cli-ref {
+  --cli-ink: #f4f4f4;
+  --cli-text: #adaeb0;
+  --cli-muted: #707174;
+  --cli-line: #1e1f24;
+  --cli-soft: #101114;
+  --cli-accent-ink: #dbf530;
+  --cli-accent-soft: #1b1d0d;
+  --cli-page: #08090b;
+}
+
+.cli-ref__hero {
+  padding: 3rem 0 2.5rem;
+  border-bottom: 1px solid var(--cli-line);
+}
+
+.cli-ref__title {
+  margin: 0;
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 2.25rem;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--cli-ink);
+}
+
+.cli-ref__description {
+  margin-top: 0.75rem;
+  max-width: 42rem;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--cli-muted);
+}
+
+.cli-cmd {
+  --cli-head: 3.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem 2rem;
+  padding: 2rem 0 0;
+  border-bottom: 1px solid var(--cli-line);
+  scroll-margin-top: var(--cli-top);
+}
+
+@container (min-width: 720px) {
+  .cli-cmd {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 21rem);
+    column-gap: 2.5rem;
+  }
+
+  .cli-cmd__body,
+  .cli-cmd__examples {
+    padding-bottom: 3rem;
+  }
+
+  .cli-cmd__examples-inner {
+    position: sticky;
+    top: calc(var(--cli-top) + var(--cli-head) + 1.5rem);
+  }
+}
+
+.cli-cmd__title {
+  grid-column: 1 / -1;
+  position: sticky;
+  top: var(--cli-top);
+  z-index: 2;
+  margin: 0 -2.5rem;
+  padding: 0.75rem 2.5rem;
+  background-color: var(--cli-page);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease-in-out;
+  font-family: var(--cli-mono);
+  font-size: 1.125rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--cli-muted);
+}
+
+.cli-cmd__title {
+  overflow-wrap: anywhere;
+}
+
+/* With room for two columns, keep each flag and argument on one line so "[--" never ends a
+   line. On narrow screens a single token can be wider than the screen, so any break is allowed. */
+@container (min-width: 720px) {
+  .cli-ref .cli-cmd__title a {
+    white-space: nowrap;
+  }
+}
+
+.cli-cmd--stuck .cli-cmd__title {
+  border-bottom-color: var(--cli-line);
+}
+
+@media (max-width: 767px) {
+  .cli-cmd__title {
+    margin: 0 -1rem;
+    padding: 0.75rem 1rem;
+  }
+}
+
+.cli-usage__bin {
+  font-weight: 400;
+  color: var(--cli-muted);
+}
+
+.cli-ref .cli-cmd__title a {
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.cli-ref .cli-cmd__title a:hover {
+  color: var(--cli-accent-ink);
+  border-bottom-color: currentColor;
+}
+
+.cli-usage__cmd {
+  font-weight: 600;
+  color: var(--cli-ink);
+}
+
+.cli-usage__arg {
+  font-weight: 400;
+  color: var(--cli-ink);
+}
+
+.cli-usage__flag {
+  font-weight: 400;
+  color: var(--cli-text);
+}
+
+/* Mintlify raises its anchors with z-index: 10; isolating the columns keeps them under the
+   sticky heading. The bottom spacing lives here rather than on .cli-cmd because a sticky
+   heading stops at its section's padding edge, and it should ride down to the divider. */
+.cli-cmd__body,
+.cli-cmd__examples {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+/* Flag names and help text can hold long unbroken strings that are wider than a phone. */
+.cli-cmd__body {
+  overflow-wrap: anywhere;
+}
+
+.cli-cmd > :last-child {
+  padding-bottom: 3rem;
+}
+
+.cli-cmd__description {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--cli-text);
+}
+
+.cli-cmd__description [data-as="p"],
+.cli-cmd__description p {
+  display: block;
+  margin: 0;
+}
+
+.cli-cmd__description [data-as="p"] + [data-as="p"],
+.cli-cmd__description p + p {
+  margin-top: 0.875rem;
+}
+
+.cli-cmd__table {
+  margin-top: 2rem;
+  scroll-margin-top: calc(var(--cli-top) + var(--cli-head) + 1rem);
+}
+
+.cli-cmd__table-title {
+  margin: 0 0 0.25rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--cli-line);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--cli-ink);
+}
+
+.cli-row {
+  padding: 0.875rem 0.75rem;
+  margin: 0 -0.75rem;
+  border-bottom: 1px solid var(--cli-line);
+  scroll-margin-top: calc(var(--cli-top) + var(--cli-head) + 1rem);
+}
+
+.cli-row:last-child {
+  border-bottom: 0;
+}
+
+.cli-row:target,
+.cli-row--flash {
+  animation: cli-row-flash 1.6s ease-in-out;
+}
+
+@keyframes cli-row-flash {
+  0%,
+  40% {
+    background-color: var(--cli-accent-soft);
+    box-shadow: inset 2px 0 0 var(--cli-accent);
+  }
+
+  100% {
+    background-color: transparent;
+    box-shadow: inset 2px 0 0 transparent;
+  }
+}
+
+.cli-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.cli-row__name {
+  font-family: var(--cli-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--cli-ink);
+  text-decoration: none;
+}
+
+.cli-row__name:hover {
+  color: var(--cli-accent-ink);
+}
+
+.cli-row__value {
+  font-weight: 400;
+  color: var(--cli-muted);
+}
+
+.cli-row__meta {
+  font-size: 0.75rem;
+  color: var(--cli-muted);
+}
+
+.cli-row__meta--required {
+  color: #dc2626;
+}
+
+.cli-row__meta--deprecated {
+  color: #a16207;
+}
+
+.cli-row__doc,
+.cli-row__default {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--cli-text);
+}
+
+.cli-row__default {
+  color: var(--cli-muted);
+}
+
+.cli-ref .cli-cmd code:not(.cli-code code) {
+  padding: 0.0625rem 0.3125rem;
+  font-family: var(--cli-mono);
+  font-size: 0.85em;
+  color: var(--cli-ink);
+  background-color: var(--cli-soft);
+  border: 1px solid var(--cli-line);
+}
+
+.cli-row__doc a,
+.cli-cmd__description a {
+  color: var(--cli-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cli-example {
+  margin: 0;
+  background-color: #101114;
+  border: 1px solid #1e1f24;
+}
+
+.cli-example + .cli-example {
+  margin-top: 1rem;
+}
+
+.cli-example__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.875rem;
+  border-bottom: 1px solid #1e1f24;
+  font-size: 0.75rem;
+  color: #adaeb0;
+}
+
+.cli-example__copy {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.75rem;
+  color: #707174;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.cli-example__copy:hover {
+  color: #dbf530;
+}
+
+.cli-code {
+  margin: 0;
+  padding: 0.875rem;
+  overflow-x: auto;
+  background: transparent;
+  font-family: var(--cli-mono);
+  font-size: 0.75rem;
+  line-height: 1.7;
+  color: #dfdfdf;
+  white-space: pre;
+}
+
+.cli-code code {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+.cli-code--output {
+  border-top: 1px dashed #26272b;
+  color: #8b8c8f;
+}
+
+.cli-code__bin {
+  color: #dbf530;
+}
+
+.cli-code__flag {
+  color: #9ee067;
+}
+
+.cli-code__string {
+  color: #f7c97e;
+}
+
+@container (min-width: 960px) {
+  .cli-cmd {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 24rem);
+    column-gap: 3rem;
+  }
+}
+
+.cli-code__comment,
+.cli-code__muted {
+  color: #707174;
+}
+
+/* CLI command stubs in the sidebar (cli-reference-nav.js) link to headings on /cli/reference.
+   Mintlify marks them as external links; they are not. */
+#sidebar-content a[href*="/cli/reference#"] > div > div + div {
+  display: none;
+}
+
+#sidebar-content li > a.cli-nav-active,
+#sidebar-content button.cli-nav-active-group {
+  background-color: rgb(38 39 43 / 0.1);
+  color: #26272b;
+  text-shadow: -0.2px 0 0 currentColor, 0.2px 0 0 currentColor;
+}
+
+.dark #sidebar-content li > a.cli-nav-active,
+.dark #sidebar-content button.cli-nav-active-group {
+  background-color: rgb(219 245 48 / 0.1);
+  color: #dbf530;
+}
+
+html[data-cli-nav] #sidebar-content li > a[aria-current="page"] {
+  background-color: transparent;
+  color: #3f3f3f;
+  text-shadow: none;
+}
+
+html.dark[data-cli-nav] #sidebar-content li > a[aria-current="page"] {
+  color: #9f9f9f;
+}
