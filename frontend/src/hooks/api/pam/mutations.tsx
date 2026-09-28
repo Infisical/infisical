@@ -866,7 +866,7 @@ export const useBreakGlassPamAccessRequest = () => {
   return useMutation({
     mutationFn: async ({ requestId, bypassReason }: TBreakGlassPamAccessRequestDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/approval-policies/pam-access/requests/${requestId}/approve`,
+        `/api/v1/approval-policies/pam-access/requests/${requestId}/break-glass`,
         { bypassReason }
       );
       return data;

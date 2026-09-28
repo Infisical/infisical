@@ -526,8 +526,71 @@ export const registerApprovalPolicyEndpoints = ({
         requestId: z.string().uuid()
       }),
       body: z.object({
-        comment: z.string().optional(),
-        bypassReason: z.string().min(10).max(500).optional()
+        comment: z.string().optional()
+      }),
+      response: {
+        200: z.object({
+          request: requestResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth(requestAuthModes),
+    handler: async (req) => {
+      const { request } = await server.services.approvalPolicy.approveRequest(
+        req.params.requestId,
+        req.body,
+        req.permission,
+        policyType
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: request.projectId,
+        event: (await server.services.approvalPolicy.buildAuditEvent({
+          action: ApprovalAuditAction.RequestReviewed,
+          request,
+          actorId: req.permission.id,
+          comment: req.body.comment
+        })) ?? {
+          type: EventType.APPROVAL_REQUEST_APPROVE,
+          metadata: {
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            comment: req.body.comment,
+            ...getApprovalRequestSubjectMetadata(request)
+          }
+        }
+      });
+
+      const telemetry = await server.services.approvalPolicy.buildTelemetryEvent({
+        action: ApprovalAuditAction.RequestReviewed,
+        request,
+        distinctId: getTelemetryDistinctId(req),
+        decision: "approved"
+      });
+      if (telemetry) await sendTelemetry(telemetry);
+
+      return { request };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/requests/:requestId/break-glass",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "breakGlassApprovalRequest",
+      description: "Self-approve an approval request, bypassing its policy",
+      params: z.object({
+        requestId: z.string().uuid()
+      }),
+      body: z.object({
+        bypassReason: z.string().min(10).max(500)
       }),
       response: {
         200: z.object({
@@ -549,11 +612,10 @@ export const registerApprovalPolicyEndpoints = ({
         orgId: req.permission.orgId,
         projectId: request.projectId,
         event: (await server.services.approvalPolicy.buildAuditEvent({
-          action: bypassMetadata ? ApprovalAuditAction.RequestBypassed : ApprovalAuditAction.RequestReviewed,
+          action: ApprovalAuditAction.RequestBypassed,
           request,
           grantId: bypassMetadata?.grantId,
           actorId: req.permission.id,
-          comment: req.body.comment,
           bypassReason: req.body.bypassReason
         })) ?? {
           type: EventType.APPROVAL_REQUEST_APPROVE,
@@ -562,14 +624,14 @@ export const registerApprovalPolicyEndpoints = ({
             approvalRequestId: request.id,
             requesterName: request.requesterName,
             requesterEmail: request.requesterEmail,
-            comment: req.body.comment,
+            comment: req.body.bypassReason,
             ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });
 
       const telemetry = await server.services.approvalPolicy.buildTelemetryEvent({
-        action: bypassMetadata ? ApprovalAuditAction.RequestBypassed : ApprovalAuditAction.RequestReviewed,
+        action: ApprovalAuditAction.RequestBypassed,
         request,
         distinctId: getTelemetryDistinctId(req),
         decision: "approved"
