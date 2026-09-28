@@ -47,6 +47,7 @@ import {
   TGcpAuthMethodConfig,
   TKubernetesAuthMethodConfig
 } from "../resource-auth-method/resource-auth-method-types";
+import { issueGatewayServerCertificate } from "./gateway-v2-certificate-fns";
 import {
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
@@ -712,47 +713,13 @@ export const gatewayV2ServiceFactory = ({
       ["sign"]
     );
 
-    const gatewayServerKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const gatewayServerCertIssuedAt = new Date();
-    const gatewayServerCertExpireAt = new Date(new Date().setDate(new Date().getDate() + 1));
-    const gatewayServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(gatewayServerKeys.privateKey);
-
-    const subjectAlternativeNames: x509.JsonGeneralName[] = [
-      { type: "dns", value: "localhost" },
-      { type: "ip", value: "127.0.0.1" },
-      { type: "ip", value: "::1" }
-    ];
-    if (gateway.directAddress) {
-      const { host } = parseDirectAddress(gateway.directAddress);
-      subjectAlternativeNames.push(net.isIP(host) ? { type: "ip", value: host } : { type: "dns", value: host });
-    }
-
-    const gatewayServerCertExtensions: x509.Extension[] = [
-      new x509.BasicConstraintsExtension(false),
-      await x509.AuthorityKeyIdentifierExtension.create(gatewayServerCaCert, false),
-      await x509.SubjectKeyIdentifierExtension.create(gatewayServerKeys.publicKey),
-      new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
-      new x509.KeyUsagesExtension(
-        // eslint-disable-next-line no-bitwise
-        x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] | x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT],
-        true
-      ),
-      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
-      new x509.SubjectAlternativeNameExtension(subjectAlternativeNames)
-    ];
-
-    const gatewayServerSerialNumber = createSerialNumber();
-    const gatewayServerCertificate = await x509.X509CertificateGenerator.create({
-      serialNumber: gatewayServerSerialNumber,
-      subject: `O=${orgId},CN=Gateway`,
-      issuer: gatewayServerCaCert.subject,
-      notBefore: getNotBeforeWithClockSkew(gatewayServerCertIssuedAt),
-      notAfter: getNotAfterWithClockSkew(gatewayServerCertExpireAt),
-      signingKey: gatewayServerCaPrivateKey,
-      publicKey: gatewayServerKeys.publicKey,
-      signingAlgorithm: alg,
-      extensions: gatewayServerCertExtensions
-    });
+    const { certificate: gatewayServerCertificate, privateKey: gatewayServerCertPrivateKey } =
+      await issueGatewayServerCertificate({
+        orgId,
+        gateway,
+        caCertificate: gatewayServerCaCert,
+        caPrivateKey: gatewayServerCaPrivateKey
+      });
 
     const relayCredentials = relayName
       ? await relayService.getCredentialsForGateway({
