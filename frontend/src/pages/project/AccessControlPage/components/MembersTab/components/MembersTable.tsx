@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { subject } from "@casl/ability";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
@@ -525,7 +526,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                               {!isCertManager && (
                                 <ProjectPermissionCan
                                   I={ProjectPermissionMemberActions.AssumePrivileges}
-                                  a={ProjectPermissionSub.Member}
+                                  a={subject(ProjectPermissionSub.Member, { userEmail: u?.email })}
                                 >
                                   {(isAllowed) => (
                                     <Tooltip>

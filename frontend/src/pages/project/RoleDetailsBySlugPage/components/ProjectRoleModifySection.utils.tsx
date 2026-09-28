@@ -482,7 +482,7 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     [ProjectPermissionMemberActions.Create]: [],
     [ProjectPermissionMemberActions.Edit]: [],
     [ProjectPermissionMemberActions.Delete]: [],
-    [ProjectPermissionMemberActions.AssumePrivileges]: [],
+    [ProjectPermissionMemberActions.AssumePrivileges]: ["userEmail"],
     [ProjectPermissionMemberActions.GrantPrivileges]: [
       "userEmail",
       "assignableRole",
