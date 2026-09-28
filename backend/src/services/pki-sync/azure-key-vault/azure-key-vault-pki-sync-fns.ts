@@ -569,6 +569,15 @@ export const azureKeyVaultPkiSyncFactory = ({
 
           return { key, success: true, response: response.data as unknown };
         } catch (error) {
+          if (certificateId) {
+            await certificateSyncDAL.updateSyncStatus(
+              pkiSync.id,
+              certificateId,
+              CertificateSyncStatus.Failed,
+              error instanceof Error ? error.message : String(error)
+            );
+          }
+
           if (error instanceof AxiosError) {
             const errorMessage =
               error.response?.data && typeof error.response.data === "object" && "error" in error.response.data

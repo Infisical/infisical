@@ -77,24 +77,11 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
   ): Promise<Set<string>> => {
     try {
       if (externalIdentifiers.length === 0) return new Set();
-      const knex = tx || db;
-      const excludedSyncRootOrgId = knex(TableName.PkiSync)
-        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.PkiSync}.projectId`)
-        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
-        .where(`${TableName.PkiSync}.id`, excludePkiSyncId)
-        .select(knex.raw("COALESCE(??, ??)", [`${TableName.Organization}.rootOrgId`, `${TableName.Organization}.id`]));
-      const docs = (await knex(TableName.CertificateSync)
+      const docs = (await (tx || db)(TableName.CertificateSync)
         .join(TableName.PkiSync, `${TableName.PkiSync}.id`, `${TableName.CertificateSync}.pkiSyncId`)
-        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.PkiSync}.projectId`)
-        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
         .whereIn(`${TableName.CertificateSync}.externalIdentifier`, externalIdentifiers)
         .where(`${TableName.PkiSync}.destination`, destination)
         .whereNot(`${TableName.CertificateSync}.pkiSyncId`, excludePkiSyncId)
-        .whereRaw("COALESCE(??, ??) = (?)", [
-          `${TableName.Organization}.rootOrgId`,
-          `${TableName.Organization}.id`,
-          excludedSyncRootOrgId
-        ])
         .select(`${TableName.CertificateSync}.externalIdentifier`)) as Array<{ externalIdentifier: string | null }>;
       return new Set(docs.map((doc) => doc.externalIdentifier).filter((v): v is string => Boolean(v)));
     } catch (error) {

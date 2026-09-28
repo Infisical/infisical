@@ -522,15 +522,12 @@ export const chefPkiSyncFactory = ({
         certificateId = certificate.certificateId;
         errorMessage = error instanceof Error ? error.message : String(error);
 
-        const existingSyncRecord = syncRecordsByCertId.get(certificateId);
-        if (existingSyncRecord) {
-          await certificateSyncDAL.updateSyncStatus(
-            pkiSync.id,
-            certificateId,
-            CertificateSyncStatus.Failed,
-            errorMessage
-          );
-        }
+        await certificateSyncDAL.updateSyncStatus(
+          pkiSync.id,
+          certificateId,
+          CertificateSyncStatus.Failed,
+          errorMessage
+        );
       })
     );
 
