@@ -14,7 +14,7 @@ Go to **Settings** under Agent Vault and select **Set Up Session Logs** on the *
 1. Turn on **Enable**.
 2. Pick the **AWS Connection** whose credentials write the records. It can be one from your organization or one created in Agent Vault, or select **Create New Connection** to add one.
 3. Enter the **Bucket** and **Region** of an S3 bucket you've already created.
-4. Optionally set a **Key Prefix**, so session log objects sit under one path in a bucket you use for other things.
+4. Optionally set a **Key Prefix**, so session logs sit under one path in a bucket you use for other things.
 5. Select **Save**.
 
 <Frame>
@@ -61,7 +61,7 @@ The connection needs an IAM policy and the bucket needs a CORS rule. Select **Vi
     ]
     ```
 
-    If you're on EU Cloud or a self-hosted instance, replace `https://app.infisical.com` with `https://eu.infisical.com` or your instance's URL. Without this rule the settings still save, but your browser can't load any session's logs.
+    If you're on EU Cloud or a self-hosted instance, replace `https://app.infisical.com` with `https://eu.infisical.com` or your instance's URL.
   </Tab>
 </Tabs>
 
@@ -179,7 +179,7 @@ Request and response bodies, headers, and query strings aren't recorded.
 
 ### Connections
 
-Session logs use one AWS connection at a time, which you pick in the **Session Logs** dialog. It can be one created in Agent Vault or one your organization already has under **Integrations**.
+Session logs use one AWS connection at a time, which you pick in the **Session Logs** dialog. It can be one created in Agent Vault or one your organization already has under **Integrations**. See [AWS connection](/integrations/app-connections/aws) for how to create one.
 
 To update its AWS credentials, open the menu next to **Configure** on the **Session Logs** card and select **Edit AWS Credentials**. For an organization connection, update the credentials under **Integrations** instead.
 
