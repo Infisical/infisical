@@ -94,3 +94,26 @@ export const groupSessionLogGaps = (gaps: TAgentVaultSessionLogGap[]) => {
   );
   return [...byReason].map(([reason, recordCount]) => ({ reason, recordCount }));
 };
+
+// Records hold no query string, so a pasted URL is cut back to the host and path it was sent to.
+export const sessionLogSearchTerm = (search: string) =>
+  search
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/[?#].*$/, "");
+
+export const matchesSessionLogSearch = (record: TAgentVaultSessionLogRecord, search: string) => {
+  const term = sessionLogSearchTerm(search);
+  if (!term) return true;
+  const host = record.host.toLowerCase();
+  const path = record.path.toLowerCase();
+  return [
+    host,
+    path,
+    record.method.toLowerCase(),
+    (record.service ?? "").toLowerCase(),
+    `${host}${path}`,
+    `${host}:${record.port}${path}`
+  ].some((field) => field.includes(term));
+};

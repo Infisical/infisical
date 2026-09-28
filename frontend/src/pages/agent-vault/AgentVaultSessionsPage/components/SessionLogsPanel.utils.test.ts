@@ -4,7 +4,12 @@ import { describe, it } from "vitest";
 import { AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultSessionLogRecord } from "@app/hooks/api/agentVault/types";
 
-import { chunkIdTime, findRowShift, groupSessionLogGaps } from "./SessionLogsPanel.utils";
+import {
+  chunkIdTime,
+  findRowShift,
+  groupSessionLogGaps,
+  matchesSessionLogSearch
+} from "./SessionLogsPanel.utils";
 
 const record = (seq: number): TAgentVaultSessionLogRecord => ({
   ts: new Date(Date.UTC(2026, 8, 23, 10, 0, 0, seq)).toISOString(),
@@ -80,5 +85,39 @@ describe("groupSessionLogGaps", () => {
         { reason: "missing", recordCount: 3 }
       ]
     );
+  });
+});
+
+describe("matchesSessionLogSearch", () => {
+  const repoRequest = { ...record(1), path: "/repos/infisical/cli" };
+
+  it("matches a host and path pasted together", () => {
+    assert.equal(matchesSessionLogSearch(repoRequest, "api.github.com/repos/infisical"), true);
+  });
+
+  it("ignores the scheme of a pasted URL", () => {
+    assert.equal(matchesSessionLogSearch(repoRequest, "https://api.github.com/repos"), true);
+    assert.equal(matchesSessionLogSearch(repoRequest, "HTTP://api.github.com"), true);
+  });
+
+  it("matches a host with its port", () => {
+    assert.equal(matchesSessionLogSearch(repoRequest, "api.github.com:443/repos"), true);
+    assert.equal(matchesSessionLogSearch(repoRequest, "api.github.com:8443/repos"), false);
+  });
+
+  it("ignores the query string and fragment of a pasted URL", () => {
+    assert.equal(
+      matchesSessionLogSearch(repoRequest, "https://api.github.com/repos/infisical/cli?page=2"),
+      true
+    );
+    assert.equal(matchesSessionLogSearch(repoRequest, "api.github.com/repos#readme"), true);
+  });
+
+  it("matches everything when only a scheme is typed", () => {
+    assert.equal(matchesSessionLogSearch(repoRequest, "https://"), true);
+  });
+
+  it("does not match a path on a different host", () => {
+    assert.equal(matchesSessionLogSearch(repoRequest, "gitlab.com/repos"), false);
   });
 });

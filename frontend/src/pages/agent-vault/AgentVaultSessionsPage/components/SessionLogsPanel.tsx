@@ -50,7 +50,12 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
 import { DECISION_PRESENTATION, hostPatternFor, SessionLogRow } from "./SessionLogRow";
-import { chunkIdTime, groupSessionLogGaps } from "./SessionLogsPanel.utils";
+import {
+  chunkIdTime,
+  groupSessionLogGaps,
+  matchesSessionLogSearch,
+  sessionLogSearchTerm
+} from "./SessionLogsPanel.utils";
 import { useNewRequestsCounter } from "./useNewRequestsCounter";
 import { useSessionLogsLiveTail } from "./useSessionLogsLiveTail";
 
@@ -174,27 +179,24 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const proxyNames = useSeenProxyNames(session.id, pages);
   const proxies = [...proxyNames.entries()].map(([id, name]) => ({ id, name }));
 
-  const visible = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return records.filter((record) => {
-      if (range) {
-        const at = Date.parse(record.ts);
-        if (at < range.startDate.getTime() || at > range.endDate.getTime()) return false;
-      }
-      if (decisionFilter !== "all" && record.decision !== decisionFilter) return false;
-      if (proxyFilter !== ALL_PROXIES && record.proxyId !== proxyFilter) return false;
-      if (!term) return true;
-      return (
-        record.host.toLowerCase().includes(term) ||
-        record.path.toLowerCase().includes(term) ||
-        record.method.toLowerCase().includes(term) ||
-        (record.service ?? "").toLowerCase().includes(term)
-      );
-    });
-  }, [records, search, decisionFilter, proxyFilter, range]);
+  const visible = useMemo(
+    () =>
+      records.filter((record) => {
+        if (range) {
+          const at = Date.parse(record.ts);
+          if (at < range.startDate.getTime() || at > range.endDate.getTime()) return false;
+        }
+        if (decisionFilter !== "all" && record.decision !== decisionFilter) return false;
+        if (proxyFilter !== ALL_PROXIES && record.proxyId !== proxyFilter) return false;
+        return matchesSessionLogSearch(record, search);
+      }),
+    [records, search, decisionFilter, proxyFilter, range]
+  );
 
   const hasBrowserFilter =
-    Boolean(search.trim()) || decisionFilter !== "all" || proxyFilter !== ALL_PROXIES;
+    Boolean(sessionLogSearchTerm(search)) ||
+    decisionFilter !== "all" ||
+    proxyFilter !== ALL_PROXIES;
   const isFiltered = hasBrowserFilter || Boolean(range);
 
   const searched = useMemo(
@@ -207,7 +209,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   );
 
   const filterKey = [
-    search.trim(),
+    sessionLogSearchTerm(search),
     decisionFilter,
     proxyFilter,
     range?.startDate.getTime(),
@@ -218,8 +220,14 @@ export const SessionLogsPanel = ({ session }: Props) => {
     setAllowance({ filterKey, until: searched + FILTER_SEARCH_STEP });
   }
   const searchOlder = () => setAllowance({ filterKey, until: searched + FILTER_SEARCH_STEP });
+  // A session whose loaded chunks were all unreadable walks back in the same steps as a filtered
+  // search, so a bucket that refuses every chunk can't pull the whole session.
   const isSearchPaused =
-    hasBrowserFilter && Boolean(hasNextPage) && !isTruncated && searched >= allowance.until;
+    (hasBrowserFilter || records.length === 0) &&
+    Boolean(hasNextPage) &&
+    !isTruncated &&
+    searched >= allowance.until;
+  const isFirstPageLoaded = Boolean(data?.pages.length) && !isPlaceholderData;
 
   const lastPage = data?.pages[data.pages.length - 1];
   const oldestChunkId = lastPage?.nextCursor ? lastPage.chunks.at(-1)?.chunkId : undefined;
@@ -236,16 +244,24 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const lastVisibleIndex = virtualRows.length ? virtualRows[virtualRows.length - 1].index : 0;
   useEffect(() => {
-    if (!hasNextPage || isFetchingNextPage || isPlaceholderData || isTruncated || isSearchPaused)
+    if (
+      !hasNextPage ||
+      isFetchingNextPage ||
+      isFetchNextPageError ||
+      isPlaceholderData ||
+      isTruncated ||
+      isSearchPaused
+    )
       return;
-    if (records.length > 0 && lastVisibleIndex >= visible.length - 30)
+    if (isFirstPageLoaded && lastVisibleIndex >= visible.length - 30)
       fetchNextPage().catch(() => {});
   }, [
     lastVisibleIndex,
     visible.length,
-    records.length,
+    isFirstPageLoaded,
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError,
     isPlaceholderData,
     isTruncated,
     isSearchPaused,
@@ -268,13 +284,14 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const isOpening = (isPending || isPlaceholderData) && visible.length === 0;
   const isSearchFailed = isFiltered && isFetchNextPageError;
-  const isStillSearching =
-    isFiltered &&
-    records.length > 0 &&
+  const isWalkingBack =
+    isFirstPageLoaded &&
     Boolean(hasNextPage) &&
     !isSearchPaused &&
     !isTruncated &&
-    !isSearchFailed;
+    !isFetchNextPageError;
+  const isStillSearching = isFiltered && isWalkingBack;
+  const isStillLoading = !isFiltered && records.length === 0 && isWalkingBack;
 
   let noRecordsTitle: string;
   let noRecordsDescription: string;
@@ -288,14 +305,23 @@ export const SessionLogsPanel = ({ session }: Props) => {
   } else if (isSearchFailed) {
     noRecordsTitle = "Failed to search older requests";
     noRecordsDescription = "Something went wrong while loading older requests.";
+  } else if (isFetchNextPageError) {
+    noRecordsTitle = "Couldn't load older requests";
+    noRecordsDescription = "";
   } else if (isStillSearching) {
     noRecordsTitle = "Searching older requests";
     noRecordsDescription = "";
-  } else if (hasChunks && records.length === 0) {
+  } else if (isStillLoading) {
+    noRecordsTitle = "Loading requests";
+    noRecordsDescription = "";
+  } else if (hasChunks && records.length === 0 && !hasNextPage) {
     noRecordsTitle = "Session logs unavailable";
     noRecordsDescription = "None of this session's logs could be loaded.";
   } else if (isSearchPaused && searchedBackTo) {
-    noRecordsTitle = `No matching requests since ${format(searchedBackTo, "MMM d, h:mm a")}`;
+    noRecordsTitle = `No ${hasBrowserFilter ? "matching" : "readable"} requests since ${format(
+      searchedBackTo,
+      "MMM d, h:mm a"
+    )}`;
     noRecordsDescription = "Older requests have not been searched yet.";
   } else if (range && (!hasChunks || !hasBrowserFilter)) {
     noRecordsTitle = "No requests in this range";
@@ -510,9 +536,10 @@ export const SessionLogsPanel = ({ session }: Props) => {
                 </span>
               ))}
             </div>
-            {gaps.some((gap) => gap.reason === "fetch" || gap.reason === "refused") && (
-              <AlertAction>{retryButton}</AlertAction>
-            )}
+            {!isFetchNextPageError &&
+              gaps.some((gap) => gap.reason === "fetch" || gap.reason === "refused") && (
+                <AlertAction>{retryButton}</AlertAction>
+              )}
           </AlertDescription>
         </Alert>
       )}
@@ -520,7 +547,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
       {visible.length === 0 ? (
         <Empty className="border">
           <EmptyHeader>
-            {(isOpening || isStillSearching) && <Spinner size="sm" />}
+            {(isOpening || isStillSearching || isStillLoading) && <Spinner size="sm" />}
             {noRecordsLiveState && <LiveStateBadge state={noRecordsLiveState} />}
             <EmptyTitle>{noRecordsTitle}</EmptyTitle>
             {noRecordsDescription && <EmptyDescription>{noRecordsDescription}</EmptyDescription>}
@@ -530,19 +557,19 @@ export const SessionLogsPanel = ({ session }: Props) => {
               Check Now
             </Button>
           )}
-          {isSearchPaused && !isSearchFailed && (
+          {isSearchPaused && !isFetchNextPageError && (
             <Button variant="outline" size="sm" onClick={searchOlder}>
               Search Older Requests
             </Button>
           )}
-          {isSearchFailed && (
+          {isFetchNextPageError && (
             <Button
               variant="outline"
               size="sm"
               isPending={isFetchingNextPage}
               onClick={() => fetchNextPage().catch(() => {})}
             >
-              Search Again
+              {isSearchFailed ? "Search Again" : "Retry"}
             </Button>
           )}
           {isLoadError && (
@@ -617,7 +644,10 @@ export const SessionLogsPanel = ({ session }: Props) => {
               );
             })}
             {padBottom > 0 && <tr style={{ height: padBottom }} />}
-            {(isFetchingNextPage || isSearchPaused || (!hasNextPage && overflows)) && (
+            {(isFetchingNextPage ||
+              isFetchNextPageError ||
+              isSearchPaused ||
+              (!hasNextPage && overflows)) && (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={columnCount} className="text-center text-xs text-muted">
                   {isFetchingNextPage && (
@@ -626,15 +656,33 @@ export const SessionLogsPanel = ({ session }: Props) => {
                       Loading more
                     </span>
                   )}
-                  {!isFetchingNextPage && isSearchPaused && searchedBackTo && (
+                  {!isFetchingNextPage && isFetchNextPageError && (
                     <span className="flex items-center justify-center gap-1">
-                      Searched back to {format(searchedBackTo, "MMM d, h:mm a")} ·
-                      <Button variant="link" size="xs" onClick={searchOlder}>
-                        Search Older Requests
+                      Couldn&apos;t load older requests ·
+                      <Button
+                        variant="link"
+                        size="xs"
+                        onClick={() => fetchNextPage().catch(() => {})}
+                      >
+                        Retry
                       </Button>
                     </span>
                   )}
-                  {!isFetchingNextPage && !isSearchPaused && "No more requests"}
+                  {!isFetchingNextPage &&
+                    !isFetchNextPageError &&
+                    isSearchPaused &&
+                    searchedBackTo && (
+                      <span className="flex items-center justify-center gap-1">
+                        Searched back to {format(searchedBackTo, "MMM d, h:mm a")} ·
+                        <Button variant="link" size="xs" onClick={searchOlder}>
+                          Search Older Requests
+                        </Button>
+                      </span>
+                    )}
+                  {!isFetchingNextPage &&
+                    !isFetchNextPageError &&
+                    !isSearchPaused &&
+                    "No more requests"}
                 </TableCell>
               </TableRow>
             )}
