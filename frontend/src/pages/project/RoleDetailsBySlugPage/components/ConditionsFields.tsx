@@ -368,10 +368,10 @@ export const ConditionsFields = ({
               knownSlugs
                 ? [
                     ...new Set(
-                      condition.rhs
-                        .split(",")
-                        .map((slug) => slug.trim())
-                        .filter(Boolean)
+                      condition.operator === PermissionConditionOperators.$IN ||
+                      condition.operator === PermissionConditionOperators.$ALL
+                        ? condition.rhs.split(",")
+                        : [condition.rhs]
                     )
                   ].filter((slug) => !knownSlugs.includes(slug))
                 : [];
@@ -585,7 +585,7 @@ export const ConditionsFields = ({
                                     {condition.lhs === "environment"
                                       ? "Environment"
                                       : "Secret tag"}{" "}
-                                    {unknownSlugs.map((slug) => `“${slug}”`).join(", ")}{" "}
+                                    {unknownSlugs.map((slug) => JSON.stringify(slug)).join(", ")}{" "}
                                     {unknownSlugs.length === 1 ? "was" : "were"} not found in the
                                     loaded project values. You can still save this policy for future
                                     references.
