@@ -32,11 +32,18 @@ const AgentVaultAwsConnectionCreateSchema = ValidateAwsConnectionCredentialsSche
   })
 );
 
+// Agent Vault never shows its project ID, so its connections don't carry one.
+const [AssumeRoleConnectionSchema, AccessKeyConnectionSchema] = SanitizedAwsConnectionSchema.options;
+const AgentVaultAwsConnectionSchema = z.discriminatedUnion("method", [
+  AssumeRoleConnectionSchema.omit({ projectId: true }).describe(AssumeRoleConnectionSchema.description ?? ""),
+  AccessKeyConnectionSchema.omit({ projectId: true }).describe(AccessKeyConnectionSchema.description ?? "")
+]);
+
 export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodProvider) => {
   const ctx = buildAppConnectionRouteContext({
     server,
     app: AppConnection.AWS,
-    sanitizedResponseSchema: SanitizedAwsConnectionSchema,
+    sanitizedResponseSchema: AgentVaultAwsConnectionSchema,
     operationIdPrefix: "AgentVault",
     tags: [ApiDocsTags.AgentVaultAppConnections]
   });

@@ -1297,8 +1297,12 @@ describe("Agent Vault V1 Router", async () => {
         projectId: seedData1.project.id
       });
       expect(created.statusCode, created.payload).toBe(200);
-      const ownConnection = created.json().appConnection as { id: string; projectId: string };
-      expect(ownConnection.projectId).toBe(projectId);
+      const ownConnection = created.json().appConnection as { id: string };
+      expect(ownConnection).not.toHaveProperty("projectId");
+      const ownRow = (await testDb("app_connections").where({ id: ownConnection.id }).first()) as
+        | { projectId: string }
+        | undefined;
+      expect(ownRow?.projectId).toBe(projectId);
 
       const listed = await inject("GET", "/api/v1/agent-vault/app-connections/aws");
       expect(listed.statusCode).toBe(200);
