@@ -120,7 +120,8 @@ export const useDeleteCertTemplateV2 = () => {
   return useMutation<TCertificateTemplate, object, TDeleteCertificateTemplateV2DTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.delete<{ certificateTemplate: TCertificateTemplate }>(
-        `/api/v2/pki/certificate-templates/${dto.templateName}`
+        `/api/v2/pki/certificate-templates/${dto.templateName}`,
+        { data: { projectId: dto.projectId } }
       );
       return data.certificateTemplate;
     },

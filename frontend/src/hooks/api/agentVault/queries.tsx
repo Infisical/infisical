@@ -8,6 +8,8 @@ import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
   TAgentVaultMember,
+  TAgentVaultProductActor,
+  TAgentVaultProductMember,
   TAgentVaultProductMemberOf,
   TAgentVaultProxy,
   TAgentVaultSession,
@@ -46,9 +48,19 @@ export const agentVaultKeys = {
     accessBundleId: string,
     params?: Omit<TListAgentVaultMembersDTO, "actorType">
   ) => [...agentVaultKeys.accessBundleMembers(orgId, accessBundleId), params] as const,
+  // Nested under accessBundleMembers() so a grant invalidates the candidate list too.
+  availableAccessBundleMemberList: (
+    orgId: string,
+    accessBundleId: string,
+    params?: Omit<TListAgentVaultMembersDTO, "actorType">
+  ) => [...agentVaultKeys.accessBundleMembers(orgId, accessBundleId), "available", params] as const,
   members: (orgId: string) => [...agentVaultKeys.all(orgId), "members"] as const,
   memberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
-    [...agentVaultKeys.members(orgId), params] as const
+    [...agentVaultKeys.members(orgId), params] as const,
+  // Nested under members() so adding a member invalidates the candidate list too.
+  availableMembers: (orgId: string) => [...agentVaultKeys.members(orgId), "available"] as const,
+  availableMemberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
+    [...agentVaultKeys.availableMembers(orgId), params] as const
 };
 
 export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentVaultMemberType>(
@@ -64,6 +76,55 @@ export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentV
         members: TAgentVaultProductMemberOf<T>[];
         totalCount: number;
       }>("/api/v1/agent-vault/members", { params });
+      return data;
+    },
+    enabled,
+    placeholderData: (prev) => prev
+  });
+};
+
+// One page is enough for a picker: past it the admin searches. The default lives here so both add
+// dialogs page the same way.
+const AVAILABLE_MEMBER_LIMIT = 50;
+
+export const useListAvailableAgentVaultAccessBundleMembers = (
+  accessBundleId: string,
+  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: Omit<TListAgentVaultMembersDTO, "actorType"> = {},
+  enabled = true
+) => {
+  const { currentOrg } = useOrganization();
+  const params = { ...rest, limit };
+
+  return useQuery({
+    queryKey: agentVaultKeys.availableAccessBundleMemberList(currentOrg.id, accessBundleId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        members: TAgentVaultProductMember[];
+        totalCount: number;
+      }>(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members/available`, { params });
+      return data;
+    },
+    enabled: enabled && Boolean(accessBundleId),
+    placeholderData: (prev) => prev
+  });
+};
+
+export const useListAvailableAgentVaultMembers = <
+  T extends AgentVaultMemberType = AgentVaultMemberType
+>(
+  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: TListAgentVaultMembersDTO & { actorType?: T } = {},
+  enabled = true
+) => {
+  const { currentOrg } = useOrganization();
+  const params = { ...rest, limit };
+
+  return useQuery({
+    queryKey: agentVaultKeys.availableMemberList(currentOrg.id, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        actors: Extract<TAgentVaultProductActor, { type: T }>[];
+        totalCount: number;
+      }>("/api/v1/agent-vault/members/available", { params });
       return data;
     },
     enabled,

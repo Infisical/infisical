@@ -71,7 +71,7 @@ export const HumanitecSyncFields = () => {
                 isDisabled={!connectionId}
                 value={organizations?.find((org) => org.id === value) ?? null}
                 onValueChange={(option) => {
-                  onChange(option.id ?? null);
+                  onChange(option?.id ?? null);
                   setValue("destinationConfig.app", "");
                   setValue("destinationConfig.env", "");
                 }}
@@ -118,7 +118,7 @@ export const HumanitecSyncFields = () => {
                     ?.apps?.find((app) => app.id === value) ?? null
                 }
                 onValueChange={(option) => {
-                  onChange(option.id ?? null);
+                  onChange(option?.id ?? null);
                   setValue("destinationConfig.env", "");
                 }}
                 options={
@@ -214,7 +214,7 @@ export const HumanitecSyncFields = () => {
                   }
                   isDisabled={!connectionId || !currentApp}
                   value={environments.find((env) => env.id === value) ?? null}
-                  onValueChange={(option) => onChange(option.id ?? null)}
+                  onValueChange={(option) => onChange(option?.id ?? null)}
                   options={environments}
                   placeholder="Select an env..."
                   getOptionLabel={(option) => option.name}

@@ -70,6 +70,7 @@ export type TUpdatePkiSubscriberDTO = {
 
 export type TDeletePkiSubscriberDTO = {
   subscriberName: string;
+  projectId: string;
 };
 
 export type TIssuePkiSubscriberCertDTO = {

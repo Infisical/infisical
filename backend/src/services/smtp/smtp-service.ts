@@ -27,6 +27,7 @@ import {
   HealthAlertTemplate,
   HoneyTokenTriggeredTemplate,
   IntegrationSyncFailedTemplate,
+  LegacyPkiDeprecationTemplate,
   MfaRecoveryCodeUsedTemplate,
   NativeIntegrationDeprecationOrgAdminTemplate,
   NativeIntegrationDeprecationProjectAdminTemplate,
@@ -95,6 +96,7 @@ export enum SmtpTemplates {
   SecretApprovalRequestNeedsReview = "secretApprovalRequestNeedsReview",
   // HistoricalSecretList = "historicalSecretLeakIncident", not used anymore?
   NewDeviceJoin = "newDevice",
+  LegacyPkiDeprecation = "legacyPkiDeprecation",
   NativeIntegrationDeprecationOrgAdmin = "nativeIntegrationDeprecationOrgAdmin",
   NativeIntegrationDeprecationProjectAdmin = "nativeIntegrationDeprecationProjectAdmin",
   OrgInvite = "organizationInvitation",
@@ -146,6 +148,7 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.SubOrgInvite]: SubOrganizationInvitationTemplate,
   [SmtpTemplates.OrgAssignment]: OrganizationAssignmentTemplate,
   [SmtpTemplates.NewDeviceJoin]: NewDeviceLoginTemplate,
+  [SmtpTemplates.LegacyPkiDeprecation]: LegacyPkiDeprecationTemplate,
   [SmtpTemplates.NativeIntegrationDeprecationOrgAdmin]: NativeIntegrationDeprecationOrgAdminTemplate,
   [SmtpTemplates.NativeIntegrationDeprecationProjectAdmin]: NativeIntegrationDeprecationProjectAdminTemplate,
   [SmtpTemplates.SignupEmailVerification]: SignupEmailVerificationTemplate,

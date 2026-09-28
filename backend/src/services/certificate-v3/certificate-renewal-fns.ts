@@ -8,7 +8,12 @@ import { isPqcAlgorithm } from "@app/lib/crypto/pqc/pqc-utils";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
-import { CertKeyAlgorithm, CertStatus, mapSanTypeToX509Type } from "@app/services/certificate/certificate-types";
+import {
+  CertKeyAlgorithm,
+  CertSignatureAlgorithm,
+  CertStatus,
+  mapSanTypeToX509Type
+} from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityWithAssociatedCa } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
@@ -16,13 +21,21 @@ import {
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
+import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
+import { detectSanType } from "@app/services/certificate-common/certificate-issuance-utils";
 
-import { CertKeyUsageType } from "../certificate-common/certificate-constants";
+import { CertExtendedKeyUsageType, CertKeyUsageType } from "../certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
-import { toRequestCustomExtensions, TRequestCustomExtension } from "../certificate-common/certificate-extension-fns";
+import {
+  isIssuerGeneratedExtensionOid,
+  readStoredCustomExtensions,
+  toRequestCustomExtensions,
+  TRequestCustomExtension,
+  TResolvedCustomExtension
+} from "../certificate-common/certificate-extension-fns";
 import { mapEnumsForValidation } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { parseExtendedKeyUsages, parseKeyUsages } from "./certificate-v3-fns";
@@ -83,14 +96,6 @@ type TRenewalAttributeDescriptor<K extends keyof TRenewalAttributes> = {
 };
 
 const text = (value: string | null | undefined) => value ?? "";
-
-const describeStoredCustomExtensions = (stored: unknown): TRequestCustomExtension[] => {
-  try {
-    return toRequestCustomExtensions(stored);
-  } catch {
-    return ((stored as { oid: string }[] | null) ?? []).map(({ oid }) => ({ oid, value: "" }));
-  }
-};
 
 const customExtensionList = (extensions: TRequestCustomExtension[] | null | undefined) =>
   (extensions ?? [])
@@ -189,7 +194,7 @@ const RENEWAL_ATTRIBUTES: { [K in keyof TRenewalAttributes]-?: TRenewalAttribute
     label: "custom extensions",
     csrEditable: true,
     apply: (value) => ({ customExtensions: value }),
-    current: (original) => customExtensionList(describeStoredCustomExtensions(original.customExtensions)),
+    current: (original) => customExtensionList(toRequestCustomExtensions(original.customExtensions)),
     issued: (request) => customExtensionList(request.customExtensions)
   }
 };
@@ -253,6 +258,148 @@ export const assertCsrRenewalAttributes = (attributes?: TRenewalAttributes) => {
   }
 };
 
+type TRenewalSubject = {
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+  domainComponents?: string[];
+};
+
+export const resolveRenewalCustomExtensions = (
+  requested: { exists: boolean; customExtensions: unknown },
+  certificate: { customExtensions?: unknown }
+): TRequestCustomExtension[] =>
+  toRequestCustomExtensions(requested.exists ? requested.customExtensions : certificate.customExtensions);
+
+const splitStoredList = (stored: string | null | undefined): string[] | undefined => {
+  const values = (stored ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  return values.length ? values : undefined;
+};
+
+const askedFor = <T>(exists: boolean, recorded: T[] | null): T[] | null => (exists ? recorded : null);
+
+export const resolveRenewalUsages = (
+  requested: { exists: boolean; keyUsages: string[] | null; extendedKeyUsages: string[] | null },
+  certificate: { keyUsages?: unknown; extendedKeyUsages?: unknown }
+): { keyUsages: CertKeyUsageType[]; extendedKeyUsages: CertExtendedKeyUsageType[] } => ({
+  keyUsages: parseKeyUsages(askedFor(requested.exists, requested.keyUsages) ?? certificate.keyUsages),
+  extendedKeyUsages: parseExtendedKeyUsages(
+    askedFor(requested.exists, requested.extendedKeyUsages) ?? certificate.extendedKeyUsages
+  )
+});
+
+type TOriginatingRenewalRequest = {
+  exists: boolean;
+  commonName: string | null;
+  organization: string | null;
+  organizationalUnit: string | null;
+  country: string | null;
+  state: string | null;
+  locality: string | null;
+  domainComponents: string | null;
+  altNames: { type: CertSubjectAlternativeNameType; value: string }[] | null;
+  keyUsages: string[] | null;
+  extendedKeyUsages: string[] | null;
+  keyAlgorithm: string | null;
+  signatureAlgorithm: string | null;
+  customExtensions: unknown;
+};
+
+type TRenewalCertificateFacts = {
+  commonName?: string | null;
+  subjectOrganization?: string | null;
+  subjectOrganizationalUnit?: string | null;
+  subjectCountry?: string | null;
+  subjectState?: string | null;
+  subjectLocality?: string | null;
+  subjectDomainComponents?: string | null;
+  altNames?: string | null;
+  keyUsages?: unknown;
+  extendedKeyUsages?: unknown;
+  keyAlgorithm?: string | null;
+  signatureAlgorithm?: string | null;
+  customExtensions?: unknown;
+};
+
+const asKeyAlgorithm = (value?: string | null): CertKeyAlgorithm | undefined =>
+  Object.values(CertKeyAlgorithm).includes(value as CertKeyAlgorithm) ? (value as CertKeyAlgorithm) : undefined;
+
+const asSignatureAlgorithm = (value?: string | null): CertSignatureAlgorithm | undefined =>
+  Object.values(CertSignatureAlgorithm).includes(value as CertSignatureAlgorithm)
+    ? (value as CertSignatureAlgorithm)
+    : undefined;
+
+export const resolveRenewalAlgorithms = (
+  requested: { exists: boolean; keyAlgorithm: string | null; signatureAlgorithm: string | null },
+  certificate: { keyAlgorithm?: string | null; signatureAlgorithm?: string | null }
+): { keyAlgorithm?: CertKeyAlgorithm; signatureAlgorithm?: CertSignatureAlgorithm } => {
+  const asked = requested.exists;
+
+  return {
+    keyAlgorithm:
+      (asked ? asKeyAlgorithm(requested.keyAlgorithm) : undefined) ?? asKeyAlgorithm(certificate.keyAlgorithm),
+    signatureAlgorithm:
+      (asked ? asSignatureAlgorithm(requested.signatureAlgorithm) : undefined) ??
+      asSignatureAlgorithm(certificate.signatureAlgorithm)
+  };
+};
+
+export const resolveRenewalSubject = (
+  requested: {
+    exists: boolean;
+    organization: string | null;
+    organizationalUnit: string | null;
+    country: string | null;
+    state: string | null;
+    locality: string | null;
+    domainComponents: string | null;
+  },
+  certificate: {
+    subjectOrganization?: string | null;
+    subjectOrganizationalUnit?: string | null;
+    subjectCountry?: string | null;
+    subjectState?: string | null;
+    subjectLocality?: string | null;
+    subjectDomainComponents?: string | null;
+  }
+): TRenewalSubject => {
+  const source = requested.exists
+    ? requested
+    : {
+        organization: certificate.subjectOrganization ?? null,
+        organizationalUnit: certificate.subjectOrganizationalUnit ?? null,
+        country: certificate.subjectCountry ?? null,
+        state: certificate.subjectState ?? null,
+        locality: certificate.subjectLocality ?? null,
+        domainComponents: certificate.subjectDomainComponents ?? null
+      };
+
+  return {
+    organization: source.organization || undefined,
+    organizationalUnit: source.organizationalUnit || undefined,
+    country: source.country || undefined,
+    state: source.state || undefined,
+    locality: source.locality || undefined,
+    domainComponents: splitStoredList(source.domainComponents)
+  };
+};
+
+export const resolveRenewalAltNames = (
+  requested: { exists: boolean; altNames: { type: CertSubjectAlternativeNameType; value: string }[] | null },
+  certificateAltNames: string | null | undefined
+): { type: CertSubjectAlternativeNameType; value: string }[] => {
+  const recorded = askedFor(requested.exists, requested.altNames);
+  if (recorded) return recorded;
+
+  return (splitStoredList(certificateAltNames) ?? []).map((san) => detectSanType(san));
+};
+
 /**
  * Renewal copies the current certificate and applies only what the caller explicitly changed.
  * Profile defaults are deliberately not consulted: they describe what a *new* certificate should
@@ -307,14 +454,109 @@ export const buildCsrRenewalCertificateRequest = ({
 };
 
 export const buildRenewalAuditChanges = (
-  original: TRenewalAuditSubject,
+  replayedRequest: TCertificateRequest,
   issuedRequest: TCertificateRequest
 ): TRenewalAuditChange[] =>
   RENEWAL_ATTRIBUTE_KEYS.map((field) => ({
     field,
-    from: RENEWAL_ATTRIBUTES[field].current(original),
+    from: RENEWAL_ATTRIBUTES[field].issued(replayedRequest),
     to: RENEWAL_ATTRIBUTES[field].issued(issuedRequest)
   })).filter(({ from, to }) => from !== to);
+
+export type TIssuerModifiedField = {
+  field: string;
+  requested: string;
+  issued: string;
+};
+
+export const buildRenewalPreview = (requested: TOriginatingRenewalRequest, certificate: TRenewalCertificateFacts) => {
+  const subject = resolveRenewalSubject(requested, certificate);
+  const usages = resolveRenewalUsages(requested, certificate);
+  const algorithms = resolveRenewalAlgorithms(requested, certificate);
+  const altNames = resolveRenewalAltNames(requested, certificate.altNames);
+
+  const request = {
+    commonName: requested.exists ? (requested.commonName ?? undefined) : (certificate.commonName ?? undefined),
+    ...subject,
+    ...usages,
+    ...algorithms,
+    altNames,
+    customExtensions: resolveRenewalCustomExtensions(requested, certificate)
+  };
+
+  const issuedSubject = {
+    commonName: certificate.commonName ?? undefined,
+    organization: certificate.subjectOrganization ?? undefined,
+    organizationalUnit: certificate.subjectOrganizationalUnit ?? undefined,
+    country: certificate.subjectCountry ?? undefined,
+    state: certificate.subjectState ?? undefined,
+    locality: certificate.subjectLocality ?? undefined
+  };
+
+  const joined = (values?: string[]) => (values ?? []).join(",");
+  const issuerModifiedFields: TIssuerModifiedField[] = [];
+  const note = (field: string, requestedValue?: string, issuedValue?: string) => {
+    if ((requestedValue ?? "") !== (issuedValue ?? "")) {
+      issuerModifiedFields.push({ field, requested: requestedValue ?? "", issued: issuedValue ?? "" });
+    }
+  };
+
+  const noteSet = (field: string, requestedValue: string, issuedValue: string) => {
+    const normalize = (value: string) => (splitStoredList(value) ?? []).sort().join(",");
+    if (normalize(requestedValue) !== normalize(issuedValue)) {
+      issuerModifiedFields.push({ field, requested: requestedValue, issued: issuedValue });
+    }
+  };
+
+  const seededSubject: Record<string, string | undefined> = {
+    commonName: request.commonName,
+    organization: request.organization,
+    organizationalUnit: request.organizationalUnit,
+    country: request.country,
+    state: request.state,
+    locality: request.locality
+  };
+  Object.entries(issuedSubject).forEach(([field, issuedValue]) => {
+    note(field, seededSubject[field], issuedValue);
+  });
+  note(
+    "domainComponents",
+    joined(request.domainComponents),
+    joined(splitStoredList(certificate.subjectDomainComponents) ?? [])
+  );
+  noteSet("altNames", joined(altNames.map((san) => san.value)), joined(splitStoredList(certificate.altNames) ?? []));
+  noteSet("keyUsages", joined(usages.keyUsages), joined(parseKeyUsages(certificate.keyUsages)));
+  noteSet(
+    "extendedKeyUsages",
+    joined(usages.extendedKeyUsages),
+    joined(parseExtendedKeyUsages(certificate.extendedKeyUsages))
+  );
+  note("keyAlgorithm", algorithms.keyAlgorithm, asKeyAlgorithm(certificate.keyAlgorithm));
+  note("signatureAlgorithm", algorithms.signatureAlgorithm, asSignatureAlgorithm(certificate.signatureAlgorithm));
+
+  // Issuer-generated extensions (SCTs, CT poison, CA version) can never be requested, so listing them
+  // would flag nearly every public certificate without telling the user anything they can act on.
+  const requestableExtensions = (stored: unknown) =>
+    readStoredCustomExtensions(stored).filter((extension) => !isIssuerGeneratedExtensionOid(extension.oid));
+  const requestedExtensions = requestableExtensions(
+    requested.exists ? requested.customExtensions : certificate.customExtensions
+  );
+  const issuedExtensions = requestableExtensions(certificate.customExtensions);
+  const extensionKeys = (extensions: TResolvedCustomExtension[]) =>
+    extensions
+      .map((extension) => `${extension.oid}|${Boolean(extension.critical)}|${extension.value}`)
+      .sort()
+      .join("\n");
+  if (extensionKeys(requestedExtensions) !== extensionKeys(issuedExtensions)) {
+    issuerModifiedFields.push({
+      field: "customExtensions",
+      requested: requestedExtensions.map((extension) => extension.oid).join(","),
+      issued: issuedExtensions.map((extension) => extension.oid).join(",")
+    });
+  }
+
+  return { request, issuerModifiedFields, hasOriginatingRequest: requested.exists };
+};
 
 export const buildRenewalDistinguishedName = (certificateRequest: TCertificateRequest): string =>
   createDistinguishedName({

@@ -12,7 +12,8 @@ import {
   assertProviderRepositorySizeWithinLimit,
   cloneRepository,
   convertPatchLineToFileLineNumber,
-  replaceNonChangesWithNewlines
+  replaceNonChangesWithNewlines,
+  toFindingDetails
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   TSecretScanningFactoryGetDiffScanFindingsPayload,
@@ -26,7 +27,6 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
-import { titleCaseToCamelCase } from "@app/lib/fn";
 import { BasicRepositoryRegex } from "@app/lib/regex";
 import { listGitHubRadarRepositories, TGitHubRadarConnection } from "@app/services/app-connection/github-radar";
 
@@ -162,7 +162,7 @@ export const GitHubSecretScanningFactory = () => {
   const getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<
     TGitHubDataSourceWithConnection,
     TQueueGitHubResourceDiffScan["payload"]
-  > = async ({ dataSource, payload, resourceName, configPath }) => {
+  > = async ({ dataSource, payload, resourceName }) => {
     const appCfg = getConfig();
     const {
       connection: {
@@ -198,10 +198,7 @@ export const GitHubSecretScanningFactory = () => {
       for (const file of commitData.data.files) {
         if ((file.status === "added" || file.status === "modified") && file.patch) {
           // eslint-disable-next-line
-          const findings = await scanContentAndGetFindings(
-            replaceNonChangesWithNewlines(`\n${file.patch}`),
-            configPath
-          );
+          const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(`\n${file.patch}`));
 
           const adjustedFindings = findings.map((finding) => {
             const startLine = convertPatchLineToFileLineNumber(file.patch!, finding.StartLine);
@@ -225,7 +222,10 @@ export const GitHubSecretScanningFactory = () => {
               Message: commit.message,
               Fingerprint: `${commit.id}:${file.filename}:${finding.RuleID}:${startLine}:${startColumn}`,
               Date: commit.timestamp,
-              Link: `https://github.com/${resourceName}/blob/${commit.id}/${file.filename}#L${startLine}`
+              Attributes: {
+                ...finding.Attributes,
+                url: `https://github.com/${resourceName}/blob/${commit.id}/${file.filename}#L${startLine}`
+              }
             };
           });
 
@@ -234,19 +234,12 @@ export const GitHubSecretScanningFactory = () => {
       }
     }
 
-    return allFindings.map(
-      ({
-        // discard match and secret as we don't want to store
-        Match,
-        Secret,
-        ...finding
-      }) => ({
-        details: titleCaseToCamelCase(finding),
-        fingerprint: finding.Fingerprint,
-        severity: SecretScanningFindingSeverity.High,
-        rule: finding.RuleID
-      })
-    );
+    return allFindings.map((finding) => ({
+      details: toFindingDetails(finding),
+      fingerprint: finding.Fingerprint,
+      severity: SecretScanningFindingSeverity.High,
+      rule: finding.RuleID
+    }));
   };
 
   return {

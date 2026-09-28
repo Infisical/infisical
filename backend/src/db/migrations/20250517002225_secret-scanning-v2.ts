@@ -78,15 +78,15 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SecretScanningFinding);
   }
 
-  if (!(await knex.schema.hasTable(TableName.SecretScanningConfig))) {
-    await knex.schema.createTable(TableName.SecretScanningConfig, (t) => {
+  if (!(await knex.schema.hasTable(TableName.DeprecatedSecretScanningConfig))) {
+    await knex.schema.createTable(TableName.DeprecatedSecretScanningConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("projectId").notNullable().unique();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.string("content", 5000);
       t.timestamps(true, true, true);
     });
-    await createOnUpdateTrigger(knex, TableName.SecretScanningConfig);
+    await createOnUpdateTrigger(knex, TableName.DeprecatedSecretScanningConfig);
   }
 }
 
@@ -102,6 +102,6 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.SecretScanningDataSource);
   await dropOnUpdateTrigger(knex, TableName.SecretScanningDataSource);
 
-  await knex.schema.dropTableIfExists(TableName.SecretScanningConfig);
-  await dropOnUpdateTrigger(knex, TableName.SecretScanningConfig);
+  await knex.schema.dropTableIfExists(TableName.DeprecatedSecretScanningConfig);
+  await dropOnUpdateTrigger(knex, TableName.DeprecatedSecretScanningConfig);
 }

@@ -680,6 +680,7 @@ const Form = ({
               <FieldContent>
                 <Combobox
                   modal
+                  isClearable={false}
                   aria-label="Policy type"
                   options={Object.values(PolicyType)}
                   value={value ?? null}

@@ -10,7 +10,7 @@ import { ProjectPermissionSecretScanningFindingActions } from "@app/context/Proj
 import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secretScanningV2";
 
 import { ProjectNavList } from "./ProjectNavLink";
-import { PROJECT_ACCESS_CONTROL_SUBMENU, SECRET_SCANNING_SETTINGS_SUBMENU } from "./submenus";
+import { PROJECT_ACCESS_CONTROL_SUBMENU } from "./submenus";
 import type { NavItem, Submenu } from "./types";
 
 export const SecretScanningNav = ({
@@ -52,12 +52,7 @@ export const SecretScanningNav = ({
       submenu: PROJECT_ACCESS_CONTROL_SUBMENU
     },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
-    {
-      label: "Settings",
-      icon: Settings,
-      pathSuffix: "settings",
-      submenu: SECRET_SCANNING_SETTINGS_SUBMENU
-    }
+    { label: "Settings", icon: Settings, pathSuffix: "settings" }
   ];
   return <ProjectNavList items={items} onSubmenuOpen={onSubmenuOpen} />;
 };

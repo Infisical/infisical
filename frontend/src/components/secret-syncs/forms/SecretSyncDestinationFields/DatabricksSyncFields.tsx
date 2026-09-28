@@ -69,7 +69,7 @@ export const DatabricksSyncFields = () => {
                 isLoading={isSecretScopesPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={secretScopes.find((scope) => scope.name === value) ?? null}
-                onValueChange={(option) => onChange(option.name ?? null)}
+                onValueChange={(option) => onChange(option?.name ?? null)}
                 options={secretScopes}
                 placeholder="Select a secret scope..."
                 getOptionLabel={(option) => option.name}

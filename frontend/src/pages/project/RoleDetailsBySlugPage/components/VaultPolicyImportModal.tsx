@@ -86,7 +86,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
     activeConnectionId
   );
 
-  const handleConnectionChange = (id: string) => {
+  const handleConnectionChange = (id: string | null) => {
     setSelectedConnectionId(id);
     setSelectedNamespace(null);
     setSelectedPolicy(null);
@@ -96,7 +96,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
     setShouldFetchPolicies(false);
   };
 
-  const handleNamespaceChange = (ns: string) => {
+  const handleNamespaceChange = (ns: string | null) => {
     setSelectedNamespace(ns);
     setSelectedPolicy(null);
   };
@@ -256,7 +256,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
               value={
                 appConnections.find((connection) => connection.id === selectedConnectionId) ?? null
               }
-              onValueChange={(connection) => handleConnectionChange(connection.id)}
+              onValueChange={(connection) => handleConnectionChange(connection?.id ?? null)}
               options={appConnections}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
@@ -288,7 +288,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
           <Combobox
             id="vault-namespace"
             value={namespaces?.find((namespace) => namespace.name === selectedNamespace) ?? null}
-            onValueChange={(namespace) => handleNamespaceChange(namespace.name)}
+            onValueChange={(namespace) => handleNamespaceChange(namespace?.name ?? null)}
             options={namespaces ?? []}
             getOptionValue={(option) => option.name}
             getOptionLabel={(option) => (option.name === "/" ? "root" : option.name)}

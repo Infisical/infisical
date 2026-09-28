@@ -29,9 +29,10 @@ type OrgNameFormData = z.infer<typeof formSchema>;
 
 interface OrgNameStepProps {
   onComplete: (orgId: string) => void;
+  callbackPort?: number;
 }
 
-export default function OrgNameStep({ onComplete }: OrgNameStepProps): JSX.Element {
+export default function OrgNameStep({ onComplete, callbackPort }: OrgNameStepProps): JSX.Element {
   const navigate = useNavigate();
   const { mutateAsync: createOrg, isPending: isCreating } = useCreateOrg({ invalidate: false });
   const { mutateAsync: selectOrganization, isPending: isSelecting } = useSelectOrganization();
@@ -52,7 +53,7 @@ export default function OrgNameStep({ onComplete }: OrgNameStepProps): JSX.Eleme
       if (isMfaEnabled) {
         navigate({
           to: "/login/select-organization",
-          search: { org_id: organization.id }
+          search: { org_id: organization.id, callback_port: callbackPort }
         });
         return;
       }

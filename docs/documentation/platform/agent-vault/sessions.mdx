@@ -5,7 +5,7 @@ description: "Time-bound grants that let AI agents access services without holdi
 
 A session is a time-bound grant scoped to one [access bundle](/documentation/platform/agent-vault/access-bundles). Infisical returns a session token that identifies the session, and the agent uses that token to authenticate to the [proxy](/documentation/platform/agent-vault/proxies) on every outbound request. The proxy then attaches the real credential from the matching [service](/documentation/platform/agent-vault/services) at the network boundary.
 
-Every session is scoped to one access bundle and expires on a schedule you set. When the session expires (or [you revoke it](#revoke-a-session)), the proxy stops attaching credentials to the agent's requests within one poll interval.
+Every session is scoped to one access bundle and expires on a schedule you set. When the session expires (or [you revoke it](#revoke-a-session)), the proxy stops attaching credentials to the agent's requests within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
 
 ## Create a session
 
@@ -56,7 +56,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
 
 ## Revoke a session
 
-To revoke a session before it expires, go to the **Sessions** page, open the session's menu, and select **Revoke Session**. The proxy stops applying credentials for it on its next poll.
+To revoke a session before it expires, go to the **Sessions** page, open the session's menu, and select **Revoke Session**. The proxy stops attaching credentials for the session within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
 
 The **Sessions** page shows each session as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions for 30 days so you can audit what an agent had access to during the session:
 
@@ -66,14 +66,15 @@ The **Sessions** page shows each session as **Active**, **Revoked**, or **Expire
 
 ## Access changes
 
-The access bundle is chosen when you create the session and can't be changed afterwards. However, the proxy re-checks whether the agent still gets credentials on every poll (60 seconds by default). Here are a few situations where a session's access might be revoked:
+The access bundle is chosen when you create the session and can't be changed afterwards. However, the proxy re-checks whether the agent still gets credentials once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). Here's how common access changes affect a session:
 
-- If an access bundle is revoked from a user, group, or machine identity, every session they created with that bundle stops getting credentials
-- If an access bundle is deleted, every session scoped to it stops getting credentials. The session still lists the bundle's name so you can see what it was
-- If a user is removed from Agent Vault, the proxy refuses every request on their sessions
+- If someone no longer has any grant on an access bundle, directly or through a group, their sessions for that bundle stop getting credentials
+- If someone still has another grant on the bundle, such as through a group, revoking one grant doesn't affect their sessions
+- If you delete an access bundle, every session scoped to it stops getting credentials (the session still lists the bundle's name, so you can see what it was)
+- If you remove someone from Agent Vault, the proxy refuses every request on their sessions
 
 <Note>
-In the first two cases, the agent's requests still go out. However, whether they reach the upstream host depends on the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
+If a session stops getting credentials because of a lost grant or a deleted bundle, the proxy still forwards the agent's requests, without credentials. Whether those requests reach the upstream host depends on the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
 </Note>
 
 ## Audit trail

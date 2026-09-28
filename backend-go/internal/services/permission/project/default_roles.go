@@ -128,9 +128,6 @@ var AdminPermissions = []gocasl.JSONRule{
 	// SecretScanningFindings
 	{Action: ss(SecretScanningFindingActionRead.Name(), SecretScanningFindingActionUpdate.Name()), Subject: ss(SubSecretScanningFindings)},
 
-	// SecretScanningConfigs
-	{Action: ss(SecretScanningConfigActionRead.Name(), SecretScanningConfigActionUpdate.Name()), Subject: ss(SubSecretScanningConfigs)},
-
 	// SecretEventSubscriptions
 	{Action: ss(SecretEventActionSubscribeCreation.Name(), SecretEventActionSubscribeDelete.Name(), SecretEventActionSubscribeUpdate.Name(), SecretEventActionSubscribeImportMutation.Name()), Subject: ss(SubSecretEventSubscriptions)},
 
@@ -264,9 +261,6 @@ var MemberPermissions = []gocasl.JSONRule{
 	// SecretScanningFindings
 	{Action: ss(SecretScanningFindingActionRead.Name(), SecretScanningFindingActionUpdate.Name()), Subject: ss(SubSecretScanningFindings)},
 
-	// SecretScanningConfigs
-	{Action: ss(SecretScanningConfigActionRead.Name()), Subject: ss(SubSecretScanningConfigs)},
-
 	// SecretEventSubscriptions
 	{Action: ss(SecretEventActionSubscribeCreation.Name(), SecretEventActionSubscribeDelete.Name(), SecretEventActionSubscribeUpdate.Name(), SecretEventActionSubscribeImportMutation.Name()), Subject: ss(SubSecretEventSubscriptions)},
 
@@ -384,9 +378,6 @@ var ViewerPermissions = []gocasl.JSONRule{
 
 	// SecretScanningFindings
 	{Action: ss(SecretScanningFindingActionRead.Name()), Subject: ss(SubSecretScanningFindings)},
-
-	// SecretScanningConfigs
-	{Action: ss(SecretScanningConfigActionRead.Name()), Subject: ss(SubSecretScanningConfigs)},
 
 	// SecretEventSubscriptions
 	{Action: ss(SecretEventActionSubscribeCreation.Name(), SecretEventActionSubscribeDelete.Name(), SecretEventActionSubscribeUpdate.Name(), SecretEventActionSubscribeImportMutation.Name()), Subject: ss(SubSecretEventSubscriptions)},
