@@ -197,12 +197,11 @@ describe("buildPamAccountTypeMetadata", () => {
       required: false,
       defaultValue: 8123
     });
-    // A default would add a native port to every existing HTTP-only account on its next save.
-    expect(fieldByKey(clickhouse!.connectionFields, "nativePort")?.defaultValue).toBeUndefined();
     expect(fieldByKey(clickhouse!.connectionFields, "nativePort")).toMatchObject({
       label: "Native Port",
       widget: "number",
-      required: false
+      required: false,
+      defaultValue: 9000
     });
     expect(fieldByKey(clickhouse!.connectionFields, "port")?.showWhen).toBeUndefined();
     expect(fieldByKey(clickhouse!.connectionFields, "nativePort")?.showWhen).toBeUndefined();

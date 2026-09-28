@@ -635,7 +635,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       },
       nativePort: {
         label: "Native Port",
-        // No default: a native port is the server operator's choice, not something a new account assumes.
+        defaultValue: 9000,
         tooltip:
           "The native TCP port, usually 9000 for plain TCP or 9440 with SSL. clickhouse-client and other native drivers need it. Leave it empty if the server only serves HTTP."
       },
