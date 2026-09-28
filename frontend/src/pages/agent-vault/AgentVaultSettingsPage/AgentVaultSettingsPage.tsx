@@ -21,14 +21,14 @@ export const AgentVaultSettingsPage = () => {
         <title>{t("common.head-title", { title: "Settings" })}</title>
       </Helmet>
 
+      <PageHeader
+        scope={ProjectType.AgentVault}
+        icon={SettingsIcon}
+        title="Settings"
+        description="Configure session logs and the connections Agent Vault uses."
+      />
       {isAdmin ? (
         <>
-          <PageHeader
-            scope={ProjectType.AgentVault}
-            icon={SettingsIcon}
-            title="Settings"
-            description="Configure session logs and the connections Agent Vault uses."
-          />
           <SessionLogAlerts />
           <SessionLogSection />
         </>
