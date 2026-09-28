@@ -561,7 +561,7 @@ export const SecretTableRow = ({
           >
             <span>{secretKey}</span>
           </TableCell>
-          <TableCell>
+          <TableCell className="max-w-0">
             <SecretOverrideRow
               isSingleEnvView
               secretName={secretKey}
@@ -615,7 +615,13 @@ export const SecretTableRow = ({
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
               className="sticky left-0 border-y border-border"
             >
-              <Table containerClassName="rounded-none border-0">
+              <Table className="w-full table-fixed" containerClassName="rounded-none border-0">
+                <colgroup>
+                  <col className="w-10" />
+                  <col className="w-[var(--name-column-width,180px)]" />
+                  <col />
+                  <col className="w-32" />
+                </colgroup>
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
@@ -632,7 +638,7 @@ export const SecretTableRow = ({
                         className={getExpandedTableSortIconClassName("environment")}
                       />
                     </TableHead>
-                    <TableHead className="w-full">Value</TableHead>
+                    <TableHead>Value</TableHead>
                     <TableHead variant="action" className="w-px">
                       <Button variant="ghost" size="xs" onClick={() => setIsSecretVisible.toggle()}>
                         {isSecretVisible ? (
@@ -720,7 +726,7 @@ export const SecretTableRow = ({
                           </TableCell>
                           <TableCell
                             colSpan={2}
-                            className={hasOverride ? "border-b-border/50" : undefined}
+                            className={twMerge("max-w-0", hasOverride && "border-b-border/50")}
                           >
                             <SecretEditTableRow
                               secretPath={secretPath}
@@ -778,7 +784,7 @@ export const SecretTableRow = ({
                             <TableCell
                               className={hasOverride ? "border-l border-l-override" : undefined}
                             />
-                            <TableCell colSpan={2}>
+                            <TableCell colSpan={2} className="max-w-0">
                               <SecretOverrideRow
                                 secretName={secretKey}
                                 environment={slug}

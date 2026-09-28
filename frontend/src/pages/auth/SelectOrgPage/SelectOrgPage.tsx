@@ -298,7 +298,8 @@ export const SelectOrgPage = () => {
           callbackPort
         })
       );
-      navigate({ to: "/cli-redirect" });
+      setAuthToken(token);
+      navigate({ to: "/cli-redirect", search: { org_id: targetOrgId } });
     } else {
       setAuthToken(token);
       createNotification({ text: "Successfully logged in", type: "success" });

@@ -11,6 +11,7 @@ import {
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -43,6 +44,8 @@ import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/ce
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
+import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
+import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { queueCertificateFilterReconcile } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -107,6 +110,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
     "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
 };
 
 export type TCertificateApprovalService = {
@@ -221,8 +225,25 @@ export const certificateApprovalServiceFactory = (
     resourceMetadataDAL,
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    pkiAlertV2Queue
   } = deps;
+
+  const $queueIssuanceAlert = async (certificateId: string, projectId: string, applicationId?: string | null) => {
+    try {
+      await pkiAlertV2Queue?.queueCertificateEvent({
+        certificateId,
+        projectId,
+        eventType: PkiAlertEventType.ISSUANCE,
+        applicationId: applicationId ?? null
+      });
+    } catch (error) {
+      logger.warn(
+        error,
+        `Failed to queue PKI issuance alert event for approved request [certificateId=${certificateId}]`
+      );
+    }
+  };
 
   const $validateProfileAndPermissions = async ({
     profileId,
@@ -665,6 +686,8 @@ export const certificateApprovalServiceFactory = (
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber } = certResult;
 
+    await $queueIssuanceAlert(certResult.certificateId, profile.projectId, certRequest.applicationId);
+
     if (certResult.certificateId && certRequest.applicationId) {
       await queueCertificateFilterReconcile(certResult.certificateId, certRequest.applicationId, pkiSyncQueue);
     }
@@ -920,6 +943,8 @@ export const certificateApprovalServiceFactory = (
 
     const { selfSignedResult, certificateData } = result;
 
+    await $queueIssuanceAlert(certificateData.id, profile.projectId, applicationId);
+
     if (certificateData.id && applicationId) {
       await queueCertificateFilterReconcile(certificateData.id, applicationId, pkiSyncQueue);
     }
@@ -1076,6 +1101,8 @@ export const certificateApprovalServiceFactory = (
       });
 
     const finalCertificateChain = bufferToString(certificateChain);
+
+    await $queueIssuanceAlert(cert.id, profile.projectId, applicationId);
 
     if (cert.id && applicationId) {
       await queueCertificateFilterReconcile(cert.id, applicationId, pkiSyncQueue);

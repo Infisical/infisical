@@ -17,6 +17,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { PageHeader } from "@app/components/v3";
+import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionPkiSubscriberActions,
@@ -28,6 +29,7 @@ import { useDeletePkiSubscriber, useGetPkiSubscriber } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { LegacyPkiDeprecationAlert } from "../components/LegacyPkiDeprecationAlert";
 import { PkiSubscriberModal } from "../PkiSubscribersPage/components/PkiSubscriberModal";
 import { PkiSubscriberCertificatesSection, PkiSubscriberDetailsSection } from "./components";
 
@@ -41,7 +43,8 @@ const Page = () => {
     select: (el) => el.subscriberName
   });
   const { data } = useGetPkiSubscriber({
-    subscriberName
+    subscriberName,
+    projectId
   });
 
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
@@ -54,7 +57,7 @@ const Page = () => {
   const onRemoveSubscriberSubmit = async (subscriberNameToDelete: string) => {
     if (!projectId) return;
 
-    await deletePkiSubscriber({ subscriberName: subscriberNameToDelete });
+    await deletePkiSubscriber({ subscriberName: subscriberNameToDelete, projectId });
 
     createNotification({
       text: "Successfully deleted subscriber",
@@ -126,6 +129,7 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
+          <LegacyPkiDeprecationAlert resource={LegacyPkiResource.PkiSubscriber} />
           <div className="flex">
             <div className="mr-4 w-96">
               <PkiSubscriberDetailsSection

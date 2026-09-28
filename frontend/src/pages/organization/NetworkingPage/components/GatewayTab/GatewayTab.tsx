@@ -7,6 +7,7 @@ import {
   HeartPulseIcon,
   InfoIcon,
   MoreHorizontalIcon,
+  PencilIcon,
   PlusIcon,
   SearchIcon,
   TrashIcon
@@ -76,7 +77,9 @@ import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways";
 import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
+import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 
+import { RenameGatewayModal } from "../RenameGatewayModal";
 import { CreateGatewayPoolModal } from "./components/CreateGatewayPoolModal";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
 import { GatewayHealthStatus } from "./components/GatewayHealthStatus";
@@ -118,6 +121,7 @@ export const GatewayTab = withPermission(
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deployGateway",
       "deleteGateway",
+      "renameGateway",
       "createPool",
       "upgradePlan"
     ] as const);
@@ -392,6 +396,20 @@ export const GatewayTab = withPermission(
                                   </DropdownMenuItem>
                                 )}
                                 <OrgPermissionCan
+                                  I={OrgGatewayPermissionActions.EditGateways}
+                                  a={OrgPermissionSubjects.Gateway}
+                                >
+                                  {(isAllowed: boolean) => (
+                                    <DropdownMenuItem
+                                      isDisabled={!isAllowed}
+                                      onClick={() => handlePopUpOpen("renameGateway", el)}
+                                    >
+                                      <PencilIcon />
+                                      Rename Gateway
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                                <OrgPermissionCan
                                   I={OrgGatewayPermissionActions.DeleteGateways}
                                   a={OrgPermissionSubjects.Gateway}
                                 >
@@ -414,6 +432,13 @@ export const GatewayTab = withPermission(
                     })}
                   </TableBody>
                 </Table>
+              )}
+              {Boolean(popUp.renameGateway.data) && (
+                <RenameGatewayModal
+                  isOpen={popUp.renameGateway.isOpen}
+                  onToggle={(isOpen) => handlePopUpToggle("renameGateway", isOpen)}
+                  gateway={popUp.renameGateway.data as TGatewayV2}
+                />
               )}
               <AlertDialog
                 open={popUp.deleteGateway.isOpen}
