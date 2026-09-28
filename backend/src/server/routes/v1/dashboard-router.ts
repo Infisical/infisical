@@ -42,7 +42,6 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { SecretMetadataQuerySchema, SecretMetadataResponseSchema } from "./dashboard-secret-metadata-schemas";
 import {
   isInSecretSearchScope,
-  isSecretPathMatch,
   resolveSecretDeepSearch,
   resolveSecretSearchFolderPath
 } from "./dashboard-secret-search-fns";
