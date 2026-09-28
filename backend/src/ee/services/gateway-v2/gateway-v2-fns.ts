@@ -43,8 +43,7 @@ export const testConnectionWithGateway = async (
   }
 };
 
-// Takes the built test whole, so the ports its certificate must authorise travel with it. Passing them
-// separately meant a caller could omit them and have the gateway refuse a port it was meant to probe.
+// Takes the built test whole so its authorised ports can't be dropped.
 export const testBuiltConnectionWithGateway = async (
   test: { host: string; port: number; request: Record<string, unknown>; additionalPorts?: number[] },
   gatewayId: string,

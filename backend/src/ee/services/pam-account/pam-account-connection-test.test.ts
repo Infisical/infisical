@@ -272,8 +272,6 @@ describe("buildGatewayConnectionTest: ClickHouse", () => {
       sslEnabled: false
     });
     expect(result?.port).toBe(8123);
-    // These are the ports the gateway's certificate authorises, so a probe it is asked to run is refused
-    // without them.
     expect(result?.additionalPorts).toEqual([8123, 9000]);
   });
 

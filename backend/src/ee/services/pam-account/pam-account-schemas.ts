@@ -1167,8 +1167,6 @@ export const gatewaySupportsAccountType = (
   supportedTypes: string[] | undefined
 ): boolean => !supportedTypes || supportedTypes.includes(resolveGatewayAccountType(accountType));
 
-// Web Access speaks HTTP, so an account whose server has no HTTP interface cannot serve it. Returns the
-// reason to show the user, or null when Web Access is fine.
 export const webAccessUnavailableReason = (
   accountType: PamAccountType,
   connectionDetails: Record<string, unknown>

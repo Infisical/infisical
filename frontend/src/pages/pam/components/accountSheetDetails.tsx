@@ -79,8 +79,7 @@ export const useAccountSheetDetails = (account: TAccessiblePamAccount | null, is
     ...fieldRows(typeMeta?.credentialFields, credentials)
   ];
 
-  // Web Access speaks HTTP, so a ClickHouse account with no HTTP port cannot serve it. Left null while the
-  // full account is still loading, so the option is not greyed out on missing data.
+  // Null until the account loads, so missing data doesn't grey out Web Access.
   const webAccessUnavailableReason =
     fullAccount && account.accountType === PamAccountType.ClickHouse && conn.port === undefined
       ? "Requires ClickHouse's HTTP interface. Set an HTTP port on this account, or use the CLI."

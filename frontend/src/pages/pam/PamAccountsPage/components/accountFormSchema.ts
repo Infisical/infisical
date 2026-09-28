@@ -36,8 +36,7 @@ const defaultForField = (field: TPamFieldDescriptor): unknown =>
 export const buildDefaultFieldValues = (fields: TPamFieldDescriptor[]): Record<string, unknown> =>
   Object.fromEntries(fields.map((field) => [field.key, defaultForField(field)]));
 
-// A metadata default is a new-account convenience. The edit form submits every field, so seeding
-// one over a key the account does not store would silently give it a value it never had.
+// Defaults are for new accounts; seeding them on edit invents stored values.
 export const buildEditFieldValues = (
   fields: TPamFieldDescriptor[],
   existing: Record<string, unknown> = {}
@@ -46,8 +45,7 @@ export const buildEditFieldValues = (
     fields.map((field) => [field.key, existing[field.key] ?? emptyForField(field)])
   );
 
-// A field the account never stored must reach the backend as absent, not as "". Zod's `.default()` fires on
-// undefined and rejects an empty string, so submitting "" blocks the save on a field the user never touched.
+// Absent keys must stay absent: zod's .default() fires on undefined, not "".
 export const omitUnsetAbsentFields = (
   values: Record<string, unknown>,
   existing: Record<string, unknown> = {}
