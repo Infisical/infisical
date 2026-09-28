@@ -1299,7 +1299,9 @@
               {
                 "group": "Get started",
                 "pages": [
+                  "cli/install",
                   "cli/usage",
+                  "cli/upgrade",
                   "cli/project-config",
                   "cli/faq"
                 ]
