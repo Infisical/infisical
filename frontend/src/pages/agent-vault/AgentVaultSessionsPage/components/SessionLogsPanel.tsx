@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { SearchIcon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
 import {
   Alert,
@@ -33,7 +34,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission } from "@app/context";
+import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
   AgentVaultSessionLogDecision,
@@ -121,6 +122,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { subscription } = useSubscription();
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   // A session holds one bundle (AGENT_VAULT_MAX_SESSION_BUNDLES). Raising that cap needs a bundle
   // picker here: the rows offering Add Service matched no service, so they name no bundle.
   const accessBundle = session.accessBundles[0];
@@ -399,6 +402,30 @@ export const SessionLogsPanel = ({ session }: Props) => {
   }
 
   if (!isPending && !isPlaceholderData && !isLoadError && !isEnabled && !hasChunks && !range) {
+    if (!subscription.agentVaultByoS3) {
+      return (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Session logs aren&apos;t on your plan</EmptyTitle>
+            <EmptyDescription>
+              {isAdmin
+                ? "Upgrade to record what your agents reach."
+                : "Ask an Agent Vault administrator about upgrading."}
+            </EmptyDescription>
+          </EmptyHeader>
+          {isAdmin && (
+            <Button variant="av" onClick={() => setIsUpgradeOpen(true)}>
+              Upgrade
+            </Button>
+          )}
+          <AgentVaultSessionLogUpgradeModal
+            isOpen={isUpgradeOpen}
+            onOpenChange={setIsUpgradeOpen}
+          />
+        </Empty>
+      );
+    }
+
     const offDescription = isAdmin
       ? "Point Agent Vault at a bucket under Settings to start recording what your agents reach."
       : "Ask an Agent Vault administrator to turn it on.";
