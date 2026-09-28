@@ -129,6 +129,8 @@ export const main = async ({
     const finish = (err: Error | null) => {
       if (settled) return;
       settled = true;
+      // Leaving the rest of a rejected body unread is safe: Fastify answers a parser error with
+      // `connection: close`, so the socket is not reused for another request.
       payload.pause();
       done(err, undefined);
     };

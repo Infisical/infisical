@@ -175,6 +175,8 @@ describe("Auth Token V1", () => {
 
     expect(res.statusCode).toBe(415);
     expect(res.json()).toMatchObject({ statusCode: 415, error: "FST_ERR_CTP_INVALID_MEDIA_TYPE" });
+    // The unread rest of the body must not be parsed as the next request on this socket
+    expect(res.headers.connection).toBe("close");
   });
 
   test("Malformed JSON body returns 400", async () => {
