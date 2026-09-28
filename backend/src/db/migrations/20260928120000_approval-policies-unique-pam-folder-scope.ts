@@ -1,3 +1,6 @@
+// This shouldn't have any effect since making duplicate policies for PAM is logically impossible
+// unless you hit a tiny window. This is just reinforcement code
+
 import { Knex } from "knex";
 
 import { TableName } from "../schemas";
@@ -6,33 +9,30 @@ const INDEX_NAME = "approval_policies_pam_access_scope_unique";
 const PAM_ACCESS = "pam-access";
 
 export async function up(knex: Knex): Promise<void> {
-  const duplicates = await knex(TableName.ApprovalPolicies)
+  const stale = await knex(TableName.ApprovalPolicies)
     .where("type", PAM_ACCESS)
     .whereNotNull("scopeId")
-    .select("id", "scopeType", "scopeId", "createdAt")
-    .orderBy([{ column: "scopeId" }, { column: "createdAt" }]);
-
-  const survivorByScope = new Map<string, string>();
-  const stale: { id: string; survivorId: string }[] = [];
-  for (const policy of duplicates) {
-    const key = `${policy.scopeType as string}:${policy.scopeId as string}`;
-    const survivorId = survivorByScope.get(key);
-    if (survivorId) stale.push({ id: policy.id, survivorId });
-    else survivorByScope.set(key, policy.id);
-  }
-
-  for (const { id, survivorId } of stale) {
-    // eslint-disable-next-line no-await-in-loop
-    await knex(TableName.ApprovalRequests).where("policyId", id).update({ policyId: survivorId });
-  }
+    .whereNotIn(
+      "id",
+      knex.select("id").from(
+        knex(TableName.ApprovalPolicies)
+          .where("type", PAM_ACCESS)
+          .whereNotNull("scopeId")
+          .distinctOn("scopeId")
+          .orderBy([{ column: "scopeId" }, { column: "createdAt" }])
+          .select("id")
+          .as("survivors")
+      )
+    )
+    .pluck("id");
 
   if (stale.length > 0) {
-    await knex(TableName.ApprovalPolicies)
-      .whereIn(
-        "id",
-        stale.map((s) => s.id)
-      )
-      .delete();
+    await knex(TableName.ApprovalRequests)
+      .whereIn("policyId", stale)
+      .where("status", "pending")
+      .update({ status: "cancelled" });
+
+    await knex(TableName.ApprovalPolicies).whereIn("id", stale).delete();
   }
 
   await knex.raw(
