@@ -161,6 +161,22 @@ describe("Auth Token V1", () => {
     expect(res.json()).toMatchObject({ statusCode: 415, error: "FST_ERR_CTP_INVALID_MEDIA_TYPE" });
   });
 
+  // Over the 1 MiB body limit, so a parser that buffered before rejecting would answer 413
+  test.each([
+    { name: "unsupported Content-Type", headers: { "content-type": "text/xml" } },
+    { name: "no Content-Type", headers: { "transfer-encoding": "chunked" } }
+  ])("Oversized body with $name is rejected with 415 without being read", async ({ headers }) => {
+    const res = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/auth/token",
+      headers,
+      payload: Buffer.alloc(2 * 1024 * 1024, "a")
+    });
+
+    expect(res.statusCode).toBe(415);
+    expect(res.json()).toMatchObject({ statusCode: 415, error: "FST_ERR_CTP_INVALID_MEDIA_TYPE" });
+  });
+
   test("Malformed JSON body returns 400", async () => {
     const res = await testServer.inject({
       method: "POST",

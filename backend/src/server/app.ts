@@ -113,12 +113,31 @@ export const main = async ({
   // Content-Type. Fastify only skips parsing when there is no Transfer-Encoding, so such requests
   // land on this catch-all parser. It also receives every media type nothing else parses, which
   // must keep failing with 415, except on unknown routes where Fastify answers 404 instead.
-  server.addContentTypeParser("*", { parseAs: "buffer" }, (req, body: Buffer, done) => {
-    if (req.is404 || (req.headers["content-type"] === undefined && body.length === 0)) {
+  // It reads the stream rather than buffering it, so a body it is going to reject is never held in
+  // memory: rate limits run after parsing, and would not stop that.
+  server.addContentTypeParser("*", (req, payload, done) => {
+    if (req.is404) {
       done(null, undefined);
       return;
     }
-    done(new errorCodes.FST_ERR_CTP_INVALID_MEDIA_TYPE(), undefined);
+    if (req.headers["content-type"] !== undefined) {
+      done(new errorCodes.FST_ERR_CTP_INVALID_MEDIA_TYPE(), undefined);
+      return;
+    }
+
+    let settled = false;
+    const finish = (err: Error | null) => {
+      if (settled) return;
+      settled = true;
+      payload.pause();
+      done(err, undefined);
+    };
+
+    payload.on("data", (chunk: Buffer) => {
+      if (chunk.length > 0) finish(new errorCodes.FST_ERR_CTP_INVALID_MEDIA_TYPE());
+    });
+    payload.once("end", () => finish(null));
+    payload.once("error", finish);
   });
 
   try {
