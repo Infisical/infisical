@@ -4417,7 +4417,7 @@ export const AGENT_VAULT = {
     limit: "How many records to return. Only whole chunks are returned, so a response can have slightly more.",
     from: "Return only chunks with records at or after this time.",
     to: "Return only chunks with records at or before this time.",
-    enabled: "Whether session logs are on. False while your plan doesn't include session logs.",
+    enabled: "Whether session logs are on.",
     configEnabled: "Whether session logs are on. Turning them off stops recording but keeps what's already recorded.",
     appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
     bucket:
