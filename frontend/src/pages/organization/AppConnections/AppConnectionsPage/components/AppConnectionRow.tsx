@@ -46,6 +46,7 @@ import { useToggle } from "@app/hooks";
 import { GitHubConnectionMethod, TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListGitHubApps } from "@app/hooks/api/gitHubApps";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CredentialRotationStatusBadge } from "./AppConnectionForm/shared/CredentialRotationBadge";
 
@@ -196,7 +197,11 @@ export const AppConnectionRow = ({
           {project ? (
             <Link
               // @ts-expect-error app-connections aren't in kms/ssh
-              to={`${getProjectBaseURL(project.type)}/app-connections`}
+              to={
+                project.type === ProjectType.AgentVault
+                  ? "/organizations/$orgId/agent-vault/settings"
+                  : `${getProjectBaseURL(project.type)}/app-connections`
+              }
               params={{
                 orgId: currentOrg?.id || "",
                 projectId: project.id

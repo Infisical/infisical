@@ -277,6 +277,8 @@ export function DateRangeFilter({
   };
 
   const handleClear = () => {
+    setAppliedValue(initialValue);
+    setAppliedIsUtc(defaultIsUtc);
     onClear?.();
     setIsOpen(false);
   };
