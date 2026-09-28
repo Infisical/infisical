@@ -1294,54 +1294,54 @@
             "icon": "terminal",
             "pages": [
               "cli/overview",
+              "cli/cloudsmith-migration",
               {
-                "group": "Command line",
+                "group": "Get started",
                 "pages": [
                   "cli/usage",
+                  "cli/project-config",
+                  "cli/scanning-overview",
+                  "cli/faq"
+                ]
+              },
+              {
+                "group": "Command reference",
+                "pages": [
+                  "cli/commands/login",
+                  "cli/commands/logout",
+                  "cli/commands/profile",
+                  "cli/commands/org",
+                  "cli/commands/init",
+                  "cli/commands/run",
+                  "cli/commands/secrets",
+                  "cli/commands/agent-proxy",
+                  "cli/commands/agent-vault",
+                  "cli/commands/dynamic-secrets",
                   {
-                    "group": "Core commands",
+                    "group": "infisical pam",
                     "pages": [
-                      "cli/commands/login",
-                      "cli/commands/logout",
-                      "cli/commands/profile",
-                      "cli/commands/org",
-                      "cli/commands/init",
-                      "cli/commands/run",
-                      "cli/commands/secrets",
-                      "cli/commands/agent-proxy",
-                      "cli/commands/agent-vault",
-                      "cli/commands/dynamic-secrets",
-                      {
-                        "group": "infisical pam",
-                        "pages": [
-                          "cli/commands/pam",
-                          "cli/commands/pam-agentic"
-                        ]
-                      },
-                      "cli/commands/gateway",
-                      "cli/commands/kmip",
-                      "cli/commands/relay",
-                      "cli/commands/bootstrap",
-                      "cli/commands/export",
-                      "cli/commands/token",
-                      "cli/commands/service-token",
-                      "cli/commands/vault",
-                      "cli/commands/user",
-                      "cli/commands/reset",
-                      {
-                        "group": "infisical scan",
-                        "pages": [
-                          "cli/commands/scan",
-                          "cli/commands/scan-git-changes",
-                          "cli/commands/scan-install"
-                        ]
-                      }
+                      "cli/commands/pam",
+                      "cli/commands/pam-agentic"
                     ]
                   },
-                  "cli/scanning-overview",
-                  "cli/project-config",
-                  "cli/faq",
-                  "cli/cloudsmith-migration"
+                  "cli/commands/gateway",
+                  "cli/commands/kmip",
+                  "cli/commands/relay",
+                  "cli/commands/bootstrap",
+                  "cli/commands/export",
+                  "cli/commands/token",
+                  "cli/commands/service-token",
+                  "cli/commands/vault",
+                  "cli/commands/user",
+                  "cli/commands/reset",
+                  {
+                    "group": "infisical scan",
+                    "pages": [
+                      "cli/commands/scan",
+                      "cli/commands/scan-git-changes",
+                      "cli/commands/scan-install"
+                    ]
+                  }
                 ]
               }
             ]

@@ -165,6 +165,7 @@ Jamf Pro
 Ivanti
 WinRM
 PowerShell
+PSReadLine
 Authenticode
 signtool
 DevOps

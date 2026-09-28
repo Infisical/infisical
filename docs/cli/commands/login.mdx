@@ -586,7 +586,7 @@ The login command supports a number of flags that you can use for different auth
     ```
 
     <Warning>
-      **Critical:** If you use `--domain` during login, you must also include it on **all subsequent CLI commands** (e.g., `infisical secrets`, `infisical export`, etc.). Alternatively, set the `INFISICAL_API_URL` environment variable to avoid having to use `--domain` on every command. Refer to the [Domain Configuration](/cli/usage#domain-configuration) section for more details.
+      **Critical:** If you use `--domain` during login, you must also include it on **all subsequent CLI commands** (e.g., `infisical secrets`, `infisical export`, etc.). Alternatively, set the `INFISICAL_API_URL` environment variable to avoid having to use `--domain` on every command. Refer to [Log in](/cli/usage#step-2-log-in) in the CLI quickstart for more details.
     </Warning>
 
   </Accordion>
@@ -644,7 +644,7 @@ The following examples demonstrate different ways to authenticate as a user with
     ```
 
     <Warning>
-      **For non-US Cloud instances:** If you're using EU Cloud or a self-hosted instance, you must set `INFISICAL_API_URL` before login or use `--domain` on all commands. Refer to the [Domain Configuration](/cli/usage#domain-configuration) section for more details.
+      **For non-US Cloud instances:** If you're using EU Cloud or a self-hosted instance, you must set `INFISICAL_API_URL` before login or use `--domain` on all commands. Refer to [Log in](/cli/usage#step-2-log-in) in the CLI quickstart for more details.
     </Warning>
 
   </Accordion>
@@ -773,7 +773,7 @@ In this example we'll be using the `universal-auth` method to login to obtain an
         ```
 
         <Warning>
-          **For non-US Cloud instances:** If you're using EU Cloud or a self-hosted instance, you must set `INFISICAL_API_URL` before login or use `--domain` on all commands. Refer to the [Domain Configuration](/cli/usage#domain-configuration) section for more details.
+          **For non-US Cloud instances:** If you're using EU Cloud or a self-hosted instance, you must set `INFISICAL_API_URL` before login or use `--domain` on all commands. Refer to [Log in](/cli/usage#step-2-log-in) in the CLI quickstart for more details.
         </Warning>
 
         Now that we've set the `INFISICAL_TOKEN` environment variable, we can use the CLI to interact with Infisical. The CLI will automatically check for the presence of the `INFISICAL_TOKEN` environment variable and use it for authentication.
