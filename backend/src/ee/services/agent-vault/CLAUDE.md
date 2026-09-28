@@ -207,10 +207,9 @@ lost silently.
   `isStorageFull`. Kept as abuse prevention until usage and plans are decided. At the limit writes are refused,
   never drop-oldest, which would let flooding evict evidence.
 - **Nothing deletes from the bucket**, so the IAM policy asks for no `s3:DeleteObject`.
-- **Session logs need the `agentVaultByoS3` plan feature.** The flag is named for the customer's own bucket;
-  code and copy say only "session logs" because managed storage is planned. Resolve, chunk upload and any save
-  that turns logging on or changes where it's stored check it. Turning off and removing the connection never
-  do, because the foreign key blocks deleting a connection still in use. Reads only use it to report
+- **Session logs need the `agentVaultByoS3` plan feature.** Resolve, chunk upload and any save that turns
+  logging on or changes where it's stored check it. Turning off and removing the connection never do, because
+  the foreign key blocks deleting a connection still in use. Reads only use it to report
   `enabled: false`, so logs recorded while licensed stay viewable. Stopping recording on a lapse departs from
   the License Checks rule in `CODE_QUALITY.md`, settled with the product owner. Nothing writes `enabled` off on
   a lapse, so an upgrade resumes recording with no clicks.
