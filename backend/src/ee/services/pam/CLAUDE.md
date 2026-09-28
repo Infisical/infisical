@@ -194,6 +194,13 @@ are reused from `app-connection/shared/sql`, and rotation is brokered through th
 account deletion). Duration is capped at the template max; expiration is enforced by a delayed BullMQ job
 scheduled at session creation.
 
+**Nothing re-checks the actor mid-session**, so every path that takes access away has to close sessions
+itself. `pam-session-access-fns.ts` holds the two: `terminatePamSessionsWithoutLaunchAccess` re-derives
+`LaunchSessions` after a membership or role change, and `terminatePamSessionsForUsers` drops everything a
+user holds when they leave the org (SCIM deactivate/delete, org deactivate/remove). Both run inside the
+caller's transaction and hand back a callback to fire after COMMIT — the row flip rolls back, the gateway
+signal does not.
+
 **An orphaned session (null `accountId`) is scoped to product admin.** Every
 resource-scoped predicate is false once the FK is nulled, so `PamProductRole.Admin` stands in on the
 read/terminate paths (the DAL's `includeOrphaned`, `getSessionById`/`terminateSession`, recording
