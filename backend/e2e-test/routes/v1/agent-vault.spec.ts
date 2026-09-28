@@ -1395,7 +1395,12 @@ describe("Agent Vault V1 Router", async () => {
       expect(mine.json().session).toMatchObject({
         id: session.id,
         status: "active",
-        actorName: expect.any(String),
+        actor: expect.objectContaining({
+          type: "user",
+          id: seedData1.id,
+          username: seedData1.username,
+          email: seedData1.email
+        }),
         accessBundles: [expect.objectContaining({ name: bundle.name })]
       });
 
@@ -1515,7 +1520,7 @@ describe("Agent Vault V1 Router", async () => {
         const res = await inject("GET", `/api/v1/agent-vault/sessions?scope=all&${query}`);
         expect(res.statusCode).toBe(200);
         return JSON.parse(res.payload) as {
-          sessions: { id: string; actorName: string; accessBundles: { name: string }[] }[];
+          sessions: { id: string; actor: Record<string, unknown>; accessBundles: { name: string }[] }[];
           totalCount: number;
         };
       };
@@ -1581,6 +1586,14 @@ describe("Agent Vault V1 Router", async () => {
           expect: (r) => {
             expect(r.totalCount).toBe(1);
             expect(r.sessions[0].id).toBe(orphaned);
+            expect(r.sessions[0].actor).toEqual({
+              type: "user",
+              id: null,
+              username: "gone@example.com",
+              email: "gone@example.com",
+              firstName: "Gone Person",
+              lastName: null
+            });
           }
         },
         {
@@ -1712,6 +1725,10 @@ describe("Agent Vault V1 Router", async () => {
 
       const first = await inject("POST", `/api/v1/agent-vault/sessions/${session.id}/revoke`);
       expect(first.statusCode).toBe(200);
+      expect(JSON.parse(first.payload).session).toMatchObject({
+        status: "revoked",
+        actor: { type: "user", id: seedData1.id }
+      });
       const firstRevokedAt = JSON.parse(first.payload).session.revokedAt as string;
 
       const second = await inject("POST", `/api/v1/agent-vault/sessions/${session.id}/revoke`);
@@ -1899,16 +1916,23 @@ describe("Agent Vault V1 Router", async () => {
           hasSessionLogKey: false
         });
 
-      const identity = await createOrgIdentity(`doomed-${crypto.randomUUID()}`);
-      await testDb("agent_vault_sessions").where({ id: session.id }).update({ userId: null, identityId: identity.id });
+      const identityName = `doomed-${crypto.randomUUID()}`;
+      const identity = await createOrgIdentity(identityName);
+      await testDb("agent_vault_sessions")
+        .where({ id: session.id })
+        .update({ userId: null, identityId: identity.id, actorType: "machineIdentity", actorName: identityName });
       await deleteOrgIdentity(identity.id);
 
       await expect(resolve()).rejects.toThrow("The identity this session belonged to has been deleted");
 
       // The list agrees with resolve: an ownerless session is shown as revoked, not active.
       const list = await inject("GET", "/api/v1/agent-vault/sessions?scope=all&limit=100");
-      const { sessions } = JSON.parse(list.payload) as { sessions: { id: string; status: string }[] };
-      expect(sessions.find((row) => row.id === session.id)?.status).toBe("revoked");
+      const { sessions } = JSON.parse(list.payload) as {
+        sessions: { id: string; status: string; actor: Record<string, unknown> }[];
+      };
+      const row = sessions.find((listed) => listed.id === session.id);
+      expect(row?.status).toBe("revoked");
+      expect(row?.actor).toEqual({ type: "machineIdentity", id: null, name: identityName });
     });
 
     test("an expired time-limited role stops resolving even though its membership row remains", async () => {

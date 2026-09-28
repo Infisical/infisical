@@ -93,6 +93,8 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   the actor is out and work again if the actor is added back. Settled with the product owner.
 - Session actor columns are `SET NULL` so history survives the actor. Resolve refuses a session with neither
   id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
+  `actorType` is stored at mint because nulled ids can't say which kind of owner it was; the API's nested
+  `actor` then fills in from the `actorName`/`actorEmail` snapshot with a null `id`.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
   actor id reads as revoked in the list and the status filter, so they agree with resolve refusing it. Expiry
   is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.

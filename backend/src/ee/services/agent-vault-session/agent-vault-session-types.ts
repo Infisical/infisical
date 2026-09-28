@@ -1,6 +1,10 @@
 import { TGenericPermission } from "@app/lib/types";
 
-import { AgentVaultSessionScope, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
+import {
+  AgentVaultMemberType,
+  AgentVaultSessionScope,
+  AgentVaultSessionStatus
+} from "../agent-vault/agent-vault-enums";
 
 export type TMintSessionDTO = {
   projectId: string;
@@ -28,3 +32,14 @@ export type TRevokeSessionDTO = {
 };
 
 export type TGetSessionByIdDTO = TRevokeSessionDTO;
+
+export type TAgentVaultSessionActor =
+  | {
+      type: AgentVaultMemberType.User;
+      id: string | null;
+      username: string;
+      email: string | null;
+      firstName: string | null;
+      lastName: string | null;
+    }
+  | { type: AgentVaultMemberType.MachineIdentity; id: string | null; name: string };

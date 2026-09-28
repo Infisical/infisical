@@ -4445,7 +4445,16 @@ export const AGENT_VAULT = {
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
     search: "Match sessions by actor name, actor email or access bundle name.",
     limit: "The maximum number of sessions to return.",
-    offset: "How many sessions to skip."
+    offset: "How many sessions to skip.",
+    actorType: "Whether the session belongs to a user or a machine identity.",
+    actorId: "The ID of the user or machine identity the session belongs to, or null if it was deleted.",
+    username: "The username of the user. Once the user is deleted, the email recorded when the session was created.",
+    email: "The email address of the user. Once the user is deleted, the email recorded when the session was created.",
+    firstName:
+      "The first name of the user. Once the user is deleted, the full name recorded when the session was created.",
+    lastName: "The last name of the user, or null once the user is deleted.",
+    identityName:
+      "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created."
   }
 };
 

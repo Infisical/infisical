@@ -18,6 +18,7 @@ import {
   UserIcon
 } from "lucide-react";
 
+import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
 import {
   Alert,
   AlertAction,
@@ -70,6 +71,7 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
+  AgentVaultMemberType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
   useGetAgentVaultSession,
@@ -355,18 +357,18 @@ export const AgentVaultSessionsPage = () => {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="flex w-fit items-center gap-2">
-                            {session.identityId ? (
+                            {session.actor.type === AgentVaultMemberType.MachineIdentity ? (
                               <BotIcon className="size-4 text-muted" />
                             ) : (
                               <UserIcon className="size-4 text-muted" />
                             )}
-                            {session.actorName}
+                            {memberDisplayName(session.actor)}
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {session.identityId
-                            ? `${session.identityId} (machine identity)`
-                            : session.actorEmail}
+                          {session.actor.type === AgentVaultMemberType.MachineIdentity
+                            ? `${session.actor.id ?? "Deleted"} (machine identity)`
+                            : memberSubtitle(session.actor)}
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>

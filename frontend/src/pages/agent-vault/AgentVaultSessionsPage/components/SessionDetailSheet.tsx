@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { BanIcon, BotIcon, PackageIcon, UserIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
 import {
   Button,
   Detail,
@@ -20,7 +21,7 @@ import {
   Spinner
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
+import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
@@ -38,10 +39,8 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke }: Pro
   const { isOpen, closeSheet } = useAgentVaultSheetState();
   const { currentOrg } = useOrganization();
 
-  const isOwnerDeleted = Boolean(session && !session.userId && !session.identityId);
-  // Deleting the owner nulls both ids, and only users are minted with an actorEmail
-  const isMachineIdentity =
-    Boolean(session?.identityId) || (isOwnerDeleted && !session?.actorEmail);
+  const isOwnerDeleted = session?.actor.id === null;
+  const isMachineIdentity = session?.actor.type === AgentVaultMemberType.MachineIdentity;
   const hasExpired = Boolean(
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
   );
@@ -92,11 +91,11 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke }: Pro
                         <UserIcon className="size-4 shrink-0 text-muted" />
                       )}
                       <span className="truncate">
-                        {session.actorName}
+                        {memberDisplayName(session.actor)}
                         {isOwnerDeleted && " (deleted)"}
                       </span>
                       {!isMachineIdentity && (
-                        <span className="truncate text-muted">{session.actorEmail}</span>
+                        <span className="truncate text-muted">{memberSubtitle(session.actor)}</span>
                       )}
                     </DetailValue>
                   </Detail>

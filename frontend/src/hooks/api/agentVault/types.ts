@@ -184,12 +184,17 @@ export type TAgentVaultSessionAccessBundle = {
   position: number;
 };
 
+export type TAgentVaultSessionActor =
+  | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "id"> & {
+      id: string | null;
+    })
+  | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.MachineIdentity }>, "id"> & {
+      id: string | null;
+    });
+
 export type TAgentVaultSession = {
   id: string;
-  userId: string | null;
-  identityId: string | null;
-  actorName: string;
-  actorEmail: string | null;
+  actor: TAgentVaultSessionActor;
   status: AgentVaultSessionStatus;
   expiresAt: string | null;
   revokedAt: string | null;

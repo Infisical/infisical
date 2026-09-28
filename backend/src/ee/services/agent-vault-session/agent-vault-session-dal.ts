@@ -7,7 +7,8 @@ import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
+import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultSessionActor } from "./agent-vault-session-types";
 
 export type TAgentVaultSessionDALFactory = ReturnType<typeof agentVaultSessionDALFactory>;
 
@@ -15,8 +16,7 @@ export type TAgentVaultSessionListRow = {
   id: string;
   userId: string | null;
   identityId: string | null;
-  actorName: string;
-  actorEmail: string | null;
+  actor: TAgentVaultSessionActor;
   expiresAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
@@ -56,13 +56,47 @@ const statusFilter = (query: Knex.QueryBuilder, status: AgentVaultSessionStatus,
     });
 };
 
-const userDisplayName = ({
-  userFirstName,
-  userLastName
-}: {
+// A deleted owner leaves only the snapshot mint took, which holds a user's full name in one field.
+const toSessionActor = (row: {
+  actorType?: string | null;
+  userId: string | null;
+  identityId: string | null;
+  userUsername: string | null;
+  userEmail: string | null;
   userFirstName: string | null;
   userLastName: string | null;
-}) => [userFirstName, userLastName].filter(Boolean).join(" ") || null;
+  identityName: string | null;
+  actorName: string;
+  actorEmail: string | null;
+}): TAgentVaultSessionActor => {
+  // Null only on rows written by a pod still on the previous release during a rolling deploy.
+  const actorType =
+    row.actorType ??
+    (row.identityId || (!row.userId && !row.actorEmail)
+      ? AgentVaultMemberType.MachineIdentity
+      : AgentVaultMemberType.User);
+  if (actorType === AgentVaultMemberType.MachineIdentity) {
+    return { type: AgentVaultMemberType.MachineIdentity, id: row.identityId, name: row.identityName ?? row.actorName };
+  }
+  if (row.userId && row.userUsername) {
+    return {
+      type: AgentVaultMemberType.User,
+      id: row.userId,
+      username: row.userUsername,
+      email: row.userEmail,
+      firstName: row.userFirstName,
+      lastName: row.userLastName
+    };
+  }
+  return {
+    type: AgentVaultMemberType.User,
+    id: null,
+    username: row.actorEmail ?? row.actorName,
+    email: row.actorEmail,
+    firstName: row.actorName || null,
+    lastName: null
+  };
+};
 
 export const agentVaultSessionDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultSession);
@@ -197,7 +231,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("expiresAt").withSchema(TableName.AgentVaultSession),
           db.ref("revokedAt").withSchema(TableName.AgentVaultSession),
           db.ref("createdAt").withSchema(TableName.AgentVaultSession),
+          db.ref("actorType").withSchema(TableName.AgentVaultSession),
           db.ref("username").withSchema(TableName.Users).as("userUsername"),
+          db.ref("email").withSchema(TableName.Users).as("userEmail"),
           db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
           db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
@@ -216,7 +252,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         expiresAt: Date | null;
         revokedAt: Date | null;
         createdAt: Date;
+        actorType: string | null;
         userUsername: string | null;
+        userEmail: string | null;
         userFirstName: string | null;
         userLastName: string | null;
         identityName: string | null;
@@ -236,8 +274,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
             id: row.id,
             userId: row.userId,
             identityId: row.identityId,
-            actorName: row.identityName ?? userDisplayName(row) ?? row.userUsername ?? row.actorName,
-            actorEmail: row.identityId ? null : (row.userUsername ?? row.actorEmail),
+            actor: toSessionActor(row),
             expiresAt: row.expiresAt,
             revokedAt: row.revokedAt,
             createdAt: row.createdAt,

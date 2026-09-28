@@ -12,13 +12,13 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
-import { AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
+import { AgentVaultMemberType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
-import { TAgentVaultSessionDALFactory } from "./agent-vault-session-dal";
-import { deriveSessionStatus, generateSessionToken, isSessionOwnedBy } from "./agent-vault-session-fns";
+import { TAgentVaultSessionDALFactory, TAgentVaultSessionListRow } from "./agent-vault-session-dal";
+import { deriveSessionStatus, generateSessionToken } from "./agent-vault-session-fns";
 import { TGetSessionByIdDTO, TListSessionsDTO, TMintSessionDTO, TRevokeSessionDTO } from "./agent-vault-session-types";
 
 // V1 ships one bundle per session; the junction table, `position` and the proxy matcher all handle more.
@@ -54,6 +54,11 @@ export const agentVaultSessionServiceFactory = ({
     }
     return { type: ctx.actor, id: ctx.actorId };
   };
+
+  const toSessionView = ({ userId, identityId, ...session }: TAgentVaultSessionListRow) => ({
+    ...session,
+    status: deriveSessionStatus({ ...session, userId, identityId })
+  });
 
   const mintSession = async ({ projectId, ctx, accessBundles, actorName, actorEmail, ttl }: TMintSessionDTO) => {
     const actor = requireSessionActor(ctx);
@@ -105,6 +110,8 @@ export const agentVaultSessionServiceFactory = ({
           projectId,
           userId: actor.type === ActorType.USER ? actor.id : null,
           identityId: actor.type === ActorType.IDENTITY ? actor.id : null,
+          actorType:
+            actor.type === ActorType.IDENTITY ? AgentVaultMemberType.MachineIdentity : AgentVaultMemberType.User,
           actorName,
           actorEmail,
           tokenHash,
@@ -164,10 +171,27 @@ export const agentVaultSessionServiceFactory = ({
       offset
     });
 
-    return {
-      sessions: sessions.map((session) => ({ ...session, status: deriveSessionStatus(session) })),
-      totalCount
-    };
+    return { sessions: sessions.map(toSessionView), totalCount };
+  };
+
+  // A session you may not see reads exactly like one that does not exist.
+  const findVisibleSession = async ({
+    projectId,
+    ctx,
+    sessionId,
+    isAdmin
+  }: TGetSessionByIdDTO & { isAdmin: boolean }) => {
+    const {
+      sessions: [session]
+    } = await agentVaultSessionDAL.findForList({
+      projectId,
+      sessionId,
+      actor: isAdmin ? undefined : requireSessionActor(ctx),
+      limit: 1,
+      offset: 0
+    });
+    if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
+    return session;
   };
 
   const getSessionById = async ({ projectId, ctx, sessionId }: TGetSessionByIdDTO) => {
@@ -177,18 +201,7 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    const { sessions } = await agentVaultSessionDAL.findForList({
-      projectId,
-      sessionId,
-      actor: isAdmin ? undefined : requireSessionActor(ctx),
-      limit: 1,
-      offset: 0
-    });
-
-    const [session] = sessions;
-    if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
-
-    return { session: { ...session, status: deriveSessionStatus(session) } };
+    return { session: toSessionView(await findVisibleSession({ projectId, ctx, sessionId, isAdmin })) };
   };
 
   const revokeSession = async ({ projectId, ctx, sessionId }: TRevokeSessionDTO) => {
@@ -198,36 +211,24 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    const session = await agentVaultSessionDAL.findOne({ id: sessionId, projectId });
-    if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
-
-    if (!isSessionOwnedBy(ctx, session) && !isAdmin) {
-      throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
-    }
-
-    // The row type leaves nullable columns optional; the response contract does not.
-    const withStatus = (row: typeof session) => {
-      const normalized = {
-        ...row,
-        userId: row.userId ?? null,
-        identityId: row.identityId ?? null,
-        actorEmail: row.actorEmail ?? null,
-        expiresAt: row.expiresAt ?? null,
-        revokedAt: row.revokedAt ?? null
-      };
-      return { ...normalized, status: deriveSessionStatus(normalized) };
-    };
+    const session = await findVisibleSession({ projectId, ctx, sessionId, isAdmin });
 
     // revokedNow lets the caller audit a real revocation without auditing a repeat. Revoking twice stays a
     // 200 with the original revokedAt, so the second caller is not the one who revoked it.
-    if (session.revokedAt) return { session: withStatus(session), revokedNow: false };
+    if (session.revokedAt) return { session: toSessionView(session), revokedNow: false };
 
+    // The timestamp comes from the written row: a read-back could land on a replica that has not seen it.
     const revoked = await agentVaultSessionDAL.revokeIfActive(session.id, new Date());
-    if (revoked) return { session: withStatus(revoked), revokedNow: true };
+    if (revoked) {
+      return { session: toSessionView({ ...session, revokedAt: revoked.revokedAt ?? null }), revokedNow: true };
+    }
 
     // A concurrent revoke won. Report its timestamp rather than the one this request read.
     const current = await agentVaultSessionDAL.findOne({ id: session.id, projectId });
-    return { session: withStatus(current ?? session), revokedNow: false };
+    return {
+      session: toSessionView({ ...session, revokedAt: current?.revokedAt ?? session.revokedAt }),
+      revokedNow: false
+    };
   };
 
   return {

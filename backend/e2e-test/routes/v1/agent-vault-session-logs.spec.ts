@@ -589,7 +589,12 @@ describe("Agent Vault session logs", async () => {
           })
           .returning("*")) as { id: string }[];
         const [foreignSession] = (await testDb("agent_vault_sessions")
-          .insert({ projectId: foreignProject.id, actorName: "foreign actor", tokenHash: `foreign-${Date.now()}` })
+          .insert({
+            projectId: foreignProject.id,
+            actorType: "user",
+            actorName: "foreign actor",
+            tokenHash: `foreign-${Date.now()}`
+          })
           .returning("*")) as { id: string }[];
 
         const foreign = await proxy.postChunk(foreignSession.id, chunkBody());
