@@ -97,7 +97,7 @@ export const SecretValueTrackingPrompt = ({
       <div className="flex h-[200px] flex-col items-center justify-center gap-3">
         <AlertTriangleIcon className="size-6 text-danger" />
         <p className="text-sm text-danger">
-          Failed to index secrets: {status.message ?? "Unknown error"}
+          Could not enable secret value search: {status.message ?? "Unknown error"}
         </p>
         <Button variant="outline" onClick={enable}>
           Retry
@@ -112,14 +112,11 @@ export const SecretValueTrackingPrompt = ({
         <Loader2Icon className="size-6 animate-spin text-org" />
         <p className="text-sm text-foreground">
           {status?.projectsTotal
-            ? `Indexed ${status.projectsDone} of ${status.projectsTotal} projects`
-            : "Starting to index secrets"}
+            ? `Enabling secret value search: ${status.projectsDone} of ${status.projectsTotal} projects ready`
+            : "Enabling secret value search"}
         </p>
         <p className="max-w-md text-sm text-muted">
-          {status?.secretsProcessed
-            ? `${status.secretsProcessed.toLocaleString()} secrets checked so far. `
-            : ""}
-          You can leave this page. Indexing keeps going, and this is ready when it finishes.
+          You can leave this page. Search is ready here when this finishes.
         </p>
       </div>
     );
@@ -128,11 +125,11 @@ export const SecretValueTrackingPrompt = ({
   return (
     <Empty className="border">
       <EmptyHeader>
-        <EmptyTitle>Secret value indexing is not turned on</EmptyTitle>
+        <EmptyTitle>Secret value search is not enabled</EmptyTitle>
         <EmptyDescription>{description}</EmptyDescription>
         <EmptyContent>
           <Button variant="org" size="xs" onClick={enable}>
-            Turn On Indexing
+            Enable Secret Value Search
           </Button>
         </EmptyContent>
       </EmptyHeader>

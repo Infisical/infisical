@@ -95,7 +95,7 @@ export const DuplicatedSecretsCard = ({ isPlanRestricted }: Props) => {
       return (
         <SecretValueTrackingPrompt
           tracking={tracking}
-          description="Infisical indexes every secret in the organization once, then keeps the index current as secrets change. Secrets stay readable while it runs."
+          description="Enable secret value search to find secrets that share a value across the organization."
         />
       );
     }

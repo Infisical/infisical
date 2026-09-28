@@ -58,7 +58,7 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
       <div className="p-4">
         <SecretValueTrackingPrompt
           tracking={tracking}
-          description="Searching by value needs every secret in the organization indexed once. Infisical then keeps the index current as secrets change, and secrets stay readable while it runs."
+          description="Enable secret value search to find every project, environment and path where a value is used."
         />
       </div>
     );
