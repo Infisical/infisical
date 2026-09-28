@@ -3,6 +3,7 @@ import { subject } from "@casl/ability";
 import { useQueryClient } from "@tanstack/react-query";
 import { AsteriskIcon, ChevronDownIcon, PlugIcon } from "lucide-react";
 
+import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import {
   Badge,
   Button,
@@ -33,7 +34,8 @@ import {
   ProjectPermissionSub,
   useOrganization,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { areAgentVaultSessionLogsOn } from "@app/helpers/agentVaultSessionLogs";
@@ -62,8 +64,10 @@ export const SessionLogSection = () => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [isConnectionsSheetOpen, setIsConnectionsSheetOpen] = useState(false);
   const [isEditCredentialsOpen, setIsEditCredentialsOpen] = useState(false);
   const [awsSetup, setAwsSetup] = useState<{
@@ -78,6 +82,7 @@ export const SessionLogSection = () => {
   const { data: agentVaultConnections = [] } = useListAppConnections(currentProject.id);
 
   const hasDestination = Boolean(config?.bucket);
+  const isEnabled = Boolean(config?.enabled) && subscription.agentVaultByoS3;
 
   // Saving with session logs on already proved Infisical can write, so the dialog only opens for a
   // step the read check finds missing.
@@ -121,7 +126,13 @@ export const SessionLogSection = () => {
           </CardDescription>
           <CardAction>
             <ButtonGroup>
-              <Button variant="av" isDisabled={isPending} onClick={() => setIsModalOpen(true)}>
+              <Button
+                variant="av"
+                isDisabled={isPending}
+                onClick={() =>
+                  subscription.agentVaultByoS3 ? setIsModalOpen(true) : setIsUpgradeOpen(true)
+                }
+              >
                 {!config || hasDestination ? "Configure" : "Set Up Session Logs"}
               </Button>
               {hasConnectionMenu && (
@@ -177,8 +188,8 @@ export const SessionLogSection = () => {
                 <Detail>
                   <DetailLabel>Status</DetailLabel>
                   <DetailValue>
-                    <Badge variant={config.enabled ? "success" : "neutral"}>
-                      {config.enabled ? "Enabled" : "Disabled"}
+                    <Badge variant={isEnabled ? "success" : "neutral"}>
+                      {isEnabled ? "Enabled" : "Disabled"}
                     </Badge>
                   </DetailValue>
                 </Detail>
@@ -219,6 +230,8 @@ export const SessionLogSection = () => {
         onSaved={offerAwsSetup}
         onEditCredentials={canEditConnection ? () => setIsEditCredentialsOpen(true) : undefined}
       />
+
+      <AgentVaultSessionLogUpgradeModal isOpen={isUpgradeOpen} onOpenChange={setIsUpgradeOpen} />
 
       <AwsSetupDialog
         isOpen={Boolean(awsSetup)}

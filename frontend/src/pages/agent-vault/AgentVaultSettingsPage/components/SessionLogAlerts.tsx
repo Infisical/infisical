@@ -1,7 +1,13 @@
+import { useState } from "react";
 import { CircleAlertIcon, TriangleAlertIcon } from "lucide-react";
 
-import { Alert, AlertDescription } from "@app/components/v3";
-import { areAgentVaultSessionLogsOn } from "@app/helpers/agentVaultSessionLogs";
+import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
+import { Alert, AlertAction, AlertDescription, Button } from "@app/components/v3";
+import { useSubscription } from "@app/context";
+import {
+  areAgentVaultSessionLogsOn,
+  isAgentVaultSessionLogPlanLapsed
+} from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogCorsProbe,
   useGetAgentVaultSessionLogHealth,
@@ -14,15 +20,15 @@ export const SessionLogAlerts = () => {
   const { data: config, isPending: isSettingsPending } = useGetAgentVaultSessionLogSettings();
   const { data: health, isPending: isHealthPending } = useGetAgentVaultSessionLogHealth();
   const { data: readCheck } = useGetAgentVaultSessionLogCorsProbe();
+  const { subscription } = useSubscription();
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
   const hasDestination = Boolean(config?.bucket);
+  const isLapsed = Boolean(config && isAgentVaultSessionLogPlanLapsed(config, subscription));
   const isRecording = config ? areAgentVaultSessionLogsOn(config) : false;
   const isReadBlocked = Boolean(readCheck && readCheck.status !== "readable");
 
   const notRecordingReason = (() => {
-    if (!hasDestination) {
-      return "Session logs aren't set up. Choose an AWS connection and a bucket to start recording what your agents reach.";
-    }
     if (!config?.enabled) {
       if (!config?.appConnectionId) {
         return "Session logs are off, and without an AWS connection the logs already in the bucket can't be read.";
@@ -52,7 +58,24 @@ export const SessionLogAlerts = () => {
         </Alert>
       )}
 
-      {!isSettingsPending && !isHealthPending && !isRecording && (
+      {isLapsed && (
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertDescription>
+            <p>
+              Your plan no longer includes session logs, so new requests aren&apos;t recorded. Saved
+              logs stay viewable.
+            </p>
+            <AlertAction>
+              <Button variant="outline" size="sm" onClick={() => setIsUpgradeOpen(true)}>
+                Upgrade
+              </Button>
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!isSettingsPending && !isHealthPending && hasDestination && !isLapsed && !isRecording && (
         <Alert variant="warning">
           <TriangleAlertIcon />
           <AlertDescription>{notRecordingReason}</AlertDescription>
@@ -60,6 +83,8 @@ export const SessionLogAlerts = () => {
       )}
 
       <SessionLogReadAccessAlert />
+
+      <AgentVaultSessionLogUpgradeModal isOpen={isUpgradeOpen} onOpenChange={setIsUpgradeOpen} />
     </>
   );
 };

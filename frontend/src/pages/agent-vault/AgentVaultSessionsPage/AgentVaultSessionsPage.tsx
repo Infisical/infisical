@@ -18,6 +18,7 @@ import {
   UserIcon
 } from "lucide-react";
 
+import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
 import {
   Alert,
@@ -62,8 +63,11 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission } from "@app/context";
-import { areAgentVaultSessionLogsOn } from "@app/helpers/agentVaultSessionLogs";
+import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
+import {
+  areAgentVaultSessionLogsOn,
+  isAgentVaultSessionLogPlanLapsed
+} from "@app/helpers/agentVaultSessionLogs";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -138,6 +142,11 @@ export const AgentVaultSessionsPage = () => {
   const { data: accessBundles } = useListAgentVaultAccessBundles({ limit: 1 });
   const { data: sessionLogSettings } = useGetAgentVaultSessionLogSettings(isAdmin);
   const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
+  const { subscription } = useSubscription();
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  const isSessionLogPlanLapsed = Boolean(
+    sessionLogSettings && isAgentVaultSessionLogPlanLapsed(sessionLogSettings, subscription)
+  );
 
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -194,26 +203,44 @@ export const AgentVaultSessionsPage = () => {
           </Alert>
         )}
 
-      {sessionLogSettings && !areAgentVaultSessionLogsOn(sessionLogSettings) && (
+      {isSessionLogPlanLapsed && (
         <Alert variant="warning">
           <TriangleAlertIcon />
           <AlertDescription>
-            <p>
-              Sessions aren&apos;t being logged, so there is no record of what your agents reached.
-            </p>
+            <p>Your plan no longer includes session logs, so new requests aren&apos;t recorded.</p>
             <AlertAction>
-              <Button variant="outline" size="sm" asChild>
-                <Link
-                  to="/organizations/$orgId/agent-vault/settings"
-                  params={{ orgId: currentOrg.id }}
-                >
-                  Go to Settings
-                </Link>
+              <Button variant="outline" size="sm" onClick={() => setIsUpgradeOpen(true)}>
+                Upgrade
               </Button>
             </AlertAction>
           </AlertDescription>
         </Alert>
       )}
+
+      {sessionLogSettings &&
+        Boolean(sessionLogSettings.bucket) &&
+        !isSessionLogPlanLapsed &&
+        !areAgentVaultSessionLogsOn(sessionLogSettings) && (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              <p>
+                Sessions aren&apos;t being logged, so there is no record of what your agents
+                reached.
+              </p>
+              <AlertAction>
+                <Button variant="outline" size="sm" asChild>
+                  <Link
+                    to="/organizations/$orgId/agent-vault/settings"
+                    params={{ orgId: currentOrg.id }}
+                  >
+                    Go to Settings
+                  </Link>
+                </Button>
+              </AlertAction>
+            </AlertDescription>
+          </Alert>
+        )}
 
       {isAdmin && <SessionLogReadAccessAlert />}
 
@@ -502,6 +529,8 @@ export const AgentVaultSessionsPage = () => {
         isPending={isOpenSessionPending}
         onRevoke={setSessionToRevoke}
       />
+
+      <AgentVaultSessionLogUpgradeModal isOpen={isUpgradeOpen} onOpenChange={setIsUpgradeOpen} />
     </div>
   );
 };

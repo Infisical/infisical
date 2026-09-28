@@ -7,8 +7,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
-import { areAgentVaultSessionLogsOn } from "@app/helpers/agentVaultSessionLogs";
+import { useProjectPermission, useSubscription } from "@app/context";
+import {
+  areAgentVaultSessionLogsOn,
+  isAgentVaultSessionLogPlanLapsed
+} from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogHealth,
   useGetAgentVaultSessionLogSettings
@@ -24,6 +27,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   const { data: sessionLogSettings } = useGetAgentVaultSessionLogSettings(isAdmin);
   const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
+  const { subscription } = useSubscription();
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
@@ -35,7 +39,11 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   ];
 
   let settingsDot: NavItem["dotVariant"];
-  if (sessionLogSettings && !areAgentVaultSessionLogsOn(sessionLogSettings))
+  if (
+    sessionLogSettings?.bucket &&
+    (!areAgentVaultSessionLogsOn(sessionLogSettings) ||
+      isAgentVaultSessionLogPlanLapsed(sessionLogSettings, subscription))
+  )
     settingsDot = "warning";
   else if (sessionLogHealth?.isStorageFull) settingsDot = "danger";
 
