@@ -615,12 +615,24 @@ describe("without session logs on the plan", () => {
     expect(updateConfig).not.toHaveBeenCalled();
   });
 
-  test("a save that turns recording off is refused too, so the settings stay as they were", async () => {
+  test("a save that changes the bucket is refused", async () => {
     const { service, updateConfig } = build({ licensed: false });
-    await expect(save(service, { enabled: false, appConnectionId: null })).rejects.toThrow(
-      AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
-    );
+    await expect(save(service, { bucket: "another-bucket" })).rejects.toThrow(AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN);
     expect(updateConfig).not.toHaveBeenCalled();
+  });
+
+  test("a save that turns recording off still works", async () => {
+    const { service, updateConfig } = build({ licensed: false });
+    const { settings } = await save(service, { enabled: false });
+    expect(settings.enabled).toBe(false);
+    expect(updateConfig).toHaveBeenCalledTimes(1);
+  });
+
+  test("a save that turns recording off and removes the connection still works", async () => {
+    const { service, validateConnection } = build({ licensed: false });
+    const { settings } = await save(service, { enabled: false, appConnectionId: null });
+    expect(settings).toMatchObject({ enabled: false, appConnectionId: null });
+    expect(validateConnection).not.toHaveBeenCalled();
   });
 
   test("a chunk is refused with the error that tells the proxy logging is off", async () => {

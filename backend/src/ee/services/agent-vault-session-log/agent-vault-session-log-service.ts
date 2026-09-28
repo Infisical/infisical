@@ -492,10 +492,6 @@ export const agentVaultSessionLogServiceFactory = ({
   const updateSessionLogSettings = async ({ projectId, ctx, actor, ...patch }: TUpdateSessionLogSettingsDTO) => {
     await $requireAdmin({ projectId, ctx });
 
-    if (!(await areSessionLogsLicensed(licenseService, ctx.actorOrgId))) {
-      throw new BadRequestError({ message: AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN });
-    }
-
     const existing = await agentVaultSessionLogConfigDAL.findByProjectIdFromPrimary(projectId);
     const current = existing ?? NO_SETTINGS;
 
@@ -506,6 +502,18 @@ export const agentVaultSessionLogServiceFactory = ({
       region: patch.region ?? current.region ?? null,
       keyPrefix: patch.keyPrefix === undefined ? (current.keyPrefix ?? null) : patch.keyPrefix || null
     };
+
+    // Turning off and removing the connection stay open without the plan: the config's foreign key would
+    // otherwise block deleting a connection the customer can no longer use.
+    const needsLicence =
+      (next.enabled && !current.enabled) ||
+      next.bucket !== (current.bucket ?? null) ||
+      next.region !== (current.region ?? null) ||
+      next.keyPrefix !== (current.keyPrefix ?? null) ||
+      (next.appConnectionId !== null && next.appConnectionId !== (current.appConnectionId ?? null));
+    if (needsLicence && !(await areSessionLogsLicensed(licenseService, ctx.actorOrgId))) {
+      throw new BadRequestError({ message: AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN });
+    }
 
     // Any new use of the connection is revalidated, destination changes included, or an admin who may not use
     // it could point it at their own bucket. Never on turn-off: that must work even with a broken connection.
