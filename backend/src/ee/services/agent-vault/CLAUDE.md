@@ -19,7 +19,7 @@ never in anything the agent holds.
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles, services, credential encryption, grants
 agent-vault-member/          product membership (list, add, role, remove)
-agent-vault-session/         mint, revoke, list
+agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           login (enrollment), heartbeat, resolve
 agent-vault-session-log/     storage settings, chunk ingest, playback
@@ -93,13 +93,13 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   the actor is out and work again if the actor is added back. Settled with the product owner.
 - Session actor columns are `SET NULL` so history survives the actor. Resolve refuses a session with neither
   id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
-  `actorType` is stored at mint because nulled ids can't say which kind of owner it was; the API's nested
-  `actor` then fills in from the `actorName`/`actorEmail` snapshot with a null `id`.
+  `actorType` is stored at mint because `SET NULL` erases which kind of owner it was. It stays nullable (a pod
+  on the previous release writes none) and `toSessionActor` falls back to the backfill's guess.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
   actor id reads as revoked in the list and the status filter, so they agree with resolve refusing it. Expiry
   is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
-- **Sessions are never deleted.** Nothing prunes ended sessions, so the Sessions page stays a full history of
-  what was granted, and a session's row keeps the key that decrypts its session logs.
+- **Sessions are never deleted**, so the Sessions page is a full history and a session's row keeps the key its
+  logs need. Settled with the product owner.
 
 ## Proxies
 
@@ -176,56 +176,45 @@ header" is the name in every layer; unqualified "header" means the credential's 
 ## Session logs
 
 Metadata only (method, host, path, status, decision), never bodies, headers or the query string. The agent is
-hostile input: it must never be able to erase or hide its own records.
+hostile input: nothing it sends may erase or hide its own records, so a refused chunk counts as dropped, never
+lost silently.
 
-- **A customer S3 bucket is required**; there is no Postgres payload path. Infisical stores one index row per
-  chunk (up to 1000 records) and seals or opens nothing; the bytes go proxy to bucket to browser.
-- **Two keys.** The project data key (`KmsDataKey.SecretManager`) wraps a per-session log key on the
-  session row, and only the session key leaves the backend. It is minted at session create even while session
-  logs are off; sessions minted before this shipped have none and never record.
-- **The AAD is `SHA-256("{sessionId}|{chunkId}|v1")`**, sealed AES-256-GCM with a 12-byte IV and the tag
-  appended. Nothing more is needed: keys are per session and `(sessionId, chunkId)` is unique. The Go proxy and
-  the browser pin the same vector (`session_log_crypto_test.go`, `sessionLogDecrypt.test.ts`).
-  `agent_vault_session_log_chunks.proxyId` has no FK because the browser checks each record's `proxyId` against it,
-  so `SET NULL` would make that proxy's chunks unreadable.
-- **Size is capped at every hop**: the proxy seals at 4 MiB against the server's 8 MiB, and reads stop at a
-  byte budget as well as a record one. A chunk the server refuses counts as dropped on the next one.
-- **Write inserts the row, commits, then presigns a create-only PUT** (`If-None-Match: *`). Row first so a
-  failed upload is a visible gap, presign after commit so no network runs under the config row lock,
-  create-only so a replay cannot replace a stored chunk (the proxy reads 412 as already uploaded). Length and
-  `x-amz-checksum-sha256` are signed too, so S3 refuses a body that isn't the one the row records.
-- **A session keeps accepting late chunks for a day after it ends**: revoked, expired, or its owner deleted
-  (read from `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
-- **History (`/logs`) orders and cursors on `chunkId`** (a UUIDv7 the proxy mints, unique per session); split them and pages
-  drop chunks. The tail (`/logs/tail`) reads by our `createdAt` instead, overlapping by
-  `AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS`, so repeats are expected and deduped by chunk id. Both cursors are
-  opaque and mode-tagged (`agent-vault-session-log-fns.ts`); a history read hands out `liveCursor` to start a tail.
-- **The org ceiling counts chunks** (`AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS`) and is internal: no env var, no
-  docs, and the API reports only `isStorageFull` (on `/settings/session-logs/health`). At the limit writes are refused, never drop-oldest, which
-  would be an evidence-eviction primitive.
-- **Infisical never deletes session logs.** Nothing deletes from the bucket, so the policy asks for no
-  `s3:DeleteObject`.
-- **A save re-checks the connection whenever it puts it to a new use** (connection, bucket, region, prefix, or
-  recording turned on), never on a save that only turns recording off.
-- **Each chunk stores the bucket it was written to**, and a read presigns only chunks in the current bucket,
-  by their stored key (which carries the prefix), so switching back to an earlier bucket makes its history
-  readable again. A re-sent chunk is moved to the current bucket and key.
-- **Each chunk carries `ciphertextSha256`**, set by the proxy at seal time and checked in the browser before
-  decrypting, so an object edited in the bucket reads as changed, not as a decryption failure.
-- **The wrapped session key carries `sha256(sessionId|v1)` in front of the key**, because the KMS wrap takes
-  no context. Every unwrap goes through `openSessionLogKey`, including resolve, which shares its decryptor, so
-  a key copied onto another session's row is refused rather than handed out. The session id is minted
-  before the insert (`createWithId`) so the key can be wrapped with it.
-- **App connections are the one CASL subject the admin role carries**, because the Settings page's
-  connection sheet and the shared connection modals read CASL, not the role. Everything else here is
-  `hasRole(Admin)`.
-- **`/agent-vault/app-connections/aws/*` is the shared route builders in `app-connection-endpoints.ts`, called
-  with a `resolveScope`**: the project comes from the server, never the request, and every by-id route passes
-  `findAppConnectionById` a `scope`, so a connection outside Agent Vault is a 404 before any permission or app
-  check. Without it a delete here could reach an org connection Secret Sync uses, and a 403 or 400 would
-  confirm the id exists. The UI still uses the shared `/app-connections/aws` routes with the project id.
-- **The Agent Vault project holds AWS connections only.** `createAppConnection` refuses any other app there,
-  since the shared route would otherwise accept one.
+- **Bytes go proxy to the customer's bucket to the browser.** Infisical keeps one index row per chunk and never
+  seals or opens one. There is no Postgres payload path; AWS only.
+- **PAM session recording is a separate product.** The overlap with `pam-session-recording` is deliberate; don't
+  share code with it.
+- **Keys.** Mint wraps a per-session log key with the project data key, even while session logs are off, and
+  puts `sha256(sessionId|v1)` in front because the KMS wrap takes no context. Unwrap only through
+  `openSessionLogKey`, so a key copied onto another row is refused. A key that won't open turns logs off for
+  that session on resolve: session logs must never break brokering.
+- **The AAD is `sha256("{sessionId}|{chunkId}|v1")`**, pinned by one vector in the CLI's
+  `session_log_crypto_test.go` and `sessionLogDecrypt.test.ts`. Chunk ids are lowercase UUIDv7s because the
+  browser rebuilds the AAD from Postgres's string. A change here is a change in all three places.
+- **Write order is insert, commit, presign.** Row first so a failed upload is a visible gap, presign after commit
+  so no network call holds the config row lock. The PUT is create-only (`If-None-Match: *`, the proxy reads 412
+  as uploaded) with the length and `x-amz-checksum-sha256` signed, so S3 refuses any other body.
+- **A chunk row records its bucket and full key**, and reads presign only chunks in the current bucket, so
+  switching back makes old history readable. A re-send moves the row only through `moveToDestinationIfCurrent`,
+  whose one UPDATE checks the settings. No row locks.
+- **`chunks.proxyId` has no FK**: the browser checks each record's `proxyId` against it, and `SET NULL` would make
+  a deleted proxy's chunks unreadable.
+- **Chunks are accepted for 24 hours after a session ends**, including when its owner is deleted (read from
+  `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
+- **History (`/logs`) pages on `chunkId`, the tail (`/logs/tail`) on our `createdAt`**, re-reading
+  `AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS` and deduping by chunk id. A late chunk has an old id and a new
+  `createdAt`, so the tail can't page on the id.
+- **The org chunk limit is a lifetime counter** and internal: no env var, not documented, surfaced only as
+  `isStorageFull`. Kept as abuse prevention until usage and plans are decided. At the limit writes are refused,
+  never drop-oldest, which would let flooding evict evidence.
+- **Nothing deletes from the bucket**, so the IAM policy asks for no `s3:DeleteObject`.
+- **`/agent-vault/app-connections/aws/*` are the shared builders in `app-connection-endpoints.ts` called with
+  a `resolveScope`.** The project comes from the server, a connection outside Agent Vault is a 404 before any
+  permission check, and responses leave out `projectId`. `createAppConnection` refuses any app but AWS in this
+  project, the general routes included. The UI uses the general `/app-connections/aws` routes.
+- **The admin role carries the CASL `AppConnections` subject**, the one exception to `hasRole(Admin)`, because
+  the shared connection modals read CASL.
+- **e2e swaps in the storage fake through an alias in `vitest.e2e.config.mts`.** Rename
+  `agent-vault-session-log-storage-fns.ts` without it and e2e silently talks to real S3.
 
 ## The CLI
 
@@ -250,3 +239,6 @@ hostile input: it must never be able to erase or hide its own records.
 - The service template catalog (`helpers/agentVaultTemplates.ts`) is frontend-only and never persisted; icons
   re-derive from the stored host pattern. The backend must never learn a service name.
 - Docs links live in `pages/agent-vault/agent-vault-docs-urls.ts`; keep them pointing at existing pages.
+- The browser fetches session logs straight from S3, so `frontend/index.html`'s CSP `connect-src` must list
+  every host the SDK presigns: `*.s3.<region>`, the path-style `s3.<region>` used for dotted bucket names, and
+  both `s3-fips` forms. A region added to `AWSRegion` needs its hosts there too.
