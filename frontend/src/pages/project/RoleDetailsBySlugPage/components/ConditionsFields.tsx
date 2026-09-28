@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangleIcon, InfoIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -30,6 +31,7 @@ import {
   ConditionalProjectPermissionSubject,
   PermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
+import { projectKeys } from "@app/hooks/api";
 import { useGetWsTags } from "@app/hooks/api/tags";
 
 import {
@@ -109,11 +111,16 @@ export const ConditionsFields = ({
   actionLabelsMap
 }: ConditionsFieldsProps) => {
   const { currentProject, projectId } = useProject();
+  const queryClient = useQueryClient();
+  const isProjectRefreshing =
+    useIsFetching({ queryKey: projectKeys.getProjectById(projectId) }) > 0;
   const hasSecretTags = selectOptions.some(({ value }) => value === "secretTags");
   const {
     data: projectTags,
     isPending: isTagsPending,
-    isError: isTagsError
+    isError: isTagsError,
+    isFetching: isTagsFetching,
+    refetch: refetchTags
   } = useGetWsTags(projectId, hasSecretTags);
   const { control, setValue, clearErrors, setError } = useFormContext<TFormSchema>();
   const items = useFieldArray({
@@ -346,13 +353,19 @@ export const ConditionsFields = ({
               condition.operator === PermissionConditionOperators.$IN ||
               condition.operator === PermissionConditionOperators.$ALL;
             const isTagLookupUnavailable =
-              condition.lhs === "secretTags" && (isTagsPending || isTagsError || !projectTags);
+              condition.lhs === "secretTags" &&
+              (isTagsPending || isTagsFetching || isTagsError || !projectTags);
+            const isReferenceRefreshing = condition.lhs === "environment" && isProjectRefreshing;
             const knownSlugs =
               condition.lhs === "environment"
                 ? currentProject.environments?.map(({ slug }) => slug)
                 : projectTags?.map(({ slug }) => slug);
             const unknownSlugs =
-              isReferenceCondition && isLiteralOperator && !isTagLookupUnavailable && knownSlugs
+              isReferenceCondition &&
+              isLiteralOperator &&
+              !isTagLookupUnavailable &&
+              !isReferenceRefreshing &&
+              knownSlugs
                 ? [
                     ...new Set(
                       condition.rhs
@@ -559,7 +572,9 @@ export const ConditionsFields = ({
                         )}
                         {isReferenceCondition &&
                           isLiteralOperator &&
-                          (unknownSlugs.length > 0 || isTagLookupUnavailable) && (
+                          (unknownSlugs.length > 0 ||
+                            isTagLookupUnavailable ||
+                            isReferenceRefreshing) && (
                             <div className="flex items-start gap-2 pb-1 text-sm">
                               <div className="w-1/4" />
                               <div className="w-44" />
@@ -571,15 +586,34 @@ export const ConditionsFields = ({
                                       ? "Environment"
                                       : "Secret tag"}{" "}
                                     {unknownSlugs.map((slug) => `“${slug}”`).join(", ")}{" "}
-                                    {unknownSlugs.length === 1 ? "does" : "do"} not exist in this
-                                    project. You can still save this policy for future references.
+                                    {unknownSlugs.length === 1 ? "was" : "were"} not found in the
+                                    loaded project values. You can still save this policy for future
+                                    references.
                                   </p>
                                 ) : (
                                   <p className="text-muted" role="status">
-                                    {isTagsPending
-                                      ? "Checking project secret tags…"
+                                    {isTagsPending || isTagsFetching || isReferenceRefreshing
+                                      ? "Checking project references…"
                                       : "Could not check project secret tags. You can still save this policy."}
                                   </p>
+                                )}
+                                {!isReferenceRefreshing && !isTagsFetching && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="xs"
+                                    onClick={() => {
+                                      if (condition.lhs === "environment") {
+                                        queryClient.invalidateQueries({
+                                          queryKey: projectKeys.getProjectById(projectId)
+                                        });
+                                      } else {
+                                        refetchTags();
+                                      }
+                                    }}
+                                  >
+                                    Refresh References
+                                  </Button>
                                 )}
                               </div>
                               <div className="w-10" />
