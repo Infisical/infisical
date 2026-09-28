@@ -603,9 +603,6 @@ import {
   TSecretRotationV2SecretMappingsInsert,
   TSecretRotationV2SecretMappingsUpdate,
   TSecrets,
-  TSecretScanningConfigs,
-  TSecretScanningConfigsInsert,
-  TSecretScanningConfigsUpdate,
   TSecretScanningDataSources,
   TSecretScanningDataSourcesInsert,
   TSecretScanningDataSourcesUpdate,
@@ -1711,11 +1708,6 @@ declare module "knex/types/tables" {
       TSecretScanningFindings,
       TSecretScanningFindingsInsert,
       TSecretScanningFindingsUpdate
-    >;
-    [TableName.SecretScanningConfig]: KnexOriginal.CompositeTableType<
-      TSecretScanningConfigs,
-      TSecretScanningConfigsInsert,
-      TSecretScanningConfigsUpdate
     >;
     [TableName.Reminder]: KnexOriginal.CompositeTableType<TReminders, TRemindersInsert, TRemindersUpdate>;
     [TableName.ReminderRecipient]: KnexOriginal.CompositeTableType<

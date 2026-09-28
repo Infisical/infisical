@@ -12,7 +12,7 @@ Secret Scanning works across both cloud-connected repositories and local develop
 Core capabilities include:
 
 - Integrated Scanning Across Environments: Monitor secrets in real time across connected repositories like GitHub, GitLab, and Bitbucket, or scan locally using the infisical scan CLI.
-- Detection Engine: Identify potential secrets using pattern matching, entropy analysis, and custom rules tailored to your codebase and workflows.
+- Detection Engine: Identify potential secrets using pattern matching and entropy analysis.
 - Flexible Scan Modes: Run full scans manually or configure automatic diff scans triggered by new commits. CLI scans support Git history, file directories, or staged changes in CI pipelines.
 - Findings and Lifecycle Management: Track detected secrets with context like file path, commit hash, and scanning rule. Findings can be resolved, ignored, or marked as false positives — with full visibility into scan results over time.
-- Custom Configuration and Noise Reduction: Fine-tune scanning behavior with custom patterns, ignore rules (infisical-scan:ignore, .infisicalignore), entropy thresholds, and excluded paths to reduce false positives.
+- Noise Reduction: [Skip known secrets](/documentation/platform/secret-scanning/usage#ignoring-known-secrets) with `infisical-scan:ignore` comments or a `.infisicalignore` file to reduce false positives.

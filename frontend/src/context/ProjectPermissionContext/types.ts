@@ -224,11 +224,6 @@ export enum ProjectPermissionSecretScanningFindingActions {
   Update = "update-findings"
 }
 
-export enum ProjectPermissionSecretScanningConfigActions {
-  Read = "read-configs",
-  Update = "update-configs"
-}
-
 export enum ProjectPermissionSecretEventActions {
   SubscribeToCreationEvents = "subscribe-to-creation-events",
   SubscribeToUpdateEvents = "subscribe-to-update-events",
@@ -467,7 +462,6 @@ export enum ProjectPermissionSub {
   Commits = "commits",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
-  SecretScanningConfigs = "secret-scanning-configs",
   SecretEventSubscriptions = "secret-event-subscriptions",
   AppConnections = "app-connections",
   HsmConnectors = "hsm-connectors",
@@ -723,7 +717,6 @@ export type ProjectPermissionSet =
       ProjectPermissionSub.SecretScanningDataSources
     ]
   | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
-  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs]
   | [
       ProjectPermissionSecretEventActions,
       (

@@ -292,7 +292,9 @@ const kickOutCertManagerProject = async (knex: Knex, oldProjectId: string) => {
 
 const kickOutSecretScanningProject = async (knex: Knex, oldProjectId: string) => {
   const newProjectId = await newProject(knex, oldProjectId, ProjectType.SecretScanning);
-  await knex(TableName.SecretScanningConfig).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.DeprecatedSecretScanningConfig)
+    .where("projectId", oldProjectId)
+    .update("projectId", newProjectId);
   await knex(TableName.SecretScanningDataSource).where("projectId", oldProjectId).update("projectId", newProjectId);
   await knex(TableName.SecretScanningFinding).where("projectId", oldProjectId).update("projectId", newProjectId);
 };

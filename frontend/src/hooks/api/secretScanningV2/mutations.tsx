@@ -6,8 +6,6 @@ import { secretScanningV2Keys } from "./queries";
 import {
   TCreateSecretScanningDataSourceDTO,
   TDeleteSecretScanningDataSourceDTO,
-  TGetSecretScanningConfigResponse,
-  TSecretScanningConfig,
   TSecretScanningDataSourceResponse,
   TSecretScanningFindingResponse,
   TTriggerSecretScanningDataSourceDTO,
@@ -161,25 +159,6 @@ export const useUpdateMultipleSecretScanningFinding = () => {
       });
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.dataSource()
-      });
-    }
-  });
-};
-
-export const useUpdateSecretScanningConfig = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ projectId, ...params }: TSecretScanningConfig) => {
-      const { data } = await apiRequest.patch<TGetSecretScanningConfigResponse>(
-        `/api/v2/secret-scanning/configs?projectId=${projectId}`,
-        params
-      );
-
-      return data.config;
-    },
-    onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({
-        queryKey: secretScanningV2Keys.configByProjectId(projectId)
       });
     }
   });

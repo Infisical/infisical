@@ -316,7 +316,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
   const getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<
     TGitLabDataSourceWithConnection,
     TQueueGitLabResourceDiffScan["payload"]
-  > = async ({ dataSource, payload, resourceName, configPath }) => {
+  > = async ({ dataSource, payload, resourceName }) => {
     const { connection } = dataSource;
 
     const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
@@ -334,10 +334,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
         if (commitDiff.deletedFile) continue;
 
         // eslint-disable-next-line no-await-in-loop
-        const findings = await scanContentAndGetFindings(
-          replaceNonChangesWithNewlines(`\n${commitDiff.diff}`),
-          configPath
-        );
+        const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(`\n${commitDiff.diff}`));
 
         const adjustedFindings = findings.map((finding) => {
           const startLine = convertPatchLineToFileLineNumber(commitDiff.diff, finding.StartLine);
