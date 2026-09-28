@@ -1249,7 +1249,7 @@ Scan a Git repository's history, a directory, or standard input for leaked secre
 
 By default, the CLI reads `git log -p` for every commit on every branch of the repository at `--source`. Pass `--log-opts` to choose the commits, `--no-git` to scan the files in their current state, or `--pipe` to scan standard input.
 
-The scan uses the rules in `--config`, then the file named by `INFISICAL_SCAN_CONFIG`, then `.infisical-scan.toml` in the `--source` directory, then the built-in rules. Findings whose fingerprints are listed in `.infisicalignore` in the `--source` directory are skipped. See [Secret scanning](/cli/scanning-overview) for the config format, baselines, and ignore files.
+The scan uses the rules in `--config`, then the file named by `INFISICAL_SCAN_CONFIG`, then `.infisical-scan.toml` in the `--source` directory, then the built-in rules. Findings whose fingerprints are listed in `.infisicalignore` in the `--source` directory are skipped. See [Scan code locally with the CLI](/documentation/platform/secret-scanning/scan-locally) for the config format, baselines, and ignore files.
 
 The command exits with `--exit-code` when it finds leaks, and with `1` when the scan fails.
 

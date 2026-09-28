@@ -443,6 +443,7 @@
               {
                 "group": "Secrets scanning",
                 "pages": [
+                  "documentation/platform/secret-scanning/scan-locally",
                   {
                     "group": "Concepts",
                     "pages": [
@@ -1300,7 +1301,6 @@
                 "pages": [
                   "cli/usage",
                   "cli/project-config",
-                  "cli/scanning-overview",
                   "cli/faq"
                 ]
               },
@@ -4790,6 +4790,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/cli/scanning-overview",
+      "destination": "/documentation/platform/secret-scanning/scan-locally"
+    },
     {
       "source": "/api-reference/endpoints/agent-vault-memberships/list-users",
       "destination": "/api-reference/endpoints/agent-vault-members/list"
