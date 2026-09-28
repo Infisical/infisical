@@ -25,10 +25,12 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import {
   ConditionalProjectPermissionSubject,
   PermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
+import { useGetWsTags } from "@app/hooks/api/tags";
 
 import {
   getConditionOperatorHelperInfo,
@@ -106,6 +108,13 @@ export const ConditionsFields = ({
   actionConditionsMap,
   actionLabelsMap
 }: ConditionsFieldsProps) => {
+  const { currentProject, projectId } = useProject();
+  const hasSecretTags = selectOptions.some(({ value }) => value === "secretTags");
+  const {
+    data: projectTags,
+    isPending: isTagsPending,
+    isError: isTagsError
+  } = useGetWsTags(projectId, hasSecretTags);
   const { control, setValue, clearErrors, setError } = useFormContext<TFormSchema>();
   const items = useFieldArray({
     control,
@@ -329,6 +338,30 @@ export const ConditionsFields = ({
               | Array<{ lhs: string; rhs: string; operator: string }>
               | undefined;
             const condition = conditions?.[index] || { lhs: "", rhs: "", operator: "" };
+            const isReferenceCondition =
+              condition.lhs === "environment" || condition.lhs === "secretTags";
+            const isLiteralOperator =
+              condition.operator === PermissionConditionOperators.$EQ ||
+              condition.operator === PermissionConditionOperators.$NEQ ||
+              condition.operator === PermissionConditionOperators.$IN ||
+              condition.operator === PermissionConditionOperators.$ALL;
+            const isTagLookupUnavailable =
+              condition.lhs === "secretTags" && (isTagsPending || isTagsError || !projectTags);
+            const knownSlugs =
+              condition.lhs === "environment"
+                ? currentProject.environments?.map(({ slug }) => slug)
+                : projectTags?.map(({ slug }) => slug);
+            const unknownSlugs =
+              isReferenceCondition && isLiteralOperator && !isTagLookupUnavailable && knownSlugs
+                ? [
+                    ...new Set(
+                      condition.rhs
+                        .split(",")
+                        .map((slug) => slug.trim())
+                        .filter(Boolean)
+                    )
+                  ].filter((slug) => !knownSlugs.includes(slug))
+                : [];
 
             // Filter out already used conditions (except current row's condition)
             const availableOptionsForRow = selectOptions.filter(
@@ -524,6 +557,34 @@ export const ConditionsFields = ({
                             <div className="w-10" />
                           </div>
                         )}
+                        {isReferenceCondition &&
+                          isLiteralOperator &&
+                          (unknownSlugs.length > 0 || isTagLookupUnavailable) && (
+                            <div className="flex items-start gap-2 pb-1 text-sm">
+                              <div className="w-1/4" />
+                              <div className="w-44" />
+                              <div className="grow">
+                                {unknownSlugs.length > 0 ? (
+                                  <p className="flex items-start gap-1 text-warning" role="status">
+                                    <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
+                                    {condition.lhs === "environment"
+                                      ? "Environment"
+                                      : "Secret tag"}{" "}
+                                    {unknownSlugs.map((slug) => `“${slug}”`).join(", ")}{" "}
+                                    {unknownSlugs.length === 1 ? "does" : "do"} not exist in this
+                                    project. You can still save this policy for future references.
+                                  </p>
+                                ) : (
+                                  <p className="text-muted" role="status">
+                                    {isTagsPending
+                                      ? "Checking project secret tags…"
+                                      : "Could not check project secret tags. You can still save this policy."}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="w-10" />
+                            </div>
+                          )}
                       </div>
                     )}
                   />
