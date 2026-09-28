@@ -2,7 +2,14 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 
 import { classifyError } from "./classify";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, RateLimitError, UnauthorizedError } from "./index";
+import {
+  BadRequestError,
+  ClientClosedRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  RateLimitError,
+  UnauthorizedError
+} from "./index";
 
 describe("classifyError", () => {
   test("maps known Infisical error classes to bounded labels", () => {
@@ -11,6 +18,7 @@ describe("classifyError", () => {
     expect(classifyError(new RateLimitError({ message: "x" }))).toBe("rate_limit");
     expect(classifyError(new NotFoundError({ message: "x" }))).toBe("not_found");
     expect(classifyError(new BadRequestError({ message: "x" }))).toBe("validation");
+    expect(classifyError(new ClientClosedRequestError())).toBe("client_closed");
   });
 
   test("maps CASL ForbiddenError (thrown by permission checks) to permission, not unknown", () => {
