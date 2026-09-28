@@ -114,14 +114,6 @@ export const ConditionsFields = ({
   const queryClient = useQueryClient();
   const isProjectRefreshing =
     useIsFetching({ queryKey: projectKeys.getProjectById(projectId) }) > 0;
-  const hasSecretTags = selectOptions.some(({ value }) => value === "secretTags");
-  const {
-    data: projectTags,
-    isPending: isTagsPending,
-    isError: isTagsError,
-    isFetching: isTagsFetching,
-    refetch: refetchTags
-  } = useGetWsTags(projectId, hasSecretTags);
   const { control, setValue, clearErrors, setError } = useFormContext<TFormSchema>();
   const items = useFieldArray({
     control,
@@ -139,18 +131,26 @@ export const ConditionsFields = ({
     control,
     name: `permissions.${subject}.${position}.conditions` as const
   });
-  const conditionValues = watchedConditions as Array<{ lhs: string }> | undefined;
+  const conditionValues = watchedConditions as
+    | Array<{ lhs: string; rhs: string; operator: string }>
+    | undefined;
   const hasReferenceConditions = conditionValues?.some(
     ({ lhs }) => lhs === "environment" || lhs === "secretTags"
   );
   const hasTagCondition = conditionValues?.some(({ lhs }) => lhs === "secretTags");
+  const {
+    data: projectTags,
+    isPending: isTagsPending,
+    isError: isTagsError,
+    isFetching: isTagsFetching,
+    refetch: refetchTags
+  } = useGetWsTags(projectId, Boolean(hasTagCondition));
 
   useEffect(() => {
-    const conditions = watchedConditions as Array<{ lhs: string }> | undefined;
-    if (!conditions || conditions.length === 0) return;
+    if (!conditionValues?.length) return;
     if (!actionConditionsMap || !actionLabelsMap) return;
 
-    conditions.forEach((condition: { lhs: string }, index: number) => {
+    conditionValues.forEach((condition, index) => {
       const conditionKey = condition?.lhs;
       if (!conditionKey) return;
 
@@ -176,7 +176,7 @@ export const ConditionsFields = ({
     });
   }, [
     selectedActions,
-    watchedConditions,
+    conditionValues,
     actionConditionsMap,
     actionLabelsMap,
     subject,
@@ -186,10 +186,9 @@ export const ConditionsFields = ({
   ]);
 
   const usedConditionTypes = useMemo((): string[] => {
-    const conditions = watchedConditions as Array<{ lhs: string }> | undefined;
-    if (!conditions) return [];
-    return conditions.map((c) => c.lhs).filter(Boolean);
-  }, [watchedConditions]);
+    if (!conditionValues) return [];
+    return conditionValues.map((c) => c.lhs).filter(Boolean);
+  }, [conditionValues]);
 
   const canAddCondition = useMemo(() => {
     const availableToAdd = selectOptions.filter(
@@ -199,8 +198,7 @@ export const ConditionsFields = ({
   }, [selectOptions, allowedConditions, usedConditionTypes]);
 
   const incompatibleConditions = useMemo(() => {
-    const conditions = watchedConditions as Array<{ lhs: string }> | undefined;
-    if (!conditions || conditions.length === 0) return [];
+    if (!conditionValues?.length) return [];
     if (!actionConditionsMap || !actionLabelsMap) return [];
 
     const incompatible: Array<{
@@ -209,7 +207,7 @@ export const ConditionsFields = ({
       disallowingActionLabels: string;
     }> = [];
 
-    conditions.forEach((condition: { lhs: string }) => {
+    conditionValues.forEach((condition) => {
       const conditionKey = condition?.lhs;
       if (!conditionKey) return;
 
@@ -235,7 +233,7 @@ export const ConditionsFields = ({
     });
 
     return incompatible;
-  }, [watchedConditions, selectedActions, actionConditionsMap, actionLabelsMap, selectOptions]);
+  }, [conditionValues, selectedActions, actionConditionsMap, actionLabelsMap, selectOptions]);
 
   const getDefaultOperator = (conditionType: string): PermissionConditionOperators => {
     switch (conditionType) {
@@ -364,10 +362,7 @@ export const ConditionsFields = ({
       <div className="mt-2 flex flex-col space-y-2">
         {items.fields.length > 0 &&
           items.fields.map((el, index) => {
-            const conditions = watchedConditions as
-              | Array<{ lhs: string; rhs: string; operator: string }>
-              | undefined;
-            const condition = conditions?.[index] || { lhs: "", rhs: "", operator: "" };
+            const condition = conditionValues?.[index] || { lhs: "", rhs: "", operator: "" };
             const isReferenceCondition =
               condition.lhs === "environment" || condition.lhs === "secretTags";
             const isLiteralOperator =
