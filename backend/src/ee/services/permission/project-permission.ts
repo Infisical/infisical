@@ -258,6 +258,11 @@ export enum ProjectPermissionSecretScanningFindingActions {
   Update = "update-findings"
 }
 
+export enum ProjectPermissionSecretScanningConfigActions {
+  Read = "read-configs",
+  Update = "update-configs"
+}
+
 export enum ProjectPermissionSecretEventActions {
   SubscribeToCreationEvents = "subscribe-to-creation-events",
   SubscribeToUpdateEvents = "subscribe-to-update-events",
@@ -381,6 +386,7 @@ export enum ProjectPermissionSub {
   Kmip = "kmip",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
+  SecretScanningConfigs = "secret-scanning-configs",
   SecretEventSubscriptions = "secret-event-subscriptions",
   AppConnections = "app-connections",
   HsmConnectors = "hsm-connectors",
@@ -687,6 +693,7 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources]
   | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
+  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs]
   | [
       ProjectPermissionSecretEventActions,
       (
@@ -1606,6 +1613,12 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.SecretScanningConfigs).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretScanningConfigActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.AppConnections).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAppConnectionActions).describe(
@@ -1931,7 +1944,6 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   buildDeprecatedRemovedSubjectSchema("mcp-endpoints"),
   buildDeprecatedRemovedSubjectSchema("mcp-servers"),
   buildDeprecatedRemovedSubjectSchema("mcp-activity-logs"),
-  buildDeprecatedRemovedSubjectSchema("secret-scanning-configs"),
   ...GeneralPermissionSchema
 ]);
 
