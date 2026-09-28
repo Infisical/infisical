@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ClientClosedRequestError } from "@app/lib/errors";
 
-import { fnSecretsV2FromImports } from "./secret-import-fns";
+import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
 
 type Args = Parameters<typeof fnSecretsV2FromImports>[0];
 
@@ -122,5 +122,75 @@ describe("fnSecretsV2FromImports", () => {
     const imports = await fnSecretsV2FromImports(args);
 
     expect(imports[0].secrets.map((s) => s.secretValue)).toEqual(["expanded-A", `\${B_REF}`]);
+  });
+});
+
+describe("fnSecretsFromImports", () => {
+  type LegacyArgs = Parameters<typeof fnSecretsFromImports>[0];
+
+  const makeLegacyArgs = (abortSignal?: AbortSignal) => {
+    const findByManySecretPath = vi
+      .fn<LegacyArgs["folderDAL"]["findByManySecretPath"]>()
+      .mockResolvedValue([{ id: "shared-folder", envId: "env", path: "/shared" }] as Awaited<
+        ReturnType<LegacyArgs["folderDAL"]["findByManySecretPath"]>
+      >);
+    const find = vi.fn().mockResolvedValue([]);
+    const findByFolderIds = vi.fn<LegacyArgs["secretImportDAL"]["findByFolderIds"]>().mockResolvedValue([]);
+    const rootImport = {
+      id: "import",
+      folderId: "root-folder",
+      importPath: "/shared",
+      importEnv: { id: "env", slug: "dev", name: "Development" },
+      position: 1,
+      version: 1,
+      isReplication: false,
+      isReserved: false,
+      createdAt: new Date(0),
+      updatedAt: new Date(0)
+    } as LegacyArgs["allowedImports"][number];
+
+    const args: LegacyArgs = {
+      allowedImports: [rootImport],
+      folderDAL: { findByManySecretPath },
+      secretDAL: { find },
+      secretImportDAL: { findByFolderIds },
+      abortSignal
+    };
+    return { args, rootImport, findByManySecretPath, find, findByFolderIds };
+  };
+
+  it("stops before reading any import when the client already disconnected", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const { args, findByManySecretPath, find } = makeLegacyArgs(controller.signal);
+
+    await expect(fnSecretsFromImports(args)).rejects.toBeInstanceOf(ClientClosedRequestError);
+    expect(findByManySecretPath).not.toHaveBeenCalled();
+    expect(find).not.toHaveBeenCalled();
+  });
+
+  it("stops before walking deeper import levels once the client disconnects", async () => {
+    const controller = new AbortController();
+    const { args, rootImport, findByManySecretPath, findByFolderIds } = makeLegacyArgs(controller.signal);
+    findByFolderIds.mockImplementationOnce(async () => {
+      controller.abort();
+      return [{ ...rootImport, id: "deeper-import", folderId: "shared-folder", importPath: "/deeper" }] as Awaited<
+        ReturnType<LegacyArgs["secretImportDAL"]["findByFolderIds"]>
+      >;
+    });
+
+    await expect(fnSecretsFromImports(args)).rejects.toBeInstanceOf(ClientClosedRequestError);
+    expect(findByManySecretPath).toHaveBeenCalledTimes(1);
+  });
+
+  it("walks every level when the client stays connected", async () => {
+    const { args, rootImport, findByManySecretPath, findByFolderIds } = makeLegacyArgs(new AbortController().signal);
+    findByFolderIds.mockResolvedValueOnce([
+      { ...rootImport, id: "deeper-import", folderId: "shared-folder", importPath: "/deeper" }
+    ] as Awaited<ReturnType<LegacyArgs["secretImportDAL"]["findByFolderIds"]>>);
+
+    await fnSecretsFromImports(args);
+
+    expect(findByManySecretPath).toHaveBeenCalledTimes(2);
   });
 });

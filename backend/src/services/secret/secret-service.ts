@@ -720,7 +720,8 @@ export const secretServiceFactory = ({
         allowedImports,
         secretDAL,
         folderDAL,
-        secretImportDAL
+        secretImportDAL,
+        abortSignal
       });
 
       return {
