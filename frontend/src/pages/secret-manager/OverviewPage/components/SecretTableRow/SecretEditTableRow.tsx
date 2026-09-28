@@ -94,7 +94,6 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { usePopUp, useTimedReset, useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
-import { Reminder } from "@app/hooks/api/reminders/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
@@ -106,10 +105,11 @@ import {
   TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME
 } from "../tableRowActionStyles";
+import { useSecretReminders } from "./SecretReminders/useSecretReminders";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretMetadataForm } from "./SecretMetadataForm";
-import { SecretReminderForm } from "./SecretReminderForm";
+import { SecretReminders } from "./SecretReminders";
 import { SecretTagForm } from "./SecretTagForm";
 import { SecretVersionHistory } from "./SecretVersionHistory";
 
@@ -125,7 +125,6 @@ type Props = {
   tags?: WsTag[];
   secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   skipMultilineEncoding?: boolean | null;
-  reminder?: Reminder;
   environment: string;
   environmentName: string;
   secretValueHidden: boolean;
@@ -208,7 +207,6 @@ export const SecretEditTableRow = ({
   secretMetadata,
   environmentName,
   skipMultilineEncoding,
-  reminder,
   isSingleEnvView,
   isBatchMode,
   isPendingCreate,
@@ -346,6 +344,8 @@ export const SecretEditTableRow = ({
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
   const [isReminderOpen, setIsReminderOpen] = useState(false);
+  const { data: reminders = [] } = useSecretReminders(secretId);
+  const hasReminders = reminders.length > 0;
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [pendingAnnotation, setPendingAnnotation] = useState<
     "comment" | "tags" | "reminder" | "metadata" | null
@@ -1079,14 +1079,16 @@ export const SecretEditTableRow = ({
                   </TooltipContent>
                 </Tooltip>
               ) : null}
-              {reminder && !isImportedSecret && (
+              {hasReminders && !isImportedSecret && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="flex size-5 items-center justify-center text-muted">
                       <BellIcon className="size-3.5" />
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>Has reminder</TooltipContent>
+                  <TooltipContent>
+                    {reminders.length} reminder{reminders.length > 1 ? "s" : ""}
+                  </TooltipContent>
                 </Tooltip>
               )}
               {secretMetadata?.length && !isImportedSecret ? (
@@ -1232,27 +1234,16 @@ export const SecretEditTableRow = ({
               />
             </PopoverContent>
           </Popover>
-          <Popover open={isReminderOpen} onOpenChange={setIsReminderOpen}>
-            <PopoverAnchor asChild>
-              <span className="pointer-events-none absolute inset-0" />
-            </PopoverAnchor>
-            <PopoverContent
-              onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-[420px]"
-              side="left"
-            >
-              {secretId && (
-                <SecretReminderForm
-                  secretId={secretId}
-                  secretKey={secretName}
-                  secretPath={secretPath}
-                  environment={environment}
-                  reminder={reminder}
-                  onClose={() => setIsReminderOpen(false)}
-                />
-              )}
-            </PopoverContent>
-          </Popover>
+          {secretId && (
+            <SecretReminders
+              secretId={secretId}
+              secretKey={secretName}
+              environmentName={environmentName}
+              canEdit={canEditSecretValue}
+              isOpen={isReminderOpen}
+              onOpenChange={setIsReminderOpen}
+            />
+          )}
           <Popover open={isMetadataOpen} onOpenChange={setIsMetadataOpen}>
             <PopoverAnchor asChild>
               <span className="pointer-events-none absolute inset-0" />
@@ -1300,7 +1291,12 @@ export const SecretEditTableRow = ({
           {!isImportedSecret &&
             !isCreatable &&
             !isPendingDelete &&
-            !!(comment || (canReadTags && tags?.length) || reminder || secretMetadata?.length) && (
+            !!(
+              comment ||
+              (canReadTags && tags?.length) ||
+              hasReminders ||
+              secretMetadata?.length
+            ) && (
               <>
                 {comment && (
                   <Tooltip>
@@ -1334,11 +1330,11 @@ export const SecretEditTableRow = ({
                     <TooltipContent>View Tags</TooltipContent>
                   </Tooltip>
                 ) : null}
-                {reminder && (
+                {hasReminders && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <IconButton
-                        aria-label="View secret reminder"
+                        aria-label="View secret reminders"
                         variant="ghost"
                         size="xs"
                         className="size-7 border-0"
@@ -1347,7 +1343,7 @@ export const SecretEditTableRow = ({
                         <BellIcon className="size-3.5" />
                       </IconButton>
                     </TooltipTrigger>
-                    <TooltipContent>View Reminder</TooltipContent>
+                    <TooltipContent>View Reminders</TooltipContent>
                   </Tooltip>
                 )}
                 {secretMetadata?.length ? (
@@ -1465,7 +1461,7 @@ export const SecretEditTableRow = ({
                     "px-2.5 py-1.5",
                     (comment ||
                       (canReadTags && tags?.length) ||
-                      reminder ||
+                      hasReminders ||
                       secretMetadata?.length) &&
                       !isImportedSecret &&
                       "[&>svg:first-child]:text-project"
@@ -1507,8 +1503,8 @@ export const SecretEditTableRow = ({
                         isDisabled={!secretId || isPendingCreate}
                         onClick={() => setPendingAnnotation("reminder")}
                       >
-                        <BellIcon className={twMerge(reminder && "text-project")} />
-                        {reminder ? "View Reminder" : "Add Reminder"}
+                        <BellIcon className={twMerge(hasReminders && "text-project")} />
+                        {hasReminders ? "View Reminders" : "Add Reminder"}
                       </DropdownMenuItem>
                     </TooltipTrigger>
                     <TooltipContent side="left">Create Secret to Add Reminder</TooltipContent>

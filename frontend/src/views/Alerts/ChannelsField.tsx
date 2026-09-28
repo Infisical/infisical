@@ -13,8 +13,8 @@ import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
   AlertPrincipalType,
-  TAlertForm,
-  TChannelForm
+  TChannelForm,
+  TChannelsForm
 } from "@app/hooks/api/alerts";
 
 import { ChannelCard } from "./ChannelCard";
@@ -42,7 +42,7 @@ export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) =>
     control,
     getValues,
     formState: { errors }
-  } = useFormContext<TAlertForm>();
+  } = useFormContext<TChannelsForm>();
   const { fields, append, remove } = useFieldArray({ control, name: "channels" });
   const rootError = errors.channels?.message || errors.channels?.root?.message;
 

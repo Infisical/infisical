@@ -413,7 +413,6 @@ export const SecretTableRow = ({
             tags={singleEnvSecret?.tags}
             secretMetadata={singleEnvSecret?.secretMetadata}
             skipMultilineEncoding={singleEnvSecret?.skipMultilineEncoding}
-            reminder={singleEnvSecret?.reminder}
             revokedProjectFolderGrant={singleEnvSecret?.revokedProjectFolderGrant}
             onCopySecret={
               singleEnvSecret?.id
@@ -756,7 +755,6 @@ export const SecretTableRow = ({
                               tags={secret?.tags}
                               secretMetadata={secret?.secretMetadata}
                               skipMultilineEncoding={secret?.skipMultilineEncoding}
-                              reminder={secret?.reminder}
                               revokedProjectFolderGrant={secret?.revokedProjectFolderGrant}
                               onCopySecret={
                                 secret?.id

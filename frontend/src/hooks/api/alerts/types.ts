@@ -1,13 +1,32 @@
 import { z } from "zod";
 
 export enum AlertResourceType {
-  IdentityAuthentication = "identity.authentication"
+  IdentityAuthentication = "identity.authentication",
+  SecretReminder = "secret.reminder"
 }
 
 export enum AlertEventType {
   IdentityAuthenticationExpiry = "identity.authentication.expiry",
   IdentityAuthMethodChanged = "identity.authentication.auth-method-changed"
 }
+
+// Kept apart from AlertEventType, which the identity alert form offers in full.
+export enum SecretReminderEventType {
+  Due = "secret.reminder.due"
+}
+
+export enum SecretReminderRecurrence {
+  OneTime = "one-time",
+  Recurring = "recurring"
+}
+
+export type TSecretReminderCondition = {
+  recurrence: SecretReminderRecurrence;
+  // ISO date. The one-off date, or the first occurrence of a recurring reminder.
+  startDate: string;
+  repeatDays?: number | null;
+  note?: string | null;
+};
 
 export enum AlertChannelType {
   Email = "email",
@@ -25,7 +44,8 @@ export const MIN_ALERT_BEFORE_DAYS = 1;
 export const MAX_ALERT_BEFORE_DAYS = 90;
 
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
-  [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication"
+  [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication",
+  [AlertResourceType.SecretReminder]: "Secret Reminder"
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
@@ -68,7 +88,9 @@ export type TAlert = {
   resourceType: string;
   resourceId: string | null;
   eventType: string;
-  condition: { alertBefore?: string; dailyReminder?: boolean } | null;
+  condition:
+    | ({ alertBefore?: string; dailyReminder?: boolean } & Partial<TSecretReminderCondition>)
+    | null;
   enabled: boolean;
   orgId: string;
   projectId: string | null;
@@ -192,6 +214,9 @@ export const channelFormSchema = z
   });
 
 export type TChannelForm = z.infer<typeof channelFormSchema>;
+
+// The part of an alert form the shared channel fields read and write.
+export type TChannelsForm = { channels: TChannelForm[] };
 
 const alertFormBaseSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
