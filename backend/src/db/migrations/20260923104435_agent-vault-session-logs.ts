@@ -67,6 +67,7 @@ export async function up(knex: Knex): Promise<void> {
       t.unique(["sessionId", "chunkId"]);
 
       t.index(["sessionId", "createdAt"]);
+      t.index(["sessionId", "startedAt"]);
       t.index(["projectId"]);
     });
 
