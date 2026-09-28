@@ -58,7 +58,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         db
           .ref("disableManagedCrlDistributionPointUrl")
           .withSchema(TableName.InternalCertificateAuthority)
-          .as("internalDisableManagedCrlDistributionPointUrl")
+          .as("internalDisableManagedCrlDistributionPointUrl"),
+        db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
+        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -95,7 +97,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             notAfter: result.internalNotAfter?.toISOString(),
             activeCaCertId: result.internalActiveCaCertId,
             crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
-            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false
+            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false,
+            isOcspEnabled: result.internalIsOcspEnabled ?? false,
+            ocspGeneration: result.internalOcspGeneration ?? 0
           }
         : undefined,
       externalCa: result
@@ -152,7 +156,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         db
           .ref("disableManagedCrlDistributionPointUrl")
           .withSchema(TableName.InternalCertificateAuthority)
-          .as("internalDisableManagedCrlDistributionPointUrl")
+          .as("internalDisableManagedCrlDistributionPointUrl"),
+        db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
+        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -192,7 +198,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             notAfter: result.internalNotAfter?.toISOString(),
             activeCaCertId: result.internalActiveCaCertId,
             crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
-            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false
+            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false,
+            isOcspEnabled: result.internalIsOcspEnabled ?? false,
+            ocspGeneration: result.internalOcspGeneration ?? 0
           }
         : undefined,
       externalCa: result
@@ -290,7 +298,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           db
             .ref("disableManagedCrlDistributionPointUrl")
             .withSchema(TableName.InternalCertificateAuthority)
-            .as("internalDisableManagedCrlDistributionPointUrl")
+            .as("internalDisableManagedCrlDistributionPointUrl"),
+          db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
+          db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
         )
         .select(
           db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -346,7 +356,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
               notAfter: ca.internalNotAfter?.toISOString(),
               activeCaCertId: ca.internalActiveCaCertId,
               crlDistributionPointUrls: ca.internalCrlDistributionPointUrls ?? [],
-              disableManagedCrlDistributionPointUrl: ca.internalDisableManagedCrlDistributionPointUrl ?? false
+              disableManagedCrlDistributionPointUrl: ca.internalDisableManagedCrlDistributionPointUrl ?? false,
+              isOcspEnabled: ca.internalIsOcspEnabled ?? false,
+              ocspGeneration: ca.internalOcspGeneration ?? 0
             }
           : undefined,
         externalCa: ca
