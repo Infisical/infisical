@@ -115,5 +115,40 @@ export const agentVaultSessionLogChunkDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findForSessionPage, findReceivedForSession, createIfAbsent };
+  // Checks the destination in the same statement as the move, so a settings save that lands first isn't undone.
+  const moveToDestinationIfCurrent = async (
+    {
+      id,
+      projectId,
+      bucket,
+      keyPrefix,
+      objectKey
+    }: { id: string; projectId: string; bucket: string; keyPrefix: string | null; objectKey: string },
+    tx?: Knex
+  ): Promise<TAgentVaultSessionLogChunks | undefined> => {
+    try {
+      const result = await (tx || db).raw<{ rows: TAgentVaultSessionLogChunks[] }>(
+        `UPDATE ?? SET "bucket" = ?, "objectKey" = ?
+        WHERE "id" = ? AND EXISTS (
+          SELECT 1 FROM ?? cfg WHERE cfg."projectId" = ? AND cfg."bucket" = ? AND cfg."keyPrefix" IS NOT DISTINCT FROM ?
+        )
+        RETURNING *`,
+        [
+          TableName.AgentVaultSessionLogChunk,
+          bucket,
+          objectKey,
+          id,
+          TableName.AgentVaultSessionLogConfig,
+          projectId,
+          bucket,
+          keyPrefix
+        ]
+      );
+      return result.rows[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Move agent vault session log chunk" });
+    }
+  };
+
+  return { ...orm, findForSessionPage, findReceivedForSession, createIfAbsent, moveToDestinationIfCurrent };
 };

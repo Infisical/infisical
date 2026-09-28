@@ -231,7 +231,26 @@ export const agentVaultSessionLogServiceFactory = ({
         }
         // A proxy only re-sends a chunk it never confirmed uploading, so after a move it belongs at the new destination.
         if (existing.bucket !== storage.bucket || existing.objectKey !== objectKey) {
-          return agentVaultSessionLogChunkDAL.updateById(existing.id, { bucket: storage.bucket, objectKey }, tx);
+          const moved = await agentVaultSessionLogChunkDAL.moveToDestinationIfCurrent(
+            {
+              id: existing.id,
+              projectId: proxy.projectId,
+              bucket: storage.bucket,
+              keyPrefix: storage.keyPrefix,
+              objectKey
+            },
+            tx
+          );
+          if (!moved) {
+            logger.warn(
+              `agentVaultSessionLog: session log destination changed while moving a re-sent chunk [sessionId=${session.id}] [chunkId=${chunk.chunkId}] [proxyId=${proxyId}]`
+            );
+            throw new InternalServerError({
+              message:
+                "The session log bucket or key prefix changed while this chunk was being recorded. The proxy sends it again automatically."
+            });
+          }
+          return moved;
         }
         return existing;
       }

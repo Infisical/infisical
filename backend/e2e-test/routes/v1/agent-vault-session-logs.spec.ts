@@ -490,6 +490,26 @@ describe("Agent Vault session logs", async () => {
       expect(fakeSessionLogStorage.get(only.presignedGetUrl as string)).toEqual(stored);
     });
 
+    test("a chunk re-sent after the destination moved to a bucket with no prefix is uploaded to its root", async () => {
+      await configure();
+      const bundle = await createAccessBundle(`session-logs-moved-bare-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`session-logs-moved-bare-${Date.now()}`);
+      const chunk = chunkBody();
+      await recordChunk(proxy, session.id, chunk);
+
+      const movedBucket = `${BUCKET}-bare`;
+      expect((await configure({ bucket: movedBucket, keyPrefix: "" })).statusCode).toBe(200);
+
+      const resent = await recordChunk(proxy, session.id, chunk);
+      fakeSessionLogStorage.put(resent.uploadUrl, Buffer.alloc(CHUNK_BYTES));
+
+      const row = await testDb("agent_vault_session_log_chunks").where({ sessionId: session.id }).first();
+      expect(row.bucket).toBe(movedBucket);
+      expect(row.objectKey.startsWith(`${projectId}/${session.id}/${proxy.id}/`)).toBe(true);
+      expect(fakeSessionLogStorage.objectKeys(movedBucket)).toEqual([row.objectKey]);
+    });
+
     test("two proxies can write to one session, and a chunk id is only unique within it", async () => {
       await configure();
       const bundle = await createAccessBundle(`session-logs-two-${Date.now()}`);
@@ -648,6 +668,32 @@ describe("Agent Vault session logs", async () => {
       const res = await proxy.resolve(session.token);
       expect(res.statusCode, res.payload).toBe(200);
       expect(Buffer.from(JSON.parse(res.payload).sessionLogs.sessionKey as string, "base64")).toHaveLength(32);
+    });
+
+    test("a session log key that can't be opened turns logs off for the session, and its services still resolve", async () => {
+      await configure();
+      const bundle = await createAccessBundle(`session-logs-resolve-badkey-${Date.now()}`);
+      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        name: "datadog",
+        hostPattern: "api.datadoghq.com",
+        credential: { type: "bearer", headerName: "DD-API-KEY", headerPrefix: "", value: "abc123" }
+      });
+      expect(created.statusCode, created.payload).toBe(200);
+      const session = await mintSession(bundle.name);
+      const other = await mintSession(bundle.name);
+      const proxy = await createProxy(`session-logs-resolve-badkey-${Date.now()}`);
+
+      const { encryptedSessionLogKey } = await testDb("agent_vault_sessions").where({ id: other.id }).first();
+      await testDb("agent_vault_sessions").where({ id: session.id }).update({ encryptedSessionLogKey });
+
+      const res = await proxy.resolve(session.token);
+      expect(res.statusCode, res.payload).toBe(200);
+      const body = JSON.parse(res.payload) as {
+        services: { name: string }[];
+        sessionLogs: { enabled: boolean; sessionKey: string | null };
+      };
+      expect(body.services.map((service) => service.name)).toEqual(["datadog"]);
+      expect(body.sessionLogs).toEqual({ enabled: false, sessionKey: null });
     });
   });
 

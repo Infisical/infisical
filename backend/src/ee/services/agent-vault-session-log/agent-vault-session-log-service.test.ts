@@ -69,6 +69,7 @@ type TOverrides = {
   createThrows?: unknown;
   isReplay?: boolean;
   existingChunk?: unknown;
+  destinationChanged?: boolean;
   pageRows?: unknown[];
   proxies?: unknown[];
   connection?: unknown;
@@ -87,10 +88,11 @@ const build = (overrides: TOverrides = {}) => {
   const findChunk = vi.fn(async () =>
     overrides.existingChunk ? { proxyId: PROXY.id, ...(overrides.existingChunk as object) } : null
   );
-  const repointChunk = vi.fn(async (_id: string, values: Record<string, unknown>) => ({
-    ...(overrides.existingChunk as object),
-    ...values
-  }));
+  const moveChunk = vi.fn(async (values: Record<string, unknown>) =>
+    overrides.destinationChanged
+      ? undefined
+      : { ...(overrides.existingChunk as object), bucket: values.bucket, objectKey: values.objectKey }
+  );
   const validateConnection = vi.fn(async () => ({}));
   const findConnection = vi.fn(async () => overrides.connection);
   const config = "config" in overrides ? overrides.config : enabledConfig();
@@ -99,7 +101,7 @@ const build = (overrides: TOverrides = {}) => {
     agentVaultSessionLogChunkDAL: {
       createIfAbsent,
       findOne: findChunk,
-      updateById: repointChunk,
+      moveToDestinationIfCurrent: moveChunk,
       transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
       findForSessionPage: vi.fn(async () => ({ chunks: overrides.pageRows ?? [], hasMore: false })),
       findReceivedForSession: vi.fn(async () => ({ chunks: overrides.pageRows ?? [], hasMore: false }))
@@ -135,7 +137,7 @@ const build = (overrides: TOverrides = {}) => {
     kmsService: { createCipherPairWithDataKey: vi.fn() } as never
   });
 
-  return { service, createIfAbsent, recordStoredChunk, findChunk, repointChunk, validateConnection, findConnection };
+  return { service, createIfAbsent, recordStoredChunk, findChunk, moveChunk, validateConnection, findConnection };
 };
 
 const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
@@ -379,18 +381,18 @@ describe("recordChunk: re-sending a chunk", () => {
   });
 
   test("a chunk re-sent after the destination moved is moved to the current bucket and key before it is presigned", async () => {
-    const { service, repointChunk } = build({
+    const { service, moveChunk } = build({
       isReplay: true,
       existingChunk: { ...validChunk(), id: "row-1", bucket: "old-bucket", objectKey: "old/key.json.enc" }
     });
     await record(service);
 
-    const [id, values] = repointChunk.mock.calls[0];
-    expect(id).toBe("row-1");
-    expect(values.bucket).toBe("my-bucket");
+    const [values, tx] = moveChunk.mock.calls[0] as unknown as [Record<string, unknown>, unknown];
+    expect(values).toMatchObject({ id: "row-1", projectId: "proj-1", bucket: "my-bucket", keyPrefix: "logs" });
     expect(String(values.objectKey)).toMatch(
       /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01a0a9c5-231d-7abc-8def-0123456789ab\.json\.enc$/
     );
+    expect(tx).toBeDefined();
     expect(presignPut).toHaveBeenCalledWith({
       objectKey: values.objectKey,
       ciphertextBytes: 4096,
@@ -398,13 +400,29 @@ describe("recordChunk: re-sending a chunk", () => {
     });
   });
 
+  test("a move that finds the destination changed again is a retryable 500 and presigns nothing", async () => {
+    const { service, moveChunk } = build({
+      isReplay: true,
+      destinationChanged: true,
+      existingChunk: { ...validChunk(), id: "row-1", bucket: "old-bucket", objectKey: "old/key.json.enc" }
+    });
+
+    await expect(record(service)).rejects.toMatchObject({
+      name: "InternalServerError",
+      message:
+        "The session log bucket or key prefix changed while this chunk was being recorded. The proxy sends it again automatically."
+    });
+    expect(moveChunk).toHaveBeenCalledTimes(1);
+    expect(presignPut).not.toHaveBeenCalled();
+  });
+
   test("a chunk re-sent to the destination it is already at is left alone", async () => {
     const chunk = validChunk();
     const existing = atCurrentDestination(chunk);
-    const { service, repointChunk } = build({ isReplay: true, existingChunk: existing });
+    const { service, moveChunk } = build({ isReplay: true, existingChunk: existing });
     await record(service, chunk);
 
-    expect(repointChunk).not.toHaveBeenCalled();
+    expect(moveChunk).not.toHaveBeenCalled();
     expect(presignPut).toHaveBeenCalledWith({
       objectKey: existing.objectKey,
       ciphertextBytes: 4096,
@@ -413,7 +431,7 @@ describe("recordChunk: re-sending a chunk", () => {
   });
 
   test("a chunk id another proxy recorded is refused before the row is touched", async () => {
-    const { service, repointChunk, recordStoredChunk } = build({
+    const { service, moveChunk, recordStoredChunk } = build({
       isReplay: true,
       existingChunk: { ...validChunk(), proxyId: "proxy-2", bucket: "old-bucket", objectKey: "theirs/key.json.enc" }
     });
@@ -422,7 +440,7 @@ describe("recordChunk: re-sending a chunk", () => {
       name: "Conflict",
       message: "This chunk ID was already recorded by another proxy"
     });
-    expect(repointChunk).not.toHaveBeenCalled();
+    expect(moveChunk).not.toHaveBeenCalled();
     expect(recordStoredChunk).not.toHaveBeenCalled();
     expect(presignPut).not.toHaveBeenCalled();
   });

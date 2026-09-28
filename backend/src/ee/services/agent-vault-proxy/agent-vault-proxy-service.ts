@@ -462,6 +462,27 @@ export const agentVaultProxyServiceFactory = ({
         }))
     }));
 
+    // A key that can't be opened turns logs off for this session instead of cutting the agent off from its services.
+    const $sessionLogs = (): { enabled: boolean; sessionKey: string | null } => {
+      if (!sessionLogKeyNeeded || !session.encryptedSessionLogKey) {
+        return { enabled: sessionLogsEnabled, sessionKey: null };
+      }
+      try {
+        const sessionKey = openSessionLogKey({
+          sessionId: session.id,
+          payload: decryptor!({ cipherTextBlob: session.encryptedSessionLogKey })
+        }).toString("base64");
+        return { enabled: sessionLogsEnabled, sessionKey };
+      } catch (error) {
+        logger.error(
+          error,
+          `agentVaultResolve: could not open the session log key, session logs are off for this session [sessionId=${session.id}] [proxyId=${proxyId}]`
+        );
+        return { enabled: false, sessionKey: null };
+      }
+    };
+    const sessionLogs = $sessionLogs();
+
     logger.info(
       `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}]`
     );
@@ -470,16 +491,7 @@ export const agentVaultProxyServiceFactory = ({
       sessionId: session.id,
       expiresAt: session.expiresAt ?? null,
       services,
-      sessionLogs: {
-        enabled: sessionLogsEnabled,
-        sessionKey:
-          sessionLogKeyNeeded && session.encryptedSessionLogKey
-            ? openSessionLogKey({
-                sessionId: session.id,
-                payload: decryptor!({ cipherTextBlob: session.encryptedSessionLogKey })
-              }).toString("base64")
-            : null
-      }
+      sessionLogs
     };
   };
 
