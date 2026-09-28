@@ -7,8 +7,6 @@ description: "Keep an encrypted record of every request an AI agent makes, store
   Session logs are a paid feature.
 
   If you're using Infisical Cloud, they're available under the **Enterprise Tier**. If you're self-hosting Infisical, contact sales@infisical.com to purchase an enterprise license to use them.
-
-  If your plan stops including session logs, proxies stop recording new requests, and you can't turn session logs back on. You can still turn them off or remove their AWS connection with the [API](/api-reference/endpoints/agent-vault-settings/update-session-log-settings). Session logs already in your bucket stay viewable.
 </Info>
 
 A session log is the per-request record of what an agent actually did: the method, host, path, status, and whether a credential went out with it. Every request that reaches a proxy is recorded, including requests to hosts that no access bundle covers.
