@@ -11,6 +11,7 @@ import {
 } from "./alert-channel-config-fns";
 import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
+import { TAlertChannelServiceFactory } from "./alert-channel-service";
 import { TAlertChannelDeps, TAlertRecipient } from "./alert-channel-types";
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
@@ -18,11 +19,13 @@ import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { TTestAlertChannelDTO, TTestAlertChannelResponse } from "./alert-service-types";
 import { buildTestAlertPayload } from "./alert-test-payload-fns";
 import { AlertPermissionAction, toAlertActor } from "./alert-types";
+import { describeDeliveryError } from "./channels/alert-channel-error-fns";
 
 export type TAlertChannelTestServiceFactoryDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findById">;
   alertDAL: Pick<TAlertDALFactory, "findByChannelId">;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
+  alertChannelService: Pick<TAlertChannelServiceFactory, "findEmailRecipients" | "validateEmailRecipients">;
   alertProviderRegistry: TAlertProviderRegistry;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -39,6 +42,7 @@ export const alertChannelTestServiceFactory = ({
   alertChannelDAL,
   alertDAL,
   alertRecipientResolver,
+  alertChannelService,
   alertProviderRegistry,
   kmsService,
   smtpService,
@@ -124,6 +128,9 @@ export const alertChannelTestServiceFactory = ({
     const rows = dto.recipients ?? [];
     if (rows.length === 0) return [];
 
+    const keptEmailRecipients = dto.channelId ? await alertChannelService.findEmailRecipients([dto.channelId]) : [];
+    await alertChannelService.validateEmailRecipients(dto.actorOrgId, rows, keptEmailRecipients);
+
     const resolved = await alertRecipientResolver.resolveMany(new Map([[TEST_CHANNEL_ID, rows]]), {
       orgId: dto.actorOrgId,
       projectId
@@ -132,7 +139,7 @@ export const alertChannelTestServiceFactory = ({
   };
 
   const $toError = (err: unknown): string => {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = err instanceof Error ? describeDeliveryError(err) : String(err);
     return message.slice(0, MAX_ERROR_LENGTH);
   };
 

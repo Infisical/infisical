@@ -776,7 +776,8 @@ export const pkiScepServiceFactory = ({
       parsed,
       csrPem,
       ttl,
-      applicationId
+      applicationId,
+      renewedFromCertificateId: storedSignerCert?.id
     });
 
     if (result.status === ScepIssuanceStatus.Pending) {
@@ -870,7 +871,8 @@ export const pkiScepServiceFactory = ({
     parsed,
     csrPem,
     ttl,
-    applicationId
+    applicationId,
+    renewedFromCertificateId
   }: {
     profile: TScepContext["profile"];
     project: TScepContext["project"];
@@ -879,6 +881,7 @@ export const pkiScepServiceFactory = ({
     csrPem: string;
     ttl: string;
     applicationId?: string;
+    renewedFromCertificateId?: string;
   }): Promise<TIssuanceResult> => {
     // Internal CAs use direct signing
     if (caType === CaType.INTERNAL) {
@@ -891,7 +894,8 @@ export const pkiScepServiceFactory = ({
         csr: csrPem,
         validity: { ttl },
         enrollmentType: EnrollmentType.SCEP,
-        applicationId
+        applicationId,
+        renewedFromCertificateId
       });
 
       if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
@@ -1011,7 +1015,8 @@ export const pkiScepServiceFactory = ({
       country: certRequest.country,
       state: certRequest.state,
       locality: certRequest.locality,
-      ...(applicationId && { applicationId })
+      ...(applicationId && { applicationId }),
+      ...(renewedFromCertificateId && { isRenewal: true, originalCertificateId: renewedFromCertificateId })
     });
 
     // Create SCEP transaction so the client can poll via GetCertInitial

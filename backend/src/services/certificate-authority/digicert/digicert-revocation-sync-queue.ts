@@ -6,12 +6,14 @@ import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorType } from "@app/services/auth/auth-type";
+import {
+  CertificateAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { revocationReasonToCrlCode } from "@app/services/certificate/certificate-fns";
 import { CertStatus, CrlReason } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
-import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -34,7 +36,7 @@ type TDigiCertRevocationSyncQueueFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TDigiCertRevocationSyncQueueFactory = ReturnType<typeof digicertRevocationSyncQueueFactory>;
@@ -46,7 +48,7 @@ export const digicertRevocationSyncQueueFactory = ({
   appConnectionDAL,
   kmsService,
   auditLogService,
-  pkiAlertV2Queue
+  certificateAlertEventEmitter
 }: TDigiCertRevocationSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -77,16 +79,12 @@ export const digicertRevocationSyncQueueFactory = ({
       }
     });
 
-    try {
-      await pkiAlertV2Queue?.queueCertificateEvent({
-        certificateId: cert.id,
-        projectId: cert.projectId,
-        eventType: PkiAlertEventType.REVOCATION,
-        applicationId: cert.applicationId ?? null
-      });
-    } catch {
-      logger.debug(`digicert-revocation-sync: failed to queue PKI revocation alert event [certId=${cert.id}]`);
-    }
+    await certificateAlertEventEmitter?.notify({
+      certificateId: cert.id,
+      projectId: cert.projectId,
+      eventType: CertificateAlertEvent.Revocation,
+      applicationId: cert.applicationId ?? null
+    });
   };
 
   const syncRevocationsForCertificateAuthority = async (

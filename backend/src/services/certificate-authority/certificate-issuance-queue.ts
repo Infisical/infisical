@@ -8,6 +8,10 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import {
+  getIssuanceAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
   CertExtendedKeyUsage,
@@ -42,8 +46,6 @@ import { TCertificateRequestServiceFactory } from "../certificate-request/certif
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
-import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
-import { PkiAlertEventType } from "../pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -187,7 +189,7 @@ type TCertificateIssuanceQueueFactoryDep = {
     "updateById" | "findById" | "setPendingMessage" | "transitionToPendingValidation"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
-  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "notify">;
   pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL?: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -217,7 +219,7 @@ export const certificateIssuanceQueueFactory = ({
   certificateRequestService,
   certificateRequestDAL,
   resourceMetadataDAL,
-  pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
   gatewayV2Service,
@@ -1188,19 +1190,13 @@ export const certificateIssuanceQueueFactory = ({
         );
       }
 
-      try {
-        // The job's certificateId is an order id minted before issuance, not a certificate row, so the
-        // alert has to target the certificate the CA actually produced.
-        if (certificateExistsAfterThisJob && issuedCertificateId) {
-          await pkiAlertV2Queue?.queueCertificateEvent({
-            certificateId: issuedCertificateId,
-            projectId: ca.projectId,
-            eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
-            applicationId: scopedApplicationId
-          });
-        }
-      } catch {
-        logger.debug("Failed to queue PKI alert event for async certificate issuance");
+      if (certificateExistsAfterThisJob && issuedCertificateId) {
+        await certificateAlertEventEmitter?.notify({
+          certificateId: issuedCertificateId,
+          projectId: ca.projectId,
+          eventType: getIssuanceAlertEvent(isRenewal),
+          applicationId: scopedApplicationId
+        });
       }
 
       if (certificateExistsAfterThisJob) {

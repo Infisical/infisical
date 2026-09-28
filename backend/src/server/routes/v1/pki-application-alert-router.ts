@@ -6,10 +6,10 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PkiAlertRouteResponseSchema } from "@app/services/pki-alert/pki-alert-v2-compat-types";
 import {
   BasePkiAlertV2Schema,
   PkiAlertEventType,
-  PkiAlertV2ResponseSchema,
   UpdatePkiAlertV2Schema
 } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -22,9 +22,10 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     url: "/:applicationId/alerts",
     config: { rateLimit: readLimit },
     schema: {
+      deprecated: true,
       hide: false,
       operationId: "listPkiApplicationAlerts",
-      description: "List alerts for an application.",
+      description: "Deprecated: use the alerts API (/api/v1/alerts) instead. List alerts for an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       querystring: z.object({
@@ -36,14 +37,14 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          alerts: z.array(PkiAlertV2ResponseSchema),
+          alerts: z.array(PkiAlertRouteResponseSchema),
           total: z.number().int().nonnegative()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const result = await server.services.pkiAlertV2.listAlerts({
+      const result = await server.services.pkiAlertV2Compat.listAlerts({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -66,17 +67,18 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     url: "/:applicationId/alerts",
     config: { rateLimit: writeLimit },
     schema: {
+      deprecated: true,
       hide: false,
       operationId: "createPkiApplicationAlert",
-      description: "Create an alert on an application.",
+      description: "Deprecated: use the alerts API (/api/v1/alerts) instead. Create an alert on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       body: BasePkiAlertV2Schema,
-      response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
+      response: { 200: z.object({ alert: PkiAlertRouteResponseSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const alert = await server.services.pkiAlertV2.createAlert({
+      const alert = await server.services.pkiAlertV2Compat.createAlert({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -123,20 +125,21 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     url: "/:applicationId/alerts/:alertId",
     config: { rateLimit: writeLimit },
     schema: {
+      deprecated: true,
       hide: false,
       operationId: "updatePkiApplicationAlert",
-      description: "Update an alert on an application.",
+      description: "Deprecated: use the alerts API (/api/v1/alerts) instead. Update an alert on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
         applicationId: z.string().uuid(),
         alertId: z.string().uuid()
       }),
       body: UpdatePkiAlertV2Schema,
-      response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
+      response: { 200: z.object({ alert: PkiAlertRouteResponseSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const alert = await server.services.pkiAlertV2.updateAlert({
+      const alert = await server.services.pkiAlertV2Compat.updateAlert({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -182,19 +185,20 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     url: "/:applicationId/alerts/:alertId",
     config: { rateLimit: writeLimit },
     schema: {
+      deprecated: true,
       hide: false,
       operationId: "deletePkiApplicationAlert",
-      description: "Delete an alert from an application.",
+      description: "Deprecated: use the alerts API (/api/v1/alerts) instead. Delete an alert from an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
         applicationId: z.string().uuid(),
         alertId: z.string().uuid()
       }),
-      response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
+      response: { 200: z.object({ alert: PkiAlertRouteResponseSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const alert = await server.services.pkiAlertV2.deleteAlert({
+      const alert = await server.services.pkiAlertV2Compat.deleteAlert({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

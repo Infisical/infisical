@@ -14,6 +14,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { TCertificateAlertEventEmitter } from "@app/services/certificate/certificate-alert-events";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
@@ -34,7 +35,6 @@ import type { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { InternalCas } from "../license-client";
 import { TUsageMeteringServiceFactory } from "../license-client/usage";
-import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
@@ -169,7 +169,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "assertAttachPermission">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -201,7 +201,7 @@ export const certificateAuthorityServiceFactory = ({
   hsmConnectorService,
   certificateAuthoritySecretDAL,
   licenseService,
-  pkiAlertV2Queue
+  certificateAlertEventEmitter
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -1487,7 +1487,7 @@ export const certificateAuthorityServiceFactory = ({
               godaddyFns,
               projectDAL,
               telemetryService,
-              pkiAlertV2Queue
+              certificateAlertEventEmitter
             },
             certificateRequest
           )
@@ -1502,7 +1502,7 @@ export const certificateAuthorityServiceFactory = ({
               digicertFns,
               projectDAL,
               telemetryService,
-              pkiAlertV2Queue
+              certificateAlertEventEmitter
             },
             certificateRequest
           );

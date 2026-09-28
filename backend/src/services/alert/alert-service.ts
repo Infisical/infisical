@@ -9,11 +9,13 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelMembershipDALFactory } from "./alert-channel-membership-dal";
-import { TAlertChannelServiceFactory } from "./alert-channel-service";
+import { TAlertChannelServiceFactory, TChannelDetailsOptions } from "./alert-channel-service";
 import { TAlertChannelEmbedded, TAlertChannelInput } from "./alert-channel-service-types";
 import { TAlertDALFactory } from "./alert-dal";
+import { TAlertHistoryDALFactory } from "./alert-history-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import {
+  TAlertLastRun,
   TAlertResponse,
   TCreateAlertDTO,
   TDeleteAlertDTO,
@@ -21,7 +23,13 @@ import {
   TListAlertsDTO,
   TUpdateAlertDTO
 } from "./alert-service-types";
-import { AlertPermissionAction, IResourceAlertProvider, TAlertEventDefinition, toAlertActor } from "./alert-types";
+import {
+  AlertPermissionAction,
+  AlertTelemetryAction,
+  IResourceAlertProvider,
+  TAlertEventDefinition,
+  toAlertActor
+} from "./alert-types";
 
 export type TAlertServiceFactoryDep = {
   alertDAL: TAlertDALFactory;
@@ -29,10 +37,11 @@ export type TAlertServiceFactoryDep = {
   alertChannelMembershipDAL: Pick<TAlertChannelMembershipDALFactory, "insertMany">;
   alertChannelService: Pick<
     TAlertChannelServiceFactory,
-    "createChannelInTx" | "updateChannelInTx" | "deleteChannelInTx" | "getDetailsForChannels"
+    "createChannelInTx" | "updateChannelInTx" | "deleteChannelInTx" | "getDetailsForChannels" | "findEmailRecipients"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   alertProviderRegistry: TAlertProviderRegistry;
+  alertHistoryDAL: Pick<TAlertHistoryDALFactory, "findLatestByAlertIds">;
 };
 
 export type TAlertServiceFactory = ReturnType<typeof alertServiceFactory>;
@@ -43,7 +52,8 @@ export const alertServiceFactory = ({
   alertChannelMembershipDAL,
   alertChannelService,
   kmsService,
-  alertProviderRegistry
+  alertProviderRegistry,
+  alertHistoryDAL
 }: TAlertServiceFactoryDep) => {
   const $getProvider = (resourceType: string): IResourceAlertProvider => {
     const provider = alertProviderRegistry.get(resourceType);
@@ -86,7 +96,36 @@ export const alertServiceFactory = ({
     }
   };
 
-  const $assembleResponse = (alert: TAlerts, channels: TAlertChannelEmbedded[]): TAlertResponse => ({
+  const $getResourceNames = async (
+    provider: IResourceAlertProvider,
+    orgId: string,
+    resourceIds: (string | null | undefined)[]
+  ): Promise<Map<string, string>> => {
+    const ids = [...new Set(resourceIds.filter((id): id is string => Boolean(id)))];
+    if (!ids.length || !provider.getResourceNames) return new Map();
+    return provider.getResourceNames({ orgId, resourceIds: ids });
+  };
+
+  const $getResourceName = async (provider: IResourceAlertProvider, alert: Pick<TAlerts, "orgId" | "resourceId">) =>
+    (await $getResourceNames(provider, alert.orgId, [alert.resourceId])).get(alert.resourceId ?? "") ?? null;
+
+  const $getLastRuns = async (alertIds: string[]): Promise<Map<string, TAlertLastRun>> => {
+    const runs = await alertHistoryDAL.findLatestByAlertIds(alertIds);
+    return new Map(
+      runs
+        .filter((run) => run.triggeredAt)
+        .map((run) => [
+          run.alertId,
+          { timestamp: run.triggeredAt as Date, status: run.status, error: run.error ?? null }
+        ])
+    );
+  };
+
+  const $assembleResponse = (
+    alert: TAlerts,
+    channels: TAlertChannelEmbedded[],
+    extras: { resourceName: string | null; lastRun: TAlertLastRun | null }
+  ): TAlertResponse => ({
     id: alert.id,
     name: alert.name,
     description: alert.description ?? null,
@@ -98,20 +137,30 @@ export const alertServiceFactory = ({
     enabled: alert.enabled,
     orgId: alert.orgId,
     projectId: alert.projectId ?? null,
+    resourceName: extras.resourceName,
     channels,
+    lastRun: extras.lastRun,
     createdAt: alert.createdAt,
     updatedAt: alert.updatedAt
   });
 
-  const createAlert = async (dto: TCreateAlertDTO): Promise<TAlertResponse> => {
-    if (!dto.resourceId) {
+  const createAlert = async (input: TCreateAlertDTO, options: TChannelDetailsOptions = {}): Promise<TAlertResponse> => {
+    if (!input.resourceId) {
       throw new BadRequestError({
         message:
           "Alerts must be bound to a specific resource. Organization wide and project wide alerts are not supported yet."
       });
     }
 
-    const provider = $getProvider(dto.resourceType);
+    const provider = $getProvider(input.resourceType);
+    const dto =
+      input.projectId || !provider.resolveProjectId
+        ? input
+        : {
+            ...input,
+            projectId: await provider.resolveProjectId({ orgId: input.actorOrgId, resourceId: input.resourceId })
+          };
+
     const event = $getEvent(provider, dto.eventType);
     $validateCondition(event, dto.condition);
 
@@ -128,24 +177,31 @@ export const alertServiceFactory = ({
       resourceId: dto.resourceId
     });
 
-    const duplicate = await alertDAL.findScopedDuplicate({
-      orgId: dto.actorOrgId,
-      projectId: dto.projectId,
-      resourceType: dto.resourceType,
-      resourceId: dto.resourceId,
-      eventType: dto.eventType
-    });
-    if (duplicate) {
-      throw new BadRequestError({
-        message: dto.resourceId
-          ? "An alert for this resource and event already exists"
-          : "An alert for this event already exists in this scope"
+    if (!provider.allowsMultipleAlertsPerEvent) {
+      const duplicate = await alertDAL.findScopedDuplicate({
+        orgId: dto.actorOrgId,
+        projectId: dto.projectId,
+        resourceType: dto.resourceType,
+        resourceId: dto.resourceId,
+        eventType: dto.eventType
       });
+      if (duplicate) {
+        throw new BadRequestError({
+          message: dto.resourceId
+            ? "An alert for this resource and event already exists"
+            : "An alert for this event already exists in this scope"
+        });
+      }
     }
 
     if (!dto.channels || dto.channels.length === 0) {
       throw new BadRequestError({ message: "At least one channel is required" });
     }
+
+    await provider.assertChannelTypesAllowed?.({
+      orgId: dto.actorOrgId,
+      channelTypes: dto.channels.map((channel) => channel.channelType)
+    });
 
     const scope = { orgId: dto.actorOrgId, projectId: dto.projectId ?? null };
     const cipher = await getAlertChannelCipher(kmsService, scope);
@@ -191,14 +247,17 @@ export const alertServiceFactory = ({
       }
 
       const attachedChannels = await alertChannelDAL.findByAlertId(createdAlert.id, {}, tx);
-      const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, tx);
+      const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, tx, options);
       return { created: createdAlert, channels: details };
     });
 
-    return $assembleResponse(created, channels);
+    return $assembleResponse(created, channels, {
+      resourceName: await $getResourceName(provider, created),
+      lastRun: null
+    });
   };
 
-  const getAlertById = async (dto: TGetAlertDTO): Promise<TAlertResponse> => {
+  const getAlertById = async (dto: TGetAlertDTO, options: TChannelDetailsOptions = {}): Promise<TAlertResponse> => {
     const alert = await alertDAL.findActiveById(dto.alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' not found` });
 
@@ -212,11 +271,15 @@ export const alertServiceFactory = ({
 
     const channels = await alertChannelDAL.findByAlertId(alert.id);
     const cipher = await getAlertChannelCipher(kmsService, { orgId: alert.orgId, projectId: alert.projectId });
-    const details = await alertChannelService.getDetailsForChannels(channels, cipher);
-    return $assembleResponse(alert, details);
+    const details = await alertChannelService.getDetailsForChannels(channels, cipher, undefined, options);
+    const lastRuns = await $getLastRuns([alert.id]);
+    return $assembleResponse(alert, details, {
+      resourceName: await $getResourceName(provider, alert),
+      lastRun: lastRuns.get(alert.id) ?? null
+    });
   };
 
-  const listAlerts = async (dto: TListAlertsDTO): Promise<TAlertResponse[]> => {
+  const listAlerts = async (dto: TListAlertsDTO, options: TChannelDetailsOptions = {}): Promise<TAlertResponse[]> => {
     const provider = $getProvider(dto.resourceType);
     await $assertAlertPermission(
       provider,
@@ -236,7 +299,14 @@ export const alertServiceFactory = ({
 
     const channels = await alertChannelDAL.findByAlertIds(alerts.map((alert) => alert.id));
     const cipher = await getAlertChannelCipher(kmsService, { orgId: dto.actorOrgId, projectId: dto.projectId ?? null });
-    const details = await alertChannelService.getDetailsForChannels(channels, cipher);
+    const details = await alertChannelService.getDetailsForChannels(channels, cipher, undefined, options);
+
+    const lastRuns = await $getLastRuns(alerts.map((alert) => alert.id));
+    const resourceNames = await $getResourceNames(
+      provider,
+      dto.actorOrgId,
+      alerts.map((alert) => alert.resourceId)
+    );
 
     const detailById = new Map(details.map((detail) => [detail.id, detail]));
     const channelIdsByAlert = new Map<string, string[]>();
@@ -251,7 +321,11 @@ export const alertServiceFactory = ({
         alert,
         (channelIdsByAlert.get(alert.id) ?? [])
           .map((id) => detailById.get(id))
-          .filter((detail): detail is TAlertChannelEmbedded => Boolean(detail))
+          .filter((detail): detail is TAlertChannelEmbedded => Boolean(detail)),
+        {
+          resourceName: (alert.resourceId && resourceNames.get(alert.resourceId)) || null,
+          lastRun: lastRuns.get(alert.id) ?? null
+        }
       )
     );
   };
@@ -272,6 +346,11 @@ export const alertServiceFactory = ({
       }
     }
 
+    const keptEmailRecipients = await alertChannelService.findEmailRecipients(
+      existing.map((channel) => channel.id),
+      tx
+    );
+
     const toDelete = existing.filter((channel) => !incomingIds.has(channel.id));
     for (const channel of toDelete) {
       // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
@@ -289,7 +368,8 @@ export const alertServiceFactory = ({
             name: channelInput.name,
             config: channelInput.config,
             enabled: channelInput.enabled,
-            recipients: channelInput.recipients
+            recipients: channelInput.recipients,
+            keptEmailRecipients
           },
           existingChannel,
           cipher,
@@ -307,7 +387,8 @@ export const alertServiceFactory = ({
             orgId: alert.orgId,
             projectId: alert.projectId,
             createdByActorId: alert.createdByActorId,
-            createdByActorType: alert.createdByActorType
+            createdByActorType: alert.createdByActorType,
+            keptEmailRecipients
           },
           cipher.encryptor,
           tx
@@ -318,7 +399,7 @@ export const alertServiceFactory = ({
     }
   };
 
-  const updateAlert = async (dto: TUpdateAlertDTO): Promise<TAlertResponse> => {
+  const updateAlert = async (dto: TUpdateAlertDTO, options: TChannelDetailsOptions = {}): Promise<TAlertResponse> => {
     const alert = await alertDAL.findActiveById(dto.alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' not found` });
 
@@ -333,6 +414,18 @@ export const alertServiceFactory = ({
     if (dto.condition !== undefined) $validateCondition($getEvent(provider, alert.eventType), dto.condition);
     if (dto.channels !== undefined && dto.channels.length === 0) {
       throw new BadRequestError({ message: "At least one channel is required" });
+    }
+
+    if (dto.channels && provider.assertChannelTypesAllowed) {
+      const existingTypes = new Set(
+        (await alertChannelDAL.findByAlertId(alert.id)).map((channel) => channel.channelType)
+      );
+      await provider.assertChannelTypesAllowed({
+        orgId: alert.orgId,
+        channelTypes: dto.channels
+          .map((channel) => channel.channelType)
+          .filter((channelType) => !existingTypes.has(channelType))
+      });
     }
 
     const scope = { orgId: alert.orgId, projectId: alert.projectId };
@@ -355,11 +448,15 @@ export const alertServiceFactory = ({
       }
 
       const attachedChannels = await alertChannelDAL.findByAlertId(alert.id, {}, tx);
-      const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, tx);
+      const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, tx, options);
       return { updated: updatedAlert, channels: details };
     });
 
-    return $assembleResponse(updated, channels);
+    const lastRuns = await $getLastRuns([alert.id]);
+    return $assembleResponse(updated, channels, {
+      resourceName: await $getResourceName(provider, alert),
+      lastRun: lastRuns.get(alert.id) ?? null
+    });
   };
 
   const $deleteAlertsByFilter = async (filter: Parameters<typeof alertDAL.delete>[0], tx: Knex): Promise<number> => {
@@ -382,6 +479,8 @@ export const alertServiceFactory = ({
     id: string;
     name: string;
     resourceType: string;
+    resourceId: string | null;
+    resourceName: string | null;
     eventType: string;
     orgId: string;
     projectId: string | null;
@@ -397,12 +496,15 @@ export const alertServiceFactory = ({
       dto
     );
 
+    const resourceName = await $getResourceName(provider, alert);
     await alertDAL.transaction((tx) => $deleteAlertsByFilter({ id: alert.id }, tx));
 
     return {
       id: alert.id,
       name: alert.name,
       resourceType: alert.resourceType,
+      resourceId: alert.resourceId ?? null,
+      resourceName,
       eventType: alert.eventType,
       orgId: alert.orgId,
       projectId: alert.projectId ?? null
@@ -433,7 +535,26 @@ export const alertServiceFactory = ({
     tx?: Knex
   ): Promise<number> => $reapAlerts({ resourceType, resourceId }, tx);
 
+  const getTelemetryEvent = (
+    action: AlertTelemetryAction,
+    alert: {
+      resourceType: string;
+      orgId: string;
+      projectId: string | null;
+      resourceId: string | null;
+      eventType: string;
+    }
+  ) =>
+    alertProviderRegistry.get(alert.resourceType)?.getTelemetryEvent?.({
+      action,
+      orgId: alert.orgId,
+      projectId: alert.projectId,
+      resourceId: alert.resourceId,
+      eventType: alert.eventType
+    });
+
   return {
+    getTelemetryEvent,
     createAlert,
     getAlertById,
     listAlerts,

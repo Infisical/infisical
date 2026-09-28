@@ -75,6 +75,7 @@ const buildService = (opts?: {
   };
 
   const service = alertServiceFactory({
+    alertHistoryDAL: { findLatestByAlertIds: async () => [] },
     alertDAL: {
       transaction: async (cb: (tx: unknown) => unknown) => cb({}),
       create: async (data: Record<string, unknown>) => {
@@ -191,6 +192,7 @@ const buildService = (opts?: {
         channels.delete(channelId);
         detach(channelId);
       },
+      findEmailRecipients: async () => [],
       getDetailsForChannels: async (chans: TChannelRow[]) =>
         chans.map((c) => ({
           id: c.id,

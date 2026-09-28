@@ -243,6 +243,8 @@ import { alertProviderRegistryFactory } from "@app/services/alert/alert-provider
 import { alertQueueServiceFactory } from "@app/services/alert/alert-queue";
 import { alertRecipientResolverFactory } from "@app/services/alert/alert-recipient-resolver";
 import { alertServiceFactory } from "@app/services/alert/alert-service";
+import { certManagerApplicationAlertDALFactory } from "@app/services/alert/providers/cert-manager-application-alert-dal";
+import { certManagerApplicationAlertProviderFactory } from "@app/services/alert/providers/cert-manager-application-alert-provider";
 import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
 import { identityCredentialAlertProviderFactory } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
@@ -279,6 +281,7 @@ import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service
 import { certManagerExportServiceFactory } from "@app/services/cert-manager-export/cert-manager-export-service";
 import { certManagerInstanceServiceFactory } from "@app/services/cert-manager-instance/cert-manager-instance-service";
 import { certManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
+import { certificateAlertEventEmitterFactory } from "@app/services/certificate/certificate-alert-events";
 import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { certificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -447,6 +450,7 @@ import { orgProductStatsServiceFactory } from "@app/services/org-product-stats/o
 import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
 import { pkiAlertDALFactory } from "@app/services/pki-alert/pki-alert-dal";
 import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
+import { pkiAlertV2CompatServiceFactory } from "@app/services/pki-alert/pki-alert-v2-compat-service";
 import { pkiAlertChannelDALFactory } from "@app/services/pki-alert-v2/pki-alert-channel-dal";
 import { pkiAlertHistoryDALFactory } from "@app/services/pki-alert-v2/pki-alert-history-dal";
 import { pkiAlertV2DALFactory } from "@app/services/pki-alert-v2/pki-alert-v2-dal";
@@ -1061,11 +1065,19 @@ export const registerRoutes = async (
   const alertChannelDAL = alertChannelDALFactory(db);
   const alertChannelMembershipDAL = alertChannelMembershipDALFactory(db);
   const alertHistoryDAL = alertHistoryDALFactory(db);
+  const certManagerApplicationAlertDAL = certManagerApplicationAlertDALFactory(db);
   const alertProviderRegistry = alertProviderRegistryFactory();
   alertProviderRegistry.register(
     identityCredentialAlertProviderFactory({
       identityCredentialAlertDAL: identityCredentialAlertDALFactory(db),
       permissionService
+    })
+  );
+  alertProviderRegistry.register(
+    certManagerApplicationAlertProviderFactory({
+      certManagerApplicationAlertDAL,
+      permissionService,
+      licenseService
     })
   );
   const alertRecipientResolver = alertRecipientResolverFactory({
@@ -1114,7 +1126,8 @@ export const registerRoutes = async (
     alertChannelRecipientDAL,
     orgDAL,
     projectDAL,
-    groupDAL
+    groupDAL,
+    emailDomainDAL
   });
   const alertService = alertServiceFactory({
     alertDAL,
@@ -1122,12 +1135,14 @@ export const registerRoutes = async (
     alertChannelMembershipDAL,
     alertChannelService,
     kmsService,
-    alertProviderRegistry
+    alertProviderRegistry,
+    alertHistoryDAL
   });
   const alertChannelTestService = alertChannelTestServiceFactory({
     alertChannelDAL,
     alertDAL,
     alertRecipientResolver,
+    alertChannelService,
     alertProviderRegistry,
     kmsService,
     smtpService,
@@ -1813,7 +1828,8 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     approvalRequestDAL,
     pkiSyncDAL,
-    permissionService
+    permissionService,
+    alertService
   });
 
   const pkiApplicationMembershipService = pkiApplicationMembershipServiceFactory({
@@ -2932,8 +2948,7 @@ export const registerRoutes = async (
     kmsService,
     notificationService,
     projectMembershipDAL,
-    projectDAL,
-    pkiApplicationDAL
+    projectDAL
   });
 
   const pkiAlertV2Queue = pkiAlertV2QueueServiceFactory({
@@ -2942,6 +2957,21 @@ export const registerRoutes = async (
     pkiAlertV2Service,
     pkiAlertV2DAL,
     pkiAlertHistoryDAL
+  });
+
+  const pkiAlertV2CompatService = pkiAlertV2CompatServiceFactory({
+    alertService,
+    userDAL,
+    orgDAL,
+    projectDAL,
+    pkiAlertV2Service,
+    pkiAlertV2DAL
+  });
+
+  const certificateAlertEventEmitter = certificateAlertEventEmitterFactory({
+    eventEmitter: eventOutboxService,
+    projectDAL,
+    pkiAlertV2Queue
   });
 
   const certificateCleanupService = certificateCleanupServiceFactory({
@@ -3593,7 +3623,7 @@ export const registerRoutes = async (
     licenseService,
     telemetryService,
     keyStore,
-    pkiAlertV2Queue
+    certificateAlertEventEmitter
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3667,7 +3697,7 @@ export const registerRoutes = async (
     pkiSyncQueue,
     certificateAuthorityService,
     resourceMetadataDAL,
-    pkiAlertV2Queue,
+    certificateAlertEventEmitter,
     pkiApplicationDAL,
     certificateProfileDAL,
     pkiApplicationProfileDAL,
@@ -3723,7 +3753,7 @@ export const registerRoutes = async (
     certificateRequestService,
     certificateRequestDAL,
     resourceMetadataDAL,
-    pkiAlertV2Queue,
+    certificateAlertEventEmitter,
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     gatewayV2Service,
@@ -3753,7 +3783,9 @@ export const registerRoutes = async (
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     pkiSyncQueue,
-    pkiAlertV2Queue
+    certificateSyncDAL,
+    pkiSyncDAL,
+    certificateAlertEventEmitter
   });
 
   const approvalPolicyService = approvalPolicyServiceFactory({
@@ -3806,7 +3838,7 @@ export const registerRoutes = async (
     identityDAL,
     approvalPolicyService,
     resourceMetadataDAL,
-    pkiAlertV2Queue,
+    certificateAlertEventEmitter,
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     licenseService,
@@ -3831,7 +3863,7 @@ export const registerRoutes = async (
     digicertFns: digicertCaFns,
     projectDAL,
     telemetryService,
-    pkiAlertV2Queue
+    certificateAlertEventEmitter
   });
 
   const digicertRevocationSyncQueue = digicertRevocationSyncQueueFactory({
@@ -3841,7 +3873,7 @@ export const registerRoutes = async (
     appConnectionDAL,
     kmsService,
     auditLogService,
-    pkiAlertV2Queue
+    certificateAlertEventEmitter
   });
 
   const godaddyCaQueue = godaddyCertificateAuthorityQueueServiceFactory({
@@ -3855,7 +3887,7 @@ export const registerRoutes = async (
     godaddyFns: godaddyCaFns,
     projectDAL,
     telemetryService,
-    pkiAlertV2Queue
+    certificateAlertEventEmitter
   });
 
   const certificateEstV3Service = certificateEstV3ServiceFactory({
@@ -4409,6 +4441,7 @@ export const registerRoutes = async (
     projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
     alert: alertService,
+    pkiAlertV2Compat: pkiAlertV2CompatService,
     alertChannelTest: alertChannelTestService,
     announcement: announcementService,
     mfaSession: mfaSessionService,

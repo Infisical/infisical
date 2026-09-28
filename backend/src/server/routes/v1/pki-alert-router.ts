@@ -27,8 +27,9 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "createPkiAlertV1",
-      description: "Create a new PKI alert",
+      description: "Deprecated: use the alerts API (/api/v1/alerts) instead. Create a new PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       body: BasePkiAlertV2Schema.extend({
         projectId: z.string().uuid().optional().describe(openApiHidden()),
@@ -64,7 +65,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const alert = await server.services.pkiAlertV2.createAlert({
+      const alert = await server.services.pkiAlertV2Compat.createAlert({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -102,8 +103,9 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "listPkiAlertsV1",
-      description: "List PKI alerts for a project",
+      description: "Deprecated: use the alerts API (/api/v1/alerts) instead. List PKI alerts for a project",
       tags: [ApiDocsTags.PkiAlerting],
       querystring: z.object({
         applicationId: z.string().uuid().optional(),
@@ -153,7 +155,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const alerts = await server.services.pkiAlertV2.listAlerts({
+      const alerts = await server.services.pkiAlertV2Compat.listProjectRouteAlerts({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -175,8 +177,9 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "getPkiAlertV1",
-      description: "Get a PKI alert by ID",
+      description: "Deprecated: use the alerts API (/api/v1/alerts) instead. Get a PKI alert by ID",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
         alertId: z.string().uuid().describe("Alert ID")
@@ -211,7 +214,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const alert = await server.services.pkiAlertV2.getAlertById({
+      const alert = await server.services.pkiAlertV2Compat.getProjectRouteAlert({
         alertId: req.params.alertId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -245,8 +248,9 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "updatePkiAlertV1",
-      description: "Update a PKI alert",
+      description: "Deprecated: use the alerts API (/api/v1/alerts) instead. Update a PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
         alertId: z.string().uuid().describe("Alert ID")
@@ -282,7 +286,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const alert = await server.services.pkiAlertV2.updateAlert({
+      const alert = await server.services.pkiAlertV2Compat.updateProjectRouteAlert({
         alertId: req.params.alertId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -320,8 +324,9 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "deletePkiAlertV1",
-      description: "Delete a PKI alert",
+      description: "Deprecated: use the alerts API (/api/v1/alerts) instead. Delete a PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
         alertId: z.string().uuid().describe("Alert ID")
@@ -356,7 +361,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const alert = await server.services.pkiAlertV2.deleteAlert({
+      const alert = await server.services.pkiAlertV2Compat.deleteProjectRouteAlert({
         alertId: req.params.alertId,
         actor: req.permission.type,
         actorId: req.permission.id,

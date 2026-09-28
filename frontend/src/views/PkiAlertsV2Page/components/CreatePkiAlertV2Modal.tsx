@@ -31,7 +31,6 @@ interface Props {
   onOpenChange: (isOpen: boolean) => void;
   alertToEdit?: TPkiAlertV2;
   alertId?: string;
-  applicationId?: string;
 }
 
 type TFormData = TCreatePkiAlertV2;
@@ -61,21 +60,7 @@ const TABS_WITHOUT_PREVIEW: TFormTab[] = [
   { name: "Review", key: "review", fields: [] }
 ];
 
-const TABS_APPLICATION_SCOPED: TFormTab[] = [
-  {
-    name: "Details",
-    key: "basicInfo",
-    fields: ["eventType", "name", "description", "alertBefore", "notificationConfig"]
-  },
-  { name: "Channels", key: "channels", fields: ["channels"] },
-  { name: "Review", key: "review", fields: [] }
-];
-
-const hasPreviewTab = (
-  eventType: PkiAlertEventTypeV2 | undefined,
-  applicationScoped: boolean
-): boolean => {
-  if (applicationScoped) return false;
+const hasPreviewTab = (eventType: PkiAlertEventTypeV2 | undefined): boolean => {
   return (
     !eventType ||
     eventType === PkiAlertEventTypeV2.EXPIRATION ||
@@ -84,30 +69,13 @@ const hasPreviewTab = (
   );
 };
 
-const getFormTabs = (
-  eventType: PkiAlertEventTypeV2 | undefined,
-  applicationScoped: boolean
-): TFormTab[] => {
-  if (applicationScoped) return TABS_APPLICATION_SCOPED;
-  if (hasPreviewTab(eventType, false)) return TABS_WITH_PREVIEW;
-  return TABS_WITHOUT_PREVIEW;
-};
+const getFormTabs = (eventType: PkiAlertEventTypeV2 | undefined): TFormTab[] =>
+  hasPreviewTab(eventType) ? TABS_WITH_PREVIEW : TABS_WITHOUT_PREVIEW;
 
-const getChannelsTabIndex = (
-  eventType: PkiAlertEventTypeV2 | undefined,
-  applicationScoped: boolean
-): number => {
-  if (applicationScoped) return 1;
-  return hasPreviewTab(eventType, false) ? 3 : 2;
-};
+const getChannelsTabIndex = (eventType: PkiAlertEventTypeV2 | undefined): number =>
+  hasPreviewTab(eventType) ? 3 : 2;
 
-export const CreatePkiAlertV2Modal = ({
-  isOpen,
-  onOpenChange,
-  alertToEdit,
-  alertId,
-  applicationId
-}: Props) => {
+export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alertId }: Props) => {
   const { currentProject } = useProject();
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
   const [expandedChannel, setExpandedChannel] = useState<string | undefined>(undefined);
@@ -144,9 +112,8 @@ export const CreatePkiAlertV2Modal = ({
   } = formMethods;
 
   const watchedEventType = watch("eventType");
-  const applicationScoped = !!applicationId;
-  const formTabs = getFormTabs(watchedEventType, applicationScoped);
-  const channelsTabIndex = getChannelsTabIndex(watchedEventType, applicationScoped);
+  const formTabs = getFormTabs(watchedEventType);
+  const channelsTabIndex = getChannelsTabIndex(watchedEventType);
 
   useEffect(() => {
     if (selectedTabIndex >= formTabs.length) {
@@ -263,10 +230,7 @@ export const CreatePkiAlertV2Modal = ({
           ...processedData
         } as TUpdatePkiAlertV2);
       } else {
-        await createAlert({
-          ...processedData,
-          ...(applicationId && { applicationId })
-        });
+        await createAlert(processedData);
       }
 
       createNotification({
@@ -342,7 +306,7 @@ export const CreatePkiAlertV2Modal = ({
         <form
           className={twMerge(
             "flex flex-col",
-            hasPreviewTab(watchedEventType, applicationScoped) ? "min-h-[60vh]" : "min-h-[40vh]",
+            hasPreviewTab(watchedEventType) ? "min-h-[60vh]" : "min-h-[40vh]",
             isFinalStep && "max-h-[70vh] overflow-y-auto"
           )}
         >
@@ -374,9 +338,7 @@ export const CreatePkiAlertV2Modal = ({
                   <CreatePkiAlertV2FormSteps
                     expandedChannel={expandedChannel}
                     setExpandedChannel={setExpandedChannel}
-                    showPreview={hasPreviewTab(watchedEventType, applicationScoped)}
-                    showFilters={!applicationScoped}
-                    applicationId={applicationId}
+                    showPreview={hasPreviewTab(watchedEventType)}
                   />
                 </Tab.Panels>
               </Tab.Group>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { Controller, useFormContext, UseFormRegisterReturn, useWatch } from "react-hook-form";
 import { EyeIcon, EyeOffIcon, SendIcon, TrashIcon } from "lucide-react";
 
@@ -22,6 +22,7 @@ import { useScopeVariant } from "@app/hooks";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
+  TAlertChannelRecipient,
   TAlertForm,
   toChannelInput,
   useTestAlertChannel
@@ -30,6 +31,12 @@ import {
 import { getChannelIcon } from "./channelIcons";
 import { ChannelRecipientsField } from "./ChannelRecipientsField";
 
+export type TChannelRecipientsRenderProps = {
+  value: TAlertChannelRecipient[];
+  onChange: (recipients: TAlertChannelRecipient[]) => void;
+  isError: boolean;
+};
+
 type Props = {
   index: number;
   projectId?: string;
@@ -37,6 +44,7 @@ type Props = {
   resourceId?: string | null;
   onRemove: () => void;
   canRemove: boolean;
+  renderRecipients?: (props: TChannelRecipientsRenderProps) => ReactNode;
 };
 
 const KEEP_PLACEHOLDER = "•••••••• (leave blank to keep)";
@@ -82,7 +90,8 @@ export const ChannelCard = ({
   resourceType,
   resourceId,
   onRemove,
-  canRemove
+  canRemove,
+  renderRecipients
 }: Props) => {
   const scopeVariant = useScopeVariant();
   const {
@@ -193,14 +202,24 @@ export const ChannelCard = ({
             <Controller
               control={control}
               name={`channels.${index}.recipients`}
-              render={({ field }) => (
-                <ChannelRecipientsField
-                  projectId={projectId}
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                  isError={Boolean(channelErrors?.recipients)}
-                />
-              )}
+              render={({ field }) =>
+                renderRecipients ? (
+                  <>
+                    {renderRecipients({
+                      value: field.value ?? [],
+                      onChange: field.onChange,
+                      isError: Boolean(channelErrors?.recipients)
+                    })}
+                  </>
+                ) : (
+                  <ChannelRecipientsField
+                    projectId={projectId}
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    isError={Boolean(channelErrors?.recipients)}
+                  />
+                )
+              }
             />
             <FieldError errors={[channelErrors?.recipients as { message?: string } | undefined]} />
           </FieldContent>

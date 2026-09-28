@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TPkiAlertsV2, TPkiAlertsV2Insert, TPkiAlertsV2Update } from "@app/db/schemas";
+import { TableName, TPkiAlertsV2, TPkiAlertsV2Update } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -34,28 +34,12 @@ export type TLastRunData = {
 };
 
 export type TAlertWithChannels = TPkiAlertsV2 & {
-  applicationName?: string | null;
   channels: TChannelResult[];
   lastRunData: TLastRunData | null;
 };
 
 export const pkiAlertV2DALFactory = (db: TDbClient) => {
   const pkiAlertV2Orm = ormify(db, TableName.PkiAlertsV2);
-
-  const create = async (data: TPkiAlertsV2Insert, tx?: Knex): Promise<TPkiAlertsV2> => {
-    try {
-      const serializedData = {
-        ...data,
-        filters: data.filters ? JSON.stringify(data.filters) : null,
-        notificationConfig: data.notificationConfig ? JSON.stringify(data.notificationConfig) : data.notificationConfig
-      };
-      const [res] = await (tx || db)(TableName.PkiAlertsV2).insert(serializedData).returning("*");
-
-      return res;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Create" });
-    }
-  };
 
   const updateById = async (id: string, data: TPkiAlertsV2Update, tx?: Knex): Promise<TPkiAlertsV2> => {
     try {
@@ -87,7 +71,10 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex): Promise<TPkiAlertsV2 | null> => {
     try {
-      const [res] = await (tx || db.replicaNode())(TableName.PkiAlertsV2).where({ id }).select("*");
+      const [res] = await (tx || db.replicaNode())(TableName.PkiAlertsV2)
+        .where({ id })
+        .whereNull("applicationId")
+        .select("*");
 
       if (!res) return null;
 
@@ -101,10 +88,9 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     try {
       const [alert] = (await (tx || db.replicaNode())
         .select(selectAllTableCols(TableName.PkiAlertsV2))
-        .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
         .from(TableName.PkiAlertsV2)
-        .leftJoin(TableName.PkiApplication, `${TableName.PkiAlertsV2}.applicationId`, `${TableName.PkiApplication}.id`)
-        .where(`${TableName.PkiAlertsV2}.id`, alertId)) as (TPkiAlertsV2 & { applicationName?: string | null })[];
+        .where(`${TableName.PkiAlertsV2}.id`, alertId)
+        .whereNull(`${TableName.PkiAlertsV2}.applicationId`)) as TPkiAlertsV2[];
 
       if (!alert) return null;
 
@@ -157,7 +143,6 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
       enabled?: boolean;
       limit?: number;
       offset?: number;
-      applicationId?: string | null;
     },
     tx?: Knex
   ): Promise<{ alerts: TAlertWithChannels[]; total: number }> => {
@@ -165,7 +150,8 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
       let countQuery = (tx || db.replicaNode())
         .count("* as count")
         .from(TableName.PkiAlertsV2)
-        .where(`${TableName.PkiAlertsV2}.projectId`, projectId);
+        .where(`${TableName.PkiAlertsV2}.projectId`, projectId)
+        .whereNull(`${TableName.PkiAlertsV2}.applicationId`);
 
       if (filters?.search) {
         countQuery = countQuery.whereILike(`${TableName.PkiAlertsV2}.name`, `%${sanitizeLikeInput(filters.search)}%`);
@@ -179,18 +165,11 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         countQuery = countQuery.where(`${TableName.PkiAlertsV2}.enabled`, filters.enabled);
       }
 
-      if (filters?.applicationId !== undefined) {
-        if (filters.applicationId === null) {
-          countQuery = countQuery.whereNull(`${TableName.PkiAlertsV2}.applicationId`);
-        } else {
-          countQuery = countQuery.where(`${TableName.PkiAlertsV2}.applicationId`, filters.applicationId);
-        }
-      }
-
       let alertQuery = (tx || db.replicaNode())
         .select(selectAllTableCols(TableName.PkiAlertsV2))
         .from(TableName.PkiAlertsV2)
-        .where(`${TableName.PkiAlertsV2}.projectId`, projectId);
+        .where(`${TableName.PkiAlertsV2}.projectId`, projectId)
+        .whereNull(`${TableName.PkiAlertsV2}.applicationId`);
 
       if (filters?.search) {
         alertQuery = alertQuery.whereILike(`${TableName.PkiAlertsV2}.name`, `%${sanitizeLikeInput(filters.search)}%`);
@@ -202,14 +181,6 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
 
       if (filters?.enabled !== undefined) {
         alertQuery = alertQuery.where(`${TableName.PkiAlertsV2}.enabled`, filters.enabled);
-      }
-
-      if (filters?.applicationId !== undefined) {
-        if (filters.applicationId === null) {
-          alertQuery = alertQuery.whereNull(`${TableName.PkiAlertsV2}.applicationId`);
-        } else {
-          alertQuery = alertQuery.where(`${TableName.PkiAlertsV2}.applicationId`, filters.applicationId);
-        }
       }
 
       alertQuery = alertQuery.orderBy(`${TableName.PkiAlertsV2}.createdAt`, "desc");
@@ -308,40 +279,6 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     return result.alerts;
   };
 
-  const countByProjectId = async (
-    projectId: string,
-    filters?: {
-      search?: string;
-      eventType?: string;
-      enabled?: boolean;
-    },
-    tx?: Knex
-  ): Promise<number> => {
-    try {
-      let query = (tx || db.replicaNode())
-        .count("* as count")
-        .from(TableName.PkiAlertsV2)
-        .where(`${TableName.PkiAlertsV2}.projectId`, projectId);
-
-      if (filters?.search) {
-        query = query.whereILike(`${TableName.PkiAlertsV2}.name`, `%${sanitizeLikeInput(filters.search)}%`);
-      }
-
-      if (filters?.eventType) {
-        query = query.where(`${TableName.PkiAlertsV2}.eventType`, filters.eventType);
-      }
-
-      if (filters?.enabled !== undefined) {
-        query = query.where(`${TableName.PkiAlertsV2}.enabled`, filters.enabled);
-      }
-
-      const result = await query;
-      return parseInt((result[0] as { count: string }).count, 10);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "CountByProjectId" });
-    }
-  };
-
   const getDistinctProjectIds = async (
     filters?: {
       enabled?: boolean;
@@ -349,7 +286,10 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<string[]> => {
     try {
-      let query = (tx || db.replicaNode()).distinct(`${TableName.PkiAlertsV2}.projectId`).from(TableName.PkiAlertsV2);
+      let query = (tx || db.replicaNode())
+        .distinct(`${TableName.PkiAlertsV2}.projectId`)
+        .from(TableName.PkiAlertsV2)
+        .whereNull(`${TableName.PkiAlertsV2}.applicationId`);
 
       if (filters?.enabled !== undefined) {
         query = query.where(`${TableName.PkiAlertsV2}.enabled`, filters.enabled);
@@ -375,15 +315,13 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
       excludeAlerted?: boolean;
       alertId?: string;
       certificateId?: string;
-      applicationId?: string;
       readFromPrimary?: boolean;
     },
     tx?: Knex
   ): Promise<{ certificates: TCertificatePreview[]; total: number }> => {
     try {
       const reader = tx || (options?.readFromPrimary ? db : db.replicaNode());
-      const isApplicationScoped = Boolean(options?.applicationId);
-      const includeCAs = shouldIncludeCAs(filters) && !isApplicationScoped;
+      const includeCAs = shouldIncludeCAs(filters);
       const needsProfileJoin = requiresProfileJoin(filters);
       const limit = options?.limit || 10;
       const offset = options?.offset || 0;
@@ -434,10 +372,6 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
       }
 
       certCountQuery = applyCertificateFilters(certCountQuery, filters, projectId) as typeof certCountQuery;
-
-      if (options?.applicationId) {
-        certCountQuery = certCountQuery.where(`${TableName.Certificate}.applicationId`, options.applicationId);
-      }
 
       if (options?.certificateId) {
         certCountQuery = certCountQuery.where(`${TableName.Certificate}.id`, options.certificateId);
@@ -516,10 +450,6 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
           );
 
         certificateQuery = applyCertificateFilters(certificateQuery, filters, projectId) as typeof certificateQuery;
-
-        if (options?.applicationId) {
-          certificateQuery = certificateQuery.where(`${TableName.Certificate}.applicationId`, options.applicationId);
-        }
 
         if (options?.certificateId) {
           certificateQuery = certificateQuery.where(`${TableName.Certificate}.id`, options.certificateId);
@@ -691,13 +621,11 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
 
   return {
     ...pkiAlertV2Orm,
-    create,
     updateById,
     findById,
     findByIdWithChannels,
     findByProjectId,
     findByProjectIdWithCount,
-    countByProjectId,
     getDistinctProjectIds,
     findMatchingCertificates
   };

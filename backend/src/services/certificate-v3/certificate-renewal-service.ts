@@ -11,9 +11,12 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc/pqc-utils";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import {
+  CertificateAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory, TOriginatingCertificateRequest } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -39,8 +42,6 @@ import {
 } from "@app/services/certificate-profile/certificate-profile-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
-import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -161,7 +162,7 @@ type TCertificateRenewalServiceFactoryDep = {
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "attachCertificate" | "transitionFromPending">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
-  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   pkiApplicationProfileDAL: Pick<
     TPkiApplicationProfileDALFactory,
@@ -229,7 +230,7 @@ export const certificateRenewalServiceFactory = ({
   certificateRequestService,
   certificateRequestDAL,
   resourceMetadataDAL,
-  pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationDAL,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
@@ -288,6 +289,16 @@ export const certificateRenewalServiceFactory = ({
       orgId,
       tx
     });
+
+    await certificateAlertEventEmitter?.emit(
+      {
+        certificateId: newCert.id,
+        projectId: originalCert.projectId,
+        eventType: CertificateAlertEvent.Renewal,
+        applicationId: originalCert.applicationId ?? null
+      },
+      tx
+    );
   };
 
   const $finalizeRenewal = async ({
@@ -328,16 +339,11 @@ export const certificateRenewalServiceFactory = ({
       await queueCertificateFilterReconcile(originalCert.id, originalCert.applicationId, pkiSyncQueue);
     }
 
-    try {
-      await pkiAlertV2Queue?.queueCertificateEvent({
-        certificateId: newCertificateId,
-        projectId: originalCert.projectId,
-        eventType: PkiAlertEventType.RENEWAL,
-        applicationId: originalCert.applicationId ?? null
-      });
-    } catch {
-      logger.debug("Failed to queue PKI renewal alert event");
-    }
+    await certificateAlertEventEmitter?.queueLegacyAlert({
+      certificateId: newCertificateId,
+      projectId: originalCert.projectId,
+      eventType: CertificateAlertEvent.Renewal
+    });
 
     await $reportCertificateIssued({
       orgId: profile?.project?.orgId ?? actorOrgId,

@@ -24,6 +24,8 @@ export type TAlertItem = {
   title: string; // primary label (e.g. certificate common name, client-secret description)
   identifier?: string; // secondary label (e.g. serial number, client-secret id)
   fields?: Array<{ label: string; value: string }>; // extra display key-values (expiry date, days left, reason)
+  summary?: string;
+  severity?: TAlertSeverity;
 };
 
 export type TAlertPayload = {

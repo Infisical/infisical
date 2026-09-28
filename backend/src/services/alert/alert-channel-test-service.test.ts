@@ -108,6 +108,10 @@ const buildDeps = (overrides?: {
         resolveMany: async (rowsByChannel: Map<string, unknown[]>) =>
           new Map([...rowsByChannel.keys()].map((channelId) => [channelId, overrides?.recipients ?? []]))
       },
+      alertChannelService: {
+        findEmailRecipients: async () => [],
+        validateEmailRecipients: async () => {}
+      },
       alertProviderRegistry: overrides?.registry ?? buildProvider(),
       kmsService: {
         createCipherPairWithDataKey: async () => ({

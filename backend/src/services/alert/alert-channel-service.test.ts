@@ -84,7 +84,8 @@ const buildService = (opts?: { seed?: TRow[] }) => {
         effectiveGroupIds: groupIds
       })
     },
-    groupDAL: { find: async (filter: { $in?: { id?: string[] } }) => (filter.$in?.id ?? []).map((id) => ({ id })) }
+    groupDAL: { find: async (filter: { $in?: { id?: string[] } }) => (filter.$in?.id ?? []).map((id) => ({ id })) },
+    emailDomainDAL: { find: async () => [{ domain: "verified-example.com" }] }
   } as unknown as TAlertChannelServiceFactoryDep);
 
   return { service, store, recipients };
@@ -169,6 +170,81 @@ describe("alert channel service", () => {
     expect(detail.channelType).toBe(AlertChannelType.EMAIL);
     expect(detail.recipients).toEqual([{ principalType: "user", principalId: "user-1" }]);
     expect(recipients.get(channel.id)).toHaveLength(1);
+  });
+
+  test("collapses email recipients that differ only by case or spacing", async () => {
+    const { service, recipients } = buildService();
+    const channel = await service.createChannelInTx(
+      {
+        name: "Team email",
+        channelType: AlertChannelType.EMAIL,
+        config: {},
+        recipients: [
+          { principalType: AlertPrincipalType.EMAIL, principalId: "Ops@Verified-Example.com" },
+          { principalType: AlertPrincipalType.EMAIL, principalId: " ops@verified-example.com " }
+        ],
+        orgId: "org-1",
+        ...CREATOR
+      },
+      encryptor as never,
+      tx
+    );
+    expect(recipients.get(channel.id)).toEqual([
+      { channelId: channel.id, principalType: "email", principalId: "ops@verified-example.com" }
+    ]);
+  });
+
+  test("accepts a kept outside address and rejects a new one on an unverified domain", async () => {
+    const { service } = buildService();
+    const input = {
+      name: "Team email",
+      channelType: AlertChannelType.EMAIL,
+      config: {},
+      orgId: "org-1",
+      ...CREATOR
+    };
+
+    await expect(
+      service.createChannelInTx(
+        {
+          ...input,
+          recipients: [{ principalType: AlertPrincipalType.EMAIL, principalId: "outsider@unverified.io" }],
+          keptEmailRecipients: ["outsider@unverified.io"]
+        },
+        encryptor as never,
+        tx
+      )
+    ).resolves.toBeDefined();
+
+    await expect(
+      service.createChannelInTx(
+        {
+          ...input,
+          recipients: [{ principalType: AlertPrincipalType.EMAIL, principalId: "newcomer@unverified.io" }],
+          keptEmailRecipients: ["outsider@unverified.io"]
+        },
+        encryptor as never,
+        tx
+      )
+    ).rejects.toThrow("Not on a verified domain: newcomer@unverified.io");
+  });
+
+  test("validates standalone email recipients against the verified domains", async () => {
+    const { service } = buildService();
+    await expect(
+      service.validateEmailRecipients(
+        "org-1",
+        [{ principalType: AlertPrincipalType.EMAIL, principalId: "stranger@unverified.io" }],
+        []
+      )
+    ).rejects.toThrow("Not on a verified domain: stranger@unverified.io");
+    await expect(
+      service.validateEmailRecipients(
+        "org-1",
+        [{ principalType: AlertPrincipalType.EMAIL, principalId: "ops@verified-example.com" }],
+        []
+      )
+    ).resolves.toBeUndefined();
   });
 
   test("keeps an omitted secret on update", async () => {

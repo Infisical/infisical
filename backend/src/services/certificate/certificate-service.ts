@@ -20,7 +20,10 @@ import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
+import {
+  CertificateAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -49,8 +52,6 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
-import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
-import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
@@ -153,7 +154,7 @@ type TCertificateServiceFactoryDep = {
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "revokeCertificate">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
-  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
@@ -186,7 +187,7 @@ export const certificateServiceFactory = ({
   pkiSyncQueue,
   certificateAuthorityService,
   resourceMetadataDAL,
-  pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationDAL,
   certificateProfileDAL,
   pkiApplicationProfileDAL,
@@ -745,11 +746,11 @@ export const certificateServiceFactory = ({
     }
 
     const revokedAt = new Date();
-    const revokedCertId = cert.id;
+    const { id: revokedCertificateId, applicationId: revokedApplicationId } = cert;
     await certificateDAL.transaction(async (tx) => {
       await certificateDAL.update(
         {
-          id: revokedCertId
+          id: revokedCertificateId
         },
         {
           status: CertStatus.REVOKED,
@@ -762,6 +763,22 @@ export const certificateServiceFactory = ({
       if (!ca.externalCa?.id) {
         await internalCertificateAuthorityDAL.update({ caId: ca.id }, { $incr: { ocspGeneration: 1 } }, tx);
       }
+
+      await certificateAlertEventEmitter?.emit(
+        {
+          certificateId: revokedCertificateId,
+          projectId: ca.projectId,
+          eventType: CertificateAlertEvent.Revocation,
+          applicationId: revokedApplicationId ?? null
+        },
+        tx
+      );
+    });
+
+    await certificateAlertEventEmitter?.queueLegacyAlert({
+      certificateId: cert.id,
+      projectId: ca.projectId,
+      eventType: CertificateAlertEvent.Revocation
     });
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
@@ -791,17 +808,6 @@ export const certificateServiceFactory = ({
         kmsService,
         hsmConnectorService
       });
-    }
-
-    try {
-      await pkiAlertV2Queue?.queueCertificateEvent({
-        certificateId: cert.id,
-        projectId: ca.projectId,
-        eventType: PkiAlertEventType.REVOCATION,
-        applicationId: cert.applicationId ?? null
-      });
-    } catch {
-      logger.debug("Failed to queue PKI revocation alert event");
     }
 
     // Return appropriate CA format based on CA type

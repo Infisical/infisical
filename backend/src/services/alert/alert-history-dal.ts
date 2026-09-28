@@ -27,13 +27,13 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
 
   const createWithTargets = async (
     alertId: string,
-    options: { status: string; eventId?: string },
+    options: { status: string; eventId?: string; error?: string },
     deliveries: TAlertTargetDelivery[]
   ): Promise<TAlertHistory> => {
     try {
       return await db.transaction(async (tx) => {
         const [history] = await tx(TableName.AlertHistory)
-          .insert({ alertId, status: options.status, eventId: options.eventId ?? null })
+          .insert({ alertId, status: options.status, eventId: options.eventId ?? null, error: options.error ?? null })
           .returning("*");
 
         if (deliveries.length > 0) {
@@ -102,6 +102,27 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findLatestByAlertIds = async (
+    alertIds: string[]
+  ): Promise<Pick<TAlertHistory, "alertId" | "triggeredAt" | "status" | "error">[]> => {
+    if (alertIds.length === 0) return [];
+    try {
+      const rows = (await db
+        .replicaNode()(TableName.AlertHistory)
+        .whereIn("alertId", alertIds)
+        .distinctOn("alertId")
+        .select("alertId", "triggeredAt", "status", "error")
+        .orderBy([{ column: "alertId" }, { column: "triggeredAt", order: "desc" }])) as Pick<
+        TAlertHistory,
+        "alertId" | "triggeredAt" | "status" | "error"
+      >[];
+
+      return rows;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindLatestByAlertIds" });
+    }
+  };
+
   const deleteExpiredHistory = async ({
     before,
     batchSize = ALERT_HISTORY_PRUNE_BATCH_SIZE,
@@ -146,6 +167,7 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
     createWithTargets,
     findRecentlyAlertedTargets,
     findDeliveredChannelIdsForEvent,
+    findLatestByAlertIds,
     deleteExpiredHistory
   };
 };

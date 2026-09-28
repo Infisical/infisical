@@ -116,7 +116,6 @@ export interface TPkiCertificateMatchV2 {
 }
 
 export interface TGetPkiAlertsV2 {
-  applicationId?: string;
   search?: string;
   eventType?: PkiAlertEventTypeV2;
   enabled?: boolean;
@@ -134,7 +133,6 @@ export interface TGetPkiAlertV2ById {
 }
 
 export interface TCreatePkiAlertV2 {
-  applicationId?: string;
   name: string;
   description?: string;
   eventType: PkiAlertEventTypeV2;
@@ -278,7 +276,6 @@ export const pkiAlertChannelV2Schema = z.discriminatedUnion("channelType", [
 ]);
 
 const basePkiAlertV2Schema = z.object({
-  applicationId: z.string().uuid().optional(),
   name: z
     .string()
     .min(1)

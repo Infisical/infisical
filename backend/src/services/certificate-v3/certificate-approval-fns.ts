@@ -1,5 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
+import { Knex } from "knex";
+import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -11,10 +13,14 @@ import {
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import {
+  getIssuanceAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
@@ -44,10 +50,12 @@ import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/ce
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
-import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
-import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
-import { queueCertificateFilterReconcile } from "@app/services/pki-sync/pki-sync-utils";
+import {
+  addRenewedCertificateToSyncs,
+  queueCertificateFilterReconcile,
+  triggerAutoSyncForCertificate
+} from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
@@ -82,6 +90,8 @@ import {
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
+import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { applyProfileDefaults } from "./certificate-v3-fns";
 import { TAltNameEntry, TCertificateIssuanceResponse } from "./certificate-v3-types";
@@ -95,6 +105,11 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
   certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "transaction" | "create">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
+  certificateSyncDAL: Pick<
+    TCertificateSyncDALFactory,
+    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
+  >;
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
@@ -110,11 +125,25 @@ export type TIssueCertificateFromApprovedRequestDeps = {
     "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
 };
 
 export type TCertificateApprovalService = {
   issueCertificate: (certificateRequestId: string) => Promise<TCertificateIssuanceResponse>;
+};
+
+const RenewalRequestMetadataSchema = z.object({
+  renewal: z.object({ originalCertificateId: z.string().uuid() })
+});
+
+const getRenewedFromCertificateId = (metadata?: string | null): string | undefined => {
+  if (!metadata) return undefined;
+  try {
+    const parsed = RenewalRequestMetadataSchema.safeParse(JSON.parse(metadata));
+    return parsed.success ? parsed.data.renewal.originalCertificateId : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 const buildRevalidationRequest = ({
@@ -226,24 +255,34 @@ export const certificateApprovalServiceFactory = (
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     pkiSyncQueue,
-    pkiAlertV2Queue
+    certificateSyncDAL,
+    pkiSyncDAL,
+    certificateAlertEventEmitter
   } = deps;
 
-  const $queueIssuanceAlert = async (certificateId: string, projectId: string, applicationId?: string | null) => {
-    try {
-      await pkiAlertV2Queue?.queueCertificateEvent({
+  const $emitIssuanceAlert = (
+    tx: Knex,
+    certificateId: string,
+    projectId: string,
+    applicationId?: string | null,
+    isRenewal = false
+  ) =>
+    certificateAlertEventEmitter?.emit(
+      {
         certificateId,
         projectId,
-        eventType: PkiAlertEventType.ISSUANCE,
+        eventType: getIssuanceAlertEvent(isRenewal),
         applicationId: applicationId ?? null
-      });
-    } catch (error) {
-      logger.warn(
-        error,
-        `Failed to queue PKI issuance alert event for approved request [certificateId=${certificateId}]`
-      );
-    }
-  };
+      },
+      tx
+    );
+
+  const $queueIssuanceAlert = (certificateId: string, projectId: string, isRenewal = false) =>
+    certificateAlertEventEmitter?.queueLegacyAlert({
+      certificateId,
+      projectId,
+      eventType: getIssuanceAlertEvent(isRenewal)
+    });
 
   const $validateProfileAndPermissions = async ({
     profileId,
@@ -629,6 +668,7 @@ export const certificateApprovalServiceFactory = (
       apiEnrollmentConfigDAL
     });
 
+    let renewedFromCertificateId: string | undefined;
     const certResult = await internalCaService.signCertFromCa({
       isInternal: true,
       caId: ca.id,
@@ -657,14 +697,33 @@ export const certificateApprovalServiceFactory = (
           new Date(newCert.notAfter)
         );
 
-        const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = { profileId };
+        const requestedRenewalOf = getRenewedFromCertificateId(certRequest.metadata);
+        const renewedFromCertificate = requestedRenewalOf
+          ? await certificateDAL.findById(requestedRenewalOf, tx)
+          : undefined;
+
+        const updateData: {
+          profileId: string;
+          renewBeforeDays?: number;
+          applicationId?: string;
+          renewedFromCertificateId?: string;
+        } = { profileId };
         if (finalRenewBeforeDays !== undefined) {
           updateData.renewBeforeDays = finalRenewBeforeDays;
         }
         if (certRequest.applicationId) {
           updateData.applicationId = certRequest.applicationId;
         }
+        if (renewedFromCertificate) {
+          updateData.renewedFromCertificateId = renewedFromCertificate.id;
+        }
         await certificateDAL.updateById(newCert.id, updateData, tx);
+
+        if (renewedFromCertificate) {
+          await linkRenewedCertificate(certificateDAL, renewedFromCertificate.id, newCert.id, tx);
+          await addRenewedCertificateToSyncs(renewedFromCertificate.id, newCert.id, { certificateSyncDAL }, tx);
+          renewedFromCertificateId = renewedFromCertificate.id;
+        }
 
         await certificateRequestDAL.updateById(
           certificateRequestId,
@@ -681,15 +740,30 @@ export const certificateApprovalServiceFactory = (
           certificateId: newCert.id,
           tx
         });
+
+        await $emitIssuanceAlert(
+          tx,
+          newCert.id,
+          profile.projectId,
+          certRequest.applicationId,
+          Boolean(renewedFromCertificate)
+        );
       }
     });
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber } = certResult;
 
-    await $queueIssuanceAlert(certResult.certificateId, profile.projectId, certRequest.applicationId);
+    await $queueIssuanceAlert(certResult.certificateId, profile.projectId, Boolean(renewedFromCertificateId));
 
     if (certResult.certificateId && certRequest.applicationId) {
       await queueCertificateFilterReconcile(certResult.certificateId, certRequest.applicationId, pkiSyncQueue);
+      if (renewedFromCertificateId) {
+        await queueCertificateFilterReconcile(renewedFromCertificateId, certRequest.applicationId, pkiSyncQueue);
+      }
+    }
+
+    if (certResult.certificateId && renewedFromCertificateId) {
+      await triggerAutoSyncForCertificate(certResult.certificateId, { certificateSyncDAL, pkiSyncDAL, pkiSyncQueue });
     }
 
     const certificateString = extractCertificateFromBuffer(certificate as unknown as Buffer);
@@ -814,6 +888,7 @@ export const certificateApprovalServiceFactory = (
     }
 
     const orderId = randomUUID();
+    const originalCertificateId = getRenewedFromCertificateId(certRequest.metadata);
 
     await certificateIssuanceQueue.queueCertificateIssuance({
       certificateId: orderId,
@@ -837,7 +912,8 @@ export const certificateApprovalServiceFactory = (
       locality: mappedReconstructedRequest.locality || undefined,
       basicConstraints: certRequest.basicConstraints as { isCA: boolean; pathLength?: number | null } | null,
       customExtensions: revalidationResult.resolvedCustomExtensions,
-      ...(certRequest.applicationId && { applicationId: certRequest.applicationId })
+      ...(certRequest.applicationId && { applicationId: certRequest.applicationId }),
+      ...(originalCertificateId && { isRenewal: true, originalCertificateId })
     });
 
     return {
@@ -938,12 +1014,14 @@ export const certificateApprovalServiceFactory = (
         await certificateDAL.updateById(processResult.certificateData.id, { applicationId }, tx);
       }
 
+      await $emitIssuanceAlert(tx, processResult.certificateData.id, profile.projectId, applicationId);
+
       return processResult;
     });
 
     const { selfSignedResult, certificateData } = result;
 
-    await $queueIssuanceAlert(certificateData.id, profile.projectId, applicationId);
+    await $queueIssuanceAlert(certificateData.id, profile.projectId);
 
     if (certificateData.id && applicationId) {
       await queueCertificateFilterReconcile(certificateData.id, applicationId, pkiSyncQueue);
@@ -1097,12 +1175,14 @@ export const certificateApprovalServiceFactory = (
           tx
         });
 
+        await $emitIssuanceAlert(tx, certificateRecord.id, profile.projectId, applicationId);
+
         return { ...certResult, cert: certificateRecord };
       });
 
     const finalCertificateChain = bufferToString(certificateChain);
 
-    await $queueIssuanceAlert(cert.id, profile.projectId, applicationId);
+    await $queueIssuanceAlert(cert.id, profile.projectId);
 
     if (cert.id && applicationId) {
       await queueCertificateFilterReconcile(cert.id, applicationId, pkiSyncQueue);

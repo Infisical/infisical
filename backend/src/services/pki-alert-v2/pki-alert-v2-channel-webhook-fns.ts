@@ -46,16 +46,10 @@ type TBuildWebhookPayloadParams = {
 };
 
 // Builds CloudEvents envelope (shared across all events)
-const buildBasePayload = (params: {
-  eventType: PkiWebhookEventType;
-  applicationId?: string;
-  alertId: string;
-}): TPkiWebhookBase => ({
+const buildBasePayload = (params: { eventType: PkiWebhookEventType; alertId: string }): TPkiWebhookBase => ({
   specversion: "1.0" as const,
   type: params.eventType,
-  source: params.applicationId
-    ? `/applications/${params.applicationId}/alerts/${params.alertId}`
-    : `/alerts/${params.alertId}`,
+  source: `/alerts/${params.alertId}`,
   id: crypto.randomUUID(),
   time: new Date().toISOString(),
   datacontenttype: "application/json" as const
@@ -107,8 +101,7 @@ const buildEventData = (params: {
     alert: {
       id: params.alert.id,
       name: params.alert.name,
-      ...(params.alert.alertBefore ? { alertBefore: params.alert.alertBefore } : {}),
-      ...(params.alert.applicationId ? { applicationId: params.alert.applicationId } : {})
+      ...(params.alert.alertBefore ? { alertBefore: params.alert.alertBefore } : {})
     },
     certificates: transformCertificates(params.certificates),
     metadata: {
@@ -124,11 +117,7 @@ export const buildWebhookPayload = ({
   eventType,
   appUrl = "https://app.infisical.com"
 }: TBuildWebhookPayloadParams): TPkiWebhookPayload => {
-  const base = buildBasePayload({
-    eventType,
-    applicationId: alert.applicationId,
-    alertId: alert.id
-  });
+  const base = buildBasePayload({ eventType, alertId: alert.id });
 
   const eventData = buildEventData({ alert, certificates, appUrl, eventType });
 

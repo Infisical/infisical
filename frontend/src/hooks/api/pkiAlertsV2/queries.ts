@@ -24,14 +24,6 @@ export const pkiAlertsV2Keys = {
 };
 
 const fetchPkiAlertsV2 = async (params: TGetPkiAlertsV2): Promise<TGetPkiAlertsV2Response> => {
-  if (params.applicationId) {
-    const { applicationId, ...rest } = params;
-    const { data } = await apiRequest.get<TGetPkiAlertsV2Response>(
-      `/api/v1/cert-manager/applications/${applicationId}/alerts`,
-      { params: rest }
-    );
-    return data;
-  }
   const { data } = await apiRequest.get<TGetPkiAlertsV2Response>("/api/v1/cert-manager/alerts", {
     params
   });

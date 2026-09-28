@@ -14,12 +14,14 @@ import { TAlertHistoryDALFactory } from "./alert-history-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { AlertRunStatus, DEFAULT_DEDUP_WINDOW_HOURS, IResourceAlertProvider, TAlertContext } from "./alert-types";
+import { describeDeliveryError } from "./channels/alert-channel-error-fns";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 const ALERT_DELIVERY_CONCURRENCY = 10;
 
 const HISTORY_WRITE_ATTEMPTS = 3;
 const HISTORY_WRITE_RETRY_DELAY_MS = 250;
+const HISTORY_ERROR_MAX_LENGTH = 1000;
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => {
@@ -162,7 +164,7 @@ export const alertEngineFactory = ({
           const result = await sendLimit(() => definition.send({ channelId: channel.id, config, payload, deps }));
           return { ...base, ...result };
         } catch (err) {
-          const error = err instanceof Error ? err.message : "Unknown error";
+          const error = describeDeliveryError(err);
           logger.error(err, `Failed to dispatch alert ${channel.channelType} channel [alertId=${alert.id}]`);
           return { ...base, success: false, error };
         }
@@ -198,7 +200,11 @@ export const alertEngineFactory = ({
     for (let attempt = 1; attempt <= HISTORY_WRITE_ATTEMPTS; attempt += 1) {
       try {
         // eslint-disable-next-line no-await-in-loop -- retrying the same insert is the point
-        await alertHistoryDAL.createWithTargets(alert.id, { status, eventId }, deliveries);
+        await alertHistoryDAL.createWithTargets(
+          alert.id,
+          { status, eventId, error: errorText?.slice(0, HISTORY_ERROR_MAX_LENGTH) },
+          deliveries
+        );
         break;
       } catch (err) {
         if (attempt === HISTORY_WRITE_ATTEMPTS) {

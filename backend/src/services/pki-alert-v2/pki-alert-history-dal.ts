@@ -1,7 +1,7 @@
 import { TDbClient } from "@app/db";
 import { TableName, TPkiAlertHistory } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify } from "@app/lib/knex";
 
 export type TPkiAlertHistoryDALFactory = ReturnType<typeof pkiAlertHistoryDALFactory>;
 
@@ -44,36 +44,6 @@ export const pkiAlertHistoryDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByAlertId = async (
-    alertId: string,
-    options?: {
-      limit?: number;
-      offset?: number;
-    }
-  ): Promise<TPkiAlertHistory[]> => {
-    try {
-      let query = db
-        .replicaNode()
-        .select(selectAllTableCols(TableName.PkiAlertHistory))
-        .from(TableName.PkiAlertHistory)
-        .where(`${TableName.PkiAlertHistory}.alertId`, alertId)
-        .orderBy(`${TableName.PkiAlertHistory}.triggeredAt`, "desc");
-
-      if (options?.limit) {
-        query = query.limit(options.limit);
-      }
-
-      if (options?.offset) {
-        query = query.offset(options.offset);
-      }
-
-      const results = await query;
-      return results as TPkiAlertHistory[];
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindByAlertId" });
-    }
-  };
-
   const findRecentlyAlertedCertificates = async (
     alertId: string,
     certificateIds: string[],
@@ -106,7 +76,6 @@ export const pkiAlertHistoryDALFactory = (db: TDbClient) => {
   return {
     ...pkiAlertHistoryOrm,
     createWithCertificates,
-    findByAlertId,
     findRecentlyAlertedCertificates
   };
 };

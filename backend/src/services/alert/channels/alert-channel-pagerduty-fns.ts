@@ -11,6 +11,7 @@ import {
   TAlertPayload,
   TChannelResult
 } from "../alert-channel-types";
+import { describeDeliveryError } from "./alert-channel-error-fns";
 
 const PAGERDUTY_EVENTS_URL = "https://events.pagerduty.com/v2/enqueue";
 export const PAGERDUTY_MAX_INCIDENTS_PER_RUN = 10;
@@ -49,8 +50,8 @@ export const buildPagerDutyEvent = (
   event_action: "trigger",
   dedup_key: `${payload.alert.id}:${item.id}`,
   payload: {
-    summary: `${payload.summary} — ${item.title}`.slice(0, PAGERDUTY_SUMMARY_MAX_LENGTH),
-    severity: payload.severity,
+    summary: (item.summary ?? `${payload.summary} — ${item.title}`).slice(0, PAGERDUTY_SUMMARY_MAX_LENGTH),
+    severity: item.severity ?? payload.severity,
     source: `infisical-${payload.alert.resourceType}`,
     timestamp: new Date().toISOString(),
     component: payload.resourceKind,
@@ -85,7 +86,7 @@ export const sendPagerDutyNotification = async (ctx: TAlertChannelSendContext): 
         await triggerPagerDutyEvent(buildPagerDutyEvent(ctx.payload, item, config.integrationKey));
         return { targetId: item.id, success: true };
       } catch (err) {
-        const error = err instanceof Error ? err.message : String(err);
+        const error = describeDeliveryError(err);
         logger.info(
           { channelId: ctx.channelId, statusCode: (err as AxiosError).response?.status, error },
           `Alert PagerDuty delivery failed [channelId=${ctx.channelId}] [targetId=${item.id}]`

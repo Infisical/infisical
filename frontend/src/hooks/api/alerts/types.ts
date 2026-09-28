@@ -18,7 +18,8 @@ export enum AlertChannelType {
 
 export enum AlertPrincipalType {
   User = "user",
-  Group = "group"
+  Group = "group",
+  Email = "email"
 }
 
 export const MIN_ALERT_BEFORE_DAYS = 1;
@@ -72,7 +73,9 @@ export type TAlert = {
   enabled: boolean;
   orgId: string;
   projectId: string | null;
+  resourceName: string | null;
   channels: TAlertChannelEmbedded[];
+  lastRun: { timestamp: string; status: string; error: string | null } | null;
   createdAt: string;
   updatedAt: string;
 };

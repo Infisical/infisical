@@ -5,17 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
-import {
-  CircleStopIcon,
-  EyeIcon,
-  InfoIcon,
-  MoreHorizontalIcon,
-  PencilIcon,
-  PlayIcon,
-  PlusIcon,
-  Settings2Icon,
-  Trash2Icon
-} from "lucide-react";
+import { MoreHorizontalIcon, PencilIcon, PlusIcon, Settings2Icon, Trash2Icon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -73,13 +63,6 @@ import {
 } from "@app/hooks/api/approvalPolicies";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
-  PkiAlertEventTypeV2,
-  TPkiAlertV2,
-  useDeletePkiAlertV2,
-  useGetPkiAlertsV2,
-  useUpdatePkiAlertV2
-} from "@app/hooks/api/pkiAlertsV2";
-import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub,
   TPkiApplication,
@@ -90,14 +73,9 @@ import {
 } from "@app/hooks/api/pkiApplications";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
 import { CreateProfileModal } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/CreateProfileModal";
-import { CreatePkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/CreatePkiAlertV2Modal";
-import { ViewPkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/ViewPkiAlertV2Modal";
-import {
-  formatAlertBefore,
-  formatEventType
-} from "@app/views/PkiAlertsV2Page/utils/pki-alert-formatters";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
+import { ApplicationAlertsCard } from "./ApplicationAlerts/ApplicationAlertsCard";
 import {
   ConfigureEnrollmentModal,
   EnrollmentMethod,
@@ -252,119 +230,6 @@ const ApplicationPoliciesTable = ({
   );
 };
 
-type AlertRowProps = {
-  alert: TPkiAlertV2;
-  onView: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  canEdit: boolean;
-  canDelete: boolean;
-};
-
-const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: AlertRowProps) => {
-  const { mutateAsync: updateAlert } = useUpdatePkiAlertV2();
-
-  const handleToggleAlert = async () => {
-    try {
-      await updateAlert({ alertId: alert.id, enabled: !alert.enabled });
-      createNotification({
-        text: `Alert ${!alert.enabled ? "enabled" : "disabled"} successfully`,
-        type: "success"
-      });
-    } catch {
-      createNotification({ text: "Failed to update alert status", type: "error" });
-    }
-  };
-
-  return (
-    <TableRow>
-      <TableCell isTruncatable>
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-foreground">{alert.name}</span>
-          {alert.description ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <InfoIcon className="size-3.5 shrink-0 text-accent" />
-              </TooltipTrigger>
-              <TooltipContent side="right" className="max-w-xs">
-                {alert.description}
-              </TooltipContent>
-            </Tooltip>
-          ) : null}
-        </div>
-      </TableCell>
-      <TableCell className="whitespace-nowrap text-accent">
-        {formatEventType(alert.eventType)}
-      </TableCell>
-      <TableCell className="whitespace-nowrap">
-        <Badge variant={alert.enabled ? "success" : "neutral"}>
-          {alert.enabled ? "Enabled" : "Disabled"}
-        </Badge>
-      </TableCell>
-      <TableCell className="whitespace-nowrap text-accent">
-        {alert.eventType === PkiAlertEventTypeV2.EXPIRATION ? (
-          formatAlertBefore(alert.alertBefore)
-        ) : (
-          <span className="text-surface-selected">—</span>
-        )}
-      </TableCell>
-      <TableCell className="whitespace-nowrap">
-        {alert.lastRun ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant={alert.lastRun.status === "success" ? "success" : "danger"}>
-                {alert.lastRun.status === "success" ? "Success" : "Failed"}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="max-w-sm">
-              <div className="text-xs text-label">
-                {new Date(alert.lastRun.timestamp)
-                  .toISOString()
-                  .replace("T", " ")
-                  .replace("Z", " UTC")}
-              </div>
-              {alert.lastRun.error ? (
-                <div className="mt-1 max-h-32 thin-scrollbar overflow-y-auto text-xs break-words text-danger">
-                  {alert.lastRun.error}
-                </div>
-              ) : null}
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <span className="text-surface-selected">—</span>
-        )}
-      </TableCell>
-      <TableCell className="text-right">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton variant="ghost" size="xs" aria-label="Alert actions">
-              <MoreHorizontalIcon />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-44" align="end" sideOffset={2}>
-            <DropdownMenuItem onClick={onView}>
-              <EyeIcon />
-              View details
-            </DropdownMenuItem>
-            <DropdownMenuItem isDisabled={!canEdit} onClick={onEdit}>
-              <PencilIcon />
-              Edit alert
-            </DropdownMenuItem>
-            <DropdownMenuItem isDisabled={!canEdit} onClick={handleToggleAlert}>
-              {alert.enabled ? <CircleStopIcon /> : <PlayIcon />}
-              {alert.enabled ? "Disable" : "Enable"} alert
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="danger" isDisabled={!canDelete} onClick={onDelete}>
-              <Trash2Icon />
-              Delete alert
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </TableCell>
-    </TableRow>
-  );
-};
-
 export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const { orgId, projectId } = useParams({ strict: false }) as {
     orgId?: string;
@@ -450,41 +315,6 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     handlePopUpOpen("policy");
   };
   const deletePolicy = useDeleteApprovalPolicy();
-
-  const { data: alertsData, isLoading: isAlertsLoading } = useGetPkiAlertsV2({
-    applicationId: application.id,
-    limit: 100
-  });
-  const alerts = alertsData?.alerts ?? [];
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; alertId?: string }>({
-    isOpen: false
-  });
-  const [viewAlertModal, setViewAlertModal] = useState<{ isOpen: boolean; alertId?: string }>({
-    isOpen: false
-  });
-  const [deleteAlertModal, setDeleteAlertModal] = useState<{
-    isOpen: boolean;
-    alertId?: string;
-    name?: string;
-  }>({ isOpen: false });
-  const { mutateAsync: deleteAlert } = useDeletePkiAlertV2();
-
-  const handleDeleteAlert = async () => {
-    if (!deleteAlertModal.alertId) return;
-    try {
-      await deleteAlert({
-        alertId: deleteAlertModal.alertId,
-        applicationId: application.id
-      });
-      setDeleteAlertModal({ isOpen: false });
-      createNotification({ type: "success", text: "Alert deleted" });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to delete alert"
-      });
-    }
-  };
 
   const handleDeletePolicy = async () => {
     const p = popUp.deletePolicy.data as { policyId: string } | undefined;
@@ -787,88 +617,14 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Alerting
-            <DocumentationLinkBadge href={PkiDocsUrls.applications.alerting.overview} />
-          </CardTitle>
-          <CardDescription>Get notified about certificate events.</CardDescription>
-          <CardAction>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip surfaces on keyboard focus despite the inner button being disabled */}
-                <span tabIndex={0}>
-                  <Button
-                    variant="outline"
-                    onClick={() => setAlertModal({ isOpen: true })}
-                    isDisabled={!canManageAlerts}
-                  >
-                    <FontAwesomeIcon icon={faPlus} />
-                    Create Alert
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {!canManageAlerts && (
-                <TooltipContent side="left">
-                  You don&apos;t have permission to create alerts
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          {!isAlertsLoading && alerts.length === 0 ? (
-            <Empty className="border">
-              <EmptyHeader>
-                <EmptyTitle>No alerts configured</EmptyTitle>
-                <EmptyDescription>
-                  Create one to get notified about certificate events for this application.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-1/3">Name</TableHead>
-                  <TableHead className="whitespace-nowrap">Event Type</TableHead>
-                  <TableHead className="whitespace-nowrap">Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Alert Before</TableHead>
-                  <TableHead className="whitespace-nowrap">Last Run</TableHead>
-                  <TableHead className="w-5 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isAlertsLoading &&
-                  Array.from({ length: 3 }, (_, idx) => (
-                    <TableRow key={`alert-skeleton-${idx + 1}`}>
-                      {Array.from({ length: 6 }, (__, cellIdx) => (
-                        <TableCell key={`alert-skeleton-cell-${cellIdx + 1}`}>
-                          <Skeleton className="h-4 w-24" />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                {!isAlertsLoading &&
-                  alerts.map((a: TPkiAlertV2) => (
-                    <AlertRow
-                      key={a.id}
-                      alert={a}
-                      onView={() => setViewAlertModal({ isOpen: true, alertId: a.id })}
-                      onEdit={() => setAlertModal({ isOpen: true, alertId: a.id })}
-                      onDelete={() =>
-                        setDeleteAlertModal({ isOpen: true, alertId: a.id, name: a.name })
-                      }
-                      canEdit={canEditAlerts}
-                      canDelete={canDeleteAlerts}
-                    />
-                  ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <ApplicationAlertsCard
+        projectId={application.projectId}
+        applicationId={application.id}
+        applicationName={application.name}
+        canCreate={canManageAlerts}
+        canEdit={canEditAlerts}
+        canDelete={canDeleteAlerts}
+      />
 
       <PolicyModal
         popUp={popUp}
@@ -887,24 +643,6 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         title={`Delete approval policy ${(popUp.deletePolicy.data as TApprovalPolicy | undefined)?.name ?? ""}?`}
         onChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
         onDeleteApproved={handleDeletePolicy}
-      />
-      <CreatePkiAlertV2Modal
-        isOpen={alertModal.isOpen}
-        onOpenChange={(isOpen) => setAlertModal({ isOpen, alertId: undefined })}
-        applicationId={application.id}
-        alertId={alertModal.alertId}
-      />
-      <ViewPkiAlertV2Modal
-        isOpen={viewAlertModal.isOpen}
-        onOpenChange={(isOpen) => setViewAlertModal({ isOpen, alertId: undefined })}
-        alertId={viewAlertModal.alertId}
-      />
-      <DeleteActionModal
-        isOpen={deleteAlertModal.isOpen}
-        deleteKey="delete"
-        title={`Delete PKI Alert "${deleteAlertModal.name ?? ""}"`}
-        onChange={(isOpen) => setDeleteAlertModal({ isOpen, alertId: undefined, name: undefined })}
-        onDeleteApproved={handleDeleteAlert}
       />
 
       <Dialog

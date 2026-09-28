@@ -29,8 +29,14 @@ import {
   TCertRequestRequestData
 } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import {
+  CertificateAlertEvent,
+  getIssuanceAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
@@ -52,9 +58,11 @@ import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
-import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
-import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
-import { queueCertificateFilterReconcile } from "@app/services/pki-sync/pki-sync-utils";
+import {
+  addRenewedCertificateToSyncs,
+  queueCertificateFilterReconcile,
+  triggerAutoSyncForCertificate
+} from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -179,7 +187,7 @@ type TCertificateV3ServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
-  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
   pkiApplicationProfileDAL: Pick<
     TPkiApplicationProfileDALFactory,
     "findAllByProfileId" | "findOneByApplicationAndProfile"
@@ -348,7 +356,7 @@ export const certificateV3ServiceFactory = ({
   identityDAL,
   approvalPolicyService,
   resourceMetadataDAL,
-  pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationProfileDAL,
   pkiApplicationDAL,
   apiEnrollmentConfigDAL,
@@ -929,6 +937,17 @@ export const certificateV3ServiceFactory = ({
           await certificateDAL.updateById(processResult.certificateData.id, { applicationId }, tx);
         }
 
+        await certificateAlertEventEmitter?.emit(
+          {
+            certificateId: processResult.certificateData.id,
+            projectId: profile.projectId,
+            orgId: profile.project?.orgId,
+            eventType: CertificateAlertEvent.Issuance,
+            applicationId
+          },
+          tx
+        );
+
         return { ...processResult, certificateRequestId: certRequestResult.id };
       });
 
@@ -972,16 +991,11 @@ export const certificateV3ServiceFactory = ({
 
       const privateKeyForResponse = canReadPrivateKey ? selfSignedResult.privateKey.toString("utf8") : undefined;
 
-      try {
-        await pkiAlertV2Queue?.queueCertificateEvent({
-          certificateId: certificateData.id,
-          projectId: profile.projectId,
-          eventType: PkiAlertEventType.ISSUANCE,
-          applicationId: applicationId ?? null
-        });
-      } catch {
-        logger.debug("Failed to queue PKI issuance alert event");
-      }
+      await certificateAlertEventEmitter?.queueLegacyAlert({
+        certificateId: certificateData.id,
+        projectId: profile.projectId,
+        eventType: CertificateAlertEvent.Issuance
+      });
 
       if (certificateData.id && applicationId) {
         await queueCertificateFilterReconcile(certificateData.id, applicationId, pkiSyncQueue);
@@ -1173,6 +1187,17 @@ export const certificateV3ServiceFactory = ({
         });
       }
 
+      await certificateAlertEventEmitter?.emit(
+        {
+          certificateId: certResult.certificateId,
+          projectId: profile.projectId,
+          orgId: profile.project?.orgId,
+          eventType: CertificateAlertEvent.Issuance,
+          applicationId
+        },
+        tx
+      );
+
       return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
     });
 
@@ -1215,16 +1240,11 @@ export const certificateV3ServiceFactory = ({
 
     const privateKeyForResponse = canReadPrivateKey ? bufferToString(privateKey) : undefined;
 
-    try {
-      await pkiAlertV2Queue?.queueCertificateEvent({
-        certificateId: cert.id,
-        projectId: profile.projectId,
-        eventType: PkiAlertEventType.ISSUANCE,
-        applicationId: applicationId ?? null
-      });
-    } catch {
-      logger.debug("Failed to queue PKI issuance alert event");
-    }
+    await certificateAlertEventEmitter?.queueLegacyAlert({
+      certificateId: cert.id,
+      projectId: profile.projectId,
+      eventType: CertificateAlertEvent.Issuance
+    });
 
     if (cert.id && applicationId) {
       await queueCertificateFilterReconcile(cert.id, applicationId, pkiSyncQueue);
@@ -1275,7 +1295,8 @@ export const certificateV3ServiceFactory = ({
     removeRootsFromChain,
     basicConstraints,
     applicationId: explicitApplicationId,
-    acmeOrderId
+    acmeOrderId,
+    renewedFromCertificateId
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1449,6 +1470,9 @@ export const certificateV3ServiceFactory = ({
             status: CertificateRequestStatus.PENDING_APPROVAL,
             basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null,
             customExtensions: resolvedCustomExtensions ? JSON.stringify(resolvedCustomExtensions) : null,
+            metadata: renewedFromCertificateId
+              ? JSON.stringify({ renewal: { originalCertificateId: renewedFromCertificateId } })
+              : null,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
@@ -1642,7 +1666,12 @@ export const certificateV3ServiceFactory = ({
             new Date(newCert.notAfter)
           );
 
-          const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
+          const updateData: {
+            profileId: string;
+            renewBeforeDays?: number;
+            applicationId?: string;
+            renewedFromCertificateId?: string;
+          } = {
             profileId
           };
           if (finalRenewBeforeDays !== undefined) {
@@ -1651,7 +1680,15 @@ export const certificateV3ServiceFactory = ({
           if (applicationId) {
             updateData.applicationId = applicationId;
           }
+          if (renewedFromCertificateId) {
+            updateData.renewedFromCertificateId = renewedFromCertificateId;
+          }
           await certificateDAL.updateById(newCert.id, updateData, tx);
+
+          if (renewedFromCertificateId) {
+            await linkRenewedCertificate(certificateDAL, renewedFromCertificateId, newCert.id, tx);
+            await addRenewedCertificateToSyncs(renewedFromCertificateId, newCert.id, { certificateSyncDAL }, tx);
+          }
 
           // Records the outcome: flips the request to ISSUED and links the certificate in one update.
           // Returns null when the request is no longer attachable, meaning it left a pending status
@@ -1667,6 +1704,17 @@ export const certificateV3ServiceFactory = ({
               certificateId: newCert.id,
               projectId: profile.projectId,
               operation: CertificateIssuanceOperation.SIGN
+            },
+            tx
+          );
+
+          await certificateAlertEventEmitter?.emit(
+            {
+              certificateId: newCert.id,
+              projectId: profile.projectId,
+              orgId: profile.project?.orgId,
+              eventType: getIssuanceAlertEvent(Boolean(renewedFromCertificateId)),
+              applicationId
             },
             tx
           );
@@ -1705,19 +1753,21 @@ export const certificateV3ServiceFactory = ({
       certificateChainString = removeRootCaFromChain(certificateChainString);
     }
 
-    try {
-      await pkiAlertV2Queue?.queueCertificateEvent({
-        certificateId: certResult.certificateId,
-        projectId: profile.projectId,
-        eventType: PkiAlertEventType.ISSUANCE,
-        applicationId: applicationId ?? null
-      });
-    } catch {
-      logger.debug("Failed to queue PKI issuance alert event");
-    }
+    await certificateAlertEventEmitter?.queueLegacyAlert({
+      certificateId: certResult.certificateId,
+      projectId: profile.projectId,
+      eventType: getIssuanceAlertEvent(Boolean(renewedFromCertificateId))
+    });
 
     if (certResult.certificateId && applicationId) {
       await queueCertificateFilterReconcile(certResult.certificateId, applicationId, pkiSyncQueue);
+      if (renewedFromCertificateId) {
+        await queueCertificateFilterReconcile(renewedFromCertificateId, applicationId, pkiSyncQueue);
+      }
+    }
+
+    if (certResult.certificateId && renewedFromCertificateId) {
+      await triggerAutoSyncForCertificate(certResult.certificateId, { certificateSyncDAL, pkiSyncDAL, pkiSyncQueue });
     }
 
     await $reportCertificateIssued({
@@ -2280,7 +2330,7 @@ export const certificateV3ServiceFactory = ({
     certificateRequestService,
     certificateRequestDAL,
     resourceMetadataDAL,
-    pkiAlertV2Queue,
+    certificateAlertEventEmitter,
     pkiApplicationProfileDAL,
     pkiApplicationDAL,
     apiEnrollmentConfigDAL,

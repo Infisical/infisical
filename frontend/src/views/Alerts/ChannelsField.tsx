@@ -26,7 +26,7 @@ type Props = {
   resourceId?: string | null;
 };
 
-const buildNewChannel = (channelType: AlertChannelType, name: string): TChannelForm => ({
+export const buildNewChannel = (channelType: AlertChannelType, name: string): TChannelForm => ({
   channelType,
   name,
   enabled: true,
@@ -36,6 +36,15 @@ const buildNewChannel = (channelType: AlertChannelType, name: string): TChannelF
   signingSecret: "",
   integrationKey: ""
 });
+
+export const getNextChannelName = (takenNames: Set<string>, channelType: AlertChannelType) => {
+  const baseName = ALERT_CHANNEL_TYPE_LABELS[channelType];
+  let name = baseName;
+  for (let suffix = 2; takenNames.has(name); suffix += 1) {
+    name = `${baseName} ${suffix}`;
+  }
+  return name;
+};
 
 export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) => {
   const {
@@ -50,12 +59,7 @@ export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) =>
   // suffixed to stay unique so multiples remain distinguishable (e.g. in Terraform).
   const appendChannel = (channelType: AlertChannelType) => {
     const takenNames = new Set((getValues("channels") ?? []).map((channel) => channel.name));
-    const baseName = ALERT_CHANNEL_TYPE_LABELS[channelType];
-    let name = baseName;
-    for (let suffix = 2; takenNames.has(name); suffix += 1) {
-      name = `${baseName} ${suffix}`;
-    }
-    append(buildNewChannel(channelType, name));
+    append(buildNewChannel(channelType, getNextChannelName(takenNames, channelType)));
   };
 
   return (

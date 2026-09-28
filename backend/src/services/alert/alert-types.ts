@@ -1,12 +1,14 @@
 import { z } from "zod";
 
 import { TGenericPermission } from "@app/lib/types";
+import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
 import { TAlertPayload } from "./alert-channel-types";
 
 export enum AlertPrincipalType {
   USER = "user",
-  GROUP = "group"
+  GROUP = "group",
+  EMAIL = "email"
 }
 
 export enum AlertTriggerType {
@@ -100,6 +102,26 @@ export type IScheduledAlertProvider<TTarget = unknown> = IResourceAlertProvider<
 export type IEventAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
   Required<Pick<IResourceAlertProvider<TTarget>, "findTargetsByIds">>;
 
+export enum AlertTelemetryAction {
+  Create = "create",
+  Update = "update",
+  Delete = "delete"
+}
+
+export type TAlertTelemetryInput = {
+  action: AlertTelemetryAction;
+  orgId: string;
+  projectId: string | null;
+  resourceId: string | null;
+  eventType: string;
+};
+
+type TPostHogEventBody<T> = T extends unknown
+  ? Omit<T, "distinctId" | "organizationId" | "organizationName" | "anonymous" | "dedup">
+  : never;
+
+export type TAlertTelemetryEvent = TPostHogEventBody<TPostHogEvent>;
+
 export interface IResourceAlertProvider<TTarget = unknown> {
   // Dot-namespaced, e.g. "pki.certificate", "identity.ua-secret".
   resourceType: string;
@@ -138,6 +160,16 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // denied. The alert module owns no CASL subject of its own: each provider reuses its resource's
   // existing permissions (e.g. PKI reuses the `pki-alerts` subject, project- or application-scoped).
   assertPermission(input: TAlertPermissionInput): Promise<void>;
+
+  allowsMultipleAlertsPerEvent?: boolean;
+
+  assertChannelTypesAllowed?(input: { orgId: string; channelTypes: string[] }): Promise<void>;
+
+  getResourceNames?(input: { orgId: string; resourceIds: string[] }): Promise<Map<string, string>>;
+
+  resolveProjectId?(input: { orgId: string; resourceId: string }): Promise<string>;
+
+  getTelemetryEvent?(input: TAlertTelemetryInput): TAlertTelemetryEvent | undefined;
 
   // Assert that a resource-bound alert's resource belongs to the alert's scope (org, and project
   // when project-scoped). Called at create. Throws if the resource is out of scope, so an alert

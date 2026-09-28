@@ -65,7 +65,15 @@ export type TAlertResponse = {
   enabled: boolean;
   orgId: string;
   projectId: string | null;
+  resourceName: string | null;
   channels: TAlertChannelEmbedded[];
+  lastRun: TAlertLastRun | null;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type TAlertLastRun = {
+  timestamp: Date;
+  status: string;
+  error: string | null;
 };

@@ -86,8 +86,6 @@ export type TAlertInfo = {
   alertBefore?: string;
   projectId: string;
   orgId: string;
-  applicationId?: string;
-  applicationName?: string;
 };
 
 // Certificate data for webhook payloads
@@ -119,7 +117,7 @@ export type TPkiWebhookPayload = {
 
   // Event data
   data: {
-    alert: Omit<TAlertInfo, "projectId" | "orgId" | "applicationName">;
+    alert: Omit<TAlertInfo, "projectId" | "orgId">;
     certificates: TCertificateData[];
     metadata: {
       totalCertificates: number;
@@ -251,7 +249,6 @@ export const PkiAlertV2ResponseSchema = z.object({
   filters: z.array(PkiFilterRuleSchema),
   enabled: z.boolean(),
   projectId: z.string(),
-  applicationId: z.string().uuid().nullable().optional(),
   notificationConfig: NotificationConfigSchema.nullable(),
   channels: z.array(
     z.object({
@@ -274,24 +271,16 @@ export const PkiAlertV2ResponseSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TCreateAlertV2DTO = TGenericPermission & {
-  projectId: string;
-  applicationId?: string;
-} & TCreatePkiAlertV2;
-
 export type TUpdateAlertV2DTO = TGenericPermission & {
   alertId: string;
-  applicationId?: string;
 } & TUpdatePkiAlertV2;
 
 export type TGetAlertV2DTO = TGenericPermission & {
   alertId: string;
-  applicationId?: string;
 };
 
 export type TDeleteAlertV2DTO = TGenericPermission & {
   alertId: string;
-  applicationId?: string;
 };
 
 export type TListAlertsV2DTO = TGenericPermission & {
@@ -301,7 +290,6 @@ export type TListAlertsV2DTO = TGenericPermission & {
   enabled?: boolean;
   limit?: number;
   offset?: number;
-  applicationId?: string | null;
 };
 
 export type TListMatchingCertificatesDTO = TGenericPermission & {
@@ -346,7 +334,6 @@ export type TLastRun = {
 };
 
 export type TAlertV2Response = {
-  applicationName?: string | null;
   id: string;
   name: string;
   description: string | null;
@@ -355,7 +342,6 @@ export type TAlertV2Response = {
   filters: TPkiFilters;
   enabled: boolean;
   projectId: string;
-  applicationId: string | null;
   channels: Array<{
     id: string;
     channelType: PkiAlertChannelType;
@@ -382,7 +368,6 @@ export type TListMatchingCertificatesResponse = {
 
 export type TTestWebhookConfigDTO = TGenericPermission & {
   projectId: string;
-  applicationId?: string;
   url: string;
   signingSecret?: string;
 };
@@ -424,24 +409,7 @@ export type TPagerDutyPayload = {
   links: Array<{ href: string; text: string }>;
 };
 
-// RFC 5280 CRL reason code to human-readable label
-const CRL_REASON_LABELS: Record<number, string> = {
-  0: "Unspecified",
-  1: "Key Compromise",
-  2: "CA Compromise",
-  3: "Affiliation Changed",
-  4: "Superseded",
-  5: "Cessation of Operation",
-  6: "Certificate Hold",
-  8: "Remove from CRL",
-  9: "Privilege Withdrawn",
-  10: "AA Compromise"
-};
-
-export const getRevocationReasonLabel = (code?: number | null): string | undefined => {
-  if (code == null) return undefined;
-  return CRL_REASON_LABELS[code] ?? `Unknown (${code})`;
-};
+export { getRevocationReasonLabel } from "@app/services/certificate/certificate-revocation-labels";
 
 export type TBuildPagerDutyPayloadParams = {
   alert: TAlertInfo;
@@ -449,10 +417,4 @@ export type TBuildPagerDutyPayloadParams = {
   integrationKey: string;
   eventType: PkiAlertEventType;
   appUrl?: string;
-};
-
-export type TPkiCertificateEventPayload = {
-  certificateId: string;
-  projectId: string;
-  eventType: PkiAlertEventType;
 };
