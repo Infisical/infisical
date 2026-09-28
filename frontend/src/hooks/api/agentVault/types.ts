@@ -304,7 +304,16 @@ export type TAgentVaultSessionLogCorsProbe = {
   expiresInSeconds: number;
 } | null;
 
-export type TAgentVaultSessionLogReadAccess = "readable" | "cors-missing" | "access-denied";
+export type TAgentVaultSessionLogReadAccess =
+  | "readable"
+  | "cors-missing"
+  | "access-denied"
+  | "host-blocked";
+
+export type TAgentVaultSessionLogReadCheck = {
+  status: TAgentVaultSessionLogReadAccess;
+  host: string;
+};
 
 export type TUpdateAgentVaultSessionLogSettingsDTO = {
   enabled?: boolean;

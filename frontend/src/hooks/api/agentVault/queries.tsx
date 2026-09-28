@@ -24,7 +24,7 @@ import {
   TAgentVaultSessionLogCorsProbe,
   TAgentVaultSessionLogHealth,
   TAgentVaultSessionLogHistoryPage,
-  TAgentVaultSessionLogReadAccess,
+  TAgentVaultSessionLogReadCheck,
   TAgentVaultSessionLogSettings,
   TAgentVaultSessionLogTailPage,
   TListAgentVaultAccessBundlesDTO,
@@ -285,18 +285,33 @@ export const useGetAgentVaultSessionLogHealth = (enabled = true) => {
 };
 
 export const fetchAgentVaultSessionLogReadAccess =
-  async (): Promise<TAgentVaultSessionLogReadAccess | null> => {
+  async (): Promise<TAgentVaultSessionLogReadCheck | null> => {
     const { data } = await apiRequest.get<{ probe: TAgentVaultSessionLogCorsProbe }>(
       "/api/v1/agent-vault/settings/session-logs/cors-probe"
     );
     if (!data.probe) return null;
+    const { host, origin } = new URL(data.probe.url);
+    let isHostBlocked = false;
+    const onViolation = (event: SecurityPolicyViolationEvent) => {
+      if (event.effectiveDirective === "connect-src" && event.blockedURI.startsWith(origin)) {
+        isHostBlocked = true;
+      }
+    };
+    document.addEventListener("securitypolicyviolation", onViolation);
     // The probed object never exists. S3 adds CORS headers to its 404 and to a 403 alike, so fetch
-    // rejects only when the rule is missing, and a 403 means the connection may not read the bucket.
+    // rejects only when the rule is missing or this page's CSP blocks the host, and a 403 means the
+    // connection may not read the bucket.
     try {
       const res = await fetch(data.probe.url, { mode: "cors", credentials: "omit" });
-      return res.status === 403 ? "access-denied" : "readable";
+      return { status: res.status === 403 ? "access-denied" : "readable", host };
     } catch {
-      return "cors-missing";
+      // The violation event is queued as a task, so it can land after fetch has already rejected.
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+      return { status: isHostBlocked ? "host-blocked" : "cors-missing", host };
+    } finally {
+      document.removeEventListener("securitypolicyviolation", onViolation);
     }
   };
 

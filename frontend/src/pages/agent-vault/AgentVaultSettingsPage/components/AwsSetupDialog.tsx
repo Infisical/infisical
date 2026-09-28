@@ -73,6 +73,13 @@ const Steps = ({ items }: { items: string[] }) => (
   </ol>
 );
 
+export const HostBlockedMessage = ({ host }: { host: string }) => (
+  <>
+    Your browser can&apos;t reach <span className="font-mono">{host}</span>, because this Infisical
+    instance doesn&apos;t allow it. Ask whoever runs Infisical to allow that host.
+  </>
+);
+
 type TabValue = "policy" | "cors";
 
 type Props = {
@@ -92,9 +99,10 @@ export const AwsSetupDialog = ({
 }: Props) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
-  const { data: savedReadAccess } = useGetAgentVaultSessionLogCorsProbe(isOpen && !isUnsaved);
+  const { data: savedReadCheck } = useGetAgentVaultSessionLogCorsProbe(isOpen && !isUnsaved);
   // The check reads the saved bucket, so it says nothing about a bucket that is only typed in.
-  const readAccess = isUnsaved ? null : savedReadAccess;
+  const readCheck = isUnsaved ? null : savedReadCheck;
+  const readAccess = readCheck?.status;
   const isCorsMissing = readAccess === "cors-missing";
   // Any answer S3 let the browser read proves the CORS rule is already attached.
   const hasCorsRule = readAccess === "access-denied" || readAccess === "readable";
@@ -139,6 +147,14 @@ export const AwsSetupDialog = ({
         </DialogHeader>
 
         <DialogBody className="space-y-4">
+          {readCheck?.status === "host-blocked" && (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertDescription>
+                <HostBlockedMessage host={readCheck.host} />
+              </AlertDescription>
+            </Alert>
+          )}
           <Tabs value={tab} onValueChange={(next) => pickTab(next as TabValue)}>
             <TabsList variant="av">
               <TabsTrigger value="policy">1. IAM Policy</TabsTrigger>

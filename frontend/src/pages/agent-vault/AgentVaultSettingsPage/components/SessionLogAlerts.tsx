@@ -13,11 +13,11 @@ import { SessionLogReadAccessAlert } from "./SessionLogReadAccessAlert";
 export const SessionLogAlerts = () => {
   const { data: config, isPending: isSettingsPending } = useGetAgentVaultSessionLogSettings();
   const { data: health, isPending: isHealthPending } = useGetAgentVaultSessionLogHealth();
-  const { data: readAccess } = useGetAgentVaultSessionLogCorsProbe();
+  const { data: readCheck } = useGetAgentVaultSessionLogCorsProbe();
 
   const hasDestination = Boolean(config?.bucket);
   const isRecording = config ? areAgentVaultSessionLogsOn(config) : false;
-  const isReadBlocked = readAccess === "cors-missing" || readAccess === "access-denied";
+  const isReadBlocked = Boolean(readCheck && readCheck.status !== "readable");
 
   const notRecordingReason = (() => {
     if (!hasDestination) {

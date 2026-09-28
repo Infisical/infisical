@@ -83,13 +83,13 @@ export const SessionLogSection = () => {
   // step the read check finds missing.
   const offerAwsSetup = async (settings: TAgentVaultSessionLogSettings) => {
     if (!areAgentVaultSessionLogsOn(settings)) return;
-    const readAccess = await queryClient
+    const readCheck = await queryClient
       .fetchQuery({
         queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id),
         queryFn: fetchAgentVaultSessionLogReadAccess
       })
       .catch(() => null);
-    if (readAccess === "cors-missing" || readAccess === "access-denied") {
+    if (readCheck?.status === "cors-missing" || readCheck?.status === "access-denied") {
       setAwsSetup({ bucket: settings.bucket, keyPrefix: settings.keyPrefix });
     }
   };
