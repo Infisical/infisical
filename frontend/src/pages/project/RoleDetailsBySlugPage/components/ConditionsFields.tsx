@@ -373,7 +373,7 @@ export const ConditionsFields = ({
                         ? condition.rhs.split(",")
                         : [condition.rhs]
                     )
-                  ].filter((slug) => !knownSlugs.includes(slug))
+                  ].filter((slug) => slug.trim() && !knownSlugs.includes(slug))
                 : [];
 
             // Filter out already used conditions (except current row's condition)
