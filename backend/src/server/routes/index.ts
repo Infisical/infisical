@@ -1995,6 +1995,7 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     kmsService,
+    licenseService,
     resourceAuthMethodService
   });
 
@@ -3205,7 +3206,8 @@ export const registerRoutes = async (
     appConnectionDAL,
     appConnectionService,
     permissionService,
-    kmsService
+    kmsService,
+    licenseService
   });
 
   const hsmConnectorService = hsmConnectorServiceFactory({

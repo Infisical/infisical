@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { TAgentVaultSessionLogConfigs } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
 import { AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX } from "./agent-vault-session-log-constants";
@@ -42,6 +43,9 @@ export const resolveStorageConfig = (
 
 export const isSessionLogIngestEnabled = (config?: TAgentVaultSessionLogConfigs) =>
   Boolean(config?.enabled && resolveStorageConfig(config));
+
+export const areSessionLogsLicensed = async (licenseService: Pick<TLicenseServiceFactory, "getPlan">, orgId: string) =>
+  Boolean((await licenseService.getPlan(orgId)).agentVaultByoS3);
 
 const CURSOR_VERSION = 1;
 const MAX_CURSOR_LENGTH = 256;

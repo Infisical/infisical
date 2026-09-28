@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 
-import { AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS } from "./agent-vault-session-log-constants";
+import {
+  AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS,
+  AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
+} from "./agent-vault-session-log-constants";
 import { AgentVaultSessionLogErrorName } from "./agent-vault-session-log-enums";
 import { buildSessionLogObjectKey, encodeTailCursor } from "./agent-vault-session-log-fns";
 import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
@@ -74,6 +77,7 @@ type TOverrides = {
   proxies?: unknown[];
   connection?: unknown;
   configCreateThrows?: unknown;
+  licensed?: boolean;
 };
 
 const build = (overrides: TOverrides = {}) => {
@@ -96,6 +100,10 @@ const build = (overrides: TOverrides = {}) => {
   const validateConnection = vi.fn(async () => ({}));
   const findConnection = vi.fn(async () => overrides.connection);
   const config = "config" in overrides ? overrides.config : enabledConfig();
+  const updateConfig = vi.fn(async (_id: string, values: Record<string, unknown>) => ({
+    ...(config as object),
+    ...values
+  }));
 
   const service = agentVaultSessionLogServiceFactory({
     agentVaultSessionLogChunkDAL: {
@@ -110,10 +118,7 @@ const build = (overrides: TOverrides = {}) => {
       findOne: vi.fn(async () => config),
       findByProjectIdFromPrimary: vi.fn(async () => config),
       recordStoredChunk,
-      updateById: vi.fn(async (_id: string, values: Record<string, unknown>) => ({
-        ...(config as object),
-        ...values
-      })),
+      updateById: updateConfig,
       create: vi.fn(async (values: Record<string, unknown>) => {
         if (overrides.configCreateThrows) return Promise.reject(overrides.configCreateThrows);
         return { ...enabledConfig(), ...values };
@@ -134,10 +139,20 @@ const build = (overrides: TOverrides = {}) => {
         hasRole: () => true
       }))
     } as never,
-    kmsService: { createCipherPairWithDataKey: vi.fn() } as never
+    kmsService: { createCipherPairWithDataKey: vi.fn() } as never,
+    licenseService: { getPlan: vi.fn(async () => ({ agentVaultByoS3: overrides.licensed ?? true })) } as never
   });
 
-  return { service, createIfAbsent, recordStoredChunk, findChunk, moveChunk, validateConnection, findConnection };
+  return {
+    service,
+    createIfAbsent,
+    recordStoredChunk,
+    findChunk,
+    moveChunk,
+    validateConnection,
+    findConnection,
+    updateConfig
+  };
 };
 
 const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
@@ -580,5 +595,47 @@ describe("updateSessionLogSettings: two first saves at once", () => {
         enabled: false
       })
     ).rejects.toThrow("Session log settings were just changed. Reload and try again.");
+  });
+});
+
+describe("without session logs on the plan", () => {
+  const ctx = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never;
+  const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
+
+  const save = (service: ReturnType<typeof build>["service"], patch: Record<string, unknown>) =>
+    service.updateSessionLogSettings({ projectId: "proj-1", ctx, actor, ...patch });
+
+  test("a save that turns recording on is refused before the connection is checked", async () => {
+    const { service, validateConnection, updateConfig } = build({
+      licensed: false,
+      config: { ...enabledConfig(), enabled: false }
+    });
+    await expect(save(service, { enabled: true })).rejects.toThrow(AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN);
+    expect(validateConnection).not.toHaveBeenCalled();
+    expect(updateConfig).not.toHaveBeenCalled();
+  });
+
+  test("a save that turns recording off is refused too, so the settings stay as they were", async () => {
+    const { service, updateConfig } = build({ licensed: false });
+    await expect(save(service, { enabled: false, appConnectionId: null })).rejects.toThrow(
+      AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
+    );
+    expect(updateConfig).not.toHaveBeenCalled();
+  });
+
+  test("a chunk is refused with the error that tells the proxy logging is off", async () => {
+    const { service, createIfAbsent } = build({ licensed: false });
+    await expect(record(service)).rejects.toMatchObject({
+      name: AgentVaultSessionLogErrorName.Disabled,
+      message: AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
+    });
+    expect(createIfAbsent).not.toHaveBeenCalled();
+  });
+
+  test("logs recorded while it was on can still be read, and read as not recording", async () => {
+    const { service } = build({ licensed: false, pageRows: [] });
+    const page = await service.listSessionLogs({ projectId: "proj-1", ctx, sessionId: "sess-1", limit: 100 });
+    expect(page.chunks).toEqual([]);
+    expect(page.sessionLogs.enabled).toBe(false);
   });
 });

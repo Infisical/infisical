@@ -97,6 +97,7 @@ export type TFeatureSet = {
   honeyTokens: false;
   honeyTokenLimit: 0;
   secretsBrokering: true;
+  agentVaultByoS3: boolean;
   secretSyncLimit: null;
   maxPamAccounts: null;
 

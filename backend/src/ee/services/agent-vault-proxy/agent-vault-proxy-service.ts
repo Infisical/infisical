@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrgMembershipStatus, ProjectMembershipRole, TAgentVaultProxies } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultProxyActions,
@@ -30,7 +31,10 @@ import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
-import { isSessionLogIngestEnabled } from "../agent-vault-session-log/agent-vault-session-log-fns";
+import {
+  areSessionLogsLicensed,
+  isSessionLogIngestEnabled
+} from "../agent-vault-session-log/agent-vault-session-log-fns";
 import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
@@ -66,6 +70,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   resourceAuthMethodService: Pick<
     TResourceAuthMethodServiceFactory,
     "initAtCreate" | "mintToken" | "loginWithToken" | "revokeAccess"
@@ -85,6 +90,7 @@ export const agentVaultProxyServiceFactory = ({
   orgDAL,
   permissionService,
   kmsService,
+  licenseService,
   resourceAuthMethodService
 }: TAgentVaultProxyServiceFactoryDep) => {
   const isHealthy = (proxy: Pick<TAgentVaultProxies, "heartbeat" | "pollInterval" | "heartbeatTTL">) => {
@@ -418,7 +424,10 @@ export const agentVaultProxyServiceFactory = ({
     ]);
 
     const sessionLogConfig = await agentVaultSessionLogConfigDAL.findOne({ projectId: session.projectId });
-    const sessionLogsEnabled = isSessionLogIngestEnabled(sessionLogConfig) && Boolean(session.encryptedSessionLogKey);
+    const sessionLogsEnabled =
+      isSessionLogIngestEnabled(sessionLogConfig) &&
+      Boolean(session.encryptedSessionLogKey) &&
+      (await areSessionLogsLicensed(licenseService, proxy.orgId));
     const sessionLogKeyNeeded = sessionLogsEnabled && !hasSessionLogKey;
 
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be

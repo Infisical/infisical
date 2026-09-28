@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { TAgentVaultSessionLogChunks, TAgentVaultSessionLogConfigs } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
@@ -36,13 +37,15 @@ import {
   AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS,
   AGENT_VAULT_SESSION_LOG_MIN_BYTES_PER_RECORD,
   AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS,
-  AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS
+  AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS,
+  AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
 } from "./agent-vault-session-log-constants";
 import {
   AgentVaultSessionLogErrorName,
   AgentVaultSessionLogStorageUnavailableReason
 } from "./agent-vault-session-log-enums";
 import {
+  areSessionLogsLicensed,
   buildSessionLogObjectKey,
   encodeHistoryCursor,
   encodeTailCursor,
@@ -70,6 +73,7 @@ type TAgentVaultSessionLogServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithInputKey">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TAgentVaultSessionLogServiceFactory = ReturnType<typeof agentVaultSessionLogServiceFactory>;
@@ -82,7 +86,8 @@ export const agentVaultSessionLogServiceFactory = ({
   appConnectionDAL,
   appConnectionService,
   permissionService,
-  kmsService
+  kmsService,
+  licenseService
 }: TAgentVaultSessionLogServiceFactoryDep) => {
   const $storageDeps = { appConnectionDAL, kmsService };
 
@@ -153,6 +158,13 @@ export const agentVaultSessionLogServiceFactory = ({
       throw new BadRequestError({
         name: AgentVaultSessionLogErrorName.Disabled,
         message: "Session logs aren't on for this project"
+      });
+    }
+
+    if (!(await areSessionLogsLicensed(licenseService, proxy.orgId))) {
+      throw new BadRequestError({
+        name: AgentVaultSessionLogErrorName.Disabled,
+        message: AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
       });
     }
 
@@ -305,7 +317,7 @@ export const agentVaultSessionLogServiceFactory = ({
   }: TAgentVaultSessionScoped &
     Awaited<ReturnType<typeof $loadSessionLogs>> & { rows: TAgentVaultSessionLogChunks[] }) => {
     const unreadSessionLogs = {
-      enabled: isSessionLogIngestEnabled(config),
+      enabled: isSessionLogIngestEnabled(config) && (await areSessionLogsLicensed(licenseService, ctx.actorOrgId)),
       sessionKey: null,
       storageUnavailable: null
     };
@@ -479,6 +491,10 @@ export const agentVaultSessionLogServiceFactory = ({
 
   const updateSessionLogSettings = async ({ projectId, ctx, actor, ...patch }: TUpdateSessionLogSettingsDTO) => {
     await $requireAdmin({ projectId, ctx });
+
+    if (!(await areSessionLogsLicensed(licenseService, ctx.actorOrgId))) {
+      throw new BadRequestError({ message: AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN });
+    }
 
     const existing = await agentVaultSessionLogConfigDAL.findByProjectIdFromPrimary(projectId);
     const current = existing ?? NO_SETTINGS;

@@ -39,3 +39,6 @@ export const AGENT_VAULT_SESSION_LOG_MAX_PAGE_RECORDS = 5000;
 export const AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS = 200;
 export const AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES = 16 * 1024 * 1024; // 16 MiB of ciphertext
 export const AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS = 2 * 60_000; // 2 minutes
+
+export const AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN =
+  "Session logs are not available on your current plan. Please upgrade to continue.";

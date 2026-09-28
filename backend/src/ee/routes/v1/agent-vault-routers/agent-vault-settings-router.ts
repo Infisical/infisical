@@ -42,7 +42,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       operationId: "updateAgentVaultSessionLogSettings",
-      description: "Updates the session log settings",
+      description: "Updates the session log settings. Needs session logs on your plan.",
       tags: [ApiDocsTags.AgentVaultSettings],
       body: AgentVaultSessionLogSettingsUpdateSchema,
       response: { 200: AgentVaultSessionLogSettingsResponseSchema }
