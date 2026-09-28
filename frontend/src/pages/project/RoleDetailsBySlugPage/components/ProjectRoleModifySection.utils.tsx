@@ -2012,7 +2012,11 @@ const convertFormOperatorToCaslCondition = (
       el.operator === PermissionConditionOperators.$IN ||
       el.operator === PermissionConditionOperators.$ALL
     ) {
-      caslCondition[el.lhs][el.operator] = el.rhs.split(",");
+      caslCondition[el.lhs][el.operator] = el.rhs
+        .split(",")
+        .map((value) =>
+          el.lhs === "environment" || el.lhs === "secretTags" ? value.trim() : value
+        );
     } else {
       caslCondition[el.lhs][
         el.operator as Exclude<
@@ -2021,7 +2025,7 @@ const convertFormOperatorToCaslCondition = (
           | PermissionConditionOperators.$IN
           | PermissionConditionOperators.$ELEMENTMATCH
         >
-      ] = el.rhs;
+      ] = el.lhs === "environment" || el.lhs === "secretTags" ? el.rhs.trim() : el.rhs;
     }
   });
   return caslCondition;
