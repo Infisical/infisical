@@ -2098,6 +2098,13 @@ a.ifx-card__title:hover .ifx-card__chevron {
   }
 }
 
+.cli-cmd__title--text {
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--cli-ink);
+}
+
 .cli-cmd--stuck .cli-cmd__title {
   border-bottom-color: var(--cli-line);
 }
@@ -2190,6 +2197,20 @@ a.ifx-card__title:hover .ifx-card__chevron {
   color: var(--cli-ink);
 }
 
+.cli-subs {
+  margin-top: 2rem;
+  scroll-margin-top: calc(var(--cli-top) + var(--cli-head) + 1rem);
+}
+
+.cli-subs__list {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--cli-muted);
+}
+
 .cli-row {
   padding: 0.875rem 0.75rem;
   margin: 0 -0.75rem;
@@ -2278,7 +2299,8 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 .cli-row__doc a,
-.cli-cmd__description a {
+.cli-cmd__description a,
+.cli-subs__list a {
   color: var(--cli-ink);
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -2375,15 +2397,13 @@ a.ifx-card__title:hover .ifx-card__chevron {
   display: none;
 }
 
-#sidebar-content li > a.cli-nav-active,
-#sidebar-content button.cli-nav-active-group {
+#sidebar-content li > a.cli-nav-active {
   background-color: rgb(38 39 43 / 0.1);
   color: #26272b;
   text-shadow: -0.2px 0 0 currentColor, 0.2px 0 0 currentColor;
 }
 
-.dark #sidebar-content li > a.cli-nav-active,
-.dark #sidebar-content button.cli-nav-active-group {
+.dark #sidebar-content li > a.cli-nav-active {
   background-color: rgb(219 245 48 / 0.1);
   color: #dbf530;
 }

@@ -96,8 +96,25 @@ export const CLICommand = ({
   children
 }) => {
   const [copied, setCopied] = useState(null);
+  const [subcommands, setSubcommands] = useState([]);
   const sectionRef = useRef(null);
   const headingRef = useRef(null);
+
+  // The sidebar lists only root commands, so each command lists its direct subcommands. They are
+  // read from the rendered page, so a new block shows up in its parent's list with no extra edit.
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    const page = section.closest(".cli-ref") || document;
+    const depth = command.split(" ").length + 1;
+    const found = Array.from(page.querySelectorAll("[data-cli-command]"))
+      .filter((el) => {
+        const path = el.dataset.command || "";
+        return path.startsWith(`${command} `) && path.split(" ").length === depth;
+      })
+      .map((el) => ({ id: el.id, command: el.dataset.command }));
+    setSubcommands(found);
+  }, [command]);
 
   // Anchored rows and the sticky examples sit below the sticky heading, whose height depends
   // on how the signature wraps.
@@ -319,7 +336,7 @@ export const CLICommand = ({
       data-cli-command=""
       data-command={command}
     >
-      <h2 className="cli-cmd__title" ref={headingRef}>
+      <h2 className={heading ? "cli-cmd__title cli-cmd__title--text" : "cli-cmd__title"} ref={headingRef}>
         {heading ? (
           <a className="cli-usage__cmd" href={`#${id}`} onClick={(event) => jump(event, id)}>
             {heading}
@@ -335,6 +352,20 @@ export const CLICommand = ({
           ))}
           {children}
         </div>
+        {subcommands.length ? (
+          <div className="cli-subs" id={`${id}--subcommands`}>
+            <h3 className="cli-cmd__table-title">Subcommands</h3>
+            <ul className="cli-subs__list">
+              {subcommands.map((sub) => (
+                <li key={sub.id}>
+                  <a href={`#${sub.id}`} onClick={(event) => jump(event, sub.id)}>
+                    infisical {sub.command}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {renderRows("arg", "Arguments", args)}
         {renderRows("flag", "Flags", flags)}
         {renderRows("flag", "Inherited flags", inheritedFlags, `${id}--inherited-flags`)}

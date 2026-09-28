@@ -47,40 +47,31 @@
 
   var current = { id: null, path: null };
 
-  // A command inside a collapsed group has no rendered link, so the deepest rendered group
-  // header on its path lights up instead: "secrets folders get" tries the headers for
-  // "infisical secrets folders get", then "infisical secrets folders", then "infisical secrets".
-  function groupHeaderFor(path) {
-    if (!path) return null;
-    var headers = document.querySelectorAll("#sidebar-content button[aria-expanded]");
-    var words = path.split(" ");
-    for (var depth = words.length; depth > 0; depth--) {
-      var label = "infisical " + words.slice(0, depth).join(" ");
-      for (var i = 0; i < headers.length; i++) {
-        if (headers[i].textContent.trim() === label) return headers[i];
-      }
-    }
-    return null;
+  // The sidebar lists only root commands, so a subcommand in view lights up its root's entry.
+  function sidebarTarget(id, path) {
+    var ids = {};
+    document.querySelectorAll('#sidebar-content a[href*="/cli/reference#"]').forEach(function (link) {
+      ids[targetOf(link)] = true;
+    });
+    if (ids[id]) return id;
+    var root = path ? path.split(" ")[0] : null;
+    return root && ids[root] ? root : id;
   }
 
   function highlight(id, path) {
     current = { id: id, path: path || null };
     var root = document.documentElement;
+    var target = id === null ? null : sidebarTarget(id, current.path);
     var active = null;
     document.querySelectorAll('a[href*="/cli/reference#"]').forEach(function (link) {
       link.removeAttribute("target");
-      var on = id !== null && targetOf(link) === id;
+      var on = target !== null && targetOf(link) === target;
       link.classList.toggle("cli-nav-active", on);
       if (on && link.closest("#sidebar-content")) active = link;
     });
-    var header = active || id === null ? null : groupHeaderFor(current.path);
-    document.querySelectorAll("#sidebar-content .cli-nav-active-group").forEach(function (el) {
-      if (el !== header) el.classList.remove("cli-nav-active-group");
-    });
-    if (header) header.classList.add("cli-nav-active-group");
-    if (active || header) {
-      root.setAttribute("data-cli-nav", id);
-      keepVisible(active || header);
+    if (active) {
+      root.setAttribute("data-cli-nav", target);
+      keepVisible(active);
     } else {
       root.removeAttribute("data-cli-nav");
     }
@@ -91,8 +82,8 @@
     highlight(detail.id || null, detail.path);
   });
 
-  // Expanding or collapsing a group renders or removes links, which moves the highlight
-  // between a group header and the command's own entry.
+  // Sidebar links that render later, such as when Mintlify re-renders the sidebar, need the
+  // highlight too.
   var pending = 0;
   new MutationObserver(function () {
     if (current.id === null) return;

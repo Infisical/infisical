@@ -1308,231 +1308,32 @@
                 "group": "Command reference",
                 "pages": [
                   "cli/reference",
+                  "cli/reference/global-flags",
                   "cli/reference/agent",
-                  {
-                    "group": "infisical agent-vault",
-                    "pages": [
-                      "cli/reference/agent-vault",
-                      "cli/reference/agent-vault-proxy",
-                      "cli/reference/agent-vault-run"
-                    ]
-                  },
+                  "cli/reference/agent-vault",
                   "cli/reference/bootstrap",
-                  {
-                    "group": "infisical cert-manager",
-                    "pages": [
-                      "cli/reference/cert-manager",
-                      "cli/reference/cert-manager-agent"
-                    ]
-                  },
-                  {
-                    "group": "infisical dynamic-secrets",
-                    "pages": [
-                      "cli/reference/dynamic-secrets",
-                      {
-                        "group": "infisical dynamic-secrets lease",
-                        "pages": [
-                          "cli/reference/dynamic-secrets-lease",
-                          "cli/reference/dynamic-secrets-lease-create",
-                          "cli/reference/dynamic-secrets-lease-delete",
-                          "cli/reference/dynamic-secrets-lease-list",
-                          "cli/reference/dynamic-secrets-lease-renew"
-                        ]
-                      }
-                    ]
-                  },
+                  "cli/reference/cert-manager",
+                  "cli/reference/dynamic-secrets",
                   "cli/reference/export",
-                  {
-                    "group": "infisical gateway",
-                    "pages": [
-                      "cli/reference/gateway",
-                      "cli/reference/gateway-start",
-                      {
-                        "group": "infisical gateway systemd",
-                        "pages": [
-                          "cli/reference/gateway-systemd",
-                          "cli/reference/gateway-systemd-install",
-                          "cli/reference/gateway-systemd-uninstall"
-                        ]
-                      }
-                    ]
-                  },
+                  "cli/reference/gateway",
                   "cli/reference/init",
-                  {
-                    "group": "infisical kmip",
-                    "pages": [
-                      "cli/reference/kmip",
-                      "cli/reference/kmip-start",
-                      {
-                        "group": "infisical kmip systemd",
-                        "pages": [
-                          "cli/reference/kmip-systemd",
-                          "cli/reference/kmip-systemd-install",
-                          "cli/reference/kmip-systemd-uninstall"
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "group": "infisical login",
-                    "pages": [
-                      "cli/reference/login",
-                      "cli/reference/login-status"
-                    ]
-                  },
+                  "cli/reference/kmip",
+                  "cli/reference/login",
                   "cli/reference/logout",
-                  {
-                    "group": "infisical org",
-                    "pages": [
-                      "cli/reference/org",
-                      "cli/reference/org-list",
-                      "cli/reference/org-switch"
-                    ]
-                  },
-                  {
-                    "group": "infisical pam",
-                    "pages": [
-                      "cli/reference/pam",
-                      "cli/reference/pam-access",
-                      {
-                        "group": "infisical pam agentic",
-                        "pages": [
-                          "cli/reference/pam-agentic",
-                          "cli/reference/pam-agentic-access"
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "group": "infisical profile",
-                    "pages": [
-                      "cli/reference/profile",
-                      "cli/reference/profile-bind",
-                      "cli/reference/profile-create",
-                      "cli/reference/profile-current",
-                      "cli/reference/profile-delete",
-                      "cli/reference/profile-list",
-                      "cli/reference/profile-pin",
-                      "cli/reference/profile-rename",
-                      "cli/reference/profile-set-org",
-                      "cli/reference/profile-unbind",
-                      "cli/reference/profile-unpin",
-                      "cli/reference/profile-use"
-                    ]
-                  },
-                  {
-                    "group": "infisical proxy",
-                    "pages": [
-                      "cli/reference/proxy",
-                      "cli/reference/proxy-start"
-                    ]
-                  },
-                  {
-                    "group": "infisical relay",
-                    "pages": [
-                      "cli/reference/relay",
-                      "cli/reference/relay-start",
-                      {
-                        "group": "infisical relay systemd",
-                        "pages": [
-                          "cli/reference/relay-systemd",
-                          "cli/reference/relay-systemd-install",
-                          "cli/reference/relay-systemd-uninstall"
-                        ]
-                      }
-                    ]
-                  },
+                  "cli/reference/org",
+                  "cli/reference/pam",
+                  "cli/reference/profile",
+                  "cli/reference/proxy",
+                  "cli/reference/relay",
                   "cli/reference/reset",
                   "cli/reference/run",
-                  {
-                    "group": "infisical scan",
-                    "pages": [
-                      "cli/reference/scan",
-                      "cli/reference/scan-git-changes",
-                      "cli/reference/scan-install"
-                    ]
-                  },
-                  {
-                    "group": "infisical secrets",
-                    "pages": [
-                      "cli/reference/secrets",
-                      {
-                        "group": "infisical secrets agent-proxy",
-                        "pages": [
-                          "cli/reference/secrets-agent-proxy",
-                          "cli/reference/secrets-agent-proxy-connect",
-                          "cli/reference/secrets-agent-proxy-run",
-                          "cli/reference/secrets-agent-proxy-start"
-                        ]
-                      },
-                      "cli/reference/secrets-delete",
-                      {
-                        "group": "infisical secrets folders",
-                        "pages": [
-                          "cli/reference/secrets-folders",
-                          "cli/reference/secrets-folders-create",
-                          "cli/reference/secrets-folders-delete",
-                          "cli/reference/secrets-folders-get"
-                        ]
-                      },
-                      "cli/reference/secrets-generate-example-env",
-                      "cli/reference/secrets-get",
-                      "cli/reference/secrets-set"
-                    ]
-                  },
-                  {
-                    "group": "infisical service-token",
-                    "pages": [
-                      "cli/reference/service-token",
-                      "cli/reference/service-token-create"
-                    ]
-                  },
-                  {
-                    "group": "infisical ssh",
-                    "pages": [
-                      "cli/reference/ssh",
-                      "cli/reference/ssh-add-host",
-                      "cli/reference/ssh-connect",
-                      "cli/reference/ssh-issue-credentials",
-                      "cli/reference/ssh-sign-key"
-                    ]
-                  },
-                  {
-                    "group": "infisical token",
-                    "pages": [
-                      "cli/reference/token",
-                      "cli/reference/token-renew"
-                    ]
-                  },
-                  {
-                    "group": "infisical user",
-                    "pages": [
-                      "cli/reference/user",
-                      {
-                        "group": "infisical user get",
-                        "pages": [
-                          "cli/reference/user-get",
-                          "cli/reference/user-get-token"
-                        ]
-                      },
-                      "cli/reference/user-switch",
-                      {
-                        "group": "infisical user update",
-                        "pages": [
-                          "cli/reference/user-update",
-                          "cli/reference/user-update-domain"
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "group": "infisical vault",
-                    "pages": [
-                      "cli/reference/vault",
-                      "cli/reference/vault-set"
-                    ]
-                  },
-                  "cli/reference/global-flags"
+                  "cli/reference/scan",
+                  "cli/reference/secrets",
+                  "cli/reference/service-token",
+                  "cli/reference/ssh",
+                  "cli/reference/token",
+                  "cli/reference/user",
+                  "cli/reference/vault"
                 ]
               }
             ]

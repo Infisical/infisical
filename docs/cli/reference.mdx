@@ -1,6 +1,6 @@
 ---
 title: "CLI reference"
-sidebarTitle: "Overview"
+hidden: true
 description: "Every Infisical CLI command, with its flags and examples."
 mode: "frame"
 ---
@@ -11,6 +11,26 @@ import { CLIPage, CLICommand } from "/snippets/CLIPage.jsx";
   title="CLI reference"
   description="Every Infisical CLI command, with its arguments, flags, and examples. Select a command or flag in a heading to jump to its details."
 >
+
+<CLICommand
+  id="global-flags"
+  command="global flags"
+  heading="Global flags"
+  flags={[
+    { name: "--domain", value: "<string>", type: "string", default: "https://app.infisical.com/api", description: "The Infisical instance to connect to, such as `https://eu.infisical.com` for EU Cloud or your self-hosted URL. The CLI adds `/api` if you leave it off. Can also be set with `INFISICAL_DOMAIN` or the `domain` field in `.infisical.json`. The flag wins, then the environment variable, then the file. Commands that use your login connect to your profile's instance instead of the one in `.infisical.json`, and refuse to send the profile's session to a different `--domain` or `INFISICAL_DOMAIN`." },
+    { name: "--log-destination", value: "<string>", type: "string", description: "Where to write logs: `stderr` or `stdout`. Defaults to `stderr`. Can also be set with `LOG_DESTINATION`." },
+    { name: "--log-format", value: "<string>", type: "string", description: "How to format logs: `console` for colored text, `plain` for text without color, or `json` for structured logs. Defaults to `console`. Set `NO_COLOR=1` to drop the colors from `console`. Can also be set with `LOG_FORMAT`." },
+    { name: "--log-level", short: "-l", value: "<string>", type: "string", description: "The lowest level of log message to print: `trace`, `debug`, `info`, `warn`, `error`, or `fatal`. Defaults to `info`. Can also be set with `LOG_LEVEL`." },
+    { name: "--org", value: "<string>", type: "string", description: "The organization to use for this command, by name, slug, or ID. It overrides the profile's organization without changing it. Can also be set with `INFISICAL_ORG`." },
+    { name: "--profile", value: "<string>", type: "string", description: "The login profile to use for this command. Run `infisical profile list` to see your profiles. Can also be set with `INFISICAL_PROFILE`." },
+    { name: "--silent", type: "bool", description: "Hide update notices, the notice naming the profile in use, and the warning that a token is overriding your login. Useful in scripts and CI." },
+    { name: "--telemetry", type: "bool", default: "true", description: "Send usage telemetry to Infisical." },
+  ]}
+>
+
+Every command accepts these flags.
+
+</CLICommand>
 
 <CLICommand
   id="agent"
@@ -1944,26 +1964,6 @@ There are two vaults. `auto`, the default, uses your system keyring: the macOS K
 Change where the CLI stores your login credentials. See [infisical vault](/cli/reference#vault) for what each vault is.
 
 Credentials in the previous vault can't be read from the new one, so switching removes every profile, the default profile, and every directory binding. Log in again with [infisical login](/cli/reference#login) afterwards. Credentials already in the previous vault aren't deleted.
-
-</CLICommand>
-
-<CLICommand
-  id="global-flags"
-  command="global flags"
-  heading="Global flags"
-  flags={[
-    { name: "--domain", value: "<string>", type: "string", default: "https://app.infisical.com/api", description: "The Infisical instance to connect to, such as `https://eu.infisical.com` for EU Cloud or your self-hosted URL. The CLI adds `/api` if you leave it off. Can also be set with `INFISICAL_DOMAIN` or the `domain` field in `.infisical.json`. The flag wins, then the environment variable, then the file. Commands that use your login connect to your profile's instance instead of the one in `.infisical.json`, and refuse to send the profile's session to a different `--domain` or `INFISICAL_DOMAIN`." },
-    { name: "--log-destination", value: "<string>", type: "string", description: "Where to write logs: `stderr` or `stdout`. Defaults to `stderr`. Can also be set with `LOG_DESTINATION`." },
-    { name: "--log-format", value: "<string>", type: "string", description: "How to format logs: `console` for colored text, `plain` for text without color, or `json` for structured logs. Defaults to `console`. Set `NO_COLOR=1` to drop the colors from `console`. Can also be set with `LOG_FORMAT`." },
-    { name: "--log-level", short: "-l", value: "<string>", type: "string", description: "The lowest level of log message to print: `trace`, `debug`, `info`, `warn`, `error`, or `fatal`. Defaults to `info`. Can also be set with `LOG_LEVEL`." },
-    { name: "--org", value: "<string>", type: "string", description: "The organization to use for this command, by name, slug, or ID. It overrides the profile's organization without changing it. Can also be set with `INFISICAL_ORG`." },
-    { name: "--profile", value: "<string>", type: "string", description: "The login profile to use for this command. Run `infisical profile list` to see your profiles. Can also be set with `INFISICAL_PROFILE`." },
-    { name: "--silent", type: "bool", description: "Hide update notices, the notice naming the profile in use, and the warning that a token is overriding your login. Useful in scripts and CI." },
-    { name: "--telemetry", type: "bool", default: "true", description: "Send usage telemetry to Infisical." },
-  ]}
->
-
-Every command accepts these flags.
 
 </CLICommand>
 
