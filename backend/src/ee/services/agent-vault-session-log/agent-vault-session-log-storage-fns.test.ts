@@ -23,13 +23,20 @@ describe("presignSessionLogPut", () => {
     credentials: { accessKeyId: "AKIAEXAMPLE", secretAccessKey: "example-secret" }
   });
 
-  test("signs the length and a create-only condition, so neither can be dropped or changed", async () => {
+  test("signs the length, the digest and a create-only condition, so none can be dropped or changed", async () => {
     const url = new URL(
-      await presignSessionLogPut(client, { bucket: "my-bucket", objectKey: "logs/a.json.enc", ciphertextBytes: 42 })
+      await presignSessionLogPut(client, {
+        bucket: "my-bucket",
+        objectKey: "logs/a.json.enc",
+        ciphertextBytes: 42,
+        ciphertextSha256: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU"
+      })
     );
     const signed = (url.searchParams.get("X-Amz-SignedHeaders") ?? "").split(";");
     expect(signed).toContain("content-length");
     expect(signed).toContain("if-none-match");
+    expect(signed).toContain("x-amz-checksum-sha256");
+    expect(url.searchParams.has("x-amz-checksum-sha256")).toBe(false);
   });
 });
 

@@ -8,7 +8,7 @@ type TFakeState = {
   objects: Map<string, Buffer>;
   validateError: string | null;
   buildError: string | null;
-  presignedPuts: Map<string, { bucket: string; objectKey: string; ciphertextBytes: number }>;
+  presignedPuts: Map<string, { bucket: string; objectKey: string; ciphertextBytes: number; ciphertextSha256: string }>;
   presignedGets: Map<string, { bucket: string; objectKey: string }>;
   nextUrlId: number;
 };
@@ -78,9 +78,17 @@ export const buildSessionLogStorage = (config: TResolvedSessionLogStorageConfig,
   };
 
   return Promise.resolve({
-    presignPut: ({ objectKey, ciphertextBytes }: { objectKey: string; ciphertextBytes: number }) => {
+    presignPut: ({
+      objectKey,
+      ciphertextBytes,
+      ciphertextSha256
+    }: {
+      objectKey: string;
+      ciphertextBytes: number;
+      ciphertextSha256: string;
+    }) => {
       const url = mintUrl("put");
-      state.presignedPuts.set(url, { bucket, objectKey, ciphertextBytes });
+      state.presignedPuts.set(url, { bucket, objectKey, ciphertextBytes, ciphertextSha256 });
       return Promise.resolve(url);
     },
 

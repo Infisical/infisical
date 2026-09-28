@@ -248,7 +248,8 @@ export const agentVaultSessionLogServiceFactory = ({
 
     const uploadUrl = await sessionLogStorage.presignPut({
       objectKey: row.objectKey,
-      ciphertextBytes: row.ciphertextBytes
+      ciphertextBytes: row.ciphertextBytes,
+      ciphertextSha256: row.ciphertextSha256
     });
 
     return {

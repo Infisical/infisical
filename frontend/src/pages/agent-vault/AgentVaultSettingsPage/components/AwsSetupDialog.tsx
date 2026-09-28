@@ -51,9 +51,8 @@ const corsPolicyFor = (origin: string) =>
     [
       {
         AllowedHeaders: ["*"],
-        AllowedMethods: ["GET", "PUT"],
+        AllowedMethods: ["GET"],
         AllowedOrigins: [origin],
-        ExposeHeaders: ["ETag"],
         MaxAgeSeconds: 3000
       }
     ],

@@ -365,12 +365,17 @@ describe("recordChunk: re-sending a chunk", () => {
     expect(recordStoredChunk).not.toHaveBeenCalled();
   });
 
-  test("presigns against the stored row's size, not the resent body's claim", async () => {
+  test("presigns against the stored row's size and digest, not the resent body's claims", async () => {
     const chunk = validChunk();
-    const existing = { ...atCurrentDestination(chunk), ciphertextBytes: 999 };
+    const storedSha256 = "n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg";
+    const existing = { ...atCurrentDestination(chunk), ciphertextBytes: 999, ciphertextSha256: storedSha256 };
     const { service } = build({ isReplay: true, existingChunk: existing });
     await record(service, chunk);
-    expect(presignPut).toHaveBeenCalledWith({ objectKey: existing.objectKey, ciphertextBytes: 999 });
+    expect(presignPut).toHaveBeenCalledWith({
+      objectKey: existing.objectKey,
+      ciphertextBytes: 999,
+      ciphertextSha256: storedSha256
+    });
   });
 
   test("a chunk re-sent after the destination moved is moved to the current bucket and key before it is presigned", async () => {
@@ -386,7 +391,11 @@ describe("recordChunk: re-sending a chunk", () => {
     expect(String(values.objectKey)).toMatch(
       /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01a0a9c5-231d-7abc-8def-0123456789ab\.json\.enc$/
     );
-    expect(presignPut).toHaveBeenCalledWith({ objectKey: values.objectKey, ciphertextBytes: 4096 });
+    expect(presignPut).toHaveBeenCalledWith({
+      objectKey: values.objectKey,
+      ciphertextBytes: 4096,
+      ciphertextSha256: validChunk().ciphertextSha256
+    });
   });
 
   test("a chunk re-sent to the destination it is already at is left alone", async () => {
@@ -396,7 +405,11 @@ describe("recordChunk: re-sending a chunk", () => {
     await record(service, chunk);
 
     expect(repointChunk).not.toHaveBeenCalled();
-    expect(presignPut).toHaveBeenCalledWith({ objectKey: existing.objectKey, ciphertextBytes: 4096 });
+    expect(presignPut).toHaveBeenCalledWith({
+      objectKey: existing.objectKey,
+      ciphertextBytes: 4096,
+      ciphertextSha256: validChunk().ciphertextSha256
+    });
   });
 
   test("a chunk id another proxy recorded is refused before the row is touched", async () => {

@@ -17,11 +17,16 @@ import { AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS } from "./agent-vault-se
 import { withKeyPrefix } from "./agent-vault-session-log-fns";
 import { TResolvedSessionLogStorageConfig } from "./agent-vault-session-log-types";
 
-// Both headers are signed so S3 enforces them: the link cannot carry more than the declared size, and
-// If-None-Match stops a link re-minted for a retried chunk from overwriting one already stored.
+// These headers are signed so S3 enforces them: the body must be the declared size and hash to the declared
+// digest, and If-None-Match stops a link re-minted for a retried chunk from overwriting one already stored.
 export const presignSessionLogPut = (
   client: S3Client,
-  { bucket, objectKey, ciphertextBytes }: { bucket: string; objectKey: string; ciphertextBytes: number }
+  {
+    bucket,
+    objectKey,
+    ciphertextBytes,
+    ciphertextSha256
+  }: { bucket: string; objectKey: string; ciphertextBytes: number; ciphertextSha256: string }
 ) =>
   getSignedUrl(
     client,
@@ -30,11 +35,13 @@ export const presignSessionLogPut = (
       Key: objectKey,
       ContentLength: ciphertextBytes,
       ContentType: "application/octet-stream",
-      IfNoneMatch: "*"
+      IfNoneMatch: "*",
+      // Stored unpadded; S3 wants the padded form
+      ChecksumSHA256: `${ciphertextSha256}=`
     }),
     {
       expiresIn: AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS,
-      unhoistableHeaders: new Set(["content-length", "if-none-match"])
+      unhoistableHeaders: new Set(["content-length", "if-none-match", "x-amz-checksum-sha256"])
     }
   );
 
@@ -91,8 +98,15 @@ export const buildSessionLogStorage = async (
 
   const { bucket, keyPrefix } = config;
 
-  const presignPut = async ({ objectKey, ciphertextBytes }: { objectKey: string; ciphertextBytes: number }) =>
-    presignSessionLogPut(client, { bucket, objectKey, ciphertextBytes });
+  const presignPut = async ({
+    objectKey,
+    ciphertextBytes,
+    ciphertextSha256
+  }: {
+    objectKey: string;
+    ciphertextBytes: number;
+    ciphertextSha256: string;
+  }) => presignSessionLogPut(client, { bucket, objectKey, ciphertextBytes, ciphertextSha256 });
 
   const presignGet = async (objectKey: string) =>
     getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: objectKey }), {

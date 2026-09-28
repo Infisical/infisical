@@ -190,7 +190,8 @@ hostile input: it must never be able to erase or hide its own records.
   byte budget as well as a record one. A chunk the server refuses counts as dropped on the next one.
 - **Write inserts the row, commits, then presigns a create-only PUT** (`If-None-Match: *`). Row first so a
   failed upload is a visible gap, presign after commit so no network runs under the config row lock,
-  create-only so a replay cannot replace a stored chunk (the proxy reads 412 as already uploaded).
+  create-only so a replay cannot replace a stored chunk (the proxy reads 412 as already uploaded). Length and
+  `x-amz-checksum-sha256` are signed too, so S3 refuses a body that isn't the one the row records.
 - **A session keeps accepting late chunks for a day after it ends**: revoked, expired, or its owner deleted
   (read from `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
 - **History (`/logs`) orders and cursors on `chunkId`** (a UUIDv7 the proxy mints, unique per session); split them and pages
