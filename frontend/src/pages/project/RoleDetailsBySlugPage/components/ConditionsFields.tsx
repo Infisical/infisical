@@ -598,7 +598,7 @@ export const ConditionsFields = ({
                           (unknownSlugs.length > 0 ||
                             isTagLookupUnavailable ||
                             isReferenceRefreshing) && (
-                            <div className="flex items-start gap-2 pb-1 text-xs">
+                            <div className="mt-2 flex items-start gap-2 pb-1 text-xs">
                               <div className="hidden w-1/4 xl:block" />
                               <div className="hidden w-44 xl:block" />
                               <div
