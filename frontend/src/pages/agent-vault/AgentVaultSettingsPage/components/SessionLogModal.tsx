@@ -170,10 +170,14 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
   ];
 
   const typedBucket = bucket.trim();
-  const willRelocate =
+  const isBucketChange =
     Boolean(settings?.bucket) &&
-    ((S3_BUCKET_NAME.test(typedBucket) && typedBucket !== settings?.bucket) ||
-      keyPrefix.trim() !== (settings?.keyPrefix ?? ""));
+    S3_BUCKET_NAME.test(typedBucket) &&
+    typedBucket !== settings?.bucket;
+  const isPrefixOnlyChange =
+    Boolean(settings?.bucket) &&
+    !isBucketChange &&
+    keyPrefix.trim() !== (settings?.keyPrefix ?? "");
 
   const onSubmit = async (values: FormData) => {
     try {
@@ -373,7 +377,7 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                           isError={Boolean(fieldState.error)}
                         />
                         <FieldDescription>
-                          Every object is written under this prefix.
+                          Session logs are written under this prefix.
                         </FieldDescription>
                         <FieldError>{fieldState.error?.message}</FieldError>
                       </FieldContent>
@@ -382,7 +386,7 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                 />
               </div>
 
-              {willRelocate && (
+              {isBucketChange && (
                 <Alert variant="warning">
                   <AlertDescription>
                     <p>
@@ -402,6 +406,26 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                           Edit AWS Credentials
                         </Button>
                       </AlertAction>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {isPrefixOnlyChange && (
+                <Alert variant="info">
+                  <AlertDescription>
+                    {settings?.keyPrefix ? (
+                      <p>
+                        Logs already recorded stay under{" "}
+                        <span className="font-mono">{settings.keyPrefix}/</span>. Keep your AWS
+                        policy allowing that prefix, or Infisical can&apos;t read them.
+                      </p>
+                    ) : (
+                      <p>
+                        Logs already recorded stay at the top level of{" "}
+                        <span className="font-mono">{settings?.bucket}</span>. Keep your AWS policy
+                        allowing the whole bucket, or Infisical can&apos;t read them.
+                      </p>
                     )}
                   </AlertDescription>
                 </Alert>
