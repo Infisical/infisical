@@ -11,7 +11,7 @@ import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
 import { fastifyRequestContext } from "@fastify/request-context";
 import websocket from "@fastify/websocket";
-import fastify from "fastify";
+import fastify, { errorCodes } from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 
@@ -108,6 +108,17 @@ export const main = async ({
       const error = err as Error;
       done(error, undefined);
     }
+  });
+  // Some proxies (cloudflared, for one) forward a bodyless POST as an empty chunked body with no
+  // Content-Type. Fastify only skips parsing when there is no Transfer-Encoding, so such requests
+  // land on this catch-all parser. It also receives every media type nothing else parses, which
+  // must keep failing with 415, except on unknown routes where Fastify answers 404 instead.
+  server.addContentTypeParser("*", { parseAs: "buffer" }, (req, body: Buffer, done) => {
+    if (req.is404 || (req.headers["content-type"] === undefined && body.length === 0)) {
+      done(null, undefined);
+      return;
+    }
+    done(new errorCodes.FST_ERR_CTP_INVALID_MEDIA_TYPE(), undefined);
   });
 
   try {

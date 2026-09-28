@@ -53,6 +53,21 @@ enum HttpStatusCodes {
   TooManyRequests = 429
 }
 
+type TFastifyClientError = Error & { code: string; statusCode: number };
+
+// Fastify raises its own request errors (bad Content-Type, invalid JSON, body too large) before any
+// route code runs. They carry the right 4xx status, so reporting them as a 500 hides the real cause.
+const isFastifyClientError = (error: Error): error is TFastifyClientError => {
+  const { code, statusCode } = error as Partial<TFastifyClientError>;
+  return (
+    typeof code === "string" &&
+    code.startsWith("FST_ERR_") &&
+    typeof statusCode === "number" &&
+    statusCode >= 400 &&
+    statusCode < 500
+  );
+};
+
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
 
@@ -85,7 +100,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       error instanceof PolicyViolationError ||
       (error instanceof ScimRequestError && error.status < 500) ||
       (error instanceof AcmeError && error.status < 500) ||
-      error instanceof jwt.JsonWebTokenError;
+      error instanceof jwt.JsonWebTokenError ||
+      isFastifyClientError(error);
 
     if (isExpectedClientError) {
       // Log structured fields (NOT the Error instance) so these stay searchable by name/route
@@ -368,7 +384,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         details: error.details
       });
     } else if (
-      error instanceof SyntaxError &&
+      (error instanceof SyntaxError ||
+        (isFastifyClientError(error) && error.code === "FST_ERR_CTP_INVALID_JSON_BODY")) &&
       req.method === "POST" &&
       (req.url === "/api/v1/cert-manager/certificates" || req.url === "/api/v1/cert-manager/certificates/")
     ) {
@@ -379,6 +396,21 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message:
           "Invalid JSON in request body. If you are sending a Certificate Signing Request (CSR), ensure newlines are escaped as \\n characters, not literal line breaks.",
         error: "BadRequestError"
+      });
+    } else if (isFastifyClientError(error)) {
+      let { message } = error;
+      if (error.code === "FST_ERR_CTP_INVALID_MEDIA_TYPE") {
+        const contentType = req.headers["content-type"];
+        message = contentType
+          ? `Content-Type '${contentType}' is not supported for this request`
+          : "The request has a body but no Content-Type header. Set a Content-Type, such as 'application/json'.";
+      }
+
+      void res.status(error.statusCode).send({
+        reqId: req.id,
+        statusCode: error.statusCode,
+        message,
+        error: error.code
       });
     } else {
       void res.status(HttpStatusCodes.InternalServerError).send({
