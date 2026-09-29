@@ -99,6 +99,45 @@ export const agentVaultSessionLogChunkDALFactory = (db: TDbClient) => {
     }
   };
 
+  const sumRecentCounts = async (
+    { sessionIds, windowMs }: { sessionIds: string[]; windowMs: number },
+    tx?: Knex
+  ): Promise<Map<string, { recordedCount: number; droppedCount: number }>> => {
+    try {
+      const conn = tx || db.replicaNode();
+      const rows = (await conn(TableName.AgentVaultSessionLogChunk)
+        .join(
+          conn(TableName.AgentVaultSessionLogChunk)
+            .whereIn("sessionId", sessionIds)
+            .groupBy("sessionId")
+            .select("sessionId", db.raw(`MAX("startedAt") AS "latestStartedAt"`))
+            .as("latest"),
+          "latest.sessionId",
+          `${TableName.AgentVaultSessionLogChunk}.sessionId`
+        )
+        .whereIn(`${TableName.AgentVaultSessionLogChunk}.sessionId`, sessionIds)
+        .whereRaw(`?? >= "latest"."latestStartedAt" - (? * interval '1 millisecond')`, [
+          `${TableName.AgentVaultSessionLogChunk}.startedAt`,
+          windowMs
+        ])
+        .groupBy(`${TableName.AgentVaultSessionLogChunk}.sessionId`)
+        .select(
+          `${TableName.AgentVaultSessionLogChunk}.sessionId`,
+          db.raw(`SUM(??) AS "recordedCount"`, [`${TableName.AgentVaultSessionLogChunk}.recordCount`]),
+          db.raw(`SUM(??) AS "droppedCount"`, [`${TableName.AgentVaultSessionLogChunk}.droppedCount`])
+        )) as { sessionId: string; recordedCount: string; droppedCount: string }[];
+
+      return new Map(
+        rows.map((row) => [
+          row.sessionId,
+          { recordedCount: Number(row.recordedCount), droppedCount: Number(row.droppedCount) }
+        ])
+      );
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Sum recent agent vault session log counts" });
+    }
+  };
+
   const createIfAbsent = async (
     values: TAgentVaultSessionLogChunksInsert,
     tx?: Knex
@@ -150,5 +189,12 @@ export const agentVaultSessionLogChunkDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findForSessionPage, findReceivedForSession, createIfAbsent, moveToDestinationIfCurrent };
+  return {
+    ...orm,
+    findForSessionPage,
+    findReceivedForSession,
+    sumRecentCounts,
+    createIfAbsent,
+    moveToDestinationIfCurrent
+  };
 };

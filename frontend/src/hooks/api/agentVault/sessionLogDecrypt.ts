@@ -5,6 +5,7 @@ import {
   TAgentVaultDecryptedChunk,
   TAgentVaultDecryptedSessionLogPage,
   TAgentVaultSessionLogChunk,
+  TAgentVaultSessionLogDrop,
   TAgentVaultSessionLogGap,
   TAgentVaultSessionLogGapReason,
   TAgentVaultSessionLogPage,
@@ -247,6 +248,7 @@ export const mergeSessionLogPages = <P extends TAgentVaultSessionLogPage>(
 type TAgentVaultSessionLogTimeline = {
   records: TAgentVaultSessionLogRecord[];
   gaps: TAgentVaultSessionLogGap[];
+  drops: TAgentVaultSessionLogDrop[];
   arrivals: Map<string, number>;
   isTruncated: boolean;
   isOverByteBudget: boolean;
@@ -258,10 +260,15 @@ export const useAgentVaultSessionLogTimeline = (
   useMemo(() => {
     const opened = new Map<string, TAgentVaultDecryptedChunk>();
     const openedBytes = new Map<string, number>();
+    const dropsByChunk = new Map<string, TAgentVaultSessionLogDrop>();
     (pages ?? []).forEach((page) =>
       page.chunks.forEach((chunk) => {
         const result = page.decrypted[chunk.chunkId];
         if (!result) return;
+        if (chunk.droppedCount > 0) {
+          const { chunkId, proxyId, startedAt, droppedCount } = chunk;
+          dropsByChunk.set(chunkId, { chunkId, proxyId, startedAt, droppedCount });
+        }
         const known = opened.get(chunk.chunkId);
         if (
           known &&
@@ -302,6 +309,7 @@ export const useAgentVaultSessionLogTimeline = (
     return {
       records: records.slice(0, AGENT_VAULT_SESSION_LOG_MAX_RECORDS),
       gaps,
+      drops: [...dropsByChunk.values()],
       arrivals,
       isTruncated: records.length > AGENT_VAULT_SESSION_LOG_MAX_RECORDS || isOverByteBudget,
       isOverByteBudget

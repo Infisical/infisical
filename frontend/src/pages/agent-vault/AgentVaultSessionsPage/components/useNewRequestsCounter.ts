@@ -1,13 +1,12 @@
 import { RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { sessionLogRecordKey } from "@app/hooks/api/agentVault";
-import { TAgentVaultSessionLogRecord } from "@app/hooks/api/agentVault/types";
 
-import { findRowShift } from "./SessionLogsPanel.utils";
+import { findRowShift, TSessionLogRow } from "./SessionLogsPanel.utils";
 
 type Params = {
   scrollRef: RefObject<HTMLDivElement | null>;
-  visible: TAgentVaultSessionLogRecord[];
+  visible: TSessionLogRow[];
   arrivals: Map<string, number>;
   resetKey: string;
   rowHeight: number;
@@ -41,9 +40,9 @@ export const useNewRequestsCounter = ({
     if (!shift) return;
     scroller.scrollTop += shift * rowHeight;
     if (shift < 0) return;
-    const landedAbove = visible.slice(0, top + shift).filter((record) => {
-      const key = sessionLogRecordKey(record);
-      return (arrivals.get(key) ?? 0) > since;
+    const landedAbove = visible.slice(0, top + shift).filter((row) => {
+      if (row.kind !== "record") return false;
+      return (arrivals.get(sessionLogRecordKey(row.record)) ?? 0) > since;
     }).length;
     if (landedAbove) setNewRequests((prev) => ({ ...prev, count: prev.count + landedAbove }));
   }, [visible, arrivals, scrollRef, rowHeight]);

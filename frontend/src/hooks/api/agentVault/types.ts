@@ -200,6 +200,7 @@ export type TAgentVaultSession = {
   revokedAt: string | null;
   createdAt: string;
   accessBundles: TAgentVaultSessionAccessBundle[];
+  recentSessionLogCounts: { recordedCount: number; droppedCount: number };
 };
 
 export type TAgentVaultMintedSession = {
@@ -395,6 +396,13 @@ export type TAgentVaultSessionLogGap = {
   startedAt: string;
   reason: TAgentVaultSessionLogGapReason;
   recordCount: number;
+};
+
+export type TAgentVaultSessionLogDrop = {
+  chunkId: string;
+  proxyId: string;
+  startedAt: string;
+  droppedCount: number;
 };
 
 export type TAgentVaultDecryptedChunk = {

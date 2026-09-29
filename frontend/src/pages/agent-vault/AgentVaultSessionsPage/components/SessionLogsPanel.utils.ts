@@ -1,19 +1,58 @@
 import { sessionLogRecordKey } from "@app/hooks/api/agentVault/sessionLogDecrypt";
 import {
+  TAgentVaultSessionLogDrop,
   TAgentVaultSessionLogGap,
   TAgentVaultSessionLogGapReason,
   TAgentVaultSessionLogRecord
 } from "@app/hooks/api/agentVault/types";
 
+export type TSessionLogRow =
+  | { kind: "record"; record: TAgentVaultSessionLogRecord }
+  | { kind: "drop"; key: string; droppedCount: number };
+
+export const sessionLogRowKey = (row: TSessionLogRow) =>
+  row.kind === "record" ? sessionLogRecordKey(row.record) : row.key;
+
+// A chunk's drops happened just before its first record, so they sit under the newer rows. Drops left
+// side by side (often by a filter) merge, so a session that lost thousands of requests shows one row per gap.
+export const interleaveSessionLogDrops = (
+  records: TAgentVaultSessionLogRecord[],
+  drops: TAgentVaultSessionLogDrop[]
+): TSessionLogRow[] => {
+  const pending = drops
+    .map((drop) => ({ drop, at: Date.parse(drop.startedAt) }))
+    .sort((a, b) => b.at - a.at);
+  const rows: TSessionLogRow[] = [];
+  let next = 0;
+  const pushDrop = (drop: TAgentVaultSessionLogDrop) => {
+    const last = rows[rows.length - 1];
+    if (last?.kind === "drop") {
+      rows[rows.length - 1] = { ...last, droppedCount: last.droppedCount + drop.droppedCount };
+    } else {
+      rows.push({ kind: "drop", key: `drop-${drop.chunkId}`, droppedCount: drop.droppedCount });
+    }
+  };
+  records.forEach((record) => {
+    const at = Date.parse(record.ts);
+    while (next < pending.length && pending[next].at > at) {
+      pushDrop(pending[next].drop);
+      next += 1;
+    }
+    rows.push({ kind: "record", record });
+  });
+  pending.slice(next).forEach(({ drop }) => pushDrop(drop));
+  return rows;
+};
+
 export const findRowShift = (
-  before: TAgentVaultSessionLogRecord[],
-  after: TAgentVaultSessionLogRecord[],
+  before: TSessionLogRow[],
+  after: TSessionLogRow[],
   index: number
 ): number | null => {
   const row = before[index];
   if (!row) return null;
-  const key = sessionLogRecordKey(row);
-  const moved = after.findIndex((record) => sessionLogRecordKey(record) === key);
+  const key = sessionLogRowKey(row);
+  const moved = after.findIndex((candidate) => sessionLogRowKey(candidate) === key);
   return moved < 0 ? null : moved - index;
 };
 

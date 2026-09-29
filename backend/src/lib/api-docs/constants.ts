@@ -4440,6 +4440,10 @@ export const AGENT_VAULT = {
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
+    recentSessionLogCounts:
+      "How many of the session's requests were recorded in its session log, and how many the proxy couldn't record, over the 24 hours before its most recent recorded request.",
+    recentRecordedCount: "The number of requests recorded in the session log.",
+    recentDroppedCount: "The number of requests the proxy couldn't record in the session log.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
     status:
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",

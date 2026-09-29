@@ -8,6 +8,7 @@ import {
   chunkIdTime,
   findRowShift,
   groupSessionLogGaps,
+  interleaveSessionLogDrops,
   matchesSessionLogSearch
 } from "./SessionLogsPanel.utils";
 
@@ -25,7 +26,8 @@ const record = (seq: number): TAgentVaultSessionLogRecord => ({
   accessBundle: null
 });
 
-const rows = (...seqs: number[]) => seqs.map(record);
+const rows = (...seqs: number[]) =>
+  seqs.map((seq) => ({ kind: "record" as const, record: record(seq) }));
 
 describe("findRowShift", () => {
   it("moves the row down by however many rows arrived at the top", () => {
@@ -119,5 +121,46 @@ describe("matchesSessionLogSearch", () => {
 
   it("does not match a path on a different host", () => {
     assert.equal(matchesSessionLogSearch(repoRequest, "gitlab.com/repos"), false);
+  });
+});
+
+describe("interleaveSessionLogDrops", () => {
+  const drop = (chunkId: string, beforeSeq: number, droppedCount: number) => ({
+    chunkId,
+    proxyId: "proxy-1",
+    startedAt: record(beforeSeq).ts,
+    droppedCount
+  });
+  const shape = (seqs: number[], drops: ReturnType<typeof drop>[]) =>
+    interleaveSessionLogDrops(seqs.map(record), drops).map((row) =>
+      row.kind === "record" ? row.record.seq : `-${row.droppedCount}`
+    );
+
+  it("puts a chunk's drops right under its oldest record", () => {
+    assert.deepEqual(shape([9, 8, 5, 4], [drop("b", 8, 12)]), [9, 8, "-12", 5, 4]);
+  });
+
+  it("merges drops that end up side by side into one row", () => {
+    assert.deepEqual(shape([9, 2], [drop("b", 8, 12), drop("a", 5, 3)]), [9, "-15", 2]);
+  });
+
+  it("never shows two drop rows next to each other, wherever the drops land", () => {
+    const drops = [
+      drop("f", 20, 1),
+      drop("e", 19, 2),
+      drop("d", 9, 4),
+      drop("c", 9, 8),
+      drop("b", 2, 16),
+      drop("a", 1, 32)
+    ];
+    const result = interleaveSessionLogDrops([9, 5, 3].map(record), drops);
+    result.forEach((row, index) => {
+      if (index > 0) assert.ok(!(row.kind === "drop" && result[index - 1].kind === "drop"));
+    });
+    assert.deepEqual(shape([9, 5, 3], drops), ["-3", 9, "-12", 5, 3, "-48"]);
+  });
+
+  it("keeps drops older than every shown record at the bottom", () => {
+    assert.deepEqual(shape([9, 8], [drop("a", 3, 7)]), [9, 8, "-7"]);
   });
 });

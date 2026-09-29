@@ -96,6 +96,7 @@ import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
+import { SessionLogLossIndicator } from "./components/SessionLogLossIndicator";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
 const STATUS_OPTIONS = [
@@ -357,6 +358,7 @@ export const AgentVaultSessionsPage = () => {
                 <TableHead>Created</TableHead>
                 <TableHead>Expires</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="w-10" />
                 <TableHead variant="action" />
               </TableRow>
             </TableHeader>
@@ -365,7 +367,7 @@ export const AgentVaultSessionsPage = () => {
                 Array.from({ length: 5 }).map((_, index) => (
                   // eslint-disable-next-line react/no-array-index-key
                   <TableRow key={`session-skeleton-${index}`}>
-                    {Array.from({ length: 6 }).map((__, cell) => (
+                    {Array.from({ length: 7 }).map((__, cell) => (
                       // eslint-disable-next-line react/no-array-index-key
                       <TableCell key={`session-skeleton-${index}-${cell}`}>
                         <Skeleton className="h-4 w-full" />
@@ -439,7 +441,10 @@ export const AgentVaultSessionsPage = () => {
                     <TableCell>
                       <SessionStatusBadge status={session.status} />
                     </TableCell>
-                    <TableCell variant="action" onClick={(event) => event.stopPropagation()}>
+                    <TableCell>
+                      <SessionLogLossIndicator counts={session.recentSessionLogCounts} />
+                    </TableCell>
+                    <TableCell variant="action">
                       <div className="flex items-center justify-end gap-1">
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -447,7 +452,10 @@ export const AgentVaultSessionsPage = () => {
                               variant="ghost"
                               size="xs"
                               aria-label="View session logs"
-                              onClick={() => openSheet(session.id)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openSheet(session.id);
+                              }}
                             >
                               <LogsIcon />
                             </IconButton>
@@ -456,11 +464,20 @@ export const AgentVaultSessionsPage = () => {
                         </Tooltip>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <IconButton variant="ghost" size="xs" aria-label="Open session actions">
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label="Open session actions"
+                              onClick={(event) => event.stopPropagation()}
+                            >
                               <MoreHorizontalIcon />
                             </IconButton>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
+                          <DropdownMenuContent
+                            sideOffset={2}
+                            align="end"
+                            onClick={(event) => event.stopPropagation()}
+                          >
                             <DropdownMenuItem onClick={() => openSheet(session.id)}>
                               <LogsIcon />
                               View Session Logs

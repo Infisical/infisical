@@ -15,6 +15,8 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { AgentVaultMemberType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
+import { TAgentVaultSessionLogChunkDALFactory } from "../agent-vault-session-log/agent-vault-session-log-chunk-dal";
+import { AGENT_VAULT_SESSION_LOG_RECENT_COUNTS_WINDOW_MS } from "../agent-vault-session-log/agent-vault-session-log-constants";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory, TAgentVaultSessionListRow } from "./agent-vault-session-dal";
@@ -36,6 +38,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  agentVaultSessionLogChunkDAL: Pick<TAgentVaultSessionLogChunkDALFactory, "sumRecentCounts">;
 };
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
@@ -46,7 +49,8 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultAccessBundleDAL,
   membershipDAL,
   permissionService,
-  kmsService
+  kmsService,
+  agentVaultSessionLogChunkDAL
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
     if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
@@ -59,6 +63,19 @@ export const agentVaultSessionServiceFactory = ({
     ...session,
     status: deriveSessionStatus({ ...session, userId, identityId })
   });
+
+  const toSessionViewsWithLogCounts = async (sessions: TAgentVaultSessionListRow[]) => {
+    const counts = sessions.length
+      ? await agentVaultSessionLogChunkDAL.sumRecentCounts({
+          sessionIds: sessions.map((session) => session.id),
+          windowMs: AGENT_VAULT_SESSION_LOG_RECENT_COUNTS_WINDOW_MS
+        })
+      : new Map<string, { recordedCount: number; droppedCount: number }>();
+    return sessions.map((session) => ({
+      ...toSessionView(session),
+      recentSessionLogCounts: counts.get(session.id) ?? { recordedCount: 0, droppedCount: 0 }
+    }));
+  };
 
   const mintSession = async ({ projectId, ctx, accessBundles, actorName, actorEmail, ttl }: TMintSessionDTO) => {
     const actor = requireSessionActor(ctx);
@@ -171,7 +188,7 @@ export const agentVaultSessionServiceFactory = ({
       offset
     });
 
-    return { sessions: sessions.map(toSessionView), totalCount };
+    return { sessions: await toSessionViewsWithLogCounts(sessions), totalCount };
   };
 
   // A session you may not see reads exactly like one that does not exist.
@@ -201,7 +218,10 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    return { session: toSessionView(await findVisibleSession({ projectId, ctx, sessionId, isAdmin })) };
+    const [session] = await toSessionViewsWithLogCounts([
+      await findVisibleSession({ projectId, ctx, sessionId, isAdmin })
+    ]);
+    return { session };
   };
 
   const revokeSession = async ({ projectId, ctx, sessionId }: TRevokeSessionDTO) => {

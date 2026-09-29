@@ -44,16 +44,21 @@ import {
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultSession,
-  TAgentVaultSessionLogGapReason,
-  TAgentVaultSessionLogRecord
+  TAgentVaultSessionLogGapReason
 } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
-import { DECISION_PRESENTATION, hostPatternFor, SessionLogRow } from "./SessionLogRow";
+import {
+  DECISION_PRESENTATION,
+  hostPatternFor,
+  SessionLogDropRow,
+  SessionLogRow
+} from "./SessionLogRow";
 import {
   chunkIdTime,
   groupSessionLogGaps,
+  interleaveSessionLogDrops,
   matchesSessionLogSearch,
   sessionLogSearchTerm
 } from "./SessionLogsPanel.utils";
@@ -168,7 +173,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
     if (!data) return undefined;
     return arrived ? [arrived, ...data.pages] : data.pages;
   }, [data, arrived]);
-  const { records, gaps, arrivals, isTruncated, isOverByteBudget } =
+  const { records, gaps, drops, arrivals, isTruncated, isOverByteBudget } =
     useAgentVaultSessionLogTimeline(pages);
   if (isOverByteBudget && !isPlaceholderData && !isPausedForBudget) pauseForBudget();
   const isLoadError = isError && !data;
@@ -194,6 +199,21 @@ export const SessionLogsPanel = ({ session }: Props) => {
         return matchesSessionLogSearch(record, search);
       }),
     [records, search, decisionFilter, proxyFilter, range]
+  );
+
+  const rows = useMemo(
+    () =>
+      interleaveSessionLogDrops(
+        visible,
+        drops.filter((drop) => {
+          if (range) {
+            const at = Date.parse(drop.startedAt);
+            if (at < range.startDate.getTime() || at > range.endDate.getTime()) return false;
+          }
+          return proxyFilter === ALL_PROXIES || drop.proxyId === proxyFilter;
+        })
+      ),
+    [visible, drops, proxyFilter, range]
   );
 
   const hasBrowserFilter =
@@ -238,7 +258,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
-    count: visible.length,
+    count: rows.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => SESSION_LOG_ROW_HEIGHT,
     overscan: 16
@@ -256,11 +276,10 @@ export const SessionLogsPanel = ({ session }: Props) => {
       isSearchPaused
     )
       return;
-    if (isFirstPageLoaded && lastVisibleIndex >= visible.length - 30)
-      fetchNextPage().catch(() => {});
+    if (isFirstPageLoaded && lastVisibleIndex >= rows.length - 30) fetchNextPage().catch(() => {});
   }, [
     lastVisibleIndex,
-    visible.length,
+    rows.length,
     isFirstPageLoaded,
     hasNextPage,
     isFetchingNextPage,
@@ -274,7 +293,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const overflows = rowVirtualizer.getTotalSize() > (rowVirtualizer.scrollRect?.height ?? Infinity);
   const { newRequestCount, showNewRequests } = useNewRequestsCounter({
     scrollRef,
-    visible,
+    visible: rows,
     arrivals,
     resetKey: `${session.id}|${filterKey}`,
     rowHeight: SESSION_LOG_ROW_HEIGHT
@@ -644,7 +663,17 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <TableBody>
             {padTop > 0 && <tr style={{ height: padTop }} />}
             {virtualRows.map((virtualRow) => {
-              const record = visible[virtualRow.index] as TAgentVaultSessionLogRecord;
+              const row = rows[virtualRow.index];
+              if (row.kind === "drop") {
+                return (
+                  <SessionLogDropRow
+                    key={row.key}
+                    droppedCount={row.droppedCount}
+                    columnCount={columnCount}
+                  />
+                );
+              }
+              const { record } = row;
               const isAddable =
                 canAddService &&
                 !record.service &&

@@ -28,6 +28,9 @@ export const AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS = 30 * 24 * 60 * 60_000; /
 // published, so the error doesn't state it.
 export const AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS = 100_000;
 
+// A session's recorded and dropped counts cover the 24 hours before its latest chunk, so an ended session keeps them.
+export const AGENT_VAULT_SESSION_LOG_RECENT_COUNTS_WINDOW_MS = 24 * 60 * 60_000; // 24 hours
+
 // A link to upload or download a chunk expires after 5 minutes.
 export const AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS = 300; // 5 minutes
 
