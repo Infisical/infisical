@@ -943,7 +943,9 @@ export const approvalPolicyServiceFactory = ({
       policy.type as ApprovalPolicyType
     );
 
-    await approvalPolicyDAL.transaction(async (tx) => {
+    const cancelled = await approvalPolicyDAL.transaction(async (tx) => {
+      const pending = await approvalRequestDAL.find({ policyId, status: ApprovalRequestStatus.Pending }, { tx });
+
       await approvalRequestDAL.update(
         { policyId, status: ApprovalRequestStatus.Pending },
         { status: ApprovalRequestStatus.Cancelled },
@@ -951,7 +953,14 @@ export const approvalPolicyServiceFactory = ({
       );
 
       await approvalPolicyDAL.deleteById(policyId, tx);
+      return pending;
     });
+
+    const resource = resources[policy.type as ApprovalPolicyType];
+    for (const request of cancelled) {
+      // eslint-disable-next-line no-await-in-loop
+      await resource?.postRejectionRoutine?.(request as TApprovalRequest);
+    }
 
     return {
       policyId,
@@ -1677,6 +1686,8 @@ export const approvalPolicyServiceFactory = ({
     const updatedRequest = await approvalRequestDAL.updateById(requestId, {
       status: ApprovalRequestStatus.Cancelled
     });
+
+    await resources[request.type as ApprovalPolicyType]?.postRejectionRoutine?.(updatedRequest as TApprovalRequest);
 
     const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
 

@@ -404,6 +404,7 @@ export const pamAccessRequestServiceFactory = ({
         projectId,
         accountId: account.id,
         folderId: account.folderId,
+        accessType,
         actor: toApprovalActor(ctx)
       });
     }
