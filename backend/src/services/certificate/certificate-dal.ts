@@ -44,35 +44,6 @@ export const NON_PQC_KEY_ALGORITHMS: string[] = [
 
 export type TCertificateDALFactory = ReturnType<typeof certificateDALFactory>;
 
-// Enrollment method of a certificate: originating request, then profile, then source-based fallback.
-// Requires TableName.PkiCertificateProfile to be (left) joined on the query.
-const EFFECTIVE_ENROLLMENT_TYPE_SQL = `COALESCE(
-  (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
-  ??.??,
-  CASE WHEN ??.?? IN (?, ?) THEN ??.?? ELSE ? END
-)`;
-
-const EFFECTIVE_ENROLLMENT_TYPE_BINDINGS = [
-  TableName.CertificateRequests,
-  "enrollmentType",
-  TableName.CertificateRequests,
-  TableName.CertificateRequests,
-  "certificateId",
-  TableName.Certificate,
-  "id",
-  TableName.CertificateRequests,
-  "createdAt",
-  TableName.PkiCertificateProfile,
-  "enrollmentType",
-  TableName.Certificate,
-  "source",
-  CertificateSource.Imported,
-  CertificateSource.Discovered,
-  TableName.Certificate,
-  "source",
-  EnrollmentType.API
-];
-
 const toLegacyExtendedKeyUsageForQuery = (usage: string): string => {
   try {
     return mapExtendedKeyUsageToLegacy(mapLegacyExtendedKeyUsageToStandard(usage));
@@ -320,10 +291,34 @@ export const certificateDALFactory = (db: TDbClient) => {
       // so filtering on the profile column alone would either match everything (API) or
       // nothing (other methods).
       const placeholders = filters.enrollmentTypes.map(() => "?").join(", ");
-      q = q.whereRaw(`${EFFECTIVE_ENROLLMENT_TYPE_SQL} IN (${placeholders})`, [
-        ...EFFECTIVE_ENROLLMENT_TYPE_BINDINGS,
-        ...filters.enrollmentTypes
-      ]);
+      q = q.whereRaw(
+        `COALESCE(
+          (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
+          ??.??,
+          CASE WHEN ??.?? IN (?, ?) THEN ??.?? ELSE ? END
+        ) IN (${placeholders})`,
+        [
+          TableName.CertificateRequests,
+          "enrollmentType",
+          TableName.CertificateRequests,
+          TableName.CertificateRequests,
+          "certificateId",
+          TableName.Certificate,
+          "id",
+          TableName.CertificateRequests,
+          "createdAt",
+          TableName.PkiCertificateProfile,
+          "enrollmentType",
+          TableName.Certificate,
+          "source",
+          CertificateSource.Imported,
+          CertificateSource.Discovered,
+          TableName.Certificate,
+          "source",
+          EnrollmentType.API,
+          ...filters.enrollmentTypes
+        ]
+      );
     }
 
     if (filters.source) {
@@ -855,7 +850,34 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
         .select(
-          db.raw(`${EFFECTIVE_ENROLLMENT_TYPE_SQL} as ??`, [...EFFECTIVE_ENROLLMENT_TYPE_BINDINGS, "enrollmentType"])
+          db.raw(
+            `COALESCE(
+              (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
+              ??.??,
+              CASE WHEN ??.?? IN (?, ?) THEN ??.?? ELSE ? END
+            ) as ??`,
+            [
+              TableName.CertificateRequests,
+              "enrollmentType",
+              TableName.CertificateRequests,
+              TableName.CertificateRequests,
+              "certificateId",
+              TableName.Certificate,
+              "id",
+              TableName.CertificateRequests,
+              "createdAt",
+              TableName.PkiCertificateProfile,
+              "enrollmentType",
+              TableName.Certificate,
+              "source",
+              CertificateSource.Imported,
+              CertificateSource.Discovered,
+              TableName.Certificate,
+              "source",
+              EnrollmentType.API,
+              "enrollmentType"
+            ]
+          )
         )
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"));
 
@@ -1137,7 +1159,35 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateProfile}.id`
         )
         .where(`${TableName.Certificate}.projectId`, projectId)
-        .select(db.raw(`${EFFECTIVE_ENROLLMENT_TYPE_SQL} as label`, EFFECTIVE_ENROLLMENT_TYPE_BINDINGS))
+        .select(
+          db.raw(
+            `COALESCE(
+              (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
+              ??.??,
+              CASE WHEN ??.?? IN (?, ?) THEN ??.?? ELSE ? END
+            ) as label`,
+            [
+              TableName.CertificateRequests,
+              "enrollmentType",
+              TableName.CertificateRequests,
+              TableName.CertificateRequests,
+              "certificateId",
+              TableName.Certificate,
+              "id",
+              TableName.CertificateRequests,
+              "createdAt",
+              TableName.PkiCertificateProfile,
+              "enrollmentType",
+              TableName.Certificate,
+              "source",
+              CertificateSource.Imported,
+              CertificateSource.Discovered,
+              TableName.Certificate,
+              "source",
+              EnrollmentType.API
+            ]
+          )
+        )
         .count("* as count")
         .groupBy("label");
 
