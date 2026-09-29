@@ -300,7 +300,7 @@ export const certificateDALFactory = (db: TDbClient) => {
           ),
           pki_certificate_profiles."enrollmentType",
           CASE
-            WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN certificates.source
+            WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN NULL
             ELSE 'api'
           END
         ) IN (${placeholders})`,
@@ -848,7 +848,7 @@ export const certificateDALFactory = (db: TDbClient) => {
               ),
               pki_certificate_profiles."enrollmentType",
               CASE
-                WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN certificates.source
+                WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN NULL
                 ELSE 'api'
               END
             ) as "enrollmentType"`
@@ -1056,6 +1056,7 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       interface LabelCountWithId extends LabelCount {
         id: string | null;
+        isSelfSigned: boolean;
       }
 
       interface BucketCount {
@@ -1106,6 +1107,17 @@ export const certificateDALFactory = (db: TDbClient) => {
         .count("* as count")
         .groupBy(`${TableName.Certificate}.keyAlgorithm`);
 
+      // Issuance never sets `source`, and only a self-signed profile issues without a CA. The request
+      // check covers certificates whose profile was deleted, which nulls `profileId`.
+      const isSelfSignedExpr = `(
+        certificates."caId" IS NULL
+        AND COALESCE(certificates.source, 'issued') = 'issued'
+        AND (
+          certificates."profileId" IS NOT NULL
+          OR EXISTS (SELECT 1 FROM certificate_requests WHERE certificate_requests."certificateId" = certificates.id)
+        )
+      )`;
+
       const byCA = await db
         .replicaNode()(TableName.Certificate)
         .leftJoin(
@@ -1116,8 +1128,10 @@ export const certificateDALFactory = (db: TDbClient) => {
         .where(`${TableName.Certificate}.projectId`, projectId)
         .select(`${TableName.CertificateAuthority}.id as id`)
         .select(`${TableName.CertificateAuthority}.name as label`)
+        .select(db.raw(`${isSelfSignedExpr} as "isSelfSigned"`))
         .count("* as count")
-        .groupBy(`${TableName.CertificateAuthority}.id`, `${TableName.CertificateAuthority}.name`);
+        .groupBy(`${TableName.CertificateAuthority}.id`, `${TableName.CertificateAuthority}.name`)
+        .groupByRaw(isSelfSignedExpr);
 
       const byStatus = [
         { label: "Active", count: totals.active },
@@ -1146,7 +1160,7 @@ export const certificateDALFactory = (db: TDbClient) => {
               ),
               pki_certificate_profiles."enrollmentType",
               CASE
-                WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN certificates.source
+                WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN NULL
                 ELSE 'api'
               END
             ) as label`
@@ -1217,18 +1231,18 @@ export const certificateDALFactory = (db: TDbClient) => {
         expiredNotRenewed: totals.expiredNotRenewed,
         distributions: {
           byEnrollmentMethod: (byEnrollmentMethod as unknown as LabelCount[]).map((r) => ({
-            label: r.label || "Unknown",
+            label: r.label || "Other",
             count: Number(r.count)
           })),
           byAlgorithm: (byAlgorithm as unknown as LabelCount[]).map((r) => ({
             label: r.label || "Unknown",
             count: Number(r.count)
           })),
-          byCA: (byCA as unknown as LabelCountWithId[]).map((r) => ({
-            id: r.id ?? undefined,
-            label: r.id ? r.label || "Unknown" : "External",
-            count: Number(r.count)
-          })),
+          byCA: (byCA as unknown as LabelCountWithId[]).map((r) => {
+            let label = r.isSelfSigned ? "Self-signed" : "External";
+            if (r.id) label = r.label || "Unknown";
+            return { id: r.id ?? undefined, label, count: Number(r.count) };
+          }),
           byStatus
         },
         expirationBuckets: (expirationBuckets as unknown as BucketCount[]).map((r) => ({
