@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -21,6 +20,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DeleteConfirmDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -300,12 +300,14 @@ export const ApplicationAlertsCard = ({
         applicationName={applicationName}
         alert={alerts.find((a) => a.id === alertModal.alertId)}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={deleteAlertModal.isOpen}
-        deleteKey="delete"
-        title={`Delete Alert "${deleteAlertModal.name ?? ""}"`}
-        onChange={(isOpen) => setDeleteAlertModal({ isOpen, alertId: undefined, name: undefined })}
-        onDeleteApproved={handleDeleteAlert}
+        confirmKey="delete"
+        title={`Delete Alert "${deleteAlertModal.name ?? ""}"?`}
+        onOpenChange={(isOpen) =>
+          setDeleteAlertModal({ isOpen, alertId: undefined, name: undefined })
+        }
+        onConfirm={handleDeleteAlert}
       />
     </>
   );

@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { AlertRunStatus } from "@app/services/alert/alert-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
 export type TCertManagerApplicationAlertDALFactory = ReturnType<typeof certManagerApplicationAlertDALFactory>;
@@ -16,6 +17,19 @@ export type TApplicationAlertCertificate = {
   notAfter: Date;
   revocationReason: number | null;
   applicationName: string | null;
+};
+
+export type TApplicationActiveCertificate = {
+  id: string;
+  serialNumber: string;
+  commonName: string;
+  altNames: string | null;
+  profileId: string | null;
+  pkiSubscriberId: string | null;
+  profileName: string | null;
+  notBefore: Date;
+  notAfter: Date;
+  status: string;
 };
 
 type TCertificateScope = {
@@ -82,6 +96,65 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
     }
   };
 
+  const listActiveCertificates = async (
+    scope: TCertificateScope & { limit: number; offset: number; excludeAlertedByAlertId?: string },
+    tx?: Knex
+  ): Promise<{ certificates: TApplicationActiveCertificate[]; total: number }> => {
+    try {
+      const reader = tx || db.replicaNode();
+      const query = reader(TableName.Certificate)
+        .where(`${TableName.Certificate}.projectId`, scope.projectId)
+        .where(`${TableName.Certificate}.applicationId`, scope.applicationId)
+        .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
+        .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
+        .whereRaw(`"${TableName.Certificate}"."notAfter" > NOW()`);
+
+      if (scope.excludeAlertedByAlertId) {
+        void query.whereNotExists(
+          reader(TableName.AlertHistory)
+            .join(
+              TableName.AlertHistoryTarget,
+              `${TableName.AlertHistory}.id`,
+              `${TableName.AlertHistoryTarget}.alertHistoryId`
+            )
+            .where(`${TableName.AlertHistory}.alertId`, scope.excludeAlertedByAlertId)
+            .where(`${TableName.AlertHistoryTarget}.status`, AlertRunStatus.SUCCESS)
+            .whereRaw(`"${TableName.AlertHistoryTarget}"."targetId" = "${TableName.Certificate}".id::text`)
+            .select(reader.raw("1"))
+        );
+      }
+
+      const [countResult, certificates] = await Promise.all([
+        query.clone().count("* as count").first(),
+        query
+          .clone()
+          .leftJoin(`${TableName.PkiCertificateProfile} as profile`, `${TableName.Certificate}.profileId`, "profile.id")
+          .select(
+            `${TableName.Certificate}.id`,
+            `${TableName.Certificate}.serialNumber`,
+            `${TableName.Certificate}.commonName`,
+            `${TableName.Certificate}.altNames`,
+            `${TableName.Certificate}.profileId`,
+            `${TableName.Certificate}.pkiSubscriberId`,
+            `${TableName.Certificate}.notBefore`,
+            `${TableName.Certificate}.notAfter`,
+            `${TableName.Certificate}.status`,
+            "profile.slug as profileName"
+          )
+          .orderBy(`${TableName.Certificate}.notAfter`, "asc")
+          .limit(scope.limit)
+          .offset(scope.offset)
+      ]);
+
+      return {
+        certificates: certificates as TApplicationActiveCertificate[],
+        total: parseInt(String((countResult as { count: string | number } | undefined)?.count ?? 0), 10)
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "ListActiveCertificates" });
+    }
+  };
+
   const findApplicationById = async (
     applicationId: string,
     tx?: Knex
@@ -120,5 +193,11 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findExpiringCertificates, findCertificatesByIds, findApplicationById, findApplicationNamesByIds };
+  return {
+    findExpiringCertificates,
+    findCertificatesByIds,
+    listActiveCertificates,
+    findApplicationById,
+    findApplicationNamesByIds
+  };
 };

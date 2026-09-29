@@ -2965,7 +2965,8 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     pkiAlertV2Service,
-    pkiAlertV2DAL
+    pkiAlertV2DAL,
+    certManagerApplicationAlertDAL
   });
 
   const certificateAlertEventEmitter = certificateAlertEventEmitterFactory({

@@ -29,6 +29,7 @@ const buildService = (opts?: {
   afterFindAlerts?: (alerts: Map<string, Record<string, unknown>>) => void;
 }) => {
   const permissionCalls: TAlertPermissionInput[] = [];
+  const gatedChannelTypeCalls: string[][] = [];
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
     events: [
@@ -54,6 +55,9 @@ const buildService = (opts?: {
     },
     assertResourceInScope: async (input) => {
       if (input.resourceId && opts?.resourceScopeThrows) throw new Error("resource out of scope");
+    },
+    assertChannelTypesAllowed: async ({ channelTypes }) => {
+      gatedChannelTypeCalls.push(channelTypes);
     }
   };
   const registry = alertProviderRegistryFactory();
@@ -212,7 +216,7 @@ const buildService = (opts?: {
     alertProviderRegistry: registry
   } as unknown as TAlertServiceFactoryDep);
 
-  return { service, permissionCalls, alerts, memberships, channels, findFilters };
+  return { service, permissionCalls, gatedChannelTypeCalls, alerts, memberships, channels, findFilters };
 };
 
 const actor = {
@@ -414,6 +418,36 @@ describe("alert service", () => {
     ]);
     expect(memberships.get("alert-1")).toContain(keep.id);
     expect(memberships.get("alert-1")).toHaveLength(2);
+  });
+
+  test("update gates every new channel, even when the alert already has one of that type", async () => {
+    const { service, gatedChannelTypeCalls } = buildService();
+    const created = await service.createAlert(validCreate);
+    const existingWebhook = created.channels.find((c) => c.channelType === AlertChannelType.WEBHOOK)!;
+
+    await service.updateAlert({
+      alertId: "alert-1",
+      channels: [
+        { id: existingWebhook.id, name: existingWebhook.name, channelType: AlertChannelType.WEBHOOK },
+        { name: "second-webhook", channelType: AlertChannelType.WEBHOOK, config: { url: "https://example.com/2" } }
+      ],
+      ...actor
+    });
+
+    expect(gatedChannelTypeCalls.at(-1)).toEqual([AlertChannelType.WEBHOOK]);
+  });
+
+  test("update does not gate channels the alert already has", async () => {
+    const { service, gatedChannelTypeCalls } = buildService();
+    const created = await service.createAlert(validCreate);
+
+    await service.updateAlert({
+      alertId: "alert-1",
+      channels: created.channels.map((c) => ({ id: c.id, name: c.name, channelType: c.channelType })),
+      ...actor
+    });
+
+    expect(gatedChannelTypeCalls.at(-1)).toEqual([]);
   });
 
   test("update rejects a channel id that does not belong to the alert", async () => {

@@ -48,6 +48,7 @@ export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 export type TProjectMemberEmails = {
   emailByUserId: Map<string, string>;
   memberIdByEmail: Map<string, string>;
+  isAvailable: boolean;
 };
 
 export const toRecipientEmails = (
@@ -130,7 +131,7 @@ export const emptyCertificateAlertForm = (): TCertificateAlertForm => ({
 
 export const toCertificateAlertForm = (
   alert: TAlert,
-  emailByUserId: Map<string, string>
+  { emailByUserId, isAvailable }: Pick<TProjectMemberEmails, "emailByUserId" | "isAvailable">
 ): TCertificateAlertForm => ({
   eventType: alert.eventType as CertificateAlertEvent,
   name: alert.name,
@@ -146,6 +147,7 @@ export const toCertificateAlertForm = (
       enabled: channel.enabled,
       recipients: channel.recipients.filter(
         (recipient) =>
+          !isAvailable ||
           recipient.principalType !== AlertPrincipalType.User ||
           emailByUserId.has(recipient.principalId)
       ),

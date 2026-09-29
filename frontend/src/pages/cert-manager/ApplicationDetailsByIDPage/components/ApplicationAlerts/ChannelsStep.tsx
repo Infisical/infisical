@@ -105,6 +105,11 @@ const EmailRecipientsField = ({
 }: TChannelRecipientsRenderProps & { members: TProjectMemberEmails }) => {
   const emails = toRecipientEmails(value, members);
   const groups = value.filter((recipient) => recipient.principalType === AlertPrincipalType.Group);
+  const unlistedUsers = value.filter(
+    (recipient) =>
+      recipient.principalType === AlertPrincipalType.User &&
+      !members.emailByUserId.has(recipient.principalId)
+  );
   const memberEmails = [...members.memberIdByEmail.keys()].sort();
 
   const setEmails = (nextEmails: string[]) =>
@@ -115,6 +120,7 @@ const EmailRecipientsField = ({
           ? { principalType: AlertPrincipalType.User, principalId: userId }
           : { principalType: AlertPrincipalType.Email, principalId: email };
       }),
+      ...unlistedUsers,
       ...groups
     ]);
 
@@ -145,6 +151,7 @@ const EmailRecipientsField = ({
       <FieldDescription>
         Pick project members or type any email address. Addresses outside the project must use one
         of your organization&apos;s verified email domains.
+        {unlistedUsers.length > 0 && ` Also sent to ${unlistedUsers.length} project member(s).`}
         {groups.length > 0 && ` Also sent to ${groups.length} group(s).`}
       </FieldDescription>
     </>

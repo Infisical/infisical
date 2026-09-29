@@ -67,9 +67,7 @@ const CertificateAlertWizard = ({
 
   const form = useForm<TCertificateAlertForm>({
     resolver: zodResolver(certificateAlertFormSchema),
-    defaultValues: alert
-      ? toCertificateAlertForm(alert, members.emailByUserId)
-      : emptyCertificateAlertForm()
+    defaultValues: alert ? toCertificateAlertForm(alert, members) : emptyCertificateAlertForm()
   });
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "channels" });
 
@@ -235,7 +233,11 @@ export const CertificateAlertSheet = ({ isOpen, onOpenChange, ...props }: Props)
       byUserId.set(user.id, email);
       byEmail.set(email, user.id);
     });
-    return { emailByUserId: byUserId, memberIdByEmail: byEmail };
+    return {
+      emailByUserId: byUserId,
+      memberIdByEmail: byEmail,
+      isAvailable: Boolean(projectUsers)
+    };
   }, [projectUsers]);
 
   return (

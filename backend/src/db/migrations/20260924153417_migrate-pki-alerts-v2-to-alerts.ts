@@ -42,12 +42,6 @@ const toAlertBefore = (alertBefore: string | null | undefined): string => {
   return alertBefore as string;
 };
 
-const createUniqueScopeIndex = (knex: Knex, where = "") =>
-  knex.schema.raw(
-    `CREATE UNIQUE INDEX "alert_unique_scope_resource_event" ON "${TableName.Alert}"
-     ("orgId", (COALESCE("projectId", '')), "resourceType", (COALESCE("resourceId", '')), "eventType") ${where}`
-  );
-
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasColumn(TableName.AlertHistory, "error"))) {
     await knex.schema.alterTable(TableName.AlertHistory, (t) => {
@@ -56,7 +50,11 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   await knex.schema.raw(`DROP INDEX IF EXISTS "alert_unique_scope_resource_event"`);
-  await createUniqueScopeIndex(knex, `WHERE "resourceType" <> '${RESOURCE_TYPE}'`);
+  await knex.schema.raw(
+    `CREATE UNIQUE INDEX "alert_unique_scope_resource_event" ON "${TableName.Alert}"
+     ("orgId", (COALESCE("projectId", '')), "resourceType", (COALESCE("resourceId", '')), "eventType")
+     WHERE "resourceType" <> '${RESOURCE_TYPE}'`
+  );
   await knex.schema.alterTable(TableName.Alert, (t) => {
     t.index("orgId");
   });
@@ -72,7 +70,12 @@ export async function up(knex: Knex): Promise<void> {
   initLogger();
   const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
   const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex), hsmService, kmsRootConfigDALFactory(knex));
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore: inMemoryKeyStore(), db: knex });
+  const { kmsService } = await getMigrationEncryptionServices({
+    envConfig,
+    keyStore: inMemoryKeyStore(),
+    db: knex,
+    skipHsmLicenseCheck: true
+  });
 
   const cipherByProjectId = new Map<string, Awaited<ReturnType<typeof kmsService.createCipherPairWithDataKey>>>();
   for (const legacyAlert of legacyAlerts) {
@@ -220,12 +223,35 @@ export async function up(knex: Knex): Promise<void> {
       const history = await knex(TableName.PkiAlertHistory)
         .where({ alertId: legacyAlert.id, hasNotificationSent: true })
         .whereRaw(`"triggeredAt" > now() - ?::interval`, [`${HISTORY_LOOKBACK_DAYS} days`])
-        .select("id", "triggeredAt");
+        .select("id", "triggeredAt", "notificationError");
 
       if (history.length) {
+        const failedTypesByHistoryId = new Map(
+          history.map((row) => [
+            row.id,
+            new Set(
+              String(row.notificationError ?? "")
+                .split("\n")
+                .map((line) => line.split(":")[0].trim())
+                .filter((channelType) => CHANNEL_NAMES[channelType])
+            )
+          ])
+        );
+        const toHistoryStatus = (failedTypes: Set<string>) => {
+          const failedCount = migratedChannels.filter((channel) => failedTypes.has(channel.channelType)).length;
+          if (!failedCount) return "success";
+          return failedCount === migratedChannels.length ? "failed" : "partial";
+        };
+
         await knex.batchInsert(
           TableName.AlertHistory,
-          history.map((row) => ({ id: row.id, alertId: alert.id, triggeredAt: row.triggeredAt, status: "success" })),
+          history.map((row) => ({
+            id: row.id,
+            alertId: alert.id,
+            triggeredAt: row.triggeredAt,
+            status: toHistoryStatus(failedTypesByHistoryId.get(row.id) as Set<string>),
+            error: row.notificationError ? String(row.notificationError).slice(0, 1000) : null
+          })),
           INSERT_BATCH_SIZE
         );
 
@@ -244,7 +270,7 @@ export async function up(knex: Knex): Promise<void> {
               targetId: row.certificateId,
               channelId: channel.id,
               channelType: channel.channelType,
-              status: "success"
+              status: failedTypesByHistoryId.get(row.alertHistoryId)?.has(channel.channelType) ? "failed" : "success"
             }))
           ),
           INSERT_BATCH_SIZE
@@ -255,17 +281,20 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const alertIds = knex(TableName.Alert).where({ resourceType: RESOURCE_TYPE }).select("id");
-  const channelIds = await knex(TableName.AlertChannelMembership).whereIn("alertId", alertIds).pluck("channelId");
+  if (await knex.schema.hasTable(TableName.PkiAlertsV2)) {
+    const migratedAlertIds = knex(TableName.PkiAlertsV2).whereNotNull("applicationId").select("id");
+    const migratedChannelIds = await knex(TableName.AlertChannelMembership)
+      .whereIn("alertId", migratedAlertIds)
+      .whereIn("channelId", knex(TableName.PkiAlertChannels).select("id"))
+      .pluck("channelId");
 
-  await knex(TableName.Alert).where({ resourceType: RESOURCE_TYPE }).delete();
-  if (channelIds.length) await knex(TableName.AlertChannel).whereIn("id", channelIds).delete();
+    await knex(TableName.Alert).where({ resourceType: RESOURCE_TYPE }).whereIn("id", migratedAlertIds).delete();
+    if (migratedChannelIds.length) await knex(TableName.AlertChannel).whereIn("id", migratedChannelIds).delete();
+  }
 
   await knex.schema.alterTable(TableName.Alert, (t) => {
     t.dropIndex("orgId");
   });
-  await knex.schema.raw(`DROP INDEX IF EXISTS "alert_unique_scope_resource_event"`);
-  await createUniqueScopeIndex(knex);
 
   if (await knex.schema.hasColumn(TableName.AlertHistory, "error")) {
     await knex.schema.alterTable(TableName.AlertHistory, (t) => {

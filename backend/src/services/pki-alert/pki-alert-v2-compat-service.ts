@@ -6,6 +6,10 @@ import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TAlertResponse } from "@app/services/alert/alert-service-types";
 import { AlertPrincipalType, AlertRunStatus } from "@app/services/alert/alert-types";
 import {
+  TApplicationActiveCertificate,
+  TCertManagerApplicationAlertDALFactory
+} from "@app/services/alert/providers/cert-manager-application-alert-dal";
+import {
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
   CertificateAlertEvent,
   LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT
@@ -14,12 +18,16 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TPkiAlertV2DALFactory } from "@app/services/pki-alert-v2/pki-alert-v2-dal";
 import { TPkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
 import {
+  CertificateOrigin,
   PkiAlertChannelType,
   PkiAlertEventType,
   PkiAlertRunStatus,
   TAlertV2Response,
+  TCertificatePreview,
   TChannelConfigResponse,
   TCreateChannel,
+  TListMatchingCertificatesDTO,
+  TListMatchingCertificatesResponse,
   TPkiFilterRule
 } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -56,8 +64,12 @@ type TPkiAlertV2CompatServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findUsersByEmails">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
-  pkiAlertV2Service: Pick<TPkiAlertV2ServiceFactory, "listAlerts" | "getAlertById" | "updateAlert" | "deleteAlert">;
+  pkiAlertV2Service: Pick<
+    TPkiAlertV2ServiceFactory,
+    "listAlerts" | "getAlertById" | "updateAlert" | "deleteAlert" | "listMatchingCertificates"
+  >;
   pkiAlertV2DAL: Pick<TPkiAlertV2DALFactory, "findById">;
+  certManagerApplicationAlertDAL: Pick<TCertManagerApplicationAlertDALFactory, "listActiveCertificates">;
 };
 
 export type TPkiAlertV2CompatServiceFactory = ReturnType<typeof pkiAlertV2CompatServiceFactory>;
@@ -68,7 +80,8 @@ export const pkiAlertV2CompatServiceFactory = ({
   orgDAL,
   projectDAL,
   pkiAlertV2Service,
-  pkiAlertV2DAL
+  pkiAlertV2DAL,
+  certManagerApplicationAlertDAL
 }: TPkiAlertV2CompatServiceFactoryDep) => {
   const $assertNoFilters = (filters: TPkiFilterRule[]) => {
     if (filters.length) {
@@ -376,6 +389,45 @@ export const pkiAlertV2CompatServiceFactory = ({
     return legacy;
   };
 
+  const $toCertificatePreview = (certificate: TApplicationActiveCertificate): TCertificatePreview => {
+    let enrollmentType = CertificateOrigin.UNKNOWN;
+    if (certificate.profileId) enrollmentType = CertificateOrigin.PROFILE;
+    else if (certificate.pkiSubscriberId) enrollmentType = CertificateOrigin.IMPORT;
+
+    return {
+      id: certificate.id,
+      serialNumber: certificate.serialNumber,
+      commonName: certificate.commonName,
+      san: (certificate.altNames ?? "")
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean),
+      profileName: certificate.profileName,
+      enrollmentType,
+      notBefore: certificate.notBefore,
+      notAfter: certificate.notAfter,
+      status: certificate.status
+    };
+  };
+
+  const listMatchingCertificates = async ({
+    alertId,
+    limit = 20,
+    offset = 0,
+    ...actor
+  }: TListMatchingCertificatesDTO): Promise<TListMatchingCertificatesResponse> => {
+    const alert = await $getAlert({ alertId, ...actor });
+    const { certificates, total } = await certManagerApplicationAlertDAL.listActiveCertificates({
+      projectId: alert.projectId as string,
+      applicationId: alert.resourceId as string,
+      limit,
+      offset,
+      ...(alert.eventType === CertificateAlertEvent.Expiry ? { excludeAlertedByAlertId: alert.id } : {})
+    });
+
+    return { certificates: certificates.map($toCertificatePreview), total };
+  };
+
   const $isLegacyProjectAlert = async (alertId: string) => Boolean(await pkiAlertV2DAL.findById(alertId));
 
   const $fromProjectAlert = (alert: TAlertV2Response): TPkiAlertRouteResponse => ({ ...alert, applicationId: null });
@@ -412,6 +464,13 @@ export const pkiAlertV2CompatServiceFactory = ({
       ? $fromProjectAlert(await pkiAlertV2Service.updateAlert(dto))
       : updateAlert(dto);
 
+  const listProjectRouteMatchingCertificates = async (
+    dto: TListMatchingCertificatesDTO
+  ): Promise<TListMatchingCertificatesResponse> =>
+    (await $isLegacyProjectAlert(dto.alertId))
+      ? pkiAlertV2Service.listMatchingCertificates(dto)
+      : listMatchingCertificates(dto);
+
   const deleteProjectRouteAlert = async (dto: TGetPkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> =>
     (await $isLegacyProjectAlert(dto.alertId))
       ? $fromProjectAlert(await pkiAlertV2Service.deleteAlert(dto))
@@ -426,6 +485,7 @@ export const pkiAlertV2CompatServiceFactory = ({
     listProjectRouteAlerts,
     getProjectRouteAlert,
     updateProjectRouteAlert,
-    deleteProjectRouteAlert
+    deleteProjectRouteAlert,
+    listProjectRouteMatchingCertificates
   };
 };

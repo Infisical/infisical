@@ -417,14 +417,14 @@ export const alertServiceFactory = ({
     }
 
     if (dto.channels && provider.assertChannelTypesAllowed) {
-      const existingTypes = new Set(
-        (await alertChannelDAL.findByAlertId(alert.id)).map((channel) => channel.channelType)
+      const existingTypeById = new Map(
+        (await alertChannelDAL.findByAlertId(alert.id)).map((channel) => [channel.id, channel.channelType])
       );
       await provider.assertChannelTypesAllowed({
         orgId: alert.orgId,
         channelTypes: dto.channels
+          .filter((channel) => !channel.id || existingTypeById.get(channel.id) !== channel.channelType)
           .map((channel) => channel.channelType)
-          .filter((channelType) => !existingTypes.has(channelType))
       });
     }
 
