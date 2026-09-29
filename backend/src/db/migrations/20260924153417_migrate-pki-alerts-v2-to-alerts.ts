@@ -228,11 +228,10 @@ export async function up(knex: Knex): Promise<void> {
     }
 
     if (migratedChannels.length) {
-      const recentHistoryQuery = () =>
-        knex(TableName.PkiAlertHistory)
-          .where({ alertId: legacyAlert.id, hasNotificationSent: true })
-          .whereRaw(`"triggeredAt" > now() - ?::interval`, [`${HISTORY_LOOKBACK_DAYS} days`]);
-      const history = await recentHistoryQuery().select("id", "triggeredAt", "notificationError");
+      const history = await knex(TableName.PkiAlertHistory)
+        .where({ alertId: legacyAlert.id, hasNotificationSent: true })
+        .whereRaw(`"triggeredAt" > now() - ?::interval`, [`${HISTORY_LOOKBACK_DAYS} days`])
+        .select("id", "triggeredAt", "notificationError");
 
       if (history.length) {
         const failedTypesByHistoryId = new Map(
@@ -265,7 +264,7 @@ export async function up(knex: Knex): Promise<void> {
         );
 
         const alertedCertificates = await knex(TableName.PkiAlertHistoryCertificate)
-          .whereIn("alertHistoryId", recentHistoryQuery().select("id"))
+          .whereRaw(`?? = ANY(?::uuid[])`, ["alertHistoryId", history.map((row) => row.id)])
           .select("alertHistoryId", "certificateId");
 
         await knex.batchInsert(

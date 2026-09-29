@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ForbiddenRequestError } from "@app/lib/errors";
+
 import { TAlertChannelInput } from "./alert-channel-service-types";
 import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
 import { alertProviderRegistryFactory } from "./alert-provider-registry";
@@ -395,6 +397,33 @@ describe("alert service", () => {
 
     expect(result.map((a) => a.id)).toEqual(["proj-alert"]);
     expect(findFilters[0]).toMatchObject({ projectId: "proj-x" });
+  });
+
+  test("a list without a resource hides alerts on resources the actor cannot read", async () => {
+    const { service, alerts } = buildService({
+      assertPermission: async (input) => {
+        if (input.resourceId === "hidden-resource") throw new ForbiddenRequestError({ message: "forbidden" });
+      }
+    });
+    alerts.set("unbound", { id: "unbound", name: "unbound", projectId: "proj-x", ...listBase });
+    alerts.set("visible", {
+      id: "visible",
+      name: "visible",
+      projectId: "proj-x",
+      ...listBase,
+      resourceId: "visible-resource"
+    });
+    alerts.set("hidden", {
+      id: "hidden",
+      name: "hidden",
+      projectId: "proj-x",
+      ...listBase,
+      resourceId: "hidden-resource"
+    });
+
+    const result = await service.listAlerts({ resourceType: RESOURCE_TYPE, projectId: "proj-x", ...actor });
+
+    expect(result.map((a) => a.id).sort()).toEqual(["unbound", "visible"]);
   });
 
   test("update reconciles channels: keeps the referenced ones, deletes the rest, adds new", async () => {

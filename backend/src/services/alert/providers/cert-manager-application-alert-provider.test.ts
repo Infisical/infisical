@@ -120,7 +120,11 @@ describe("cert manager application alert provider", () => {
 
   test("findDueTargets converts alertBefore to days and scopes the scan to the alert's application", async () => {
     let args: Record<string, unknown> | undefined;
-    const { provider } = buildProvider({ onFindExpiring: (value) => (args = value) });
+    const { provider } = buildProvider({
+      onFindExpiring: (value) => {
+        args = value;
+      }
+    });
     await provider.findDueTargets({
       orgId: "org-1",
       projectId: "proj-1",
@@ -281,7 +285,11 @@ describe("cert manager application alert provider", () => {
 
   test("getResourceNames scopes the lookup to the caller's org", async () => {
     let lookup: { ids: string[]; orgId: string } | undefined;
-    const { provider } = buildProvider({ onFindNames: (ids, orgId) => (lookup = { ids, orgId }) });
+    const { provider } = buildProvider({
+      onFindNames: (ids, orgId) => {
+        lookup = { ids, orgId };
+      }
+    });
     const names = await provider.getResourceNames?.({ orgId: "org-1", resourceIds: ["app-1"] });
     expect(lookup).toEqual({ ids: ["app-1"], orgId: "org-1" });
     expect(names?.get("app-1")).toBe("payments-api");

@@ -137,7 +137,7 @@ const CertificateAlertWizard = ({
               <div className="text-label">
                 {isEditing ? "Edit Certificate Alert" : "Create Certificate Alert"}
               </div>
-              <SheetDescription className="text-sm leading-4 text-muted">
+              <SheetDescription className="leading-4 text-muted">
                 Get notified about certificate events in {applicationName}.
               </SheetDescription>
             </div>
