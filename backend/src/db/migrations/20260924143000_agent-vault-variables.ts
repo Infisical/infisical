@@ -51,8 +51,6 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("substitutionId").references("id").inTable(TableName.AgentVaultServiceSubstitution).onDelete("CASCADE");
       t.index("substitutionId");
 
-      t.boolean("isWholeValue").notNullable();
-
       t.timestamps(true, true, true);
     });
 

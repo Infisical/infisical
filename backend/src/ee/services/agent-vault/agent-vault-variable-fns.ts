@@ -15,7 +15,6 @@ export const AGENT_VAULT_MALFORMED_REFERENCE_MESSAGE = `Double braces are reserv
 // Every {{...}} counts as a reference, so a mistyped one fails the save instead of reaching a real host as
 // literal text.
 const REFERENCE_RE = new RE2(/\{\{([^{}]*)\}\}/g);
-const WHOLE_REFERENCE_RE = new RE2(/^\{\{[A-Z][A-Z0-9_]*\}\}$/);
 const STORED_REFERENCE_RE = new RE2(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 
 export const toVariableReference = (key: string) => `{{${key}}}`;
@@ -30,9 +29,6 @@ export const hasMalformedVariableReference = (text: string) =>
 export const findVariableKeys = (text: string) => [
   ...new Set(findReferenceTokens(text).filter((token) => isVariableKey(token)))
 ];
-
-/** A value that is one reference and nothing else holds no secret, so it can be returned on read. */
-export const isWholeVariableReference = (text: string) => WHOLE_REFERENCE_RE.test(text);
 
 /**
  * Sealed text names a variable by its id, not its key. The key form exists only at the API boundary, so a

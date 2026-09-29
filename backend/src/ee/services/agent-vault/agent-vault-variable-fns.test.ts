@@ -6,7 +6,6 @@ import {
   findVariableKeys,
   hasMalformedVariableReference,
   isVariableKey,
-  isWholeVariableReference,
   toStoredVariableReferences
 } from "./agent-vault-variable-fns";
 
@@ -56,18 +55,6 @@ describe("agent vault variable references", () => {
     it("does not count a lone brace pair as a reference", () => {
       expect(hasMalformedVariableReference("{{ no closing")).toBe(false);
       expect(findVariableKeys("no opening }}")).toEqual([]);
-    });
-  });
-
-  describe("whole references", () => {
-    it.each([
-      ["{{A}}", true],
-      ["{{A}} ", false],
-      ["Bearer {{A}}", false],
-      ["{{A}}{{B}}", false],
-      ["{{a}}", false]
-    ])("%s is whole: %s", (text, expected) => {
-      expect(isWholeVariableReference(text)).toBe(expected);
     });
   });
 

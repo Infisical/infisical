@@ -76,7 +76,7 @@ export const TransformationsFields = ({
   onOpenChange: (item: string) => void;
 }) => {
   const { control, getValues } = useFormContext<TServiceForm>();
-  const { seeded } = useServiceVariables();
+  const { storedKeys } = useServiceVariables();
   const customHeaders = useFieldArray({ control, name: "customHeaders" });
   const substitutions = useFieldArray({ control, name: "substitutions" });
 
@@ -155,8 +155,10 @@ export const TransformationsFields = ({
                                 isUntouched={field.value === UNCHANGED_SECRET}
                                 hasStoredSecret={Boolean(getValues(`customHeaders.${index}.id`))}
                                 canBeCleared={false}
-                                storedValue={
-                                  seeded.customHeaders[getValues(`customHeaders.${index}.id`) ?? ""]
+                                storedKeys={
+                                  storedKeys.customHeaders[
+                                    getValues(`customHeaders.${index}.id`) ?? ""
+                                  ]
                                 }
                               />
                               <FieldError>{fieldState.error?.message}</FieldError>
@@ -253,8 +255,10 @@ export const TransformationsFields = ({
                                 isUntouched={field.value === UNCHANGED_SECRET}
                                 hasStoredSecret={Boolean(getValues(`substitutions.${index}.id`))}
                                 canBeCleared={false}
-                                storedValue={
-                                  seeded.substitutions[getValues(`substitutions.${index}.id`) ?? ""]
+                                storedKeys={
+                                  storedKeys.substitutions[
+                                    getValues(`substitutions.${index}.id`) ?? ""
+                                  ]
                                 }
                               />
                               <FieldError>{fieldState.error?.message}</FieldError>

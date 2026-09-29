@@ -34,16 +34,22 @@ export const useKnownVariableKeys = () => {
 
 const chipTone = (isKnown: boolean) =>
   isKnown
-    ? "bg-product-av/15 text-product-av ring-product-av/30"
-    : "bg-danger/15 text-danger ring-danger/40";
+    ? "bg-foreground/10 text-label"
+    : "bg-danger/15 text-danger ring-1 ring-danger/40 ring-inset";
 
-export const VariableChip = ({ reference, isKnown }: { reference: string; isKnown: boolean }) => (
-  <span className={cn("rounded-[3px] px-1 ring-1 ring-inset", chipTone(isKnown))}>{reference}</span>
-);
+export const VariableChip = ({
+  reference,
+  isKnown,
+  className
+}: {
+  reference: string;
+  isKnown: boolean;
+  className?: string;
+}) => <span className={cn("rounded-[3px] px-1", chipTone(isKnown), className)}>{reference}</span>;
 
 /**
- * The value drawn behind a transparent input, with each reference marked. Marks add colour and a ring
- * but no padding, so every character sits exactly where the input's own would.
+ * The value drawn behind a transparent input, with each reference marked. Marks add colour but no
+ * padding, so every character sits exactly where the input's own would.
  */
 export const ReferenceHighlights = ({
   value,
@@ -69,7 +75,7 @@ export const ReferenceHighlights = ({
               // eslint-disable-next-line react/no-array-index-key
               key={index}
               className={cn(
-                "rounded-[3px] ring-1 ring-inset",
+                "rounded-[3px]",
                 chipTone(segment.isValid && (!knownKeys || knownKeys.has(segment.key)))
               )}
             >
@@ -244,78 +250,82 @@ export const VariableSuggestions = ({
       <PopoverAnchor asChild>
         <div ref={anchorRef}>{children}</div>
       </PopoverAnchor>
-      <PopoverContent
-        align="start"
-        className="w-(--radix-popover-trigger-width) min-w-56 p-1"
-        // Focus stays in the field the whole time: the list is driven from its keyboard.
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onCloseAutoFocus={(event) => event.preventDefault()}
-        onInteractOutside={(event) => {
-          if (anchorRef.current?.contains(event.target as Node)) event.preventDefault();
-        }}
-      >
-        {suggestions.length > 0 ? (
-          <ul
-            id={listId}
-            role="listbox"
-            aria-label="Variables"
-            className="max-h-60 overflow-y-auto"
-          >
-            {suggestions.map((suggestion, index) => (
-              <Fragment key={suggestion.type === "variable" ? suggestion.variable.id : "create"}>
-                {suggestion.type === "create" && index > 0 && (
-                  <li role="presentation" className="-mx-1 my-1 h-px bg-border" />
-                )}
-                {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events */}
-                <li
-                  id={optionId(index)}
-                  role="option"
-                  aria-selected={index === activeIndex}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-3 rounded-sm px-2 py-1.5",
-                    index === activeIndex && "bg-container-hover"
+      {/* Unmounted rather than faded out: once it closes nothing is matched, so a fade would show the
+          empty message where the list was. */}
+      {isOpen && (
+        <PopoverContent
+          align="start"
+          className="w-[var(--radix-popover-trigger-width)] min-w-56 p-1"
+          // Focus stays in the field the whole time: the list is driven from its keyboard.
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          onInteractOutside={(event) => {
+            if (anchorRef.current?.contains(event.target as Node)) event.preventDefault();
+          }}
+        >
+          {suggestions.length > 0 ? (
+            <ul
+              id={listId}
+              role="listbox"
+              aria-label="Variables"
+              className="max-h-60 overflow-y-auto"
+            >
+              {suggestions.map((suggestion, index) => (
+                <Fragment key={suggestion.type === "variable" ? suggestion.variable.id : "create"}>
+                  {suggestion.type === "create" && index > 0 && (
+                    <li role="presentation" className="-mx-1 my-1 h-px bg-border" />
                   )}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => choose(suggestion)}
-                >
-                  {suggestion.type === "variable" ? (
-                    <>
-                      <span className="flex-1 truncate font-mono text-xs">
-                        {suggestion.variable.key}
-                      </span>
-                      {suggestion.variable.isSecret ? (
-                        <LockIcon className="size-3 shrink-0 text-muted" aria-label="Secret" />
-                      ) : (
-                        <span className="max-w-32 truncate text-xs text-muted">
-                          {suggestion.variable.value}
+                  {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events */}
+                  <li
+                    id={optionId(index)}
+                    role="option"
+                    aria-selected={index === activeIndex}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3 rounded-sm px-2 py-1.5",
+                      index === activeIndex && "bg-container-hover"
+                    )}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => choose(suggestion)}
+                  >
+                    {suggestion.type === "variable" ? (
+                      <>
+                        <span className="flex-1 truncate font-mono text-xs">
+                          {suggestion.variable.key}
                         </span>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <PlusIcon className="size-3.5 shrink-0 text-muted" />
-                      {suggestion.isKeyValid ? (
-                        <span className="min-w-0 truncate text-xs">
-                          Create <span className="font-mono">{suggestion.key}</span>
-                        </span>
-                      ) : (
-                        <span className="text-xs">Create Variable</span>
-                      )}
-                    </>
-                  )}
-                </li>
-              </Fragment>
-            ))}
-          </ul>
-        ) : (
-          <p className="px-2 py-1.5 text-xs text-muted">
-            {variables?.length
-              ? "No variable in this bundle matches that name."
-              : "This bundle has no variables yet. Add one under Variables."}
-          </p>
-        )}
-      </PopoverContent>
+                        {suggestion.variable.isSecret ? (
+                          <LockIcon className="size-3 shrink-0 text-muted" aria-label="Secret" />
+                        ) : (
+                          <span className="max-w-32 truncate text-xs text-muted">
+                            {suggestion.variable.value}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <PlusIcon className="size-3.5 shrink-0 text-muted" />
+                        {suggestion.isKeyValid ? (
+                          <span className="min-w-0 truncate text-xs">
+                            Create <span className="font-mono">{suggestion.key}</span>
+                          </span>
+                        ) : (
+                          <span className="text-xs">Create Variable</span>
+                        )}
+                      </>
+                    )}
+                  </li>
+                </Fragment>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-2 py-1.5 text-xs text-muted">
+              {variables?.length
+                ? "No variable in this bundle matches that name."
+                : "This bundle has no variables yet. Add one under Variables."}
+            </p>
+          )}
+        </PopoverContent>
+      )}
     </Popover>
   );
 };

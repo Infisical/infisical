@@ -702,7 +702,6 @@ describe("Agent Vault V1 Router", async () => {
       field: string;
       customHeaderId?: string;
       substitutionId?: string;
-      isWholeValue: boolean;
     };
 
     const createVariable = async (accessBundleId: string, body: { key: string; value: string; isSecret?: boolean }) => {
@@ -796,27 +795,24 @@ describe("Agent Vault V1 Router", async () => {
       // Exact entries, because a reference carries only the id its field uses, not the others as null.
       expect(service.variableReferences).toEqual(
         expect.arrayContaining([
-          { variableId: token.id, key: "GITHUB_TOKEN", field: "credential-value", isWholeValue: true },
+          { variableId: token.id, key: "GITHUB_TOKEN", field: "credential-value" },
           {
             variableId: token.id,
             key: "GITHUB_TOKEN",
             field: "custom-header",
-            customHeaderId: service.customHeaders[0].id,
-            isWholeValue: false
+            customHeaderId: service.customHeaders[0].id
           },
           {
             variableId: org.id,
             key: "ORG_ID",
             field: "custom-header",
-            customHeaderId: service.customHeaders[0].id,
-            isWholeValue: false
+            customHeaderId: service.customHeaders[0].id
           },
           {
             variableId: org.id,
             key: "ORG_ID",
             field: "substitution",
-            substitutionId: service.substitutions[0].id,
-            isWholeValue: true
+            substitutionId: service.substitutions[0].id
           }
         ])
       );
@@ -852,7 +848,7 @@ describe("Agent Vault V1 Router", async () => {
         accessBundle: { services: { variableReferences: TReference[] }[] };
       };
       expect(detail.accessBundle.services[0].variableReferences).toEqual([
-        expect.objectContaining({ key: "NEW_NAME", field: "credential-value", isWholeValue: true })
+        expect.objectContaining({ key: "NEW_NAME", field: "credential-value" })
       ]);
       expect((await resolve()).services[0].credential).toMatchObject({ value: "first" });
 
@@ -1032,6 +1028,12 @@ describe("Agent Vault V1 Router", async () => {
     test("variables are admin only, reads included", async () => {
       const bundle = await createAccessBundle("variables-admin-only");
       const variable = await createVariable(bundle.id, { key: "TOKEN", value: "admin_only_value", isSecret: false });
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "uses-token",
+        hostPattern: "api.example.com",
+        credential: { type: "bearer", value: "{{TOKEN}}" }
+      });
+      expect(created.statusCode).toBe(200);
       const member = await createUaIdentity(`av-variables-member-${Date.now()}`);
 
       try {
@@ -1047,10 +1049,26 @@ describe("Agent Vault V1 Router", async () => {
           ).statusCode
         ).toBe(200);
 
-        // The member reaches the bundle, so the refusals below are about variables and nothing else.
-        expect((await member.asIdentity("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).statusCode).toBe(
-          200
-        );
+        type TBundleRead = { accessBundle: { services: { name: string; variableReferences?: TReference[] }[] } };
+
+        // The member reaches the bundle, so the refusals below are about variables and nothing else. It sees the
+        // service, but neither the key nor the id of the variable its token comes from.
+        const reached = await member.asIdentity("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
+        expect(reached.statusCode).toBe(200);
+        const { accessBundle } = JSON.parse(reached.payload) as TBundleRead;
+        expect(accessBundle.services.map((service) => service.name)).toEqual(["uses-token"]);
+        expect(accessBundle.services[0]).not.toHaveProperty("variableReferences");
+        expect(reached.payload).not.toContain("variableReferences");
+        expect(reached.payload).not.toContain("TOKEN");
+        expect(reached.payload).not.toContain(variable.id);
+
+        const asAdmin = JSON.parse(
+          (await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).payload
+        ) as TBundleRead;
+        expect(asAdmin.accessBundle.services[0].variableReferences).toEqual([
+          { variableId: variable.id, key: "TOKEN", field: "credential-value" }
+        ]);
+
         const listed = await member.asIdentity("GET", variablesUrl(bundle.id));
         expect(listed.statusCode).toBe(403);
         expect(listed.payload).not.toContain("admin_only_value");

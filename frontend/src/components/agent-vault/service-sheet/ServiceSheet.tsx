@@ -21,7 +21,6 @@ import {
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { hostError } from "@app/helpers/agentVaultHostPattern";
 import { AgentVaultTemplate } from "@app/helpers/agentVaultTemplates";
-import { toVariableReference } from "@app/helpers/agentVaultVariables";
 import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
   AgentVaultCredentialType,
@@ -53,7 +52,7 @@ import {
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
-import { NO_SEEDED_REFERENCES, ServiceVariablesContext } from "./ServiceVariablesContext";
+import { NO_STORED_KEYS, ServiceVariablesContext } from "./ServiceVariablesContext";
 import { SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
 import { ADVANCED_ITEM, TransformationsFields } from "./TransformationsFields";
 
@@ -80,31 +79,25 @@ type Props = {
   service?: TAgentVaultService | null;
 };
 
-// A stored value that is one reference and nothing else holds no secret, so it can go back in its field.
-const seedReferences = (service?: TAgentVaultService | null) => {
-  if (!service) return NO_SEEDED_REFERENCES;
+const storedVariableKeys = (service?: TAgentVaultService | null) => {
+  const references = service?.variableReferences;
+  if (!service || !references?.length) return NO_STORED_KEYS;
 
-  const whole = service.variableReferences.filter((reference) => reference.isWholeValue);
-  const referenceWhere = (match: (reference: TAgentVaultVariableReference) => boolean) => {
-    const reference = whole.find(match);
-    return reference ? toVariableReference(reference.key) : undefined;
-  };
-  const byRow = <TRow extends { id: string }>(
-    rows: TRow[],
+  const keysWhere = (match: (reference: TAgentVaultVariableReference) => boolean) =>
+    references.filter(match).map((reference) => reference.key);
+  const byRow = (
+    rows: { id: string }[],
     idOf: (r: TAgentVaultVariableReference) => string | null
   ) =>
     Object.fromEntries(
-      rows.flatMap((row) => {
-        const reference = referenceWhere((candidate) => idOf(candidate) === row.id);
-        return reference ? [[row.id, reference]] : [];
-      })
+      rows.map((row) => [row.id, keysWhere((reference) => idOf(reference) === row.id)])
     );
 
   return {
-    secret: referenceWhere(
+    secret: keysWhere(
       (reference) => reference.field === AgentVaultVariableReferenceField.CredentialValue
     ),
-    username: referenceWhere(
+    username: keysWhere(
       (reference) => reference.field === AgentVaultVariableReferenceField.CredentialUsername
     ),
     customHeaders: byRow(service.customHeaders, (reference) =>
@@ -132,7 +125,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
   const { data: variables } = useListAgentVaultVariables(accessBundleId, isOpen);
   const variableKeys = useMemo(() => variables?.map((variable) => variable.key), [variables]);
-  const seeded = useMemo(() => seedReferences(service), [service]);
+  const storedKeys = useMemo(() => storedVariableKeys(service), [service]);
   // One dialog for every field. The request settles once the dialog has closed, not when the variable is
   // saved: until then the dialog's focus trap would pull focus back from the field that asked.
   const [newVariableKey, setNewVariableKey] = useState<string | null>(null);
@@ -151,8 +144,8 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
   );
 
   const serviceVariables = useMemo(
-    () => ({ variables, seeded, requestVariable }),
-    [variables, seeded, requestVariable]
+    () => ({ variables, storedKeys, requestVariable }),
+    [variables, storedKeys, requestVariable]
   );
 
   const [template, setTemplate] = useState<AgentVaultTemplate | null>(null);
@@ -239,35 +232,28 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
             : "Authorization",
         headerPrefix:
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : "Bearer",
-        username:
-          credential.type === AgentVaultCredentialType.Basic
-            ? (seeded.username ?? UNCHANGED_SECRET)
-            : undefined,
-        secret:
-          credential.type === AgentVaultCredentialType.Passthrough
-            ? ""
-            : (seeded.secret ?? UNCHANGED_SECRET),
+        username: credential.type === AgentVaultCredentialType.Basic ? UNCHANGED_SECRET : undefined,
+        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET,
         methods: service.allowedMethods ?? [...HTTP_METHODS],
         pathPrefixes: service.allowedPathPrefixes ?? [],
-        // The stored values never come back, so each row carries the sentinel until it is retyped,
-        // unless its value is a lone variable reference.
+        // The stored values never come back, so each row carries the sentinel until it is retyped.
         customHeaders: service.customHeaders.map((header) => ({
           id: header.id,
           name: header.name,
           prefix: header.prefix,
-          value: seeded.customHeaders[header.id] ?? UNCHANGED_SECRET
+          value: UNCHANGED_SECRET
         })),
         substitutions: service.substitutions.map((substitution) => ({
           id: substitution.id,
           placeholder: substitution.placeholder,
           surfaces: substitution.surfaces,
-          value: seeded.substitutions[substitution.id] ?? UNCHANGED_SECRET
+          value: UNCHANGED_SECRET
         }))
       });
     } else {
       reset(BLANK_SERVICE_FORM);
     }
-  }, [isOpen, service, seeded, isUpdate, reset, setStep]);
+  }, [isOpen, service, isUpdate, reset, setStep]);
 
   const handleTemplatePicked = (picked: AgentVaultTemplate | null) => {
     setTemplate(picked);
@@ -313,24 +299,16 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
     };
   };
 
-  // A seeded reference left as it was is omitted like the sentinel, so a save neither re-seals it nor
-  // records it as replaced. Not across a type change, where the stored secret no longer applies.
-  const isKept = (value: string | undefined, seededValue: string | undefined) =>
-    value === UNCHANGED_SECRET || (seededValue !== undefined && value === seededValue);
-
   const buildCredentialPatch = (data: TServiceForm) => {
     if (data.credentialType === AgentVaultCredentialType.Passthrough) {
       return { type: AgentVaultCredentialType.Passthrough as const };
     }
-    const isSameType = service?.credential.type === data.credentialType;
-    const untouched = isKept(data.secret, isSameType ? seeded.secret : undefined);
+    const untouched = data.secret === UNCHANGED_SECRET;
 
     if (data.credentialType === AgentVaultCredentialType.Basic) {
       return {
         type: AgentVaultCredentialType.Basic as const,
-        username: isKept(data.username, isSameType ? seeded.username : undefined)
-          ? undefined
-          : (data.username ?? ""),
+        username: data.username === UNCHANGED_SECRET ? undefined : (data.username ?? ""),
         password: untouched ? undefined : (data.secret ?? "")
       };
     }
@@ -352,20 +330,13 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
       ...(header.id ? { id: header.id } : {}),
       name: header.name,
       prefix: header.prefix,
-      ...(isKept(header.value, header.id ? seeded.customHeaders[header.id] : undefined)
-        ? {}
-        : { value: header.value })
+      ...(header.value === UNCHANGED_SECRET ? {} : { value: header.value })
     })),
     substitutions: data.substitutions.map((substitution) => ({
       ...(substitution.id ? { id: substitution.id } : {}),
       placeholder: substitution.placeholder,
       surfaces: substitution.surfaces,
-      ...(isKept(
-        substitution.value,
-        substitution.id ? seeded.substitutions[substitution.id] : undefined
-      )
-        ? {}
-        : { value: substitution.value })
+      ...(substitution.value === UNCHANGED_SECRET ? {} : { value: substitution.value })
     }))
   });
 
@@ -591,11 +562,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                       </div>
                     </ServiceVariablesContext.Provider>
                   )}
-                  {current.step === ServiceStep.Review && (
-                    <ServiceVariablesContext.Provider value={serviceVariables}>
-                      <ReviewFields isUpdate={isUpdate} />
-                    </ServiceVariablesContext.Provider>
-                  )}
+                  {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}
                 </div>
 
                 <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">

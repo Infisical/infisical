@@ -172,7 +172,9 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       }),
       response: {
         200: z.object({
-          accessBundle: AccessBundleSchema.extend({ services: AgentVaultServiceSchema.array() })
+          accessBundle: AccessBundleSchema.extend({
+            services: AgentVaultServiceSchema.partial({ variableReferences: true }).array()
+          })
         })
       }
     },
@@ -310,7 +312,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { service } = await server.services.agentVaultAccessBundle.createService({
+      const { service, accessBundleName } = await server.services.agentVaultAccessBundle.createService({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -325,6 +327,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           type: EventType.AGENT_VAULT_SERVICE_CREATE,
           metadata: {
             accessBundleId: req.params.accessBundleId,
+            accessBundleName,
             serviceId: service.id,
             name: service.name,
             hostPattern: service.hostPattern,
@@ -393,7 +396,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { service } = await server.services.agentVaultAccessBundle.updateService({
+      const { service, accessBundleName } = await server.services.agentVaultAccessBundle.updateService({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -410,6 +413,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           // Every field comes off the body, so an absent one means the PATCH did not touch it.
           metadata: {
             accessBundleId: req.params.accessBundleId,
+            accessBundleName,
             serviceId: service.id,
             name: req.body.name,
             hostPattern: req.body.hostPattern,
@@ -478,7 +482,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const service = await server.services.agentVaultAccessBundle.deleteService({
+      const { service, accessBundleName } = await server.services.agentVaultAccessBundle.deleteService({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -493,6 +497,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           type: EventType.AGENT_VAULT_SERVICE_DELETE,
           metadata: {
             accessBundleId: req.params.accessBundleId,
+            accessBundleName,
             serviceId: service.id,
             name: service.name
           }
@@ -554,7 +559,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const variable = await server.services.agentVaultAccessBundle.createVariable({
+      const { variable, accessBundleName } = await server.services.agentVaultAccessBundle.createVariable({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -569,6 +574,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           type: EventType.AGENT_VAULT_VARIABLE_CREATE,
           metadata: {
             accessBundleId: req.params.accessBundleId,
+            accessBundleName,
             variableId: variable.id,
             key: variable.key,
             isSecret: variable.isSecret
@@ -607,13 +613,14 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { variable, previousKey, previousIsSecret } = await server.services.agentVaultAccessBundle.updateVariable({
-        projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req),
-        accessBundleId: req.params.accessBundleId,
-        variableId: req.params.variableId,
-        ...req.body
-      });
+      const { variable, previousKey, previousIsSecret, accessBundleName } =
+        await server.services.agentVaultAccessBundle.updateVariable({
+          projectId: req.internalAgentVaultProjectId,
+          ctx: actorContext(req),
+          accessBundleId: req.params.accessBundleId,
+          variableId: req.params.variableId,
+          ...req.body
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -623,6 +630,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           type: EventType.AGENT_VAULT_VARIABLE_UPDATE,
           metadata: {
             accessBundleId: req.params.accessBundleId,
+            accessBundleName,
             variableId: variable.id,
             key: variable.key,
             previousKey: previousKey === variable.key ? undefined : previousKey,
@@ -654,7 +662,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const variable = await server.services.agentVaultAccessBundle.deleteVariable({
+      const { variable, accessBundleName } = await server.services.agentVaultAccessBundle.deleteVariable({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -667,7 +675,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.AGENT_VAULT_VARIABLE_DELETE,
-          metadata: { accessBundleId: req.params.accessBundleId, variableId: variable.id, key: variable.key }
+          metadata: {
+            accessBundleId: req.params.accessBundleId,
+            accessBundleName,
+            variableId: variable.id,
+            key: variable.key
+          }
         }
       });
 
@@ -692,12 +705,13 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
-      const { variableId, key, value } = await server.services.agentVaultAccessBundle.getVariableValue({
-        projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req),
-        accessBundleId: req.params.accessBundleId,
-        variableId: req.params.variableId
-      });
+      const { variableId, key, value, accessBundleName } =
+        await server.services.agentVaultAccessBundle.getVariableValue({
+          projectId: req.internalAgentVaultProjectId,
+          ctx: actorContext(req),
+          accessBundleId: req.params.accessBundleId,
+          variableId: req.params.variableId
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -705,7 +719,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW,
-          metadata: { accessBundleId: req.params.accessBundleId, variableId, key }
+          metadata: { accessBundleId: req.params.accessBundleId, accessBundleName, variableId, key }
         }
       });
 

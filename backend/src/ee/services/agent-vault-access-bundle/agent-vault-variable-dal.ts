@@ -12,9 +12,11 @@ export type TAgentVaultVariableValueRow = Pick<TAgentVaultVariables, "id" | "acc
 export const agentVaultVariableDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultVariable);
 
+  // Reads the primary even without a tx. The service sheet refetches this list the moment it creates a
+  // variable, and a replica that has not caught up would drop the new key and fail the reference to it.
   const findByAccessBundleId = async (accessBundleId: string, tx?: Knex): Promise<TAgentVaultVariables[]> => {
     try {
-      return (await (tx || db.replicaNode())(TableName.AgentVaultVariable)
+      return (await (tx || db)(TableName.AgentVaultVariable)
         .where({ accessBundleId })
         .orderBy("key", "asc")
         .select(selectAllTableCols(TableName.AgentVaultVariable))) as TAgentVaultVariables[];
@@ -36,6 +38,9 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Resolve is the hot path, so it reads a replica. A variable is always saved before any service that uses it,
+  // but each query picks its own replica, and the one serving this read can trail the one that served the
+  // service. So an id the replica does not have is asked of the primary before resolve gives up on it.
   const findValuesForResolve = async ({
     variableIds,
     accessBundleIds
@@ -44,12 +49,16 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
     accessBundleIds: string[];
   }): Promise<TAgentVaultVariableValueRow[]> => {
     if (!variableIds.length || !accessBundleIds.length) return [];
-    try {
-      return await db
-        .replicaNode()(TableName.AgentVaultVariable)
-        .whereIn("id", variableIds)
+    const read = async (conn: Knex, ids: string[]): Promise<TAgentVaultVariableValueRow[]> =>
+      conn(TableName.AgentVaultVariable)
+        .whereIn("id", ids)
         .whereIn("accessBundleId", accessBundleIds)
         .select("id", "accessBundleId", "encryptedValue");
+    try {
+      const rows = await read(db.replicaNode(), variableIds);
+      const found = new Set(rows.map((row) => row.id));
+      const missing = variableIds.filter((id) => !found.has(id));
+      return missing.length ? [...rows, ...(await read(db, missing))] : rows;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault variable values" });
     }

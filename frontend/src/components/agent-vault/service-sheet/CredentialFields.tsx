@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Controller, ControllerRenderProps, useFormContext } from "react-hook-form";
 import { EyeIcon, EyeOffIcon, XIcon } from "lucide-react";
 
@@ -8,6 +8,7 @@ import {
   AlertTitle,
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -22,7 +23,7 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { isVariableReferenceOnly } from "@app/helpers/agentVaultVariables";
+import { isVariableReferenceOnly, toVariableReference } from "@app/helpers/agentVaultVariables";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
 import { SendsPreview } from "./SendsPreview";
@@ -31,6 +32,7 @@ import { useServiceVariables } from "./ServiceVariablesContext";
 import {
   ReferenceHighlights,
   useVariableAutocomplete,
+  VariableChip,
   VariableSuggestions
 } from "./VariableReferenceInput";
 
@@ -67,7 +69,7 @@ export const SecretInput = <TName extends SecretName>({
   isUntouched,
   hasStoredSecret,
   canBeCleared,
-  storedValue
+  storedKeys
 }: {
   field: ControllerRenderProps<TServiceForm, TName>;
   label: string;
@@ -81,12 +83,13 @@ export const SecretInput = <TName extends SecretName>({
   hasStoredSecret: boolean;
   /** Whether empty is a value this field can hold. Only such a field offers the clear button. */
   canBeCleared: boolean;
-  /** A stored value that is one variable reference, which the field shows in place of the sentinel. */
-  storedValue?: string;
+  /** The keys of the variables the stored value uses, listed under the field while that value is kept. */
+  storedKeys?: string[];
 }) => {
   const { setFocus } = useFormContext<TServiceForm>();
   const [isVisible, setIsVisible] = useState(false);
   const [isCleared, setIsCleared] = useState(false);
+  const descriptionId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   // Where the caret goes after a suggestion is picked. The value is set first, and setting it moves the
@@ -98,6 +101,9 @@ export const SecretInput = <TName extends SecretName>({
   // The sentinel must never render as text, and a lone reference holds no secret.
   const isShown = (isVisible && !isUntouched) || isReferenceOnly;
   const isHighlighted = isShown && value.includes("{{");
+  // Focusing only empties the box: left empty, it gets the stored value back on blur.
+  const isStoredValueKept = isUntouched || (hasStoredSecret && !value && !isCleared);
+  const hasStoredKeys = Boolean(storedKeys?.length);
 
   const autocomplete = useVariableAutocomplete({
     inputRef,
@@ -137,79 +143,109 @@ export const SecretInput = <TName extends SecretName>({
   const lowerLabel = label.toLowerCase();
 
   return (
-    <VariableSuggestions autocomplete={autocomplete}>
-      <InputGroup>
-        <div className="relative flex min-w-0 flex-1 items-center self-stretch">
-          {isHighlighted && <ReferenceHighlights value={value} overlayRef={overlayRef} />}
-          <InputGroupInput
-            {...field}
-            ref={(element) => {
-              field.ref(element);
-              inputRef.current = element;
-            }}
-            aria-label={ariaLabel}
-            role="combobox"
-            aria-autocomplete="list"
-            aria-expanded={autocomplete.isOpen}
-            aria-controls={autocomplete.isOpen ? autocomplete.listId : undefined}
-            aria-activedescendant={autocomplete.activeOptionId}
-            type={isShown ? "text" : "password"}
-            className={cn(isHighlighted && "text-transparent caret-foreground")}
-            onChange={(event) => {
-              setIsCleared(false);
-              // An emptied field masks again, since what is typed next may be a real secret.
-              if (!event.target.value) setIsVisible(false);
-              field.onChange(event);
-              autocomplete.refresh();
-            }}
-            onKeyDown={autocomplete.onKeyDown}
-            onKeyUp={(event) => {
-              if (!SUGGESTION_KEYS.has(event.key)) autocomplete.refresh();
-            }}
-            onClick={autocomplete.refresh}
-            onSelect={syncOverlay}
-            onScroll={syncOverlay}
-            onFocus={() => {
-              if (isUntouched) field.onChange("");
-            }}
-            // Empty reads the same whether the secret was meant to go or the field was only clicked into,
-            // so the clear button is made the one way to say it and passing through loses nothing.
-            onBlur={() => {
-              autocomplete.close();
-              if (hasStoredSecret && !field.value && !isCleared) {
-                field.onChange(storedValue ?? UNCHANGED_SECRET);
-              }
-              field.onBlur();
-            }}
-            placeholder={placeholder}
-            isError={isError}
-          />
-        </div>
-        <InputGroupAddon align="inline-end">
-          {canBeCleared && hasStoredSecret && (
-            <InputGroupButton
-              isDisabled={isCleared}
-              aria-label={`Clear ${lowerLabel}`}
-              onClick={() => {
-                setIsCleared(true);
-                field.onChange("");
-                setFocus(field.name);
+    <>
+      <VariableSuggestions autocomplete={autocomplete}>
+        <InputGroup>
+          <div className="relative flex min-w-0 flex-1 items-center self-stretch">
+            {isHighlighted && <ReferenceHighlights value={value} overlayRef={overlayRef} />}
+            <InputGroupInput
+              {...field}
+              ref={(element) => {
+                field.ref(element);
+                inputRef.current = element;
               }}
+              aria-label={ariaLabel}
+              aria-describedby={hasStoredKeys && isStoredValueKept ? descriptionId : undefined}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={autocomplete.isOpen}
+              aria-controls={autocomplete.isOpen ? autocomplete.listId : undefined}
+              aria-activedescendant={autocomplete.activeOptionId}
+              // Not type="password": that opens the browser's and password managers' autofill menus over
+              // the variable list, so the field is masked in CSS and each manager is told to skip it.
+              className={cn(
+                !isShown && "[-webkit-text-security:disc]",
+                isHighlighted && "text-transparent caret-foreground"
+              )}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              data-form-type="other"
+              data-1p-ignore
+              data-lpignore="true"
+              data-bwignore
+              onChange={(event) => {
+                setIsCleared(false);
+                // An emptied field masks again, since what is typed next may be a real secret.
+                if (!event.target.value) setIsVisible(false);
+                field.onChange(event);
+                autocomplete.refresh();
+              }}
+              onKeyDown={autocomplete.onKeyDown}
+              onKeyUp={(event) => {
+                if (!SUGGESTION_KEYS.has(event.key)) autocomplete.refresh();
+              }}
+              onClick={autocomplete.refresh}
+              onSelect={syncOverlay}
+              onScroll={syncOverlay}
+              onFocus={() => {
+                if (isUntouched) field.onChange("");
+              }}
+              // Empty reads the same whether the secret was meant to go or the field was only clicked into,
+              // so the clear button is made the one way to say it and passing through loses nothing.
+              onBlur={() => {
+                autocomplete.close();
+                if (hasStoredSecret && !field.value && !isCleared) field.onChange(UNCHANGED_SECRET);
+                field.onBlur();
+              }}
+              placeholder={placeholder}
+              isError={isError}
+            />
+          </div>
+          <InputGroupAddon align="inline-end">
+            {canBeCleared && hasStoredSecret && (
+              <InputGroupButton
+                isDisabled={isCleared}
+                aria-label={`Clear ${lowerLabel}`}
+                onClick={() => {
+                  setIsCleared(true);
+                  field.onChange("");
+                  setFocus(field.name);
+                }}
+              >
+                <XIcon />
+              </InputGroupButton>
+            )}
+            <InputGroupButton
+              // A stored credential is never returned, so until it is replaced there is nothing to reveal.
+              isDisabled={isUntouched || !field.value || isReferenceOnly}
+              aria-label={`${isVisible ? "Hide" : "Show"} ${lowerLabel}`}
+              onClick={() => setIsVisible((prev) => !prev)}
             >
-              <XIcon />
+              {isVisible ? <EyeOffIcon /> : <EyeIcon />}
             </InputGroupButton>
-          )}
-          <InputGroupButton
-            // A stored credential is never returned, so until it is replaced there is nothing to reveal.
-            isDisabled={isUntouched || !field.value || isReferenceOnly}
-            aria-label={`${isVisible ? "Hide" : "Show"} ${lowerLabel}`}
-            onClick={() => setIsVisible((prev) => !prev)}
-          >
-            {isVisible ? <EyeOffIcon /> : <EyeIcon />}
-          </InputGroupButton>
-        </InputGroupAddon>
-      </InputGroup>
-    </VariableSuggestions>
+          </InputGroupAddon>
+        </InputGroup>
+      </VariableSuggestions>
+      {hasStoredKeys && (
+        <FieldDescription
+          id={descriptionId}
+          isOpen={isStoredValueKept}
+          className="flex flex-wrap items-center gap-1"
+        >
+          Current value uses
+          {storedKeys?.map((key) => (
+            <VariableChip
+              key={key}
+              reference={toVariableReference(key)}
+              isKnown
+              className="font-mono"
+            />
+          ))}
+        </FieldDescription>
+      )}
+    </>
   );
 };
 
@@ -219,7 +255,7 @@ type Props = {
 
 export const CredentialFields = ({ storedType }: Props) => {
   const { control, watch, setValue } = useFormContext<TServiceForm>();
-  const { seeded } = useServiceVariables();
+  const { storedKeys } = useServiceVariables();
   const credentialType = watch("credentialType");
   const secret = watch("secret");
   const username = watch("username");
@@ -254,7 +290,7 @@ export const CredentialFields = ({ storedType }: Props) => {
               isUntouched={isUntouched}
               hasStoredSecret={hasStoredSecret}
               canBeCleared={isBasic}
-              storedValue={hasStoredSecret ? seeded.secret : undefined}
+              storedKeys={hasStoredSecret ? storedKeys.secret : undefined}
             />
             <FieldError>{fieldState.error?.message}</FieldError>
           </FieldContent>
@@ -342,7 +378,7 @@ export const CredentialFields = ({ storedType }: Props) => {
                     isUntouched={isUsernameUntouched}
                     hasStoredSecret={hasStoredSecret}
                     canBeCleared
-                    storedValue={hasStoredSecret ? seeded.username : undefined}
+                    storedKeys={hasStoredSecret ? storedKeys.username : undefined}
                   />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>

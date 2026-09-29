@@ -166,9 +166,13 @@ path decides what a service can reach, so it stays literal.
   boundary: a service write maps keys to ids before it seals (`toStoredVariableReferences`), reading the
   primary, since a variable created a moment earlier may not be on a replica yet. So a rename is one row.
 - `agent_vault_service_variable_references` holds a row per field per variable. It drives Used By, the delete
-  refusal, and `isWholeValue`, which is how the sheet shows `{{KEY}}` again for a value that never returns.
-  **Resolve does not read it**: it pulls the ids out of the decrypted fields, so a service saved mid-poll can
-  never leave the two describing different versions of a field.
+  refusal, and the keys the service sheet lists under a stored value. **Resolve does not read it**: it pulls
+  the ids out of the decrypted fields, so a service saved mid-poll can never leave the two describing
+  different versions of a field.
+- A stored value never comes back in any form, a lone `{{KEY}}` included. The sheet lists the keys a stored
+  field uses under the field and keeps the field masked until it is retyped. Settled: putting a lone
+  reference back in its field made it the one stored field that shows, and left a field mixing text with a
+  reference looking like it used none.
 - An update rebuilds the rows of only the values it wrote. An omitted value keeps its sealed text and its
   rows, a dropped header or substitution takes its rows through the foreign key, and a new credential type
   or pass-through clears both credential fields.
@@ -180,12 +184,15 @@ path decides what a service can reach, so it stays literal.
   refused without quoting it, because the text was cut from a secret. Placeholders can't contain double
   braces. A variable's own value is sent as is and never expanded again, which is also how a service sends a
   literal `{{`.
-- Resolve leaves an id with no variable behind as text and logs it rather than dropping the service, which
-  would also drop the service's method and path restrictions. Values saved before variables existed hold no
-  id tokens, so they pass through untouched.
-- Admin only, reads included: every variable route checks `Edit` on access bundles, which a member lacks.
-  Every value is sealed; `isSecret` only decides whether the list returns it. The value route is a GET with
-  no-store headers and one audit event per read.
+- Resolve reads variable values on a replica, then asks the primary for any id the replica lacks, since each
+  query can land on a different replica. An id with no variable behind it on either stays as text and is
+  logged rather than dropping the service, which would also drop the service's method and path restrictions.
+  Values saved before variables existed hold no id tokens, so they pass through untouched.
+- Admin only, reads included: every variable route checks `Edit` on access bundles, which a member lacks,
+  and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
+  an empty list would claim they use none). Every value is sealed;
+  `isSecret` only decides whether the list returns it. The value route is a GET with no-store headers and
+  one audit event per read.
 
 ## Credentials at rest
 

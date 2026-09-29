@@ -46,7 +46,6 @@ import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission
 import {
   AGENT_VAULT_MAX_VARIABLES,
   findVariableKeys,
-  isWholeVariableReference,
   toStoredVariableReferences,
   toVariableReference
 } from "../agent-vault/agent-vault-variable-fns";
@@ -378,7 +377,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const summarizeVariableReference = (
     reference: TAgentVaultVariableReferenceWithKey
   ): TAgentVaultVariableReferenceSummary => {
-    const base = { variableId: reference.variableId, key: reference.key, isWholeValue: reference.isWholeValue };
+    const base = { variableId: reference.variableId, key: reference.key };
     // The field check constraint guarantees the id that matches the field is set.
     switch (reference.field as AgentVaultVariableReferenceField) {
       case AgentVaultVariableReferenceField.CustomHeader:
@@ -426,11 +425,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     updatedAt: service.updatedAt
   });
 
-  const loadTransformations = async (serviceIds: string[], tx?: Knex) => {
+  const loadTransformations = async (
+    serviceIds: string[],
+    tx?: Knex,
+    { withVariableReferences = true }: { withVariableReferences?: boolean } = {}
+  ) => {
     const [customHeaders, substitutions, variableReferences] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds, tx),
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds, tx),
-      agentVaultServiceVariableReferenceDAL.findByServiceIds(serviceIds, tx)
+      withVariableReferences ? agentVaultServiceVariableReferenceDAL.findByServiceIds(serviceIds, tx) : []
     ]);
     return { customHeaders, substitutions, variableReferences };
   };
@@ -512,8 +515,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             variableId,
             field,
             customHeaderId: customHeaderId ?? null,
-            substitutionId: substitutionId ?? null,
-            isWholeValue: isWholeVariableReference(text)
+            substitutionId: substitutionId ?? null
           }
         ];
       })
@@ -595,10 +597,18 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionAgentVaultAccessBundleActions.Read,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
+    // Variables are admin only, so a member's services leave variableReferences out. An empty list would claim
+    // they use no variables.
+    const canReadVariables = permission.can(
+      ProjectPermissionAgentVaultAccessBundleActions.Edit,
+      ProjectPermissionSub.AgentVaultAccessBundles
+    );
 
     const services = await agentVaultServiceDAL.findByAccessBundleId(bundle.id);
     const { customHeaders, substitutions, variableReferences } = await loadTransformations(
-      services.map((service) => service.id)
+      services.map((service) => service.id),
+      undefined,
+      { withVariableReferences: canReadVariables }
     );
 
     return {
@@ -607,14 +617,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       description: bundle.description ?? null,
       createdAt: bundle.createdAt,
       updatedAt: bundle.updatedAt,
-      services: services.map((service) =>
-        projectService(
+      services: services.map((service) => {
+        const projected = projectService(
           service,
           customHeaders.filter((header) => header.serviceId === service.id),
           substitutions.filter((substitution) => substitution.serviceId === service.id),
           variableReferences.filter((reference) => reference.serviceId === service.id)
-        )
-      )
+        );
+        return canReadVariables ? projected : { ...projected, variableReferences: undefined };
+      })
     };
   };
 
@@ -869,7 +880,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         result.insertedCustomHeaders,
         result.insertedSubstitutions,
         result.variableReferences
-      )
+      ),
+      accessBundleName: bundle.name
     };
   };
 
@@ -1173,7 +1185,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         result.updatedCustomHeaders,
         result.updatedSubstitutions,
         result.variableReferences
-      )
+      ),
+      accessBundleName: bundle.name
     };
   };
 
@@ -1190,7 +1203,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     // Read before the delete, since CASCADE takes these rows with the service.
     const { customHeaders, substitutions, variableReferences } = await loadTransformations([service.id]);
     const deleted = await agentVaultServiceDAL.deleteById(service.id);
-    return projectService(deleted, customHeaders, substitutions, variableReferences);
+    return {
+      service: projectService(deleted, customHeaders, substitutions, variableReferences),
+      accessBundleName: bundle.name
+    };
   };
 
   type TProjectCipher = Awaited<ReturnType<typeof getProjectCipher>>;
@@ -1286,7 +1302,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       });
 
     try {
-      return projectVariable(await write(), [], value);
+      return { variable: projectVariable(await write(), [], value), accessBundleName: bundle.name };
     } catch (err) {
       if (isUniqueViolation(err)) throw new BadRequestError({ message: duplicateVariableKeyMessage(key) });
       throw err;
@@ -1351,7 +1367,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return {
       variable: projectVariable(updated, serviceIdsUsing(references, updated.id), plainValue),
       previousKey: previous.key,
-      previousIsSecret: previous.isSecret
+      previousIsSecret: previous.isSecret,
+      accessBundleName: bundle.name
     };
   };
 
@@ -1404,7 +1421,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const plainValue = deleted.isSecret
       ? null
       : openVariableValue((await getProjectCipher(rest.projectId)).decryptor, deleted.encryptedValue);
-    return projectVariable(deleted, [], plainValue);
+    return { variable: projectVariable(deleted, [], plainValue), accessBundleName: bundle.name };
   };
 
   const getVariableValue = async ({ accessBundleId, variableId, ...rest }: TVariableByIdDTO) => {
@@ -1414,7 +1431,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     if (!variable) throw new NotFoundError({ message: `Variable with ID '${variableId}' not found` });
 
     const { decryptor } = await getProjectCipher(rest.projectId);
-    return { variableId: variable.id, key: variable.key, value: openVariableValue(decryptor, variable.encryptedValue) };
+    return {
+      variableId: variable.id,
+      key: variable.key,
+      value: openVariableValue(decryptor, variable.encryptedValue),
+      accessBundleName: bundle.name
+    };
   };
 
   const listMembers = async ({ accessBundleId, search, limit, offset, ...rest }: TListMembersDTO) => {

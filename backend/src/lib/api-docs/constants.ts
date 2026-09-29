@@ -4297,12 +4297,12 @@ export const AGENT_VAULT = {
     surfaces: "Where in the request to look for the placeholder: path, query, header or body.",
     substitutionValue: "The real value the placeholder is replaced with. Never returned once saved.",
     updateSubstitutionValue: "The real value the placeholder is replaced with. Omit to keep the value already stored.",
-    variableReferences: "The variables this service's credential, custom header values and substitution values use.",
+    variableReferences:
+      "The variables this service's credential, custom header values and substitution values use. Left out for an Agent Vault member, since only admins can see variables.",
     referenceField:
       "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
     referenceCustomHeaderId: "The custom header whose value uses the variable.",
-    referenceSubstitutionId: "The substitution whose value uses the variable.",
-    referenceIsWholeValue: "Whether the value is this variable and nothing else."
+    referenceSubstitutionId: "The substitution whose value uses the variable."
   },
   VARIABLE: {
     variableId: "The ID of the variable.",

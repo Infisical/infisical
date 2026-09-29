@@ -58,11 +58,9 @@ export type TAgentVaultSubstitutionInput = {
   value?: string;
 };
 
-/** `isWholeValue` means the value is exactly {{key}}, so the sheet can show it where a value never returns. */
 export type TAgentVaultVariableReference = {
   variableId: string;
   key: string;
-  isWholeValue: boolean;
 } & (
   | {
       field:
@@ -84,7 +82,8 @@ export type TAgentVaultService = {
   credential: TAgentVaultCredentialSummary;
   customHeaders: TAgentVaultCustomHeaderSummary[];
   substitutions: TAgentVaultSubstitutionSummary[];
-  variableReferences: TAgentVaultVariableReference[];
+  // Left out for a member, who can't see variables.
+  variableReferences?: TAgentVaultVariableReference[];
   createdAt: string;
   updatedAt: string;
 };

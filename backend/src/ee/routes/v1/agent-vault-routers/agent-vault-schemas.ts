@@ -182,8 +182,7 @@ export const AgentVaultSubstitutionsUpdateSchema = AgentVaultSubstitutionUpdateS
 
 const variableReferenceBase = {
   variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
-  key: z.string().describe(AGENT_VAULT.VARIABLE.key),
-  isWholeValue: z.boolean().describe(AGENT_VAULT.SERVICE.referenceIsWholeValue)
+  key: z.string().describe(AGENT_VAULT.VARIABLE.key)
 };
 
 export const AgentVaultVariableReferenceSchema = z.discriminatedUnion("field", [

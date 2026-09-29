@@ -14,7 +14,6 @@ export const AgentVaultServiceVariableReferencesSchema = z.object({
   field: z.string(),
   customHeaderId: z.string().uuid().nullable().optional(),
   substitutionId: z.string().uuid().nullable().optional(),
-  isWholeValue: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -22,7 +22,7 @@ export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.Basic }
   | { type: AgentVaultCredentialType.Passthrough };
 
-export type TAgentVaultVariableReferenceSummary = { variableId: string; key: string; isWholeValue: boolean } & (
+export type TAgentVaultVariableReferenceSummary = { variableId: string; key: string } & (
   | { field: AgentVaultVariableReferenceField.CredentialValue | AgentVaultVariableReferenceField.CredentialUsername }
   | { field: AgentVaultVariableReferenceField.CustomHeader; customHeaderId: string }
   | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }

@@ -6338,6 +6338,7 @@ interface AgentVaultServiceCreateEvent {
   type: EventType.AGENT_VAULT_SERVICE_CREATE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     serviceId: string;
     name: string;
     hostPattern: string;
@@ -6357,6 +6358,7 @@ interface AgentVaultServiceUpdateEvent {
   type: EventType.AGENT_VAULT_SERVICE_UPDATE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     serviceId: string;
     name?: string;
     hostPattern?: string;
@@ -6379,6 +6381,7 @@ interface AgentVaultServiceDeleteEvent {
   type: EventType.AGENT_VAULT_SERVICE_DELETE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     serviceId: string;
     name: string;
   };
@@ -6389,6 +6392,7 @@ interface AgentVaultVariableCreateEvent {
   type: EventType.AGENT_VAULT_VARIABLE_CREATE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     variableId: string;
     key: string;
     isSecret: boolean;
@@ -6399,6 +6403,7 @@ interface AgentVaultVariableUpdateEvent {
   type: EventType.AGENT_VAULT_VARIABLE_UPDATE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     variableId: string;
     key: string;
     // The previous* fields are present only when the update changed them.
@@ -6413,6 +6418,7 @@ interface AgentVaultVariableDeleteEvent {
   type: EventType.AGENT_VAULT_VARIABLE_DELETE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     variableId: string;
     key: string;
   };
@@ -6422,6 +6428,7 @@ interface AgentVaultVariableValueViewEvent {
   type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     variableId: string;
     key: string;
   };
