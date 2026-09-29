@@ -56,7 +56,9 @@ export const FILTER_FIELDS: FilterFieldDefinition[] = [
       { value: "acme", label: "ACME" },
       { value: "api", label: "API" },
       { value: "est", label: "EST" },
-      { value: "scep", label: "SCEP" }
+      { value: "scep", label: "SCEP" },
+      { value: "imported", label: "Imported" },
+      { value: "discovered", label: "Discovered" }
     ]
   },
   {
