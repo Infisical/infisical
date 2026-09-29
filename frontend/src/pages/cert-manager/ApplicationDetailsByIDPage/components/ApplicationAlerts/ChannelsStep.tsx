@@ -135,8 +135,8 @@ const EmailRecipientsField = ({
         onValueChange={setEmails}
         getOptionValue={(email) => email}
         getOptionLabel={(email) => email}
-        placeholder="Select project members or type an email..."
-        emptyMessage="No matching project members. Type a full email to add it."
+        placeholder="Select members or type an email..."
+        emptyMessage="No matching members. Type a full email to add it."
         isError={isError}
         creation={{
           isValid: (inputValue) => isValidEmail(normalizeEmail(inputValue)),
@@ -149,9 +149,9 @@ const EmailRecipientsField = ({
         }}
       />
       <FieldDescription>
-        Pick project members or type any email address. Addresses outside the project must use one
-        of your organization&apos;s verified email domains.
-        {unlistedUsers.length > 0 && ` Also sent to ${unlistedUsers.length} project member(s).`}
+        Pick Certificate Manager members or type any email address. Other addresses must use one of
+        your organization&apos;s verified email domains.
+        {unlistedUsers.length > 0 && ` Also sent to ${unlistedUsers.length} member(s).`}
         {groups.length > 0 && ` Also sent to ${groups.length} group(s).`}
       </FieldDescription>
     </>

@@ -2,11 +2,11 @@ import { getConfig } from "@app/lib/config/env";
 import { delay } from "@app/lib/delay";
 import { logger } from "@app/lib/logger";
 import { RETRYABLE_NETWORK_ERRORS } from "@app/lib/retry/network-errors";
+import { getRevocationReasonLabel } from "@app/services/certificate/certificate-revocation-labels";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { PKI_ALERT_RETRY_CONFIG } from "./pki-alert-v2-constants";
 import {
-  getRevocationReasonLabel,
   PkiAlertEventType,
   TAlertInfo,
   TCertificatePreview,

@@ -3785,8 +3785,6 @@ export const registerRoutes = async (
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     pkiSyncQueue,
-    certificateSyncDAL,
-    pkiSyncDAL,
     certificateAlertEventEmitter
   });
 

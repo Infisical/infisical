@@ -69,18 +69,6 @@ export const userDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findUsersByEmails = async (emails: string[], tx?: Knex) => {
-    if (!emails.length) return [];
-    try {
-      return await (tx || db.replicaNode())(TableName.Users)
-        .where({ isGhost: false })
-        .whereRaw(`lower(??) = ANY(?)`, [`${TableName.Users}.email`, emails.map((email) => email.toLowerCase())])
-        .select(selectAllTableCols(TableName.Users));
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find users by emails" });
-    }
-  };
-
   // USER ENCRYPTION FUNCTIONS
   // -------------------------
   const findUserEncKeyByUsername = async ({ username }: { username: string }) => {
@@ -273,7 +261,6 @@ export const userDALFactory = (db: TDbClient) => {
     findOneUserAction,
     createUserAction,
     getUsersByFilter,
-    findAllMyAccounts,
-    findUsersByEmails
+    findAllMyAccounts
   };
 };

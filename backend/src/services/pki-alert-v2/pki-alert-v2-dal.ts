@@ -279,6 +279,40 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     return result.alerts;
   };
 
+  const countByProjectId = async (
+    projectId: string,
+    filters?: {
+      search?: string;
+      eventType?: string;
+      enabled?: boolean;
+    },
+    tx?: Knex
+  ): Promise<number> => {
+    try {
+      let query = (tx || db.replicaNode())
+        .count("* as count")
+        .from(TableName.PkiAlertsV2)
+        .where(`${TableName.PkiAlertsV2}.projectId`, projectId);
+
+      if (filters?.search) {
+        query = query.whereILike(`${TableName.PkiAlertsV2}.name`, `%${sanitizeLikeInput(filters.search)}%`);
+      }
+
+      if (filters?.eventType) {
+        query = query.where(`${TableName.PkiAlertsV2}.eventType`, filters.eventType);
+      }
+
+      if (filters?.enabled !== undefined) {
+        query = query.where(`${TableName.PkiAlertsV2}.enabled`, filters.enabled);
+      }
+
+      const result = await query;
+      return parseInt((result[0] as { count: string }).count, 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountByProjectId" });
+    }
+  };
+
   const getDistinctProjectIds = async (
     filters?: {
       enabled?: boolean;
@@ -626,6 +660,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     findByIdWithChannels,
     findByProjectId,
     findByProjectIdWithCount,
+    countByProjectId,
     getDistinctProjectIds,
     findMatchingCertificates
   };

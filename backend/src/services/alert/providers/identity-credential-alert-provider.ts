@@ -17,7 +17,7 @@ import {
 } from "@app/services/identity/identity-auth-method-events";
 
 import { TAlertPayload, TAlertSeverity } from "../alert-channel-types";
-import { expirySeverity, formatUtcDate } from "../alert-format-fns";
+import { expirySeverity, formatUtcDate, humanizeDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_DAYS,
   ALERT_SCAN_LEAD_INTERVAL,
@@ -143,12 +143,6 @@ type TAuthMethodChangeTarget = {
 };
 
 type TIdentityCredentialTarget = TExpiringCredentialTarget | TAuthMethodChangeTarget;
-
-// "1d" -> "1 day", "30d" -> "30 days"
-const humanizeAlertBefore = (alertBefore: string): string => {
-  const days = alertBeforeDays(alertBefore);
-  return `${days} day${days === 1 ? "" : "s"}`;
-};
 
 const severityFor = (targets: TExpiringCredentialTarget[]): TAlertSeverity =>
   expirySeverity(targets.map((target) => target.expiresAt));
@@ -360,7 +354,7 @@ export const identityCredentialAlertProviderFactory = ({
       resourceOwnerKind: "Machine Identity",
       severity: severityFor(targets),
       summary: alertBefore
-        ? `${targets.length} machine identity authentication(s) expiring within ${humanizeAlertBefore(alertBefore)}`
+        ? `${targets.length} machine identity authentication(s) expiring within ${humanizeDays(alertBeforeDays(alertBefore))}`
         : `${targets.length} machine identity authentication(s) expiring`,
       items: targets.map((target) => ({
         id: targetId(target),

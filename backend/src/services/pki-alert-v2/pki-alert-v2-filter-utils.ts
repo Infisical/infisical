@@ -274,6 +274,43 @@ export const applyCaFilters = (
   return filteredQuery;
 };
 
+export const validateFilterRules = (filters: TPkiFilterRule[]): void => {
+  for (const filter of filters) {
+    if (!Object.values(PkiFilterField).includes(filter.field)) {
+      throw new Error(`Invalid filter field: ${filter.field}`);
+    }
+
+    if (!Object.values(PkiFilterOperator).includes(filter.operator)) {
+      throw new Error(`Invalid filter operator: ${filter.operator}`);
+    }
+
+    switch (filter.field) {
+      case PkiFilterField.INCLUDE_CAS:
+        if (typeof filter.value !== "boolean") {
+          throw new Error("include_cas filter value must be boolean");
+        }
+        break;
+
+      case PkiFilterField.PROFILE_NAME:
+      case PkiFilterField.COMMON_NAME:
+      case PkiFilterField.SAN:
+        if (filter.operator === PkiFilterOperator.CONTAINS || filter.operator === PkiFilterOperator.MATCHES) {
+          if (!Array.isArray(filter.value) && typeof filter.value !== "string") {
+            throw new Error(
+              `${filter.field} filter value must be string or array of strings for ${filter.operator} operator`
+            );
+          }
+        } else if (typeof filter.value !== "string") {
+          throw new Error(`${filter.field} filter value must be string for ${filter.operator} operator`);
+        }
+        break;
+
+      default:
+        break;
+    }
+  }
+};
+
 export const requiresProfileJoin = (filters: TPkiFilterRule[]): boolean => {
   return filters.some((filter) => filter.field === PkiFilterField.PROFILE_NAME);
 };

@@ -18,7 +18,7 @@ import { getRevocationReasonLabel } from "@app/services/certificate/certificate-
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType, TAlertPayload, TAlertSeverity } from "../alert-channel-types";
-import { expirySeverity, formatUtcDate } from "../alert-format-fns";
+import { expirySeverity, formatUtcDate, humanizeDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
   AlertPermissionAction,
@@ -103,11 +103,6 @@ const formatAltNames = (altNames: string | null): string =>
     .filter(Boolean)
     .join(", ");
 
-const humanizeAlertBefore = (alertBefore: string): string => {
-  const days = alertBeforeDays(alertBefore);
-  return `${days} day${days === 1 ? "" : "s"}`;
-};
-
 const buildSummary = (
   eventType: CertificateAlertEvent,
   targets: TApplicationAlertCertificate[],
@@ -117,7 +112,7 @@ const buildSummary = (
   const inApplication = applicationName ? ` in application '${applicationName}'` : "";
   if (alertBefore) {
     const certificates = `${targets.length} certificate${targets.length === 1 ? "" : "s"}`;
-    return `${certificates}${inApplication} expiring within ${humanizeAlertBefore(alertBefore)}`;
+    return `${certificates}${inApplication} expiring within ${humanizeDays(alertBeforeDays(alertBefore))}`;
   }
   if (targets.length === 1) return `Certificate '${targets[0].commonName}' ${EVENT_VERBS[eventType]}${inApplication}`;
   return `${targets.length} certificates ${EVENT_VERBS[eventType]}${inApplication}`;
@@ -131,11 +126,15 @@ const buildItemSummary = (eventType: CertificateAlertEvent, certificate: TApplic
   return `Certificate '${certificate.commonName}' ${EVENT_VERBS[eventType]}${inApplication}`;
 };
 
+const DAILY_SCAN_DEDUP_MARGIN_HOURS = 4;
+
+const dayMultipleDedupWindowHours = (days: number): number => days * 24 - DAILY_SCAN_DEDUP_MARGIN_HOURS;
+
 const expirationDedupWindowHours = (days: number, dailyReminder?: boolean): number => {
-  if (dailyReminder || days <= 7) return 24;
-  if (days <= 30) return 48;
-  if (days <= 90) return 168;
-  return 720;
+  if (dailyReminder || days <= 7) return dayMultipleDedupWindowHours(1);
+  if (days <= 30) return dayMultipleDedupWindowHours(2);
+  if (days <= 90) return dayMultipleDedupWindowHours(7);
+  return dayMultipleDedupWindowHours(30);
 };
 
 export type TCertManagerApplicationAlertProviderDep = {
@@ -260,7 +259,7 @@ export const certManagerApplicationAlertProviderFactory = ({
 
   const assertPermission = async ({ action, projectId, resourceId, actor }: TAlertPermissionInput): Promise<void> => {
     if (!projectId) {
-      throw new BadRequestError({ message: "Certificate alerts must be created in a Certificate Manager project" });
+      throw new BadRequestError({ message: "Certificate alerts must be created in Certificate Manager" });
     }
 
     if (!resourceId) {
@@ -297,7 +296,9 @@ export const certManagerApplicationAlertProviderFactory = ({
 
     const application = await certManagerApplicationAlertDAL.findApplicationById(input.resourceId);
     if (!application || application.orgId !== input.orgId || application.projectId !== input.projectId) {
-      throw new NotFoundError({ message: `Application with ID '${input.resourceId}' not found in this project` });
+      throw new NotFoundError({
+        message: `Application with ID '${input.resourceId}' not found in Certificate Manager`
+      });
     }
   };
 

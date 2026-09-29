@@ -134,7 +134,9 @@ export async function up(knex: Knex): Promise<void> {
         eventType: EVENT_BY_LEGACY_EVENT[legacyAlert.eventType],
         triggerType: isExpiration ? "scheduled" : "event",
         condition: condition ? JSON.stringify(condition) : null,
-        enabled: legacyAlert.enabled ?? true
+        enabled: legacyAlert.enabled ?? true,
+        createdAt: legacyAlert.createdAt,
+        updatedAt: legacyAlert.updatedAt
       } as TAlertsInsert)
       .returning("id");
 
@@ -207,7 +209,9 @@ export async function up(knex: Knex): Promise<void> {
           name: channelName,
           channelType: legacyChannel.channelType,
           encryptedConfig: encrypt(legacyChannel.channelType === "email" ? {} : config),
-          enabled: legacyChannel.enabled ?? true
+          enabled: legacyChannel.enabled ?? true,
+          createdAt: legacyChannel.createdAt,
+          updatedAt: legacyChannel.updatedAt
         } as TAlertChannelsInsert)
         .returning("id");
 

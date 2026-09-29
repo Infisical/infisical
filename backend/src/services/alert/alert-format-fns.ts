@@ -3,6 +3,8 @@ import { TAlertSeverity } from "./alert-channel-types";
 export const daysUntil = (date: Date): number =>
   Math.ceil((new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
+export const humanizeDays = (days: number): string => `${days} day${days === 1 ? "" : "s"}`;
+
 export const formatUtcDate = (date: Date): string =>
   new Date(date).toLocaleString("en-US", {
     year: "numeric",

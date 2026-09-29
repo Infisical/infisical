@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { pkiAlertsV2Keys } from "@app/hooks/api/pkiAlertsV2/queries";
 
 import { alertKeys } from "./queries";
 import {
@@ -21,6 +22,7 @@ export const useCreateAlert = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: alertKeys.all });
+      queryClient.invalidateQueries({ queryKey: pkiAlertsV2Keys.all });
     }
   });
 };
@@ -40,6 +42,7 @@ export const useUpdateAlert = () => {
         alerts?.map((alert) => (alert.id === updatedAlert.id ? updatedAlert : alert))
       );
       queryClient.invalidateQueries({ queryKey: alertKeys.all });
+      queryClient.invalidateQueries({ queryKey: pkiAlertsV2Keys.all });
     }
   });
 };
@@ -72,6 +75,7 @@ export const useDeleteAlert = () => {
         alerts?.filter((alert) => alert.id !== deletedAlert.id)
       );
       queryClient.invalidateQueries({ queryKey: alertKeys.all });
+      queryClient.invalidateQueries({ queryKey: pkiAlertsV2Keys.all });
     }
   });
 };

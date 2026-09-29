@@ -102,8 +102,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     schema: {
       deprecated: true,
       operationId: "listPkiAlerts",
-      description:
-        "Deprecated: application alerts are managed with the alerts API (/api/v1/alerts). List PKI alerts for a project",
+      description: "Deprecated: application alerts are managed with the alerts API (/api/v1/alerts). List PKI alerts.",
       tags: [ApiDocsTags.PkiAlerting],
       querystring: z.object({
         projectId: z.string().uuid().optional().describe(openApiHidden()),
@@ -498,13 +497,13 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAlerting],
       body: z.object({
         projectId: z.string().uuid().optional().describe(openApiHidden()),
+        applicationId: z.string().uuid().optional().describe("Optional application context to scope the test payload"),
         url: z
           .string()
           .url()
           .refine((url) => url.startsWith("https://"), "Webhook URL must use HTTPS")
           .describe("Webhook URL to test"),
-        signingSecret: z.string().max(256).optional().describe("Optional signing secret for HMAC signature"),
-        applicationId: z.string().uuid().optional().describe("Optional application context to scope the test payload")
+        signingSecret: z.string().max(256).optional().describe("Optional signing secret for HMAC signature")
       }),
       response: {
         200: z.object({

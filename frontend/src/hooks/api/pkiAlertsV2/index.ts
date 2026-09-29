@@ -1,9 +1,4 @@
-export {
-  useCreatePkiAlertV2,
-  useDeletePkiAlertV2,
-  useTestPkiWebhookConfigV2,
-  useUpdatePkiAlertV2
-} from "./mutations";
+export { useDeletePkiAlertV2, useTestPkiWebhookConfigV2, useUpdatePkiAlertV2 } from "./mutations";
 export {
   pkiAlertsV2Keys,
   useGetPkiAlertsV2,
@@ -30,7 +25,6 @@ export type {
   TUpdatePkiAlertV2
 } from "./types";
 export {
-  createPkiAlertV2Schema,
   PkiAlertChannelTypeV2,
   PkiAlertEventTypeV2,
   PkiFilterFieldV2,

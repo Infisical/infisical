@@ -271,9 +271,7 @@ export const certificateEstV3ServiceFactory = ({
     const verifiedChains = await Promise.all(
       caCertChains.map((chain) => {
         const caCert = new x509.X509Certificate(chain.certificate);
-        const caChain = chain.certificateChain?.trim()
-          ? extractX509CertFromChain(chain.certificateChain).map((c) => new x509.X509Certificate(c))
-          : [];
+        const caChain = extractX509CertFromChain(chain.certificateChain)?.map((c) => new x509.X509Certificate(c)) || [];
 
         return isCertChainValid([cert, caCert, ...caChain]);
       })
@@ -286,11 +284,12 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     // Transaction forces primary (not replica) so a just-revoked cert cannot slip through replica lag.
-    const storedCert = await certificateDAL.transaction(async (tx) =>
-      certificateDAL.findOne({ serialNumber: cert.serialNumber, caId: profile.caId }, tx)
-    );
+    const isRevoked = await certificateDAL.transaction(async (tx) => {
+      const storedCert = await certificateDAL.findOne({ serialNumber: cert.serialNumber, caId: profile.caId }, tx);
+      return storedCert?.status === CertStatus.REVOKED;
+    });
 
-    if (storedCert?.status === CertStatus.REVOKED) {
+    if (isRevoked) {
       throw new UnauthorizedError({ message: "Client certificate has been revoked" });
     }
 
@@ -321,9 +320,6 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    const isSameEnrollment =
-      storedCert?.profileId === profileId && (storedCert?.applicationId ?? null) === (applicationId ?? null);
-
     const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
     const ttl = resolveEffectiveTtl({
       requestTtl: undefined, // EST doesn't accept TTL in request
@@ -341,8 +337,7 @@ export const certificateEstV3ServiceFactory = ({
       csr,
       validity: { ttl },
       enrollmentType: EnrollmentType.EST,
-      applicationId,
-      renewedFromCertificateId: isSameEnrollment ? storedCert.id : undefined
+      applicationId
     });
 
     if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {

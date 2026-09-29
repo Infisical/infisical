@@ -1,28 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { alertKeys } from "@app/hooks/api/alerts/queries";
 
 import { pkiAlertsV2Keys } from "./queries";
-import { TCreatePkiAlertV2, TDeletePkiAlertV2, TPkiAlertV2, TUpdatePkiAlertV2 } from "./types";
-
-export const useCreatePkiAlertV2 = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<TPkiAlertV2, unknown, TCreatePkiAlertV2>({
-    mutationFn: async (data) => {
-      const { data: response } = await apiRequest.post<{ alert: TPkiAlertV2 }>(
-        "/api/v1/cert-manager/alerts",
-        data
-      );
-      return response.alert;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: pkiAlertsV2Keys.all
-      });
-    }
-  });
-};
+import { TDeletePkiAlertV2, TPkiAlertV2, TUpdatePkiAlertV2 } from "./types";
 
 export const useUpdatePkiAlertV2 = () => {
   const queryClient = useQueryClient();
@@ -42,6 +24,7 @@ export const useUpdatePkiAlertV2 = () => {
       queryClient.invalidateQueries({
         queryKey: pkiAlertsV2Keys.all
       });
+      queryClient.invalidateQueries({ queryKey: alertKeys.all });
     }
   });
 };
@@ -60,6 +43,7 @@ export const useDeletePkiAlertV2 = () => {
       queryClient.invalidateQueries({
         queryKey: pkiAlertsV2Keys.all
       });
+      queryClient.invalidateQueries({ queryKey: alertKeys.all });
       queryClient.removeQueries({
         queryKey: pkiAlertsV2Keys.specificPkiAlertV2(variables.alertId)
       });

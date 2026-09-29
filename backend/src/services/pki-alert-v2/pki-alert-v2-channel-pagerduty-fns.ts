@@ -6,10 +6,10 @@ import { delay } from "@app/lib/delay";
 import { logger } from "@app/lib/logger";
 import { pagerDutyIntegrationKeyRegex } from "@app/lib/pagerduty/integration-key";
 import { RETRYABLE_NETWORK_ERRORS } from "@app/lib/retry/network-errors";
+import { getRevocationReasonLabel } from "@app/services/certificate/certificate-revocation-labels";
 
 import { PKI_ALERT_RETRY_CONFIG } from "./pki-alert-v2-constants";
 import {
-  getRevocationReasonLabel,
   PkiAlertEventType,
   TAlertInfo,
   TBuildPagerDutyPayloadParams,

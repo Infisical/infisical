@@ -19,7 +19,6 @@ import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { TTestAlertChannelDTO, TTestAlertChannelResponse } from "./alert-service-types";
 import { buildTestAlertPayload } from "./alert-test-payload-fns";
 import { AlertPermissionAction, toAlertActor } from "./alert-types";
-import { describeDeliveryError } from "./channels/alert-channel-error-fns";
 
 export type TAlertChannelTestServiceFactoryDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findById">;
@@ -139,7 +138,7 @@ export const alertChannelTestServiceFactory = ({
   };
 
   const $toError = (err: unknown): string => {
-    const message = err instanceof Error ? describeDeliveryError(err) : String(err);
+    const message = err instanceof Error ? err.message : String(err);
     return message.slice(0, MAX_ERROR_LENGTH);
   };
 

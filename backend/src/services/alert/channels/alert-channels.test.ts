@@ -1,5 +1,3 @@
-import { AxiosError, AxiosHeaders } from "axios";
-
 import {
   AlertChannelType,
   DIRECTED_ALERT_CHANNEL_TYPES,
@@ -7,7 +5,6 @@ import {
   TAlertPayload
 } from "../alert-channel-types";
 import { sendEmailNotification } from "./alert-channel-email-fns";
-import { describeDeliveryError } from "./alert-channel-error-fns";
 import { buildPagerDutyEvent } from "./alert-channel-pagerduty-fns";
 import { ALERT_CHANNEL_REGISTRY } from "./alert-channel-registry";
 import { buildSlackPayload } from "./alert-channel-slack-fns";
@@ -189,45 +186,6 @@ describe("buildPagerDutyEvent", () => {
 
     expect(pd.payload.summary).toBe("2 certificates expiring within 30d — api.prod.example.com");
     expect(pd.payload.severity).toBe("warning");
-  });
-});
-
-describe("describeDeliveryError", () => {
-  const httpError = (status: number, data: unknown) =>
-    new AxiosError(`Request failed with status code ${status}`, "ERR_BAD_RESPONSE", undefined, undefined, {
-      status,
-      statusText: "",
-      headers: {},
-      config: { headers: new AxiosHeaders() },
-      data
-    });
-
-  test("appends a plain-text provider reason (Slack)", () => {
-    expect(describeDeliveryError(httpError(500, "invalid_payload"))).toBe(
-      "Request failed with status code 500: invalid_payload"
-    );
-  });
-
-  test("appends PagerDuty's errors list", () => {
-    expect(
-      describeDeliveryError(
-        httpError(400, { status: "invalid event", message: "Event object is invalid", errors: ["Invalid routing key"] })
-      )
-    ).toBe("Request failed with status code 400: Invalid routing key");
-  });
-
-  test("falls back to a message field and caps long bodies", () => {
-    expect(describeDeliveryError(httpError(502, { message: "upstream down" }))).toBe(
-      "Request failed with status code 502: upstream down"
-    );
-    expect(describeDeliveryError(httpError(500, "x".repeat(500)))).toHaveLength(
-      "Request failed with status code 500: ".length + 200
-    );
-  });
-
-  test("keeps the plain message when there is no response body or no HTTP response", () => {
-    expect(describeDeliveryError(httpError(500, ""))).toBe("Request failed with status code 500");
-    expect(describeDeliveryError(new Error("timeout of 10000ms exceeded"))).toBe("timeout of 10000ms exceeded");
   });
 });
 
