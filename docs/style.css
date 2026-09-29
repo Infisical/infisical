@@ -2,6 +2,26 @@
   border-radius: 0 !important;
 }
 
+:root {
+  --ifx-cat-secrets: #56a600;
+  --ifx-cat-scanning: #8b2fd0;
+  --ifx-cat-certificates: #a16207;
+  --ifx-cat-kms: #109e7a;
+  --ifx-cat-pam: #dc2626;
+  --ifx-cat-agent-vault: #5f7000;
+  --ifx-ink-default: #6f6f6f;
+}
+
+.dark {
+  --ifx-cat-secrets: #9ee067;
+  --ifx-cat-scanning: #b056f0;
+  --ifx-cat-certificates: #f5c451;
+  --ifx-cat-kms: #34edbf;
+  --ifx-cat-pam: #ff8a85;
+  --ifx-cat-agent-vault: #a1d434;
+  --ifx-ink-default: #707174;
+}
+
 /* Quickstarts index page */
 .qs-index {
   max-width: 960px;
@@ -83,16 +103,12 @@
   flex-shrink: 0;
 }
 
-.qs-index__jump-chip--secrets { --qs-chip-color: #56a600; }
-.qs-index__jump-chip--scanning { --qs-chip-color: #8b2fd0; }
-.qs-index__jump-chip--certificates { --qs-chip-color: #a16207; }
-.qs-index__jump-chip--kms { --qs-chip-color: #109e7a; }
-.qs-index__jump-chip--pam { --qs-chip-color: #dc2626; }
-.qs-index__jump-chip--agent-vault { --qs-chip-color: #5f7000; }
-.qs-index__jump-chip--identity { --qs-chip-color: #cfcfcf; }
-.qs-index__jump-chip--networking { --qs-chip-color: #cfcfcf; }
-.qs-index__jump-chip--self-hosting { --qs-chip-color: #cfcfcf; }
-.qs-index__jump-chip--api { --qs-chip-color: #cfcfcf; }
+.qs-index__jump-chip--secrets { --qs-chip-color: var(--ifx-cat-secrets); }
+.qs-index__jump-chip--scanning { --qs-chip-color: var(--ifx-cat-scanning); }
+.qs-index__jump-chip--certificates { --qs-chip-color: var(--ifx-cat-certificates); }
+.qs-index__jump-chip--kms { --qs-chip-color: var(--ifx-cat-kms); }
+.qs-index__jump-chip--pam { --qs-chip-color: var(--ifx-cat-pam); }
+.qs-index__jump-chip--agent-vault { --qs-chip-color: var(--ifx-cat-agent-vault); }
 
 .qs-index__jump-chip:hover {
   border-color: var(--qs-chip-color, #cfcfcf);
@@ -114,16 +130,12 @@
   color: #b4b4b4;
 }
 
-.dark .qs-index__jump-chip--secrets { --qs-chip-color: #9ee067; }
-.dark .qs-index__jump-chip--scanning { --qs-chip-color: #b056f0; }
-.dark .qs-index__jump-chip--certificates { --qs-chip-color: #f5c451; }
-.dark .qs-index__jump-chip--kms { --qs-chip-color: #34edbf; }
-.dark .qs-index__jump-chip--pam { --qs-chip-color: #ff8a85; }
-.dark .qs-index__jump-chip--agent-vault { --qs-chip-color: #a1d434; }
-.dark .qs-index__jump-chip--identity { --qs-chip-color: #3a3f47; }
-.dark .qs-index__jump-chip--networking { --qs-chip-color: #3a3f47; }
-.dark .qs-index__jump-chip--self-hosting { --qs-chip-color: #3a3f47; }
-.dark .qs-index__jump-chip--api { --qs-chip-color: #3a3f47; }
+.dark .qs-index__jump-chip--identity,
+.dark .qs-index__jump-chip--networking,
+.dark .qs-index__jump-chip--self-hosting,
+.dark .qs-index__jump-chip--api {
+  --qs-chip-color: #3a3f47;
+}
 
 .dark .qs-index__jump-chip:hover {
   border-color: var(--qs-chip-color, #3a3f47);
@@ -134,12 +146,12 @@
   margin: 2.5rem 0;
 }
 
-.qs-index__section--secrets { --qs-accent: #56a600; }
-.qs-index__section--scanning { --qs-accent: #8b2fd0; }
-.qs-index__section--certificates { --qs-accent: #a16207; }
-.qs-index__section--kms { --qs-accent: #109e7a; }
-.qs-index__section--pam { --qs-accent: #dc2626; }
-.qs-index__section--agent-vault { --qs-accent: #5f7000; }
+.qs-index__section--secrets { --qs-accent: var(--ifx-cat-secrets); }
+.qs-index__section--scanning { --qs-accent: var(--ifx-cat-scanning); }
+.qs-index__section--certificates { --qs-accent: var(--ifx-cat-certificates); }
+.qs-index__section--kms { --qs-accent: var(--ifx-cat-kms); }
+.qs-index__section--pam { --qs-accent: var(--ifx-cat-pam); }
+.qs-index__section--agent-vault { --qs-accent: var(--ifx-cat-agent-vault); }
 .qs-index__section--identity,
 .qs-index__section--networking,
 .qs-index__section--self-hosting,
@@ -261,12 +273,6 @@
   color: #9f9f9f;
 }
 
-.dark .qs-index__section--secrets { --qs-accent: #9ee067; }
-.dark .qs-index__section--scanning { --qs-accent: #b056f0; }
-.dark .qs-index__section--certificates { --qs-accent: #f5c451; }
-.dark .qs-index__section--kms { --qs-accent: #34edbf; }
-.dark .qs-index__section--pam { --qs-accent: #ff8a85; }
-.dark .qs-index__section--agent-vault { --qs-accent: #a1d434; }
 .dark .qs-index__section--identity,
 .dark .qs-index__section--networking,
 .dark .qs-index__section--self-hosting,
@@ -843,8 +849,7 @@ a.ifx-steps__label:hover {
 }
 
 .ifx-card {
-  --ifx-ink: #6f6f6f;
-  --ifx-accent: #dbf530;
+  --ifx-ink: var(--ifx-ink-default);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -856,33 +861,27 @@ a.ifx-steps__label:hover {
 }
 
 .ifx-card--secrets {
-  --ifx-ink: #56a600;
-  --ifx-accent: #56a600;
+  --ifx-ink: var(--ifx-cat-secrets);
 }
 
 .ifx-card--scanning {
-  --ifx-ink: #8b2fd0;
-  --ifx-accent: #8b2fd0;
+  --ifx-ink: var(--ifx-cat-scanning);
 }
 
 .ifx-card--certificates {
-  --ifx-ink: #a16207;
-  --ifx-accent: #a16207;
+  --ifx-ink: var(--ifx-cat-certificates);
 }
 
 .ifx-card--pam {
-  --ifx-ink: #dc2626;
-  --ifx-accent: #dc2626;
+  --ifx-ink: var(--ifx-cat-pam);
 }
 
 .ifx-card--kms {
-  --ifx-ink: #109e7a;
-  --ifx-accent: #109e7a;
+  --ifx-ink: var(--ifx-cat-kms);
 }
 
 .ifx-card--agent-vault {
-  --ifx-ink: #5f7000;
-  --ifx-accent: #5f7000;
+  --ifx-ink: var(--ifx-cat-agent-vault);
 }
 
 .ifx-card__links {
@@ -1012,39 +1011,8 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 .dark .ifx-card {
-  --ifx-ink: #707174;
   background-color: #101114;
   outline-color: #1e1f24;
-}
-
-.dark .ifx-card--secrets {
-  --ifx-ink: #9ee067;
-  --ifx-accent: #9ee067;
-}
-
-.dark .ifx-card--scanning {
-  --ifx-ink: #b056f0;
-  --ifx-accent: #b056f0;
-}
-
-.dark .ifx-card--certificates {
-  --ifx-ink: #f5c451;
-  --ifx-accent: #f5c451;
-}
-
-.dark .ifx-card--pam {
-  --ifx-ink: #ff8a85;
-  --ifx-accent: #ff8a85;
-}
-
-.dark .ifx-card--kms {
-  --ifx-ink: #34edbf;
-  --ifx-accent: #34edbf;
-}
-
-.dark .ifx-card--agent-vault {
-  --ifx-ink: #a1d434;
-  --ifx-accent: #a1d434;
 }
 
 .dark .ifx-card__title {
