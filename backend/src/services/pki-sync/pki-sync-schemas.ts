@@ -31,11 +31,7 @@ export const KeystoreAliasSchema = z
     "Alias of the private key entry in a PKCS#12 or JKS keystore. Defaults to the certificate's file base name. JKS stores aliases in lowercase."
   );
 
-export const ExportPasswordSchema = z
-  .string()
-  .min(1)
-  .max(256)
-  .refine((password) => password.trim().length > 0, { message: "The export password cannot be blank" });
+export const ExportPasswordSchema = z.string().min(1).max(1024);
 
 export const IncludeTruststoreSchema = z
   .boolean()

@@ -4,7 +4,6 @@ import { PemCertificateExtension, PkiSync, PkiSyncExportFormat } from "@app/hook
 
 import {
   BasePkiSyncSchema,
-  ExportPasswordSchema,
   HostCommandSchema,
   KeystoreAliasSchema,
   PkiSyncConnectionSchema,
@@ -115,7 +114,7 @@ export const LinuxServerPkiSyncDestinationSchema = BasePkiSyncSchema(
     }),
     credentials: z
       .object({
-        exportPassword: ExportPasswordSchema.optional()
+        exportPassword: z.string().optional()
       })
       .optional()
   })

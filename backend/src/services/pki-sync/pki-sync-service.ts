@@ -37,6 +37,8 @@ import { encryptPkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import {
+  EXPORT_PASSWORD_BLANK_MESSAGE,
+  isBlankExportPassword,
   isKeystoreExportFormat,
   KEYSTORE_PASSWORD_REQUIRED_MESSAGE,
   stripUnusedKeystoreOptions
@@ -983,6 +985,13 @@ export const pkiSyncServiceFactory = ({
       !pkiSync.encryptedCredentials
     ) {
       throw new BadRequestError({ message: KEYSTORE_PASSWORD_REQUIRED_MESSAGE });
+    }
+
+    if (
+      isKeystoreExportFormat(effectiveSyncOptions?.exportFormat) &&
+      isBlankExportPassword(credentials?.exportPassword)
+    ) {
+      throw new BadRequestError({ message: EXPORT_PASSWORD_BLANK_MESSAGE });
     }
 
     const encryptedCredentials = credentials?.exportPassword

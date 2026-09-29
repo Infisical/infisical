@@ -6,6 +6,8 @@ import { pkiDescriptionSchema } from "@app/services/certificate-common/certifica
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import {
+  EXPORT_PASSWORD_BLANK_MESSAGE,
+  isBlankExportPassword,
   isKeystoreExportFormat,
   KEYSTORE_PASSWORD_REQUIRED_MESSAGE,
   PemCertificateExtension,
@@ -155,11 +157,18 @@ export const CreateWindowsServerPkiSyncSchema = z
     filters: PkiSyncFiltersField
   })
   .superRefine((data, ctx) => {
-    if (isKeystoreExportFormat(data.syncOptions.exportFormat) && !data.credentials?.exportPassword) {
+    if (!isKeystoreExportFormat(data.syncOptions.exportFormat)) return;
+    if (!data.credentials?.exportPassword) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["credentials", "exportPassword"],
         message: KEYSTORE_PASSWORD_REQUIRED_MESSAGE
+      });
+    } else if (isBlankExportPassword(data.credentials.exportPassword)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["credentials", "exportPassword"],
+        message: EXPORT_PASSWORD_BLANK_MESSAGE
       });
     }
   });

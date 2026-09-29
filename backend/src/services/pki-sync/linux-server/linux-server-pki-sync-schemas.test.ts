@@ -1,4 +1,5 @@
 import {
+  CreateLinuxServerPkiSyncSchema,
   LinuxServerPkiSyncConfigSchema,
   LinuxServerPkiSyncCredentialsSchema,
   LinuxServerPkiSyncOptionsSchema
@@ -128,12 +129,23 @@ describe("Linux Server target host validation", () => {
 });
 
 describe("Linux Server export password validation", () => {
-  const parsePassword = (exportPassword: string) =>
-    LinuxServerPkiSyncCredentialsSchema.safeParse({ exportPassword }).success;
+  const parseCreate = (exportFormat: string, exportPassword?: string) =>
+    CreateLinuxServerPkiSyncSchema.safeParse({
+      name: "sync",
+      connectionId: "connection",
+      destinationConfig: { destinationPath: "/etc/ssl/certs" },
+      syncOptions: { exportFormat, certificateNameSchema: "{{commonName}}" },
+      credentials: exportPassword === undefined ? undefined : { exportPassword }
+    });
 
-  test("rejects a blank password", () => {
-    expect(parsePassword("")).toBe(false);
-    expect(parsePassword("   ")).toBe(false);
+  test("rejects a blank password for keystore formats", () => {
+    expect(parseCreate("jks", "   ").success).toBe(false);
+    expect(parseCreate("pkcs12", "   ").success).toBe(false);
+    expect(parseCreate("jks").success).toBe(false);
+  });
+
+  test("ignores a leftover password for PEM", () => {
+    expect(parseCreate("pem", "   ").success).toBe(true);
   });
 
   test("keeps surrounding spaces in a real password", () => {

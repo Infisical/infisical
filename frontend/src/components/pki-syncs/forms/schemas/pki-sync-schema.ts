@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { isKeystoreExportFormat, PkiSync } from "@app/hooks/api/pkiSyncs";
+import { isKeystoreExportFormat, PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
 import { GCP_MAX_CERTIFICATES_PER_MAP_ENTRY } from "@app/hooks/api/pkiSyncs/types/gcp-certificate-manager-sync";
 
 import {
@@ -20,7 +20,7 @@ import {
   AzureKeyVaultPkiSyncDestinationSchema,
   UpdateAzureKeyVaultPkiSyncDestinationSchema
 } from "./azure-key-vault-pki-sync-destination-schema";
-import { KEYSTORE_PASSWORD_REQUIRED_MESSAGE } from "./base-pki-sync-schema";
+import { ExportPasswordSchema, KEYSTORE_PASSWORD_REQUIRED_MESSAGE } from "./base-pki-sync-schema";
 import {
   ChefPkiSyncDestinationSchema,
   UpdateChefPkiSyncDestinationSchema
@@ -116,6 +116,29 @@ const refineTargetHost = (data: unknown, ctx: z.RefinementCtx) => {
   }
 };
 
+const isServerDestination = (destination: PkiSync) =>
+  destination === PkiSync.WindowsServer || destination === PkiSync.LinuxServer;
+
+// Only keystore formats use the password, so a value left behind after switching to PEM is ignored.
+const refineExportPassword = (
+  data: { destination: PkiSync; syncOptions?: unknown; credentials?: unknown },
+  ctx: z.RefinementCtx
+) => {
+  const password = (data.credentials as { exportPassword?: string } | undefined)?.exportPassword;
+  const exportFormat = (data.syncOptions as { exportFormat?: PkiSyncExportFormat } | undefined)
+    ?.exportFormat;
+  if (!isServerDestination(data.destination) || !password || !isKeystoreExportFormat(exportFormat))
+    return;
+  const result = ExportPasswordSchema.safeParse(password);
+  if (!result.success) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["credentials", "exportPassword"],
+      message: result.error.issues[0]?.message ?? "Invalid export password"
+    });
+  }
+};
+
 export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
   if (
     data.destination === PkiSync.GcpCertificateManager &&
@@ -141,10 +164,14 @@ export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
     });
   }
 
+  refineExportPassword(data, ctx);
   refineTargetHost(data, ctx);
 });
 
-export const UpdatePkiSyncFormSchema = UpdatePkiSyncUnionSchema.superRefine(refineTargetHost);
+export const UpdatePkiSyncFormSchema = UpdatePkiSyncUnionSchema.superRefine((data, ctx) => {
+  refineExportPassword(data, ctx);
+  refineTargetHost(data, ctx);
+});
 
 export type TPkiSyncForm = z.infer<typeof PkiSyncFormSchema>;
 

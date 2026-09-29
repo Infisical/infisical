@@ -15,7 +15,7 @@ export const KEYSTORE_PASSWORD_REQUIRED_MESSAGE =
 export const ExportPasswordSchema = z
   .string()
   .min(1)
-  .max(256, "The export password must be at most 256 characters")
+  .max(1024, "The export password must be at most 1024 characters")
   .refine((password) => password.trim().length > 0, {
     message: "The export password cannot be blank"
   });

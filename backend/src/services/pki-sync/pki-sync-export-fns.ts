@@ -24,6 +24,10 @@ export const stripUnusedKeystoreOptions = (syncOptions: Record<string, unknown>)
 export const buildFileCollisionMessage = (filePath: string) =>
   `Another certificate in this sync already writes "${filePath}". Change the certificate name schema so each certificate gets its own file names.`;
 
+export const isBlankExportPassword = (password: string | undefined) => password !== undefined && password.trim() === "";
+
+export const EXPORT_PASSWORD_BLANK_MESSAGE = "The export password cannot be blank";
+
 export const KEYSTORE_PASSWORD_REQUIRED_MESSAGE = "A password is required when the export format is PKCS#12 or JKS";
 
 export const JKS_KEYSTORE_SUFFIX = ".jks";
