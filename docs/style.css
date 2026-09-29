@@ -18,6 +18,17 @@
   --ifx-accent-soft: rgb(var(--primary-light, 219 245 48) / 0.1);
   --ifx-card-title: rgb(var(--gray-800, 38 38 38));
   --ifx-card-body: rgb(var(--gray-600, 81 81 81));
+  --ifx-card-hover-line: rgb(var(--primary, 38 39 43));
+  --ifx-selected-bg: rgb(var(--primary, 38 39 43));
+  --ifx-selected-fg: #ffffff;
+  --ifx-hover-fill: rgb(var(--gray-950, 11 11 11) / 0.03);
+  --ifx-control-line: rgb(var(--gray-950, 11 11 11) / 0.1);
+  --ifx-control-text: rgb(var(--gray-700, 63 63 63));
+  --ifx-control-text-hover: rgb(var(--gray-900, 23 23 24));
+  --ifx-input-line: rgb(var(--gray-200, 223 223 223));
+  --ifx-input-line-focus: rgb(var(--gray-300, 207 207 207));
+  --ifx-input-text: rgb(var(--gray-900, 23 23 24));
+  --ifx-placeholder: rgb(var(--gray-600, 81 81 81) / 0.7);
   --ifx-cat-secrets: var(--ifx-green);
   --ifx-cat-scanning: #8b2fd0;
   --ifx-cat-certificates: #a16207;
@@ -40,6 +51,17 @@
   --ifx-accent-ink: rgb(var(--primary-light, 219 245 48));
   --ifx-card-title: #ffffff;
   --ifx-card-body: rgb(var(--gray-400, 159 159 159));
+  --ifx-card-hover-line: rgb(var(--primary-light, 219 245 48));
+  --ifx-selected-bg: rgb(var(--primary-light, 219 245 48));
+  --ifx-selected-fg: rgb(var(--gray-950, 11 11 11));
+  --ifx-hover-fill: rgb(255 255 255 / 0.03);
+  --ifx-control-line: rgb(255 255 255 / 0.1);
+  --ifx-control-text: rgb(var(--gray-300, 207 207 207));
+  --ifx-control-text-hover: rgb(var(--gray-100, 239 239 239));
+  --ifx-input-line: rgb(var(--gray-800, 38 38 38));
+  --ifx-input-line-focus: rgb(var(--gray-700, 63 63 63));
+  --ifx-input-text: rgb(var(--gray-100, 239 239 239));
+  --ifx-placeholder: rgb(var(--gray-400, 159 159 159) / 0.7);
   --ifx-cat-scanning: #b056f0;
   --ifx-cat-certificates: #f5c451;
   --ifx-cat-kms: #34edbf;
@@ -1152,8 +1174,8 @@ a.ifx-card__title:hover .ifx-card__chevron {
   white-space: nowrap;
 }
 
-.ifx-tag--neutral { --tag-bg: #f3f4f6; --tag-fg: #374151; --tag-bd: #e5e7eb; }
-.dark .ifx-tag--neutral { --tag-bg: rgba(55,65,81,.35); --tag-fg: #e5e7eb; --tag-bd: #4b5563; }
+.ifx-tag--neutral { --tag-bg: rgb(var(--gray-50, 244 244 244)); --tag-fg: var(--ifx-text-soft); --tag-bd: var(--ifx-line); }
+.dark .ifx-tag--neutral { --tag-bg: rgb(255 255 255 / 0.05); --tag-fg: rgb(var(--gray-300, 207 207 207)); --tag-bd: var(--ifx-line); }
 
 .ifx-tag--blue { --tag-bg: #dbeafe; --tag-fg: #1d4ed8; --tag-bd: #bfdbfe; }
 .dark .ifx-tag--blue { --tag-bg: rgba(30,58,138,.35); --tag-fg: #93c5fd; --tag-bd: #1e40af; }
@@ -1196,6 +1218,156 @@ a.ifx-card__title:hover .ifx-card__chevron {
 
 .ifx-tag--purple { --tag-bg: #f3e8ff; --tag-fg: #7e22ce; --tag-bd: #e9d5ff; }
 .dark .ifx-tag--purple { --tag-bg: rgba(88,28,135,.35); --tag-fg: #d8b4fe; --tag-bd: #6b21a8; }
+
+/* Catalog browser (snippets/CatalogBrowser.jsx). Each control copies the Mintlify component it
+   stands in for: the text input, a neutral pill that fills with the brand color when selected,
+   and Card. Brand color marks selection only; rest and hover states stay neutral. */
+
+.ifx-catalog__search {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.ifx-catalog__search-icon {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  color: var(--ifx-placeholder);
+  pointer-events: none;
+}
+
+.ifx-catalog__input {
+  display: block;
+  width: 100%;
+  padding: 0.625rem 1rem 0.625rem 2.25rem;
+  border: 1px solid var(--ifx-input-line);
+  background-color: transparent;
+  color: var(--ifx-input-text);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: 0;
+}
+
+.ifx-catalog__input::placeholder {
+  color: var(--ifx-placeholder);
+}
+
+.ifx-catalog__input:focus {
+  border-color: var(--ifx-input-line-focus);
+}
+
+.ifx-catalog__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.ifx-catalog__filter {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--ifx-control-line);
+  background-color: transparent;
+  color: var(--ifx-control-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  cursor: pointer;
+}
+
+.ifx-catalog__filter:hover {
+  background-color: var(--ifx-hover-fill);
+  color: var(--ifx-control-text-hover);
+}
+
+.ifx-catalog__filter[aria-pressed="true"] {
+  border-color: var(--ifx-selected-bg);
+  background-color: var(--ifx-selected-bg);
+  color: var(--ifx-selected-fg);
+}
+
+/* No color on the focus rings: Mintlify's global :focus-visible supplies --primary, or
+   --primary-light in dark, as it does for its own controls. */
+.ifx-catalog__filter:focus-visible {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-offset: 2px;
+}
+
+.ifx-catalog__count {
+  margin: 0 0 1rem;
+  color: var(--ifx-muted);
+  font-size: 0.875rem;
+}
+
+.ifx-catalog__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .ifx-catalog__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Mintlify tags every content anchor with .link, and `.dark .link` recolors its bottom
+   border, so the dark rules need the extra class to win. */
+.ifx-catalog__card,
+.dark .ifx-catalog__card.link {
+  display: block;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--ifx-line);
+  background-color: var(--ifx-surface);
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.ifx-catalog__card:hover,
+.dark .ifx-catalog__card.link:hover {
+  border-color: var(--ifx-card-hover-line);
+}
+
+.ifx-catalog__card:focus-visible {
+  outline-style: solid;
+  outline-width: 2px;
+}
+
+.ifx-catalog__title {
+  margin: 0 0 0.5rem;
+  color: var(--ifx-card-title);
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  letter-spacing: normal;
+}
+
+.ifx-catalog__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.ifx-catalog__desc {
+  margin: 0;
+  color: var(--ifx-card-body);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.625;
+}
+
+.ifx-catalog__empty {
+  padding: 2rem 1rem;
+  border: 1px solid var(--ifx-line);
+  color: var(--ifx-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
 
 /* Mintlify honors `tag` only on sidebar groups, so a navbar dropdown item has no
    way to flag Agent Vault as preview. Both nav items are flex rows, so ::after
