@@ -55,10 +55,12 @@ export const SecretNameSchema = BaseSecretNameSchema.refine(
  */
 export const openApiHidden = () => JSON.stringify({ "x-hidden": true });
 
-export const commaSeparatedUuidsSchema = ({ max }: { max?: number } = {}) => {
-  const ids = z.array(z.string().uuid());
-  return z
+const COMMA_SEPARATED_UUID_CHARS = 40;
+
+export const commaSeparatedUuidsSchema = ({ max = 100 }: { max?: number } = {}) =>
+  z
     .string()
+    .max(max * COMMA_SEPARATED_UUID_CHARS)
     .optional()
     .transform((val) => {
       if (!val) return undefined;
@@ -68,8 +70,7 @@ export const commaSeparatedUuidsSchema = ({ max }: { max?: number } = {}) => {
         .filter(Boolean);
       return parsed.length > 0 ? parsed : undefined;
     })
-    .pipe((max === undefined ? ids : ids.max(max)).optional());
-};
+    .pipe(z.array(z.string().uuid()).max(max).optional());
 
 // The shared `type` body field for temporary vs permanent access grants (additional privileges,
 // folder access). Parameterized by the endpoint's api-docs strings so every route documents its
