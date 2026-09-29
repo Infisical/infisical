@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { createAwsAppConnection, deleteAppConnection } from "e2e-test/testUtils/secret-syncs";
+import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
 
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
@@ -1360,7 +1360,7 @@ describe("Agent Vault V1 Router", async () => {
       ).toBe(200);
       expect((await inject("DELETE", byId(ownConnection.id))).statusCode).toBe(200);
 
-      await deleteAppConnection({ connectionId: orgConnectionId, authToken: jwtAuthToken });
+      await deleteAwsAppConnection({ connectionId: orgConnectionId, authToken: jwtAuthToken });
     });
 
     test("an update through another app's route is refused before it writes, like a delete", async () => {

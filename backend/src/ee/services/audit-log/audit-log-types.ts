@@ -2957,6 +2957,7 @@ interface CreateCa {
     dn?: string;
     keySource?: string;
     hsmConnectorId?: string;
+    isOcspEnabled?: boolean;
   };
 }
 
@@ -2983,6 +2984,7 @@ interface UpdateCa {
     name: string;
     dn?: string;
     status: CaStatus;
+    isOcspEnabled?: boolean;
   };
 }
 

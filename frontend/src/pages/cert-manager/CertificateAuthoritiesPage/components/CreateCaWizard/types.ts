@@ -56,10 +56,10 @@ export const STEPS: WizardStep[] = [
     name: "Distribution",
     shortDescription: "Revocation endpoints",
     title: "Distribution",
-    subtitle: "Configure the CRL distribution points embedded in issued certificates.",
+    subtitle: "Configure how clients check whether certificates from this CA are revoked.",
     rightLabel: "DISTRIBUTION",
     rightDescription:
-      "Certificates issued by this CA carry CRL Distribution Point URLs so clients can check revocation. The Infisical-managed CRL endpoint is included by default; add backup URLs or disable the managed one as needed.",
+      "Certificates issued by this CA carry revocation endpoints so clients can check their status. OCSP answers for one certificate at a time, while a CRL lists every certificate this CA has revoked. The Infisical-managed CRL endpoint is included by default; add backup URLs or disable the managed one as needed.",
     docsUrl: PkiDocsUrls.ca.internal
   }
 ];

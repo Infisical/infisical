@@ -251,6 +251,10 @@ const certManagerMappings: TFeatureMapping[] = [
     v1Field: "caCrl"
   },
   {
+    v2Key: "pki_ocsp",
+    v1Field: "pkiOcsp"
+  },
+  {
     v2Key: "pki_est",
     v1Field: "pkiEst"
   },

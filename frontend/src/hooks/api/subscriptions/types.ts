@@ -66,6 +66,7 @@ export type SubscriptionPlan = {
   pkiScep: boolean;
   pkiPqc: boolean;
   caCrl: boolean;
+  pkiOcsp: boolean;
   pkiEnterpriseCaIntegrations: boolean;
   pkiExternalIntermediateCa: boolean;
   pkiDiscovery: boolean;

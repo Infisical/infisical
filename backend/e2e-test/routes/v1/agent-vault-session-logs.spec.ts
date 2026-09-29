@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 import { fakeSessionLogStorage } from "e2e-test/fakes/agent-vault-session-log-storage-fns";
-import { createAwsAppConnection, deleteAppConnection } from "e2e-test/testUtils/secret-syncs";
+import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
 import { v7 as uuidv7 } from "uuid";
 
 import { OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
@@ -185,7 +185,7 @@ describe("Agent Vault session logs", async () => {
     await testDb("agent_vault_proxies").where({ projectId }).del();
     await testDb("agent_vault_access_bundles").where({ projectId }).del();
     await testDb("memberships").where({ scopeProjectId: projectId }).del();
-    await deleteAppConnection({ connectionId, authToken: jwtAuthToken });
+    await deleteAwsAppConnection({ connectionId, authToken: jwtAuthToken });
   });
 
   beforeEach(async () => {

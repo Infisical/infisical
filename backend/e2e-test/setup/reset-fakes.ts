@@ -1,5 +1,6 @@
 import { fakeSessionLogStorage } from "e2e-test/fakes/agent-vault-session-log-storage-fns";
 import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
+import { fakeIamUserSecret } from "e2e-test/fakes/aws-iam-user-secret-rotation-fns";
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
 
 // The fakes are module singletons shared with the server booted in this same process, and the
@@ -16,4 +17,5 @@ beforeAll(() => {
   fakeParameterStore.reset();
   fakeAwsConnection.reset();
   fakeSessionLogStorage.reset();
+  fakeIamUserSecret.reset();
 });
