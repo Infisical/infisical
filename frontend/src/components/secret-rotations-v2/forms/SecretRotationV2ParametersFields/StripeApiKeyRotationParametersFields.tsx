@@ -5,8 +5,8 @@ import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms
 import { Field, FieldError, Input } from "@app/components/v3";
 import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
 
-import { StripeApiKeyPermissionSelector } from "./StripeApiKeyPermissionSelector";
 import { FieldLabelWithTooltip } from "../shared";
+import { StripeApiKeyPermissionSelector } from "./StripeApiKeyPermissionSelector";
 
 export const StripeApiKeyRotationParametersFields = () => {
   const { control } = useFormContext<
@@ -26,14 +26,14 @@ export const StripeApiKeyRotationParametersFields = () => {
           <Field data-invalid={Boolean(error)}>
             <FieldLabelWithTooltip
               htmlFor="secret-rotation-key-name"
-              tooltip="The name of the key to use for the secret rotation. This is used to identify the key in the Stripe API. This is optional and will default to a random key name in Stripe."
+              tooltip="Optional. The name of each key this rotation creates in Stripe. Infisical adds a timestamp to each name so you can tell the old and new key apart. If empty, the name is infisical-managed."
             >
               Key Name
             </FieldLabelWithTooltip>
             <Input
               id="secret-rotation-key-name"
-              placeholder="Infisical Managed Stripe Key"
-              value={value}
+              placeholder="e.g. payments-service"
+              value={value ?? ""}
               onChange={onChange}
             />
             <FieldError>{error?.message}</FieldError>

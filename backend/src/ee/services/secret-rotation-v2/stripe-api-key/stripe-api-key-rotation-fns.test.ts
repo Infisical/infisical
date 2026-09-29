@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import RE2 from "re2";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TSecretRotationV2Raw } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
@@ -30,6 +31,7 @@ type TCredential = TStripeApiKeyRotationGeneratedCredentials[number];
 
 type TCreateKeyRequest = {
   type: string;
+  name: string;
   permissions: string[];
   public_key: { pem_key: { data: string } };
 };
@@ -50,16 +52,16 @@ const UNUSED_DEPENDENCIES = [{}, {}, {}, {}] as unknown as [
 
 // The factory reads these four fields of the rotation row and nothing else, so the rest of the row
 // is left off rather than filled with placeholders that would read as though they mattered.
-const rotation = (activeIndex: number) =>
+const rotation = (activeIndex: number, keyName?: string) =>
   ({
     connection: { id: "connection-id", credentials: { accountId: "acct_123" } },
-    parameters: { permissions: ["customer_read"] },
+    parameters: { permissions: ["customer_read"], keyName },
     secretsMapping: { apiKey: "STRIPE_API_KEY" },
     activeIndex
   }) as unknown as TStripeApiKeyRotationWithConnection;
 
-const makeFactory = ({ activeIndex = 0 }: { activeIndex?: number } = {}) =>
-  stripeApiKeyRotationFactory(rotation(activeIndex), ...UNUSED_DEPENDENCIES);
+const makeFactory = ({ activeIndex = 0, keyName }: { activeIndex?: number; keyName?: string } = {}) =>
+  stripeApiKeyRotationFactory(rotation(activeIndex, keyName), ...UNUSED_DEPENDENCIES);
 
 const isCreate = (url: string) => url.endsWith("/v2/iam/api_keys");
 const isExpire = (url: string) => url.endsWith("/expire");
@@ -157,6 +159,20 @@ describe("stripeApiKeyRotationFactory", () => {
       expect(createBody?.type).toBe("secret_key");
       expect(createBody?.permissions).toEqual(["customer_read"]);
       expect(createBody?.public_key.pem_key.data).toContain("BEGIN PUBLIC KEY");
+    });
+
+    // The old and new key are both live after a rotation, so a fixed name alone would leave two keys
+    // in the Stripe dashboard that cannot be told apart.
+    it.each([
+      { source: "the default name", keyName: undefined, expected: "^infisical-managed-[0-9]{13}$" },
+      { source: "the configured key name", keyName: "payments-service", expected: "^payments-service-[0-9]{13}$" }
+    ])("names the key after $source with a timestamp suffix", async ({ keyName, expected }) => {
+      mockStripe();
+
+      await makeFactory({ keyName }).issueCredentials(commit);
+
+      const name = createBody?.name ?? "";
+      expect(new RE2(expected).test(name), `expected ${expected}, got "${name}"`).toBe(true);
     });
 
     // The key exists in Stripe before the row does, so both failure points after create have to

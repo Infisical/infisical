@@ -168,6 +168,8 @@ export const STRIPE_API_KEY_PERMISSIONS = [
   "webhook_write"
 ] as const;
 
+export const STRIPE_API_KEY_NAME_MAX_LENGTH = 80;
+
 export type TStripeApiKeyPermission = (typeof STRIPE_API_KEY_PERMISSIONS)[number];
 
 export type TStripeApiKeyPermissionResource = {

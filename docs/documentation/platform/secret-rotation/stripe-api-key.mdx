@@ -6,7 +6,8 @@ description: "Learn how to automatically rotate Stripe restricted API keys."
 <Note>
   **Rotation Type: Dual-Phase**
 
-  This rotation maintains two active credential sets with overlapping validity, ensuring zero-downtime during rotation cycles.
+This rotation maintains two active credential sets with overlapping validity, ensuring zero-downtime during rotation cycles.
+
 </Note>
 
 Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/keys#limit-access-with-restricted-api-keys) on the interval you set, so your applications always have a working credential without a manual key swap. A few things about how it behaves are worth knowing before you set it up.
@@ -22,7 +23,7 @@ Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/key
 ## Create a Stripe API key rotation in Infisical
 
 <Tabs>
-    <Tab title="Infisical UI">
+    <Tab title="Infisical UI">    
         1. Navigate to your Secrets Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
 
         ![Secrets Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
@@ -43,13 +44,10 @@ Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/key
 
         4. Set the Stripe API key parameters, then select **Continue**.
 
-        - **Permissions** - The permissions granted to the generated key. Stripe has no wildcard for "all access", so a key with full access is one where every permission in the list is selected. Use **Select All** to select every permission that matches your current search. If you already have an active Stripe API key with the permissions you want, you can select it from **Copy permissions from an existing key** instead of selecting them by hand.
+        - **Key Name** (optional) - The name of each key the rotation creates, as it appears in the Stripe dashboard. Infisical adds a timestamp to each name, so the old and new key stay distinct while both are valid. If you leave it empty, the name is `infisical-managed`.
+        - **Permissions** - The access the generated key has to each Stripe resource. Set a resource to **None**, **Read**, or **Write**. **Write** includes read access. Stripe has no wildcard for "all access", so grant only the resources your application uses. Use **Set all** to give one access level to every resource that matches your search.
 
         ![Rotation Parameters](/images/secret-rotations-v2/stripe-api-key/parameters.png)
-
-        <Note>
-          Connect permissions, which apply when the generated key acts on behalf of a connected account under [Stripe Connect](https://docs.stripe.com/connect), have no field in the Infisical UI yet. Set them through the [API](/api-reference/endpoints/secret-rotations/stripe-api-key/create) instead.
-        </Note>
 
         5. Specify the secret name that the rotated API key will be mapped to. Then select **Continue**.
 
@@ -69,10 +67,6 @@ Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/key
         ![Rotation Review](/images/secret-rotations-v2/stripe-api-key/review.png)
 
         8. Your **Stripe API Key** rotation is created. The current restricted key is available as a secret at the mapped path. Each rotation creates a new key, expires the key from two rotations ago, then switches the active secret to the new key, so two keys are always valid at once for zero-downtime rotation.
-
-        <Note>
-          Infisical only ever expires the keys it created. Your account's existing keys, including any key you were using before you set up this rotation, are left alone.
-        </Note>
     </Tab>
     <Tab title="API">
         To create a Stripe API Key rotation, call the [Create Stripe API Key Rotation](/api-reference/endpoints/secret-rotations/stripe-api-key/create) API endpoint.
@@ -97,6 +91,7 @@ Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/key
               "minutes": 0
             },
             "parameters": {
+              "keyName": "payments-service",
               "permissions": ["charge_read", "charge_write", "customer_read", "customer_write"]
             },
             "secretsMapping": {
@@ -123,10 +118,18 @@ Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/key
             "rotateAtUtc": { "hours": 0, "minutes": 0 },
             "type": "stripe-api-key",
             "parameters": {
+              "keyName": "payments-service",
               "permissions": ["charge_read", "charge_write", "customer_read", "customer_write"]
             }
           }
         }
         ```
     </Tab>
+
 </Tabs>
+
+<Note>
+  Infisical only ever expires the keys it created. Your account's existing keys,
+  including any key you were using before you set up this rotation, are left
+  alone.
+</Note>

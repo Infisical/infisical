@@ -40,10 +40,10 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
 
   const { accountId } = connection.credentials;
 
-  // The factory is built without an id at create time, so the name comes from the mapped secret.
-  // It is what makes a key stranded by a timed-out create identifiable in the Stripe dashboard.
-  const $keyName = () =>
-    `${keyName ?? `infisical-${secretsMapping.apiKey}-${Date.now()}`}`.slice(0, STRIPE_KEY_NAME_MAX_LENGTH);
+  // The default name leaves out the mapped secret's name, which would otherwise show in the Stripe
+  // dashboard. The timestamp keeps the old and new key apart while both are live, and is what makes
+  // a key stranded by a timed-out create identifiable there.
+  const $keyName = () => `${keyName ?? `infisical-managed`}-${Date.now()}`.slice(0, STRIPE_KEY_NAME_MAX_LENGTH);
 
   /** No 404 on a double expire has ever been observed, so a non-404 failure on retiring a key that
    *  was already expired can't be told apart from a real failure by status code alone. This is only

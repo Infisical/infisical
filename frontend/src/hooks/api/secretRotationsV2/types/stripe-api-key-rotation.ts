@@ -8,6 +8,7 @@ import {
 export type TStripeApiKeyRotation = TSecretRotationV2Base & {
   type: SecretRotation.StripeApiKey;
   parameters: {
+    keyName?: string;
     permissions: string[];
   };
   secretsMapping: {

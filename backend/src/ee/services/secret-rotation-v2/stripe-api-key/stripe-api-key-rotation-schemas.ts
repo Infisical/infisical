@@ -10,7 +10,7 @@ import { SecretRotations } from "@app/lib/api-docs";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-import { STRIPE_API_KEY_PERMISSIONS } from "./stripe-api-key-rotation-constants";
+import { STRIPE_API_KEY_NAME_MAX_LENGTH, STRIPE_API_KEY_PERMISSIONS } from "./stripe-api-key-rotation-constants";
 
 export const StripeApiKeyPermissionSchema = z.enum(STRIPE_API_KEY_PERMISSIONS);
 
@@ -30,7 +30,13 @@ const StripeApiKeyPermissionListSchema = z
   .transform((permissions) => [...new Set(permissions)]);
 
 const StripeApiKeyRotationParametersSchema = z.object({
-  keyName: z.string().optional().describe(SecretRotations.PARAMETERS.STRIPE_API_KEY.keyName),
+  keyName: z
+    .string()
+    .trim()
+    .min(1, "Key name cannot be empty. Omit it to use the default name.")
+    .max(STRIPE_API_KEY_NAME_MAX_LENGTH, `Key name must be ${STRIPE_API_KEY_NAME_MAX_LENGTH} characters or fewer.`)
+    .optional()
+    .describe(SecretRotations.PARAMETERS.STRIPE_API_KEY.keyName),
   permissions: StripeApiKeyPermissionListSchema.describe(SecretRotations.PARAMETERS.STRIPE_API_KEY.permissions)
 });
 

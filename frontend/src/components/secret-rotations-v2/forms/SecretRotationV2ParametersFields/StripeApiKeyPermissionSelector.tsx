@@ -189,7 +189,8 @@ export const StripeApiKeyPermissionSelector = ({ groups, value, onChange, isLoad
         )}
       </div>
       <p className="text-xs text-muted">
-        Grant the minimum access Infisical needs to create and revoke this key.
+        Grant only the access your application needs. The generated key gets exactly these
+        permissions.
       </p>
       <div
         role="group"
