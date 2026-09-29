@@ -546,8 +546,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <AlertDescription>
             <div className="flex flex-col gap-1">
               <p>
-                None of this session&apos;s logs could be read from the bucket. The bucket has to
-                allow requests from this origin.
+                None of this session&apos;s logs could be downloaded from the bucket. The
+                bucket&apos;s CORS rule may not allow this origin, or this network may block the
+                bucket.
               </p>
               {!isAdmin && (
                 <p>Ask an Agent Vault administrator to check the bucket&apos;s CORS rule.</p>
