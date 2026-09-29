@@ -638,8 +638,11 @@ export const SecretTableRow = ({
               className="sticky left-0 border-y border-border bg-container"
             >
               <Table
-                className="w-full table-fixed"
-                containerClassName="overflow-hidden rounded-none border-0"
+                className="w-full min-w-[600px] table-fixed"
+                containerClassName={twMerge(
+                  "rounded-none border-0",
+                  tableWidth >= 600 && "overflow-hidden"
+                )}
               >
                 <colgroup>
                   <col className="w-10" />
