@@ -8,12 +8,10 @@ const LOSS_SHARE_THRESHOLD = 0.05;
 
 export const SessionLogLossIndicator = ({
   counts,
-  side,
-  align
+  side
 }: {
   counts: TAgentVaultSession["recentSessionLogCounts"];
   side?: ComponentProps<typeof TooltipContent>["side"];
-  align?: ComponentProps<typeof TooltipContent>["align"];
 }) => {
   const total = counts.recordedCount + counts.droppedCount;
   if (!total || counts.droppedCount / total < LOSS_SHARE_THRESHOLD) return null;
@@ -27,7 +25,7 @@ export const SessionLogLossIndicator = ({
           <TriangleAlertIcon className="size-4" />
         </span>
       </TooltipTrigger>
-      <TooltipContent side={side} align={align} className="max-w-sm">
+      <TooltipContent side={side} className="max-w-sm">
         {message}
       </TooltipContent>
     </Tooltip>

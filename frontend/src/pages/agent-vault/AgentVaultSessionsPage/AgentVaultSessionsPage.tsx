@@ -464,10 +464,7 @@ export const AgentVaultSessionsPage = () => {
                     </TableCell>
                     <TableCell variant="action">
                       <div className="flex items-center justify-end gap-1">
-                        <SessionLogLossIndicator
-                          counts={session.recentSessionLogCounts}
-                          align="end"
-                        />
+                        <SessionLogLossIndicator counts={session.recentSessionLogCounts} />
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <IconButton
