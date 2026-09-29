@@ -380,7 +380,6 @@ export const AgentVaultSessionsPage = () => {
                 <TableHead>Created</TableHead>
                 <TableHead>Expires</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-10" />
                 <TableHead variant="action" />
               </TableRow>
             </TableHeader>
@@ -389,7 +388,7 @@ export const AgentVaultSessionsPage = () => {
                 Array.from({ length: 5 }).map((_, index) => (
                   // eslint-disable-next-line react/no-array-index-key
                   <TableRow key={`session-skeleton-${index}`}>
-                    {Array.from({ length: 7 }).map((__, cell) => (
+                    {Array.from({ length: 6 }).map((__, cell) => (
                       // eslint-disable-next-line react/no-array-index-key
                       <TableCell key={`session-skeleton-${index}-${cell}`}>
                         <Skeleton className="h-4 w-full" />
@@ -463,11 +462,12 @@ export const AgentVaultSessionsPage = () => {
                     <TableCell>
                       <SessionStatusBadge status={session.status} />
                     </TableCell>
-                    <TableCell>
-                      <SessionLogLossIndicator counts={session.recentSessionLogCounts} />
-                    </TableCell>
                     <TableCell variant="action">
                       <div className="flex items-center justify-end gap-1">
+                        <SessionLogLossIndicator
+                          counts={session.recentSessionLogCounts}
+                          align="end"
+                        />
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <IconButton
