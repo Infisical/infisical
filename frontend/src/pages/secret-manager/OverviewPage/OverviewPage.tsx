@@ -2611,7 +2611,6 @@ const OverviewPageContent = () => {
         if (event.button !== 0) return;
         event.preventDefault();
         event.stopPropagation();
-        event.currentTarget.focus();
         columnResize.current = {
           index,
           startX: event.clientX,
