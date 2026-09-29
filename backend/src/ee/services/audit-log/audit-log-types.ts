@@ -7527,7 +7527,6 @@ interface ResourceAuthMethodConfigMetadata {
   resourceName?: string;
   method: ResourceAuthMethodType;
   methodConfigId: string;
-  stsEndpoint?: string;
   allowedPrincipalArns?: string;
   allowedAccountIds?: string;
   kubernetesHost?: string;
