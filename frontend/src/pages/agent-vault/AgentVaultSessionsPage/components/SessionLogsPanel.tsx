@@ -69,6 +69,8 @@ const ALL_PROXIES = "all";
 
 const FILTER_SEARCH_STEP = 5000;
 
+const UPLOAD_RECHECK_MS = 15_000;
+
 const SESSION_LOG_ROW_HEIGHT = 41;
 
 type DecisionFilter = "all" | AgentVaultSessionLogDecision;
@@ -157,6 +159,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const retryLive = () => live.refetch().catch(() => {});
   const {
     data,
+    dataUpdatedAt,
     isPending,
     isPlaceholderData,
     isError,
@@ -173,8 +176,15 @@ export const SessionLogsPanel = ({ session }: Props) => {
     if (!data) return undefined;
     return arrived ? [arrived, ...data.pages] : data.pages;
   }, [data, arrived]);
-  const { records, gaps, drops, arrivals, isTruncated, isOverByteBudget } =
+  const { records, gaps, drops, arrivals, isTruncated, isOverByteBudget, hasUploadingChunks } =
     useAgentVaultSessionLogTimeline(pages);
+  // Only the live tail rereads recent chunks, so once the sheet stops following the session, an upload that
+  // hadn't landed yet is checked again here until it lands or its grace runs out and it reads as missing.
+  useEffect(() => {
+    if (!hasUploadingChunks || isLive || isFetching) return undefined;
+    const timer = setTimeout(() => refetch().catch(() => {}), UPLOAD_RECHECK_MS);
+    return () => clearTimeout(timer);
+  }, [hasUploadingChunks, isLive, isFetching, dataUpdatedAt, refetch]);
   if (isOverByteBudget && !isPlaceholderData && !isPausedForBudget) pauseForBudget();
   const isLoadError = isError && !data;
 

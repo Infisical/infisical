@@ -262,6 +262,7 @@ type TAgentVaultSessionLogTimeline = {
   arrivals: Map<string, number>;
   isTruncated: boolean;
   isOverByteBudget: boolean;
+  hasUploadingChunks: boolean;
 };
 
 export const useAgentVaultSessionLogTimeline = (
@@ -317,6 +318,7 @@ export const useAgentVaultSessionLogTimeline = (
       drops: [...dropsByChunk.values()],
       arrivals,
       isTruncated: records.length > AGENT_VAULT_SESSION_LOG_MAX_RECORDS || isOverByteBudget,
-      isOverByteBudget
+      isOverByteBudget,
+      hasUploadingChunks: [...opened.values()].some((result) => result.isUploading)
     };
   }, [pages]);
