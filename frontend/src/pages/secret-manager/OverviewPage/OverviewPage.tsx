@@ -2535,6 +2535,66 @@ const OverviewPageContent = () => {
   // }, [debouncedHeaderHeight]);
 
   const [tableWidth, setTableWidth] = useState(0);
+  const [resizedColumns, setResizedColumns] = useState<{ key: string; widths: number[] } | null>(
+    null
+  );
+  const columnResize = useRef<{ index: number; startX: number; widths: number[] } | null>(null);
+  const columnKey = `${isSingleEnvView ? "single" : "multi"}:${visibleEnvs.map(({ id }) => id).join(":")}`;
+  const columnMinWidth = isSingleEnvView ? 360 : 240;
+  const columnWidths = resizedColumns?.key === columnKey ? resizedColumns.widths : null;
+
+  const getCurrentColumnWidths = () =>
+    Array.from(tableRef.current?.querySelectorAll(":scope > table > thead > tr > th") ?? [])
+      .slice(1)
+      .map((header) => header.getBoundingClientRect().width);
+
+  const resizeColumns = (widths: number[], index: number, delta: number) => {
+    const next = [...widths];
+    const left = Math.max(columnMinWidth, widths[index] + delta);
+    next[index] = left;
+    next[index + 1] = Math.max(columnMinWidth, widths[index + 1] - (left - widths[index]));
+    setResizedColumns({ key: columnKey, widths: next });
+  };
+
+  const resizeHandle = (index: number) => (
+    <button
+      type="button"
+      aria-label={`Resize ${index === 0 ? "Name" : visibleEnvs[index - 1].name} column`}
+      title="Drag or use arrow keys to resize"
+      className="absolute inset-y-0 -right-1 z-20 w-2 cursor-col-resize touch-none hover:bg-foreground/15 focus-visible:bg-foreground/15 focus-visible:outline-none"
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.currentTarget.focus();
+        columnResize.current = {
+          index,
+          startX: event.clientX,
+          widths: getCurrentColumnWidths()
+        };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={(event) => {
+        if (!columnResize.current) return;
+        resizeColumns(
+          columnResize.current.widths,
+          columnResize.current.index,
+          event.clientX - columnResize.current.startX
+        );
+      }}
+      onPointerUp={() => {
+        columnResize.current = null;
+      }}
+      onPointerCancel={() => {
+        columnResize.current = null;
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        event.preventDefault();
+        resizeColumns(getCurrentColumnWidths(), index, event.key === "ArrowRight" ? 16 : -16);
+      }}
+    />
+  );
 
   const hasPendingCreates =
     mergedSecKeys.length > secKeys.length ||
@@ -2923,13 +2983,22 @@ const OverviewPageContent = () => {
                   className="w-full table-fixed border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
                   containerClassName="overscroll-x-none rounded-t-none"
                   style={{
-                    minWidth: 40 + (isSingleEnvView ? 2 * 360 : (visibleEnvs.length + 1) * 240)
+                    minWidth: 40 + (isSingleEnvView ? 2 * 360 : (visibleEnvs.length + 1) * 240),
+                    width: columnWidths
+                      ? `max(100%, ${40 + columnWidths.reduce((total, width) => total + width, 0)}px)`
+                      : undefined
                   }}
                 >
                   <colgroup>
                     <col className="w-10" />
-                    <col />
-                    {isSingleEnvView ? <col /> : visibleEnvs.map(({ id }) => <col key={id} />)}
+                    <col style={{ width: columnWidths?.[0] }} />
+                    {isSingleEnvView ? (
+                      <col style={{ width: columnWidths?.[1] }} />
+                    ) : (
+                      visibleEnvs.map(({ id }, index) => (
+                        <col key={id} style={{ width: columnWidths?.[index + 1] }} />
+                      ))
+                    )}
                   </colgroup>
                   <TableHeader>
                     <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-foreground/5">
@@ -2952,8 +3021,8 @@ const OverviewPageContent = () => {
                       </TableHead>
                       <TableHead
                         className={twMerge(
-                          !isSingleEnvView && "sticky",
-                          "left-10 z-10 min-w-[240px] border-r bg-container p-0"
+                          isSingleEnvView ? "relative" : "sticky left-10",
+                          "z-10 min-w-[240px] border-r bg-container p-0"
                         )}
                       >
                         <DropdownMenu>
@@ -2991,12 +3060,13 @@ const OverviewPageContent = () => {
                             </DropdownMenuRadioGroup>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        {resizeHandle(0)}
                       </TableHead>
                       {visibleEnvs.length > 1 ? (
                         visibleEnvs?.map(({ name, slug, id }, index) => {
                           return (
                             <TableHead
-                              className="min-w-[240px] border-r p-0 text-center whitespace-nowrap last:border-r-0"
+                              className="relative min-w-[240px] border-r p-0 text-center whitespace-nowrap last:border-r-0"
                               key={`secret-overview-${name}-${index + 1}`}
                             >
                               <DropdownMenu>
@@ -3100,6 +3170,7 @@ const OverviewPageContent = () => {
                                   </ProjectPermissionCan>
                                 </DropdownMenuContent>
                               </DropdownMenu>
+                              {index < visibleEnvs.length - 1 && resizeHandle(index + 1)}
                             </TableHead>
                           );
                         })

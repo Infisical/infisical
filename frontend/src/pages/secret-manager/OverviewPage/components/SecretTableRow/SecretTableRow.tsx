@@ -433,17 +433,18 @@ export const SecretTableRow = ({
           />
         ) : (
           <TableCell
-            isTruncatable
+            isTruncatable={!isFormExpanded}
+            colSpan={isFormExpanded ? environments.length + 1 : undefined}
             className={twMerge(
               "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover",
-              isFormExpanded && "border-r-0 border-b-0 bg-container-hover"
+              isFormExpanded && "static border-r-0 border-b-0 bg-container-hover"
             )}
           >
             <div className="flex min-w-0 items-center gap-2">
               <span
                 title={secretKey}
                 className={twMerge(
-                  "min-w-0 truncate",
+                  isFormExpanded ? "break-all whitespace-normal" : "min-w-0 truncate",
                   singleEnvPendingAction === PendingAction.Delete && "text-danger/75 line-through"
                 )}
               >
@@ -506,15 +507,8 @@ export const SecretTableRow = ({
           </TableCell>
         )}
         {environments.length > 1 &&
+          !isFormExpanded &&
           environments.map(({ slug }, i) => {
-            if (isFormExpanded)
-              return (
-                <TableCell
-                  key={`sec-overview-${slug}-${i + 1}-expanded`}
-                  className="border-b-0 bg-container-hover"
-                />
-              );
-
             const secret = getSecretByKey(slug, secretKey);
 
             const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
