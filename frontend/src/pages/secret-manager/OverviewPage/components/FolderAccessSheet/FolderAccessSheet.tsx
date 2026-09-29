@@ -21,6 +21,7 @@ import {
   SheetTitle,
   Skeleton
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   SecretFolderRole,
@@ -34,6 +35,7 @@ import {
   useUpdateIdentityFolderAccess,
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 import { AddFolderAccessSheet } from "./AddFolderAccessSheet";
 import { FOLDER_ROLE_TIER_LABELS } from "./folder-access.const";
@@ -66,6 +68,7 @@ export const FolderAccessSheet = ({
   folderPath,
   environmentName
 }: Props) => {
+  const { currentOrg } = useOrganization();
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
@@ -217,7 +220,14 @@ export const FolderAccessSheet = ({
                 variant="project"
                 size="sm"
                 className="shrink-0"
-                onClick={() => setIsAddOpen(true)}
+                onClick={() => {
+                  setIsAddOpen(true);
+                  analytics.captureForOrganization(
+                    AnalyticsEvent.FolderAccessAddSheetOpened,
+                    currentOrg.id,
+                    { projectId }
+                  );
+                }}
               >
                 Add Access
               </Button>

@@ -3,6 +3,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -539,7 +540,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
-      description: "Delete certificate",
+      description: "Delete certificate. Only expired, discovered, or imported certificates can be deleted.",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.DELETE.serialNumber)
       }),
@@ -550,7 +551,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const { deletedCert, applicationName } = await server.services.certificate.deleteCert({
+      const { deletedCert, applicationName, deletionEligibility } = await server.services.certificate.deleteCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -567,7 +568,11 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
           metadata: {
             certId: deletedCert.id,
             cn: deletedCert.commonName,
+            friendlyName: deletedCert.friendlyName,
             serialNumber: deletedCert.serialNumber,
+            notAfter: deletedCert.notAfter.toISOString(),
+            source: (deletedCert.source as CertificateSource | null) ?? CertificateSource.Issued,
+            deletionAllowedReason: deletionEligibility,
             applicationId: deletedCert.applicationId,
             applicationName
           }

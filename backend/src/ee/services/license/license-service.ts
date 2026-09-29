@@ -1,9 +1,9 @@
-import { CronJob } from "cron";
 import { Knex } from "knex";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
+import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { verifyOfflineLicense } from "@app/lib/crypto";
 import { applyJitter } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -158,9 +158,11 @@ export const licenseServiceFactory = ({
   const initializeBackgroundSync = async () => {
     if (licenseKeyConfig?.isValid && licenseKeyConfig?.type === LicenseType.Online) {
       logger.info("Setting up background sync process to refresh onPremFeatures from License Server v2");
-      const job = new CronJob("*/10 * * * *", () => syncSelfHostedFeatures());
-      job.start();
-      return job;
+      return startLocalRefresh({
+        name: "self-hosted-license-sync",
+        intervalMs: 10 * 60 * 1000,
+        task: () => syncSelfHostedFeatures(true)
+      });
     }
   };
 

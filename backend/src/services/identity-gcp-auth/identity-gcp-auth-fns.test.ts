@@ -101,7 +101,7 @@ describe("validateIdTokenIdentity", () => {
   test("returns the email and Compute Engine details for a GCE token", async () => {
     mockPayload({ email: SERVICE_ACCOUNT, google: { compute_engine: computeEngine } });
 
-    await expect(validateIdTokenIdentity({ identityId: IDENTITY_ID, jwt: "id-token" })).resolves.toEqual({
+    await expect(validateIdTokenIdentity({ audience: IDENTITY_ID, jwt: "id-token" })).resolves.toEqual({
       email: SERVICE_ACCOUNT,
       computeEngineDetails: computeEngine
     });
@@ -110,7 +110,7 @@ describe("validateIdTokenIdentity", () => {
   test("verifies the token against the identity ID as audience and the Google issuer", async () => {
     mockPayload({ email: SERVICE_ACCOUNT, google: { compute_engine: computeEngine } });
 
-    await validateIdTokenIdentity({ identityId: IDENTITY_ID, jwt: "id-token" });
+    await validateIdTokenIdentity({ audience: IDENTITY_ID, jwt: "id-token" });
 
     expect(verifySignedJwtWithCertsAsync).toHaveBeenCalledWith("id-token", { "cert-kid": "cert-value" }, IDENTITY_ID, [
       "https://accounts.google.com"
@@ -123,7 +123,7 @@ describe("validateIdTokenIdentity", () => {
   test("returns undefined Compute Engine details when the token carries no GCE claim", async () => {
     mockPayload({ email: SERVICE_ACCOUNT });
 
-    await expect(validateIdTokenIdentity({ identityId: IDENTITY_ID, jwt: "id-token" })).resolves.toEqual({
+    await expect(validateIdTokenIdentity({ audience: IDENTITY_ID, jwt: "id-token" })).resolves.toEqual({
       email: SERVICE_ACCOUNT,
       computeEngineDetails: undefined
     });
@@ -132,7 +132,7 @@ describe("validateIdTokenIdentity", () => {
   test("rejects a token that fails signature or audience verification", async () => {
     verifySignedJwtWithCertsAsync.mockRejectedValue(new Error("Wrong recipient, payload audience != requiredAudience"));
 
-    await expect(validateIdTokenIdentity({ identityId: IDENTITY_ID, jwt: "id-token" })).rejects.toThrow(
+    await expect(validateIdTokenIdentity({ audience: IDENTITY_ID, jwt: "id-token" })).rejects.toThrow(
       "Invalid GCP ID token"
     );
   });
@@ -142,7 +142,7 @@ describe("validateIdTokenIdentity", () => {
   test("does not leak the token in the rejection", async () => {
     verifySignedJwtWithCertsAsync.mockRejectedValue(new Error("Invalid token signature: super-secret-token"));
 
-    await expect(validateIdTokenIdentity({ identityId: IDENTITY_ID, jwt: "super-secret-token" })).rejects.toSatisfy(
+    await expect(validateIdTokenIdentity({ audience: IDENTITY_ID, jwt: "super-secret-token" })).rejects.toSatisfy(
       (error: Error) => !JSON.stringify({ message: error.message, cause: error.cause }).includes("super-secret-token")
     );
   });
@@ -150,7 +150,7 @@ describe("validateIdTokenIdentity", () => {
   test("rejects a token with no payload", async () => {
     mockPayload(undefined);
 
-    await expect(validateIdTokenIdentity({ identityId: IDENTITY_ID, jwt: "id-token" })).rejects.toThrow(
+    await expect(validateIdTokenIdentity({ audience: IDENTITY_ID, jwt: "id-token" })).rejects.toThrow(
       "GCP ID token is missing an email claim"
     );
   });
@@ -158,7 +158,7 @@ describe("validateIdTokenIdentity", () => {
   test("rejects a token with no email claim", async () => {
     mockPayload({ google: { compute_engine: computeEngine } });
 
-    await expect(validateIdTokenIdentity({ identityId: IDENTITY_ID, jwt: "id-token" })).rejects.toThrow(
+    await expect(validateIdTokenIdentity({ audience: IDENTITY_ID, jwt: "id-token" })).rejects.toThrow(
       "GCP ID token is missing an email claim"
     );
   });
@@ -170,13 +170,13 @@ describe("validateIamIdentity", () => {
   });
 
   test("returns the service account email for a correctly signed token", async () => {
-    await expect(validateIamIdentity({ identityId: IDENTITY_ID, jwt: signIamJwt() })).resolves.toEqual({
+    await expect(validateIamIdentity({ audience: IDENTITY_ID, jwt: signIamJwt() })).resolves.toEqual({
       email: SERVICE_ACCOUNT
     });
   });
 
   test("fetches the signing keys for the service account named in the token", async () => {
-    await validateIamIdentity({ identityId: IDENTITY_ID, jwt: signIamJwt() });
+    await validateIamIdentity({ audience: IDENTITY_ID, jwt: signIamJwt() });
 
     expect(requestGet).toHaveBeenCalledWith(
       `https://www.googleapis.com/service_accounts/v1/metadata/x509/${encodeURIComponent(SERVICE_ACCOUNT)}`
@@ -184,7 +184,7 @@ describe("validateIamIdentity", () => {
   });
 
   test("rejects a malformed token", async () => {
-    await expect(validateIamIdentity({ identityId: IDENTITY_ID, jwt: "not-a-jwt" })).rejects.toThrow(
+    await expect(validateIamIdentity({ audience: IDENTITY_ID, jwt: "not-a-jwt" })).rejects.toThrow(
       "Invalid GCP IAM token"
     );
     expect(requestGet).not.toHaveBeenCalled();
@@ -193,7 +193,7 @@ describe("validateIamIdentity", () => {
   // Without a kid there is no way to pick a signing key, and indexing the key map with
   // undefined must not be allowed to select one.
   test("rejects a token whose header carries no kid", async () => {
-    await expect(validateIamIdentity({ identityId: IDENTITY_ID, jwt: signIamJwt({ omitKid: true }) })).rejects.toThrow(
+    await expect(validateIamIdentity({ audience: IDENTITY_ID, jwt: signIamJwt({ omitKid: true }) })).rejects.toThrow(
       "Invalid GCP IAM token"
     );
     expect(requestGet).not.toHaveBeenCalled();
@@ -202,7 +202,7 @@ describe("validateIamIdentity", () => {
   test("rejects a token whose subject is not a service account email", async () => {
     await expect(
       validateIamIdentity({
-        identityId: IDENTITY_ID,
+        audience: IDENTITY_ID,
         jwt: signIamJwt({ payload: { sub: "attacker@gmail.com", aud: IDENTITY_ID } })
       })
     ).rejects.toThrow("Invalid service account identifier");
@@ -211,7 +211,7 @@ describe("validateIamIdentity", () => {
 
   test("rejects a token with no subject", async () => {
     await expect(
-      validateIamIdentity({ identityId: IDENTITY_ID, jwt: signIamJwt({ payload: { aud: IDENTITY_ID } }) })
+      validateIamIdentity({ audience: IDENTITY_ID, jwt: signIamJwt({ payload: { aud: IDENTITY_ID } }) })
     ).rejects.toThrow("Invalid service account identifier");
     expect(requestGet).not.toHaveBeenCalled();
   });
@@ -219,21 +219,21 @@ describe("validateIamIdentity", () => {
   test("rejects a token whose kid matches none of the published keys", async () => {
     requestGet.mockResolvedValue({ data: { "some-other-kid": signingKeyPair.publicKey } });
 
-    await expect(validateIamIdentity({ identityId: IDENTITY_ID, jwt: signIamJwt() })).rejects.toThrow(
+    await expect(validateIamIdentity({ audience: IDENTITY_ID, jwt: signIamJwt() })).rejects.toThrow(
       "No matching signing key found for the GCP IAM token"
     );
   });
 
   test("rejects a token signed by a key other than the published one", async () => {
     await expect(
-      validateIamIdentity({ identityId: IDENTITY_ID, jwt: signIamJwt({ privateKey: otherKeyPair.privateKey }) })
+      validateIamIdentity({ audience: IDENTITY_ID, jwt: signIamJwt({ privateKey: otherKeyPair.privateKey }) })
     ).rejects.toThrow("Invalid GCP IAM token signature");
   });
 
   test("rejects an expired token", async () => {
-    await expect(
-      validateIamIdentity({ identityId: IDENTITY_ID, jwt: signIamJwt({ expiresIn: "-1h" }) })
-    ).rejects.toThrow("Invalid GCP IAM token signature");
+    await expect(validateIamIdentity({ audience: IDENTITY_ID, jwt: signIamJwt({ expiresIn: "-1h" }) })).rejects.toThrow(
+      "Invalid GCP IAM token signature"
+    );
   });
 
   // An unsigned token must never verify, otherwise anyone able to name a service account
@@ -242,7 +242,7 @@ describe("validateIamIdentity", () => {
     const [, payload] = signIamJwt().split(".");
     const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT", kid: KEY_ID })).toString("base64url");
 
-    await expect(validateIamIdentity({ identityId: IDENTITY_ID, jwt: `${header}.${payload}.` })).rejects.toThrow(
+    await expect(validateIamIdentity({ audience: IDENTITY_ID, jwt: `${header}.${payload}.` })).rejects.toThrow(
       "Invalid GCP IAM token signature"
     );
   });
@@ -250,7 +250,7 @@ describe("validateIamIdentity", () => {
   test("rejects a token minted for a different identity", async () => {
     await expect(
       validateIamIdentity({
-        identityId: IDENTITY_ID,
+        audience: IDENTITY_ID,
         jwt: signIamJwt({ payload: { sub: SERVICE_ACCOUNT, aud: "another-identity-id" } })
       })
     ).rejects.toThrow("Invalid audience in GCP IAM Token");

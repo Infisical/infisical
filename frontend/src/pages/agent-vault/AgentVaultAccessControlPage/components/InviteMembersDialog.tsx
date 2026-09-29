@@ -6,6 +6,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -14,12 +15,17 @@ import {
   DialogTitle,
   Field,
   FieldContent,
-  FieldLabel,
-  FilterableSelect
+  FieldDescription,
+  FieldLabel
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useDebounce } from "@app/hooks";
 import { useGetOrgUsers } from "@app/hooks/api";
-import { useAddAgentVaultMembers, useListAgentVaultMembers } from "@app/hooks/api/agentVault";
+import {
+  useAddAgentVaultMembers,
+  useListAgentVaultMembers,
+  useListAvailableAgentVaultMembers
+} from "@app/hooks/api/agentVault";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
@@ -35,7 +41,6 @@ type Props = {
 
 export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
-  const { data: orgUsers = [] } = useGetOrgUsers(currentOrg.id);
   const addMembers = useAddAgentVaultMembers();
   const navigate = useNavigate({ from: "" });
   const requesterEmail = useSearch({
@@ -52,14 +57,27 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
 
   const [selected, setSelected] = useState<TCandidate[]>([]);
   const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
 
-  const candidates = useMemo(() => {
-    return orgUsers.map((orgUser) => {
-      const name = `${orgUser.user.firstName ?? ""} ${orgUser.user.lastName ?? ""}`.trim();
-      const email = orgUser.user.email || orgUser.user.username || "";
-      return { value: orgUser.user.id, label: name || email, email };
+  const { data: availableData, isFetching: isCandidatesFetching } =
+    useListAvailableAgentVaultMembers(
+      { actorType: AgentVaultMemberType.User, search: debouncedSearch.trim() || undefined },
+      isOpen
+    );
+  // Only the ?requesterEmail= deep link needs the whole roster: it resolves an address the candidate
+  // list legitimately may not hold, because that user may already be a member.
+  const { data: orgUsers = [] } = useGetOrgUsers(requesterEmail ? currentOrg.id : "");
+
+  const candidates = useMemo<TCandidate[]>(() => {
+    return (availableData?.actors ?? []).map((actor) => {
+      const name = `${actor.firstName ?? ""} ${actor.lastName ?? ""}`.trim();
+      const email = actor.email || actor.username || "";
+      return { value: actor.id, label: name || email, email };
     });
-  }, [orgUsers]);
+  }, [availableData]);
+
+  const isCandidateListTruncated = (availableData?.totalCount ?? 0) > candidates.length;
 
   const memberUsernames = useMemo(
     () => new Set((requesterMatch?.members ?? []).map((member) => member.actor.username)),
@@ -100,6 +118,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const handleClose = () => {
     setSelected([]);
     setRole(ProjectMembershipRole.Member);
+    setSearch("");
     clearRequesterEmail();
     onOpenChange(false);
   };
@@ -143,17 +162,34 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
         </DialogHeader>
 
         <Field>
-          <FieldLabel>Users</FieldLabel>
+          <FieldLabel htmlFor="agent-vault-invite-users">Users</FieldLabel>
           <FieldContent>
-            <FilterableSelect
-              isMulti
-              value={selected}
-              onChange={(value) => setSelected((value ?? []) as TCandidate[])}
+            <Combobox
+              id="agent-vault-invite-users"
+              multiple
               options={candidates}
-              placeholder="Search by name or email..."
-              getOptionLabel={(option) => option.label}
+              value={selected}
+              isLoading={isCandidatesFetching}
+              onSearchChange={setSearch}
               getOptionValue={(option) => option.value}
+              getOptionLabel={(option) => option.label}
+              placeholder="Pick users"
+              searchPlaceholder="Search by name or email..."
+              searchAriaLabel="Search users"
+              emptyMessage={(inputValue) =>
+                inputValue
+                  ? "No one matches who is not already a member"
+                  : "Everyone in the organization is already a member"
+              }
+              clearAriaLabel="Clear all users"
+              modal
+              onValueChange={(next) => setSelected([...next])}
             />
+            {isCandidateListTruncated && (
+              <FieldDescription>
+                Search by name or email to find users that are not listed.
+              </FieldDescription>
+            )}
           </FieldContent>
         </Field>
 

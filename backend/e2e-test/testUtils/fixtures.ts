@@ -37,12 +37,15 @@ export const createIsolatedOrgAndProject = async (namePrefix: string) => {
 
   // Hard-deletes the org row; every project/environment/secret/webhook underneath it is reaped by
   // FK cascade (org-service.ts:deleteOrganizationById), so there's nothing else to tear down.
+  // Asserted so a silent cleanup failure surfaces here rather than as leaked org-scoped state in a
+  // later suite.
   const cleanup = async () => {
-    await testServer.inject({
+    const deleteRes = await testServer.inject({
       method: "DELETE",
       url: `/api/v2/organizations/${orgId}`,
       headers: { authorization: `Bearer ${authToken}` }
     });
+    expect(deleteRes.statusCode).toBe(200);
   };
 
   return { orgId, projectId, authToken, cleanup };

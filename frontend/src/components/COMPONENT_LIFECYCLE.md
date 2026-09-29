@@ -24,7 +24,7 @@ This ledger records lifecycle decisions that aren't obvious from component sourc
 | Components                     | Status     | Direction                                                             |
 | ------------------------------ | ---------- | --------------------------------------------------------------------- |
 | `ReactSelect/FilterableSelect` | Deprecated | Use `Combobox`; keep compatibility available while consumers migrate. |
-| `ReactSelect/CreatableSelect`  | Blocked    | `Combobox` doesn't support inline option creation.                    |
+| `ReactSelect/CreatableSelect`  | Deprecated | Use `Combobox` with inline `creation` for values needing no metadata, or dialog `creation` for caller-owned forms and persistence. Keep compatibility for react-select-specific component overrides; migrate consumers separately. |
 
 ## Updating the ledger
 

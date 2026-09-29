@@ -36,7 +36,7 @@ import { AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
 
 type TAgentVaultMembershipServiceFactoryDep = {
-  agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers">;
+  agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers" | "findAvailableActors">;
   membershipDAL: Pick<TMembershipDALFactory, "insertMany" | "find" | "transaction" | "delete">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "insertMany" | "delete">;
@@ -44,7 +44,7 @@ type TAgentVaultMembershipServiceFactoryDep = {
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findActiveEffectiveOrgMemberActorIds">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
@@ -112,7 +112,9 @@ const VALID_PRODUCT_ROLES: string[] = [ProjectMembershipRole.Admin, ProjectMembe
 
 const ALL_ACTOR_TYPES = [AgentVaultMemberType.User, AgentVaultMemberType.Group, AgentVaultMemberType.MachineIdentity];
 
-const ACTOR_COLUMN: Record<AgentVaultMemberType, "actorUserId" | "actorIdentityId" | "actorGroupId"> = {
+type TActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
+
+const ACTOR_COLUMN: Record<AgentVaultMemberType, TActorColumn> = {
   [AgentVaultMemberType.User]: "actorUserId",
   [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
   [AgentVaultMemberType.Group]: "actorGroupId"
@@ -204,6 +206,33 @@ export const agentVaultMembershipServiceFactory = ({
     if (!readable.length) assertCanReadActorType(permission, asked[0]);
 
     return agentVaultMemberDAL.findProductMembers({
+      projectId,
+      orgId: ctx.actorOrgId,
+      actorTypes: readable,
+      search,
+      limit,
+      offset
+    });
+  };
+
+  const listAvailableProductMembers = async ({
+    projectId,
+    actorType,
+    search,
+    limit,
+    offset,
+    ctx
+  }: TListAgentVaultMembersDTO) => {
+    await checkProductAdmin(projectId, ctx);
+
+    // checkProductAdmin reads hasRole, which does not intersect a delegated token's scopes. The CASL
+    // check below is what narrows an OAuth token holding less than the admin it acts for.
+    const { permission } = await getActorPermission(projectId, ctx);
+    const asked = actorType ? [actorType] : ALL_ACTOR_TYPES;
+    const readable = asked.filter((type) => canReadActorType(permission, type));
+    if (!readable.length) assertCanReadActorType(permission, asked[0]);
+
+    return agentVaultMemberDAL.findAvailableActors({
       projectId,
       orgId: ctx.actorOrgId,
       actorTypes: readable,
@@ -312,25 +341,42 @@ export const agentVaultMembershipServiceFactory = ({
     const machineIdentityIds = named(actors, AgentVaultMemberType.MachineIdentity);
     const userIds = named(actors, AgentVaultMemberType.User);
 
-    const [groups, identities, userMemberIds, identityMemberIds] = await Promise.all([
-      groupIds.length ? groupDAL.find({ $in: { id: groupIds }, orgId }) : [],
-      machineIdentityIds.length ? identityDAL.find({ $in: { id: machineIdentityIds }, orgId }) : [],
-      orgDAL.findActiveEffectiveOrgMemberActorIds({ actorType: ActorType.USER, actorIds: userIds, orgId }),
-      orgDAL.findActiveEffectiveOrgMemberActorIds({
-        actorType: ActorType.IDENTITY,
-        actorIds: machineIdentityIds,
-        orgId
-      })
+    // An org reaches a group or an identity through an org-scope membership row, not by owning the row:
+    // that is how a sub-org is given one of its parent's, and how the generic project membership path
+    // decides the same question. Reading orgId off the group or identity refuses every linked one.
+    const orgScoped = (column: TActorColumn, ids: string[]) =>
+      ids.length
+        ? membershipDAL.find({ scope: AccessScope.Organization, scopeOrgId: orgId, $in: { [column]: ids } })
+        : [];
+
+    const [groupMemberships, identityMemberships, userMemberships, identities] = await Promise.all([
+      orgScoped("actorGroupId", groupIds),
+      orgScoped("actorIdentityId", machineIdentityIds),
+      orgScoped("actorUserId", userIds),
+      machineIdentityIds.length ? identityDAL.find({ $in: { id: machineIdentityIds } }) : []
     ]);
 
-    const foundGroups = new Set(groups.map((group) => group.id));
+    // A row of the actor's own, not one it inherits from a group. An actor that reaches the org only
+    // through a group is meant to reach Agent Vault the same way, by the group being a member, so it is
+    // never granted a membership here. Authentication is separate and still resolves it through groups.
+    const activeIds = (memberships: TMemberships[], column: TActorColumn) =>
+      new Set(memberships.filter((membership) => membership.isActive).map((membership) => membership[column]));
+
+    const userMemberIds = activeIds(userMemberships, "actorUserId");
+    const identityMemberIds = activeIds(identityMemberships, "actorIdentityId");
+
+    // Active, so a deactivated group cannot be restored to Agent Vault by adding it again.
+    const foundGroups = activeIds(groupMemberships, "actorGroupId");
     const missingGroups = groupIds.filter((id) => !foundGroups.has(id));
     if (missingGroups.length) {
       throw new NotFoundError({ message: `Group(s) ${missingGroups.map((el) => `'${el}'`).join(", ")} not found` });
     }
 
+    // Keyed on the membership, so an identity in another org stays a 404 rather than reaching the
+    // active-member check below, which would confirm it exists.
+    const foundIdentities = new Set(identityMemberships.map((membership) => membership.actorIdentityId));
     const identityById = new Map(identities.map((identity) => [identity.id, identity]));
-    const missingIdentities = machineIdentityIds.filter((id) => !identityById.has(id));
+    const missingIdentities = machineIdentityIds.filter((id) => !foundIdentities.has(id));
     if (missingIdentities.length) {
       throw new NotFoundError({
         message: `Machine identity(s) ${missingIdentities.map((el) => `'${el}'`).join(", ")} not found`
@@ -354,19 +400,48 @@ export const agentVaultMembershipServiceFactory = ({
     // Status is not required: an org invite that has not been accepted still gets project access
     // everywhere else on the platform, and resolveSession refuses the actor until it is. isActive is the
     // real gate, so a deactivated member is still refused.
-    const outsiders = actors.filter((actor) => {
-      if (actor.type === AgentVaultMemberType.User) return !userMemberIds.has(actor.id);
-      if (actor.type === AgentVaultMemberType.MachineIdentity) return !identityMemberIds.has(actor.id);
-      return false;
+    //
+    // The two refusals are separated because the remedy differs, and this runs on a role change as well as
+    // an add, so neither message may name one of them.
+    const deactivated: TAgentVaultNamedActor[] = [];
+    const strangers: TAgentVaultNamedActor[] = [];
+    actors.forEach((actor) => {
+      const isUser = actor.type === AgentVaultMemberType.User;
+      if (!isUser && actor.type !== AgentVaultMemberType.MachineIdentity) return;
+      if ((isUser ? userMemberIds : identityMemberIds).has(actor.id)) return;
+
+      const column = isUser ? "actorUserId" : "actorIdentityId";
+      const hasRow = (isUser ? userMemberships : identityMemberships).some((row) => row[column] === actor.id);
+      (hasRow ? deactivated : strangers).push(actor);
     });
-    if (outsiders.length) {
-      throw new BadRequestError({
-        message: `Cannot add ${outsiders
-          .map((actor) => `'${actor.identifier}'`)
-          .join(
-            ", "
-          )} to Agent Vault because they are not an active member of this organization. Invite them to the organization first.`
-      });
+
+    if (deactivated.length || strangers.length) {
+      // Names only for the deactivated, who are in this org. The lookup is not org-scoped, so resolving a
+      // stranger would hand back another tenant's email, and tell a real id apart from a made-up one.
+      const nameByKey = await resolveActorNames(deactivated);
+      const listOf = (refused: TAgentVaultNamedActor[]) =>
+        refused.map((actor) => `'${nameByKey.get(actorKey(actor)) ?? actor.identifier}'`).join(", ");
+
+      // Both, when a batch holds both: fixing one and retrying to discover the other is a wasted round
+      // trip, and a bulk change is where that hurts.
+      const reasons: string[] = [];
+      if (deactivated.length) {
+        const one = deactivated.length === 1;
+        reasons.push(
+          `${listOf(deactivated)} ${one ? "is" : "are"} deactivated in this organization. Reactivate ${
+            one ? "them" : "those members"
+          } before changing their Agent Vault access.`
+        );
+      }
+      if (strangers.length) {
+        reasons.push(
+          `${listOf(strangers)} ${
+            strangers.length === 1 ? "is not a member" : "are not members"
+          } of this organization. Invite them to the organization first.`
+        );
+      }
+
+      throw new BadRequestError({ message: reasons.join(" ") });
     }
   };
 
@@ -591,6 +666,7 @@ export const agentVaultMembershipServiceFactory = ({
   };
   return {
     listProductMembers,
+    listAvailableProductMembers,
     addProductMembers,
     updateProductMemberRole,
     revokeProductMembers

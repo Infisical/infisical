@@ -1,5 +1,6 @@
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 
+import { handleClickhouseSession } from "./clickhouse/pam-clickhouse-session-handler";
 import { handleMysqlSession } from "./mysql/pam-mysql-session-handler";
 import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
 import { handlePostgresSession } from "./postgres/pam-postgres-session-handler";
@@ -34,6 +35,10 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
   [PamAccountType.Snowflake]: {
     gatewayAccountType: PamAccountType.Snowflake,
     handler: handleSnowflakeSession
+  },
+  [PamAccountType.ClickHouse]: {
+    gatewayAccountType: PamAccountType.ClickHouse,
+    handler: handleClickhouseSession
   },
   [PamAccountType.SSH]: {
     gatewayAccountType: PamAccountType.SSH,

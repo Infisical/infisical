@@ -652,9 +652,9 @@ export const certificateV3ServiceFactory = ({
             altNames: certificateRequestWithDefaults.altNames
               ? JSON.stringify(certificateRequestWithDefaults.altNames)
               : null,
-            keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || null,
+            keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || [],
             extendedKeyUsages:
-              convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || null,
+              convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || [],
             notBefore: certificateRequestWithDefaults.notBefore || null,
             notAfter: certificateRequestWithDefaults.notAfter || null,
             keyAlgorithm: certificateRequestWithDefaults.keyAlgorithm || null,
@@ -865,12 +865,12 @@ export const certificateV3ServiceFactory = ({
           tx,
           profileId: profile.id,
           applicationId,
-          commonName: certificateRequest.commonName,
-          altNames: certificateRequest.altNames,
-          keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages),
-          extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages),
-          notBefore: certificateRequest.notBefore,
-          notAfter: certificateRequest.notAfter,
+          commonName: certificateRequestWithDefaults.commonName,
+          altNames: certificateRequestWithDefaults.altNames,
+          keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages),
+          extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages),
+          notBefore: certificateRequestWithDefaults.notBefore,
+          notAfter: certificateRequestWithDefaults.notAfter,
           keyAlgorithm: effectiveKeyAlgorithm,
           signatureAlgorithm: effectiveSignatureAlgorithm,
           status: CertificateRequestStatus.ISSUED,
@@ -878,12 +878,12 @@ export const certificateV3ServiceFactory = ({
           customExtensions: resolvedCustomExtensions,
           ttl: resolvedTtl,
           enrollmentType: EnrollmentType.API,
-          organization: certificateRequest.organization,
-          organizationalUnit: certificateRequest.organizationalUnit,
-          country: certificateRequest.country,
-          state: certificateRequest.state,
-          locality: certificateRequest.locality,
-          domainComponents: certificateRequest.domainComponents
+          organization: certificateRequestWithDefaults.organization,
+          organizationalUnit: certificateRequestWithDefaults.organizationalUnit,
+          country: certificateRequestWithDefaults.country,
+          state: certificateRequestWithDefaults.state,
+          locality: certificateRequestWithDefaults.locality,
+          domainComponents: certificateRequestWithDefaults.domainComponents
         });
 
         if (metadata && metadata.length > 0) {
@@ -1135,26 +1135,26 @@ export const certificateV3ServiceFactory = ({
         caId: ca.id,
         profileId: profile.id,
         applicationId,
-        commonName: certificateRequest.commonName,
-        altNames: certificateRequest.altNames,
-        keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages),
-        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages),
-        notBefore: certificateRequest.notBefore,
-        notAfter: certificateRequest.notAfter,
+        commonName: certificateRequestWithDefaults.commonName,
+        altNames: certificateRequestWithDefaults.altNames,
+        keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages),
+        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages),
+        notBefore: certificateRequestWithDefaults.notBefore,
+        notAfter: certificateRequestWithDefaults.notAfter,
         keyAlgorithm: effectiveKeyAlgorithm,
         signatureAlgorithm: effectiveSignatureAlgorithm,
         status: CertificateRequestStatus.ISSUED,
         certificateId: certResult.certificateId,
         customExtensions: resolvedCustomExtensions,
-        basicConstraints: certificateRequest.basicConstraints,
-        ttl: certificateRequest.validity.ttl,
+        basicConstraints: certificateRequestWithDefaults.basicConstraints,
+        ttl: effectiveTtl,
         enrollmentType: EnrollmentType.API,
-        organization: certificateRequest.organization,
-        organizationalUnit: certificateRequest.organizationalUnit,
-        country: certificateRequest.country,
-        state: certificateRequest.state,
-        locality: certificateRequest.locality,
-        domainComponents: certificateRequest.domainComponents
+        organization: certificateRequestWithDefaults.organization,
+        organizationalUnit: certificateRequestWithDefaults.organizationalUnit,
+        country: certificateRequestWithDefaults.country,
+        state: certificateRequestWithDefaults.state,
+        locality: certificateRequestWithDefaults.locality,
+        domainComponents: certificateRequestWithDefaults.domainComponents
       });
 
       if (metadata && metadata.length > 0) {
@@ -1433,8 +1433,13 @@ export const certificateV3ServiceFactory = ({
             domainComponents: mappedCertificateRequest.domainComponents
               ? mappedCertificateRequest.domainComponents.join(",")
               : null,
-            keyUsages: convertKeyUsageArrayToLegacy(mappedCertificateRequest.keyUsages) || null,
-            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(mappedCertificateRequest.extendedKeyUsages) || null,
+            keyUsages: convertKeyUsageArrayToLegacy(mappedCertificateRequest.keyUsages) || [],
+            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(mappedCertificateRequest.extendedKeyUsages) || [],
+            organization: mappedCertificateRequest.organization || null,
+            organizationalUnit: mappedCertificateRequest.organizationalUnit || null,
+            country: mappedCertificateRequest.country || null,
+            state: mappedCertificateRequest.state || null,
+            locality: mappedCertificateRequest.locality || null,
             notBefore: notBefore || null,
             notAfter: notAfter || null,
             keyAlgorithm: extractedKeyAlgorithm || null,
@@ -1588,7 +1593,12 @@ export const certificateV3ServiceFactory = ({
       basicConstraints,
       customExtensions: resolvedCustomExtensions,
       ttl: validity.ttl,
-      enrollmentType
+      enrollmentType,
+      organization: mappedCertificateRequest.organization,
+      organizationalUnit: mappedCertificateRequest.organizationalUnit,
+      country: mappedCertificateRequest.country,
+      state: mappedCertificateRequest.state,
+      locality: mappedCertificateRequest.locality
     });
 
     const effectiveApiConfig = await resolveEffectiveApiConfig({
@@ -1790,12 +1800,11 @@ export const certificateV3ServiceFactory = ({
         certificateRequest.notAfter = certificateOrder.notAfter;
       }
     } else {
-      const rawRequest: TCertificateRequest = {
+      const orderedFields = {
         commonName: certificateOrder.commonName,
         keyUsages: certificateOrder.keyUsages,
         extendedKeyUsages: certificateOrder.extendedKeyUsages,
         subjectAlternativeNames: certificateOrder.altNames,
-        validity: certificateOrder.validity,
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
         signatureAlgorithm: certificateOrder.signatureAlgorithm,
@@ -1808,6 +1817,10 @@ export const certificateV3ServiceFactory = ({
         locality: certificateOrder.locality,
         customExtensions: certificateOrder.customExtensions
       };
+      const rawRequest = {
+        validity: certificateOrder.validity,
+        ...Object.fromEntries(Object.entries(orderedFields).filter(([, value]) => value !== undefined))
+      } as TCertificateRequest;
       certificateRequest = applyProfileDefaults(rawRequest, profile.defaults);
     }
 
@@ -1833,6 +1846,11 @@ export const certificateV3ServiceFactory = ({
       };
     }
 
+    const orderEffectiveTtl = resolveEffectiveTtl({
+      requestTtl: certificateOrder.validity?.ttl,
+      profileDefaultTtlDays: profile.defaults?.ttlDays,
+      flowDefaultTtl: ""
+    });
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
 
     if (certificateOrder.csr) {
@@ -1882,7 +1900,7 @@ export const certificateV3ServiceFactory = ({
         csr: certificateOrder.csr,
         keyAlgorithm: certificateOrder.keyAlgorithm,
         altNames: certificateOrder.altNames,
-        ttl: certificateOrder.validity?.ttl,
+        ttl: orderEffectiveTtl,
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
         organization: certificateRequest.organization,
@@ -1931,13 +1949,13 @@ export const certificateV3ServiceFactory = ({
             altNames: certificateRequest.subjectAlternativeNames
               ? JSON.stringify(certificateRequest.subjectAlternativeNames)
               : null,
-            keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || null,
-            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || null,
+            keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
+            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
             notBefore: certificateOrder.notBefore || null,
             notAfter: certificateOrder.notAfter || null,
             keyAlgorithm: extractedKeyAlgorithm || certificateRequest.keyAlgorithm || null,
             signatureAlgorithm: extractedSignatureAlgorithm || certificateRequest.signatureAlgorithm || null,
-            ttl: certificateOrder.validity?.ttl || null,
+            ttl: orderEffectiveTtl || null,
             metadata: certificateOrder.template ? JSON.stringify({ template: certificateOrder.template }) : null,
             organization: certificateRequest.organization || null,
             organizationalUnit: certificateRequest.organizationalUnit || null,
@@ -2073,7 +2091,7 @@ export const certificateV3ServiceFactory = ({
           csr: certificateOrder.csr,
           keyAlgorithm: certificateOrder.keyAlgorithm,
           altNames: certificateOrder.altNames,
-          ttl: certificateOrder.validity?.ttl,
+          ttl: orderEffectiveTtl,
           notBefore: certificateOrder.notBefore,
           notAfter: certificateOrder.notAfter,
           organization: certificateRequest.organization,
@@ -2110,17 +2128,18 @@ export const certificateV3ServiceFactory = ({
         caId: ca.id,
         profileId: profile.id,
         applicationId,
-        commonName: certificateOrder.commonName || "",
-        keyUsages: convertKeyUsageArrayToLegacy(certificateOrder.keyUsages) || [],
-        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateOrder.extendedKeyUsages) || [],
-        keyAlgorithm: certificateOrder.keyAlgorithm || "",
-        signatureAlgorithm: certificateOrder.signatureAlgorithm || "",
-        altNames: certificateOrder.altNames,
-        notBefore: certificateOrder.notBefore,
-        notAfter: certificateOrder.notAfter,
+        csr: certificateOrder.csr,
+        commonName: certificateRequest.commonName || "",
+        keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
+        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
+        keyAlgorithm: certificateRequest.keyAlgorithm || "",
+        signatureAlgorithm: certificateRequest.signatureAlgorithm || "",
+        altNames: certificateRequest.subjectAlternativeNames,
+        notBefore: certificateRequest.notBefore,
+        notAfter: certificateRequest.notAfter,
         status: CertificateRequestStatus.PENDING,
         customExtensions: orderCustomExtensions,
-        ttl: certificateOrder.validity?.ttl,
+        ttl: orderEffectiveTtl,
         enrollmentType: EnrollmentType.API,
         organization: certificateRequest.organization,
         organizationalUnit: certificateRequest.organizationalUnit,
@@ -2145,8 +2164,8 @@ export const certificateV3ServiceFactory = ({
         profileId: profile.id,
         caId: profile.caId || "",
         caType,
-        ttl: certificateOrder.validity?.ttl || "1y",
-        signatureAlgorithm: certificateOrder.signatureAlgorithm || "",
+        ttl: orderEffectiveTtl || "1y",
+        signatureAlgorithm: certificateRequest.signatureAlgorithm || "",
         keyAlgorithm: certificateRequest.keyAlgorithm || "",
         commonName: certificateRequest.commonName || "",
         altNames:

@@ -47,7 +47,7 @@ const RootCommandMenuMount = () => {
 };
 
 const RootPage = () => {
-  const pathname = useRouterState({ select: (state) => state.resolvedLocation.pathname });
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
     <ThemeProvider pathname={pathname}>
       <TooltipProvider>

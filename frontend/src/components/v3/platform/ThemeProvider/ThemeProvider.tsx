@@ -6,7 +6,7 @@ import { isDarkAuthPath } from "./auth-theme";
 
 export type Theme = "dark" | "light" | "system";
 export type ResolvedTheme = Exclude<Theme, "system">;
-export type ThemeChangeSource = "command-menu" | "profile-menu";
+export type ThemeChangeSource = "command-menu" | "navbar-toggle" | "profile-menu";
 
 type ThemeContextValue = {
   theme: Theme;

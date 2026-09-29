@@ -16,6 +16,7 @@ import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/au
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { TAuditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
 import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-types";
+import { TCertificateAuthorityOcspServiceFactory } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-types";
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
@@ -375,6 +376,7 @@ declare module "fastify" {
       certManagerExport: TCertManagerExportServiceFactory;
       certificateAuthority: TCertificateAuthorityServiceFactory;
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
+      certificateAuthorityOcsp: TCertificateAuthorityOcspServiceFactory;
       certificateEst: TCertificateEstServiceFactory;
       pkiAcme: TPkiAcmeServiceFactory;
       pkiScep: TPkiScepServiceFactory;

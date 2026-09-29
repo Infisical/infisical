@@ -1,4 +1,5 @@
 import { execFile } from "child_process";
+import { existsSync, readFileSync } from "fs";
 import { promisify } from "util";
 import { describe, expect, test, vi } from "vitest";
 
@@ -21,7 +22,23 @@ vi.mock("@app/lib/config/env", async (importOriginal) => ({
 
 const execFileAsync = promisify(execFile);
 
+// A killed orphan is reparented to PID 1, which in the test container is the vitest node process
+// itself, and it never reaps a process it did not spawn, so the dead grandchild lingers as a
+// zombie. `kill(pid, 0)` succeeds against a zombie, so where procfs exists the state is read
+// directly instead.
+const procfsAvailable = existsSync("/proc/self/stat");
+
 const isProcessAlive = (pid: number) => {
+  if (procfsAvailable) {
+    try {
+      const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+      // The state character follows the parenthesized comm, which may itself contain spaces.
+      return !stat.slice(stat.lastIndexOf(")") + 2).startsWith("Z");
+    } catch {
+      return false;
+    }
+  }
+
   try {
     process.kill(pid, 0);
     return true;

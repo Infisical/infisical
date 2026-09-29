@@ -130,8 +130,8 @@ export const RenderSyncFields = () => {
                   isDisabled={!connectionId}
                   value={services?.find((service) => service.id === value) ?? null}
                   onValueChange={(option) => {
-                    onChange(option.id ?? null);
-                    setValue("destinationConfig.serviceName", option.name ?? "");
+                    onChange(option?.id ?? null);
+                    setValue("destinationConfig.serviceName", option?.name ?? "");
                   }}
                   options={services}
                   placeholder="Select a service..."
@@ -171,8 +171,8 @@ export const RenderSyncFields = () => {
                   isDisabled={!connectionId}
                   value={groups?.find((group) => group.id === value) ?? null}
                   onValueChange={(option) => {
-                    onChange(option.id ?? null);
-                    setValue("destinationConfig.environmentGroupName", option.name ?? "");
+                    onChange(option?.id ?? null);
+                    setValue("destinationConfig.environmentGroupName", option?.name ?? "");
                   }}
                   options={groups}
                   placeholder="Select an environment group..."

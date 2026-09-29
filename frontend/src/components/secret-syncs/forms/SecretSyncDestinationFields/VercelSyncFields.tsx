@@ -205,6 +205,11 @@ export const VercelSyncFields = () => {
                     isError={Boolean(error)}
                     value={value || null}
                     onValueChange={(id) => {
+                      if (!id) {
+                        onChange("");
+                        setValue("destinationConfig.teamName", "");
+                        return;
+                      }
                       const option = teams?.find((team) => team.id === id);
                       if (!option || id === value) return;
                       onChange(id);
@@ -366,6 +371,13 @@ export const VercelSyncFields = () => {
                     isDisabled={!connectionId}
                     value={value || null}
                     onValueChange={(id) => {
+                      if (!id) {
+                        onChange("");
+                        setValue("destinationConfig.appName", "");
+                        setValue("destinationConfig.env", "");
+                        setValue("destinationConfig.branch", "");
+                        return;
+                      }
                       const selected = availableApps.find((app) => app.id === id);
                       if (!selected || id === value) return;
                       onChange(id);
@@ -422,7 +434,7 @@ export const VercelSyncFields = () => {
                         : null
                     }
                     onValueChange={(option) => {
-                      const envKey = option.key;
+                      const envKey = option?.key ?? "";
                       onChange(envKey);
 
                       setValue("destinationConfig.branch", "");

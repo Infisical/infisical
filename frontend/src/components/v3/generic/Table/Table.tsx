@@ -4,14 +4,15 @@ import { cn } from "@app/components/v3/utils";
 
 const Table = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"table"> & { containerClassName?: string }
->(({ className, containerClassName, ...props }, ref) => {
+  React.ComponentProps<"table"> & { containerClassName?: string; hasAttachedFooter?: boolean }
+>(({ className, containerClassName, hasAttachedFooter = false, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-slot="table-container"
       className={cn(
         "relative thin-scrollbar w-full min-w-0 overflow-x-auto rounded-md border border-border bg-container",
+        hasAttachedFooter && "rounded-b-none",
         containerClassName
       )}
     >
@@ -26,11 +27,32 @@ const Table = React.forwardRef<
 
 Table.displayName = "Table";
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
+function TableAttachedFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="table-attached-footer"
+      className={cn(
+        "flex min-h-10 items-center justify-center overflow-hidden rounded-b-md border border-t-0 border-border bg-container",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+function TableHeader({
+  className,
+  sticky = false,
+  ...props
+}: React.ComponentProps<"thead"> & { sticky?: boolean }) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
+      className={cn(
+        "text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent",
+        sticky && "sticky top-0 z-10 bg-container",
+        className
+      )}
       {...props}
     />
   );
@@ -191,6 +213,7 @@ function TableCaption({ className, ...props }: React.ComponentProps<"caption">) 
 
 export {
   Table,
+  TableAttachedFooter,
   TableBody,
   TableCaption,
   TableCell,

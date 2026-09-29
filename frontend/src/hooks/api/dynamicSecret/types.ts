@@ -522,6 +522,7 @@ export type TDynamicSecretProvider =
         caPublicKey?: string;
         principals: string[];
         keyAlgorithm: string;
+        caKeyAlgorithm?: string;
       };
     }
   | {

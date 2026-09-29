@@ -149,7 +149,11 @@ export const dynamicSecretServiceFactory = ({
       throw new BadRequestError({ message: "Provided dynamic secret already exists under the folder" });
 
     const selectedProvider = dynamicSecretProviders[provider.type];
-    const inputs = await selectedProvider.validateProviderInputs(provider.inputs, { projectId });
+    const inputs = await selectedProvider.validateProviderInputs(provider.inputs, {
+      projectId,
+      defaultTTL,
+      maxTTL
+    });
 
     if (
       inputs &&
@@ -240,7 +244,7 @@ export const dynamicSecretServiceFactory = ({
 
     return {
       ...dynamicSecretCfg,
-      inputs,
+      inputs: redactStoredInputs(provider.type, inputs),
       projectId: project.id,
       environment: environmentSlug,
       secretPath: path
@@ -358,7 +362,12 @@ export const dynamicSecretServiceFactory = ({
         throw error;
       }
     }
-    const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
+    const updatedInput = await selectedProvider.validateProviderInputs(newInput, {
+      projectId,
+      previousInputs: decryptedStoredInput,
+      defaultTTL,
+      maxTTL
+    });
 
     const updatedFields = getUpdatedFieldPaths(
       {
@@ -486,7 +495,12 @@ export const dynamicSecretServiceFactory = ({
     );
 
     return {
-      dynamicSecret: { ...updatedDynamicCfg, inputs: canReadRootCredential ? updatedInput : null },
+      dynamicSecret: {
+        ...updatedDynamicCfg,
+        inputs: canReadRootCredential
+          ? redactStoredInputs(dynamicSecretCfg.type as DynamicSecretProviders, updatedInput)
+          : null
+      },
       updatedFields,
       projectId: project.id,
       environment: environmentSlug,

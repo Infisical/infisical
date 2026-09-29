@@ -58,23 +58,32 @@ type Props = {
 
 const SecretSyncDestinationSourceCell = ({
   folderPath,
-  environmentName
+  environmentName,
+  includeAllSubFolders
 }: {
   folderPath: string;
   environmentName: string;
+  includeAllSubFolders: boolean;
 }) => {
+  const displayPath = includeAllSubFolders ? `${folderPath.replace(/\/+$/, "")}/**` : folderPath;
+
   return (
     <TableCell className="max-w-0 min-w-32!">
       <Tooltip>
         <TooltipTrigger asChild>
           <div>
-            <p className="truncate text-sm">{folderPath}</p>
+            <p className="truncate text-sm">{displayPath}</p>
             <p className="truncate text-xs leading-4 text-accent">{environmentName}</p>
           </div>
         </TooltipTrigger>
         <TooltipContent side="left" className="max-w-2xl break-words">
-          <p className="text-sm">{folderPath}</p>
+          <p className="text-sm">{displayPath}</p>
           <p className="text-xs leading-3 text-accent">{environmentName}</p>
+          {includeAllSubFolders && (
+            <p className="mt-1 max-w-xs text-xs">
+              Secrets from every folder beneath this path are synced as well.
+            </p>
+          )}
         </TooltipContent>
       </Tooltip>
     </TableCell>
@@ -101,7 +110,8 @@ export const SecretSyncRow = ({
     description,
     syncStatus,
     isAutoSyncEnabled,
-    projectId
+    projectId,
+    syncOptions
   } = secretSync;
 
   const { currentOrg } = useOrganization();
@@ -175,6 +185,7 @@ export const SecretSyncRow = ({
         <SecretSyncDestinationSourceCell
           folderPath={folder.path}
           environmentName={environment.name}
+          includeAllSubFolders={Boolean(syncOptions.includeAllSubFolders)}
         />
       ) : (
         <TableCell>
