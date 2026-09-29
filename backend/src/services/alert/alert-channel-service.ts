@@ -91,7 +91,7 @@ export const alertChannelServiceFactory = ({
       });
   };
 
-  const $findEmailRecipients = async (channelIds: string[], tx?: Knex): Promise<string[]> =>
+  const findEmailRecipients = async (channelIds: string[], tx?: Knex): Promise<string[]> =>
     (await alertChannelRecipientDAL.findByChannelIds(channelIds, tx))
       .filter((recipient) => recipient.principalType === AlertPrincipalType.EMAIL)
       .map((recipient) => recipient.principalId);
@@ -255,7 +255,7 @@ export const alertChannelServiceFactory = ({
     if (recipients !== undefined) {
       $assertRecipientRules(definition, channel.channelType, recipients);
       await $validateRecipients(channel.orgId, channel.projectId, recipients, tx);
-      await $validateEmailRecipients(channel.orgId, recipients, await $findEmailRecipients([channel.id], tx), tx);
+      await $validateEmailRecipients(channel.orgId, recipients, await findEmailRecipients([channel.id], tx), tx);
     }
 
     await alertChannelDAL.updateById(
@@ -332,7 +332,7 @@ export const alertChannelServiceFactory = ({
     updateChannelInTx,
     deleteChannelInTx,
     getDetailsForChannels,
-    findEmailRecipients: $findEmailRecipients,
+    findEmailRecipients,
     validateEmailRecipients
   };
 };

@@ -8,7 +8,6 @@ import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
-  createPkiAlertV2Schema,
   PkiAlertChannelTypeV2,
   PkiAlertEventTypeV2,
   SECRET_MASK,
@@ -19,7 +18,6 @@ import {
   TPkiAlertV2,
   TUpdatePkiAlertV2,
   updatePkiAlertV2Schema,
-  useCreatePkiAlertV2,
   useGetPkiAlertV2ById,
   useUpdatePkiAlertV2
 } from "@app/hooks/api/pkiAlertsV2";
@@ -60,7 +58,21 @@ const TABS_WITHOUT_PREVIEW: TFormTab[] = [
   { name: "Review", key: "review", fields: [] }
 ];
 
-const hasPreviewTab = (eventType: PkiAlertEventTypeV2 | undefined): boolean => {
+const TABS_APPLICATION_SCOPED: TFormTab[] = [
+  {
+    name: "Details",
+    key: "basicInfo",
+    fields: ["eventType", "name", "description", "alertBefore", "notificationConfig"]
+  },
+  { name: "Channels", key: "channels", fields: ["channels"] },
+  { name: "Review", key: "review", fields: [] }
+];
+
+const hasPreviewTab = (
+  eventType: PkiAlertEventTypeV2 | undefined,
+  applicationScoped: boolean
+): boolean => {
+  if (applicationScoped) return false;
   return (
     !eventType ||
     eventType === PkiAlertEventTypeV2.EXPIRATION ||
@@ -69,11 +81,22 @@ const hasPreviewTab = (eventType: PkiAlertEventTypeV2 | undefined): boolean => {
   );
 };
 
-const getFormTabs = (eventType: PkiAlertEventTypeV2 | undefined): TFormTab[] =>
-  hasPreviewTab(eventType) ? TABS_WITH_PREVIEW : TABS_WITHOUT_PREVIEW;
+const getFormTabs = (
+  eventType: PkiAlertEventTypeV2 | undefined,
+  applicationScoped: boolean
+): TFormTab[] => {
+  if (applicationScoped) return TABS_APPLICATION_SCOPED;
+  if (hasPreviewTab(eventType, false)) return TABS_WITH_PREVIEW;
+  return TABS_WITHOUT_PREVIEW;
+};
 
-const getChannelsTabIndex = (eventType: PkiAlertEventTypeV2 | undefined): number =>
-  hasPreviewTab(eventType) ? 3 : 2;
+const getChannelsTabIndex = (
+  eventType: PkiAlertEventTypeV2 | undefined,
+  applicationScoped: boolean
+): number => {
+  if (applicationScoped) return 1;
+  return hasPreviewTab(eventType, false) ? 3 : 2;
+};
 
 export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alertId }: Props) => {
   const { currentProject } = useProject();
@@ -86,10 +109,10 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
   );
 
   const editingAlert = alertToEdit || fetchedAlert;
-  const isEditing = !!(editingAlert || alertId);
+  const applicationScoped = Boolean(editingAlert?.applicationId);
 
   const formMethods = useForm<TFormData>({
-    resolver: zodResolver(isEditing ? updatePkiAlertV2Schema : createPkiAlertV2Schema),
+    resolver: zodResolver(updatePkiAlertV2Schema),
     defaultValues: {
       name: "",
       description: "",
@@ -112,8 +135,8 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
   } = formMethods;
 
   const watchedEventType = watch("eventType");
-  const formTabs = getFormTabs(watchedEventType);
-  const channelsTabIndex = getChannelsTabIndex(watchedEventType);
+  const formTabs = getFormTabs(watchedEventType, applicationScoped);
+  const channelsTabIndex = getChannelsTabIndex(watchedEventType, applicationScoped);
 
   useEffect(() => {
     if (selectedTabIndex >= formTabs.length) {
@@ -121,7 +144,6 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
     }
   }, [watchedEventType]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { mutateAsync: createAlert } = useCreatePkiAlertV2();
   const { mutateAsync: updateAlert } = useUpdatePkiAlertV2();
 
   const handleModalClose = () => {
@@ -132,7 +154,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
   };
 
   React.useEffect(() => {
-    if (editingAlert && isEditing) {
+    if (editingAlert) {
       reset({
         name: editingAlert.name,
         description: editingAlert.description || "",
@@ -166,19 +188,8 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
             return channel;
           }) || []
       });
-    } else if (!isEditing) {
-      reset({
-        name: "",
-        description: "",
-        eventType: PkiAlertEventTypeV2.EXPIRATION,
-        alertBefore: "30d",
-        filters: [],
-        enabled: true,
-        notificationConfig: { enableDailyNotification: false },
-        channels: []
-      });
     }
-  }, [editingAlert, isEditing, currentProject?.id, reset]);
+  }, [editingAlert, currentProject?.id, reset]);
 
   const onSubmit = async (data: TFormData) => {
     if (!currentProject?.id) return;
@@ -223,25 +234,24 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
       })
     };
 
+    const targetAlertId = alertId || editingAlert?.id;
+    if (!targetAlertId) return;
+
     try {
-      if (isEditing && (alertId || editingAlert?.id)) {
-        await updateAlert({
-          alertId: alertId || editingAlert!.id,
-          ...processedData
-        } as TUpdatePkiAlertV2);
-      } else {
-        await createAlert(processedData);
-      }
+      await updateAlert({
+        alertId: targetAlertId,
+        ...processedData
+      } as TUpdatePkiAlertV2);
 
       createNotification({
-        text: `PKI alert ${isEditing ? "updated" : "created"} successfully`,
+        text: "PKI alert updated successfully",
         type: "success"
       });
 
       handleModalClose();
     } catch {
       createNotification({
-        text: `Failed to ${isEditing ? "update" : "create"} PKI alert`,
+        text: "Failed to update PKI alert",
         type: "error"
       });
     }
@@ -299,14 +309,14 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
   return (
     <Modal isOpen={isOpen} onOpenChange={handleModalClose}>
       <ModalContent
-        title={`${isEditing ? "Update" : "Create"} Certificate Alert`}
+        title="Update Certificate Alert"
         className="max-w-2xl"
         closeOnOutsideClick={false}
       >
         <form
           className={twMerge(
             "flex flex-col",
-            hasPreviewTab(watchedEventType) ? "min-h-[60vh]" : "min-h-[40vh]",
+            hasPreviewTab(watchedEventType, applicationScoped) ? "min-h-[60vh]" : "min-h-[40vh]",
             isFinalStep && "max-h-[70vh] overflow-y-auto"
           )}
         >
@@ -338,7 +348,8 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
                   <CreatePkiAlertV2FormSteps
                     expandedChannel={expandedChannel}
                     setExpandedChannel={setExpandedChannel}
-                    showPreview={hasPreviewTab(watchedEventType)}
+                    showPreview={hasPreviewTab(watchedEventType, applicationScoped)}
+                    showFilters={!applicationScoped}
                   />
                 </Tab.Panels>
               </Tab.Group>
@@ -347,7 +358,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
 
           <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
             <Button onClick={handleNext} colorSchema="secondary">
-              {isFinalStep ? `${isEditing ? "Update" : "Create"} Alert` : "Next"}
+              {isFinalStep ? "Update Alert" : "Next"}
             </Button>
             <Button onClick={handlePrev} colorSchema="secondary">
               {selectedTabIndex === 0 ? "Cancel" : "Back"}

@@ -63,7 +63,7 @@ type TPkiAlertV2CompatServiceFactoryDep = {
     TAlertServiceFactory,
     "createAlert" | "getAlertById" | "listAlerts" | "updateAlert" | "deleteAlert"
   >;
-  userDAL: Pick<TUserDALFactory, "find" | "findUsersByEmails">;
+  userDAL: Pick<TUserDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   pkiAlertV2Service: Pick<
@@ -110,15 +110,15 @@ export const pkiAlertV2CompatServiceFactory = ({
     scope: { orgId: string; projectId: string },
     existingUserIds: Set<string>
   ) => {
-    const users = await userDAL.findUsersByEmails($normalizeAddresses(emails));
+    const addresses = $normalizeAddresses(emails);
+    const users = addresses.length ? await userDAL.find({ $in: { username: addresses }, isGhost: false }) : [];
     const { userIds: inScope } = await resolvePrincipalsInScope(
       { orgDAL, projectDAL },
       { ...scope, userIds: users.map((user) => user.id), groupIds: [] }
     );
     const usersByAddress = new Map<string, typeof users>();
     users.forEach((user) => {
-      const address = (user.email as string).toLowerCase();
-      usersByAddress.set(address, [...(usersByAddress.get(address) ?? []), user]);
+      usersByAddress.set(user.username, [...(usersByAddress.get(user.username) ?? []), user]);
     });
 
     return (channelEmails: string[]) =>
@@ -145,8 +145,15 @@ export const pkiAlertV2CompatServiceFactory = ({
       new Set($userIdsOf(existing))
     );
 
+    const claimedIds = new Set(channels.flatMap((channel) => (channel.id ? [channel.id] : [])));
+
     for (const channel of channels) {
-      const current = existing.find((item) => item.id === channel.id && item.channelType === channel.channelType);
+      const current =
+        existing.find((item) => item.id === channel.id && item.channelType === channel.channelType) ??
+        (channel.id
+          ? undefined
+          : existing.find((item) => item.channelType === channel.channelType && !claimedIds.has(item.id)));
+      if (current) claimedIds.add(current.id);
       let name = current?.name ?? CHANNEL_NAMES[channel.channelType];
       for (let suffix = 2; takenNames.has(name); suffix += 1) name = `${CHANNEL_NAMES[channel.channelType]} ${suffix}`;
       takenNames.add(name);
@@ -263,7 +270,7 @@ export const pkiAlertV2CompatServiceFactory = ({
     if (!applicationId) {
       throw new BadRequestError({
         message:
-          "Project-wide certificate alerts can no longer be created on this route. Create them with the alerts API (/api/v1/alerts) using resourceType 'cert-manager.certificate', or pass applicationId to create an application alert."
+          "Certificate alerts outside an application can no longer be created on this route. Create them with the alerts API (/api/v1/alerts) using resourceType 'cert-manager.certificate', or pass applicationId to create an application alert."
       });
     }
     if (eventType === PkiAlertEventType.EXPIRATION && !alertBefore) {

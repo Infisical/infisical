@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  BellIcon,
   CircleStopIcon,
+  EyeIcon,
   InfoIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlayIcon,
+  PlusIcon,
   Trash2Icon
 } from "lucide-react";
 
@@ -28,8 +29,7 @@ import {
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
+  EmptyMedia,
   IconButton,
   Skeleton,
   Table,
@@ -42,7 +42,13 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { TAlert, useDeleteAlert, useListAlerts, useUpdateAlert } from "@app/hooks/api/alerts";
+import {
+  AlertRunStatus,
+  TAlert,
+  useDeleteAlert,
+  useListAlerts,
+  useUpdateAlert
+} from "@app/hooks/api/alerts";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CertificateAlertSheet } from "./CertificateAlertSheet";
@@ -56,23 +62,24 @@ import {
 } from "./types";
 
 const LAST_RUN_BADGES: Record<
-  string,
+  AlertRunStatus,
   { label: string; variant: "success" | "warning" | "danger" }
 > = {
-  success: { label: "Success", variant: "success" },
-  partial: { label: "Partial", variant: "warning" },
-  failed: { label: "Failed", variant: "danger" }
+  [AlertRunStatus.Success]: { label: "Success", variant: "success" },
+  [AlertRunStatus.Partial]: { label: "Partial", variant: "warning" },
+  [AlertRunStatus.Failed]: { label: "Failed", variant: "danger" }
 };
 
 type AlertRowProps = {
   alert: TAlert;
+  onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
   canEdit: boolean;
   canDelete: boolean;
 };
 
-const AlertRow = ({ alert, onEdit, onDelete, canEdit, canDelete }: AlertRowProps) => {
+const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: AlertRowProps) => {
   const { mutate: updateAlert } = useUpdateAlert();
 
   const handleToggleAlert = () =>
@@ -81,7 +88,7 @@ const AlertRow = ({ alert, onEdit, onDelete, canEdit, canDelete }: AlertRowProps
       {
         onSuccess: () =>
           createNotification({
-            text: `Alert ${!alert.enabled ? "enabled" : "disabled"} successfully`,
+            text: `Alert "${alert.name}" ${alert.enabled ? "disabled" : "enabled"}`,
             type: "success"
           })
       }
@@ -153,6 +160,12 @@ const AlertRow = ({ alert, onEdit, onDelete, canEdit, canDelete }: AlertRowProps
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="min-w-44" align="end" sideOffset={2}>
+            {!canEdit && (
+              <DropdownMenuItem onClick={onView}>
+                <EyeIcon />
+                View details
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem isDisabled={!canEdit} onClick={onEdit}>
               <PencilIcon />
               Edit alert
@@ -194,7 +207,11 @@ export const CertificateAlertsCard = ({
     projectId,
     ...(resourceId ? { resourceId } : {})
   });
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; alertId?: string }>({
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    alertId?: string;
+    isReadOnly?: boolean;
+  }>({
     isOpen: false
   });
   const [deleteAlertModal, setDeleteAlertModal] = useState<{
@@ -208,7 +225,7 @@ export const CertificateAlertsCard = ({
     if (!deleteAlertModal.alertId) return;
     await deleteAlert({ alertId: deleteAlertModal.alertId });
     setDeleteAlertModal({ isOpen: false });
-    createNotification({ type: "success", text: "Alert deleted" });
+    createNotification({ type: "success", text: `Alert "${deleteAlertModal.name}" deleted` });
   };
 
   return (
@@ -240,7 +257,7 @@ export const CertificateAlertsCard = ({
                     onClick={() => setAlertModal({ isOpen: true })}
                     isDisabled={!canCreate}
                   >
-                    <FontAwesomeIcon icon={faPlus} />
+                    <PlusIcon />
                     Create Alert
                   </Button>
                 </span>
@@ -256,14 +273,14 @@ export const CertificateAlertsCard = ({
         <CardContent>
           {!isAlertsLoading && alerts.length === 0 ? (
             <Empty className="border">
-              <EmptyHeader>
-                <EmptyTitle>No alerts configured</EmptyTitle>
-                <EmptyDescription>
-                  {isApplicationScope
-                    ? "Create one to get notified about certificate events for this application."
-                    : "Create one to get notified about certificate events across this project."}
-                </EmptyDescription>
-              </EmptyHeader>
+              <EmptyMedia variant="icon">
+                <BellIcon />
+              </EmptyMedia>
+              <EmptyDescription>
+                {isApplicationScope
+                  ? "No alerts configured. Create one to get notified about certificate events for this application."
+                  : "No alerts configured. Create one to get notified about certificate events across this project."}
+              </EmptyDescription>
             </Empty>
           ) : (
             <Table>
@@ -293,6 +310,9 @@ export const CertificateAlertsCard = ({
                     <AlertRow
                       key={a.id}
                       alert={a}
+                      onView={() =>
+                        setAlertModal({ isOpen: true, alertId: a.id, isReadOnly: true })
+                      }
                       onEdit={() => setAlertModal({ isOpen: true, alertId: a.id })}
                       onDelete={() =>
                         setDeleteAlertModal({ isOpen: true, alertId: a.id, name: a.name })
@@ -312,6 +332,7 @@ export const CertificateAlertsCard = ({
         projectId={projectId}
         scope={scope}
         alert={alerts.find((a) => a.id === alertModal.alertId)}
+        isReadOnly={alertModal.isReadOnly}
       />
       <DeleteConfirmDialog
         isOpen={deleteAlertModal.isOpen}

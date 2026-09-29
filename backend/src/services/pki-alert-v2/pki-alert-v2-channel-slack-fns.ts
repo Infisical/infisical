@@ -8,10 +8,10 @@ import { logger } from "@app/lib/logger";
 import { RETRYABLE_NETWORK_ERRORS } from "@app/lib/retry/network-errors";
 import { SLACK_WEBHOOK_TIMEOUT, TSlackBlock, TSlackPayload } from "@app/lib/slack/slack-webhook";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
+import { getRevocationReasonLabel } from "@app/services/certificate/certificate-revocation-labels";
 
 import { PKI_ALERT_RETRY_CONFIG } from "./pki-alert-v2-constants";
 import {
-  getRevocationReasonLabel,
   PkiAlertEventType,
   TAlertInfo,
   TBuildSlackPayloadParams,

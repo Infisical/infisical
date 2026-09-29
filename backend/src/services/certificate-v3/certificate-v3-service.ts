@@ -31,12 +31,10 @@ import {
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
   CertificateAlertEvent,
-  getIssuanceAlertEvent,
   TCertificateAlertEventEmitter
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
@@ -58,11 +56,7 @@ import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
-import {
-  addRenewedCertificateToSyncs,
-  queueCertificateFilterReconcile,
-  triggerAutoSyncForCertificate
-} from "@app/services/pki-sync/pki-sync-utils";
+import { queueCertificateFilterReconcile } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -1281,8 +1275,7 @@ export const certificateV3ServiceFactory = ({
     removeRootsFromChain,
     basicConstraints,
     applicationId: explicitApplicationId,
-    acmeOrderId,
-    renewedFromCertificateId
+    acmeOrderId
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1456,9 +1449,6 @@ export const certificateV3ServiceFactory = ({
             status: CertificateRequestStatus.PENDING_APPROVAL,
             basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null,
             customExtensions: resolvedCustomExtensions ? JSON.stringify(resolvedCustomExtensions) : null,
-            metadata: renewedFromCertificateId
-              ? JSON.stringify({ renewal: { originalCertificateId: renewedFromCertificateId } })
-              : null,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
@@ -1652,12 +1642,7 @@ export const certificateV3ServiceFactory = ({
             new Date(newCert.notAfter)
           );
 
-          const updateData: {
-            profileId: string;
-            renewBeforeDays?: number;
-            applicationId?: string;
-            renewedFromCertificateId?: string;
-          } = {
+          const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
             profileId
           };
           if (finalRenewBeforeDays !== undefined) {
@@ -1666,15 +1651,7 @@ export const certificateV3ServiceFactory = ({
           if (applicationId) {
             updateData.applicationId = applicationId;
           }
-          if (renewedFromCertificateId) {
-            updateData.renewedFromCertificateId = renewedFromCertificateId;
-          }
           await certificateDAL.updateById(newCert.id, updateData, tx);
-
-          if (renewedFromCertificateId) {
-            await linkRenewedCertificate(certificateDAL, renewedFromCertificateId, newCert.id, tx);
-            await addRenewedCertificateToSyncs(renewedFromCertificateId, newCert.id, { certificateSyncDAL }, tx);
-          }
 
           // Records the outcome: flips the request to ISSUED and links the certificate in one update.
           // Returns null when the request is no longer attachable, meaning it left a pending status
@@ -1699,7 +1676,7 @@ export const certificateV3ServiceFactory = ({
               certificateId: newCert.id,
               projectId: profile.projectId,
               orgId: profile.project?.orgId,
-              eventType: getIssuanceAlertEvent(Boolean(renewedFromCertificateId)),
+              eventType: CertificateAlertEvent.Issuance,
               applicationId
             },
             tx
@@ -1742,18 +1719,11 @@ export const certificateV3ServiceFactory = ({
     await certificateAlertEventEmitter?.queueLegacyAlert({
       certificateId: certResult.certificateId,
       projectId: profile.projectId,
-      eventType: getIssuanceAlertEvent(Boolean(renewedFromCertificateId))
+      eventType: CertificateAlertEvent.Issuance
     });
 
     if (certResult.certificateId && applicationId) {
       await queueCertificateFilterReconcile(certResult.certificateId, applicationId, pkiSyncQueue);
-      if (renewedFromCertificateId) {
-        await queueCertificateFilterReconcile(renewedFromCertificateId, applicationId, pkiSyncQueue);
-      }
-    }
-
-    if (certResult.certificateId && renewedFromCertificateId) {
-      await triggerAutoSyncForCertificate(certResult.certificateId, { certificateSyncDAL, pkiSyncDAL, pkiSyncQueue });
     }
 
     await $reportCertificateIssued({

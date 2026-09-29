@@ -22,6 +22,12 @@ export enum AlertPrincipalType {
   Email = "email"
 }
 
+export enum AlertRunStatus {
+  Success = "success",
+  Partial = "partial",
+  Failed = "failed"
+}
+
 export const MIN_ALERT_BEFORE_DAYS = 1;
 export const MAX_ALERT_BEFORE_DAYS = 90;
 
@@ -80,7 +86,7 @@ export type TAlert = {
   projectId: string | null;
   resourceName: string | null;
   channels: TAlertChannelEmbedded[];
-  lastRun: { timestamp: string; status: string; error: string | null } | null;
+  lastRun: { timestamp: string; status: AlertRunStatus; error: string | null } | null;
   createdAt: string;
   updatedAt: string;
 };

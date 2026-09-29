@@ -102,7 +102,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     }
 
     const params = (req.params as { identifier?: string; applicationId?: string; profileId?: string }) ?? {};
-    const isAppScoped = Boolean(params.applicationId);
+    const isAppScoped = matchedRoute.startsWith("/applications/");
 
     let estConfig;
     if (isAppScoped) {

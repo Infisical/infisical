@@ -160,11 +160,11 @@ describe("cert manager application alert provider", () => {
 
   test("dedup window tightens as the lead time shrinks and a daily reminder forces 24h", () => {
     const { provider } = buildProvider();
-    expect(provider.dedupWindowHours?.({ alertBefore: "7d" })).toBe(24);
-    expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(48);
-    expect(provider.dedupWindowHours?.({ alertBefore: "12w" })).toBe(168);
-    expect(provider.dedupWindowHours?.({ alertBefore: "1y" })).toBe(720);
-    expect(provider.dedupWindowHours?.({ alertBefore: "1y", dailyReminder: true })).toBe(24);
+    expect(provider.dedupWindowHours?.({ alertBefore: "7d" })).toBe(20);
+    expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(44);
+    expect(provider.dedupWindowHours?.({ alertBefore: "12w" })).toBe(164);
+    expect(provider.dedupWindowHours?.({ alertBefore: "1y" })).toBe(716);
+    expect(provider.dedupWindowHours?.({ alertBefore: "1y", dailyReminder: true })).toBe(20);
   });
 
   test("buildPayload summarises expiring certificates with the lead time and singular wording", async () => {
@@ -240,7 +240,7 @@ describe("cert manager application alert provider", () => {
     expect(permissionService.getProjectPermission).toHaveBeenCalled();
     await expect(
       provider.assertPermission({ action: AlertPermissionAction.Read, orgId: "org-1", actor })
-    ).rejects.toThrow("Certificate alerts must be created in a Certificate Manager project");
+    ).rejects.toThrow("Certificate alerts must be created in Certificate Manager");
   });
 
   test("assertResourceInScope rejects an application from another project or org", async () => {
@@ -250,7 +250,7 @@ describe("cert manager application alert provider", () => {
     ).resolves.toBeUndefined();
     await expect(
       provider.assertResourceInScope({ orgId: "org-1", projectId: "proj-2", resourceId: "app-1" })
-    ).rejects.toThrow("Application with ID 'app-1' not found in this project");
+    ).rejects.toThrow("Application with ID 'app-1' not found in Certificate Manager");
     await expect(
       provider.assertResourceInScope({ orgId: "org-2", projectId: "proj-1", resourceId: "app-1" })
     ).rejects.toThrow();

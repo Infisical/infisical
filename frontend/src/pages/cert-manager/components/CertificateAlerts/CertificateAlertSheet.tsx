@@ -53,6 +53,7 @@ type Props = {
   projectId: string;
   scope: TCertificateAlertScope;
   alert?: TAlert;
+  isReadOnly?: boolean;
 };
 
 type WizardProps = Omit<Props, "isOpen"> & { members: TProjectMemberEmails };
@@ -62,11 +63,12 @@ const CertificateAlertWizard = ({
   projectId,
   scope,
   alert,
+  isReadOnly = false,
   members
 }: WizardProps) => {
   const isEditing = Boolean(alert);
-  const [step, setStep] = useState(0);
   const steps = getSteps(scope);
+  const [step, setStep] = useState(isReadOnly ? steps.length - 1 : 0);
   const createAlert = useCreateAlert();
   const updateAlert = useUpdateAlert();
 
@@ -91,7 +93,7 @@ const CertificateAlertWizard = ({
           condition,
           channels
         });
-        createNotification({ type: "success", text: "Successfully updated alert" });
+        createNotification({ type: "success", text: `Alert "${values.name}" updated` });
       } else {
         await createAlert.mutateAsync({
           name: values.name,
@@ -104,7 +106,7 @@ const CertificateAlertWizard = ({
           projectId,
           channels
         });
-        createNotification({ type: "success", text: "Successfully created alert" });
+        createNotification({ type: "success", text: `Alert "${values.name}" created` });
       }
       onOpenChange(false);
     } catch {
@@ -130,6 +132,8 @@ const CertificateAlertWizard = ({
   const { isSubmitting } = form.formState;
   const currentStep = steps[step];
   const submitLabel = isEditing ? "Update Alert" : "Create Alert";
+  let title = isEditing ? "Edit Certificate Alert" : "Create Certificate Alert";
+  if (isReadOnly) title = "Certificate Alert Details";
 
   return (
     <FormProvider {...form}>
@@ -140,9 +144,7 @@ const CertificateAlertWizard = ({
               <BellIcon className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-label">
-                {isEditing ? "Edit Certificate Alert" : "Create Certificate Alert"}
-              </div>
+              <div className="text-label">{title}</div>
               <SheetDescription className="leading-4 text-muted">
                 {scope.kind === CertificateAlertScopeKind.Application
                   ? `Get notified about certificate events in ${scope.applicationName}.`
@@ -154,33 +156,35 @@ const CertificateAlertWizard = ({
       </SheetHeader>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside className="flex w-64 shrink-0 flex-col border-r border-border px-5 py-6">
-          <p className="mb-5 text-sm text-muted">Setup Steps</p>
-          <Stepper
-            activeStep={step}
-            orientation="vertical"
-            onStepChange={(index) => {
-              if (index < step) setStep(index);
-            }}
-          >
-            <StepperList>
-              {steps.map((item, index) => (
-                <StepperStep
-                  key={item.name}
-                  index={index}
-                  title={item.name}
-                  description={item.shortDescription}
-                />
-              ))}
-            </StepperList>
-          </Stepper>
-        </aside>
+        {!isReadOnly && (
+          <aside className="flex w-64 shrink-0 flex-col border-r border-border px-5 py-6">
+            <p className="mb-5 text-sm text-muted">Setup Steps</p>
+            <Stepper
+              activeStep={step}
+              orientation="vertical"
+              onStepChange={(index) => {
+                if (index < step) setStep(index);
+              }}
+            >
+              <StepperList>
+                {steps.map((item, index) => (
+                  <StepperStep
+                    key={item.name}
+                    index={index}
+                    title={item.name}
+                    description={item.shortDescription}
+                  />
+                ))}
+              </StepperList>
+            </Stepper>
+          </aside>
+        )}
 
         <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6">
           <div className="mb-6 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
-              <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
+              {!isReadOnly && <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>}
             </div>
             {currentStep.key === CertificateAlertStep.Channels && (
               <AddChannelMenu channelCount={fields.length} onAdd={addChannel} />
@@ -210,24 +214,32 @@ const CertificateAlertWizard = ({
       </div>
 
       <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
-        <span className="text-xs text-muted">
-          Step {step + 1} of {steps.length}
-        </span>
-        <div className="flex items-center gap-3">
-          {step > 0 && (
-            <Button variant="outline" onClick={() => setStep((current) => current - 1)}>
-              Back
-            </Button>
-          )}
-          <Button
-            variant="project"
-            onClick={goNext}
-            isPending={isSubmitting}
-            isDisabled={isSubmitting}
-          >
-            {isLast ? submitLabel : "Continue"}
+        {isReadOnly ? (
+          <Button variant="outline" className="ml-auto" onClick={() => onOpenChange(false)}>
+            Close
           </Button>
-        </div>
+        ) : (
+          <>
+            <span className="text-xs text-muted">
+              Step {step + 1} of {steps.length}
+            </span>
+            <div className="flex items-center gap-3">
+              {step > 0 && (
+                <Button variant="outline" onClick={() => setStep((current) => current - 1)}>
+                  Back
+                </Button>
+              )}
+              <Button
+                variant="project"
+                onClick={goNext}
+                isPending={isSubmitting}
+                isDisabled={isSubmitting}
+              >
+                {isLast ? submitLabel : "Continue"}
+              </Button>
+            </div>
+          </>
+        )}
       </div>
     </FormProvider>
   );

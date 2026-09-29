@@ -115,7 +115,7 @@ export const certManagerApplicationAlertProviderFactory = ({
 
   const assertPermission = async ({ action, projectId, resourceId, actor }: TAlertPermissionInput): Promise<void> => {
     if (!projectId) {
-      throw new BadRequestError({ message: "Certificate alerts must be created in a Certificate Manager project" });
+      throw new BadRequestError({ message: "Certificate alerts must be created in Certificate Manager" });
     }
 
     if (!resourceId) {
@@ -152,7 +152,9 @@ export const certManagerApplicationAlertProviderFactory = ({
 
     const application = await certManagerCertificateAlertDAL.findApplicationById(input.resourceId);
     if (!application || application.orgId !== input.orgId || application.projectId !== input.projectId) {
-      throw new NotFoundError({ message: `Application with ID '${input.resourceId}' not found in this project` });
+      throw new NotFoundError({
+        message: `Application with ID '${input.resourceId}' not found in Certificate Manager`
+      });
     }
   };
 

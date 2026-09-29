@@ -62,7 +62,6 @@ export type TSignCertificateFromProfileDTO = {
   };
   applicationId?: string;
   acmeOrderId?: string;
-  renewedFromCertificateId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {

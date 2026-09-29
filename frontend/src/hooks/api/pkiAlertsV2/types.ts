@@ -300,14 +300,4 @@ const basePkiAlertV2Schema = z.object({
     )
 });
 
-export const createPkiAlertV2Schema = basePkiAlertV2Schema.superRefine((data, ctx) => {
-  if (data.eventType === PkiAlertEventTypeV2.EXPIRATION && !data.alertBefore) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Alert Before is required for expiration alerts",
-      path: ["alertBefore"]
-    });
-  }
-});
-
 export const updatePkiAlertV2Schema = basePkiAlertV2Schema.partial();

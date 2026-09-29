@@ -14,7 +14,6 @@ import { getDedupCutoff, TAlertHistoryDALFactory } from "./alert-history-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { AlertRunStatus, DEFAULT_DEDUP_WINDOW_HOURS, IResourceAlertProvider, TAlertContext } from "./alert-types";
-import { describeDeliveryError } from "./channels/alert-channel-error-fns";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 const ALERT_DELIVERY_CONCURRENCY = 10;
@@ -164,7 +163,7 @@ export const alertEngineFactory = ({
           const result = await sendLimit(() => definition.send({ channelId: channel.id, config, payload, deps }));
           return { ...base, ...result };
         } catch (err) {
-          const error = describeDeliveryError(err);
+          const error = err instanceof Error ? err.message : "Unknown error";
           logger.error(err, `Failed to dispatch alert ${channel.channelType} channel [alertId=${alert.id}]`);
           return { ...base, success: false, error };
         }

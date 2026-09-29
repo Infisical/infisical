@@ -409,12 +409,16 @@ export type TPagerDutyPayload = {
   links: Array<{ href: string; text: string }>;
 };
 
-export { getRevocationReasonLabel } from "@app/services/certificate/certificate-revocation-labels";
-
 export type TBuildPagerDutyPayloadParams = {
   alert: TAlertInfo;
   certificates: TCertificatePreview[];
   integrationKey: string;
   eventType: PkiAlertEventType;
   appUrl?: string;
+};
+
+export type TPkiCertificateEventPayload = {
+  certificateId: string;
+  projectId: string;
+  eventType: PkiAlertEventType;
 };
