@@ -309,7 +309,7 @@ export const SecretTableRow = ({
             !isSingleEnvView && "sticky left-0 z-10",
             !singleEnvPendingAction &&
               "bg-container transition-colors duration-75 group-hover:bg-container-hover",
-            !isSingleEnvView && isFormExpanded && "border-b-0 bg-container-hover",
+            !isSingleEnvView && isFormExpanded && "z-20 border-b-0 bg-container-hover",
             isSingleEnvView && singleEnvShowOverride && "border-b-border/50",
             isSingleEnvView && "relative",
             pendingActionBorderClass(singleEnvPendingAction)
@@ -606,10 +606,13 @@ export const SecretTableRow = ({
         >
           <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
-              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-border"
+              style={{ maxWidth: tableWidth }}
+              className="sticky left-0 w-full border-y border-border"
             >
-              <Table className="w-full table-fixed" containerClassName="rounded-none border-0">
+              <Table
+                className="w-full table-fixed"
+                containerClassName="overflow-hidden rounded-none border-0"
+              >
                 <colgroup>
                   <col className="w-10" />
                   <col className="w-[var(--name-column-width,180px)]" />
