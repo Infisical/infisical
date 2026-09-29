@@ -122,7 +122,7 @@ Go to **Sessions** and select **View Session Logs** on the session's row. You ca
   import { createDecipheriv, createHash } from "node:crypto";
 
   const token = "<your-access-token>";
-  const sessionId = "<session-id>";
+  const sessionId = "<session-id>".toLowerCase();
 
   const res = await fetch(`https://app.infisical.com/api/v1/agent-vault/sessions/${sessionId}/logs`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -164,7 +164,7 @@ Each request produces one record with:
 | **Time** | When the request was made |
 | **Proxy** | The proxy that handled it |
 | **Method**, **Host**, **Path** | Where the request went, for example `POST api.github.com/repos/acme/web/issues` |
-| **Upstream status** | The HTTP status code the API returned, such as `201` |
+| **Upstream status** | The HTTP status code the API returned, such as `201`. For **Blocked** and **Error** requests, it's the status code Agent Vault returned itself, such as `403` or `502` |
 | **Outcome** | What the proxy did with the request |
 | **Service** | The service that matched the request, if any |
 
