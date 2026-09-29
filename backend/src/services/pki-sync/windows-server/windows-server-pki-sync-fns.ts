@@ -20,6 +20,7 @@ import { PkiSyncError } from "../pki-sync-errors";
 import {
   buildFileCollisionMessage,
   exportCertificateForSync,
+  getStaleCertificateFiles,
   isKeystoreExportFormat,
   PemCertificateExtension,
   PkiSyncExportFormat
@@ -417,9 +418,31 @@ export const windowsServerPkiSyncFactory = ({
             ]);
           }
           if (record) {
+            const previousFiles =
+              (record.syncMetadata as TSyncMetadata)?.files ??
+              [record.externalIdentifier].filter((p): p is string => Boolean(p));
+            const staleFiles = getStaleCertificateFiles({
+              previousFiles,
+              writtenPaths: paths,
+              deliveredPaths,
+              caseInsensitive: true
+            });
+            let staleFilesToRetry: string[] = [];
+            if (staleFiles.length > 0) {
+              try {
+                await executeWinRMGatewayOperation(
+                  { ...target, endpoint: WinRmRpcEndpoint.RemoveFiles, params: { paths: staleFiles } },
+                  gatewayDeps
+                );
+              } catch (removeErr) {
+                // Keep tracking them so a later run can retry the delete.
+                staleFilesToRetry = staleFiles;
+                failedRemovals.push({ name: baseName, error: describeFailure(removeErr) });
+              }
+            }
             await certificateSyncDAL.updateById(record.id, {
               externalIdentifier: paths[0],
-              syncMetadata: { files: paths }
+              syncMetadata: { files: [...paths, ...staleFilesToRetry] }
             });
           }
         }

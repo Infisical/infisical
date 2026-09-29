@@ -243,10 +243,14 @@ export const EditPkiSyncForm = ({
   }, [isDirty, onDirtyChange]);
 
   const applyUpdate = async ({ connection, ...formData }: TUpdatePkiSyncForm) => {
+    const hasNewExportPassword = Boolean(
+      (formData as { credentials?: { exportPassword?: string } }).credentials?.exportPassword
+    );
     try {
       const updatedPkiSync = await updatePkiSync.mutateAsync({
         syncId: pkiSync.id,
         ...formData,
+        ...(hasNewExportPassword ? {} : { credentials: undefined }),
         connectionId: connection.id,
         projectId: pkiSync.projectId,
         destination: pkiSync.destination

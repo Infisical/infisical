@@ -742,9 +742,10 @@ export const pkiSyncServiceFactory = ({
 
     await $assertTargetHostReachable({ destination, connection, destinationConfig });
 
-    const encryptedCredentials = credentials?.exportPassword
-      ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId, credentials, kmsService })
-      : undefined;
+    const encryptedCredentials =
+      credentials?.exportPassword && !isBlankExportPassword(credentials.exportPassword)
+        ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId, credentials, kmsService })
+        : undefined;
 
     try {
       const pkiSync = await pkiSyncDAL.create({
@@ -994,9 +995,10 @@ export const pkiSyncServiceFactory = ({
       throw new BadRequestError({ message: EXPORT_PASSWORD_BLANK_MESSAGE });
     }
 
-    const encryptedCredentials = credentials?.exportPassword
-      ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId: pkiSync.projectId, credentials, kmsService })
-      : undefined;
+    const encryptedCredentials =
+      credentials?.exportPassword && !isBlankExportPassword(credentials.exportPassword)
+        ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId: pkiSync.projectId, credentials, kmsService })
+        : undefined;
 
     const isHealthCheckBeingCleared =
       resolvedSyncOptions !== undefined &&

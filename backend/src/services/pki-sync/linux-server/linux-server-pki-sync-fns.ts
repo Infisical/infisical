@@ -29,6 +29,7 @@ import { PkiSyncError } from "../pki-sync-errors";
 import {
   buildFileCollisionMessage,
   exportCertificateForSync,
+  getStaleCertificateFiles,
   isKeystoreExportFormat,
   PemCertificateExtension,
   PkiSyncExportFormat
@@ -548,6 +549,18 @@ export const linuxServerPkiSyncFactory = ({
                 ]);
               }
               if (record) {
+                const previousFiles =
+                  (record.syncMetadata as TSyncMetadata)?.files ??
+                  [record.externalIdentifier].filter((p): p is string => Boolean(p));
+                const staleFiles = getStaleCertificateFiles({ previousFiles, writtenPaths, deliveredPaths });
+                for (const staleFile of staleFiles) {
+                  await unlinkIfExists(sftp, staleFile);
+                }
+                if (staleFiles.length > 0) {
+                  logger.info(
+                    `Linux Server PKI sync [syncId=${pkiSync.id}]: removed ${staleFiles.length} file(s) "${baseName}" no longer uses`
+                  );
+                }
                 await certificateSyncDAL.updateById(record.id, {
                   externalIdentifier: primaryPath,
                   syncMetadata: { files: writtenPaths }

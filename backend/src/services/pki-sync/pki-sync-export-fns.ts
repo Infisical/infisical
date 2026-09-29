@@ -21,6 +21,24 @@ export const stripUnusedKeystoreOptions = (syncOptions: Record<string, unknown>)
   return stripped;
 };
 
+// Files this sync wrote for a certificate last time but no longer writes, such as a truststore
+// after it is turned off. Paths another certificate wrote this run are left alone.
+export const getStaleCertificateFiles = ({
+  previousFiles,
+  writtenPaths,
+  deliveredPaths,
+  caseInsensitive = false
+}: {
+  previousFiles: string[];
+  writtenPaths: string[];
+  deliveredPaths: Set<string>;
+  caseInsensitive?: boolean;
+}): string[] => {
+  const normalize = (filePath: string) => (caseInsensitive ? filePath.toLowerCase() : filePath);
+  const current = new Set([...writtenPaths, ...deliveredPaths].map(normalize));
+  return previousFiles.filter((filePath) => !current.has(normalize(filePath)));
+};
+
 export const buildFileCollisionMessage = (filePath: string) =>
   `Another certificate in this sync already writes "${filePath}". Change the certificate name schema so each certificate gets its own file names.`;
 

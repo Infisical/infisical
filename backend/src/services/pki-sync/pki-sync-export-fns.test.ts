@@ -3,6 +3,7 @@ import forge from "node-forge";
 import {
   exportCertificateForSync,
   getExportedCertificateFileSuffixes,
+  getStaleCertificateFiles,
   PemCertificateExtension,
   PkiSyncExportFormat,
   stripUnusedKeystoreOptions,
@@ -223,5 +224,38 @@ describe("stripUnusedKeystoreOptions", () => {
       ...base,
       exportFormat: PkiSyncExportFormat.Jks
     });
+  });
+});
+
+describe("getStaleCertificateFiles", () => {
+  test("returns files written last time that this run no longer writes", () => {
+    expect(
+      getStaleCertificateFiles({
+        previousFiles: ["/certs/app.jks", "/certs/app.truststore.jks"],
+        writtenPaths: ["/certs/app.jks"],
+        deliveredPaths: new Set(["/certs/app.jks"])
+      })
+    ).toEqual(["/certs/app.truststore.jks"]);
+  });
+
+  test("keeps a file another certificate wrote this run", () => {
+    expect(
+      getStaleCertificateFiles({
+        previousFiles: ["/certs/app.pem", "/certs/shared.pem"],
+        writtenPaths: ["/certs/app.jks"],
+        deliveredPaths: new Set(["/certs/app.jks", "/certs/shared.pem"])
+      })
+    ).toEqual(["/certs/app.pem"]);
+  });
+
+  test("ignores case when paths are case-insensitive", () => {
+    expect(
+      getStaleCertificateFiles({
+        previousFiles: ["C:\\certs\\App.jks", "C:\\certs\\app.truststore.jks"],
+        writtenPaths: ["C:\\certs\\app.jks"],
+        deliveredPaths: new Set(["C:\\certs\\app.jks"]),
+        caseInsensitive: true
+      })
+    ).toEqual(["C:\\certs\\app.truststore.jks"]);
   });
 });
