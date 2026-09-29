@@ -21,6 +21,7 @@ import { UpgradePlanModal } from "../license/UpgradePlanModal";
 
 type Props = {
   onSelect: (destination: SecretSync) => void;
+  onEnterpriseUpgrade?: (onGranted: () => void) => void;
 };
 
 type SyncOption = {
@@ -63,7 +64,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <p className="mb-3 text-[11px] font-medium tracking-wider text-muted uppercase">{children}</p>
 );
 
-export const SecretSyncSelect = ({ onSelect }: Props) => {
+export const SecretSyncSelect = ({ onSelect, onEnterpriseUpgrade }: Props) => {
   const { subscription } = useSubscription();
   const { isPending, data: secretSyncOptions } = useSecretSyncOptions();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
@@ -71,6 +72,10 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
 
   const handleSelect = (option: SyncOption) => {
     if (option.enterprise && !subscription.enterpriseSecretSyncs) {
+      if (onEnterpriseUpgrade) {
+        onEnterpriseUpgrade(() => onSelect(option.destination));
+        return;
+      }
       handlePopUpOpen("upgradePlan", {
         isEnterpriseFeature: true,
         text: "All Secret Syncs can be unlocked if you switch to Infisical Enterprise plan."
@@ -192,13 +197,15 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
         </>
       )}
 
-      <UpgradePlanModal
-        paywallKey="secret-manager.secret-sync-provider"
-        isOpen={popUp.upgradePlan.isOpen}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan.data?.text}
-      />
+      {!onEnterpriseUpgrade && (
+        <UpgradePlanModal
+          paywallKey="secret-manager.secret-sync-provider"
+          isOpen={popUp.upgradePlan.isOpen}
+          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text={popUp.upgradePlan.data?.text}
+        />
+      )}
     </div>
   );
 };

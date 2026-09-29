@@ -4,7 +4,15 @@ export {
   BillingProduct,
   buildUpgradeReturnPath,
   DynamicSecretsUpgradeIntent,
+  EnterpriseSecretSyncsUpgradeIntent,
+  FolderAccessControlsUpgradeIntent,
   getSafeUpgradeReturnPath,
+  HoneyTokensUpgradeIntent,
+  PointInTimeRecoveryUpgradeIntent,
+  SecretAccessInsightsUpgradeIntent,
+  SecretImportReplicationUpgradeIntent,
+  SecretRotationsUpgradeIntent,
+  SecretsBrokeringUpgradeIntent,
   UpgradeContinuation,
   UpgradeFeature
 } from "./upgrade-intents";

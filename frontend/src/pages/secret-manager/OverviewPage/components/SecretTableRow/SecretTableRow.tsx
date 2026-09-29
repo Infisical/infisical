@@ -118,6 +118,7 @@ type Props = {
   }) => void;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  onAccessInsightsUpgrade: (onGranted: () => void) => void;
 };
 
 type ExpandedTableSortColumn = "environment";
@@ -147,7 +148,8 @@ export const SecretTableRow = ({
   isSelectionDisabled,
   onCopySecret,
   activityId,
-  onActivityChange
+  onActivityChange,
+  onAccessInsightsUpgrade
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 2; // secret key row + icon
@@ -430,6 +432,7 @@ export const SecretTableRow = ({
                 : undefined
             }
             onExpandedChange={setIsSingleEnvBaseActive}
+            onAccessInsightsUpgrade={onAccessInsightsUpgrade}
           />
         ) : (
           <TableCell
@@ -772,6 +775,7 @@ export const SecretTableRow = ({
                                       })
                                   : undefined
                               }
+                              onAccessInsightsUpgrade={onAccessInsightsUpgrade}
                             />
                           </TableCell>
                         </TableRow>

@@ -12,7 +12,19 @@ const SecretOverviewPageQuerySchema = z.object({
   connectionName: z.string().optional(),
   environments: z.array(z.string()).catch([]),
   dynamicSecretId: z.string().optional(),
-  upgradeContinuation: z.literal("create-dynamic-secret").optional(),
+  upgradeContinuation: z
+    .enum([
+      "create-dynamic-secret",
+      "create-secret-rotation",
+      "create-honey-token",
+      "create-proxied-service",
+      "view-commit-history",
+      "manage-folder-access",
+      "create-secret-import",
+      "view-secret-access",
+      "create-enterprise-secret-sync"
+    ])
+    .optional(),
   checkout: z.enum(["success", "canceled"]).optional(),
   honeyTokenId: z.string().optional(),
   tags: z.string().optional(),

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ArrowLeft, Check, CircleAlert, Sparkles } from "lucide-react";
+import { CSSProperties, useEffect, useLayoutEffect, useState } from "react";
+import { Check, CircleAlert } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -7,13 +7,18 @@ import {
   AlertDescription,
   Badge,
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Loader
+  Label,
+  Loader,
+  Tabs,
+  TabsList,
+  TabsTrigger
 } from "@app/components/v3";
 import {
   OrgPermissionBillingActions,
@@ -22,16 +27,21 @@ import {
   useOrgPermission
 } from "@app/context";
 import {
+  BillingV2Cadence,
+  BillingV2CatalogProduct,
   BillingV2Plan,
   useGetBillingV2Catalog,
   useGetBillingV2Overview,
   useStartBillingV2Trial
 } from "@app/hooks/api";
+import { waitForMinimumDuration } from "@app/lib/fn/promise";
 import { fmtMoney } from "@app/pages/organization/BillingV2Page/billing-v2-format";
+import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
 
 import { buildUpgradeReturnPath, UpgradeIntent } from "./upgrade-intents";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
+const MINIMUM_PLAN_LOADING_DURATION_MS = 800;
 
 type Props = {
   intent: UpgradeIntent;
@@ -40,17 +50,131 @@ type Props = {
   onGranted: () => void;
 };
 
-type GateView = "plan" | "confirm";
-
-const monthlyPrice = (plan: BillingV2Plan) => {
-  if (plan.base?.monthly) {
-    return plan.base.monthly;
-  }
-  return plan.dims.find((dimension) => dimension.monthly > 0)?.monthly ?? 0;
+type PlanFeature = {
+  label: string;
+  value?: string;
 };
 
+type PlanPrice = {
+  amount: number;
+  unit: string;
+  compactUnit: string;
+  isMonthlyEquivalent: boolean;
+};
+
+const planSupportsCadence = (plan: BillingV2Plan, cadence: BillingV2Cadence) => {
+  const basePrice = plan.base?.[cadence] ?? 0;
+  return basePrice > 0 || plan.dims.some((dimension) => dimension[cadence] > 0);
+};
+
+const getPlanPrice = (plan: BillingV2Plan, cadence: BillingV2Cadence): PlanPrice => {
+  const basePrice = plan.base?.[cadence] ?? 0;
+  if (basePrice > 0) {
+    return {
+      amount: cadence === "annual" ? basePrice / 12 : basePrice,
+      unit: "/ month",
+      compactUnit: "/mo",
+      isMonthlyEquivalent: true
+    };
+  }
+
+  const dimension = plan.dims.find((candidate) => candidate[cadence] > 0);
+  if (!dimension) {
+    return { amount: 0, unit: "", compactUnit: "", isMonthlyEquivalent: false };
+  }
+
+  const isMetered =
+    cadence === "annual" ? dimension.meteredAnnual === true : dimension.meteredMonthly === true;
+  const isMonthlyEquivalent = cadence === "monthly" || !isMetered;
+  const period = isMonthlyEquivalent ? "month" : "year";
+
+  return {
+    amount: cadence === "annual" && !isMetered ? dimension.annual / 12 : dimension[cadence],
+    unit: `/ ${dimension.noun} / ${period}`,
+    compactUnit: `/${dimension.noun}/${period === "month" ? "mo" : "yr"}`,
+    isMonthlyEquivalent
+  };
+};
+
+const annualSavingsPercent = (plan: BillingV2Plan) => {
+  const monthly = getPlanPrice(plan, "monthly");
+  const annual = getPlanPrice(plan, "annual");
+  if (
+    monthly.amount <= 0 ||
+    annual.amount <= 0 ||
+    !monthly.isMonthlyEquivalent ||
+    !annual.isMonthlyEquivalent
+  ) {
+    return 0;
+  }
+
+  return Math.max(Math.round((1 - annual.amount / monthly.amount) * 100), 0);
+};
+
+const getEffectiveCadence = (plan: BillingV2Plan, cadence: BillingV2Cadence): BillingV2Cadence => {
+  if (planSupportsCadence(plan, cadence)) {
+    return cadence;
+  }
+  if (planSupportsCadence(plan, "annual")) {
+    return "annual";
+  }
+  return "monthly";
+};
+
+const getPlanFeatures = (product: BillingV2CatalogProduct, plan: BillingV2Plan): PlanFeature[] => {
+  const comparedFeatures = (product.compare ?? []).flatMap<PlanFeature>((row) => {
+    const value = row.cells[plan.tier];
+    if (value === false || value === undefined || value === 0) {
+      return [];
+    }
+    if (value === true) {
+      return [{ label: row.label }];
+    }
+    return [
+      {
+        label: row.label,
+        value: typeof value === "number" ? value.toLocaleString("en-US") : String(value)
+      }
+    ];
+  });
+
+  if (comparedFeatures.length > 0) {
+    return comparedFeatures;
+  }
+
+  return (product.includes ?? []).map((label) => ({ label }));
+};
+
+const formatProductName = (productKey: string) =>
+  productKey
+    .split("_")
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(" ");
+
+type ProductUpgradeHeaderProps = {
+  product?: BillingV2CatalogProduct;
+  productName: string;
+  description: string;
+};
+
+const ProductUpgradeHeader = ({ product, productName, description }: ProductUpgradeHeaderProps) => (
+  <DialogHeader className="flex-row items-start gap-3 pr-6">
+    {product && (
+      <div aria-hidden="true">
+        <ProductIcon product={product} size={36} />
+      </div>
+    )}
+    <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <DialogTitle>Upgrade {productName}</DialogTitle>
+      <DialogDescription>{description}</DialogDescription>
+    </div>
+  </DialogHeader>
+);
+
 export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) => {
-  const [view, setView] = useState<GateView>("plan");
+  const [selectedTier, setSelectedTier] = useState(intent.planKey);
+  const [cadence, setCadence] = useState<BillingV2Cadence>("annual");
+  const [isMinimumPlanLoading, setIsMinimumPlanLoading] = useState(isOpen);
   const { currentOrg, isSubOrganization } = useOrganization();
   const { permission } = useOrgPermission();
   const billingOrgId = currentOrg.rootOrgId ?? currentOrg.id;
@@ -62,22 +186,40 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
   const overview = useGetBillingV2Overview(billingOrgId, { enabled: canLoadBilling });
   const catalog = useGetBillingV2Catalog(billingOrgId, { enabled: canLoadBilling });
   const startTrial = useStartBillingV2Trial();
-  const entitlement = overview.data?.entitlements[intent.productKey];
+  const product = catalog.data?.find((candidate) => candidate.id === intent.productKey);
+  const productName = product?.name ?? formatProductName(intent.productKey);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    let isCurrent = true;
+
     if (!isOpen) {
-      setView("plan");
+      setIsMinimumPlanLoading(false);
+      return undefined;
     }
+
+    const startedAt = Date.now();
+    setIsMinimumPlanLoading(true);
+    waitForMinimumDuration(startedAt, MINIMUM_PLAN_LOADING_DURATION_MS)
+      .then(() => {
+        if (isCurrent) {
+          setIsMinimumPlanLoading(false);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isCurrent = false;
+    };
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen && entitlement?.entitled) {
-      onOpenChange(false);
-      onGranted();
+    if (!isOpen) {
+      setSelectedTier(intent.planKey);
+      setCadence("annual");
     }
-  }, [entitlement?.entitled, isOpen, onGranted, onOpenChange]);
+  }, [intent.planKey, isOpen]);
 
-  if (!isOpen || entitlement?.entitled) {
+  if (!isOpen) {
     return null;
   }
 
@@ -93,11 +235,12 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
   if (isSubOrganization) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{intent.title}</DialogTitle>
-            <DialogDescription>{intent.description}</DialogDescription>
-          </DialogHeader>
+        <DialogContent showCloseButton={false} className="sm:max-w-xl">
+          <ProductUpgradeHeader
+            product={product}
+            productName={productName}
+            description="Review product plans and manage access for your team."
+          />
           <Alert variant="info">
             <CircleAlert />
             <AlertDescription>
@@ -121,11 +264,12 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
   if (!canManageBilling) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{intent.title}</DialogTitle>
-            <DialogDescription>{intent.description}</DialogDescription>
-          </DialogHeader>
+        <DialogContent showCloseButton={false} className="sm:max-w-xl">
+          <ProductUpgradeHeader
+            product={product}
+            productName={productName}
+            description="Review product plans and manage access for your team."
+          />
           <Alert variant="info">
             <CircleAlert />
             <AlertDescription>
@@ -146,32 +290,36 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     );
   }
 
-  if (overview.isPending || catalog.isPending) {
+  if (isMinimumPlanLoading || overview.isPending || catalog.isPending) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{intent.title}</DialogTitle>
-            <DialogDescription>{intent.description}</DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center gap-3 text-sm text-muted">
-            <Loader size="xs" label="Loading plan details" />
-            Loading plan details
+        <DialogContent showCloseButton={false} className="sm:max-w-3xl">
+          <ProductUpgradeHeader
+            product={product}
+            productName={productName}
+            description={`Loading plan details for ${productName}.`}
+          />
+
+          <div className="flex min-h-72 items-center justify-center p-5">
+            <div className="flex items-center gap-3 text-sm text-muted">
+              <Loader size="sm" label="Loading plan details" />
+              <span aria-hidden="true">Loading plan details</span>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
     );
   }
 
-  const product = catalog.data?.find((candidate) => candidate.id === intent.productKey);
   if (overview.isError || catalog.isError || !overview.data || !product) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{intent.title}</DialogTitle>
-            <DialogDescription>{intent.description}</DialogDescription>
-          </DialogHeader>
+        <DialogContent showCloseButton={false} className="sm:max-w-xl">
+          <ProductUpgradeHeader
+            product={product}
+            productName={productName}
+            description="Review product plans and manage access for your team."
+          />
           <Alert variant="danger">
             <CircleAlert />
             <AlertDescription>
@@ -198,15 +346,21 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     );
   }
 
-  const plan = product.plans.find((candidate) => candidate.tier === intent.planKey);
-  if (!plan) {
+  const plans = [...product.plans]
+    .filter((candidate) => !candidate.deprecated)
+    .sort((left, right) => (left.displayOrder ?? 0) - (right.displayOrder ?? 0));
+  const requiredPlan = plans.find((candidate) => candidate.tier === intent.planKey);
+  const plan =
+    plans.find((candidate) => candidate.tier === selectedTier) ?? requiredPlan ?? plans[0];
+  if (!plan || !requiredPlan) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{intent.title}</DialogTitle>
-            <DialogDescription>{intent.description}</DialogDescription>
-          </DialogHeader>
+        <DialogContent showCloseButton={false} className="sm:max-w-xl">
+          <ProductUpgradeHeader
+            product={product}
+            productName={productName}
+            description="Review product plans and manage access for your team."
+          />
           <Alert variant="danger">
             <CircleAlert />
             <AlertDescription>This plan is not available for your organization.</AlertDescription>
@@ -221,14 +375,41 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     );
   }
 
-  const trialAvailable = plan.selfServe && plan.trialable;
+  const requiredPlanIndex = plans.findIndex((candidate) => candidate.tier === intent.planKey);
+  const planMeetsRequirement = plans.indexOf(plan) >= requiredPlanIndex;
+  const trialAvailable = planMeetsRequirement && plan.selfServe && plan.trialable;
+  const hasTrialAvailable = plans.some((candidate) => {
+    const candidateMeetsRequirement = plans.indexOf(candidate) >= requiredPlanIndex;
+    return candidateMeetsRequirement && candidate.selfServe && candidate.trialable;
+  });
   const selfServe =
     overview.data.mode !== "managed" && overview.data.selfServe && !overview.data.checkoutFrozen;
-  const price = monthlyPrice(plan);
-  const trialLength = plan.trialDays > 0 ? `${plan.trialDays}-day` : "free";
-  const trialBadgeLabel = plan.trialDays > 0 ? `${plan.trialDays}-Day Trial` : "Free Trial";
-  const trialButtonLabel =
-    plan.trialDays > 0 ? `Start ${plan.trialDays}-Day Free Trial` : "Start Free Trial";
+  const supportsAnnualCadence = plans.some((candidate) => planSupportsCadence(candidate, "annual"));
+  const supportsMonthlyCadence = plans.some((candidate) =>
+    planSupportsCadence(candidate, "monthly")
+  );
+  const visibleCadence =
+    (cadence === "annual" && supportsAnnualCadence) ||
+    (cadence === "monthly" && supportsMonthlyCadence)
+      ? cadence
+      : supportsAnnualCadence
+        ? "annual"
+        : "monthly";
+  const effectiveCadence = getEffectiveCadence(plan, visibleCadence);
+  const price = getPlanPrice(plan, "monthly").amount;
+  const comparePrice = getPlanPrice(plan, effectiveCadence);
+  const features = getPlanFeatures(product, plan);
+  const savingsPercent = Math.max(...plans.map(annualSavingsPercent));
+  const trialDurationLabel = plan.trialDays === 14 ? "2-Week" : `${plan.trialDays}-Day`;
+  const trialBadgeLabel = plan.trialDays > 0 ? `${trialDurationLabel} Trial` : "Free Trial";
+  const trialPriceLabel =
+    plan.trialDays === 14
+      ? "0 for 2 Weeks"
+      : plan.trialDays > 0
+        ? `0 for ${plan.trialDays} Days`
+        : "0 during trial";
+  const upgradeLabel = intent.upgradeLabel ?? `Upgrade ${product.name}`;
+  const productStyle = { "--product-color": product.color } as CSSProperties;
 
   const handleStartTrial = async () => {
     try {
@@ -255,7 +436,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
       onOpenChange(false);
       onGranted();
     } catch {
-      setView("plan");
+      return;
     }
   };
 
@@ -264,7 +445,13 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
       View Billing Options
     </Button>
   );
-  if (!selfServe) {
+  if (!planMeetsRequirement) {
+    primaryAction = (
+      <Button variant="org" isDisabled>
+        Requires {requiredPlan?.name ?? intent.planKey}
+      </Button>
+    );
+  } else if (!selfServe || plan.salesLed) {
     primaryAction = (
       <Button
         variant="org"
@@ -273,23 +460,188 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
         Contact Sales
       </Button>
     );
+  }
+
+  let productTrialAction = (
+    <Button
+      variant="product"
+      className="w-full justify-center"
+      style={productStyle}
+      onClick={openRootBilling}
+    >
+      View Billing Options
+    </Button>
+  );
+  if (!planMeetsRequirement) {
+    productTrialAction = (
+      <Button
+        variant="product"
+        className="w-full justify-center"
+        style={productStyle}
+        isDisabled
+      >
+        Select {requiredPlan?.name ?? intent.planKey} or higher
+      </Button>
+    );
+  } else if (plan.salesLed || !selfServe) {
+    productTrialAction = (
+      <Button
+        variant="product"
+        className="w-full justify-center"
+        style={productStyle}
+        onClick={() => window.open(CONTACT_SALES_URL, "_blank", "noopener,noreferrer")}
+      >
+        Contact Sales
+      </Button>
+    );
   } else if (trialAvailable) {
-    primaryAction = (
-      <Button variant="org" onClick={() => setView("confirm")}>
-        {trialButtonLabel}
+    productTrialAction = (
+      <Button
+        variant="product"
+        className="w-full justify-center"
+        style={productStyle}
+        isPending={startTrial.isPending}
+        isDisabled={startTrial.isPending}
+        onClick={handleStartTrial}
+      >
+        Start Free {plan.name} Trial
       </Button>
     );
   }
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        {view === "plan" ? (
+      <DialogContent
+        showCloseButton={false}
+        className={
+          hasTrialAvailable
+            ? "gap-0 overflow-x-hidden p-0 sm:max-w-4xl"
+            : "sm:max-w-2xl"
+        }
+      >
+        {hasTrialAvailable && (
+          <div className="grid min-h-[34rem] md:grid-cols-[minmax(16rem,0.9fr)_minmax(0,1.25fr)]">
+            <aside
+              className="product-color flex min-h-52 flex-col border-b border-(--product-color-resolved)/20 bg-(--product-color-resolved)/10 md:min-h-0 md:border-r md:border-b-0"
+              style={productStyle}
+            >
+              <div className="flex flex-1 flex-col items-center justify-center px-8 py-12 text-center">
+                <ProductIcon product={product} size={64} />
+                <DialogHeader className="mt-6 items-center text-center">
+                  <p className="text-xs font-medium tracking-wide text-(--product-color-resolved) uppercase">
+                    {product.name}
+                  </p>
+                  <DialogTitle className="max-w-xs text-2xl leading-tight">
+                    {upgradeLabel}
+                  </DialogTitle>
+                  <DialogDescription className="max-w-xs leading-relaxed">
+                    Available with the {requiredPlan.name} plan and higher.
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+            </aside>
+
+            <div className="flex min-w-0 flex-col gap-5 p-6 pb-0">
+              <Tabs value={plan.tier} onValueChange={setSelectedTier}>
+                <TabsList className="w-full" aria-label={`${product.name} plans`}>
+                  {plans.map((candidate) => (
+                    <TabsTrigger key={candidate.tier} value={candidate.tier}>
+                      {candidate.name}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+
+              <section aria-labelledby="upgrade-plan-features">
+                <div>
+                  <p
+                    id="upgrade-plan-features"
+                    className="text-xs font-medium tracking-wide text-muted uppercase"
+                  >
+                    Included with {plan.name}
+                  </p>
+                  {plan.feature && <p className="mt-1 text-sm text-muted">{plan.feature}</p>}
+                </div>
+
+                {features.length > 0 && (
+                  <ul className="mt-4 grid gap-x-5 gap-y-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
+                    {features.map((feature) => (
+                      <li
+                        key={feature.label}
+                        className="flex min-w-0 items-start gap-2 text-sm text-accent"
+                      >
+                        <Check className="mt-0.5 size-4 shrink-0 text-success" />
+                        <span className="min-w-0">
+                          <span>{feature.label}</span>
+                          {feature.value && (
+                            <span className="ml-1 text-muted">· {feature.value}</span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <DialogFooter className="mt-auto flex-col items-stretch">
+                {!plan.salesLed && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={`upgrade-cadence-${product.id}`}
+                        variant="org"
+                        isChecked={visibleCadence === "annual"}
+                        isDisabled={
+                          startTrial.isPending ||
+                          !supportsAnnualCadence ||
+                          !supportsMonthlyCadence
+                        }
+                        onCheckedChange={(checked) =>
+                          setCadence(checked === true ? "annual" : "monthly")
+                        }
+                      />
+                      <Label htmlFor={`upgrade-cadence-${product.id}`}>Annual Billing</Label>
+                      {savingsPercent > 0 && (
+                        <Badge variant="success" className="min-h-4 px-1 py-0 text-[10px]">
+                          -{savingsPercent}%
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-baseline gap-2 text-sm tabular-nums">
+                      {comparePrice.amount > 0 ? (
+                        <span
+                          className={
+                            trialAvailable
+                              ? "text-muted line-through"
+                              : "font-medium text-foreground"
+                          }
+                        >
+                          {fmtMoney(comparePrice.amount, 2)}
+                          {comparePrice.compactUnit}
+                        </span>
+                      ) : (
+                        <span className="font-medium text-foreground">Usage-based</span>
+                      )}
+                      {trialAvailable && (
+                        <span className="font-medium text-foreground">{trialPriceLabel}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {productTrialAction}
+              </DialogFooter>
+            </div>
+          </div>
+        )}
+        {!hasTrialAvailable && (
           <>
-            <DialogHeader>
-              <DialogTitle>{intent.title}</DialogTitle>
-              <DialogDescription>{intent.description}</DialogDescription>
-            </DialogHeader>
+            <ProductUpgradeHeader
+              product={product}
+              productName={product.name}
+              description={
+                product.tagline ?? "Review product plans and manage access for your team."
+              }
+            />
 
             <div className="rounded-lg border border-border bg-card">
               <div className="flex flex-col gap-4 p-5">
@@ -338,58 +690,6 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
                 Close
               </Button>
               {primaryAction}
-            </DialogFooter>
-          </>
-        ) : (
-          <>
-            <DialogHeader>
-              <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Sparkles className="size-5" />
-              </div>
-              <DialogTitle>Start your {plan.name} trial</DialogTitle>
-              <DialogDescription>
-                Your {trialLength} trial is free. A payment method is required; if you do not have
-                one on file, you will complete secure card setup before the trial starts. After the
-                trial, billing continues monthly unless you cancel.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="divide-y divide-border rounded-lg border border-border bg-card text-sm">
-              <div className="flex items-center justify-between p-4">
-                <div>
-                  <div className="font-medium text-foreground">Due today</div>
-                  <div className="text-muted">Free during your trial</div>
-                </div>
-                <span className="font-medium text-foreground">$0</span>
-              </div>
-              <div className="flex items-center justify-between p-4">
-                <div>
-                  <div className="font-medium text-foreground">After your trial</div>
-                  <div className="text-muted">Billed monthly based on usage</div>
-                </div>
-                <span className="font-medium text-foreground">
-                  {price > 0 ? `${fmtMoney(price)} / month` : "Usage-based"}
-                </span>
-              </div>
-            </div>
-
-            <DialogFooter className="sm:justify-between">
-              <Button
-                variant="outline"
-                isDisabled={startTrial.isPending}
-                onClick={() => setView("plan")}
-              >
-                <ArrowLeft />
-                Back
-              </Button>
-              <Button
-                variant="org"
-                isPending={startTrial.isPending}
-                isDisabled={startTrial.isPending}
-                onClick={handleStartTrial}
-              >
-                Start Free Trial
-              </Button>
             </DialogFooter>
           </>
         )}

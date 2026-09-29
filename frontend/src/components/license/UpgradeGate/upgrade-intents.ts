@@ -3,15 +3,33 @@ export const BillingProduct = {
 } as const;
 
 export const BillingPlan = {
-  Advanced: "advanced"
+  Pro: "pro",
+  Advanced: "advanced",
+  Enterprise: "enterprise"
 } as const;
 
 export const UpgradeFeature = {
-  DynamicSecrets: "dynamic-secrets"
+  DynamicSecrets: "dynamic-secrets",
+  SecretRotations: "secret-rotations",
+  HoneyTokens: "honey-tokens",
+  SecretsBrokering: "secrets-brokering",
+  PointInTimeRecovery: "point-in-time-recovery",
+  FolderAccessControls: "folder-access-controls",
+  SecretImportReplication: "secret-import-replication",
+  SecretAccessInsights: "secret-access-insights",
+  EnterpriseSecretSyncs: "enterprise-secret-syncs"
 } as const;
 
 export const UpgradeContinuation = {
-  CreateDynamicSecret: "create-dynamic-secret"
+  CreateDynamicSecret: "create-dynamic-secret",
+  CreateSecretRotation: "create-secret-rotation",
+  CreateHoneyToken: "create-honey-token",
+  CreateProxiedService: "create-proxied-service",
+  ViewCommitHistory: "view-commit-history",
+  ManageFolderAccess: "manage-folder-access",
+  CreateSecretImport: "create-secret-import",
+  ViewSecretAccess: "view-secret-access",
+  CreateEnterpriseSecretSync: "create-enterprise-secret-sync"
 } as const;
 
 export type UpgradeIntent = {
@@ -19,6 +37,7 @@ export type UpgradeIntent = {
   productKey: (typeof BillingProduct)[keyof typeof BillingProduct];
   planKey: (typeof BillingPlan)[keyof typeof BillingPlan];
   continuation: (typeof UpgradeContinuation)[keyof typeof UpgradeContinuation];
+  upgradeLabel?: string;
   title: string;
   description: string;
 };
@@ -28,9 +47,98 @@ export const DynamicSecretsUpgradeIntent = {
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Advanced,
   continuation: UpgradeContinuation.CreateDynamicSecret,
+  upgradeLabel: "Unlock Dynamic Secrets",
   title: "Add Dynamic Secrets",
   description:
     "Dynamic secrets are included with Secrets Management Advanced. Review the plan or start a free trial to continue."
+} satisfies UpgradeIntent;
+
+export const SecretRotationsUpgradeIntent = {
+  featureKey: UpgradeFeature.SecretRotations,
+  productKey: BillingProduct.SecretsManagement,
+  planKey: BillingPlan.Pro,
+  continuation: UpgradeContinuation.CreateSecretRotation,
+  upgradeLabel: "Unlock Secret Rotations",
+  title: "Add Secret Rotation",
+  description:
+    "Secret rotations are included with Secrets Management Pro. Review the plan or start a free trial to continue."
+} satisfies UpgradeIntent;
+
+export const HoneyTokensUpgradeIntent = {
+  featureKey: UpgradeFeature.HoneyTokens,
+  productKey: BillingProduct.SecretsManagement,
+  planKey: BillingPlan.Pro,
+  continuation: UpgradeContinuation.CreateHoneyToken,
+  upgradeLabel: "Unlock Honey Tokens",
+  title: "Add Honey Token",
+  description:
+    "Honey tokens are included with Secrets Management Pro. Review the plan or start a free trial to continue."
+} satisfies UpgradeIntent;
+
+export const SecretsBrokeringUpgradeIntent = {
+  featureKey: UpgradeFeature.SecretsBrokering,
+  productKey: BillingProduct.SecretsManagement,
+  planKey: BillingPlan.Enterprise,
+  continuation: UpgradeContinuation.CreateProxiedService,
+  upgradeLabel: "Unlock Secrets Brokering",
+  title: "Add Proxied Service",
+  description:
+    "Secrets brokering is included with Secrets Management Enterprise. Review the plan to continue."
+} satisfies UpgradeIntent;
+
+export const PointInTimeRecoveryUpgradeIntent = {
+  featureKey: UpgradeFeature.PointInTimeRecovery,
+  productKey: BillingProduct.SecretsManagement,
+  planKey: BillingPlan.Pro,
+  continuation: UpgradeContinuation.ViewCommitHistory,
+  upgradeLabel: "Unlock Point-in-Time Recovery",
+  title: "View Commit History",
+  description:
+    "Point-in-time recovery is included with Secrets Management Pro. Review the plan or start a free trial to continue."
+} satisfies UpgradeIntent;
+
+export const FolderAccessControlsUpgradeIntent = {
+  featureKey: UpgradeFeature.FolderAccessControls,
+  productKey: BillingProduct.SecretsManagement,
+  planKey: BillingPlan.Pro,
+  continuation: UpgradeContinuation.ManageFolderAccess,
+  upgradeLabel: "Unlock Folder Access Controls",
+  title: "Manage Folder Access",
+  description:
+    "Folder-level access controls are included with Secrets Management Pro. Review the plan or start a free trial to continue."
+} satisfies UpgradeIntent;
+
+export const SecretImportReplicationUpgradeIntent = {
+  featureKey: UpgradeFeature.SecretImportReplication,
+  productKey: BillingProduct.SecretsManagement,
+  planKey: BillingPlan.Pro,
+  continuation: UpgradeContinuation.CreateSecretImport,
+  upgradeLabel: "Unlock Secret Import Replication",
+  title: "Replicate Secret Import",
+  description:
+    "Secret import replication is included with Secrets Management Pro. Review the plan or start a free trial to continue."
+} satisfies UpgradeIntent;
+
+export const SecretAccessInsightsUpgradeIntent = {
+  featureKey: UpgradeFeature.SecretAccessInsights,
+  productKey: BillingProduct.SecretsManagement,
+  planKey: BillingPlan.Pro,
+  continuation: UpgradeContinuation.ViewSecretAccess,
+  upgradeLabel: "Unlock Secret Access Insights",
+  title: "View Secret Access",
+  description:
+    "Secret access insights are included with Secrets Management Pro. Review the plan or start a free trial to continue."
+} satisfies UpgradeIntent;
+
+export const EnterpriseSecretSyncsUpgradeIntent = {
+  featureKey: UpgradeFeature.EnterpriseSecretSyncs,
+  productKey: BillingProduct.SecretsManagement,
+  planKey: BillingPlan.Enterprise,
+  continuation: UpgradeContinuation.CreateEnterpriseSecretSync,
+  upgradeLabel: "Unlock Enterprise Secret Syncs",
+  title: "Choose Enterprise Secret Sync",
+  description:
+    "Enterprise Secret Sync destinations are included with Secrets Management Enterprise. Review the plan to continue."
 } satisfies UpgradeIntent;
 
 export const buildUpgradeReturnPath = (intent: UpgradeIntent, location: Location) => {
