@@ -4,7 +4,7 @@ import { PkiApplicationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { commaSeparatedUuidsSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -99,18 +99,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         search: z.string().optional(),
         limit: z.coerce.number().int().min(1).max(100).default(20),
         offset: z.coerce.number().int().min(0).default(0),
-        applicationIds: z
-          .string()
-          .optional()
-          .transform((val) => {
-            if (!val) return undefined;
-            const ids = val
-              .split(",")
-              .map((id) => id.trim())
-              .filter(Boolean);
-            return ids.length > 0 ? ids : undefined;
-          })
-          .pipe(z.array(z.string().uuid()).optional())
+        applicationIds: commaSeparatedUuidsSchema()
       }),
       response: {
         200: z.object({

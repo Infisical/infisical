@@ -44,31 +44,61 @@ import {
 } from "@app/components/v3";
 import {
   AlertRunStatus,
+  MAX_CERTIFICATE_ALERT_FILTER_IDS,
   TAlert,
   useDeleteAlert,
   useListAlerts,
   useUpdateAlert
 } from "@app/hooks/api/alerts";
+import { formatAlertBefore } from "@app/views/PkiAlertsV2Page/utils/pki-alert-formatters";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
+import {
+  fromAlertEventType,
+  getAlertResourceId,
+  getAlertResourceType
+} from "./certificate-alert-fns";
 import { CertificateAlertSheet } from "./CertificateAlertSheet";
 import {
   CERTIFICATE_ALERT_EVENT_LABELS,
+  CERTIFICATE_FILTER_DEFINITIONS,
   CertificateAlertScopeKind,
-  getAlertResourceId,
-  getAlertResourceType,
-  TCertificateAlertScope,
-  toAlertEventKind
+  TCertificateAlertScope
 } from "./types";
-import { useCertificateScopeNames } from "./useCertificateScopeNames";
+import { useCertificateFilterNames } from "./useCertificateFilterNames";
 
-type TScopeNames = ReturnType<typeof useCertificateScopeNames>;
+type TFilterNames = ReturnType<typeof useCertificateFilterNames>;
 
-const MAX_SCOPE_NAME_LOOKUPS = 100;
+const SCOPE_CARD_CONFIG: Record<
+  CertificateAlertScopeKind,
+  { description: string; emptyDescription: string; docsUrl: string; hasFiltersColumn: boolean }
+> = {
+  [CertificateAlertScopeKind.Application]: {
+    description: "Get notified about certificate events.",
+    emptyDescription:
+      "No alerts configured. Create one to get notified about certificate events for this application.",
+    docsUrl: PkiDocsUrls.applications.alerting.overview,
+    hasFiltersColumn: false
+  },
+  [CertificateAlertScopeKind.CertificateManager]: {
+    description:
+      "Get notified about certificate events anywhere in Certificate Manager, inside or outside an application.",
+    emptyDescription:
+      "No alerts configured. Create one to get notified about certificate events across Certificate Manager.",
+    docsUrl: PkiDocsUrls.settings.alerts,
+    hasFiltersColumn: true
+  }
+};
 
 const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 
-const AlertFiltersSummary = ({ alert, scopeNames }: { alert: TAlert; scopeNames: TScopeNames }) => {
+const AlertFiltersSummary = ({
+  alert,
+  filterNames
+}: {
+  alert: TAlert;
+  filterNames: TFilterNames;
+}) => {
   const applicationIds = alert.condition?.applicationIds ?? [];
   const profileIds = alert.condition?.profileIds ?? [];
 
@@ -78,7 +108,7 @@ const AlertFiltersSummary = ({ alert, scopeNames }: { alert: TAlert; scopeNames:
 
   const summary = [
     applicationIds.length ? pluralize(applicationIds.length, "application") : null,
-    profileIds.length ? pluralize(profileIds.length, "profile") : null
+    profileIds.length ? pluralize(profileIds.length, "certificate profile") : null
   ]
     .filter(Boolean)
     .join(", ");
@@ -91,14 +121,16 @@ const AlertFiltersSummary = ({ alert, scopeNames }: { alert: TAlert; scopeNames:
       <TooltipContent side="bottom" className="flex max-w-sm flex-col gap-1">
         {applicationIds.length > 0 && (
           <span>
-            <span className="text-muted">Applications: </span>
-            {applicationIds.map(scopeNames.getApplicationName).join(", ")}
+            <span className="text-muted">
+              {CERTIFICATE_FILTER_DEFINITIONS.applicationIds.label}:{" "}
+            </span>
+            {applicationIds.map(filterNames.getApplicationName).join(", ")}
           </span>
         )}
         {profileIds.length > 0 && (
           <span>
-            <span className="text-muted">Profiles: </span>
-            {profileIds.map(scopeNames.getProfileName).join(", ")}
+            <span className="text-muted">{CERTIFICATE_FILTER_DEFINITIONS.profileIds.label}: </span>
+            {profileIds.map(filterNames.getProfileName).join(", ")}
           </span>
         )}
       </TooltipContent>
@@ -122,7 +154,8 @@ type AlertRowProps = {
   onDelete: () => void;
   canEdit: boolean;
   canDelete: boolean;
-  scopeNames?: TScopeNames;
+  scope: TCertificateAlertScope;
+  filterNames: TFilterNames;
 };
 
 const AlertRow = ({
@@ -132,8 +165,10 @@ const AlertRow = ({
   onDelete,
   canEdit,
   canDelete,
-  scopeNames
+  scope,
+  filterNames
 }: AlertRowProps) => {
+  const eventType = fromAlertEventType(scope, alert.eventType);
   const { mutate: updateAlert } = useUpdateAlert();
 
   const handleToggleAlert = () =>
@@ -166,21 +201,21 @@ const AlertRow = ({
         </div>
       </TableCell>
       <TableCell className="whitespace-nowrap text-accent">
-        {CERTIFICATE_ALERT_EVENT_LABELS[toAlertEventKind(alert.eventType)] ?? alert.eventType}
+        {eventType ? CERTIFICATE_ALERT_EVENT_LABELS[eventType] : alert.eventType}
       </TableCell>
       <TableCell className="whitespace-nowrap">
         <Badge variant={alert.enabled ? "success" : "neutral"}>
           {alert.enabled ? "Enabled" : "Disabled"}
         </Badge>
       </TableCell>
-      {scopeNames && (
+      {SCOPE_CARD_CONFIG[scope.kind].hasFiltersColumn && (
         <TableCell className="whitespace-nowrap">
-          <AlertFiltersSummary alert={alert} scopeNames={scopeNames} />
+          <AlertFiltersSummary alert={alert} filterNames={filterNames} />
         </TableCell>
       )}
       <TableCell className="whitespace-nowrap text-accent">
         {alert.condition?.alertBefore ? (
-          alert.condition.alertBefore
+          formatAlertBefore(alert.condition.alertBefore)
         ) : (
           <span className="text-surface-selected">—</span>
         )}
@@ -189,8 +224,8 @@ const AlertRow = ({
         {alert.lastRun ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant={LAST_RUN_BADGES[alert.lastRun.status]?.variant ?? "danger"}>
-                {LAST_RUN_BADGES[alert.lastRun.status]?.label ?? "Failed"}
+              <Badge variant={LAST_RUN_BADGES[alert.lastRun.status].variant}>
+                {LAST_RUN_BADGES[alert.lastRun.status].label}
               </Badge>
             </TooltipTrigger>
             <TooltipContent side="left" className="max-w-sm">
@@ -259,28 +294,37 @@ export const CertificateAlertsCard = ({
   canEdit,
   canDelete
 }: Props) => {
-  const isApplicationScope = scope.kind === CertificateAlertScopeKind.Application;
+  const config = SCOPE_CARD_CONFIG[scope.kind];
+  const columns = [
+    { label: "Name", className: "w-1/3" },
+    { label: "Alert Type", className: "whitespace-nowrap" },
+    { label: "Status", className: "whitespace-nowrap" },
+    ...(config.hasFiltersColumn ? [{ label: "Filters", className: "whitespace-nowrap" }] : []),
+    { label: "Alert Before", className: "whitespace-nowrap" },
+    { label: "Last Run", className: "whitespace-nowrap" },
+    { label: "Actions", className: "w-5 text-right" }
+  ];
   const resourceId = getAlertResourceId(scope);
   const { data: alerts = [], isLoading: isAlertsLoading } = useListAlerts({
     resourceType: getAlertResourceType(scope),
     projectId,
     ...(resourceId ? { resourceId } : {})
   });
-  const scopeIds = useMemo(() => {
+  const filterIds = useMemo(() => {
     const applicationIds = new Set<string>();
     const profileIds = new Set<string>();
-    if (!isApplicationScope) {
+    if (config.hasFiltersColumn) {
       alerts.forEach((alert) => {
         alert.condition?.applicationIds?.forEach((id) => applicationIds.add(id));
         alert.condition?.profileIds?.forEach((id) => profileIds.add(id));
       });
     }
     return {
-      applicationIds: [...applicationIds].slice(0, MAX_SCOPE_NAME_LOOKUPS),
-      profileIds: [...profileIds].slice(0, MAX_SCOPE_NAME_LOOKUPS)
+      applicationIds: [...applicationIds].slice(0, MAX_CERTIFICATE_ALERT_FILTER_IDS),
+      profileIds: [...profileIds].slice(0, MAX_CERTIFICATE_ALERT_FILTER_IDS)
     };
-  }, [alerts, isApplicationScope]);
-  const scopeNames = useCertificateScopeNames(scopeIds);
+  }, [alerts, config.hasFiltersColumn]);
+  const filterNames = useCertificateFilterNames(filterIds);
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     alertId?: string;
@@ -307,20 +351,10 @@ export const CertificateAlertsCard = ({
       <Card>
         <CardHeader>
           <CardTitle>
-            {isApplicationScope ? "Alerting" : "Alerts"}
-            <DocumentationLinkBadge
-              href={
-                isApplicationScope
-                  ? PkiDocsUrls.applications.alerting.overview
-                  : PkiDocsUrls.settings.alerts
-              }
-            />
+            Alerts
+            <DocumentationLinkBadge href={config.docsUrl} />
           </CardTitle>
-          <CardDescription>
-            {isApplicationScope
-              ? "Get notified about certificate events."
-              : "Get notified about certificate events anywhere in Certificate Manager, inside or outside an application."}
-          </CardDescription>
+          <CardDescription>{config.description}</CardDescription>
           <CardAction>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -350,33 +384,25 @@ export const CertificateAlertsCard = ({
               <EmptyMedia variant="icon">
                 <BellIcon />
               </EmptyMedia>
-              <EmptyDescription>
-                {isApplicationScope
-                  ? "No alerts configured. Create one to get notified about certificate events for this application."
-                  : "No alerts configured. Create one to get notified about certificate events across Certificate Manager."}
-              </EmptyDescription>
+              <EmptyDescription>{config.emptyDescription}</EmptyDescription>
             </Empty>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-1/3">Name</TableHead>
-                  <TableHead className="whitespace-nowrap">Alert Type</TableHead>
-                  <TableHead className="whitespace-nowrap">Status</TableHead>
-                  {!isApplicationScope && (
-                    <TableHead className="whitespace-nowrap">Filters</TableHead>
-                  )}
-                  <TableHead className="whitespace-nowrap">Alert Before</TableHead>
-                  <TableHead className="whitespace-nowrap">Last Run</TableHead>
-                  <TableHead className="w-5 text-right">Actions</TableHead>
+                  {columns.map((column) => (
+                    <TableHead key={column.label} className={column.className}>
+                      {column.label}
+                    </TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isAlertsLoading &&
                   Array.from({ length: 3 }, (_, idx) => (
                     <TableRow key={`alert-skeleton-${idx + 1}`}>
-                      {Array.from({ length: isApplicationScope ? 6 : 7 }, (__, cellIdx) => (
-                        <TableCell key={`alert-skeleton-cell-${cellIdx + 1}`}>
+                      {columns.map((column) => (
+                        <TableCell key={column.label}>
                           <Skeleton className="h-4 w-24" />
                         </TableCell>
                       ))}
@@ -396,7 +422,8 @@ export const CertificateAlertsCard = ({
                       }
                       canEdit={canEdit}
                       canDelete={canDelete}
-                      scopeNames={isApplicationScope ? undefined : scopeNames}
+                      scope={scope}
+                      filterNames={filterNames}
                     />
                   ))}
               </TableBody>

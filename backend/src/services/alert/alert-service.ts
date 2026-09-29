@@ -8,7 +8,7 @@ import { TGenericPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { getAlertChannelCipher } from "./alert-channel-crypto-fns";
-import { TAlertChannelDALFactory } from "./alert-channel-dal";
+import { TAlertChannelDALFactory, TAlertChannelWithAlertId } from "./alert-channel-dal";
 import { TAlertChannelMembershipDALFactory } from "./alert-channel-membership-dal";
 import { TAlertChannelServiceFactory, TChannelDetailsOptions } from "./alert-channel-service";
 import { TAlertChannelEmbedded, TAlertChannelInput } from "./alert-channel-service-types";
@@ -26,6 +26,7 @@ import {
 } from "./alert-service-types";
 import {
   AlertPermissionAction,
+  AlertRunStatus,
   AlertTelemetryAction,
   IResourceAlertProvider,
   TAlertEventDefinition,
@@ -103,20 +104,52 @@ export const alertServiceFactory = ({
     return $isAllowed(provider, AlertPermissionAction.Edit, scope, dto);
   };
 
-  const $filterReadableAlerts = async (provider: IResourceAlertProvider, alerts: TAlerts[], dto: TListAlertsDTO) => {
-    const resourceIds = [...new Set(alerts.map((alert) => alert.resourceId).filter((id): id is string => Boolean(id)))];
-    const readable = await Promise.all(
+  const $findAllowedResourceIds = async (
+    provider: IResourceAlertProvider,
+    action: AlertPermissionAction,
+    resourceIds: (string | null)[],
+    dto: TListAlertsDTO
+  ) => {
+    const allowed = await Promise.all(
       resourceIds.map((resourceId) =>
-        $isAllowed(
-          provider,
-          AlertPermissionAction.Read,
-          { orgId: dto.actorOrgId, projectId: dto.projectId, resourceId },
-          dto
-        )
+        $isAllowed(provider, action, { orgId: dto.actorOrgId, projectId: dto.projectId, resourceId }, dto)
       )
     );
-    const readableResourceIds = new Set(resourceIds.filter((_, index) => readable[index]));
+    return new Set(resourceIds.filter((_, index) => allowed[index]));
+  };
+
+  const $filterReadableAlerts = async (provider: IResourceAlertProvider, alerts: TAlerts[], dto: TListAlertsDTO) => {
+    const resourceIds = [...new Set(alerts.map((alert) => alert.resourceId).filter((id): id is string => Boolean(id)))];
+    const readableResourceIds = await $findAllowedResourceIds(provider, AlertPermissionAction.Read, resourceIds, dto);
     return alerts.filter((alert) => !alert.resourceId || readableResourceIds.has(alert.resourceId));
+  };
+
+  const $getListedChannelDetails = async (
+    provider: IResourceAlertProvider,
+    alerts: TAlerts[],
+    channels: TAlertChannelWithAlertId[],
+    cipher: Awaited<ReturnType<typeof getAlertChannelCipher>>,
+    dto: TListAlertsDTO,
+    options: TChannelDetailsOptions
+  ) => {
+    const resourceIds = [...new Set(alerts.map((alert) => alert.resourceId ?? null))];
+    const revealableResourceIds = options.revealSecrets
+      ? await $findAllowedResourceIds(provider, AlertPermissionAction.Edit, resourceIds, dto)
+      : new Set<string | null>();
+    const revealableAlertIds = new Set(
+      alerts.filter((alert) => revealableResourceIds.has(alert.resourceId ?? null)).map((alert) => alert.id)
+    );
+    return [
+      ...(await alertChannelService.getDetailsForChannels(
+        channels.filter((channel) => revealableAlertIds.has(channel.alertId)),
+        cipher,
+        { revealSecrets: true }
+      )),
+      ...(await alertChannelService.getDetailsForChannels(
+        channels.filter((channel) => !revealableAlertIds.has(channel.alertId)),
+        cipher
+      ))
+    ];
   };
 
   const $getEvent = (provider: IResourceAlertProvider, eventType: string): TAlertEventDefinition => {
@@ -158,7 +191,7 @@ export const alertServiceFactory = ({
         .filter((run) => run.triggeredAt)
         .map((run) => [
           run.alertId,
-          { timestamp: run.triggeredAt as Date, status: run.status, error: run.error ?? null }
+          { timestamp: run.triggeredAt as Date, status: run.status as AlertRunStatus, error: run.error ?? null }
         ])
     );
   };
@@ -186,21 +219,18 @@ export const alertServiceFactory = ({
     updatedAt: alert.updatedAt
   });
 
-  const createAlert = async (input: TCreateAlertDTO, options: TChannelDetailsOptions = {}): Promise<TAlertResponse> => {
-    const provider = $getProvider(input.resourceType);
-    if (!input.resourceId && !provider.supportsScopeWideAlerts) {
+  const createAlert = async (dto: TCreateAlertDTO, options: TChannelDetailsOptions = {}): Promise<TAlertResponse> => {
+    const provider = $getProvider(dto.resourceType);
+    if (!dto.resourceId && !provider.supportsScopeWideAlerts) {
       throw new BadRequestError({
-        message: `Alerts for resource type '${input.resourceType}' must be bound to a specific resource. Pass resourceId.`
+        message: `Alerts for resource type '${dto.resourceType}' must be bound to a specific resource. Pass resourceId.`
       });
     }
 
-    const dto =
-      !input.resourceId || input.projectId || !provider.resolveProjectId
-        ? input
-        : {
-            ...input,
-            projectId: await provider.resolveProjectId({ orgId: input.actorOrgId, resourceId: input.resourceId })
-          };
+    const projectId =
+      !dto.resourceId || dto.projectId || !provider.resolveProjectId
+        ? dto.projectId
+        : await provider.resolveProjectId({ orgId: dto.actorOrgId, resourceId: dto.resourceId });
 
     const event = $getEvent(provider, dto.eventType);
     const condition = $parseCondition(event, dto.condition);
@@ -208,13 +238,13 @@ export const alertServiceFactory = ({
     await $assertAlertPermission(
       provider,
       AlertPermissionAction.Create,
-      { orgId: dto.actorOrgId, projectId: dto.projectId, resourceId: dto.resourceId },
+      { orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId },
       dto
     );
 
     await provider.assertResourceInScope({
       orgId: dto.actorOrgId,
-      projectId: dto.projectId,
+      projectId,
       resourceId: dto.resourceId
     });
 
@@ -223,7 +253,7 @@ export const alertServiceFactory = ({
     if (!provider.allowsMultipleAlertsPerEvent) {
       const duplicate = await alertDAL.findScopedDuplicate({
         orgId: dto.actorOrgId,
-        projectId: dto.projectId,
+        projectId,
         resourceType: dto.resourceType,
         resourceId: dto.resourceId,
         eventType: dto.eventType
@@ -246,7 +276,7 @@ export const alertServiceFactory = ({
       channelTypes: dto.channels.map((channel) => channel.channelType)
     });
 
-    const scope = { orgId: dto.actorOrgId, projectId: dto.projectId ?? null };
+    const scope = { orgId: dto.actorOrgId, projectId: projectId ?? null };
     const cipher = await getAlertChannelCipher(kmsService, scope);
 
     const { created, channels } = await alertDAL.transaction(async (tx) => {
@@ -261,7 +291,7 @@ export const alertServiceFactory = ({
           condition: condition != null ? JSON.stringify(condition) : null,
           enabled: dto.enabled ?? true,
           orgId: dto.actorOrgId,
-          projectId: dto.projectId,
+          projectId,
           createdByActorId: dto.actorId,
           createdByActorType: dto.actor
         },
@@ -278,7 +308,7 @@ export const alertServiceFactory = ({
             enabled: channelInput.enabled,
             recipients: channelInput.recipients,
             orgId: dto.actorOrgId,
-            projectId: dto.projectId ?? null,
+            projectId: projectId ?? null,
             createdByActorId: dto.actorId,
             createdByActorType: dto.actor
           },
@@ -290,7 +320,7 @@ export const alertServiceFactory = ({
       }
 
       const attachedChannels = await alertChannelDAL.findByAlertId(createdAlert.id, {}, tx);
-      const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, tx, options);
+      const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, options, tx);
       return { created: createdAlert, channels: details };
     });
 
@@ -320,7 +350,7 @@ export const alertServiceFactory = ({
       dto,
       options
     );
-    const details = await alertChannelService.getDetailsForChannels(channels, cipher, undefined, { revealSecrets });
+    const details = await alertChannelService.getDetailsForChannels(channels, cipher, { revealSecrets });
     const lastRuns = await $getLastRuns([alert.id]);
     return $assembleResponse(alert, details, {
       resourceName: await $getResourceName(provider, alert),
@@ -350,28 +380,7 @@ export const alertServiceFactory = ({
 
     const channels = await alertChannelDAL.findByAlertIds(alerts.map((alert) => alert.id));
     const cipher = await getAlertChannelCipher(kmsService, { orgId: dto.actorOrgId, projectId: dto.projectId ?? null });
-    const resourceIds = [...new Set(alerts.map((alert) => alert.resourceId ?? null))];
-    const canReveal = await Promise.all(
-      resourceIds.map((resourceId) =>
-        $canRevealSecrets(provider, { orgId: dto.actorOrgId, projectId: dto.projectId, resourceId }, dto, options)
-      )
-    );
-    const revealableResourceIds = new Set(resourceIds.filter((_, index) => canReveal[index]));
-    const revealableAlertIds = new Set(
-      alerts.filter((alert) => revealableResourceIds.has(alert.resourceId ?? null)).map((alert) => alert.id)
-    );
-    const details = [
-      ...(await alertChannelService.getDetailsForChannels(
-        channels.filter((channel) => revealableAlertIds.has(channel.alertId)),
-        cipher,
-        undefined,
-        { revealSecrets: true }
-      )),
-      ...(await alertChannelService.getDetailsForChannels(
-        channels.filter((channel) => !revealableAlertIds.has(channel.alertId)),
-        cipher
-      ))
-    ];
+    const details = await $getListedChannelDetails(provider, alerts, channels, cipher, dto, options);
 
     const lastRuns = await $getLastRuns(alerts.map((alert) => alert.id));
     const resourceNames = await $getResourceNames(
@@ -476,9 +485,9 @@ export const alertServiceFactory = ({
       dto
     );
 
-    const condition =
-      dto.condition !== undefined ? $parseCondition($getEvent(provider, alert.eventType), dto.condition) : undefined;
+    let condition: unknown;
     if (dto.condition !== undefined) {
+      condition = $parseCondition($getEvent(provider, alert.eventType), dto.condition);
       await provider.assertConditionInScope?.({
         projectId: alert.projectId,
         condition,
@@ -519,7 +528,7 @@ export const alertServiceFactory = ({
       }
 
       const attachedChannels = await alertChannelDAL.findByAlertId(alert.id, {}, tx);
-      const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, tx, options);
+      const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, options, tx);
       return { updated: updatedAlert, channels: details };
     });
 

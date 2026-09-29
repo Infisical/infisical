@@ -1,13 +1,9 @@
-import { useCallback, useState } from "react";
-
 import { Badge, HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v3";
 
-export const FilterValueBadges = ({ values }: { values: string[] }) => {
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+import { useDialogPortalContainer } from "./useDialogPortalContainer";
 
-  const rootRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) setPortalContainer(node.closest<HTMLElement>('[role="dialog"]'));
-  }, []);
+export const FilterValueBadges = ({ values }: { values: string[] }) => {
+  const { ref: rootRef, portalContainer } = useDialogPortalContainer<HTMLDivElement>();
 
   if (values.length === 0) return null;
 
@@ -29,7 +25,7 @@ export const FilterValueBadges = ({ values }: { values: string[] }) => {
             </Badge>
           </HoverCardTrigger>
           <HoverCardContent
-            container={portalContainer ?? undefined}
+            container={portalContainer}
             className="flex max-h-64 w-auto max-w-xs flex-wrap gap-1.5 overflow-y-auto"
           >
             {rest}

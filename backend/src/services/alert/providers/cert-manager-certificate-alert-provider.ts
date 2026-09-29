@@ -9,12 +9,11 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
   CERT_MANAGER_CERTIFICATE_RESOURCE_TYPE,
-  CERTIFICATE_ALERT_EVENT_BY_PROJECT_EVENT,
-  LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT,
-  ProjectCertificateAlertEvent
+  CertificateAlertEvent
 } from "@app/services/certificate/certificate-alert-events";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { durationToDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
   AlertTelemetryAction,
@@ -30,37 +29,36 @@ import {
 } from "../alert-types";
 import { TAlertCertificate, TCertManagerCertificateAlertDALFactory } from "./cert-manager-certificate-alert-dal";
 import {
-  alertBeforeDays,
   assertCertificateAlertChannelTypesAllowed,
   buildCertificateAlertPayload,
+  CERTIFICATE_ALERT_PERMISSION_ACTIONS,
+  CERTIFICATE_ALERT_TELEMETRY_TYPES,
   certificateAlertDedupWindowHours,
   ExpiryConditionFieldsSchema,
-  PERMISSION_ACTIONS
+  MAX_CERTIFICATE_ALERT_FILTER_IDS
 } from "./cert-manager-certificate-alert-fns";
-
-const MAX_SCOPE_FILTER_IDS = 100;
 
 const LowercaseUuidSchema = z
   .string()
   .uuid()
   .transform((id) => id.toLowerCase());
 
-const ScopeFilterSchema = z.object({
+const CertificateFilterSchema = z.object({
   applicationIds: z
     .array(LowercaseUuidSchema)
     .min(1, "applicationIds must list at least one application. Omit it to cover every application.")
-    .max(MAX_SCOPE_FILTER_IDS)
+    .max(MAX_CERTIFICATE_ALERT_FILTER_IDS)
     .optional(),
   profileIds: z
     .array(LowercaseUuidSchema)
     .min(1, "profileIds must list at least one profile. Omit it to cover every profile.")
-    .max(MAX_SCOPE_FILTER_IDS)
+    .max(MAX_CERTIFICATE_ALERT_FILTER_IDS)
     .optional()
 });
 
-const ExpirationConditionSchema = ExpiryConditionFieldsSchema.merge(ScopeFilterSchema).strict();
+const ExpirationConditionSchema = ExpiryConditionFieldsSchema.merge(CertificateFilterSchema).strict();
 
-const EventConditionSchema = ScopeFilterSchema.strict().nullish();
+const EventConditionSchema = CertificateFilterSchema.strict().nullish();
 
 const formatIds = (ids: string[]) => ids.map((id) => `'${id}'`).join(", ");
 
@@ -84,7 +82,7 @@ export const certManagerCertificateAlertProviderFactory = ({
       projectId: input.projectId,
       applicationIds,
       profileIds,
-      alertBeforeInterval: `${alertBeforeDays(alertBefore)} days`,
+      alertBeforeInterval: `${durationToDays(alertBefore)} days`,
       leadInterval: ALERT_SCAN_LEAD_INTERVAL,
       asOf: input.asOf,
       alreadyAlerted: input.alreadyAlerted
@@ -110,17 +108,14 @@ export const certManagerCertificateAlertProviderFactory = ({
     eventType
   }: TAlertTelemetryInput): TAlertTelemetryEvent | undefined => {
     if (!projectId) return undefined;
-    const properties = { orgId, projectId, alertScope: PkiAlertScope.Project };
+    const properties = { orgId, projectId, alertScope: PkiAlertScope.CertificateManager };
     switch (action) {
       case AlertTelemetryAction.Create:
         return {
           event: PostHogEventTypes.PkiAlertCreated,
           properties: {
             ...properties,
-            alertType:
-              LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT[
-                CERTIFICATE_ALERT_EVENT_BY_PROJECT_EVENT[eventType as ProjectCertificateAlertEvent]
-              ]
+            alertType: CERTIFICATE_ALERT_TELEMETRY_TYPES[eventType as CertificateAlertEvent]
           }
         };
       case AlertTelemetryAction.Update:
@@ -143,7 +138,10 @@ export const certManagerCertificateAlertProviderFactory = ({
       actorOrgId: actor.actorOrgId,
       actionProjectType: ActionProjectType.CertificateManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(PERMISSION_ACTIONS[action], ProjectPermissionSub.PkiAlerts);
+    ForbiddenError.from(permission).throwUnlessCan(
+      CERTIFICATE_ALERT_PERMISSION_ACTIONS[action],
+      ProjectPermissionSub.PkiAlerts
+    );
   };
 
   const assertResourceInScope = async ({ resourceId }: { resourceId?: string | null }): Promise<void> => {
@@ -161,22 +159,21 @@ export const certManagerCertificateAlertProviderFactory = ({
     previousCondition?: unknown;
   }): Promise<void> => {
     if (!input.projectId) return;
-    const { applicationIds = [], profileIds = [] } = ScopeFilterSchema.parse(input.condition ?? {});
+    const { applicationIds = [], profileIds = [] } = CertificateFilterSchema.parse(input.condition ?? {});
 
-    const previous = ScopeFilterSchema.safeParse(input.previousCondition ?? {});
+    const previous = CertificateFilterSchema.safeParse(input.previousCondition ?? {});
     const savedApplicationIds = new Set(previous.success ? previous.data.applicationIds : []);
     const savedProfileIds = new Set(previous.success ? previous.data.profileIds : []);
     const addedApplicationIds = applicationIds.filter((id) => !savedApplicationIds.has(id));
     const addedProfileIds = profileIds.filter((id) => !savedProfileIds.has(id));
 
-    const noIds: string[] = [];
-    const [foundApplicationIds, foundProfileIds] = await Promise.all([
+    const [foundApplicationIds, foundProfileIds]: string[][] = await Promise.all([
       addedApplicationIds.length
         ? certManagerCertificateAlertDAL.findProjectApplicationIds(input.projectId, addedApplicationIds)
-        : noIds,
+        : [],
       addedProfileIds.length
         ? certManagerCertificateAlertDAL.findProjectProfileIds(input.projectId, addedProfileIds)
-        : noIds
+        : []
     ]);
 
     const missingApplicationIds = addedApplicationIds.filter((id) => !foundApplicationIds.includes(id));
@@ -199,19 +196,17 @@ export const certManagerCertificateAlertProviderFactory = ({
     supportsScopeWideAlerts: true,
     events: [
       {
-        key: ProjectCertificateAlertEvent.Expiry,
+        key: CertificateAlertEvent.Expiry,
         triggerType: AlertTriggerType.Scheduled,
         conditionSchema: ExpirationConditionSchema
       },
-      ...[
-        ProjectCertificateAlertEvent.Issuance,
-        ProjectCertificateAlertEvent.Renewal,
-        ProjectCertificateAlertEvent.Revocation
-      ].map((key) => ({
-        key,
-        triggerType: AlertTriggerType.Event,
-        conditionSchema: EventConditionSchema
-      }))
+      ...[CertificateAlertEvent.Issuance, CertificateAlertEvent.Renewal, CertificateAlertEvent.Revocation].map(
+        (key) => ({
+          key,
+          triggerType: AlertTriggerType.Event,
+          conditionSchema: EventConditionSchema
+        })
+      )
     ],
     findDueTargets,
     findTargetsByIds,
@@ -222,7 +217,7 @@ export const certManagerCertificateAlertProviderFactory = ({
         alert,
         targets,
         viewUrl,
-        eventType: CERTIFICATE_ALERT_EVENT_BY_PROJECT_EVENT[alert.eventType as ProjectCertificateAlertEvent],
+        eventType: alert.eventType as CertificateAlertEvent,
         isApplicationAlert: false
       }),
     getTelemetryEvent,

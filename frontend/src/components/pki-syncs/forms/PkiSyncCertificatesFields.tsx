@@ -4,7 +4,8 @@ import { FilterIcon, TrashIcon } from "lucide-react";
 
 import {
   MatchedCertificatesPreview,
-  TMatchedCertificateRow
+  TMatchedCertificateRow,
+  useCertificateFilterPreview
 } from "@app/components/certificate-filters";
 import {
   Alert,
@@ -50,7 +51,6 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
   const { currentProject } = useProject();
 
   const filters = watch("filters") as TPkiSyncFilters | null | undefined;
-  const filtersKey = JSON.stringify(filters ?? null);
 
   const { syncOption } = usePkiSyncOption(watch("destination") as PkiSync);
   const certificateCap = getPkiSyncCertificateCap({
@@ -65,11 +65,9 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
   ].filter((kind): kind is string => Boolean(kind));
 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [previewFilters, setPreviewFilters] = useState<TPkiSyncFilters | null>(filters ?? null);
-  const [page, setPage] = useState(1);
-  const previewKey = JSON.stringify(previewFilters ?? null);
+  const { previewFilters, page, setPage, isStale, reloadPreview } =
+    useCertificateFilterPreview<TPkiSyncFilters | null>(filters ?? null);
 
-  const isStale = filtersKey !== previewKey;
   const isUnfinished = hasUnfinishedFilter(filters);
 
   const {
@@ -85,12 +83,6 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
     limit: MATCHED_PAGE_SIZE,
     enabled: Boolean(applicationId) && hasAnyFilter(previewFilters)
   });
-
-  const reloadPreview = () => {
-    setPage(1);
-    if (isStale) setPreviewFilters(filters ?? null);
-    else refetchPreview().catch(() => {});
-  };
 
   const [pickedOrderNames, setPickedOrderNames] = useState<[string, string][]>([]);
 
@@ -284,7 +276,7 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
             isLoading={isPreviewing}
             isStale={isStale}
             isUnfinished={isUnfinished}
-            onReload={reloadPreview}
+            onReload={() => reloadPreview(refetchPreview)}
             page={page}
             pageSize={MATCHED_PAGE_SIZE}
             onPageChange={setPage}

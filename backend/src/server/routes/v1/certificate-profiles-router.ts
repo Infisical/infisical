@@ -6,7 +6,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { openApiHidden } from "@app/server/lib/schemas";
+import { commaSeparatedUuidsSchema, openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -335,18 +335,7 @@ export const registerCertificateProfilesRouter = async (
         issuerType: z.nativeEnum(IssuerType).optional(),
         caId: z.string().uuid().optional(),
         applicationId: z.string().uuid().optional(),
-        profileIds: z
-          .string()
-          .optional()
-          .transform((val) => {
-            if (!val) return undefined;
-            const ids = val
-              .split(",")
-              .map((id) => id.trim())
-              .filter(Boolean);
-            return ids.length > 0 ? ids : undefined;
-          })
-          .pipe(z.array(z.string().uuid()).max(100).optional()),
+        profileIds: commaSeparatedUuidsSchema({ max: 100 }),
         projectId: z.string().uuid().optional().describe(openApiHidden())
       }),
       response: {

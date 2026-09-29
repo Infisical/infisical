@@ -19,7 +19,7 @@ import {
 import { useDebounce } from "@app/hooks";
 import { useDeletePkiAlertV2, useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
 
-import { CreatePkiAlertV2Modal } from "./components/CreatePkiAlertV2Modal";
+import { EditPkiAlertV2Modal } from "./components/EditPkiAlertV2Modal";
 import { PkiAlertV2Row } from "./components/PkiAlertV2Row";
 import { ViewPkiAlertV2Modal } from "./components/ViewPkiAlertV2Modal";
 
@@ -188,7 +188,7 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
         )}
       </div>
 
-      <CreatePkiAlertV2Modal
+      <EditPkiAlertV2Modal
         isOpen={alertModal.isOpen}
         onOpenChange={(isOpen) => setAlertModal({ isOpen, alertId: undefined })}
         alertId={alertModal.alertId}

@@ -28,8 +28,29 @@ export enum AlertRunStatus {
   Failed = "failed"
 }
 
+export enum CertificateAlertResourceType {
+  Application = "cert-manager.application",
+  Certificate = "cert-manager.certificate"
+}
+
+export enum CertificateAlertEventType {
+  Expiry = "cert-manager.certificate.expiry",
+  Issuance = "cert-manager.certificate.issuance",
+  Renewal = "cert-manager.certificate.renewal",
+  Revocation = "cert-manager.certificate.revocation"
+}
+
+export enum ApplicationCertificateAlertEventType {
+  Expiry = "cert-manager.application.certificate.expiry",
+  Issuance = "cert-manager.application.certificate.issuance",
+  Renewal = "cert-manager.application.certificate.renewal",
+  Revocation = "cert-manager.application.certificate.revocation"
+}
+
 export const MIN_ALERT_BEFORE_DAYS = 1;
 export const MAX_ALERT_BEFORE_DAYS = 90;
+export const MAX_CERTIFICATE_ALERT_BEFORE_DAYS = 365;
+export const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
 
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication"

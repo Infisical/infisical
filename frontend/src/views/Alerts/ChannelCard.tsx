@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactElement, useState } from "react";
 import { Controller, useFormContext, UseFormRegisterReturn, useWatch } from "react-hook-form";
 import { EyeIcon, EyeOffIcon, SendIcon, TrashIcon } from "lucide-react";
 
@@ -44,7 +44,7 @@ type Props = {
   resourceId?: string | null;
   onRemove: () => void;
   canRemove: boolean;
-  renderRecipients?: (props: TChannelRecipientsRenderProps) => ReactNode;
+  renderRecipients?: (props: TChannelRecipientsRenderProps) => ReactElement;
 };
 
 const KEEP_PLACEHOLDER = "•••••••• (leave blank to keep)";
@@ -204,13 +204,11 @@ export const ChannelCard = ({
               name={`channels.${index}.recipients`}
               render={({ field }) =>
                 renderRecipients ? (
-                  <>
-                    {renderRecipients({
-                      value: field.value ?? [],
-                      onChange: field.onChange,
-                      isError: Boolean(channelErrors?.recipients)
-                    })}
-                  </>
+                  renderRecipients({
+                    value: field.value ?? [],
+                    onChange: field.onChange,
+                    isError: Boolean(channelErrors?.recipients)
+                  })
                 ) : (
                   <ChannelRecipientsField
                     projectId={projectId}

@@ -32,11 +32,11 @@ const HANDLER_TIMEOUT_MS = 30 * 60 * 1000;
 type TDigiCertRevocationSyncQueueFactoryDep = {
   cronJob: TCronJobFactory;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findWithAssociatedCa">;
-  certificateDAL: Pick<TCertificateDALFactory, "findActiveDigiCertCertsByOrderIds" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "findActiveDigiCertCertsByOrderIds" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "notify">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
 };
 
 export type TDigiCertRevocationSyncQueueFactory = ReturnType<typeof digicertRevocationSyncQueueFactory>;
@@ -59,10 +59,24 @@ export const digicertRevocationSyncQueueFactory = ({
     projectId: string;
     applicationId?: string | null;
   }) => {
-    await certificateDAL.updateById(cert.id, {
-      status: CertStatus.REVOKED,
-      revokedAt: new Date(),
-      revocationReason: revocationReasonToCrlCode(CrlReason.UNSPECIFIED)
+    const alertEvent = {
+      certificateId: cert.id,
+      projectId: cert.projectId,
+      eventType: CertificateAlertEvent.Revocation,
+      applicationId: cert.applicationId ?? null
+    };
+
+    await certificateDAL.transaction(async (tx) => {
+      await certificateDAL.updateById(
+        cert.id,
+        {
+          status: CertStatus.REVOKED,
+          revokedAt: new Date(),
+          revocationReason: revocationReasonToCrlCode(CrlReason.UNSPECIFIED)
+        },
+        tx
+      );
+      await certificateAlertEventEmitter.emit(alertEvent, tx);
     });
 
     await auditLogService.createAuditLog({
@@ -79,12 +93,7 @@ export const digicertRevocationSyncQueueFactory = ({
       }
     });
 
-    await certificateAlertEventEmitter?.notify({
-      certificateId: cert.id,
-      projectId: cert.projectId,
-      eventType: CertificateAlertEvent.Revocation,
-      applicationId: cert.applicationId ?? null
-    });
+    await certificateAlertEventEmitter.queueLegacyAlert(alertEvent);
   };
 
   const syncRevocationsForCertificateAuthority = async (

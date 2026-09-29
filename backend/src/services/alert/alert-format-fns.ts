@@ -1,7 +1,17 @@
+import RE2 from "re2";
+
 import { TAlertSeverity } from "./alert-channel-types";
+
+const durationRegex = new RE2("^(\\d{1,4})([dwmy])$");
+const DAYS_PER_DURATION_UNIT: Record<string, number> = { d: 1, w: 7, m: 30, y: 365 };
 
 export const daysUntil = (date: Date): number =>
   Math.ceil((new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+export const durationToDays = (duration: string): number => {
+  const match = durationRegex.exec(duration);
+  return match ? parseInt(match[1], 10) * DAYS_PER_DURATION_UNIT[match[2]] : Number.NaN;
+};
 
 export const humanizeDays = (days: number): string => `${days} day${days === 1 ? "" : "s"}`;
 

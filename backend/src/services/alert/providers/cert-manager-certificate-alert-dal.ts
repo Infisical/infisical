@@ -19,7 +19,7 @@ export type TAlertCertificate = {
   applicationName: string | null;
 };
 
-export type TApplicationActiveCertificate = {
+export type TActiveCertificate = {
   id: string;
   serialNumber: string;
   commonName: string;
@@ -29,7 +29,7 @@ export type TApplicationActiveCertificate = {
   profileName: string | null;
   notBefore: Date;
   notAfter: Date;
-  status: string;
+  status: CertStatus;
 };
 
 type TCertificateScope = {
@@ -41,19 +41,25 @@ type TCertificateScope = {
 
 const MAX_EXPIRING_CERTIFICATES_PER_RUN = 1000;
 
-export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
-  const $selectCertificates = (
-    reader: Knex,
-    { projectId, applicationId, applicationIds, profileIds }: TCertificateScope
-  ) => {
-    const query = reader(TableName.Certificate)
-      .leftJoin(`${TableName.PkiCertificateProfile} as profile`, `${TableName.Certificate}.profileId`, "profile.id")
-      .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
-      .where(`${TableName.Certificate}.projectId`, projectId);
+const applyCertificateScope = <TQuery extends Knex.QueryBuilder>(
+  query: TQuery,
+  { projectId, applicationId, applicationIds, profileIds }: TCertificateScope
+): TQuery => {
+  void query.where(`${TableName.Certificate}.projectId`, projectId);
+  if (applicationId) void query.where(`${TableName.Certificate}.applicationId`, applicationId);
+  if (applicationIds?.length) void query.whereIn(`${TableName.Certificate}.applicationId`, applicationIds);
+  if (profileIds?.length) void query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
+  return query;
+};
 
-    if (applicationId) void query.where(`${TableName.Certificate}.applicationId`, applicationId);
-    if (applicationIds?.length) void query.whereIn(`${TableName.Certificate}.applicationId`, applicationIds);
-    if (profileIds?.length) void query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
+export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
+  const $selectCertificates = (reader: Knex, scope: TCertificateScope) => {
+    const query = applyCertificateScope(
+      reader(TableName.Certificate)
+        .leftJoin(`${TableName.PkiCertificateProfile} as profile`, `${TableName.Certificate}.profileId`, "profile.id")
+        .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`),
+      scope
+    );
 
     return query.select(
       `${TableName.Certificate}.id`,
@@ -132,20 +138,12 @@ export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
   };
 
   const listActiveCertificates = async (
-    scope: {
-      projectId: string;
-      applicationId: string;
-      limit: number;
-      offset: number;
-      excludeAlertedByAlertId?: string;
-    },
+    scope: TCertificateScope & { limit: number; offset: number; excludeAlertedByAlertId?: string },
     tx?: Knex
-  ): Promise<{ certificates: TApplicationActiveCertificate[]; total: number }> => {
+  ): Promise<{ certificates: TActiveCertificate[]; total: number }> => {
     try {
       const reader = tx || db.replicaNode();
-      const query = reader(TableName.Certificate)
-        .where(`${TableName.Certificate}.projectId`, scope.projectId)
-        .where(`${TableName.Certificate}.applicationId`, scope.applicationId)
+      const query = applyCertificateScope(reader(TableName.Certificate), scope)
         .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
         .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
         .whereRaw(`"${TableName.Certificate}"."notAfter" > NOW()`);
@@ -188,7 +186,7 @@ export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
       ]);
 
       return {
-        certificates: certificates as TApplicationActiveCertificate[],
+        certificates: certificates as TActiveCertificate[],
         total: parseInt(String((countResult as { count: string | number } | undefined)?.count ?? 0), 10)
       };
     } catch (error) {

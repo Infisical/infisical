@@ -1,9 +1,9 @@
 import {
+  ApplicationCertificateAlertEvent,
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
   CERT_MANAGER_CERTIFICATE_RESOURCE_TYPE,
   CertificateAlertEvent,
-  certificateAlertEventEmitterFactory,
-  ProjectCertificateAlertEvent
+  certificateAlertEventEmitterFactory
 } from "./certificate-alert-events";
 
 const buildEmitter = () => {
@@ -24,7 +24,7 @@ const buildEmitter = () => {
 };
 
 describe("certificate alert event emitter", () => {
-  test("emits the project-wide event for a certificate outside any application", async () => {
+  test("emits the certificate event for a certificate outside any application", async () => {
     const { emitter, emitted } = buildEmitter();
     await emitter.emit(
       { certificateId: "cert-1", projectId: "proj-1", eventType: CertificateAlertEvent.Issuance },
@@ -33,7 +33,7 @@ describe("certificate alert event emitter", () => {
 
     expect(emitted).toEqual([
       {
-        eventType: ProjectCertificateAlertEvent.Issuance,
+        eventType: CertificateAlertEvent.Issuance,
         payload: {
           orgId: "org-1",
           projectId: "proj-1",
@@ -45,7 +45,7 @@ describe("certificate alert event emitter", () => {
     ]);
   });
 
-  test("emits both the project-wide and the application event for an application certificate", async () => {
+  test("emits both the certificate and the application event for an application certificate", async () => {
     const { emitter, emitted } = buildEmitter();
     await emitter.emit(
       {
@@ -59,8 +59,8 @@ describe("certificate alert event emitter", () => {
     );
 
     expect(emitted.map((event) => [event.eventType, event.payload.resourceType, event.payload.resourceId])).toEqual([
-      [ProjectCertificateAlertEvent.Revocation, CERT_MANAGER_CERTIFICATE_RESOURCE_TYPE, null],
-      [CertificateAlertEvent.Revocation, CERT_MANAGER_APPLICATION_RESOURCE_TYPE, "app-1"]
+      [CertificateAlertEvent.Revocation, CERT_MANAGER_CERTIFICATE_RESOURCE_TYPE, null],
+      [ApplicationCertificateAlertEvent.Revocation, CERT_MANAGER_APPLICATION_RESOURCE_TYPE, "app-1"]
     ]);
   });
 });

@@ -245,7 +245,12 @@ describe("cert manager project certificate alert provider", () => {
       })
     ).toEqual({
       event: PostHogEventTypes.PkiAlertCreated,
-      properties: { orgId: "org-1", projectId: "proj-1", alertScope: PkiAlertScope.Project, alertType: "issuance" }
+      properties: {
+        orgId: "org-1",
+        projectId: "proj-1",
+        alertScope: PkiAlertScope.CertificateManager,
+        alertType: "issuance"
+      }
     });
   });
 });

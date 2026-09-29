@@ -3,6 +3,7 @@ import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
+import { durationToDays } from "@app/services/alert/alert-format-fns";
 
 import { PkiFilterField, PkiFilterOperator, TPkiFilterRule } from "./pki-alert-v2-types";
 
@@ -56,31 +57,8 @@ export const parseTimeToPostgresInterval = (duration: string): string => {
 };
 
 export const parseTimeToDays = (timeStr: string): number => {
-  const alertBeforeRegex = new RE2("^(\\d+)([dwmy])$");
-  const match = alertBeforeRegex.exec(timeStr);
-  if (!match) {
-    return 0;
-  }
-
-  const [, value, unit] = match;
-  const amount = parseInt(value, 10);
-
-  if (amount <= 0 || amount > 9999) {
-    return 0;
-  }
-
-  switch (unit) {
-    case "d":
-      return amount;
-    case "w":
-      return amount * 7;
-    case "m":
-      return amount * 30;
-    case "y":
-      return amount * 365;
-    default:
-      return 0;
-  }
+  const days = durationToDays(timeStr);
+  return Number.isNaN(days) ? 0 : days;
 };
 
 const applyProfileNameFilter = (query: Knex.QueryBuilder, filter: TPkiFilterRule): Knex.QueryBuilder => {

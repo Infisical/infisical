@@ -9,12 +9,13 @@ import { ResourcePermissionSub } from "@app/ee/services/permission/resource-perm
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
+  ApplicationCertificateAlertEvent,
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
-  CertificateAlertEvent,
-  LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT
+  CERTIFICATE_EVENT_BY_APPLICATION_EVENT
 } from "@app/services/certificate/certificate-alert-events";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { durationToDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
   AlertTelemetryAction,
@@ -30,12 +31,12 @@ import {
 } from "../alert-types";
 import { TAlertCertificate, TCertManagerCertificateAlertDALFactory } from "./cert-manager-certificate-alert-dal";
 import {
-  alertBeforeDays,
   assertCertificateAlertChannelTypesAllowed,
   buildCertificateAlertPayload,
+  CERTIFICATE_ALERT_PERMISSION_ACTIONS,
+  CERTIFICATE_ALERT_TELEMETRY_TYPES,
   certificateAlertDedupWindowHours,
-  ExpiryConditionFieldsSchema,
-  PERMISSION_ACTIONS
+  ExpiryConditionFieldsSchema
 } from "./cert-manager-certificate-alert-fns";
 
 const ExpirationConditionSchema = ExpiryConditionFieldsSchema.strict();
@@ -69,7 +70,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     return certManagerCertificateAlertDAL.findExpiringCertificates({
       projectId: input.projectId,
       applicationId: input.resourceId,
-      alertBeforeInterval: `${alertBeforeDays(alertBefore)} days`,
+      alertBeforeInterval: `${durationToDays(alertBefore)} days`,
       leadInterval: ALERT_SCAN_LEAD_INTERVAL,
       asOf: input.asOf,
       alreadyAlerted: input.alreadyAlerted
@@ -102,7 +103,10 @@ export const certManagerApplicationAlertProviderFactory = ({
           event: PostHogEventTypes.PkiAlertCreated,
           properties: {
             ...properties,
-            alertType: LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT[eventType as CertificateAlertEvent]
+            alertType:
+              CERTIFICATE_ALERT_TELEMETRY_TYPES[
+                CERTIFICATE_EVENT_BY_APPLICATION_EVENT[eventType as ApplicationCertificateAlertEvent]
+              ]
           }
         };
       case AlertTelemetryAction.Update:
@@ -126,7 +130,10 @@ export const certManagerApplicationAlertProviderFactory = ({
         actorOrgId: actor.actorOrgId,
         actionProjectType: ActionProjectType.CertificateManager
       });
-      ForbiddenError.from(permission).throwUnlessCan(PERMISSION_ACTIONS[action], ProjectPermissionSub.PkiAlerts);
+      ForbiddenError.from(permission).throwUnlessCan(
+        CERTIFICATE_ALERT_PERMISSION_ACTIONS[action],
+        ProjectPermissionSub.PkiAlerts
+      );
       return;
     }
 
@@ -139,7 +146,10 @@ export const certManagerApplicationAlertProviderFactory = ({
       actorAuthMethod: actor.actorAuthMethod,
       actorOrgId: actor.actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(PERMISSION_ACTIONS[action], ResourcePermissionSub.PkiAlerts);
+    ForbiddenError.from(permission).throwUnlessCan(
+      CERTIFICATE_ALERT_PERMISSION_ACTIONS[action],
+      ResourcePermissionSub.PkiAlerts
+    );
   };
 
   const assertResourceInScope = async (input: {
@@ -170,17 +180,19 @@ export const certManagerApplicationAlertProviderFactory = ({
     allowsMultipleAlertsPerEvent: true,
     events: [
       {
-        key: CertificateAlertEvent.Expiry,
+        key: ApplicationCertificateAlertEvent.Expiry,
         triggerType: AlertTriggerType.Scheduled,
         conditionSchema: ExpirationConditionSchema
       },
-      ...[CertificateAlertEvent.Issuance, CertificateAlertEvent.Renewal, CertificateAlertEvent.Revocation].map(
-        (key) => ({
-          key,
-          triggerType: AlertTriggerType.Event,
-          conditionSchema: EventConditionSchema
-        })
-      )
+      ...[
+        ApplicationCertificateAlertEvent.Issuance,
+        ApplicationCertificateAlertEvent.Renewal,
+        ApplicationCertificateAlertEvent.Revocation
+      ].map((key) => ({
+        key,
+        triggerType: AlertTriggerType.Event,
+        conditionSchema: EventConditionSchema
+      }))
     ],
     findDueTargets,
     findTargetsByIds,
@@ -190,7 +202,7 @@ export const certManagerApplicationAlertProviderFactory = ({
         alert,
         targets,
         viewUrl,
-        eventType: alert.eventType as CertificateAlertEvent,
+        eventType: CERTIFICATE_EVENT_BY_APPLICATION_EVENT[alert.eventType as ApplicationCertificateAlertEvent],
         isApplicationAlert: true
       }),
     getTelemetryEvent,

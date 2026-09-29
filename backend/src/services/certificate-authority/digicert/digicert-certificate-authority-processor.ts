@@ -67,7 +67,7 @@ export type TProcessDigiCertRequestDeps = {
   digicertFns: Pick<TDigiCertCertificateAuthorityFns, "fetchAndAttachIssuedCertificate">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "notify">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TProcessDigiCertRequestResult =
@@ -203,7 +203,7 @@ export const processDigiCertPendingValidationRequest = async (
       operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER
     });
 
-    await deps.certificateAlertEventEmitter?.notify({
+    await deps.certificateAlertEventEmitter.notify({
       certificateId,
       projectId: request.projectId,
       eventType: getIssuanceAlertEvent(parsed.digicert.isRenewal),

@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger
 } from "@app/components/v3";
 
-export type TCertificateFilterOption<TKind extends string> = {
+type TCertificateFilterOption<TKind extends string> = {
   kind: TKind;
   label: string;
   hint: string;

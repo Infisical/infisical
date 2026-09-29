@@ -1,6 +1,6 @@
-import { ReactNode, useCallback, useState } from "react";
+import { ReactNode } from "react";
 
-import { FilterValueBadges } from "@app/components/certificate-filters";
+import { FilterValueBadges, useDialogPortalContainer } from "@app/components/certificate-filters";
 import { Badge, HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v3";
 import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
@@ -18,11 +18,7 @@ const PkiSyncAnyFilterLabel = <span className="text-sm text-muted/50 italic">Any
 const PkiSyncNoFilterLabel = <span className="text-sm text-muted/50 italic">None</span>;
 
 export const PkiSyncFilterCountLabel = ({ count, names }: TFilterCountLabelProps) => {
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
-
-  const rootRef = useCallback((node: HTMLSpanElement | null) => {
-    if (node) setPortalContainer(node.closest<HTMLElement>('[role="dialog"]'));
-  }, []);
+  const { ref: rootRef, portalContainer } = useDialogPortalContainer<HTMLSpanElement>();
 
   if (names.length === 0) return <Badge variant="neutral">{count}</Badge>;
 
@@ -34,7 +30,7 @@ export const PkiSyncFilterCountLabel = ({ count, names }: TFilterCountLabelProps
         </Badge>
       </HoverCardTrigger>
       <HoverCardContent
-        container={portalContainer ?? undefined}
+        container={portalContainer}
         className="flex max-h-64 w-64 flex-col gap-1 overflow-y-auto"
       >
         {names.map((name, index) => (

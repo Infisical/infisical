@@ -16,12 +16,12 @@ import {
   TextArea,
   Toggle
 } from "@app/components/v3";
+import { CertificateAlertEventType } from "@app/hooks/api/alerts";
 
+import { TCertificateAlertForm } from "./certificate-alert-schema";
 import {
   CERTIFICATE_ALERT_EVENT_LABELS,
-  CertificateAlertEventKind,
   getAlertEventDescription,
-  TCertificateAlertForm,
   TCertificateAlertScope
 } from "./types";
 
@@ -32,12 +32,12 @@ type Props = {
 };
 
 export const DetailsStep = ({ form, scope, isEditing }: Props) => {
-  const eventKind = useWatch({ control: form.control, name: "eventKind" });
+  const eventType = useWatch({ control: form.control, name: "eventType" });
 
   return (
     <FieldGroup>
       <Controller
-        name="eventKind"
+        name="eventType"
         control={form.control}
         render={({ field }) => (
           <Field>
@@ -48,7 +48,7 @@ export const DetailsStep = ({ form, scope, isEditing }: Props) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {Object.values(CertificateAlertEventKind).map((event) => (
+                  {Object.values(CertificateAlertEventType).map((event) => (
                     <SelectItem key={event} value={event}>
                       {CERTIFICATE_ALERT_EVENT_LABELS[event]}
                     </SelectItem>
@@ -96,7 +96,7 @@ export const DetailsStep = ({ form, scope, isEditing }: Props) => {
           </Field>
         )}
       />
-      {eventKind === CertificateAlertEventKind.Expiry && (
+      {eventType === CertificateAlertEventType.Expiry && (
         <>
           <Controller
             name="alertBefore"

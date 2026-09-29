@@ -10,10 +10,10 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { AlertsTab } from "./components/AlertsTab";
 import { AppConnectionsTab } from "./components/AppConnectionsTab";
 import { CertificateCleanupTab } from "./components/CertificateCleanupTab";
 import { HsmConnectorsTab } from "./components/HsmConnectorsTab";
-import { ProjectAlertsTab } from "./components/ProjectAlertsTab";
 
 export const SettingsPage = () => {
   const { orgId, projectId } = useParams({ strict: false });
@@ -80,7 +80,7 @@ export const SettingsPage = () => {
               I={ProjectPermissionActions.Read}
               a={ProjectPermissionSub.PkiAlerts}
             >
-              <ProjectAlertsTab />
+              <AlertsTab />
             </ProjectPermissionCan>
           </TabsContent>
         </Tabs>

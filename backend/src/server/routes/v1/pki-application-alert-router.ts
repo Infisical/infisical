@@ -6,7 +6,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { PkiAlertRouteResponseSchema } from "@app/services/pki-alert/pki-alert-v2-compat-types";
+import { PkiAlertRouteResponseSchema } from "@app/services/pki-alert-v2/pki-alert-v2-compat-types";
 import {
   BasePkiAlertV2Schema,
   PkiAlertEventType,
@@ -44,7 +44,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const result = await server.services.pkiAlertV2Compat.listAlerts({
+      const result = await server.services.pkiAlertV2Compat.listApplicationAlerts({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -140,7 +140,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const alert = await server.services.pkiAlertV2Compat.updateAlert({
+      const alert = await server.services.pkiAlertV2Compat.updateApplicationAlert({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -200,7 +200,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const alert = await server.services.pkiAlertV2Compat.deleteAlert({
+      const alert = await server.services.pkiAlertV2Compat.deleteApplicationAlert({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

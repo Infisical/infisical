@@ -7,17 +7,28 @@ import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TAlertResponse } from "@app/services/alert/alert-service-types";
 import { AlertPrincipalType, AlertRunStatus } from "@app/services/alert/alert-types";
 import {
-  TApplicationActiveCertificate,
+  TActiveCertificate,
   TCertManagerCertificateAlertDALFactory
 } from "@app/services/alert/providers/cert-manager-certificate-alert-dal";
 import {
+  ApplicationCertificateAlertEvent,
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
-  CertificateAlertEvent,
-  LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT
+  CERT_MANAGER_CERTIFICATE_RESOURCE_TYPE
 } from "@app/services/certificate/certificate-alert-events";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TPkiAlertV2DALFactory } from "@app/services/pki-alert-v2/pki-alert-v2-dal";
-import { TPkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
+
+import {
+  TCreatePkiAlertRouteDTO,
+  TGetPkiAlertRouteDTO,
+  TListPkiAlertsRouteDTO,
+  TPkiAlertRouteResponse,
+  TTestPkiAlertWebhookRouteDTO,
+  TUpdatePkiAlertRouteDTO
+} from "./pki-alert-v2-compat-types";
+import { TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
+import { TPkiAlertV2ServiceFactory } from "./pki-alert-v2-service";
 import {
   CertificateOrigin,
   PkiAlertChannelType,
@@ -30,18 +41,7 @@ import {
   TListMatchingCertificatesDTO,
   TListMatchingCertificatesResponse,
   TPkiFilterRule
-} from "@app/services/pki-alert-v2/pki-alert-v2-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { TUserDALFactory } from "@app/services/user/user-dal";
-
-import {
-  TCreatePkiAlertRouteDTO,
-  TGetPkiAlertRouteDTO,
-  TListPkiAlertsRouteDTO,
-  TPkiAlertRouteResponse,
-  TTestPkiAlertWebhookRouteDTO,
-  TUpdatePkiAlertRouteDTO
-} from "./pki-alert-v2-compat-types";
+} from "./pki-alert-v2-types";
 
 const CHANNEL_NAMES: Record<PkiAlertChannelType, string> = {
   [PkiAlertChannelType.EMAIL]: "Email",
@@ -50,11 +50,32 @@ const CHANNEL_NAMES: Record<PkiAlertChannelType, string> = {
   [PkiAlertChannelType.PAGERDUTY]: "PagerDuty"
 };
 
-const LEGACY_EVENT_BY_EVENT = LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT as Record<string, PkiAlertEventType>;
+const ALERT_CHANNEL_TYPE_BY_LEGACY_CHANNEL_TYPE: Record<PkiAlertChannelType, AlertChannelType> = {
+  [PkiAlertChannelType.EMAIL]: AlertChannelType.EMAIL,
+  [PkiAlertChannelType.WEBHOOK]: AlertChannelType.WEBHOOK,
+  [PkiAlertChannelType.SLACK]: AlertChannelType.SLACK,
+  [PkiAlertChannelType.PAGERDUTY]: AlertChannelType.PAGERDUTY
+};
+
+const LEGACY_CHANNEL_TYPE_BY_ALERT_CHANNEL_TYPE: Record<AlertChannelType, PkiAlertChannelType> = {
+  [AlertChannelType.EMAIL]: PkiAlertChannelType.EMAIL,
+  [AlertChannelType.WEBHOOK]: PkiAlertChannelType.WEBHOOK,
+  [AlertChannelType.SLACK]: PkiAlertChannelType.SLACK,
+  [AlertChannelType.PAGERDUTY]: PkiAlertChannelType.PAGERDUTY
+};
+
+const LEGACY_EVENT_BY_APPLICATION_EVENT: Record<ApplicationCertificateAlertEvent, PkiAlertEventType> = {
+  [ApplicationCertificateAlertEvent.Expiry]: PkiAlertEventType.EXPIRATION,
+  [ApplicationCertificateAlertEvent.Issuance]: PkiAlertEventType.ISSUANCE,
+  [ApplicationCertificateAlertEvent.Renewal]: PkiAlertEventType.RENEWAL,
+  [ApplicationCertificateAlertEvent.Revocation]: PkiAlertEventType.REVOCATION
+};
+
+const LEGACY_EVENT_BY_EVENT = LEGACY_EVENT_BY_APPLICATION_EVENT as Record<string, PkiAlertEventType>;
 
 const EVENT_BY_LEGACY_EVENT = Object.fromEntries(
-  Object.entries(LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT).map(([event, legacyEvent]) => [legacyEvent, event])
-) as Record<PkiAlertEventType, CertificateAlertEvent>;
+  Object.entries(LEGACY_EVENT_BY_APPLICATION_EVENT).map(([event, legacyEvent]) => [legacyEvent, event])
+) as Record<PkiAlertEventType, ApplicationCertificateAlertEvent>;
 
 type TCondition = { alertBefore?: string; dailyReminder?: boolean };
 
@@ -148,22 +169,23 @@ export const pkiAlertV2CompatServiceFactory = ({
     const claimedIds = new Set(channels.flatMap((channel) => (channel.id ? [channel.id] : [])));
 
     for (const channel of channels) {
+      const channelType = ALERT_CHANNEL_TYPE_BY_LEGACY_CHANNEL_TYPE[channel.channelType];
       const current =
-        existing.find((item) => item.id === channel.id && item.channelType === channel.channelType) ??
+        existing.find((item) => item.id === channel.id && item.channelType === channelType) ??
         (channel.id
           ? undefined
-          : existing.find((item) => item.channelType === channel.channelType && !claimedIds.has(item.id)));
+          : existing.find((item) => item.channelType === channelType && !claimedIds.has(item.id)));
       if (current) claimedIds.add(current.id);
       let name = current?.name ?? CHANNEL_NAMES[channel.channelType];
       for (let suffix = 2; takenNames.has(name); suffix += 1) name = `${CHANNEL_NAMES[channel.channelType]} ${suffix}`;
       takenNames.add(name);
 
-      const isEmail = channel.channelType === PkiAlertChannelType.EMAIL;
+      const isEmail = channelType === AlertChannelType.EMAIL;
       const recipients = isEmail ? resolveEmailRecipients(emailsOf(channel)) : undefined;
       inputs.push({
         ...(current ? { id: current.id } : {}),
         name,
-        channelType: channel.channelType as unknown as AlertChannelType,
+        channelType,
         enabled: channel.enabled,
         config: isEmail ? {} : (channel.config as Record<string, unknown>),
         ...(recipients ? { recipients } : {})
@@ -174,7 +196,7 @@ export const pkiAlertV2CompatServiceFactory = ({
   };
 
   const $toLegacyChannelConfig = (channel: TAlertResponse["channels"][number]): TChannelConfigResponse => {
-    if (channel.channelType !== PkiAlertChannelType.WEBHOOK) return channel.config as TChannelConfigResponse;
+    if (channel.channelType !== AlertChannelType.WEBHOOK) return channel.config as TChannelConfigResponse;
     const { url, signingSecret, hasSigningSecret } = channel.config as {
       url: string;
       signingSecret?: string;
@@ -211,9 +233,9 @@ export const pkiAlertV2CompatServiceFactory = ({
             : null,
         channels: alert.channels.map((channel) => ({
           id: channel.id,
-          channelType: channel.channelType as PkiAlertChannelType,
+          channelType: LEGACY_CHANNEL_TYPE_BY_ALERT_CHANNEL_TYPE[channel.channelType as AlertChannelType],
           config:
-            channel.channelType === PkiAlertChannelType.EMAIL
+            channel.channelType === AlertChannelType.EMAIL
               ? {
                   recipients: channel.recipients
                     .map((recipient) =>
@@ -241,7 +263,7 @@ export const pkiAlertV2CompatServiceFactory = ({
     });
   };
 
-  const $getAlert = async ({ alertId, applicationId, ...actor }: TGetPkiAlertRouteDTO) => {
+  const $getApplicationAlert = async ({ alertId, applicationId, ...actor }: TGetPkiAlertRouteDTO) => {
     const alert = await alertService.getAlertById({ alertId, ...actor }, { revealSecrets: true });
     if (alert.resourceType !== CERT_MANAGER_APPLICATION_RESOURCE_TYPE) {
       throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
@@ -269,8 +291,7 @@ export const pkiAlertV2CompatServiceFactory = ({
   }: TCreatePkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> => {
     if (!applicationId) {
       throw new BadRequestError({
-        message:
-          "Certificate alerts outside an application can no longer be created on this route. Create them with the alerts API (/api/v1/alerts) using resourceType 'cert-manager.certificate', or pass applicationId to create an application alert."
+        message: `Certificate alerts outside an application can no longer be created on this route. Create them with the alerts API (/api/v1/alerts) using resourceType '${CERT_MANAGER_CERTIFICATE_RESOURCE_TYPE}', or pass applicationId to create an application alert.`
       });
     }
     if (eventType === PkiAlertEventType.EXPIRATION && !alertBefore) {
@@ -306,12 +327,12 @@ export const pkiAlertV2CompatServiceFactory = ({
     return legacy;
   };
 
-  const getAlertById = async (dto: TGetPkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> => {
-    const [legacy] = await $toLegacy([await $getAlert(dto)]);
+  const $getApplicationAlertById = async (dto: TGetPkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> => {
+    const [legacy] = await $toLegacy([await $getApplicationAlert(dto)]);
     return legacy;
   };
 
-  const listAlerts = async ({
+  const listApplicationAlerts = async ({
     projectId,
     applicationId,
     search,
@@ -340,7 +361,7 @@ export const pkiAlertV2CompatServiceFactory = ({
     return { alerts: await $toLegacy(alerts.slice(offset, offset + limit)), total: alerts.length };
   };
 
-  const updateAlert = async ({
+  const updateApplicationAlert = async ({
     alertId,
     applicationId,
     name,
@@ -353,7 +374,7 @@ export const pkiAlertV2CompatServiceFactory = ({
     channels,
     ...actor
   }: TUpdatePkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> => {
-    const alert = await $getAlert({ alertId, applicationId, ...actor });
+    const alert = await $getApplicationAlert({ alertId, applicationId, ...actor });
 
     const currentEventType = LEGACY_EVENT_BY_EVENT[alert.eventType];
     if (eventType && eventType !== currentEventType) {
@@ -398,13 +419,16 @@ export const pkiAlertV2CompatServiceFactory = ({
     return legacy;
   };
 
-  const deleteAlert = async ({ applicationId, ...dto }: TGetPkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> => {
-    const [legacy] = await $toLegacy([await $getAlert({ ...dto, applicationId })]);
+  const deleteApplicationAlert = async ({
+    applicationId,
+    ...dto
+  }: TGetPkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> => {
+    const [legacy] = await $toLegacy([await $getApplicationAlert({ ...dto, applicationId })]);
     await alertService.deleteAlert(dto);
     return legacy;
   };
 
-  const $toCertificatePreview = (certificate: TApplicationActiveCertificate): TCertificatePreview => {
+  const $toCertificatePreview = (certificate: TActiveCertificate): TCertificatePreview => {
     let enrollmentType = CertificateOrigin.UNKNOWN;
     if (certificate.profileId) enrollmentType = CertificateOrigin.PROFILE;
     else if (certificate.pkiSubscriberId) enrollmentType = CertificateOrigin.IMPORT;
@@ -425,19 +449,19 @@ export const pkiAlertV2CompatServiceFactory = ({
     };
   };
 
-  const listMatchingCertificates = async ({
+  const $listApplicationAlertCertificates = async ({
     alertId,
     limit = 20,
     offset = 0,
     ...actor
   }: TListMatchingCertificatesDTO): Promise<TListMatchingCertificatesResponse> => {
-    const alert = await $getAlert({ alertId, ...actor });
+    const alert = await $getApplicationAlert({ alertId, ...actor });
     const { certificates, total } = await certManagerCertificateAlertDAL.listActiveCertificates({
       projectId: alert.projectId as string,
       applicationId: alert.resourceId as string,
       limit,
       offset,
-      ...(alert.eventType === CertificateAlertEvent.Expiry ? { excludeAlertedByAlertId: alert.id } : {})
+      ...(alert.eventType === ApplicationCertificateAlertEvent.Expiry ? { excludeAlertedByAlertId: alert.id } : {})
     });
 
     return { certificates: certificates.map($toCertificatePreview), total };
@@ -447,10 +471,10 @@ export const pkiAlertV2CompatServiceFactory = ({
 
   const $fromProjectAlert = (alert: TAlertV2Response): TPkiAlertRouteResponse => ({ ...alert, applicationId: null });
 
-  const listProjectRouteAlerts = async (
+  const listAlerts = async (
     dto: TListPkiAlertsRouteDTO
   ): Promise<{ alerts: TPkiAlertRouteResponse[]; total: number }> => {
-    if (dto.applicationId) return listAlerts(dto);
+    if (dto.applicationId) return listApplicationAlerts(dto);
 
     const { limit = 20, offset = 0 } = dto;
     const window = { ...dto, limit: offset + limit, offset: 0 };
@@ -458,7 +482,7 @@ export const pkiAlertV2CompatServiceFactory = ({
       pkiAlertV2Service
         .listAlerts(window)
         .then(({ alerts, total }) => ({ alerts: alerts.map($fromProjectAlert), total })),
-      listAlerts(window)
+      listApplicationAlerts(window)
     ]);
 
     return {
@@ -469,24 +493,24 @@ export const pkiAlertV2CompatServiceFactory = ({
     };
   };
 
-  const getProjectRouteAlert = async (dto: TGetPkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> =>
+  const getAlertById = async (dto: TGetPkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> =>
     (await $isLegacyProjectAlert(dto.alertId))
       ? $fromProjectAlert(await pkiAlertV2Service.getAlertById(dto))
-      : getAlertById(dto);
+      : $getApplicationAlertById(dto);
 
-  const updateProjectRouteAlert = async (dto: TUpdatePkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> =>
+  const updateAlert = async (dto: TUpdatePkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> =>
     (await $isLegacyProjectAlert(dto.alertId))
       ? $fromProjectAlert(await pkiAlertV2Service.updateAlert(dto))
-      : updateAlert(dto);
+      : updateApplicationAlert(dto);
 
-  const listProjectRouteMatchingCertificates = async (
+  const listMatchingCertificates = async (
     dto: TListMatchingCertificatesDTO
   ): Promise<TListMatchingCertificatesResponse> =>
     (await $isLegacyProjectAlert(dto.alertId))
       ? pkiAlertV2Service.listMatchingCertificates(dto)
-      : listMatchingCertificates(dto);
+      : $listApplicationAlertCertificates(dto);
 
-  const testProjectRouteWebhook = async ({
+  const testWebhook = async ({
     applicationId,
     url,
     signingSecret,
@@ -504,10 +528,10 @@ export const pkiAlertV2CompatServiceFactory = ({
     return { success, ...(error ? { error } : {}) };
   };
 
-  const deleteProjectRouteAlert = async (dto: TGetPkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> =>
+  const deleteAlert = async (dto: TGetPkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> =>
     (await $isLegacyProjectAlert(dto.alertId))
       ? $fromProjectAlert(await pkiAlertV2Service.deleteAlert(dto))
-      : deleteAlert(dto);
+      : deleteApplicationAlert(dto);
 
   return {
     createAlert,
@@ -515,11 +539,10 @@ export const pkiAlertV2CompatServiceFactory = ({
     listAlerts,
     updateAlert,
     deleteAlert,
-    listProjectRouteAlerts,
-    getProjectRouteAlert,
-    updateProjectRouteAlert,
-    deleteProjectRouteAlert,
-    listProjectRouteMatchingCertificates,
-    testProjectRouteWebhook
+    listMatchingCertificates,
+    testWebhook,
+    listApplicationAlerts,
+    updateApplicationAlert,
+    deleteApplicationAlert
   };
 };

@@ -67,7 +67,7 @@ export type TProcessGoDaddyRequestDeps = {
   godaddyFns: Pick<TGoDaddyCertificateAuthorityFns, "fetchAndAttachIssuedCertificate">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "notify">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TProcessGoDaddyRequestResult =
@@ -197,7 +197,7 @@ export const processGoDaddyPendingValidationRequest = async (
         operation: parsed.godaddy.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER
       });
 
-      await deps.certificateAlertEventEmitter?.notify({
+      await deps.certificateAlertEventEmitter.notify({
         certificateId,
         projectId: request.projectId,
         eventType: getIssuanceAlertEvent(parsed.godaddy.isRenewal),

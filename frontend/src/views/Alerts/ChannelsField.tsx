@@ -1,14 +1,6 @@
 import { useFieldArray, useFormContext } from "react-hook-form";
-import { ChevronDownIcon, PlusIcon } from "lucide-react";
 
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Label
-} from "@app/components/v3";
+import { Label } from "@app/components/v3";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
@@ -17,8 +9,8 @@ import {
   TChannelForm
 } from "@app/hooks/api/alerts";
 
+import { AddChannelMenu } from "./AddChannelMenu";
 import { ChannelCard } from "./ChannelCard";
-import { getChannelIcon } from "./channelIcons";
 
 type Props = {
   projectId?: string;
@@ -71,30 +63,7 @@ export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) =>
           </Label>
           <span className="text-xs text-muted">Add at least one delivery channel.</span>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline" size="sm">
-              <PlusIcon className="size-4" />
-              Add channel
-              <ChevronDownIcon className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            sideOffset={4}
-            className="w-[var(--radix-dropdown-menu-trigger-width)]"
-          >
-            {Object.values(AlertChannelType).map((type) => {
-              const Icon = getChannelIcon(type);
-              return (
-                <DropdownMenuItem key={type} onClick={() => appendChannel(type)}>
-                  <Icon className="size-4" />
-                  {ALERT_CHANNEL_TYPE_LABELS[type]}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <AddChannelMenu onAdd={appendChannel} />
       </div>
 
       {rootError && <p className="text-xs text-danger">{rootError}</p>}

@@ -26,24 +26,28 @@ import {
 } from "@app/hooks/api/alerts";
 import { buildNewChannel, getNextChannelName } from "@app/views/Alerts";
 
-import { AddChannelMenu, ChannelsStep } from "./ChannelsStep";
+import {
+  getAlertResourceId,
+  getAlertResourceType,
+  toAlertEventType,
+  toCertificateAlertForm,
+  toCondition
+} from "./certificate-alert-fns";
+import {
+  certificateAlertFormSchema,
+  emptyCertificateAlertForm,
+  STEP_FIELDS,
+  TCertificateAlertForm
+} from "./certificate-alert-schema";
+import { CertificateAlertAddChannelMenu, ChannelsStep } from "./ChannelsStep";
 import { DetailsStep } from "./DetailsStep";
 import { FiltersStep } from "./FiltersStep";
 import { ReviewStep } from "./ReviewStep";
 import {
-  certificateAlertFormSchema,
   CertificateAlertScopeKind,
   CertificateAlertStep,
-  emptyCertificateAlertForm,
-  getAlertResourceId,
-  getAlertResourceType,
   getSteps,
-  STEP_FIELDS,
-  TCertificateAlertForm,
   TCertificateAlertScope,
-  toAlertEventType,
-  toCertificateAlertForm,
-  toCondition,
   TProjectMemberEmails
 } from "./types";
 
@@ -75,7 +79,9 @@ const CertificateAlertWizard = ({
   const form = useForm<TCertificateAlertForm>({
     resolver: zodResolver(certificateAlertFormSchema),
     mode: "onChange",
-    defaultValues: alert ? toCertificateAlertForm(alert, members) : emptyCertificateAlertForm()
+    defaultValues: alert
+      ? toCertificateAlertForm(scope, alert, members)
+      : emptyCertificateAlertForm()
   });
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "channels" });
 
@@ -100,7 +106,7 @@ const CertificateAlertWizard = ({
           description: values.description || undefined,
           resourceType: getAlertResourceType(scope),
           resourceId: getAlertResourceId(scope),
-          eventType: toAlertEventType(scope, values.eventKind),
+          eventType: toAlertEventType(scope, values.eventType),
           condition,
           enabled: values.enabled,
           projectId,
@@ -187,7 +193,7 @@ const CertificateAlertWizard = ({
               {!isReadOnly && <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>}
             </div>
             {currentStep.key === CertificateAlertStep.Channels && (
-              <AddChannelMenu channelCount={fields.length} onAdd={addChannel} />
+              <CertificateAlertAddChannelMenu channelCount={fields.length} onAdd={addChannel} />
             )}
           </div>
 

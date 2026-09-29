@@ -5,3 +5,5 @@ export { FilterValueBadges } from "./FilterValueBadges";
 export { MatchedCertificatesPreview } from "./MatchedCertificatesPreview";
 export type { TMatchedCertificateRow } from "./MatchedCertificatesTable";
 export { MatchedCertificatesTable } from "./MatchedCertificatesTable";
+export { useCertificateFilterPreview } from "./useCertificateFilterPreview";
+export { useDialogPortalContainer } from "./useDialogPortalContainer";

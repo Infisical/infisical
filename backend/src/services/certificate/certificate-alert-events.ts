@@ -10,34 +10,34 @@ export const CERT_MANAGER_APPLICATION_RESOURCE_TYPE = "cert-manager.application"
 export const CERT_MANAGER_CERTIFICATE_RESOURCE_TYPE = "cert-manager.certificate";
 
 export enum CertificateAlertEvent {
-  Expiry = "cert-manager.application.certificate.expiry",
-  Issuance = "cert-manager.application.certificate.issuance",
-  Renewal = "cert-manager.application.certificate.renewal",
-  Revocation = "cert-manager.application.certificate.revocation"
-}
-
-export enum ProjectCertificateAlertEvent {
   Expiry = "cert-manager.certificate.expiry",
   Issuance = "cert-manager.certificate.issuance",
   Renewal = "cert-manager.certificate.renewal",
   Revocation = "cert-manager.certificate.revocation"
 }
 
-export const PROJECT_EVENT_BY_CERTIFICATE_ALERT_EVENT: Record<CertificateAlertEvent, ProjectCertificateAlertEvent> = {
-  [CertificateAlertEvent.Expiry]: ProjectCertificateAlertEvent.Expiry,
-  [CertificateAlertEvent.Issuance]: ProjectCertificateAlertEvent.Issuance,
-  [CertificateAlertEvent.Renewal]: ProjectCertificateAlertEvent.Renewal,
-  [CertificateAlertEvent.Revocation]: ProjectCertificateAlertEvent.Revocation
+export enum ApplicationCertificateAlertEvent {
+  Expiry = "cert-manager.application.certificate.expiry",
+  Issuance = "cert-manager.application.certificate.issuance",
+  Renewal = "cert-manager.application.certificate.renewal",
+  Revocation = "cert-manager.application.certificate.revocation"
+}
+
+export const APPLICATION_EVENT_BY_CERTIFICATE_EVENT: Record<CertificateAlertEvent, ApplicationCertificateAlertEvent> = {
+  [CertificateAlertEvent.Expiry]: ApplicationCertificateAlertEvent.Expiry,
+  [CertificateAlertEvent.Issuance]: ApplicationCertificateAlertEvent.Issuance,
+  [CertificateAlertEvent.Renewal]: ApplicationCertificateAlertEvent.Renewal,
+  [CertificateAlertEvent.Revocation]: ApplicationCertificateAlertEvent.Revocation
 };
 
-export const CERTIFICATE_ALERT_EVENT_BY_PROJECT_EVENT: Record<ProjectCertificateAlertEvent, CertificateAlertEvent> = {
-  [ProjectCertificateAlertEvent.Expiry]: CertificateAlertEvent.Expiry,
-  [ProjectCertificateAlertEvent.Issuance]: CertificateAlertEvent.Issuance,
-  [ProjectCertificateAlertEvent.Renewal]: CertificateAlertEvent.Renewal,
-  [ProjectCertificateAlertEvent.Revocation]: CertificateAlertEvent.Revocation
+export const CERTIFICATE_EVENT_BY_APPLICATION_EVENT: Record<ApplicationCertificateAlertEvent, CertificateAlertEvent> = {
+  [ApplicationCertificateAlertEvent.Expiry]: CertificateAlertEvent.Expiry,
+  [ApplicationCertificateAlertEvent.Issuance]: CertificateAlertEvent.Issuance,
+  [ApplicationCertificateAlertEvent.Renewal]: CertificateAlertEvent.Renewal,
+  [ApplicationCertificateAlertEvent.Revocation]: CertificateAlertEvent.Revocation
 };
 
-export const LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT: Record<CertificateAlertEvent, PkiAlertEventType> = {
+export const LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_EVENT: Record<CertificateAlertEvent, PkiAlertEventType> = {
   [CertificateAlertEvent.Expiry]: PkiAlertEventType.EXPIRATION,
   [CertificateAlertEvent.Issuance]: PkiAlertEventType.ISSUANCE,
   [CertificateAlertEvent.Renewal]: PkiAlertEventType.RENEWAL,
@@ -70,14 +70,14 @@ export const certificateAlertEventEmitterFactory = ({
 }: TCertificateAlertEventEmitterDep) => {
   const emit = async (
     { certificateId, projectId, orgId, applicationId, eventType }: TCertificateAlertEventInput,
-    tx?: Knex
+    tx: Knex
   ) => {
     const resolvedOrgId = orgId ?? (await projectDAL.findById(projectId, tx))?.orgId;
     if (!resolvedOrgId) return;
 
     const events = [
       {
-        eventType: PROJECT_EVENT_BY_CERTIFICATE_ALERT_EVENT[eventType],
+        eventType,
         payload: {
           orgId: resolvedOrgId,
           projectId,
@@ -89,7 +89,7 @@ export const certificateAlertEventEmitterFactory = ({
       ...(applicationId
         ? [
             {
-              eventType,
+              eventType: APPLICATION_EVENT_BY_CERTIFICATE_EVENT[eventType],
               payload: {
                 orgId: resolvedOrgId,
                 projectId,
@@ -102,18 +102,10 @@ export const certificateAlertEventEmitterFactory = ({
         : [])
     ];
 
-    const emitAll = async (trx: Knex) => {
-      for (const event of events) {
-        // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
-        await eventEmitter.emit(event, trx);
-      }
-    };
-
-    if (tx) {
-      await emitAll(tx);
-      return;
+    for (const event of events) {
+      // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+      await eventEmitter.emit(event, tx);
     }
-    await projectDAL.transaction(emitAll);
   };
 
   const queueLegacyAlert = async ({ certificateId, projectId, eventType }: TCertificateAlertEventInput) => {
@@ -121,7 +113,7 @@ export const certificateAlertEventEmitterFactory = ({
       await pkiAlertV2Queue.queueCertificateEvent({
         certificateId,
         projectId,
-        eventType: LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT[eventType]
+        eventType: LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_EVENT[eventType]
       });
     } catch (error) {
       logger.warn(
@@ -133,7 +125,7 @@ export const certificateAlertEventEmitterFactory = ({
 
   const notify = async (input: TCertificateAlertEventInput) => {
     try {
-      await emit(input);
+      await projectDAL.transaction((tx) => emit(input, tx));
     } catch (error) {
       logger.warn(
         error,

@@ -1624,7 +1624,7 @@ export type TPkiSyncExecutedEvent = {
 };
 
 export enum PkiAlertScope {
-  Project = "project",
+  CertificateManager = "certificate-manager",
   Application = "application"
 }
 

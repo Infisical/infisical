@@ -7,19 +7,21 @@ import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
   AlertPrincipalType,
+  CertificateAlertEventType,
   TChannelForm
 } from "@app/hooks/api/alerts";
 
+import { toRecipientEmails } from "./certificate-alert-fns";
+import { TCertificateAlertForm } from "./certificate-alert-schema";
 import {
   CERTIFICATE_ALERT_EVENT_LABELS,
-  CertificateAlertEventKind,
+  CERTIFICATE_FILTER_DEFINITIONS,
   CertificateAlertScopeKind,
-  TCertificateAlertForm,
+  NO_FILTERS_DESCRIPTION,
   TCertificateAlertScope,
-  toRecipientEmails,
   TProjectMemberEmails
 } from "./types";
-import { useCertificateScopeNames } from "./useCertificateScopeNames";
+import { useCertificateFilterNames } from "./useCertificateFilterNames";
 
 type Props = {
   form: UseFormReturn<TCertificateAlertForm>;
@@ -67,32 +69,32 @@ const describeChannel = (channel: TChannelForm, members: TProjectMemberEmails): 
   }
 };
 
-const ScopeDetails = ({
+const FilterDetails = ({
   applicationIds,
   profileIds
 }: {
   applicationIds: string[];
   profileIds: string[];
 }) => {
-  const { getApplicationName, getProfileName } = useCertificateScopeNames({
+  const { getApplicationName, getProfileName } = useCertificateFilterNames({
     applicationIds,
     profileIds
   });
 
   return (
     <>
-      <Detail label="Applications">
+      <Detail label={CERTIFICATE_FILTER_DEFINITIONS.applicationIds.label}>
         {applicationIds.length ? (
           <FilterValueBadges values={applicationIds.map(getApplicationName)} />
         ) : (
-          "All applications"
+          CERTIFICATE_FILTER_DEFINITIONS.applicationIds.allLabel
         )}
       </Detail>
-      <Detail label="Certificate Profiles">
+      <Detail label={CERTIFICATE_FILTER_DEFINITIONS.profileIds.label}>
         {profileIds.length ? (
           <FilterValueBadges values={profileIds.map(getProfileName)} />
         ) : (
-          "All profiles"
+          CERTIFICATE_FILTER_DEFINITIONS.profileIds.allLabel
         )}
       </Detail>
     </>
@@ -101,14 +103,14 @@ const ScopeDetails = ({
 
 export const ReviewStep = ({ form, scope, members }: Props) => {
   const values = useWatch({ control: form.control }) as TCertificateAlertForm;
-  const isExpiry = values.eventKind === CertificateAlertEventKind.Expiry;
+  const isExpiry = values.eventType === CertificateAlertEventType.Expiry;
 
   return (
     <div className="flex flex-col gap-8">
       <Section title="Basic Information">
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4">
           <Detail label="Name">{values.name}</Detail>
-          <Detail label="Alert Type">{CERTIFICATE_ALERT_EVENT_LABELS[values.eventKind]}</Detail>
+          <Detail label="Alert Type">{CERTIFICATE_ALERT_EVENT_LABELS[values.eventType]}</Detail>
           <Detail label="Status">
             <EnabledBadge enabled={values.enabled} />
           </Detail>
@@ -122,19 +124,17 @@ export const ReviewStep = ({ form, scope, members }: Props) => {
         </div>
       </Section>
 
-      {scope.kind === CertificateAlertScopeKind.Project && (
+      {scope.kind === CertificateAlertScopeKind.CertificateManager && (
         <Section title="Certificate Filters">
           {values.applicationIds?.length || values.profileIds?.length ? (
             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-              <ScopeDetails
+              <FilterDetails
                 applicationIds={values.applicationIds ?? []}
                 profileIds={values.profileIds ?? []}
               />
             </div>
           ) : (
-            <span className="text-sm text-muted">
-              No filters. This alert watches every certificate in Certificate Manager.
-            </span>
+            <span className="text-sm text-muted">{NO_FILTERS_DESCRIPTION}</span>
           )}
         </Section>
       )}

@@ -1,8 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { PlusIcon, TrashIcon, XIcon } from "lucide-react";
 
-import { CertificateFilterList } from "@app/components/certificate-filters";
+import {
+  CertificateFilterList,
+  useDialogPortalContainer
+} from "@app/components/certificate-filters";
 import {
   Badge,
   Button,
@@ -34,11 +37,7 @@ type Props = {
 
 export const PkiSyncFilterFields = ({ applicationId, orderNameById, onOpenPicker }: Props) => {
   const { control } = useFormContext<TPkiSyncForm>();
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
-
-  const rootRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) setPortalContainer(node.closest<HTMLElement>('[role="dialog"]'));
-  }, []);
+  const { ref: rootRef, portalContainer } = useDialogPortalContainer<HTMLDivElement>();
 
   const { data: profileData } = useListCertificateProfiles({
     applicationId,
@@ -114,7 +113,7 @@ export const PkiSyncFilterFields = ({ applicationId, orderNameById, onOpenPicker
                           </HoverCardTrigger>
                           <HoverCardContent
                             align="end"
-                            container={portalContainer ?? undefined}
+                            container={portalContainer}
                             className="flex max-h-64 w-64 flex-col gap-1.5 overflow-y-auto p-2.5"
                           >
                             {rest.map((id) => (

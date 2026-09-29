@@ -8,6 +8,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AlertChannelType } from "@app/services/alert/alert-channel-types";
 import {
   AlertPrincipalType,
+  AlertRunStatus,
   AlertTelemetryAction,
   MAX_CHANNELS_PER_ALERT,
   MAX_RECIPIENTS_PER_CHANNEL
@@ -59,7 +60,9 @@ const AlertResponseSchema = z.object({
       recipients: z.array(z.object({ principalType: z.string(), principalId: z.string() }))
     })
   ),
-  lastRun: z.object({ timestamp: z.date(), status: z.string(), error: z.string().nullable() }).nullable(),
+  lastRun: z
+    .object({ timestamp: z.date(), status: z.nativeEnum(AlertRunStatus), error: z.string().nullable() })
+    .nullable(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

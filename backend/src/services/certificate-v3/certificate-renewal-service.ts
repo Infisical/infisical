@@ -162,7 +162,7 @@ type TCertificateRenewalServiceFactoryDep = {
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "attachCertificate" | "transitionFromPending">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
-  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   pkiApplicationProfileDAL: Pick<
     TPkiApplicationProfileDALFactory,
@@ -258,7 +258,7 @@ export const certificateRenewalServiceFactory = ({
       certificateRequestCreatedAt: Date;
       orgId: string;
     },
-    tx: Parameters<TCertificateDALFactory["updateById"]>[2]
+    tx: Knex
   ) => {
     const renewalUpdate: {
       profileId?: string | null;
@@ -290,10 +290,11 @@ export const certificateRenewalServiceFactory = ({
       tx
     });
 
-    await certificateAlertEventEmitter?.emit(
+    await certificateAlertEventEmitter.emit(
       {
         certificateId: newCert.id,
         projectId: originalCert.projectId,
+        orgId,
         eventType: CertificateAlertEvent.Renewal,
         applicationId: originalCert.applicationId ?? null
       },
@@ -339,7 +340,7 @@ export const certificateRenewalServiceFactory = ({
       await queueCertificateFilterReconcile(originalCert.id, originalCert.applicationId, pkiSyncQueue);
     }
 
-    await certificateAlertEventEmitter?.queueLegacyAlert({
+    await certificateAlertEventEmitter.queueLegacyAlert({
       certificateId: newCertificateId,
       projectId: originalCert.projectId,
       eventType: CertificateAlertEvent.Renewal

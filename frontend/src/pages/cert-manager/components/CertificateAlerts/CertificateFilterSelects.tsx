@@ -2,21 +2,20 @@ import { useMemo, useState } from "react";
 
 import { Combobox } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
+import { MAX_CERTIFICATE_ALERT_FILTER_IDS } from "@app/hooks/api/alerts";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 
-import { useCertificateScopeNames } from "./useCertificateScopeNames";
+import { useCertificateFilterNames } from "./useCertificateFilterNames";
 
-type TScopeOption = { id: string; name: string };
-
-const OPTIONS_LIMIT = 100;
+type TFilterOption = { id: string; name: string };
 
 type Props = {
   value: string[];
   onChange: (ids: string[]) => void;
 };
 
-const ScopeCombobox = ({
+const FilterCombobox = ({
   value,
   onChange,
   options,
@@ -25,7 +24,7 @@ const ScopeCombobox = ({
   onSearchChange,
   placeholder
 }: Props & {
-  options: TScopeOption[];
+  options: TFilterOption[];
   isLoading: boolean;
   resolveName: (id: string) => string;
   onSearchChange: (search: string) => void;
@@ -55,12 +54,12 @@ const ScopeCombobox = ({
 export const ApplicationFilterSelect = ({ value, onChange }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
-  const { getApplicationName } = useCertificateScopeNames({
+  const { getApplicationName } = useCertificateFilterNames({
     applicationIds: value,
     profileIds: []
   });
   const { data, isPending } = useListPkiApplications({
-    limit: OPTIONS_LIMIT,
+    limit: MAX_CERTIFICATE_ALERT_FILTER_IDS,
     ...(debouncedSearch ? { search: debouncedSearch } : {})
   });
   const options = useMemo(
@@ -69,7 +68,7 @@ export const ApplicationFilterSelect = ({ value, onChange }: Props) => {
   );
 
   return (
-    <ScopeCombobox
+    <FilterCombobox
       value={value}
       onChange={onChange}
       options={options}
@@ -84,9 +83,9 @@ export const ApplicationFilterSelect = ({ value, onChange }: Props) => {
 export const ProfileFilterSelect = ({ value, onChange }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
-  const { getProfileName } = useCertificateScopeNames({ applicationIds: [], profileIds: value });
+  const { getProfileName } = useCertificateFilterNames({ applicationIds: [], profileIds: value });
   const { data, isPending } = useListCertificateProfiles({
-    limit: OPTIONS_LIMIT,
+    limit: MAX_CERTIFICATE_ALERT_FILTER_IDS,
     ...(debouncedSearch ? { search: debouncedSearch } : {})
   });
   const options = useMemo(
@@ -95,7 +94,7 @@ export const ProfileFilterSelect = ({ value, onChange }: Props) => {
   );
 
   return (
-    <ScopeCombobox
+    <FilterCombobox
       value={value}
       onChange={onChange}
       options={options}

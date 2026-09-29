@@ -4,7 +4,7 @@ sidebarTitle: "Overview"
 description: "Get notified when certificates in an application expire, are issued, renewed, or revoked."
 ---
 
-Certificate alerting tells your team about certificate lifecycle events in an [Application](/documentation/platform/pki/applications/overview). You create alerts in the application, and each alert watches every certificate in the application for one event. To watch certificates across Certificate Manager, including ones outside an application, create an alert under [**Settings** > **Alerts**](/documentation/platform/pki/settings/alerts).
+Certificate alerting tells your team about certificate lifecycle events in an [Application](/documentation/platform/pki/applications/overview). You create alerts in the application, and each alert covers every certificate in the application for one event. To alert on certificates across Certificate Manager, including ones outside an application, create an alert under [**Settings** > **Alerts**](/documentation/platform/pki/settings/alerts).
 
 ## Alert events
 
@@ -37,7 +37,7 @@ Infisical checks expiration alerts once a day. Issuance, renewal, and revocation
     Go to **Certificate Manager** > **Applications** and select your application.
   </Step>
   <Step>
-    Select the **Settings** tab, then select **Create Alert** in the **Alerting** section.
+    Select the **Settings** tab, then select **Create Alert** in the **Alerts** section.
   </Step>
   <Step>
     Choose the **Alert Type**, then enter an **Alert Name** and an optional **Description**.
@@ -64,7 +64,7 @@ You can create more than one alert for the same event, each with its own channel
 | **[PagerDuty](/documentation/platform/pki/applications/alerting/pagerduty-alerts)** | A PagerDuty service through Events API v2 |
 | **[Webhook](/documentation/platform/pki/applications/alerting/webhook-alerts)** | Any HTTPS endpoint, with an optional signature |
 
-After an alert runs, the **Last Run** column in the **Alerting** section shows whether every channel delivered, and hovering over a failed run shows the error.
+After an alert runs, the **Last Run** column in the **Alerts** section shows whether every channel delivered, and hovering over a failed run shows the error.
 
 <Note>
   Slack, PagerDuty, and webhook channels depend on your plan. If your plan doesn't include them, Infisical rejects the new channel and asks you to upgrade. Channels you already added keep sending.
