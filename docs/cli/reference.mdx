@@ -17,7 +17,7 @@ import { CLIPage, CLICommand } from "/snippets/CLIPage.jsx";
   command="global flags"
   heading="Global flags"
   flags={[
-    { name: "--domain", value: "<string>", type: "string", default: "https://app.infisical.com/api", description: "The Infisical instance to connect to, such as `https://eu.infisical.com` for EU Cloud or your self-hosted URL. The CLI adds `/api` if you leave it off. Can also be set with `INFISICAL_DOMAIN` or the `domain` field in `.infisical.json`. The flag wins, then the environment variable, then the file. Commands that use your login connect to your profile's instance instead of the one in `.infisical.json`, and refuse to send the profile's session to a different `--domain` or `INFISICAL_DOMAIN`." },
+    { name: "--domain", value: "<string>", type: "string", default: "https://app.infisical.com/api", description: "The Infisical instance to connect to, such as `https://eu.infisical.com` for EU Cloud or your self-hosted URL. Check out [Set the Infisical instance](/cli/project-config#set-the-infisical-instance) for more information." },
     { name: "--log-destination", value: "<string>", type: "string", description: "Where to write logs: `stderr` or `stdout`. Defaults to `stderr`. Can also be set with `LOG_DESTINATION`." },
     { name: "--log-format", value: "<string>", type: "string", description: "How to format logs: `console` for colored text, `plain` for text without color, or `json` for structured logs. Defaults to `console`. Set `NO_COLOR=1` to drop the colors from `console`. Can also be set with `LOG_FORMAT`." },
     { name: "--log-level", short: "-l", value: "<string>", type: "string", description: "The lowest level of log message to print: `trace`, `debug`, `info`, `warn`, `error`, or `fatal`. Defaults to `info`. Can also be set with `LOG_LEVEL`." },
@@ -46,11 +46,11 @@ Every command accepts these flags.
   ]}
 >
 
-Run the [Infisical Agent](/integrations/platforms/infisical-agent), a daemon that authenticates to Infisical as a machine identity and keeps its access token renewed. It writes each new token to the sinks in its configuration, and renders secrets and dynamic secret leases into files through templates, so your application reads them without calling Infisical itself. It can also manage certificates.
+Run the [Infisical Agent](/integrations/platforms/infisical-agent), a daemon that authenticates as a machine identity and renders secrets into files for your application to read.
 
 Everything is set in the YAML configuration file, including the auth method, sinks, templates, and the Infisical instance in `infisical.address`, which defaults to Infisical Cloud. The global `--domain` flag has no effect. To pass the configuration without a file, set `INFISICAL_AGENT_CONFIG_BASE64` to the base64-encoded YAML. It takes precedence over `--config`.
 
-The agent runs until it gets `SIGINT`, `SIGTERM`, or `SIGQUIT`, unless `infisical.exit-after-auth` is set, in which case it exits after every template has rendered once. With `infisical.revoke-credentials-on-shutdown`, it revokes its access token and dynamic secret leases before exiting. For a daemon that only manages certificates, use [infisical cert-manager agent](/cli/reference#cert-manager-agent).
+For a daemon that only manages certificates, use [infisical cert-manager agent](/cli/reference#cert-manager-agent).
 
 </CLICommand>
 
@@ -59,7 +59,7 @@ The agent runs until it gets `SIGINT`, `SIGTERM`, or `SIGQUIT`, unless `infisica
   command="agent-vault"
 >
 
-Run [Agent Vault](/documentation/platform/agent-vault/overview), an access layer that lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy attaches the real credential to each request at the network boundary. Run the proxy with [infisical agent-vault proxy](/cli/reference#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](/cli/reference#agent-vault-run).
+Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](/cli/reference#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](/cli/reference#agent-vault-run).
 
 `av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does. Agent Vault is a different product from the agent proxy that [infisical secrets agent-proxy](/cli/reference#secrets-agent-proxy) runs.
 
@@ -87,7 +87,7 @@ Run an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) in the f
 
 Enroll once with `--enrollment-token`. The proxy saves its certificate authority and access token to `--data-dir`, so later starts need no token. Passing the same token again resumes the existing enrollment. A different token enrolls the proxy again and replaces its certificate authority, so agents that trusted the old one stop trusting the proxy.
 
-The proxy's traffic policy, its exceptions, and its poll interval are set in Infisical and arrive on every poll, so they have no flags here.
+You set the proxy's traffic policy, exceptions, and poll interval in Infisical, not with flags.
 
 </CLICommand>
 
@@ -99,7 +99,7 @@ The proxy's traffic policy, its exceptions, and its poll interval are set in Inf
     { name: "command", usage: "<command>", required: true, description: "The agent's command, after `--`. Everything after `--` is passed to it unchanged." },
   ]}
   flags={[
-    { name: "--access-bundle", value: "<stringArray>", type: "stringArray", description: "The access bundle to create a session with, by name, such as `coding-agent`. Pass it once. Can't be combined with `--session-token`." },
+    { name: "--access-bundle", value: "<stringArray>", type: "stringArray", description: "The access bundle to create a session with, by name, such as `coding-agent`. A session holds one access bundle, so pass the flag only once. Can't be combined with `--session-token`." },
     { name: "--ca-file", value: "<string>", type: "string", description: "Where to write the certificate authority fetched from the proxy. This is an output path, not a certificate to trust. Defaults to `ca-<proxy-id>.pem` in `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root, one file per proxy." },
     { name: "--ca-fingerprint", value: "<string>", type: "string", description: "The SHA256 fingerprint of the proxy's certificate authority, from the **Proxies** page. The command stops before writing anything or starting the agent if the proxy serves a different one. Accepted with or without the `SHA256:` prefix and colons." },
     { name: "--client-id", value: "<string>", type: "string", description: "The client ID of the machine identity that creates the session, for `--access-bundle`. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
@@ -119,11 +119,11 @@ The proxy's traffic policy, its exceptions, and its poll interval are set in Inf
   ]}
 >
 
-Launch an agent with its HTTP traffic routed through an Agent Vault proxy, which attaches the real credentials at the network boundary. The agent needs a [session](/documentation/platform/agent-vault/sessions), and you pass exactly one of `--session-token` or `--access-bundle`.
+Launch an agent with its HTTP traffic routed through an Agent Vault proxy. The agent needs a [session](/documentation/platform/agent-vault/sessions), and you pass exactly one of `--session-token` or `--access-bundle`.
 
-With `--session-token`, the agent uses a session created in Infisical, and no login is needed. With `--access-bundle`, the command creates a session with that [access bundle](/documentation/platform/agent-vault/access-bundles). It authenticates with `--client-id` and `--client-secret`, then `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN` or `INFISICAL_TOKEN`, then your login, and revokes the session when the agent exits unless you pass `--keep-session`.
+With `--session-token`, the agent uses a session created in Infisical, and no login is needed. With `--access-bundle`, the command creates a session with that [access bundle](/documentation/platform/agent-vault/access-bundles). The command authenticates with `--client-id` and `--client-secret`, then `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN` or `INFISICAL_TOKEN`, then your login.
 
-On every run, the command fetches the proxy's certificate authority from the proxy, checks it against `--ca-fingerprint` if you passed one, and writes it to `--ca-file`. It then starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` pointing at the proxy, with the session token in the proxy URL, and trusts the certificate through `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`. On macOS in a terminal, it also adds the certificate to your login keychain, which shows a one-time prompt per proxy.
+The command starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the variables that make the agent's HTTP clients trust the proxy's certificate. [Certificate trust](/documentation/platform/agent-vault/proxies#certificate-trust) lists those variables and explains the macOS keychain prompt.
 
 The agent inherits the rest of your environment unchanged, and the command exits with the agent's exit code. Unlike [infisical secrets agent-proxy run](/cli/reference#secrets-agent-proxy-run), this command doesn't sandbox the agent.
 
@@ -184,7 +184,7 @@ Manage certificates with the Infisical Agent. [infisical cert-manager agent](/cl
 
 Run the Infisical Agent in [certificate management mode](/documentation/platform/pki/reference/infisical-agent). The agent authenticates as a machine identity, requests the certificates in its configuration, writes them to disk, and renews them before they expire. It runs until it gets `SIGINT`, `SIGTERM`, or `SIGQUIT`.
 
-The configuration must set `version: v1` or `version: v2`, list at least one certificate, and have no templates. To render secrets as well, use [infisical agent](/cli/reference#agent). To pass the configuration without a file, set `INFISICAL_AGENT_CONFIG_BASE64` to the base64-encoded YAML.
+The configuration can't include secret templates. To render secrets as well, use [infisical agent](/cli/reference#agent). To pass the configuration without a file, set `INFISICAL_AGENT_CONFIG_BASE64` to the base64-encoded YAML.
 
 </CLICommand>
 
@@ -193,7 +193,7 @@ The configuration must set `version: v1` or `version: v2`, list at least one cer
   command="dynamic-secrets"
   usage="[flags]"
   flags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to work in. Every `infisical dynamic-secrets` subcommand accepts it." },
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to work in. Every `infisical dynamic-secrets` subcommand accepts it. Defaults to the [environment set in `.infisical.json`](/cli/project-config#set-the-environment), then `dev`." },
     { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the dynamic secrets as `json`, `yaml`, or `dotenv` instead of a table." },
     { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to list dynamic secrets from." },
     { name: "--project-slug", value: "<string>", type: "string", description: "The slug of the project to list dynamic secrets from. Takes precedence over `--projectId`." },
@@ -209,8 +209,6 @@ The configuration must set `version: v1` or `version: v2`, list at least one cer
 
 List the [dynamic secrets](/documentation/platform/dynamic-secrets/overview) in an environment and folder, with each one's provider, default TTL, and max TTL. A dynamic secret generates credentials on demand, such as a database user, and each set of credentials it generates is a lease. Manage leases with [infisical dynamic-secrets lease](/cli/reference#dynamic-secrets-lease).
 
-Without `--env`, the CLI uses the environment that `.infisical.json` maps to your current git branch, then its `defaultEnvironment`, then `dev`.
-
 </CLICommand>
 
 <CLICommand
@@ -221,7 +219,7 @@ Without `--env`, the CLI uses the environment that `.infisical.json` maps to you
   ]}
 >
 
-Create, list, renew, and delete the leases of a dynamic secret. A lease is one set of generated credentials with a time to live, after which Infisical revokes them. A lease can't outlive the max TTL set on its dynamic secret.
+Create, list, renew, and delete the leases of a dynamic secret.
 
 </CLICommand>
 
@@ -343,7 +341,7 @@ Extend a lease before it expires, and print its new expiry time. A renewal can't
   command="export"
   usage="[flags]"
   flags={[
-    { name: "--env", short: "-e", value: "<string>", type: "string", default: "dev", description: "The environment to export secrets from, such as `dev`, `staging`, or `prod`." },
+    { name: "--env", short: "-e", value: "<string>", type: "string", default: "dev", description: "The environment to export secrets from, such as `dev`, `staging`, or `prod`. Defaults to the [environment set in `.infisical.json`](/cli/project-config#set-the-environment), then `dev`." },
     { name: "--expand", type: "bool", default: "true", description: "Resolve secret references and shell parameter expansions in secret values. Pass `--expand=false` to export values exactly as stored. It takes effect only when you authenticate with a token; with your login, the CLI always resolves them." },
     { name: "--format", short: "-f", value: "<string>", type: "string", default: "dotenv", description: "The output format: `dotenv`, `dotenv-export`, `dotenv-eval`, `csv`, `json`, or `yaml`." },
     { name: "--include-imports", type: "bool", default: "true", description: "Include secrets imported into the environment from other environments or folders." },
@@ -363,13 +361,11 @@ Extend a lease before it expires, and print its new expiry time. A renewal can't
   ]}
 >
 
-Print the secrets in an environment and folder in a file format, for tools that read configuration from a file instead of the environment. Output goes to standard output unless you pass `--output-file`.
+Print an environment's secrets in a file format such as `.env` or JSON, for tools that read configuration from a file. Output goes to standard output unless you pass `--output-file`.
 
 `dotenv` writes each secret as `KEY='value'`, and `dotenv-export` adds `export` in front. Neither escapes quotes inside values. `dotenv-eval` also writes `export` statements, but quotes each value so the output is safe to load with `eval` or `source`. No format escapes secret names, so load output into a shell only when every name is a valid shell variable name.
 
 `--template` takes a Go template that fetches secrets with the functions the [Infisical Agent](/integrations/platforms/infisical-agent#available-secret-template-functions) provides, such as `listSecrets` and `getSecretByName`.
-
-Without `--env`, the CLI uses the environment that `.infisical.json` maps to your current git branch, then its `defaultEnvironment`, then `dev`.
 
 </CLICommand>
 
@@ -378,7 +374,7 @@ Without `--env`, the CLI uses the environment that `.infisical.json` maps to you
   command="gateway"
 >
 
-Run an Infisical gateway, which lets Infisical reach resources in a private network, such as a database in a private subnet. A gateway either connects out to a relay, so it needs no inbound firewall rules, or listens for Infisical to connect to it directly. Run it in the foreground with [infisical gateway start](/cli/reference#gateway-start), or as a systemd service with [infisical gateway systemd install](/cli/reference#gateway-systemd-install).
+Run an Infisical [gateway](/documentation/platform/gateways/overview), which lets Infisical reach resources in a private network, such as a database in a private subnet. A gateway either connects out to a relay, so it needs no inbound firewall rules, or listens for Infisical to connect to it directly. Run it in the foreground with [infisical gateway start](/cli/reference#gateway-start), or as a systemd service with [infisical gateway systemd install](/cli/reference#gateway-systemd-install).
 
 </CLICommand>
 
@@ -419,7 +415,7 @@ Run an Infisical gateway, which lets Infisical reach resources in a private netw
   ]}
 >
 
-Start a gateway in the foreground. A gateway authenticates in one of two ways:
+Start a gateway in the foreground. A gateway authenticates in one of two ways.
 
 With `--enroll-method`, the gateway authenticates as itself. With `token`, it exchanges a one-time enrollment token from Infisical for an access token on first start. With `aws`, `gcp`, or `kubernetes`, it proves its cloud identity on each start. It saves its credentials to `~/.infisical/gateways/<name>.conf`, or `/etc/infisical/gateways/<name>.conf` when run as root, so later starts need only the name.
 
@@ -454,7 +450,7 @@ Install or remove a systemd service that runs a gateway. Both commands run only 
     { name: "--name", value: "<string>", type: "string", deprecated: true, description: "Deprecated: pass the name as an argument instead, as in `infisical gateway systemd install <name>`." },
     { name: "--pkcs11-module", value: "<string>", type: "string", description: "The absolute path to a PKCS#11 driver. The service starts the gateway with the driver loaded for HSM operations." },
     { name: "--relay", value: "<string>", type: "string", deprecated: true, description: "Deprecated: use `--target-relay-name` instead." },
-    { name: "--service-account-key-file-path", value: "<string>", type: "string", description: "The path to a GCP service account key file, for `--gcp-auth-type=iam`. It must be an absolute path outside `/home` and `/tmp`, which the service can't read. `/etc/infisical` works." },
+    { name: "--service-account-key-file-path", value: "<string>", type: "string", description: "The path to a GCP service account key file, for `--gcp-auth-type=iam`. Use an absolute path outside `/home` and `/tmp`, such as one in `/etc/infisical`, because the service can't read those directories." },
     { name: "--target-relay-name", value: "<string>", type: "string", description: "The relay to connect through. Without it, the gateway picks the healthy relay with the lowest latency." },
     { name: "--token", value: "<string>", type: "string", description: "With `--enroll-method=token`, the one-time enrollment token. Otherwise, a machine identity access token." },
   ]}
@@ -497,7 +493,7 @@ Link the current directory to an Infisical project. The command lists the projec
 
 If `.infisical.json` already exists in the current directory, the command asks before replacing it. The new file holds only the project ID, so settings you added, such as `defaultEnvironment`, are lost. See [project config](/cli/project-config) for the file format.
 
-To link a project in another organization, change the profile default with [infisical profile set-org](/cli/reference#profile-set-org), or use a profile for that organization. Passing `--org` for a different organization fails, because later commands that use the profile's default organization wouldn't find the project. When you have more than one profile, the command offers to [bind](/cli/reference#profile-bind) the directory to the profile it used.
+`--org` only accepts the organization of the profile you're using. To link a project in a different organization, switch to a profile for that organization, or change your profile's organization with [infisical profile set-org](/cli/reference#profile-set-org).
 
 </CLICommand>
 
@@ -506,7 +502,7 @@ To link a project in another organization, change the profile default with [infi
   command="kmip"
 >
 
-Run a KMIP server, which lets clients that speak the Key Management Interoperability Protocol use Infisical as their key manager. Run it in the foreground with [infisical kmip start](/cli/reference#kmip-start), or as a systemd service with [infisical kmip systemd install](/cli/reference#kmip-systemd-install).
+Run a [KMIP](/documentation/platform/kms/kmip) server, which lets clients that use the Key Management Interoperability Protocol (KMIP) use Infisical as their key manager. Run it in the foreground with [infisical kmip start](/cli/reference#kmip-start), or as a systemd service with [infisical kmip systemd install](/cli/reference#kmip-systemd-install).
 
 </CLICommand>
 
@@ -623,7 +619,7 @@ Log in to Infisical. By default, `infisical login` opens a browser, and falls ba
 
 A user login is stored as a [profile](/cli/reference#profile): an account on an Infisical instance, plus the organization it uses. Without `--save-as` or `--profile`, the profile is named after the account and organization, such as `scott@example.com--acme-x4k2`. Credentials are kept in your system keyring; see [infisical vault](/cli/reference#vault) to store them elsewhere.
 
-A machine identity login, meaning any `--method` other than `user`, doesn't create a profile. It prints an access token, which later commands read from `--token` or `INFISICAL_TOKEN`.
+If you log in as a machine identity (any `--method` other than `user`), the CLI doesn't create a profile. It prints an access token, which later commands read from `--token` or `INFISICAL_TOKEN`.
 
 For any instance other than US Cloud, pass `--domain` or set `INFISICAL_DOMAIN`.
 
@@ -657,7 +653,7 @@ Show whether the CLI is authenticated to Infisical and, when available, the orga
   ]}
   examples={[
     { title: "Log out of the current profile", code: `infisical logout` },
-    { title: "Log out of a specific profile", code: `infisical logout --profile globex` },
+    { title: "Log out of a specific profile", code: `infisical logout --profile acme` },
     { title: "Log out of every profile", code: `infisical logout --all` },
   ]}
 >
@@ -705,11 +701,11 @@ List the organizations that the current profile's account can use. The organizat
   ]}
   examples={[
     { title: "Pick an organization from a list", code: `infisical org switch` },
-    { title: "Switch to an organization by name", code: `infisical org switch globex` },
+    { title: "Switch to an organization by name", code: `infisical org switch acme` },
   ]}
 >
 
-Change the organization that the current profile uses by default. The change persists for future commands. This is the same command as [infisical profile set-org](/cli/reference#profile-set-org).
+Change the current profile's organization. This is the same command as [infisical profile set-org](/cli/reference#profile-set-org).
 
 To use a different organization for a single command, pass `--org` to that command instead. To keep a second organization available at the same time, give it its own profile with [infisical profile create](/cli/reference#profile-create).
 
@@ -720,7 +716,7 @@ To use a different organization for a single command, pass `--org` to that comma
   command="pam"
 >
 
-Reach accounts managed by Infisical PAM (privileged access management) from your terminal. PAM brokers access to databases, servers, Kubernetes clusters, and cloud accounts: a gateway supplies the real credential, so you never handle it, and every session is recorded. Open one account for yourself with [infisical pam access](/cli/reference#pam-access), or give an AI agent brokered access with [infisical pam agentic access](/cli/reference#pam-agentic-access).
+Connect to databases, servers, Kubernetes clusters, and cloud accounts managed by [Infisical PAM](/documentation/platform/pam/overview) (privileged access management) from your terminal. A gateway supplies each account's credential, so you never see it, and every session is recorded. Open one account for yourself with [infisical pam access](/cli/reference#pam-access), or give an AI agent brokered access with [infisical pam agentic access](/cli/reference#pam-agentic-access).
 
 </CLICommand>
 
@@ -749,9 +745,9 @@ Reach accounts managed by Infisical PAM (privileged access management) from your
 
 Open a session for one PAM account. The command runs as the user you logged in as with [infisical login](/cli/reference#login); it doesn't accept a machine identity. To open accounts for an agent, use [infisical pam agentic access](/cli/reference#pam-agentic-access).
 
-SSH accounts connect you to a shell on the target. Pass a command after `--` to run only that command, or `--proxy` to start a local proxy instead. Without a terminal attached, the CLI starts the proxy on its own.
+SSH accounts connect you to a shell on the target. Pass a command after `--` to run only that command, or `--proxy` to start a local proxy instead. If no terminal is attached, the CLI starts the proxy instead of a shell.
 
-Database, Redis, Snowflake, Kubernetes, GCP service account, Azure CLI, and Windows accounts start a local proxy on `127.0.0.1` and print how to connect to it. Kubernetes accounts also switch your kubeconfig to a context for the session, GCP accounts point `gcloud` at the proxy, and Azure accounts open an `az` shell with its own `AZURE_CONFIG_DIR`. AWS IAM accounts write temporary credentials to a named profile in your AWS credentials file instead. A proxy runs until you press `Ctrl+C` or the session expires, and the CLI then restores what it changed.
+For database, Redis, Snowflake, Kubernetes, GCP, Azure, and Windows accounts, the CLI starts a local proxy on `127.0.0.1` and prints how to connect to it. For AWS IAM accounts, the CLI writes temporary credentials to your AWS credentials file instead. The page for each [account type](/documentation/platform/pam/accounts/overview#account-types) describes how to connect. A proxy runs until you press `Ctrl+C` or the session expires, and the CLI then restores anything it changed, such as your kubeconfig.
 
 If the account requires approval, the CLI offers to submit an access request in an interactive terminal. If it requires MFA, the CLI has you complete MFA in your browser before it continues.
 
@@ -776,7 +772,7 @@ Run AI agents against PAM accounts. The agent reaches each account through a loc
   flags={[
     { name: "--account", value: "<stringArray>", type: "stringArray", description: "An account to expose, as `folder/account`. Repeat the flag or separate paths with commas. Defaults to every account you can launch. If a named account can't be used, the command stops and says why." },
     { name: "--agent", value: "<string>", type: "string", description: "The agent type, when the CLI can't detect it from the command name: `claude`, `codex`, `gemini`, or `generic`. It sets how the instructions are delivered." },
-    { name: "--auth-method", value: "<string>", type: "string", description: "Log in as a machine identity with this method instead of using `--token` or your login: `universal-auth`, `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, `aws-iam`, `oidc-auth`, `jwt-auth`, or `ldap-auth`. The CLI renews the machine identity's token for the whole run. Can also be set with `INFISICAL_AUTH_METHOD`." },
+    { name: "--auth-method", value: "<string>", type: "string", description: "Log in as a machine identity with this method: `universal-auth`, `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, `aws-iam`, `oidc-auth`, `jwt-auth`, or `ldap-auth`. The CLI renews the machine identity's token for the whole run. Can also be set with `INFISICAL_AUTH_METHOD`." },
     { name: "--client-id", value: "<string>", type: "string", description: "The machine identity's client ID, for `--auth-method=universal-auth`. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
     { name: "--client-secret", value: "<string>", type: "string", description: "The machine identity's client secret, for `--auth-method=universal-auth`. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
     { name: "--duration", value: "<string>", type: "string", default: "1h", description: "How long each PAM session can last, in Go duration format such as `30m`, `1h`, or `2h30m`. It must be positive." },
@@ -788,7 +784,7 @@ Run AI agents against PAM accounts. The agent reaches each account through a loc
     { name: "--no-approval-request", type: "bool", description: "Don't raise access requests for accounts that need approval, and leave those accounts out of the run. By default, the CLI raises a request the first time the agent connects to one, and the account works once a reviewer approves it." },
     { name: "--no-sandbox", type: "bool", description: "Run the agent without the OS sandbox, so it can read your Infisical login and other credential files. Required on hosts with no sandbox, such as Windows." },
     { name: "--organization-slug", value: "<string>", type: "string", description: "The slug of a sub-organization to scope the machine identity's session to. Without it, the session uses the organization the machine identity was created in. Can also be set with `INFISICAL_AUTH_ORGANIZATION_SLUG`." },
-    { name: "--reason", value: "<string>", type: "string", description: "Why the agent needs access, recorded for audit. The CLI can't prompt once the agent owns the terminal, so accounts that require a reason need this flag." },
+    { name: "--reason", value: "<string>", type: "string", description: "Why the agent needs access, recorded for audit. The CLI can't prompt for a reason while the agent is running in the terminal, so accounts that require a reason need this flag." },
     { name: "--service-account-key-file-path", value: "<string>", type: "string", description: "The path to a GCP service account key file, for `--auth-method=gcp-iam`. Can also be set with `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH`." },
     { name: "--service-account-token-path", value: "<string>", type: "string", description: "The path to the Kubernetes service account token, for `--auth-method=kubernetes`. Required with that method. Can also be set with `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH`." },
     { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to run as. Service tokens aren't accepted. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
@@ -803,11 +799,9 @@ Run AI agents against PAM accounts. The agent reaches each account through a loc
 
 Start a local proxy for each PAM account you can launch, then start an AI agent with instructions for reaching them. Everything after `--` is the command that starts the agent. The `--` is required when that command has flags of its own.
 
-Each account gets a port on `127.0.0.1`. No session opens until the agent first connects to the account, and the agent never holds a credential. PostgreSQL, MySQL, SQL Server, Oracle, MongoDB, Redis, SSH, Kubernetes, and Windows accounts are supported. Accounts of other types, including Windows AD, and accounts that require MFA are left out and listed with the reason. Use [infisical pam access](/cli/reference#pam-access) for those.
+The CLI gives each account its own port on `127.0.0.1`, and the agent connects through those ports without ever holding a credential. The CLI skips accounts that require MFA and accounts of [types agentic access doesn't support](/documentation/platform/pam/ai-agents/overview#supported-account-types), and lists each skipped account with the reason. To open a skipped account, use [infisical pam access](/cli/reference#pam-access).
 
-The CLI detects the agent from the command name. Claude Code receives the instructions through `--append-system-prompt`, Codex through a block it adds to `./AGENTS.md`, and Gemini through `./GEMINI.md`. Any other agent gets the `./AGENTS.md` block. The CLI removes the block when the run ends. Every run also sets `INFISICAL_PAM_CONTEXT_FILE` to the path of a file with the same instructions, for agents you build yourself.
-
-The agent runs in an OS sandbox, Seatbelt on macOS and bubblewrap on Linux, that keeps it from reading your Infisical login and CLI configuration. The CLI also removes Infisical credentials from the agent's environment. On a host without a sandbox, the command fails unless you pass `--no-sandbox`.
+The CLI [adds instructions for reaching the accounts](/documentation/platform/pam/ai-agents/overview#how-the-agent-is-told) to the agent's system prompt or to a file such as `AGENTS.md`, depending on the agent. It runs the agent in an [OS sandbox](/documentation/platform/pam/ai-agents/overview#the-sandbox), which stops the agent from reading your Infisical login. On a host without a sandbox, the command fails unless you pass `--no-sandbox`.
 
 The run authenticates with `--token` when one is set, then as a machine identity when `--auth-method` is set, and otherwise as the user you logged in as with [infisical login](/cli/reference#login).
 
@@ -822,7 +816,12 @@ Manage login profiles. A profile is one login: an account on one instance, plus 
 
 Create your first profile with [infisical login](/cli/reference#login), one per extra organization with [infisical profile create](/cli/reference#profile-create), and one per extra account or instance with `infisical login --save-as <name>`.
 
-A command picks its profile in this order: `--profile` on the command, then the `INFISICAL_PROFILE` environment variable, which [infisical profile pin](/cli/reference#profile-pin) sets, then a directory bound with [infisical profile bind](/cli/reference#profile-bind), then the machine's default profile, set with [infisical profile use](/cli/reference#profile-use).
+A command uses the first of these that's set:
+
+1. `--profile` on the command
+2. The `INFISICAL_PROFILE` environment variable, set by [infisical profile pin](/cli/reference#profile-pin)
+3. A directory bound with [infisical profile bind](/cli/reference#profile-bind)
+4. The machine's default profile, set with [infisical profile use](/cli/reference#profile-use)
 
 </CLICommand>
 
@@ -831,7 +830,7 @@ A command picks its profile in this order: `--profile` on the command, then the 
   command="profile bind"
   usage="[name] [path]"
   args={[
-    { name: "name", usage: "[name]", description: "The profile to bind. Defaults to the profile in effect, which is usually what you want right after logging in or switching." },
+    { name: "name", usage: "[name]", description: "The profile to bind. Defaults to the profile in effect." },
     { name: "path", usage: "[path]", description: "The directory to bind. Defaults to the current directory." },
   ]}
   examples={[
@@ -843,7 +842,7 @@ A command picks its profile in this order: `--profile` on the command, then the 
 
 Bind a directory, and everything under it, to a profile. Commands run inside that directory select the profile with no flag or environment variable, so moving between projects moves between organizations.
 
-The nearest bound directory wins. Bindings are stored in your CLI configuration, never in the repository. Remove one with [infisical profile unbind](/cli/reference#profile-unbind).
+If several parent directories are bound, the closest one applies. Bindings are stored in your CLI configuration, never in the repository. Remove one with [infisical profile unbind](/cli/reference#profile-unbind).
 
 </CLICommand>
 
@@ -859,9 +858,9 @@ The nearest bound directory wins. Bindings are stored in your CLI configuration,
     { name: "--use", type: "bool", description: "Also make the new profile the default for this machine." },
   ]}
   examples={[
-    { title: "Create a profile for another organization", code: `infisical profile create client-b --org globex` },
-    { title: "Create it and use it in this terminal", code: `eval "$(infisical profile create client-b --org globex --pin)"` },
-    { title: "Create it and make it the default", code: `infisical profile create client-b --org globex --use` },
+    { title: "Create a profile for another organization", code: `infisical profile create client-b --org acme` },
+    { title: "Create it and use it in this terminal", code: `eval "$(infisical profile create client-b --org acme --pin)"` },
+    { title: "Create it and make it the default", code: `infisical profile create client-b --org acme --use` },
   ]}
 >
 
@@ -886,7 +885,7 @@ To add a different account, or an account on another instance, use `infisical lo
   ]}
 >
 
-Show which profile commands run in this terminal and directory will use, and why.
+Show which profile the CLI uses in this terminal and directory, and why.
 
 </CLICommand>
 
@@ -929,13 +928,13 @@ List every login profile on this machine.
     { name: "name", usage: "<name>", required: true, description: "The profile to pin this terminal to." },
   ]}
   examples={[
-    { title: "Pin this terminal to a profile", code: `eval "$(infisical profile pin globex)"` },
+    { title: "Pin this terminal to a profile", code: `eval "$(infisical profile pin acme)"` },
   ]}
 >
 
 Pin the current terminal to a profile. Only this terminal changes: the default profile and every other terminal keep what they were using, so you can work in several organizations at once. Undo it with [infisical profile unpin](/cli/reference#profile-unpin).
 
-The command prints an `export` statement for POSIX shells such as Bash and Zsh, so run it through `eval`. Run without `eval`, it shows the `eval` form and changes nothing. In PowerShell, set the variable directly with `$env:INFISICAL_PROFILE = 'globex'`. In scripts and CI, set `INFISICAL_PROFILE` or pass `--profile` instead.
+The command prints an `export` statement for POSIX shells such as Bash and Zsh, so run it through `eval`. If you run it without `eval`, it prints the `eval` form and changes nothing. In PowerShell, set the variable directly with `$env:INFISICAL_PROFILE = 'acme'`. In scripts and CI, set `INFISICAL_PROFILE` or pass `--profile` instead.
 
 </CLICommand>
 
@@ -948,7 +947,7 @@ The command prints an `export` statement for POSIX shells such as Bash and Zsh, 
     { name: "new-name", usage: "<new-name>", required: true, description: "The name to give it." },
   ]}
   examples={[
-    { title: "Rename a profile", code: `infisical profile rename scott@example.com--globex globex` },
+    { title: "Rename a profile", code: `infisical profile rename scott@example.com--acme-x4k2 acme` },
   ]}
 >
 
@@ -968,11 +967,11 @@ Rename a profile. Its stored session, the default-profile setting, and directory
   ]}
   examples={[
     { title: "Pick an organization from a list", code: `infisical profile set-org` },
-    { title: "Set the organization by name", code: `infisical profile set-org globex` },
+    { title: "Set the organization by name", code: `infisical profile set-org acme` },
   ]}
 >
 
-Change the organization that the current profile uses by default. The change persists for future commands. This is the same command as [infisical org switch](/cli/reference#org-switch).
+Change the current profile's organization. This is the same command as [infisical org switch](/cli/reference#org-switch).
 
 To use a different organization for a single command, pass `--org` to that command instead. To keep a second organization available at the same time, give it its own profile with [infisical profile create](/cli/reference#profile-create).
 
@@ -1005,7 +1004,7 @@ Remove a directory's profile binding.
 
 Remove the current terminal's profile pin, so it falls back to a bound directory or the default profile.
 
-The command prints an `unset` statement, so run it through `eval`. Run without `eval`, it shows the `eval` form and changes nothing. In PowerShell, run `Remove-Item Env:INFISICAL_PROFILE` instead.
+The command prints an `unset` statement, so run it through `eval`. If you run it without `eval`, it prints the `eval` form and changes nothing. In PowerShell, run `Remove-Item Env:INFISICAL_PROFILE` instead.
 
 </CLICommand>
 
@@ -1067,7 +1066,7 @@ Start the Infisical Proxy. Point your applications at its `--listen-address` ins
   command="relay"
 >
 
-Run an Infisical relay, which carries traffic between Infisical and your gateways, so gateways need only outbound connections. Run it in the foreground with [infisical relay start](/cli/reference#relay-start), or as a systemd service with [infisical relay systemd install](/cli/reference#relay-systemd-install).
+Run an Infisical [relay](/documentation/platform/gateways/relay-deployment), which carries traffic between Infisical and your gateways, so gateways need only outbound connections. Run it in the foreground with [infisical relay start](/cli/reference#relay-start), or as a systemd service with [infisical relay systemd install](/cli/reference#relay-systemd-install).
 
 </CLICommand>
 
@@ -1089,7 +1088,7 @@ Run an Infisical relay, which carries traffic between Infisical and your gateway
     { name: "--service-account-key-file-path", value: "<string>", type: "string", description: "The path to a GCP service account key file, for `--auth-method=gcp-iam`." },
     { name: "--service-account-token-path", value: "<string>", type: "string", description: "The path to the Kubernetes service account token, for `--auth-method=kubernetes`." },
     { name: "--token", value: "<string>", type: "string", description: "With `--enroll-method=token`, the one-time enrollment token. Otherwise, a machine identity access token to connect with." },
-    { name: "--type", value: "<string>", type: "string", description: "`org` for a relay that belongs to your organization, or `instance` for a relay that serves the whole Infisical instance, run by its operator. Defaults to `org`. Can also be set with `INFISICAL_RELAY_TYPE`." },
+    { name: "--type", value: "<string>", type: "string", description: "`org` for a relay that belongs to your organization, or `instance` for a relay that serves the whole Infisical instance, run by the instance's admins. Defaults to `org`. Can also be set with `INFISICAL_RELAY_TYPE`." },
   ]}
   examples={[
     { title: "Enroll and start a relay", code: "infisical relay start --name=my-relay --enroll-method=token --token=<enrollment-token>" },
@@ -1126,7 +1125,7 @@ Install or remove a systemd service that runs a relay. Both commands run only on
     { name: "--relay-auth-secret", value: "<string>", type: "string", description: "The secret an instance relay authenticates with. Required with `--type=instance`." },
     { name: "--relay-id", value: "<string>", type: "string", description: "The relay's ID from Infisical. Required with `--enroll-method=aws`." },
     { name: "--token", value: "<string>", type: "string", description: "The one-time enrollment token, for `--enroll-method=token`." },
-    { name: "--type", value: "<string>", type: "string", default: "org", description: "`org` for a relay that belongs to your organization, or `instance` for a relay that serves the whole Infisical instance, run by its operator." },
+    { name: "--type", value: "<string>", type: "string", default: "org", description: "`org` for a relay that belongs to your organization, or `instance` for a relay that serves the whole Infisical instance, run by the instance's admins." },
   ]}
   examples={[
     { title: "Install an organization relay", code: "sudo infisical relay systemd install my-relay --enroll-method=token --token=<enrollment-token> --domain=https://app.infisical.com" },
@@ -1172,7 +1171,7 @@ Delete all the data the CLI stores on your machine and return it to its default 
 
 The command revokes the session of every profile on the server, then deletes every profile's credentials from your system keyring and deletes the `~/.infisical` directory. That directory also holds cached secrets and the credentials that gateways, relays, and KMIP servers saved when you ran them as a non-root user, so those are deleted too. A session that can't be revoked stays valid until it expires, and the command prints a warning for it. `.infisical.json` files in your projects aren't touched.
 
-Log in again with [infisical login](/cli/reference#login) afterwards. Directory bindings are deleted with the rest of the configuration, and a terminal pinned to a profile with `INFISICAL_PROFILE` no longer resolves.
+Log in again with [infisical login](/cli/reference#login) afterwards. Directory bindings are deleted with the rest of the configuration, and terminals pinned with [infisical profile pin](/cli/reference#profile-pin) point to a profile that no longer exists.
 
 </CLICommand>
 
@@ -1185,7 +1184,7 @@ Log in again with [infisical login](/cli/reference#login) afterwards. Directory 
   ]}
   flags={[
     { name: "--command", short: "-c", value: "<string>", type: "string", description: "A shell command to run instead of the arguments after `--`, such as `\"npm run build && npm start\"`. Use it to chain several commands." },
-    { name: "--env", short: "-e", value: "<string>", type: "string", default: "dev", description: "The environment to fetch secrets from, such as `dev`, `staging`, or `prod`." },
+    { name: "--env", short: "-e", value: "<string>", type: "string", default: "dev", description: "The environment to fetch secrets from, such as `dev`, `staging`, or `prod`. Defaults to the [environment set in `.infisical.json`](/cli/project-config#set-the-environment), then `dev`." },
     { name: "--expand", type: "bool", default: "true", description: "Resolve secret references and shell parameter expansions in secret values before injecting them. Pass `--expand=false` to inject values exactly as stored." },
     { name: "--include-imports", type: "bool", default: "true", description: "Include secrets imported into the environment from other environments or folders." },
     { name: "--path", value: "<stringArray>", type: "stringArray", default: "/", description: "The folder to fetch secrets from. Repeat the flag to inject secrets from several folders. When a secret exists in more than one, the value from the last `--path` wins." },
@@ -1210,8 +1209,6 @@ infisical run --projectId=<project-id> --env=prod -- npm start` },
 Inject secrets from Infisical into a process as environment variables. The CLI fetches the secrets for the project linked in [`.infisical.json`](/cli/project-config), or the one you pass with `--projectId`, and starts your command with them set.
 
 Secrets override variables that are already set in your shell. Secrets named `HOME`, `PATH`, `PS1`, `PS2`, `PWD`, `EDITOR`, `XAUTHORITY`, `USER`, `TERM`, `TERMINFO`, `SHELL`, or `MAIL`, or starting with `XDG_` or `LC_`, are never injected.
-
-Without `--env`, the CLI uses the environment that `.infisical.json` maps to your current git branch, then its `defaultEnvironment`, then `dev`.
 
 </CLICommand>
 
@@ -1249,7 +1246,7 @@ Scan a Git repository's history, a directory, or standard input for leaked secre
 
 By default, the CLI reads `git log -p` for every commit on every branch of the repository at `--source`. Pass `--log-opts` to choose the commits, `--no-git` to scan the files in their current state, or `--pipe` to scan standard input.
 
-The scan uses the rules in `--config`, then the file named by `INFISICAL_SCAN_CONFIG`, then `.infisical-scan.toml` in the `--source` directory, then the built-in rules. Findings whose fingerprints are listed in `.infisicalignore` in the `--source` directory are skipped. See [Scan code locally with the CLI](/documentation/platform/secret-scanning/scan-locally) for the config format, baselines, and ignore files.
+To change the rules or skip known findings, see [Scan code locally with the CLI](/documentation/platform/secret-scanning/scan-locally).
 
 The command exits with `--exit-code` when it finds leaks, and with `1` when the scan fails.
 
@@ -1261,14 +1258,11 @@ The command exits with `--exit-code` when it finds leaks, and with `1` when the 
   usage="[flags]"
   flags={[
     { name: "--confidence", value: "<string>", type: "string", default: "medium", description: "The lowest confidence a finding needs to be reported: `low`, `medium`, or `high`. Findings from rules that don't set a confidence are always reported." },
-    { name: "--log-opts", value: "<string>", type: "string", description: "Has no effect on this command." },
     { name: "--staged", type: "bool", description: "Scan the changes staged with `git add` instead of the unstaged changes." },
   ]}
   inheritedFlags={[
-    { name: "--baseline-path", short: "-b", value: "<string>", type: "string", description: "Has no effect on this command." },
     { name: "--config", short: "-c", value: "<string>", type: "string", description: "The scan config file to use. Without it, the CLI uses `.infisical-scan.toml` in the `--source` directory, then the built-in rules. Can also be set with `INFISICAL_SCAN_CONFIG`." },
     { name: "--exit-code", value: "<int>", type: "int", default: "1", description: "The exit code to use when the scan finds leaks. Pass `0` to exit successfully anyway." },
-    { name: "--max-target-megabytes", value: "<int>", type: "int", default: "0", description: "Has no effect on this command." },
     { name: "--no-color", type: "bool", description: "Turn off color in verbose output." },
     { name: "--redact", type: "bool", description: "Replace secrets with `REDACTED` in verbose output. Reports written with `--report-path` still contain the secrets." },
     { name: "--report-format", short: "-f", value: "<string>", type: "string", default: "json", description: "The report's format: `json`, `csv`, `sarif`, or `junit`." },
@@ -1295,26 +1289,14 @@ The scan uses the same config and `.infisicalignore` file as [infisical scan](/c
   flags={[
     { name: "--pre-commit-hook", type: "bool", description: "Install a Git pre-commit hook that scans staged changes before each commit." },
   ]}
-  inheritedFlags={[
-    { name: "--baseline-path", short: "-b", value: "<string>", type: "string", description: "Has no effect on this command." },
-    { name: "--config", short: "-c", value: "<string>", type: "string", description: "Has no effect on this command." },
-    { name: "--exit-code", value: "<int>", type: "int", default: "1", description: "Has no effect on this command." },
-    { name: "--max-target-megabytes", value: "<int>", type: "int", default: "0", description: "Has no effect on this command." },
-    { name: "--no-color", type: "bool", description: "Has no effect on this command." },
-    { name: "--redact", type: "bool", description: "Has no effect on this command." },
-    { name: "--report-format", short: "-f", value: "<string>", type: "string", default: "json", description: "Has no effect on this command." },
-    { name: "--report-path", short: "-r", value: "<string>", type: "string", description: "Has no effect on this command." },
-    { name: "--source", short: "-s", value: "<string>", type: "string", default: ".", description: "Has no effect on this command." },
-    { name: "--verbose", short: "-v", type: "bool", description: "Has no effect on this command." },
-  ]}
   examples={[
     { title: "Install the pre-commit hook", code: "infisical scan install --pre-commit-hook" },
   ]}
 >
 
-Install scanning tools in the Git repository you're in. The only tool today is a pre-commit hook, installed with `--pre-commit-hook`. Without that flag, the command does nothing.
+Install a Git pre-commit hook in the current repository with `--pre-commit-hook`. Without that flag, the command does nothing.
 
-The hook runs `infisical scan git-changes -v --staged` before each commit and blocks the commit when it finds secrets. The CLI writes it to `.git/hooks/pre-commit`, or adds it to the end of that file if one exists. If `core.hooksPath` points somewhere else, the CLI offers to switch it to `.git/hooks`; after switching, run the command again to install the hook. To turn the hook off in a repository, run `git config hooks.infisical-scan false`.
+The hook runs `infisical scan git-changes -v --staged` before each commit and blocks the commit when it finds secrets. The CLI writes it to `.git/hooks/pre-commit`, or adds it to the end of that file if one exists. To turn the hook off in a repository, run `git config hooks.infisical-scan false`.
 
 </CLICommand>
 
@@ -1323,7 +1305,7 @@ The hook runs `infisical scan git-changes -v --staged` before each commit and bl
   command="secrets"
   usage="[flags]"
   flags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to list secrets from. Every `infisical secrets` subcommand accepts it." },
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to list secrets from. Every `infisical secrets` subcommand accepts it. Defaults to the [environment set in `.infisical.json`](/cli/project-config#set-the-environment), then `dev`." },
     { name: "--expand", type: "bool", default: "true", description: "Resolve secret references and shell parameter expansions in secret values." },
     { name: "--include-imports", type: "bool", default: "true", description: "Include secrets imported into the environment from other environments or folders." },
     { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the secrets as `json`, `yaml`, or `dotenv` instead of a table." },
@@ -1344,8 +1326,6 @@ The hook runs `infisical scan git-changes -v --staged` before each commit and bl
 
 Print the secrets in an environment and folder as a table. Pass `--output` to print them as JSON, YAML, or dotenv instead.
 
-Without `--env`, the CLI uses the environment that `.infisical.json` maps to your current git branch, then its `defaultEnvironment`, then `dev`. The subcommands below create, read, and delete individual secrets and folders.
-
 </CLICommand>
 
 <CLICommand
@@ -1357,7 +1337,7 @@ Without `--env`, the CLI uses the environment that `.infisical.json` maps to you
   ]}
 >
 
-Run the [Infisical Agent Proxy](/documentation/platform/agent-proxy/overview), a credential broker for AI agents and untrusted code. Agents send their HTTP requests through the proxy, which replaces placeholder credentials with real ones before forwarding each request, so the agent never holds the real secret.
+Run the [Infisical Agent Proxy](/documentation/platform/agent-proxy/overview), which lets AI agents and untrusted code use secrets without holding them. Agents send their HTTP requests through the proxy, which replaces placeholder credentials with real ones before forwarding each request, so the agent never holds the real secret.
 
 For an agent on your own computer, [infisical secrets agent-proxy run](/cli/reference#secrets-agent-proxy-run) starts a proxy and a sandboxed agent together. For a proxy shared across your network, run [infisical secrets agent-proxy start](/cli/reference#secrets-agent-proxy-start) on its own host, and launch agents behind it with [infisical secrets agent-proxy connect](/cli/reference#secrets-agent-proxy-connect).
 
@@ -1371,7 +1351,7 @@ For an agent on your own computer, [infisical secrets agent-proxy run](/cli/refe
     { name: "command", usage: "<command>", required: true, description: "The agent's command, after `--`. Everything after `--` is passed to it unchanged." },
   ]}
   flags={[
-    { name: "--allow-readable-brokered-secrets", type: "bool", description: "Start even if the agent can read the value of a secret that a proxied service brokers to it. This skips a check for a misconfiguration, which you'd otherwise fix by removing that permission. Can also be set with `INFISICAL_AGENT_PROXY_ALLOW_READABLE_BROKERED_SECRETS`." },
+    { name: "--allow-readable-brokered-secrets", type: "bool", description: "Start the agent even if it can read the real value of a secret that a proxied service substitutes into its requests. Without this flag, the command exits with an error, and you fix it by removing the agent's read permission on that secret. Can also be set with `INFISICAL_AGENT_PROXY_ALLOW_READABLE_BROKERED_SECRETS`." },
     { name: "--client-id", value: "<string>", type: "string", description: "The client ID of the agent's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
     { name: "--client-secret", value: "<string>", type: "string", description: "The client secret of the agent's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
     { name: "--env", short: "-e", value: "<string>", type: "string", required: true, description: "The environment to fetch proxied services and secrets from. Without it, the CLI reads `INFISICAL_ENVIRONMENT`, then the environment that `.infisical.json` maps to your git branch, then its `defaultEnvironment`." },
@@ -1381,9 +1361,6 @@ For an agent on your own computer, [infisical secrets agent-proxy run](/cli/refe
     { name: "--proxy", value: "<string>", type: "string", required: true, description: "The agent proxy's address as `host:port`. Can also be set with `INFISICAL_AGENT_PROXY_ADDRESS`. It's never read from `.infisical.json`." },
     { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of `--client-id` and `--client-secret`. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
   ]}
-  inheritedFlags={[
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Has no effect on this command." },
-  ]}
   examples={[
     { title: "Launch an agent behind a proxy", code: "infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude" },
     { title: "Read the settings from environment variables", code: "export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322\nexport INFISICAL_PROJECT_ID=<project-id>\nexport INFISICAL_ENVIRONMENT=prod\ninfisical secrets agent-proxy connect -- claude" },
@@ -1391,11 +1368,11 @@ For an agent on your own computer, [infisical secrets agent-proxy run](/cli/refe
   ]}
 >
 
-Launch an agent behind an agent proxy that runs elsewhere, started with [infisical secrets agent-proxy start](/cli/reference#secrets-agent-proxy-start). See [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
+Launch an agent that sends its requests through an agent proxy on another host, started with [infisical secrets agent-proxy start](/cli/reference#secrets-agent-proxy-start). See [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 
-The command authenticates as the agent's machine identity, with `--client-id` and `--client-secret` or a token. It doesn't use your login. It then starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` pointing at the proxy, and the organization's root certificate written to `~/.infisical/agent-proxy/mitm-ca.pem` and trusted through `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`.
+The command authenticates as the agent's machine identity, with `--client-id` and `--client-secret` or a token. It doesn't use your login. It then starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the variables that make the agent's HTTP clients trust your organization's root certificate. See [what `connect` puts in the agent's environment](/documentation/platform/agent-proxy/standalone-agent-proxy#what-connect-puts-in-the-agents-environment).
 
-The agent's environment also gets placeholder values for the credential-substitution [proxied services](/documentation/platform/agent-proxy/proxied-services) it can use, the real values of secrets it can read in the folder, including imported secrets, and `INFISICAL_TOKEN` set to its access token. Your machine identity credentials are removed from it. If the agent can read a secret or lease a dynamic secret that a proxied service brokers to it, the command refuses to start, because the agent would get the real value and bypass the proxy.
+If the agent can read a secret or lease a dynamic secret that a proxied service brokers to it, the command refuses to start, because the agent would get the real value and bypass the proxy.
 
 The command exits with the agent's exit code.
 
@@ -1409,8 +1386,8 @@ The command exits with the agent's exit code.
     { name: "command", usage: "<command>", required: true, description: "The agent's command, after `--`. Everything after `--` is passed to it unchanged." },
   ]}
   flags={[
-    { name: "--allow-host", value: "<stringArray>", type: "stringArray", description: "A host with no proxied service that the agent can still reach, without a credential, under `--unmatched-host=block`. Repeatable." },
-    { name: "--allow-read", value: "<stringArray>", type: "stringArray", description: "A path the sandbox denies by default that the agent can read, such as `~/.aws/config`. The path stays read-only, and the rest of a denied directory stays denied. Repeatable." },
+    { name: "--allow-host", value: "<stringArray>", type: "stringArray", description: "A host the agent can reach, without a credential, when `--unmatched-host=block` is set. Repeatable." },
+    { name: "--allow-read", value: "<stringArray>", type: "stringArray", description: "A path the agent can read even though the sandbox blocks it by default, such as `~/.aws/config`. The path stays read-only, and the rest of a denied directory stays denied. Repeatable." },
     { name: "--allow-write", value: "<stringArray>", type: "stringArray", description: "A path the agent can write, beyond the working directory, the temporary directory, and the state directories of Claude Code, Codex, and Gemini CLI. Repeatable." },
     { name: "--env", short: "-e", value: "<string>", type: "string", required: true, description: "The environment to fetch proxied services from. Without it, the CLI reads `INFISICAL_ENVIRONMENT`, then the environment that `.infisical.json` maps to your git branch, then its `defaultEnvironment`." },
     { name: "--log-file", value: "<string>", type: "string", description: "A file to write the proxy's per-request activity to. The file is appended to. Without it, nothing is written, and only warnings and errors print to stderr unless you pass `--log-level`." },
@@ -1424,9 +1401,6 @@ The command exits with the agent's exit code.
     { name: "--token", value: "<string>", type: "string", description: "A token to broker with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`, then uses your login." },
     { name: "--unmatched-host", value: "<string>", type: "string", default: "allow", description: "What to do with requests to a host that has no proxied service: `allow` forwards them with no credential, and `block` rejects them." },
   ]}
-  inheritedFlags={[
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Has no effect on this command." },
-  ]}
   examples={[
     { title: "Run an agent in the sandbox", code: "infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude" },
     { title: "Read the project and environment from .infisical.json", code: "infisical secrets agent-proxy run -- claude" },
@@ -1437,9 +1411,9 @@ The command exits with the agent's exit code.
 
 Launch an agent on your own computer in an OS sandbox, with a proxy that brokers credentials onto its requests. The command starts the proxy, runs the agent, and stops the proxy when the agent exits. It authenticates as your login, or with `--token`. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy).
 
-The sandbox keeps the agent from reading your credential files, such as `~/.ssh`, `~/.aws`, `~/.kube`, and `~/.infisical`, and, where the host supports it, limits its network access to the proxy. It needs macOS, or Linux with `bubblewrap` installed. Elsewhere the command refuses to start unless you pass `--no-sandbox`.
+The [sandbox](/documentation/platform/agent-proxy/local-agent-proxy#the-sandbox) stops the agent from reading credential files such as `~/.ssh` and `~/.aws`. If the host supports it, the sandbox also blocks every network connection except the one to the proxy. The sandbox needs macOS, or Linux with `bubblewrap` installed. On any other system, the command won't start unless you pass `--no-sandbox`.
 
-The agent never gets real secret values or an Infisical token. Its environment gets proxy settings, trust for the proxy's certificate, and placeholder values for the credential-substitution [proxied services](/documentation/platform/agent-proxy/proxied-services). The command removes Infisical's variables, SSH and GPG agent sockets, and any variable whose name looks like a credential, such as one containing `TOKEN`, `SECRET`, `PASSWORD`, or `API_KEY`. Use `--pass-env` to keep one. On macOS, the command adds the proxy's certificate to your login keychain once.
+The agent never gets real secret values or an Infisical token. It gets placeholder values for [proxied services](/documentation/platform/agent-proxy/proxied-services) that substitute credentials into requests. The command [removes variables that look like credentials](/documentation/platform/agent-proxy/local-agent-proxy#environment-scrubbed) from the agent's environment, such as any variable with `TOKEN` or `SECRET` in its name. To keep one of those variables, pass its name to `--pass-env`.
 
 The command always starts its own proxy. To use a proxy on another host, run [infisical secrets agent-proxy connect](/cli/reference#secrets-agent-proxy-connect).
 
@@ -1458,10 +1432,6 @@ The command always starts its own proxy. To use a proxy on another host, run [in
     { name: "--port", value: "<int>", type: "int", default: "17322", description: "The port to listen on, on all interfaces." },
     { name: "--unmatched-host", value: "<string>", type: "string", default: "allow", description: "What to do with requests to a host that has no proxied service: `allow` forwards them with no credential, and `block` rejects them. `block` also rejects requests to your Infisical instance." },
   ]}
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "Has no effect on this command." },
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Has no effect on this command." },
-  ]}
   examples={[
     { title: "Start the proxy", code: "infisical secrets agent-proxy start --client-id=<client-id> --client-secret=<client-secret>" },
     { title: "Block hosts with no proxied service", code: "infisical secrets agent-proxy start --port=17322 --unmatched-host=block" },
@@ -1471,7 +1441,7 @@ The command always starts its own proxy. To use a proxy on another host, run [in
 
 Start an agent proxy in the foreground, for agents on other hosts to connect to with [infisical secrets agent-proxy connect](/cli/reference#secrets-agent-proxy-connect). See [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 
-The proxy authenticates as its own machine identity, which needs read access to the secrets your proxied services reference, and renews its access token as it runs. Each request is logged at a level set by what the proxy did with it: `debug` for requests passed through, `info` for brokered requests, and `warn` for blocked requests. Pass `--log-level` to choose which are shown.
+The proxy authenticates as its own machine identity, which needs read access to the secrets your proxied services reference, and renews its access token as it runs. The proxy logs brokered requests at `info` and blocked requests at `warn`. To also see requests passed through without a credential, pass `--log-level=debug`.
 
 </CLICommand>
 
@@ -1491,7 +1461,6 @@ The proxy authenticates as its own machine identity, which needs read access to 
   ]}
   inheritedFlags={[
     { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to delete from." },
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Has no effect on this command." },
   ]}
   examples={[
     { title: "Delete two shared secrets", code: `infisical secrets delete STRIPE_API_KEY DOMAIN --type=shared` },
@@ -1533,7 +1502,6 @@ Create, delete, and list the folders in an environment. Folders organize an envi
   ]}
   inheritedFlags={[
     { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to create the folder in." },
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Has no effect on this command." },
   ]}
   examples={[
     { title: "Create a folder", code: `infisical secrets folders create --path=/backend --name=api` },
@@ -1557,7 +1525,6 @@ Create a folder named `--name` inside `--path`.
   ]}
   inheritedFlags={[
     { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to delete the folder from." },
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Has no effect on this command." },
   ]}
   examples={[
     { title: "Delete a folder", code: `infisical secrets folders delete --path=/backend --name=api` },
@@ -1580,7 +1547,6 @@ Delete the folder named `--name` inside `--path`.
   ]}
   inheritedFlags={[
     { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to list folders from." },
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Has no effect on this command." },
   ]}
   examples={[
     { title: "List the folders at the root", code: `infisical secrets folders get` },
@@ -1647,7 +1613,7 @@ Each secret's comment in Infisical appears as a comment above it. To give a secr
 
 Print the secrets you name. A name that doesn't exist prints as `*not found*`.
 
-Use `--plain --silent` to print only the values, one per line, with no other output. That's the form to use in scripts.
+In scripts, pass `--plain --silent` to print only the values, with no other output.
 
 </CLICommand>
 
@@ -1725,9 +1691,7 @@ Without `--token-only`, the command prints the token's name, project, access, sc
   command="ssh"
 >
 
-Issue SSH certificates and connect to SSH hosts through Infisical SSH.
-
-Infisical SSH has been removed. Current versions of Infisical answer every request these commands make with an error that points to PAM, so they no longer work. SSH access is now part of Infisical PAM: set up an [SSH account](/documentation/platform/pam/accounts/ssh), then connect to it with [infisical pam access](/cli/reference#pam-access).
+Infisical SSH has been removed, so these commands no longer work. SSH access is now part of Infisical PAM: set up an [SSH account](/documentation/platform/pam/accounts/ssh), then connect to it with [infisical pam access](/cli/reference#pam-access).
 
 </CLICommand>
 
@@ -1746,14 +1710,9 @@ Infisical SSH has been removed. Current versions of Infisical answer every reque
     { name: "--write-host-cert-to-file", type: "bool", description: "Have Infisical sign the host's public key and write the host certificate next to it, as `/etc/ssh/ssh_host_<type>_key-cert.pub`. The CLI uses the first host key it finds in `/etc/ssh`, checking `ed25519`, then `ecdsa`, then `rsa`." },
     { name: "--write-user-ca-to-file", type: "bool", description: "Write the public key of the CA that signs user certificates to `--user-ca-out-file-path`, so `sshd` can trust certificates issued for this host." },
   ]}
-  examples={[
-    { title: "Register a host and configure sshd", code: "sudo infisical ssh add-host \\\n  --projectId=<project-id> \\\n  --hostname=web-01.example.com \\\n  --write-user-ca-to-file \\\n  --write-host-cert-to-file \\\n  --configure-sshd" },
-  ]}
 >
 
 Removed along with Infisical SSH, so this command no longer works. See [infisical ssh](/cli/reference#ssh).
-
-Register the machine you run it on as an SSH host in an Infisical SSH project. The optional flags also write the files `sshd` needs to accept Infisical-issued user certificates and to present a host certificate. Writing to `/etc/ssh` needs root.
 
 </CLICommand>
 
@@ -1768,14 +1727,9 @@ Register the machine you run it on as an SSH host in an Infisical SSH project. T
     { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
     { name: "--write-host-ca-to-file", type: "bool", default: "true", description: "Add the host CA's public key to `~/.ssh/known_hosts` as a `@cert-authority` entry for the host, if it isn't there yet. Pass `--write-host-ca-to-file=false` to leave `known_hosts` unchanged." },
   ]}
-  examples={[
-    { title: "Pick a host and connect", code: "infisical ssh connect" },
-  ]}
 >
 
 Removed along with Infisical SSH, so this command no longer works. To reach SSH hosts through Infisical, use [infisical pam access](/cli/reference#pam-access). See [infisical ssh](/cli/reference#ssh).
-
-Connect to an SSH host registered in Infisical SSH. The CLI issues a user certificate for the host and login user you choose, adds it to your SSH agent, and runs `ssh` to open a session. Adding it to the agent needs `SSH_AUTH_SOCK` to be set. With `--out-file-path`, the CLI writes the credentials to files and exits without connecting.
 
 </CLICommand>
 
@@ -1794,14 +1748,9 @@ Connect to an SSH host registered in Infisical SSH. The CLI issues a user certif
     { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
     { name: "--ttl", value: "<string>", type: "string", description: "How long the certificate is valid for. Without it, the certificate template's default applies." },
   ]}
-  examples={[
-    { title: "Issue credentials and add them to your agent", code: "infisical ssh issue-credentials \\\n  --certificateTemplateId=<template-id> \\\n  --principals=ec2-user \\\n  --addToAgent" },
-  ]}
 >
 
 Removed along with Infisical SSH, so this command no longer works. See [infisical ssh](/cli/reference#ssh).
-
-Generate a new key pair and have Infisical sign it against an SSH certificate template. The CLI writes the key pair and certificate to `--outFilePath`, adds them to your SSH agent with `--addToAgent`, or both.
 
 </CLICommand>
 
@@ -1820,14 +1769,9 @@ Generate a new key pair and have Infisical sign it against an SSH certificate te
     { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
     { name: "--ttl", value: "<string>", type: "string", description: "How long the certificate is valid for. Without it, the certificate template's default applies." },
   ]}
-  examples={[
-    { title: "Sign an existing public key", code: "infisical ssh sign-key \\\n  --certificateTemplateId=<template-id> \\\n  --publicKeyFilePath=~/.ssh/id_ed25519.pub \\\n  --principals=ec2-user" },
-  ]}
 >
 
 Removed along with Infisical SSH, so this command no longer works. See [infisical ssh](/cli/reference#ssh).
-
-Have Infisical sign an existing SSH public key against an SSH certificate template, and write the certificate to a file.
 
 </CLICommand>
 
@@ -1853,7 +1797,7 @@ Manage machine identity access tokens. The only subcommand is [infisical token r
   ]}
 >
 
-Renew a machine identity access token, such as one printed by `infisical login --method=universal-auth`, and print the renewed token. How long a token can be renewed for is set by the machine identity's Access Token TTL and Access Token Max TTL. Service tokens, which start with `st.`, can't be renewed.
+Renew a machine identity access token, such as one printed by `infisical login --method=universal-auth`, and print the renewed token. How long a token can be renewed for is set by the machine identity's **Access Token TTL** and **Access Token Max TTL**. Service tokens, which start with `st.`, can't be renewed.
 
 The command doesn't use your login profile, so for any instance other than US Cloud, pass `--domain` or set `INFISICAL_DOMAIN`.
 
@@ -1864,7 +1808,7 @@ The command doesn't use your login profile, so for any instance other than US Cl
   command="user"
 >
 
-Inspect and change your login profiles. A profile is one login: an account on an Infisical instance, plus the organization it uses. The [infisical profile](/cli/reference#profile) commands cover most profile management; the `user` commands print a profile's session token, pick the default profile from a list, and move a profile to another instance.
+Print a profile's session token, pick the default profile from a list, or move a profile to another instance. For everything else, use [infisical profile](/cli/reference#profile).
 
 </CLICommand>
 
@@ -1887,7 +1831,7 @@ Print details of a login profile. The only subcommand is [infisical user get tok
   examples={[
     { title: "Show the session token and its expiry", code: "infisical user get token" },
     { title: "Capture the token in a variable", code: "TOKEN=$(infisical user get token --plain)" },
-    { title: "Get the token of a specific profile", code: "infisical user get token --profile globex --plain" },
+    { title: "Get the token of a specific profile", code: "infisical user get token --profile acme --plain" },
   ]}
 >
 

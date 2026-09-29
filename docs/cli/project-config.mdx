@@ -5,7 +5,7 @@ description: "Configure how the Infisical CLI interacts with your directory."
 
 `.infisical.json` links a directory to an [Infisical project](/documentation/platform/project). When you run a command such as [`infisical run`](/cli/reference#run) or [`infisical secrets`](/cli/reference#secrets) in that directory, the CLI reads the project from the file, so you don't have to pass [`--projectId`](/cli/reference#run--flag-projectid).
 
-The file can also [choose an environment for you](#choose-the-environment-automatically) and [pin the Infisical instance](#set-the-infisical-instance) the project lives on.
+The file can also [choose an environment for you](#set-the-environment) and [pin the Infisical instance](#set-the-infisical-instance) the project lives on.
 
 <Info>
 The `.infisical.json` file doesn't include any sensitive values and is safe to commit to version control.
@@ -92,7 +92,10 @@ The CLI picks the instance in this order:
 3. `domain` in `.infisical.json`
 4. US Cloud (`https://app.infisical.com`)
 
-If you log in with your own account, [`infisical login`](/cli/reference#login) uses `domain` to choose the instance to log in to. After that, any commands you run will connect to the instance you logged in to, even if `domain` specifies a different one. However, if you authenticate as a machine identity, every command uses `domain`.
+If you log in with your own account, [`infisical login`](/cli/reference#login) uses `domain` to choose the instance to log in to. After that:
+
+- Any commands you run will connect to the instance you logged in to, even if `domain` specifies a different one
+- If you pass `--domain` or set `INFISICAL_DOMAIN` to a different instance than the one you logged in to, the command fails
 
 <Warning>
   The CLI sends every request and credential to the instance in `domain`. Because `.infisical.json` is usually committed, anyone who can change the file in your repository can change where the CLI sends them. Each time the CLI uses `domain` from the file, it prints a warning that names the host. Only set `domain` to an instance you trust, and check it when you clone a repository you don't control.
