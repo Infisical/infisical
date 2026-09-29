@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { OrgMembershipStatus, TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
+import { OrgMembershipStatus, TAuthTokens, TAuthTokenSessions, TUsers } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -109,6 +109,9 @@ export const getTokenConfig = (tokenType: TokenType) => {
     }
   }
 };
+
+const isUserLocked = (user: Pick<TUsers, "isLocked" | "temporaryLockDateEnd">) =>
+  Boolean(user.isLocked || (user.temporaryLockDateEnd && new Date() < user.temporaryLockDateEnd));
 
 export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAuthTokenServiceFactoryDep) => {
   const createTokenForUser = async ({ type, userId, orgId, aliasId, payload }: TCreateTokenForUserDTO) => {
@@ -379,7 +382,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     );
     if (!user || !user.isAccepted) throw new NotFoundError({ message: `User with ID '${session.userId}' not found` });
 
-    if (user.isLocked || (user.temporaryLockDateEnd && new Date() < user.temporaryLockDateEnd)) {
+    if (isUserLocked(user)) {
       throw new UnauthorizedError({ message: "Account is locked" });
     }
 
@@ -419,6 +422,12 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
 
     if (!subOrganizationId) {
       const organization = await orgDAL.findOne({ id: organizationId });
+
+      if (!organization) {
+        throw new UnauthorizedError({
+          message: `The organization with ID '${organizationId}' no longer exists. Log in again.`
+        });
+      }
       await assertActiveOrgMembership(userId, organizationId);
 
       return {
@@ -460,6 +469,20 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     });
 
     return { user, tokenVersionId: token.tokenVersionId, orgId, orgName, rootOrgId, parentOrgId };
+  };
+
+  const validateRefreshTokenAccess = async (decodedToken: AuthModeRefreshJwtTokenPayload) => {
+    const user = await requestMemoize(requestMemoKeys.userFindById(decodedToken.userId), () =>
+      userDAL.findById(decodedToken.userId)
+    );
+    if (!user || !user.isAccepted) throw new UnauthorizedError({ message: "Invalid token", name: "InvalidToken" });
+    if (isUserLocked(user)) throw new UnauthorizedError({ message: "Account is locked" });
+
+    await validateTokenOrgScope({
+      userId: user.id,
+      organizationId: decodedToken.organizationId,
+      subOrganizationId: decodedToken.subOrganizationId
+    });
   };
 
   const createEmailSignupToken = async (emailHash: string): Promise<string> => {
@@ -553,7 +576,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     validateRefreshToken,
     rotateRefreshToken,
     validateUserSessionFreshness,
-    validateTokenOrgScope,
+    validateRefreshTokenAccess,
     fnValidateJwtIdentity,
     getUserTokenSessionById,
     createEmailSignupToken,

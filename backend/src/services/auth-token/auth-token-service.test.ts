@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, type Mock
 
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { tokenServiceFactory } from "./auth-token-service";
 import { TEmailSignupOtpPayload } from "./auth-token-types";
@@ -236,6 +236,179 @@ describe("tokenServiceFactory — email signup OTP", () => {
       await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "123456"), UnauthorizedError);
 
       expect(release).toHaveBeenCalledOnce();
+    });
+  });
+});
+
+describe("tokenServiceFactory — org scope of user tokens", () => {
+  const USER_ID = "user-1";
+  const ROOT = "root-org";
+  const SUB = "sub-org";
+  const OTHER_ROOT = "other-root-org";
+  const SESSION = { id: "session-1", userId: USER_ID, accessVersion: 1, refreshVersion: 1 };
+
+  const orgs: Record<string, { id: string; name: string; rootOrgId: string | null; parentOrgId: string | null }> = {
+    [ROOT]: { id: ROOT, name: "Root", rootOrgId: null, parentOrgId: null },
+    [SUB]: { id: SUB, name: "Sub", rootOrgId: ROOT, parentOrgId: ROOT },
+    [OTHER_ROOT]: { id: OTHER_ROOT, name: "Other", rootOrgId: null, parentOrgId: null }
+  };
+
+  const build = ({
+    user = { id: USER_ID, isAccepted: true, isLocked: false, temporaryLockDateEnd: null as Date | null },
+    memberships = { [ROOT]: true, [SUB]: true } as Record<string, boolean | undefined>
+  } = {}) => {
+    const orgDAL = {
+      findOne: vi.fn(async ({ id }: { id: string }) => orgs[id]),
+      findEffectiveOrgMembership: vi.fn(async ({ orgId }: { orgId: string }) =>
+        memberships[orgId] === undefined ? null : { isActive: memberships[orgId] }
+      )
+    };
+    const service = tokenServiceFactory({
+      tokenDAL: { findOneTokenSession: vi.fn().mockResolvedValue(SESSION) } as never,
+      userDAL: { findById: vi.fn().mockResolvedValue(user) } as never,
+      orgDAL: orgDAL as never,
+      membershipUserDAL: {} as never,
+      keyStore: makeKeyStore() as never
+    });
+    return { service, orgDAL };
+  };
+
+  const accessToken = (claims: { organizationId?: string; subOrganizationId?: string }) =>
+    ({ userId: USER_ID, tokenVersionId: SESSION.id, accessVersion: 1, ...claims }) as never;
+  const refreshToken = (claims: { organizationId?: string; subOrganizationId?: string }) =>
+    ({ userId: USER_ID, tokenVersionId: SESSION.id, refreshVersion: 1, ...claims }) as never;
+
+  afterEach(() => vi.clearAllMocks());
+
+  test("a sub-org token resolves to the sub-org when root and sub-org memberships are active", async () => {
+    const { service } = build();
+    const identity = await service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT, subOrganizationId: SUB }));
+    expect(identity).toMatchObject({ orgId: SUB, orgName: "Sub", rootOrgId: ROOT, parentOrgId: ROOT });
+  });
+
+  test("a sub-org token is refused when the root membership is inactive", async () => {
+    const { service } = build({ memberships: { [ROOT]: false, [SUB]: true } });
+    const err = await expectRejected(
+      service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT, subOrganizationId: SUB })),
+      ForbiddenRequestError
+    );
+    expect(err.message).toContain("inactive");
+  });
+
+  test("a sub-org token is refused when the root membership is gone", async () => {
+    const { service } = build({ memberships: { [SUB]: true } });
+    await expectRejected(
+      service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT, subOrganizationId: SUB })),
+      ForbiddenRequestError
+    );
+  });
+
+  test("a sub-org token is refused when the sub-org membership is inactive", async () => {
+    const { service } = build({ memberships: { [ROOT]: true, [SUB]: false } });
+    await expectRejected(
+      service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT, subOrganizationId: SUB })),
+      ForbiddenRequestError
+    );
+  });
+
+  test("subOrganizationId equal to organizationId is refused", async () => {
+    const { service, orgDAL } = build();
+    await expectRejected(
+      service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT, subOrganizationId: ROOT })),
+      ForbiddenRequestError
+    );
+    expect(orgDAL.findEffectiveOrgMembership).not.toHaveBeenCalled();
+  });
+
+  test("a sub-org under a different root is refused", async () => {
+    const { service } = build();
+    await expectRejected(
+      service.fnValidateJwtIdentity(accessToken({ organizationId: OTHER_ROOT, subOrganizationId: SUB })),
+      ForbiddenRequestError
+    );
+  });
+
+  test("subOrganizationId without organizationId is refused", async () => {
+    const { service } = build();
+    await expectRejected(service.fnValidateJwtIdentity(accessToken({ subOrganizationId: SUB })), UnauthorizedError);
+  });
+
+  test("a token with no org claims stays valid and unscoped", async () => {
+    const { service, orgDAL } = build();
+    const identity = await service.fnValidateJwtIdentity(accessToken({}));
+    expect(identity).toMatchObject({ orgId: "", rootOrgId: "" });
+    expect(orgDAL.findOne).not.toHaveBeenCalled();
+  });
+
+  test("a token for an org that no longer exists is refused with 401, not a 500", async () => {
+    const { service } = build();
+    const err = await expectRejected(
+      service.fnValidateJwtIdentity(accessToken({ organizationId: "deleted-org" })),
+      UnauthorizedError
+    );
+    expect(err.message).toContain("deleted-org");
+  });
+
+  describe("validateRefreshTokenAccess", () => {
+    test("allows an active, unlocked member", async () => {
+      const { service } = build();
+      await expect(
+        service.validateRefreshTokenAccess(refreshToken({ organizationId: ROOT, subOrganizationId: SUB }))
+      ).resolves.toBeUndefined();
+    });
+
+    test("refuses when the root membership is inactive", async () => {
+      const { service } = build({ memberships: { [ROOT]: false, [SUB]: true } });
+      await expectRejected(
+        service.validateRefreshTokenAccess(refreshToken({ organizationId: ROOT, subOrganizationId: SUB })),
+        ForbiddenRequestError
+      );
+    });
+
+    test("refuses a permanently locked user, even without an org claim", async () => {
+      const { service, orgDAL } = build({
+        user: { id: USER_ID, isAccepted: true, isLocked: true, temporaryLockDateEnd: null }
+      });
+      const err = await expectRejected(service.validateRefreshTokenAccess(refreshToken({})), UnauthorizedError);
+      expect(err.message).toBe("Account is locked");
+      expect(orgDAL.findEffectiveOrgMembership).not.toHaveBeenCalled();
+    });
+
+    test("refuses a temporarily locked user until the lock expires", async () => {
+      const lockedUntil = new Date(Date.now() + 60_000);
+      const locked = build({
+        user: { id: USER_ID, isAccepted: true, isLocked: false, temporaryLockDateEnd: lockedUntil }
+      });
+      await expectRejected(
+        locked.service.validateRefreshTokenAccess(refreshToken({ organizationId: ROOT })),
+        UnauthorizedError
+      );
+
+      const expired = build({
+        user: { id: USER_ID, isAccepted: true, isLocked: false, temporaryLockDateEnd: new Date(Date.now() - 60_000) }
+      });
+      await expect(
+        expired.service.validateRefreshTokenAccess(refreshToken({ organizationId: ROOT }))
+      ).resolves.toBeUndefined();
+    });
+
+    // UnauthorizedError, not NotFoundError: the OAuth token endpoint maps NotFound to server_error.
+    test("refuses a user who is not accepted with UnauthorizedError", async () => {
+      const { service } = build({
+        user: { id: USER_ID, isAccepted: false, isLocked: false, temporaryLockDateEnd: null }
+      });
+      await expectRejected(
+        service.validateRefreshTokenAccess(refreshToken({ organizationId: ROOT })),
+        UnauthorizedError
+      );
+    });
+
+    test("refuses a refresh token scoped to an org that no longer exists with UnauthorizedError", async () => {
+      const { service } = build();
+      await expectRejected(
+        service.validateRefreshTokenAccess(refreshToken({ organizationId: "deleted-org" })),
+        UnauthorizedError
+      );
     });
   });
 });
