@@ -10,7 +10,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
-import { TAppConnectionInput } from "@app/services/app-connection/app-connection-types";
+import { TAppConnectionInput, TAppConnectionScope } from "@app/services/app-connection/app-connection-types";
 import { TCreateAppConnectionCredentialRotationSchema } from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -42,7 +42,7 @@ type TAppConnectionUpdateSchema<I extends TAppConnectionInput> = z.ZodType<{
 }>;
 
 // For routes that belong to one project the caller never names, such as Agent Vault's: the server supplies it.
-type TResolveScope = (req: FastifyRequest) => { projectId: string };
+type TResolveScope = (req: FastifyRequest) => TAppConnectionScope;
 
 type TAppConnectionRouteContext = ReturnType<typeof buildAppConnectionRouteContext>;
 
@@ -80,17 +80,6 @@ export const buildAppConnectionRouteContext = ({
         .join(""));
 
   return { server, app, appName, appNameForOpId, sanitizedResponseSchema, tags };
-};
-
-// Checked before any permission or app check, so a connection outside the scope reads exactly like a missing one.
-const assertInScope = async (
-  { server, app }: TAppConnectionRouteContext,
-  req: FastifyRequest,
-  connectionId: string,
-  resolveScope?: TResolveScope
-) => {
-  if (resolveScope)
-    await server.services.appConnection.findAppConnectionById(app, connectionId, req.permission, resolveScope(req));
 };
 
 export const buildListAppConnectionsRoute = (
@@ -459,8 +448,6 @@ export const buildUpdateAppConnectionRoute = <I extends TAppConnectionInput>(
       } = req.body;
       const { connectionId } = req.params;
 
-      await assertInScope(ctx, req, connectionId, resolveScope);
-
       const appConnection = await server.services.appConnection.updateAppConnection(
         {
           name,
@@ -474,7 +461,8 @@ export const buildUpdateAppConnectionRoute = <I extends TAppConnectionInput>(
           rotation: rotation ?? undefined,
           configuration
         },
-        req.permission
+        req.permission,
+        resolveScope?.(req)
       );
 
       await server.services.auditLog.createAuditLog({
@@ -537,9 +525,12 @@ export const buildDeleteAppConnectionRoute = (
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      await assertInScope(ctx, req, connectionId, resolveScope);
-
-      const appConnection = await server.services.appConnection.deleteAppConnection(app, connectionId, req.permission);
+      const appConnection = await server.services.appConnection.deleteAppConnection(
+        app,
+        connectionId,
+        req.permission,
+        resolveScope?.(req)
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -600,14 +591,17 @@ export const buildRotateAppConnectionCredentialsRoute = (
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      await assertInScope(ctx, req, connectionId, resolveScope);
-
-      await server.services.appConnection.triggerCredentialRotation({ app, connectionId }, req.permission);
+      await server.services.appConnection.triggerCredentialRotation(
+        { app, connectionId },
+        req.permission,
+        resolveScope?.(req)
+      );
 
       const appConnection = await server.services.appConnection.findAppConnectionById(
         app,
         connectionId,
-        req.permission
+        req.permission,
+        resolveScope?.(req)
       );
 
       await server.services.auditLog.createAuditLog({
