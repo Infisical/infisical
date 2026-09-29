@@ -1,4 +1,4 @@
-import { CronJob } from "cron";
+import { TLocalRefreshHandle } from "@app/lib/cron/local-refresh";
 
 export type TRateLimitUpdateDTO = {
   readRateLimit: number;
@@ -33,6 +33,6 @@ export type RateLimitConfiguration = {
 export type TRateLimitServiceFactory = {
   getRateLimits: () => Promise<TRateLimit | undefined>;
   updateRateLimit: (updates: TRateLimitUpdateDTO) => Promise<TRateLimit>;
-  initializeBackgroundSync: () => Promise<CronJob<null, null> | undefined>;
+  initializeBackgroundSync: () => Promise<TLocalRefreshHandle | undefined>;
   syncRateLimitConfiguration: () => Promise<void>;
 };

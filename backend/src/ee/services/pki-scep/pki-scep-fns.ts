@@ -1,3 +1,5 @@
+import { AsnConvert } from "@peculiar/asn1-schema";
+import { GeneralName, GeneralNames } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
@@ -13,6 +15,7 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { getCaCertChains, getCaSigner } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { SUPPORTED_GENERAL_NAME_TYPES } from "@app/services/certificate-common/certificate-constants";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -323,60 +326,111 @@ export const isSignerCertIssuedByCa = async ({
 export enum ScepRenewalDenyReason {
   InvalidSigner = "invalid-signer",
   WrongProfile = "wrong-profile",
-  IdentityMismatch = "identity-mismatch"
+  WrongApplication = "wrong-application",
+  SubjectMismatch = "subject-mismatch",
+  SubjectAltNameMismatch = "subject-alt-name-mismatch"
 }
 
 export type TScepRenewalAuthResult = { authorized: true } | { authorized: false; reason: ScepRenewalDenyReason };
 
 const DN_WHITESPACE_RE = new RE2("\\s+", "g");
 
-const normalizeX500Name = (name: x509.Name): string => {
-  const rdns = name.toJSON();
+type TCanonicalAttribute = [type: string, value: string];
 
-  const canonicalRdns = rdns.map((rdn) => {
-    const pairs: string[] = [];
+const compareCanonicalAttributes = (a: TCanonicalAttribute, b: TCanonicalAttribute): number => {
+  if (a[0] !== b[0]) return a[0] < b[0] ? -1 : 1;
+  if (a[1] === b[1]) return 0;
+  return a[1] < b[1] ? -1 : 1;
+};
+
+const normalizeX500Name = (name: x509.Name): string => {
+  const canonicalRdns = name.toJSON().map((rdn) => {
+    const attributes: TCanonicalAttribute[] = [];
     for (const [type, values] of Object.entries(rdn)) {
       const normalizedType = type.toLowerCase();
       for (const value of values) {
         const normalizedValue = value.normalize("NFC").replace(DN_WHITESPACE_RE, " ").trim().toLowerCase();
-        pairs.push(`${normalizedType}=${normalizedValue}`);
+        attributes.push([normalizedType, normalizedValue]);
       }
     }
-    return pairs.sort().join("+");
+    return attributes.sort(compareCanonicalAttributes);
   });
 
-  return canonicalRdns.join(",");
+  return JSON.stringify(canonicalRdns);
 };
 
-// SANs are an unordered set in RFC 5280; normalize each entry and sort for comparison.
-const normalizeSubjectAltNames = (ext: x509.SubjectAlternativeNameExtension | null | undefined): string => {
-  if (!ext) return "";
-  const pairs: string[] = [];
-  for (const item of ext.names.items) {
-    const type = String(item.type).toLowerCase();
-    const raw = String(item.value).normalize("NFC").trim();
-    const value = type === "dns" ? raw.toLowerCase() : raw;
-    pairs.push(`${type}:${value}`);
+const toHex = (data: ArrayBuffer): string => Buffer.from(data).toString("hex");
+
+const survivesIssuance = (name: GeneralName): boolean => {
+  try {
+    const single = new GeneralNames();
+    single.push(name);
+    const modelled = new x509.GeneralNames(AsnConvert.serialize(single)).items;
+    return modelled.length === 1 && SUPPORTED_GENERAL_NAME_TYPES.has(modelled[0].type);
+  } catch {
+    return false;
   }
-  return pairs.sort().join(",");
+};
+
+const normalizeIssuedSubjectAltNames = (ext: x509.Extension | null | undefined): string => {
+  if (!ext) return JSON.stringify([]);
+
+  let items: readonly x509.GeneralName[] = [];
+  try {
+    items = new x509.SubjectAlternativeNameExtension(ext.rawData).names.items;
+  } catch {
+    items = [];
+  }
+
+  const entries: TCanonicalAttribute[] = items
+    .filter((item) => SUPPORTED_GENERAL_NAME_TYPES.has(item.type))
+    .map((item) => {
+      const type = String(item.type).toLowerCase();
+      const raw = String(item.value).normalize("NFC").trim();
+      return [type, type === "dns" ? raw.toLowerCase() : raw];
+    });
+
+  return JSON.stringify(entries.sort(compareCanonicalAttributes));
+};
+
+const collectStrippedSubjectAltNames = (ext: x509.Extension | null | undefined): string[] => {
+  if (!ext) return [];
+
+  let generalNames: GeneralNames;
+  try {
+    generalNames = AsnConvert.parse(ext.value, GeneralNames);
+  } catch {
+    return [`unparsed:${toHex(ext.value)}`];
+  }
+
+  return generalNames
+    .filter((name) => !survivesIssuance(name))
+    .map((name) => toHex(AsnConvert.serialize(name)))
+    .sort();
 };
 
 export const evaluateScepRenewalAuthorization = ({
   isValidSigner,
   storedSignerCert,
   profileId,
+  applicationId,
+  csrForwardedToCa,
+  priorCsrSubjectAltNames,
   csrSubjectName,
   signerCertSubjectName,
   csrSubjectAltNames,
   signerCertSubjectAltNames
 }: {
   isValidSigner: boolean;
-  storedSignerCert?: { profileId?: string | null } | null;
+  storedSignerCert?: { profileId?: string | null; applicationId?: string | null } | null;
   profileId: string;
+  applicationId?: string | null;
+  csrForwardedToCa: boolean;
+  priorCsrSubjectAltNames?: x509.Extension | null;
   csrSubjectName: x509.Name;
   signerCertSubjectName: x509.Name;
-  csrSubjectAltNames?: x509.SubjectAlternativeNameExtension | null;
-  signerCertSubjectAltNames?: x509.SubjectAlternativeNameExtension | null;
+  csrSubjectAltNames?: x509.Extension | null;
+  signerCertSubjectAltNames?: x509.Extension | null;
 }): TScepRenewalAuthResult => {
   if (!isValidSigner) {
     return { authorized: false, reason: ScepRenewalDenyReason.InvalidSigner };
@@ -386,11 +440,31 @@ export const evaluateScepRenewalAuthorization = ({
     return { authorized: false, reason: ScepRenewalDenyReason.WrongProfile };
   }
 
+  if ((storedSignerCert.applicationId ?? null) !== (applicationId ?? null)) {
+    return { authorized: false, reason: ScepRenewalDenyReason.WrongApplication };
+  }
+
+  if (normalizeX500Name(csrSubjectName) !== normalizeX500Name(signerCertSubjectName)) {
+    return { authorized: false, reason: ScepRenewalDenyReason.SubjectMismatch };
+  }
+
   if (
-    normalizeX500Name(csrSubjectName) !== normalizeX500Name(signerCertSubjectName) ||
-    normalizeSubjectAltNames(csrSubjectAltNames) !== normalizeSubjectAltNames(signerCertSubjectAltNames)
+    normalizeIssuedSubjectAltNames(csrSubjectAltNames) !== normalizeIssuedSubjectAltNames(signerCertSubjectAltNames)
   ) {
-    return { authorized: false, reason: ScepRenewalDenyReason.IdentityMismatch };
+    return { authorized: false, reason: ScepRenewalDenyReason.SubjectAltNameMismatch };
+  }
+
+  if (csrForwardedToCa) {
+    const baselineNames = [
+      ...collectStrippedSubjectAltNames(priorCsrSubjectAltNames),
+      ...collectStrippedSubjectAltNames(signerCertSubjectAltNames)
+    ];
+    const csrIntroducesStrippedName = collectStrippedSubjectAltNames(csrSubjectAltNames).some(
+      (name) => !baselineNames.includes(name)
+    );
+    if (csrIntroducesStrippedName) {
+      return { authorized: false, reason: ScepRenewalDenyReason.SubjectAltNameMismatch };
+    }
   }
 
   return { authorized: true };

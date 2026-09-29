@@ -14,6 +14,13 @@ import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payloa
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
+import {
+  assertUniqueAzureKeyVaultSecretNames,
+  findInfisicalSecretKeyForAzureKeyVaultName,
+  infisicalImportKeyFromAzureKeyVaultName,
+  normalizeAzureKeyVaultSecretName,
+  toAzureKeyVaultSecretName
+} from "./azure-key-vault-secret-name";
 import { GetAzureKeyVaultSecret, TAzureKeyVaultSyncWithCredentials } from "./azure-key-vault-sync-types";
 
 type TAzureKeyVaultSyncFactoryDeps = {
@@ -126,6 +133,7 @@ export const azureKeyVaultSyncFactory = ({
 
   const syncSecrets = async (secretSync: TAzureKeyVaultSyncWithCredentials, payload: TSecretSyncPayload) => {
     const secretMap = payload.flatten();
+    assertUniqueAzureKeyVaultSecretNames(Object.keys(secretMap));
     const { connection } = secretSync;
 
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
@@ -150,26 +158,30 @@ export const azureKeyVaultSyncFactory = ({
 
     const deleteSecrets: string[] = [];
 
+    const vaultKeysByNormalizedName = new Map(
+      Object.keys(vaultSecrets).map((key) => [normalizeAzureKeyVaultSecretName(key), key])
+    );
+
     Object.keys(secretMap).forEach((infisicalKey) => {
-      const hyphenatedKey = infisicalKey.replaceAll("_", "-");
-      if (!(hyphenatedKey in vaultSecrets)) {
+      const hyphenatedKey = toAzureKeyVaultSecretName(infisicalKey);
+      const vaultKey = vaultKeysByNormalizedName.get(normalizeAzureKeyVaultSecretName(infisicalKey));
+      if (!vaultKey) {
         // case: secret has been created
         setSecrets.push({
           key: hyphenatedKey,
           value: secretMap[infisicalKey].value
         });
-      } else if (secretMap[infisicalKey].value !== vaultSecrets[hyphenatedKey].value) {
+      } else if (secretMap[infisicalKey].value !== vaultSecrets[vaultKey].value) {
         // case: secret has been updated
         setSecrets.push({
-          key: hyphenatedKey,
+          key: vaultKey,
           value: secretMap[infisicalKey].value
         });
       }
     });
 
     Object.keys(vaultSecrets).forEach((key) => {
-      const underscoredKey = key.replaceAll("-", "_");
-      if (!(underscoredKey in secretMap)) {
+      if (!findInfisicalSecretKeyForAzureKeyVaultName(key, secretMap)) {
         deleteSecrets.push(key);
       }
     });
@@ -178,7 +190,8 @@ export const azureKeyVaultSyncFactory = ({
       let isSecretSet = false;
       let syncError: Error | null = null;
       let maxTries = 6;
-      if (disabledAzureKeyVaultSecretKeys.includes(key)) return;
+      if (disabledAzureKeyVaultSecretKeys.some((disabledKey) => disabledKey.toLowerCase() === key.toLowerCase()))
+        return;
 
       while (!isSecretSet && maxTries > 0) {
         // try to set secret
@@ -240,10 +253,18 @@ export const azureKeyVaultSyncFactory = ({
 
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
+    const environmentSlug = secretSync.environment?.slug || "";
+    const { keySchema } = secretSync.syncOptions;
+
+    // The key schema is written with Infisical separators, so compare it against the Infisical form
+    // of the vault name (`dev-FOO` must match `{{environment}}_{{secretKey}}`).
     for await (const deleteSecretKey of deleteSecrets.filter(
       (secret) =>
-        matchesSchema(secret, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema) &&
-        !setSecrets.find((setSecret) => setSecret.key === secret)
+        matchesSchema(
+          infisicalImportKeyFromAzureKeyVaultName(secret, environmentSlug, keySchema),
+          environmentSlug,
+          keySchema
+        ) && !setSecrets.find((setSecret) => setSecret.key === secret)
     )) {
       await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayV2Service, {
         method: "DELETE",
@@ -275,10 +296,8 @@ export const azureKeyVaultSyncFactory = ({
     );
 
     for await (const [key] of Object.entries(vaultSecrets)) {
-      const underscoredKey = key.replaceAll("-", "_");
-
-      if (underscoredKey in secretMap) {
-        if (!disabledAzureKeyVaultSecretKeys.includes(underscoredKey)) {
+      if (findInfisicalSecretKeyForAzureKeyVaultName(key, secretMap)) {
+        if (!disabledAzureKeyVaultSecretKeys.includes(key)) {
           await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayV2Service, {
             method: "DELETE",
             url: `${secretSync.destinationConfig.vaultBaseUrl}/secrets/${key}?api-version=7.3`,
@@ -310,11 +329,15 @@ export const azureKeyVaultSyncFactory = ({
     );
 
     const secretMap: TSecretMap = {};
+    const environmentSlug = secretSync.environment?.slug || "";
+    const { keySchema } = secretSync.syncOptions;
 
     Object.keys(vaultSecrets).forEach((key) => {
       if (!disabledAzureKeyVaultSecretKeys.includes(key)) {
-        const underscoredKey = key.replaceAll("-", "_");
-        secretMap[underscoredKey] = {
+        // Keep hyphens that belong to the secret name. Only key-schema separators are
+        // restored to underscores, so the shared schema strip can remove the wrapper.
+        const importKey = infisicalImportKeyFromAzureKeyVaultName(key, environmentSlug, keySchema);
+        secretMap[importKey] = {
           value: vaultSecrets[key].value
         };
       }

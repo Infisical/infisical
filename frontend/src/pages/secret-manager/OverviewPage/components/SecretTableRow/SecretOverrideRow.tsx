@@ -55,6 +55,7 @@ type Props = {
   }) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   isSingleEnvView?: boolean;
+  onActiveChange?: (isActive: boolean) => void;
 };
 
 export const SecretOverrideRow = ({
@@ -70,7 +71,8 @@ export const SecretOverrideRow = ({
   onSecretCreate,
   onSecretUpdate,
   onSecretDelete,
-  isSingleEnvView
+  isSingleEnvView,
+  onActiveChange
 }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
@@ -194,8 +196,23 @@ export const SecretOverrideRow = ({
     }
   }, [isCreatingOverride]);
 
+  useEffect(
+    () => () => {
+      onActiveChange?.(false);
+    },
+    [onActiveChange]
+  );
+
   return (
-    <div className="flex w-full cursor-text items-center gap-2">
+    <div
+      className="flex w-full cursor-text items-center gap-2"
+      onFocusCapture={() => onActiveChange?.(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          onActiveChange?.(false);
+        }
+      }}
+    >
       {!isSingleEnvView && (
         <div className="flex shrink-0 items-center text-override">
           <GitBranchIcon className="size-3.5" />

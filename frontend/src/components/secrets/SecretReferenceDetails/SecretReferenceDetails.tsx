@@ -141,6 +141,17 @@ const hasCircularReferences = (
   return node.children.some((child) => hasCircularReferences(child, newVisitedPath));
 };
 
+// Live-region guidance for a read-only tree. Announce navigation only, and omit the rename
+// and drag keybindings the environment disables, so the announced actions match what works.
+const READ_ONLY_LIVE_DESCRIPTORS = {
+  introduction:
+    "<p>Accessibility guide for tree {treeLabel}.</p><p>Navigate the tree with the arrow keys. Press {keybinding:primaryAction} to activate the focused item.</p>",
+  renamingItem: "<p>Renaming is not available in this tree.</p>",
+  searching: "<p>Searching</p>",
+  programmaticallyDragging: "<p>Dragging is not available in this tree.</p>",
+  programmaticallyDraggingTarget: ""
+};
+
 const SecretTree = ({
   items,
   rootId,
@@ -208,6 +219,9 @@ const SecretTree = ({
       canDragAndDrop={false}
       canDropOnFolder={false}
       canReorderItems={false}
+      // Reference tree is read-only, so inline rename is disabled.
+      canRename={false}
+      liveDescriptors={READ_ONLY_LIVE_DESCRIPTORS}
       renderItemTitle={renderItemTitle}
     >
       <Tree treeId={treeId} rootItem={rootId} />

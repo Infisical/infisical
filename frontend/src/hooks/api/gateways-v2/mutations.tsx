@@ -70,14 +70,16 @@ export const useUpdateGateway = () => {
   return useMutation({
     mutationFn: async ({
       gatewayId,
+      name,
       authMethod
     }: {
       gatewayId: string;
+      name?: string;
       authMethod?: SettableAuthMethodInput;
     }) => {
       const { data } = await apiRequest.patch<TGatewayV2WithAuthMethod>(
         `/api/v3/gateways/${gatewayId}`,
-        { authMethod }
+        { name, authMethod }
       );
       return data;
     },
@@ -103,7 +105,7 @@ export const useRevokeGatewayAccess = () => {
   return useMutation({
     mutationFn: async ({ gatewayId }: { gatewayId: string }) => {
       const { data } = await apiRequest.post<{
-        method: "aws" | "kubernetes" | "token";
+        method: "aws" | "gcp" | "kubernetes" | "token";
       }>(`/api/v3/gateways/${gatewayId}/revoke`);
       return data;
     },

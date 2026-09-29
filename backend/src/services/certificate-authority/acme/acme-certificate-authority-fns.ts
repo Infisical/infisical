@@ -29,7 +29,10 @@ import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-ea
 import { TPowerDnsConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -609,28 +612,25 @@ export const executeAcmeOrder = async (
       })
     : { cipherTextBlob: undefined };
 
-  const parsedFields = extractCertificateFields(Buffer.from(leafCert));
+  const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
   return (tx || certificateDAL).transaction(async (innerTx: Knex) => {
     const cert = await certificateDAL.create(
       {
+        ...parsedFields,
         caId: ca.id,
         pkiSubscriberId: subscriberId,
         profileId,
         status: CertStatus.ACTIVE,
-        friendlyName: commonName,
-        commonName,
-        altNames: altNames?.join(","),
-        serialNumber: certObj.serialNumber,
-        notBefore: certObj.notBefore,
-        notAfter: certObj.notAfter,
-        keyUsages,
-        extendedKeyUsages,
-        keyAlgorithm,
-        signatureAlgorithm,
         projectId: ca.projectId,
-        renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,
-        ...parsedFields
+        friendlyName: parsedFields.commonName ?? commonName,
+        commonName: parsedFields.commonName ?? commonName,
+        altNames: parsedFields.altNames ?? altNames?.join(","),
+        keyUsages: parsedFields.keyUsages ?? keyUsages,
+        extendedKeyUsages: parsedFields.extendedKeyUsages ?? extendedKeyUsages,
+        keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+        signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
+        renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
       },
       innerTx
     );

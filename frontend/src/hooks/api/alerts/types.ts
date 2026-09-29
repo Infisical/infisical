@@ -29,13 +29,13 @@ export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
-  [AlertEventType.IdentityAuthenticationExpiry]: "Client Secret Expiration",
+  [AlertEventType.IdentityAuthenticationExpiry]: "Credential Expiration",
   [AlertEventType.IdentityAuthMethodChanged]: "Auth Method Change"
 };
 
 export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]:
-    "Notify a set number of days before a Universal Auth client secret expires.",
+    "Notify a set number of days before a Universal Auth client secret or Token Auth access token expires.",
   [AlertEventType.IdentityAuthMethodChanged]:
     "Notify whenever an auth method is added, updated, or removed, or one of its credentials is created, updated, or revoked."
 };

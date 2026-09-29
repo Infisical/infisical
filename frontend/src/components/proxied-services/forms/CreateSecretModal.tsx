@@ -82,8 +82,6 @@ export const CreateSecretModal = ({
       type: SecretType.Shared
     });
 
-    // the picker reads secrets with viewSecretValue: true, which the mutation's own invalidation
-    // does not match
     await queryClient.invalidateQueries({
       queryKey: secretKeys.getProjectSecret({
         projectId,

@@ -92,6 +92,7 @@
 .qs-index__jump-chip--identity { --qs-chip-color: #cfcfcf; }
 .qs-index__jump-chip--networking { --qs-chip-color: #cfcfcf; }
 .qs-index__jump-chip--self-hosting { --qs-chip-color: #cfcfcf; }
+.qs-index__jump-chip--api { --qs-chip-color: #cfcfcf; }
 
 .qs-index__jump-chip:hover {
   border-color: var(--qs-chip-color, #cfcfcf);
@@ -122,6 +123,7 @@
 .dark .qs-index__jump-chip--identity { --qs-chip-color: #3a3f47; }
 .dark .qs-index__jump-chip--networking { --qs-chip-color: #3a3f47; }
 .dark .qs-index__jump-chip--self-hosting { --qs-chip-color: #3a3f47; }
+.dark .qs-index__jump-chip--api { --qs-chip-color: #3a3f47; }
 
 .dark .qs-index__jump-chip:hover {
   border-color: var(--qs-chip-color, #3a3f47);
@@ -140,7 +142,8 @@
 .qs-index__section--agent-vault { --qs-accent: #5f7000; }
 .qs-index__section--identity,
 .qs-index__section--networking,
-.qs-index__section--self-hosting {
+.qs-index__section--self-hosting,
+.qs-index__section--api {
   --qs-accent: #5c5c5c;
 }
 
@@ -266,7 +269,8 @@
 .dark .qs-index__section--agent-vault { --qs-accent: #a1d434; }
 .dark .qs-index__section--identity,
 .dark .qs-index__section--networking,
-.dark .qs-index__section--self-hosting {
+.dark .qs-index__section--self-hosting,
+.dark .qs-index__section--api {
   --qs-accent: #cfcfcf;
 }
 

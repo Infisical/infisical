@@ -10,6 +10,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Card,
   CardContent,
   CardDescription,
@@ -20,6 +21,7 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldTitle,
   GatewayPicker,
   Input,
   Select,
@@ -39,6 +41,7 @@ import {
   maxGeneratedPasswordLength,
   PAM_ROTATION_INTERVAL_OPTIONS,
   PamAccountType,
+  pamAccountTypeSupportsSessionLogMasking,
   PamPolicyType,
   useGetPamAccountTemplate,
   usePamAccountTypeMap,
@@ -73,6 +76,7 @@ const buildSettingsSchema = (maxPwLength: number) =>
       policies: z.record(z.unknown()),
       settings: z.object({
         sessionLogMaskingPatterns: z.string().optional(),
+        sessionLogMaskingBuiltInDetection: z.boolean().optional(),
         rotationEnabled: z.boolean().optional(),
         heartbeatEnabled: z.boolean().optional(),
         heartbeatIntervalSeconds: z.number().optional(),
@@ -302,6 +306,7 @@ const SettingsTab = ({
       policies: {},
       settings: {
         sessionLogMaskingPatterns: "",
+        sessionLogMaskingBuiltInDetection: false,
         rotationEnabled: false,
         heartbeatEnabled: false,
         heartbeatIntervalSeconds: 86400,
@@ -337,6 +342,8 @@ const SettingsTab = ({
         policies: (template.policies as Record<string, unknown>) ?? {},
         settings: {
           sessionLogMaskingPatterns: (settings.sessionLogMaskingPatterns as string) ?? "",
+          sessionLogMaskingBuiltInDetection:
+            (settings.sessionLogMaskingBuiltInDetection as boolean) ?? false,
           ...(() => {
             const rotation = (settings.rotation ?? {}) as {
               enabled?: boolean;
@@ -395,6 +402,8 @@ const SettingsTab = ({
   const heartbeatEnabled = watch("settings.heartbeatEnabled");
   const requiresRecording = accountTypeRequiresRecording(template.type);
   const showGatewaySettings = accountTypeMap[template.type]?.requiresGateway !== false;
+  const supportsSessionLogMasking = pamAccountTypeSupportsSessionLogMasking(template.type);
+
   const typeName = accountTypeMap[template.type]?.name ?? template.type;
   const isRotatableTemplateType = isRotatablePamAccountType(template.type);
   const requiresApproval = policies[PamPolicyType.RequiresApproval] === true;
@@ -424,6 +433,11 @@ const SettingsTab = ({
     } else {
       delete settings.sessionLogMaskingPatterns;
     }
+
+    // Never deleted when false: an absent key means "never configured", which is a different thing.
+    settings.sessionLogMaskingBuiltInDetection = Boolean(
+      data.settings.sessionLogMaskingBuiltInDetection
+    );
 
     const isHeartbeatOn = Boolean(data.settings.heartbeatEnabled);
     settings.heartbeat = {
@@ -947,31 +961,64 @@ const SettingsTab = ({
               </>
             )}
 
-            <Controller
-              control={control}
-              name="settings.sessionLogMaskingPatterns"
-              render={({ field, fieldState }) => (
-                <Field>
-                  <FieldLabel>Session Log Masking</FieldLabel>
-                  <FieldContent>
-                    <TextArea
-                      rows={5}
-                      placeholder={"rm\\s+-rf.*\npassword\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b"}
-                      value={field.value ?? ""}
-                      isError={!!fieldState.error}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        field.onChange(val.trim() ? val : "");
-                      }}
-                    />
-                    <FieldDescription>
-                      Matching content in session recordings will be masked (one regex per line).
-                    </FieldDescription>
-                    <FieldError>{fieldState.error?.message}</FieldError>
-                  </FieldContent>
-                </Field>
-              )}
-            />
+            {supportsSessionLogMasking && (
+              <div className="flex flex-col gap-4 border-t border-border pt-6">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Session Log Masking</p>
+                  <p className="text-xs text-muted">
+                    What gets masked in recordings for accounts using this template.
+                  </p>
+                </div>
+
+                <Controller
+                  control={control}
+                  name="settings.sessionLogMaskingBuiltInDetection"
+                  render={({ field }) => (
+                    <Field orientation="horizontal">
+                      <FieldContent>
+                        <FieldTitle>
+                          Built-in Detection
+                          <Badge variant="success">Recommended</Badge>
+                        </FieldTitle>
+                        <FieldDescription>
+                          API keys and tokens from known providers, and the account&apos;s own
+                          credentials, are masked automatically.
+                        </FieldDescription>
+                      </FieldContent>
+                      <Toggle
+                        variant="pam"
+                        checked={field.value ?? false}
+                        onCheckedChange={field.onChange}
+                      />
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name="settings.sessionLogMaskingPatterns"
+                  render={({ field, fieldState }) => (
+                    <Field>
+                      <FieldLabel>Custom patterns</FieldLabel>
+                      <FieldContent>
+                        <TextArea
+                          rows={5}
+                          placeholder={"acme_[a-z0-9]{24}\ninternal-vault://\\S+"}
+                          value={field.value ?? ""}
+                          isError={!!fieldState.error}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val.trim() ? val : "");
+                          }}
+                        />
+                        <FieldDescription>One regex per line.</FieldDescription>
+                        <FieldError>{fieldState.error?.message}</FieldError>
+                      </FieldContent>
+                    </Field>
+                  )}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

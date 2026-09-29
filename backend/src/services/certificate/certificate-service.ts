@@ -73,6 +73,7 @@ import {
   getCaCertChains,
   rebuildCaCrl
 } from "../certificate-authority/certificate-authority-fns";
+import { TInternalCertificateAuthorityDALFactory } from "../certificate-authority/internal/internal-certificate-authority-dal";
 import { parseImportedCustomExtensions } from "../certificate-common/certificate-extension-fns";
 import {
   calculateFinalRenewBeforeDays,
@@ -90,6 +91,7 @@ import {
   getCertificateCredentials,
   normalizeThumbprint,
   parseCertificateBody,
+  resolveCertificateDeletionEligibility,
   revocationReasonToCrlCode,
   splitPemChain
 } from "./certificate-fns";
@@ -160,6 +162,7 @@ type TCertificateServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
+  internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -194,7 +197,8 @@ export const certificateServiceFactory = ({
   usageCounterDAL,
   keyStore,
   usageMeteringService,
-  hsmConnectorService
+  hsmConnectorService,
+  internalCertificateAuthorityDAL
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
@@ -439,6 +443,13 @@ export const certificateServiceFactory = ({
     };
   };
 
+  const $canRevokeThroughIssuer = async (caId: string) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId).catch(() => null);
+    if (!ca) return false;
+
+    return caSupportsCapability((ca.externalCa?.type as CaType) ?? CaType.INTERNAL, CaCapability.REVOKE_CERTIFICATES);
+  };
+
   /**
    * Delete certificate with serial number [serialNumber]
    */
@@ -498,6 +509,21 @@ export const certificateServiceFactory = ({
       );
     }
 
+    const deletionEligibility = resolveCertificateDeletionEligibility(cert);
+    if (!deletionEligibility) {
+      const certName = cert.friendlyName || cert.commonName || cert.serialNumber;
+      const expiresAt = cert.notAfter.toISOString();
+
+      let message = `Certificate '${certName}' is still valid until ${expiresAt} and cannot be deleted. Delete it once it has expired.`;
+      if (cert.status === CertStatus.REVOKED) {
+        message = `Certificate '${certName}' was revoked but does not expire until ${expiresAt}. Delete it once it has expired.`;
+      } else if (cert.caId && (await $canRevokeThroughIssuer(cert.caId))) {
+        message = `Certificate '${certName}' is still valid until ${expiresAt} and cannot be deleted. Revoke it to retire it early, then delete it once it has expired.`;
+      }
+
+      throw new BadRequestError({ message });
+    }
+
     const pkiSyncIdsHoldingCertificate = await findPkiSyncIdsHoldingCertificate(cert.id, { certificateSyncDAL });
 
     let deletedCert;
@@ -549,6 +575,7 @@ export const certificateServiceFactory = ({
 
     return {
       deletedCert,
+      deletionEligibility,
       applicationName: await $resolveApplicationName(deletedCert.applicationId)
     };
   };
@@ -718,16 +745,24 @@ export const certificateServiceFactory = ({
     }
 
     const revokedAt = new Date();
-    await certificateDAL.update(
-      {
-        id: cert.id
-      },
-      {
-        status: CertStatus.REVOKED,
-        revokedAt,
-        revocationReason: revocationReasonToCrlCode(revocationReason)
+    const revokedCertId = cert.id;
+    await certificateDAL.transaction(async (tx) => {
+      await certificateDAL.update(
+        {
+          id: revokedCertId
+        },
+        {
+          status: CertStatus.REVOKED,
+          revokedAt,
+          revocationReason: revocationReasonToCrlCode(revocationReason)
+        },
+        tx
+      );
+
+      if (!ca.externalCa?.id) {
+        await internalCertificateAuthorityDAL.update({ caId: ca.id }, { $incr: { ocspGeneration: 1 } }, tx);
       }
-    );
+    });
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
     usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);

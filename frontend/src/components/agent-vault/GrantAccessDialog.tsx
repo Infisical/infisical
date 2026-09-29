@@ -12,21 +12,20 @@ import {
   DialogTitle,
   Field,
   FieldContent,
+  FieldDescription,
   FieldLabel
 } from "@app/components/v3";
 import { actorIdsPayload } from "@app/helpers/agentVaultMembers";
 import { useDebounce } from "@app/hooks";
 import {
   useAddAgentVaultAccessBundleMembers,
-  useListAgentVaultMembers
+  useListAvailableAgentVaultAccessBundleMembers
 } from "@app/hooks/api/agentVault";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultProductActor } from "@app/hooks/api/agentVault/types";
 
 import { MEMBER_KIND, memberDisplayName, memberSubtitle } from "./MemberName";
 import { PendingInvitationBadge } from "./PendingInvitationBadge";
-
-const PICKER_LIMIT = 50;
 
 type Option = {
   actor: TAgentVaultProductActor;
@@ -54,8 +53,9 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
     }
   }, [isOpen]);
 
-  const { data, isFetching } = useListAgentVaultMembers(
-    { search: debouncedSearch.trim() || undefined, limit: PICKER_LIMIT },
+  const { data, isFetching } = useListAvailableAgentVaultAccessBundleMembers(
+    accessBundleId,
+    { search: debouncedSearch.trim() || undefined },
     isOpen
   );
 
@@ -68,6 +68,8 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
       })),
     [data]
   );
+
+  const isListTruncated = (data?.totalCount ?? 0) > options.length;
 
   const handleAdd = async () => {
     try {
@@ -121,19 +123,17 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
               multiple
               options={options}
               value={selected}
-              shouldFilter={false}
               isLoading={isFetching}
-              // Without this a chip already picked vanishes when the next search returns a page it is not on.
-              includeMissingSelectedOptions
-              onInputValueChange={setSearch}
+              onSearchChange={setSearch}
               getOptionValue={(option) => `${option.actor.type}:${option.actor.id}`}
               getOptionLabel={(option) => option.label}
-              getOptionKeywords={(option) => [option.subtitle]}
               placeholder="Pick users, groups, or machine identities..."
               searchPlaceholder="Pick users, groups, or machine identities..."
               searchAriaLabel="Search users, groups, and machine identities"
               emptyMessage={(inputValue) =>
-                inputValue ? "No matches." : "No members yet. Add them under Access Control first."
+                inputValue
+                  ? "No matches who do not already have this bundle."
+                  : "Everyone in Agent Vault already has this bundle."
               }
               clearAriaLabel="Clear all grantees"
               modal
@@ -168,6 +168,11 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
                 );
               }}
             />
+            {isListTruncated && (
+              <FieldDescription>
+                Search by name to find members that are not listed.
+              </FieldDescription>
+            )}
           </FieldContent>
         </Field>
 

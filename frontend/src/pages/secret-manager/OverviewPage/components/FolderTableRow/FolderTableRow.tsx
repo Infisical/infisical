@@ -25,7 +25,8 @@ import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActio
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
-  TABLE_ROW_ACTION_BUTTON_CLASS_NAME
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
 } from "../tableRowActionStyles";
 
 type Props = {
@@ -80,7 +81,11 @@ export const FolderTableRow = ({
 
   return (
     <TableRow
-      className={twMerge("group hover:z-10", pendingActionRowClass(pendingAction))}
+      className={twMerge(
+        "group hover:z-10",
+        isSelected && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+        pendingActionRowClass(pendingAction)
+      )}
       onClick={handleClick}
     >
       <TableCell

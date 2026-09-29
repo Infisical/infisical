@@ -2,6 +2,7 @@ import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf
 import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
+import { TGatewayPoolMembershipDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -30,9 +31,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { testConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
 import {
+  accountTypeSupportsSessionLogMasking,
   PamAccessStatus,
   PamAccessType,
   PamAccountType,
+  PamAccountWarning,
   PamHeartbeatStatus,
   PamProductRole,
   PamSessionStatus
@@ -72,7 +75,9 @@ import {
 } from "./pam-account-connection-test";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
+  ACCOUNT_TYPE_CONFIGS,
   applyForcedFields,
+  gatewaySupportsAccountType,
   getAccountAccessibilityIssues,
   hasRevealableCredential,
   isCredentialConfigured,
@@ -84,6 +89,7 @@ import {
   sanitizeCredentials,
   suppliesCredentialSecret,
   type TSshInternalMetadata,
+  type TSupportedAccountType,
   validateConnectionDetails,
   validateCredentials
 } from "./pam-account-schemas";
@@ -116,7 +122,8 @@ type TPamAccountServiceFactoryDep = {
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
+  gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "findHealthyGatewaysByPoolId">;
   gatewayV2Service: Pick<
     TGatewayV2ServiceFactory,
     "getPlatformConnectionDetailsByGatewayId" | "getPAMConnectionDetails"
@@ -206,6 +213,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     kmsService,
     gatewayV2Service,
     gatewayPoolService,
+    gatewayPoolMembershipDAL,
+    gatewayV2DAL,
     licenseService
   } = deps;
 
@@ -236,6 +245,68 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   }) => {
     const accessibilityIssues = getAccountAccessibilityIssues(a);
     return { isAccessible: accessibilityIssues.length === 0, accessibilityIssues };
+  };
+
+  // The gateway performs the masking, so a build predating built-in detection ignores the
+  // template's setting without reporting anything. Derived server-side because listing gateways is
+  // an org-admin permission, and a PAM member who can see the account must still see this.
+  const $resolveMaskingDegraded = async (
+    orgId: string,
+    accounts: {
+      accountType: string;
+      gatewayId?: string | null;
+      gatewayPoolId?: string | null;
+      templateGatewayId: string | null;
+      templateGatewayPoolId: string | null;
+      templateSettings: unknown;
+    }[]
+  ) => {
+    const candidates = accounts.map((a) => ({
+      enabled:
+        accountTypeSupportsSessionLogMasking(a.accountType as PamAccountType) &&
+        PamTemplateSettingsSchema.safeParse(a.templateSettings).data?.sessionLogMaskingBuiltInDetection === true,
+      // Mirrors the session launch path: each field falls back to the template independently,
+      // and a direct gateway wins over a pool.
+      gatewayId: a.gatewayId ?? a.templateGatewayId,
+      gatewayPoolId: a.gatewayPoolId ?? a.templateGatewayPoolId
+    }));
+
+    if (!candidates.some((c) => c.enabled)) return candidates.map(() => false);
+
+    const supportsMasking = (gateway: { capabilities?: unknown }) =>
+      (gateway.capabilities as { sessionLogMaskingBuiltInDetection?: boolean } | undefined)
+        ?.sessionLogMaskingBuiltInDetection === true;
+
+    // Only reachable members can serve a session, so an offline one lacking the capability must not
+    // make the account look degraded. Same reachability filter pool selection uses.
+    const poolIds = [
+      ...new Set(candidates.filter((c) => c.enabled && !c.gatewayId && c.gatewayPoolId).map((c) => c.gatewayPoolId!))
+    ];
+    const poolDegraded = new Map<string, boolean>();
+    await Promise.all(
+      poolIds.map(async (poolId) => {
+        const healthy = await gatewayPoolMembershipDAL.findHealthyGatewaysByPoolId(poolId);
+        poolDegraded.set(
+          poolId,
+          healthy.some((gateway) => !supportsMasking(gateway))
+        );
+      })
+    );
+
+    const directIds = [...new Set(candidates.filter((c) => c.enabled && c.gatewayId).map((c) => c.gatewayId!))];
+    const unsupported = new Set(
+      directIds.length
+        ? (await gatewayV2DAL.find({ orgId, $in: { id: directIds } }))
+            .filter((g) => !supportsMasking(g))
+            .map((g) => g.id)
+        : []
+    );
+
+    return candidates.map((c) => {
+      if (!c.enabled) return false;
+      if (c.gatewayId) return unsupported.has(c.gatewayId);
+      return poolDegraded.get(c.gatewayPoolId ?? "") ?? false;
+    });
   };
 
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
@@ -324,7 +395,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       )
     ]);
 
-    return accounts.map((a) => {
+    const maskingDegraded = await $resolveMaskingDegraded(ctx.actorOrgId, accounts);
+
+    return accounts.map((a, idx) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
       const { requiresApproval, requireReason, allowBreakGlass } = resolveAccessControls(a.templatePolicies);
       if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
@@ -348,6 +421,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         isAccessible: isAccessible && accessibilityIssues.length === 0,
         accessibilityIssues,
         isStale: a.isStale,
+        warnings: maskingDegraded[idx] ? [PamAccountWarning.SessionLogMaskingDegraded] : [],
         heartbeatStatus: (a.heartbeatStatus as PamHeartbeatStatus | null) ?? null,
         heartbeatEnabled: Boolean(a.heartbeatEnabled),
         requiresApproval,
@@ -543,9 +617,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       return true;
     }
 
-    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials, orgId);
-    if (!test) return false;
-
     const effectiveGatewayId = gateway.gatewayId ?? gateway.templateGatewayId;
     const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: effectiveGatewayId,
@@ -555,6 +626,17 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     if (!gatewayId) {
       throw new BadRequestError({ message: "A gateway must be attached to this account." });
     }
+
+    const attachedGateway = await gatewayV2DAL.findOne({ id: gatewayId });
+    const capabilities = attachedGateway?.capabilities as { supported_account_types?: string[] } | null;
+    if (!gatewaySupportsAccountType(accountType, capabilities?.supported_account_types)) {
+      throw new BadRequestError({
+        message: `Gateway '${attachedGateway?.name ?? gatewayId}' does not support ${ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType].name} accounts. Update the gateway, then try again.`
+      });
+    }
+
+    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials, orgId);
+    if (!test) return false;
 
     const result = await testConnectionWithGateway(
       test.host,

@@ -28,6 +28,8 @@ import { TRelayDALFactory } from "../relay/relay-dal";
 import { TResourceAwsAuthDALFactory } from "./aws-auth-dal";
 import { validateAllowlists, verifyStsAndExtractCaller } from "./aws-auth-fns";
 import { TGatewayProxyRegistry } from "./gateway-proxy-registry";
+import { TResourceGcpAuthDALFactory } from "./gcp-auth-dal";
+import { validateGcpAllowlists, verifyGcpTokenAndExtractCaller } from "./gcp-auth-fns";
 import { TResourceKubernetesAuthDALFactory } from "./kubernetes-auth-dal";
 import {
   assertKubernetesHostAllowed,
@@ -43,6 +45,7 @@ import {
   assertGatewayResource,
   assertKmipServerResource,
   assertRelayResource,
+  GcpAuthType,
   KubernetesTokenReviewMode,
   mintAgentVaultProxyJwt,
   mintGatewayJwt,
@@ -54,15 +57,18 @@ import {
   RESOURCE_TYPE_RELAY,
   ResourceAuthLoginFailureReason,
   ResourceAuthMethodType,
-  type ResourceRef
+  type ResourceRef,
+  type TSettableAuthMethod
 } from "./resource-auth-method-fns";
 import {
   TAuthMethodView,
   TAwsAuthMethodConfig,
   TEncryptedKubernetesSecrets,
+  TGcpAuthMethodConfig,
   TGetAuthMethodDTO,
   TKubernetesAuthMethodConfig,
   TLoginWithAwsDTO,
+  TLoginWithGcpDTO,
   TLoginWithKubernetesDTO,
   TLoginWithTokenDTO,
   TMintTokenDTO,
@@ -93,6 +99,7 @@ const $generateEnrollmentToken = (prefix: string) => {
 type TResourceAuthMethodServiceFactoryDep = {
   resourceAuthMethodDAL: TResourceAuthMethodDALFactory;
   resourceAwsAuthDAL: TResourceAwsAuthDALFactory;
+  resourceGcpAuthDAL: TResourceGcpAuthDALFactory;
   resourceKubernetesAuthDAL: TResourceKubernetesAuthDALFactory;
   resourceTokenAuthDAL: TResourceTokenAuthDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -157,6 +164,7 @@ type TBasicResource = { id: string; name: string; orgId: string | null; identity
 export const resourceAuthMethodServiceFactory = ({
   resourceAuthMethodDAL,
   resourceAwsAuthDAL,
+  resourceGcpAuthDAL,
   resourceKubernetesAuthDAL,
   resourceTokenAuthDAL,
   kmsService,
@@ -365,6 +373,25 @@ export const resourceAuthMethodServiceFactory = ({
           stsEndpoint: config.stsEndpoint,
           allowedPrincipalArns: config.allowedPrincipalArns,
           allowedAccountIds: config.allowedAccountIds,
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt
+        }
+      };
+    }
+
+    if (registry.method === ResourceAuthMethodType.Gcp) {
+      const config = await resourceGcpAuthDAL.findOne({ authMethodId: registry.id });
+      if (!config) {
+        throw new NotFoundError({ message: `GCP auth config missing for ${resource.type}` });
+      }
+      return {
+        method: ResourceAuthMethodType.Gcp,
+        config: {
+          id: config.id,
+          type: config.type === GcpAuthType.Iam ? GcpAuthType.Iam : GcpAuthType.Gce,
+          allowedServiceAccounts: config.allowedServiceAccounts,
+          allowedProjects: config.allowedProjects,
+          allowedZones: config.allowedZones,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt
         }
@@ -734,6 +761,7 @@ export const resourceAuthMethodServiceFactory = ({
       resource: ResourceRef;
       authMethod:
         | { method: typeof ResourceAuthMethodType.Aws; config: TAwsAuthMethodConfig }
+        | { method: typeof ResourceAuthMethodType.Gcp; config: TGcpAuthMethodConfig }
         | {
             method: typeof ResourceAuthMethodType.Kubernetes;
             config: TKubernetesAuthMethodConfig & TEncryptedKubernetesSecrets;
@@ -753,6 +781,18 @@ export const resourceAuthMethodServiceFactory = ({
           stsEndpoint: authMethod.config.stsEndpoint,
           allowedPrincipalArns: authMethod.config.allowedPrincipalArns,
           allowedAccountIds: authMethod.config.allowedAccountIds
+        },
+        tx
+      );
+    }
+    if (authMethod.method === ResourceAuthMethodType.Gcp) {
+      await resourceGcpAuthDAL.create(
+        {
+          authMethodId: registry.id,
+          type: authMethod.config.type,
+          allowedServiceAccounts: authMethod.config.allowedServiceAccounts,
+          allowedProjects: authMethod.config.allowedProjects,
+          allowedZones: authMethod.config.allowedZones
         },
         tx
       );
@@ -897,6 +937,13 @@ export const resourceAuthMethodServiceFactory = ({
         await resourceAwsAuthDAL.delete({ authMethodId: current.id }, tx);
       }
       if (
+        previousMethod === ResourceAuthMethodType.Gcp &&
+        authMethod.method !== ResourceAuthMethodType.Gcp &&
+        current
+      ) {
+        await resourceGcpAuthDAL.delete({ authMethodId: current.id }, tx);
+      }
+      if (
         previousMethod === ResourceAuthMethodType.Kubernetes &&
         authMethod.method !== ResourceAuthMethodType.Kubernetes &&
         current
@@ -934,6 +981,22 @@ export const resourceAuthMethodServiceFactory = ({
             },
             tx
           );
+        }
+      }
+
+      if (authMethod.method === ResourceAuthMethodType.Gcp) {
+        const gcpFields = {
+          type: authMethod.type,
+          allowedServiceAccounts: authMethod.allowedServiceAccounts,
+          allowedProjects: authMethod.allowedProjects,
+          allowedZones: authMethod.allowedZones
+        };
+
+        const existingGcp = await resourceGcpAuthDAL.findOne({ authMethodId: registryRow.id }, tx);
+        if (existingGcp) {
+          await resourceGcpAuthDAL.updateById(existingGcp.id, gcpFields, tx);
+        } else {
+          await resourceGcpAuthDAL.create({ authMethodId: registryRow.id, ...gcpFields }, tx);
         }
       }
 
@@ -1035,7 +1098,7 @@ export const resourceAuthMethodServiceFactory = ({
     }
     if (loaded.identityId) {
       throw new BadRequestError({
-        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS, Kubernetes, or Token auth instead.`
+        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS, GCP, Kubernetes, or Token auth instead.`
       });
     }
 
@@ -1052,7 +1115,7 @@ export const resourceAuthMethodServiceFactory = ({
     return {
       resourceName: loaded.name,
       orgId: loaded.orgId,
-      method: registry.method as "aws" | "kubernetes" | "token"
+      method: registry.method as TSettableAuthMethod
     };
   };
 
@@ -1124,6 +1187,74 @@ export const resourceAuthMethodServiceFactory = ({
       config,
       principalArn: Arn,
       accountId: Account
+    };
+  };
+
+  const loginWithGcp = async ({ resource, jwt }: TLoginWithGcpDTO) => {
+    const resourceLabel = RESOURCE_LABEL[resource.type];
+    const loaded = await $loadResource(resource);
+    if (!loaded || !loaded.orgId) {
+      throw new UnauthorizedError({ message: `Invalid ${resourceLabel.toLowerCase()} credentials` });
+    }
+    const resourceName = loaded.name;
+    const resourceOrgId = loaded.orgId;
+
+    const registry = await resourceAuthMethodDAL.findOne($registryFilter(resource));
+    if (!registry || registry.method !== ResourceAuthMethodType.Gcp) {
+      throw new UnauthorizedError({
+        message: `${resourceLabel} is not configured for GCP authentication`,
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.MethodMismatch,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
+      });
+    }
+
+    const config = await resourceGcpAuthDAL.findOne({ authMethodId: registry.id });
+    if (!config) {
+      throw new UnauthorizedError({
+        message: `${resourceLabel} is not configured for GCP authentication`,
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.ConfigMissing,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
+      });
+    }
+
+    const errorContext = { resourceId: resource.id, orgId: resourceOrgId, resourceName };
+    const type = config.type === GcpAuthType.Iam ? GcpAuthType.Iam : GcpAuthType.Gce;
+
+    const identityDetails = await verifyGcpTokenAndExtractCaller({
+      type,
+      jwt,
+      audience: resource.id,
+      errorContext
+    });
+
+    validateGcpAllowlists({
+      type,
+      identityDetails,
+      allowedServiceAccounts: config.allowedServiceAccounts,
+      allowedProjects: config.allowedProjects,
+      allowedZones: config.allowedZones,
+      errorContext
+    });
+
+    const refreshedTokenVersion = await $bumpTokenVersion(resource);
+
+    const accessToken = $mintJwt(resource, resourceOrgId, refreshedTokenVersion);
+
+    return {
+      accessToken,
+      resourceId: resource.id,
+      resourceName,
+      orgId: resourceOrgId,
+      configId: config.id,
+      serviceAccountEmail: identityDetails.email,
+      projectId: identityDetails.computeEngineDetails?.project_id,
+      zone: identityDetails.computeEngineDetails?.zone
     };
   };
 
@@ -1306,6 +1437,7 @@ export const resourceAuthMethodServiceFactory = ({
     mintToken,
     revokeAccess,
     loginWithAws,
+    loginWithGcp,
     loginWithKubernetes,
     loginWithToken
   };

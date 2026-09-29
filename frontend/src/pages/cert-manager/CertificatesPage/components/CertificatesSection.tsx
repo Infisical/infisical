@@ -217,6 +217,7 @@ export const CertificatesSection = ({
           title={`Are you sure you want to remove the certificate ${
             (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
           }?`}
+          subTitle="This action cannot be undone."
           onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() =>

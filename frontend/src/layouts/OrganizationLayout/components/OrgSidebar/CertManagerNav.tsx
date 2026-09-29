@@ -26,9 +26,11 @@ import {
 } from "@app/hooks/api/approvalPolicies";
 import { approvalRequestQuery } from "@app/hooks/api/approvalRequests";
 import { ApprovalRequestStatus } from "@app/hooks/api/approvalRequests/types";
+import { useListCertificateTemplates } from "@app/hooks/api/certificateTemplates/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
+import { useListWorkspacePkiSubscribers } from "@app/hooks/api/projects/queries";
 
 import { ProjectNavList } from "./ProjectNavLink";
 import type { NavItem, Submenu } from "./types";
@@ -61,6 +63,13 @@ export const CertManagerNav = ({
   const { data: syncs } = useListPkiSyncs(projectId, {
     enabled: isCertManagerAdmin && Boolean(projectId)
   });
+  const { data: legacyTemplates } = useListCertificateTemplates(
+    { projectId, limit: 1 },
+    { enabled: isCertManagerAdmin }
+  );
+  const { data: legacySubscribers } = useListWorkspacePkiSubscribers(
+    isCertManagerAdmin ? projectId : ""
+  );
   const { data: policies } = useQuery({
     ...approvalPolicyQuery.list({
       scope: ApprovalPolicyScope.Project,
@@ -94,7 +103,14 @@ export const CertManagerNav = ({
     Boolean(v1AlertsData?.alerts?.length);
   const hasLegacySyncs = Boolean(syncs?.some((s) => !s.applicationId));
   const hasLegacyPolicies = Boolean(policies?.some((p) => !p.scopeType));
-  const hasAnyLegacy = hasLegacyAlerts || hasLegacySyncs || hasLegacyPolicies;
+  const hasLegacyTemplates = Boolean(legacyTemplates?.totalCount);
+  const hasLegacySubscribers = Boolean(legacySubscribers?.length);
+  const hasAnyLegacy =
+    hasLegacyAlerts ||
+    hasLegacySyncs ||
+    hasLegacyPolicies ||
+    hasLegacyTemplates ||
+    hasLegacySubscribers;
 
   const overviewItems: NavItem[] = [
     { label: "Dashboard", icon: LayoutDashboard, pathSuffix: "overview" },
@@ -183,6 +199,19 @@ export const CertManagerNav = ({
       pathSuffix: "integrations",
       search: { selectedTab: "pki-syncs" },
       hidden: !hasLegacySyncs
+    },
+    {
+      label: "Certificate Templates",
+      icon: FileBadge,
+      pathSuffix: "certificate-templates",
+      hidden: !hasLegacyTemplates
+    },
+    {
+      label: "Subscribers",
+      icon: FileKey,
+      pathSuffix: "subscribers",
+      activeMatch: /\/subscribers\//,
+      hidden: !hasLegacySubscribers
     }
   ];
 

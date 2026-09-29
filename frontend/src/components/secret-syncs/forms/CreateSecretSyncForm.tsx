@@ -57,6 +57,8 @@ type Props = {
   onCancel: () => void;
   onDirtyChange: (isDirty: boolean) => void;
   initialFormData?: Partial<TSecretSyncForm>;
+  initialFormDataIsDirty?: boolean;
+  startOnDestination?: boolean;
 };
 
 type FormTab = {
@@ -150,7 +152,9 @@ export const CreateSecretSyncForm = ({
   onComplete,
   onCancel,
   onDirtyChange,
-  initialFormData
+  initialFormData,
+  initialFormDataIsDirty = Boolean(initialFormData),
+  startOnDestination = Boolean(initialFormData)
 }: Props) => {
   const createSecretSync = useCreateSecretSync();
   const { currentProject } = useProject();
@@ -160,8 +164,7 @@ export const CreateSecretSyncForm = ({
 
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // scoot: right now we only do this when creating a connection so we know index 1
-  const [selectedTabIndex, setSelectedTabIndex] = useState(initialFormData ? 1 : 0);
+  const [selectedTabIndex, setSelectedTabIndex] = useState(startOnDestination ? 1 : 0);
 
   const { syncOption } = useSecretSyncOption(destination);
 
@@ -185,7 +188,7 @@ export const CreateSecretSyncForm = ({
   });
 
   const { handleSubmit, trigger, control, watch, formState } = formMethods;
-  const hasUnsavedChanges = formState.isDirty || Boolean(initialFormData);
+  const hasUnsavedChanges = formState.isDirty || initialFormDataIsDirty;
   const {
     confirmDiscard,
     isDiscardDialogOpen,
