@@ -742,6 +742,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const updateAppConnection = async (
+    app: AppConnection,
     {
       connectionId,
       credentials,
@@ -801,6 +802,9 @@ export const appConnectionServiceFactory = ({
       );
     }
 
+    if (appConnection.app !== app)
+      throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
+
     if (gatewayId !== undefined && gatewayId !== appConnection.gatewayId) {
       ForbiddenError.from(orgPermission).throwUnlessCan(
         OrgPermissionGatewayActions.AttachGateways,
@@ -854,7 +858,7 @@ export const appConnectionServiceFactory = ({
 
     let updatedCredentials: undefined | TAppConnection["credentials"];
 
-    const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
+    const { method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
     let validationGatewayIdForUpdate: string | null | undefined = effectiveGatewayIdForUpdate;
 
     if (credentials) {

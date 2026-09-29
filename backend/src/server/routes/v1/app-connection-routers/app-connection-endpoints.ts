@@ -449,6 +449,7 @@ export const buildUpdateAppConnectionRoute = <I extends TAppConnectionInput>(
       const { connectionId } = req.params;
 
       const appConnection = await server.services.appConnection.updateAppConnection(
+        app,
         {
           name,
           credentials,

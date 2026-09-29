@@ -1363,6 +1363,52 @@ describe("Agent Vault V1 Router", async () => {
       await deleteAppConnection({ connectionId: orgConnectionId, authToken: jwtAuthToken });
     });
 
+    test("an update through another app's route is refused before it writes, like a delete", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/app-connections/aws", {
+        name: `av-wrong-app-own-${Date.now()}`,
+        method: "access-key",
+        credentials: { accessKeyId: "AKIAFAKEACCESSKEYID", secretAccessKey: "fake-secret-access-key" }
+      });
+      expect(created.statusCode, created.payload).toBe(200);
+      const ownAws = await testDb("app_connections").where({ id: created.json().appConnection.id }).first();
+      const orgAwsId = await createAwsAppConnection({
+        name: `av-wrong-app-org-${Date.now()}`,
+        authToken: jwtAuthToken
+      });
+      const orgAws = await testDb("app_connections").where({ id: orgAwsId }).first();
+
+      // Rows only, so a GitHub connection can sit where the create path would never put one.
+      const githubRow = (name: string, projectId: string | null, encryptedCredentials: Buffer) => ({
+        name,
+        app: AppConnection.GitHub,
+        method: "pat",
+        encryptedCredentials,
+        orgId: seedData1.organization.id,
+        projectId
+      });
+      const [inAgentVault] = (await testDb("app_connections")
+        .insert(githubRow(`av-wrong-app-gh-${Date.now()}`, ownAws.projectId, ownAws.encryptedCredentials))
+        .returning("*")) as { id: string }[];
+      const [inOrg] = (await testDb("app_connections")
+        .insert(githubRow(`org-wrong-app-gh-${Date.now()}`, null, orgAws.encryptedCredentials))
+        .returning("*")) as { id: string }[];
+
+      try {
+        const routes = [
+          [inAgentVault.id, `/api/v1/agent-vault/app-connections/aws/${inAgentVault.id}`],
+          [inOrg.id, `/api/v1/app-connections/aws/${inOrg.id}`]
+        ] as const;
+        for await (const [id, url] of routes) {
+          const res = await inject("PATCH", url, { description: "through the wrong route" });
+          expect([url, res.statusCode]).toEqual([url, 400]);
+          expect(res.json().message).toBe(`App Connection with ID ${id} is not for App "aws"`);
+          expect((await testDb("app_connections").where({ id }).first()).description).toBeNull();
+        }
+      } finally {
+        await testDb("app_connections").whereIn("id", [inAgentVault.id, inOrg.id, ownAws.id, orgAwsId]).delete();
+      }
+    });
+
     test("only AWS is offered under Agent Vault", async () => {
       const res = await inject("GET", `/api/v1/app-connections/options?projectType=${ProjectType.AgentVault}`);
       expect(res.statusCode).toBe(200);
