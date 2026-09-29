@@ -45,7 +45,7 @@ import {
   CodeSigningRequestData,
   TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
-import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
+import { useListPkiApplicationsByIds } from "@app/hooks/api/pkiApplications";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 type StatusFilter = "pending" | "approved" | "rejected";
@@ -189,15 +189,12 @@ export const RequestsPage = () => {
     return Array.from(ids);
   }, [requests]);
 
-  const { data: appsResponse } = useListPkiApplications(
-    { applicationIds: referencedAppIds, limit: 100 },
-    { enabled: referencedAppIds.length > 0 }
-  );
+  const referencedApps = useListPkiApplicationsByIds(referencedAppIds);
   const appById = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
-    (appsResponse?.applications ?? []).forEach((a) => map.set(a.id, { id: a.id, name: a.name }));
+    referencedApps.forEach((a) => map.set(a.id, { id: a.id, name: a.name }));
     return map;
-  }, [appsResponse]);
+  }, [referencedApps]);
 
   const filtered = useMemo(() => {
     const norm = debouncedSearch.trim().toLowerCase();

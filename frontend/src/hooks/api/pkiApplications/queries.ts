@@ -1,4 +1,4 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import {
@@ -11,6 +11,7 @@ import {
   TListPkiApplicationsResponse,
   TPkiApplication,
   TPkiApplicationEnrollmentState,
+  TPkiApplicationListItem,
   TPkiApplicationMember,
   TPkiApplicationPermissionSet,
   TPkiApplicationProfile
@@ -34,6 +35,41 @@ export const pkiApplicationKeys = {
 
 const BASE_URL = "/api/v1/cert-manager/applications";
 
+const MAX_APPLICATION_IDS_PER_REQUEST = 100;
+
+const fetchPkiApplications = async (params?: TListPkiApplicationsParams) => {
+  const { applicationIds, ...rest } = params ?? {};
+  const { data } = await apiRequest.get<TListPkiApplicationsResponse>(BASE_URL, {
+    params: {
+      ...rest,
+      ...(applicationIds?.length ? { applicationIds: applicationIds.join(",") } : {})
+    }
+  });
+  return data;
+};
+
+const combineApplicationBatches = (
+  results: { data?: TListPkiApplicationsResponse }[]
+): TPkiApplicationListItem[] => results.flatMap((result) => result.data?.applications ?? []);
+
+export const useListPkiApplicationsByIds = (applicationIds: string[]) => {
+  const batches: string[][] = [];
+  for (let i = 0; i < applicationIds.length; i += MAX_APPLICATION_IDS_PER_REQUEST) {
+    batches.push(applicationIds.slice(i, i + MAX_APPLICATION_IDS_PER_REQUEST));
+  }
+
+  return useQueries({
+    queries: batches.map((batch) => {
+      const params = { applicationIds: batch, limit: MAX_APPLICATION_IDS_PER_REQUEST };
+      return {
+        queryKey: pkiApplicationKeys.list(params),
+        queryFn: () => fetchPkiApplications(params)
+      };
+    }),
+    combine: combineApplicationBatches
+  });
+};
+
 export const useListPkiApplications = (
   params?: TListPkiApplicationsParams,
   options?: Omit<
@@ -48,16 +84,7 @@ export const useListPkiApplications = (
 ) =>
   useQuery({
     queryKey: pkiApplicationKeys.list(params),
-    queryFn: async () => {
-      const { applicationIds, ...rest } = params ?? {};
-      const { data } = await apiRequest.get<TListPkiApplicationsResponse>(BASE_URL, {
-        params: {
-          ...rest,
-          ...(applicationIds?.length ? { applicationIds: applicationIds.join(",") } : {})
-        }
-      });
-      return data;
-    },
+    queryFn: () => fetchPkiApplications(params),
     placeholderData: (previousData) => previousData,
     ...options
   });
