@@ -1,4 +1,4 @@
-import { sessionLogRecordKey } from "@app/hooks/api/agentVault/sessionLogDecrypt";
+import { sessionLogRecordKey } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultSessionLogDrop,
   TAgentVaultSessionLogGap,
