@@ -6,24 +6,28 @@ import { ActionProjectType, TableName } from "@app/db/schemas";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { TAlertServiceFactory } from "../alert/alert-service";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TReminderRecipientDALFactory } from "../reminder-recipients/reminder-recipient-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TReminderDALFactory } from "./reminder-dal";
+import { emitSecretReminderDue, SECRET_REMINDER_RESOURCE_TYPE } from "./reminder-events";
+import { advanceReminderDate, getReminderDueWindow, toUtcDateString } from "./reminder-fns";
 import { TBatchCreateReminderDTO, TCreateReminderDTO, TReminderServiceFactory } from "./reminder-types";
+
+const ORPHAN_REAP_BATCH_SIZE = 500;
+const MAX_ORPHAN_REAP_BATCHES = 20;
 
 type TReminderServiceFactoryDep = {
   reminderDAL: TReminderDALFactory;
   reminderRecipientDAL: TReminderRecipientDALFactory;
-  smtpService: TSmtpService;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  eventEmitter: TEventEmitter;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResources">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "findOneWithTags">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
@@ -32,8 +36,8 @@ type TReminderServiceFactoryDep = {
 export const reminderServiceFactory = ({
   reminderDAL,
   reminderRecipientDAL,
-  smtpService,
-  projectMembershipDAL,
+  eventEmitter,
+  alertService,
   permissionService,
   secretV2BridgeDAL,
   folderDAL
@@ -230,84 +234,62 @@ export const reminderServiceFactory = ({
     return reminder;
   };
 
-  const sendDailyReminders: TReminderServiceFactory["sendDailyReminders"] = async () => {
-    const appCfg = getConfig();
-    const remindersToSend = await reminderDAL.findSecretDailyReminders();
+  const dispatchDueReminders: TReminderServiceFactory["dispatchDueReminders"] = async () => {
+    const now = new Date();
+    const dueReminders = await reminderDAL.findDueReminders(getReminderDueWindow(now));
 
-    // Resolve the human-readable folder path for each reminder's secret, batched per project.
-    const folderIdsByProjectId = new Map<string, Set<string>>();
-    for (const reminder of remindersToSend) {
-      if (reminder.projectId && reminder.folderId) {
-        const folderIds = folderIdsByProjectId.get(reminder.projectId) ?? new Set<string>();
-        folderIds.add(reminder.folderId);
-        folderIdsByProjectId.set(reminder.projectId, folderIds);
-      }
-    }
-
-    const folderPathById = new Map<string, string>();
-    for (const [projectId, folderIdSet] of folderIdsByProjectId) {
-      const folderIds = [...folderIdSet];
-      // Resolving folder paths only enriches the email. A failure here must not abort the whole
-      // daily reminder batch, so degrade gracefully and let the email send without the path/link.
+    for (const reminder of dueReminders) {
+      const { secretId } = reminder;
+      // eslint-disable-next-line no-continue
+      if (!secretId) continue;
       try {
-        const folders = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
-        folders.forEach((folder, idx) => {
-          if (folder?.path) folderPathById.set(folderIds[idx], folder.path);
-        });
-      } catch (error) {
-        logger.error(error, `Failed to resolve secret paths for reminder emails [projectId=${projectId}]`);
-      }
-    }
-
-    for (const reminder of remindersToSend) {
-      try {
+        // Delivery happens in the alert module after commit, so nothing slow runs in this transaction.
         await reminderDAL.transaction(async (tx) => {
-          const recipients: string[] = reminder.recipients
-            .map((r) => r.email)
-            .filter((email): email is string => Boolean(email));
-          if (recipients.length === 0) {
-            const members = await projectMembershipDAL.findAllProjectMembers(reminder.projectId);
-            recipients.push(...members.map((m) => m.user.email).filter((email): email is string => Boolean(email)));
-          }
-
-          const secretPath = reminder.folderId ? folderPathById.get(reminder.folderId) : undefined;
-          let secretUrl: string | undefined;
-          if (reminder.organizationId && reminder.projectId && reminder.envSlug) {
-            const query = new URLSearchParams({
-              secretPath: secretPath || "/",
-              environments: JSON.stringify([reminder.envSlug])
-            });
-            if (reminder.secretKey) query.set("search", reminder.secretKey);
-            secretUrl = `${appCfg.SITE_URL}/organizations/${reminder.organizationId}/projects/secret-management/${reminder.projectId}/overview?${query.toString()}`;
-          }
-
-          await smtpService.sendMail({
-            template: SmtpTemplates.SecretReminder,
-            subjectLine: "Infisical secret reminder",
-            recipients,
-            substitutions: {
-              reminderNote: reminder.message || "",
-              projectName: reminder.projectName || "",
-              organizationName: reminder.organizationName || "",
-              secretKey: reminder.secretKey || "",
-              environment: reminder.envName || reminder.envSlug || "",
-              secretPath: secretPath || "",
-              secretUrl: secretUrl || ""
-            }
-          });
+          await emitSecretReminderDue(
+            eventEmitter,
+            {
+              orgId: reminder.orgId,
+              projectId: reminder.projectId,
+              secretId,
+              note: reminder.message,
+              repeatDays: reminder.repeatDays,
+              occurrenceDate: toUtcDateString(reminder.nextReminderDate)
+            },
+            tx
+          );
           if (reminder.repeatDays) {
-            await reminderDAL.updateById(reminder.id, { nextReminderDate: $addDays(reminder.repeatDays) }, tx);
+            await reminderDAL.updateById(
+              reminder.id,
+              { nextReminderDate: advanceReminderDate(reminder.nextReminderDate, reminder.repeatDays, now) },
+              tx
+            );
           } else {
             await reminderDAL.deleteById(reminder.id, tx);
           }
         });
       } catch (error) {
-        logger.error(
-          error,
-          `Failed to send reminder to recipients ${reminder.recipients.map((r) => r.email).join(", ")}`
-        );
+        logger.error(error, `Failed to dispatch secret reminder [reminderId=${reminder.id}] [secretId=${secretId}]`);
       }
     }
+  };
+
+  const reapOrphanedReminderAlerts: TReminderServiceFactory["reapOrphanedReminderAlerts"] = async () => {
+    for (let batch = 0; batch < MAX_ORPHAN_REAP_BATCHES; batch += 1) {
+      // eslint-disable-next-line no-await-in-loop -- each batch is its own short transaction
+      const orphanedSecretIds = await reminderDAL.findOrphanedReminderAlertResourceIds({
+        resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+        limit: ORPHAN_REAP_BATCH_SIZE
+      });
+      if (orphanedSecretIds.length === 0) return;
+
+      // eslint-disable-next-line no-await-in-loop
+      await alertService.deleteAlertsForDeletedResources({
+        resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+        resourceIds: orphanedSecretIds
+      });
+      if (orphanedSecretIds.length < ORPHAN_REAP_BATCH_SIZE) return;
+    }
+    logger.warn(`Stopped reaping orphaned secret reminder alerts after ${MAX_ORPHAN_REAP_BATCHES} batches`);
   };
 
   const deleteReminder: TReminderServiceFactory["deleteReminder"] = async ({
@@ -458,7 +440,8 @@ export const reminderServiceFactory = ({
   return {
     createReminder,
     getReminder,
-    sendDailyReminders,
+    dispatchDueReminders,
+    reapOrphanedReminderAlerts,
     deleteReminder,
     deleteReminderBySecretId,
     batchCreateReminders,

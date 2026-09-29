@@ -1,15 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  TableName,
-  TOrganizations,
-  TProjectEnvironments,
-  TProjects,
-  TSecretFolders,
-  TSecretsV2,
-  TUsers
-} from "@app/db/schemas";
+import { TableName, TProjectEnvironments, TProjects, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
 import { RemindersSchema } from "@app/db/schemas/reminders";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
@@ -36,64 +28,55 @@ export const reminderDALFactory = (db: TDbClient) => {
     };
   };
 
-  const findSecretDailyReminders = async (tx?: Knex) => {
-    const { startOfDay, endOfDay } = getTodayDateRange();
-
-    const rawReminders = await (tx || db.replicaNode())(TableName.Reminder)
-      .whereBetween("nextReminderDate", [startOfDay, endOfDay])
-      .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
-      .leftJoin<TUsers>(TableName.Users, `${TableName.ReminderRecipient}.userId`, `${TableName.Users}.id`)
-      .leftJoin<TSecretsV2>(TableName.SecretV2, `${TableName.Reminder}.secretId`, `${TableName.SecretV2}.id`)
-      .leftJoin<TSecretFolders>(
-        TableName.SecretFolder,
-        `${TableName.SecretV2}.folderId`,
-        `${TableName.SecretFolder}.id`
+  // Due reminders whose secret is still live. Soft-deleted environments and projects keep their
+  // reminders so a restore brings them back, but they do not fire in the meantime.
+  const findDueReminders = async ({ from, to }: { from: Date; to: Date }, tx?: Knex) => {
+    const rows = await (tx || db.replicaNode())(TableName.Reminder)
+      .whereBetween(`${TableName.Reminder}.nextReminderDate`, [from, to])
+      .join<TSecretsV2>(TableName.SecretV2, `${TableName.Reminder}.secretId`, `${TableName.SecretV2}.id`)
+      .join<TSecretFolders>(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join<TProjectEnvironments>(
+        TableName.Environment,
+        `${TableName.SecretFolder}.envId`,
+        `${TableName.Environment}.id`
       )
-      .leftJoin<TProjectEnvironments>(TableName.Environment, function joinActiveEnvForFolder() {
-        this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
-          `${TableName.Environment}.deleteAfter`
-        );
-      })
-      .leftJoin<TProjects>(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .join<TProjects>(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
       .whereNull(`${TableName.Project}.deleteAfter`)
-      .leftJoin<TOrganizations>(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
+      .orderBy(`${TableName.Reminder}.nextReminderDate`, "asc")
       .select(selectAllTableCols(TableName.Reminder))
-      .select(db.ref("email").withSchema(TableName.Users))
-      .select(db.ref("name").withSchema(TableName.Project).as("projectName"))
       .select(db.ref("id").withSchema(TableName.Project).as("projectId"))
-      .select(db.ref("name").withSchema(TableName.Organization).as("organizationName"))
-      .select(db.ref("id").withSchema(TableName.Organization).as("organizationId"))
-      .select(db.ref("key").withSchema(TableName.SecretV2).as("secretKey"))
-      .select(db.ref("folderId").withSchema(TableName.SecretV2).as("secretFolderId"))
-      .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
-      .select(db.ref("name").withSchema(TableName.Environment).as("envName"));
+      .select(db.ref("orgId").withSchema(TableName.Project).as("orgId"));
 
-    const reminders = sqlNestRelationships({
-      data: rawReminders,
-      key: "id",
-      parentMapper: (el) => ({
-        _id: el.id,
-        ...RemindersSchema.parse(el),
-        projectName: el.projectName,
-        projectId: el.projectId,
-        organizationName: el.organizationName,
-        organizationId: el.organizationId,
-        secretKey: el.secretKey,
-        folderId: el.secretFolderId,
-        envSlug: el.envSlug,
-        envName: el.envName
-      }),
-      childrenMapper: [
-        {
-          key: "email",
-          label: "recipients" as const,
-          mapper: ({ email }) => ({
-            email
-          })
-        }
-      ]
-    });
-    return reminders;
+    return rows.map((row) => ({
+      ...RemindersSchema.parse(row),
+      projectId: (row as unknown as { projectId: string }).projectId,
+      orgId: (row as unknown as { orgId: string }).orgId
+    }));
+  };
+
+  // Reminder alerts whose secret row is gone. Alerts have no foreign key to secrets, so this is how
+  // every secret delete path (including folder and environment cascades) gets cleaned up.
+  const findOrphanedReminderAlertResourceIds = async (
+    { resourceType, limit }: { resourceType: string; limit: number },
+    tx?: Knex
+  ): Promise<string[]> => {
+    const rows = (await (tx || db.replicaNode())(TableName.Alert)
+      .where(`${TableName.Alert}.resourceType`, resourceType)
+      .whereNotNull(`${TableName.Alert}.resourceId`)
+      .whereNotExists((qb) => {
+        void qb
+          .select(db.raw("1"))
+          .from(TableName.SecretV2)
+          // The CASE keeps a non-uuid resourceId from failing the cast for the whole query.
+          .whereRaw(
+            `"${TableName.SecretV2}"."id" = CASE WHEN "${TableName.Alert}"."resourceId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN "${TableName.Alert}"."resourceId"::uuid END`
+          );
+      })
+      .limit(limit)
+      .select(`${TableName.Alert}.resourceId`)) as { resourceId: string }[];
+
+    return rows.map((row) => row.resourceId);
   };
 
   const findUpcomingReminders = async (daysAhead: number = 7, tx?: Knex) => {
@@ -208,7 +191,8 @@ export const reminderDALFactory = (db: TDbClient) => {
 
   return {
     ...reminderOrm,
-    findSecretDailyReminders,
+    findDueReminders,
+    findOrphanedReminderAlertResourceIds,
     findUpcomingReminders,
     findSecretReminder,
     findSecretReminders,

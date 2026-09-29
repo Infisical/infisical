@@ -245,6 +245,8 @@ import { alertRecipientResolverFactory } from "@app/services/alert/alert-recipie
 import { alertServiceFactory } from "@app/services/alert/alert-service";
 import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
 import { identityCredentialAlertProviderFactory } from "@app/services/alert/providers/identity-credential-alert-provider";
+import { secretReminderAlertDALFactory } from "@app/services/alert/providers/secret-reminder-alert-dal";
+import { secretReminderAlertProviderFactory } from "@app/services/alert/providers/secret-reminder-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -1076,6 +1078,13 @@ export const registerRoutes = async (
       permissionService
     })
   );
+  alertProviderRegistry.register(
+    secretReminderAlertProviderFactory({
+      secretReminderAlertDAL: secretReminderAlertDALFactory(db),
+      folderDAL,
+      permissionService
+    })
+  );
   const alertRecipientResolver = alertRecipientResolverFactory({
     userDAL,
     userGroupMembershipDAL,
@@ -1523,8 +1532,8 @@ export const registerRoutes = async (
   const reminderService = reminderServiceFactory({
     reminderDAL,
     reminderRecipientDAL,
-    smtpService,
-    projectMembershipDAL,
+    eventEmitter: eventOutboxService,
+    alertService,
     permissionService,
     secretV2BridgeDAL,
     folderDAL

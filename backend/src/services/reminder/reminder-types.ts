@@ -58,7 +58,9 @@ export interface TReminderServiceFactory {
     actorAuthMethod: ActorAuthMethod;
   }) => Promise<(TReminder & { recipients: string[] }) | null>;
 
-  sendDailyReminders: () => Promise<void>;
+  dispatchDueReminders: () => Promise<void>;
+
+  reapOrphanedReminderAlerts: () => Promise<void>;
 
   deleteReminder: ({
     actor,
