@@ -277,14 +277,14 @@ describe("getStaleCertificateFiles", () => {
     ).toEqual([]);
   });
 
-  test("returns nothing when the previous host was not recorded", () => {
+  test("treats a record with no saved host as written to the current host", () => {
     expect(
       getStaleCertificateFiles({
         currentHost: "host-a",
-        previousFiles: ["/certs/app.jks"],
-        writtenPaths: ["/certs/other.jks"],
-        deliveredPaths: new Set(["/certs/other.jks"])
+        previousFiles: ["/certs/app.pem", "/certs/app.key"],
+        writtenPaths: ["/certs/app.jks"],
+        deliveredPaths: new Set(["/certs/app.jks"])
       })
-    ).toEqual([]);
+    ).toEqual(["/certs/app.pem", "/certs/app.key"]);
   });
 });
