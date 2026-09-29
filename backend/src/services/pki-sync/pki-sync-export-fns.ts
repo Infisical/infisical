@@ -14,6 +14,9 @@ export enum PkiSyncExportFormat {
 export const isKeystoreExportFormat = (format: unknown): boolean =>
   format === PkiSyncExportFormat.Pkcs12 || format === PkiSyncExportFormat.Jks;
 
+export const buildFileCollisionMessage = (filePath: string) =>
+  `Another certificate in this sync already writes "${filePath}". Change the certificate name schema so each certificate gets its own file names.`;
+
 export const KEYSTORE_PASSWORD_REQUIRED_MESSAGE = "A password is required when the export format is PKCS#12 or JKS";
 
 export const JKS_KEYSTORE_SUFFIX = ".jks";

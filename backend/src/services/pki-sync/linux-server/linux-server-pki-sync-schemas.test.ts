@@ -1,4 +1,8 @@
-import { LinuxServerPkiSyncConfigSchema, LinuxServerPkiSyncOptionsSchema } from "./linux-server-pki-sync-schemas";
+import {
+  LinuxServerPkiSyncConfigSchema,
+  LinuxServerPkiSyncCredentialsSchema,
+  LinuxServerPkiSyncOptionsSchema
+} from "./linux-server-pki-sync-schemas";
 
 const parseName = (certificateNameSchema: string) =>
   LinuxServerPkiSyncOptionsSchema.safeParse({ certificateNameSchema }).success;
@@ -120,5 +124,21 @@ describe("Linux Server target host validation", () => {
   test("rejects an empty or whitespace-only host", () => {
     expect(parseHost("")).toBe(false);
     expect(parseHost("   ")).toBe(false);
+  });
+});
+
+describe("Linux Server export password validation", () => {
+  const parsePassword = (exportPassword: string) =>
+    LinuxServerPkiSyncCredentialsSchema.safeParse({ exportPassword }).success;
+
+  test("rejects a blank password", () => {
+    expect(parsePassword("")).toBe(false);
+    expect(parsePassword("   ")).toBe(false);
+  });
+
+  test("keeps surrounding spaces in a real password", () => {
+    expect(LinuxServerPkiSyncCredentialsSchema.parse({ exportPassword: " change it " }).exportPassword).toBe(
+      " change it "
+    );
   });
 });

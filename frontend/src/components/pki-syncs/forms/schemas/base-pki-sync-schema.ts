@@ -12,6 +12,14 @@ const KEYSTORE_ALIAS_CHARACTERS =
 export const KEYSTORE_PASSWORD_REQUIRED_MESSAGE =
   "A password is required for PKCS#12 and JKS exports";
 
+export const ExportPasswordSchema = z
+  .string()
+  .min(1)
+  .max(256, "The export password must be at most 256 characters")
+  .refine((password) => password.trim().length > 0, {
+    message: "The export password cannot be blank"
+  });
+
 export const KeystoreAliasSchema = z
   .string()
   .trim()

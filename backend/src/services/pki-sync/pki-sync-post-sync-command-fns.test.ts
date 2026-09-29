@@ -154,10 +154,10 @@ describe("renderHostCommandContext", () => {
   });
 
   test("renders exportPassword and its older pkcs12Password name to the same value", () => {
-    const withPassword = { ...context, pkcs12Password: "s3cret" };
+    const withPassword = { ...context, pkcs12Password: "placeholder" };
     expect(
       renderHostCommandContext("echo {{exportPassword}} {{pkcs12Password}}", withPassword, toPosixShellLiteral)
-    ).toBe("echo 's3cret' 's3cret'");
+    ).toBe("echo 'placeholder' 'placeholder'");
   });
 
   test("renders an absent optional variable as an empty literal rather than the placeholder", () => {

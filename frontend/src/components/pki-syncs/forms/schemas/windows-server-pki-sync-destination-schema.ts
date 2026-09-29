@@ -9,6 +9,7 @@ import {
 
 import {
   BasePkiSyncSchema,
+  ExportPasswordSchema,
   HostCommandSchema,
   KeystoreAliasSchema,
   PkiSyncConnectionSchema,
@@ -92,7 +93,7 @@ export const WindowsServerPkiSyncDestinationSchema = BasePkiSyncSchema(
     }),
     credentials: z
       .object({
-        exportPassword: z.string().min(1).optional()
+        exportPassword: ExportPasswordSchema.optional()
       })
       .optional()
   })

@@ -27,6 +27,7 @@ import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-s
 
 import { PkiSyncError } from "../pki-sync-errors";
 import {
+  buildFileCollisionMessage,
   exportCertificateForSync,
   isKeystoreExportFormat,
   PemCertificateExtension,
@@ -505,6 +506,13 @@ export const linuxServerPkiSyncFactory = ({
               password: exportPassword,
               alias: options.keystoreAlias || baseName
             });
+
+            const collidingPath = files
+              .map((file) => path.posix.join(config.destinationPath, `${baseName}${file.suffix}`))
+              .find((filePath) => deliveredPaths.has(filePath));
+            if (collidingPath) {
+              throw new PkiSyncError({ message: buildFileCollisionMessage(collidingPath) });
+            }
 
             const writtenPaths: string[] = [];
             for (const file of files) {

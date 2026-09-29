@@ -13,6 +13,7 @@ import {
 } from "@app/services/pki-sync/pki-sync-export-fns";
 import {
   BaseHealthCheckTestSchema,
+  ExportPasswordSchema,
   HostCommandSchema,
   IncludeTruststoreSchema,
   KeystoreAliasSchema,
@@ -130,7 +131,7 @@ export const WindowsServerPkiSyncOptionsSchema = z.object({
 // Sync-level secrets (the PKCS#12 / JKS export password) accepted on create/update. Stored encrypted in
 // pki_syncs.encryptedCredentials and never returned.
 export const WindowsServerPkiSyncCredentialsSchema = z.object({
-  exportPassword: z.string().min(1).optional()
+  exportPassword: ExportPasswordSchema.optional()
 });
 
 export const WindowsServerPkiSyncSchema = PkiSyncSchema.extend({

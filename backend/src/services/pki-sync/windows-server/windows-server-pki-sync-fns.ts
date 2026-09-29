@@ -18,6 +18,7 @@ import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-s
 
 import { PkiSyncError } from "../pki-sync-errors";
 import {
+  buildFileCollisionMessage,
   exportCertificateForSync,
   isKeystoreExportFormat,
   PemCertificateExtension,
@@ -388,6 +389,13 @@ export const windowsServerPkiSyncFactory = ({
           const fullPath = joinWindowsPath(config.destinationPath, `${baseName}${file.suffix}`);
           files.push({ path: fullPath, contentBase64: file.content.toString("base64") });
           paths.push(fullPath);
+        }
+
+        // Windows paths are case-insensitive, so compare them folded.
+        const deliveredLower = new Set([...deliveredPaths].map((deliveredPath) => deliveredPath.toLowerCase()));
+        const collidingPath = paths.find((deliveredPath) => deliveredLower.has(deliveredPath.toLowerCase()));
+        if (collidingPath) {
+          throw new PkiSyncError({ message: buildFileCollisionMessage(collidingPath) });
         }
 
         await executeWinRMGatewayOperation(
