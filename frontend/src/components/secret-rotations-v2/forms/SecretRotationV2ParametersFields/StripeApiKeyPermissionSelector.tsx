@@ -56,12 +56,13 @@ const toPermissions = (resource: TStripeApiKeyPermissionResource, level: AccessL
   );
 };
 
-// A bulk level a resource cannot take: Write falls back to Read, so "Set all Write" still grants
-// every read-only resource, and Read leaves write-only resources as they are.
+// A bulk level a resource cannot take falls to the nearest level below it, never above: "Set all
+// Write" still grants every read-only resource, and "Set all Read" clears a write-only resource
+// rather than leaving it able to write.
 const resolveBulkLevel = (resource: TStripeApiKeyPermissionResource, level: AccessLevel) => {
   if (getLevels(resource).includes(level)) return level;
   if (level === AccessLevel.Write) return AccessLevel.Read;
-  return null;
+  return AccessLevel.None;
 };
 
 const matchesQuery = (
@@ -170,10 +171,7 @@ export const StripeApiKeyPermissionSelector = ({ groups, value, onChange, isLoad
   const applyToVisible = (level: AccessLevel) => {
     const patch = new Map<TStripeApiKeyPermissionResource, AccessLevel>();
     visibleGroups.forEach(({ rows }) =>
-      rows.forEach((resource) => {
-        const resolved = resolveBulkLevel(resource, level);
-        if (resolved) patch.set(resource, resolved);
-      })
+      rows.forEach((resource) => patch.set(resource, resolveBulkLevel(resource, level)))
     );
     setLevels(patch);
   };
