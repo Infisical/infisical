@@ -70,9 +70,7 @@ copy drifts on its own.
   fake destination. Read `testDb` only when the API cannot show the thing under test (eg an alert
   orphaned by a cascade), and say why in a comment.
 - **Wait with `pollUntil`** (`poll.ts`) for anything asynchronous, never a fixed sleep.
-- **Run background jobs on demand rather than faking the clock.** Postgres `NOW()`, Redis TTLs and
-  JWT expiry all read different clocks, so `vi.setSystemTime` cannot move them together. Give the
-  job an explicit `now` and reach it through a pass-through wrapper in `e2e-test/fakes/` (eg
+- **Run background jobs on demand** through a pass-through wrapper in `e2e-test/fakes/` (eg
   `reminder-queue.ts` and `event-outbox-queue.ts`, driven by `runDailyReminders` in `reminders.ts`).
 
 #### Faking a third-party provider
