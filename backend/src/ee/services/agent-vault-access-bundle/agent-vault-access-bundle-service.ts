@@ -45,6 +45,7 @@ import {
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import {
   AGENT_VAULT_MAX_VARIABLES,
+  findStoredVariableIds,
   findVariableKeys,
   toStoredVariableReferences,
   toVariableReference
@@ -447,34 +448,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     substitutionId?: string;
   };
 
-  const credentialReferenceTexts = (
-    credential: TAgentVaultCredentialUpdate
-  ): (TReferencingText & TReferenceTarget)[] => {
+  const credentialReferenceTexts = (credential: TAgentVaultCredentialUpdate): TReferencingText[] => {
     switch (credential.type) {
       case AgentVaultCredentialType.Bearer:
-        return credential.value === undefined
-          ? []
-          : [{ label: "The token", text: credential.value, field: AgentVaultVariableReferenceField.CredentialValue }];
+        return credential.value === undefined ? [] : [{ label: "The token", text: credential.value }];
       case AgentVaultCredentialType.Basic:
         return [
-          ...(credential.username === undefined
-            ? []
-            : [
-                {
-                  label: "The username",
-                  text: credential.username,
-                  field: AgentVaultVariableReferenceField.CredentialUsername
-                }
-              ]),
-          ...(credential.password === undefined
-            ? []
-            : [
-                {
-                  label: "The password",
-                  text: credential.password,
-                  field: AgentVaultVariableReferenceField.CredentialValue
-                }
-              ])
+          ...(credential.username === undefined ? [] : [{ label: "The username", text: credential.username }]),
+          ...(credential.password === undefined ? [] : [{ label: "The password", text: credential.password }])
         ];
       default:
         return [];
@@ -482,8 +463,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   // A key the bundle does not define would reach the host as literal braces, so it fails the save instead.
-  const resolveVariableKeys = async (accessBundleId: string, texts: TReferencingText[]) => {
-    if (!texts.some(({ text }) => findVariableKeys(text).length)) return new Map<string, string>();
+  // Stored text that a save keeps rather than writes needs the lookup only for the ids it holds.
+  const loadBundleVariables = async (accessBundleId: string, texts: TReferencingText[], storedTexts: string[] = []) => {
+    if (
+      !texts.some(({ text }) => findVariableKeys(text).length) &&
+      !storedTexts.some((text) => findStoredVariableIds(text).length)
+    ) {
+      return { idOfKey: new Map<string, string>(), variableIds: new Set<string>() };
+    }
 
     const variables = await agentVaultVariableDAL.findKeysByAccessBundleId(accessBundleId);
     const idOfKey = new Map(variables.map((variable) => [variable.key, variable.id]));
@@ -497,38 +484,75 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       }
     });
 
-    return idOfKey;
+    return { idOfKey, variableIds: new Set(variables.map((variable) => variable.id)) };
   };
 
-  const toReferenceRows = (
-    serviceId: string,
-    idOfKey: ReadonlyMap<string, string>,
-    targets: (TReferenceTarget & { text: string })[]
-  ): TAgentVaultServiceVariableReferencesInsert[] =>
-    targets.flatMap(({ text, field, customHeaderId, substitutionId }) =>
-      findVariableKeys(text).flatMap((key) => {
-        const variableId = idOfKey.get(key);
-        if (!variableId) return [];
-        return [
-          {
-            serviceId,
-            variableId,
-            field,
-            customHeaderId: customHeaderId ?? null,
-            substitutionId: substitutionId ?? null
-          }
-        ];
-      })
-    );
+  // Only text that arrived with the request is stored. A basic credential's kept half is already stored text,
+  // and one saved before variables existed has to keep reaching the host exactly as it was.
+  const storeCredentialReferences = (
+    credential: TAgentVaultCredentialUpdate,
+    store: (text: string) => string
+  ): TAgentVaultCredentialUpdate => {
+    switch (credential.type) {
+      case AgentVaultCredentialType.Bearer:
+        return credential.value === undefined ? credential : { ...credential, value: store(credential.value) };
+      case AgentVaultCredentialType.Basic:
+        return {
+          ...credential,
+          ...(credential.username === undefined ? {} : { username: store(credential.username) }),
+          ...(credential.password === undefined ? {} : { password: store(credential.password) })
+        };
+      default:
+        return credential;
+    }
+  };
 
-  // A half kept from storage is already in id form, and storing it again leaves it as it is.
-  const storeSecretReferences = (secret: Record<string, string>, store: (text: string) => string) =>
-    Object.fromEntries(Object.entries(secret).map(([part, text]) => [part, store(text)]));
+  // Read off the stored text the way resolve reads it, never off the request. Nothing in the database can check
+  // the rows against sealed text, and an id resolve expands without a row is a variable the delete refusal lets
+  // go while a service still uses it.
+  const referenceRowsOf = (
+    serviceId: string,
+    target: TReferenceTarget,
+    storedText: string,
+    variableIds: ReadonlySet<string>
+  ): TAgentVaultServiceVariableReferencesInsert[] =>
+    findStoredVariableIds(storedText)
+      // Resolve leaves an id that names no variable of this bundle as text, so it gets no row either.
+      .filter((variableId) => variableIds.has(variableId))
+      .map((variableId) => ({
+        serviceId,
+        variableId,
+        field: target.field,
+        customHeaderId: target.customHeaderId ?? null,
+        substitutionId: target.substitutionId ?? null
+      }));
+
+  const credentialReferenceRowsOf = (
+    serviceId: string,
+    storedSecret: TCredentialWrite["secret"],
+    variableIds: ReadonlySet<string>
+  ) =>
+    Object.entries(storedSecret ?? {}).flatMap(([part, text]) =>
+      referenceRowsOf(
+        serviceId,
+        {
+          field:
+            part === "username"
+              ? AgentVaultVariableReferenceField.CredentialUsername
+              : AgentVaultVariableReferenceField.CredentialValue
+        },
+        text,
+        variableIds
+      )
+    );
 
   // The reference is stored by id, so a variable deleted between the key lookup and the commit only shows
   // up at commit, as the deferred foreign key.
   const VARIABLE_DELETED_DURING_SAVE_MESSAGE =
     "A variable this service uses was deleted while it was being saved. Check its variable references and save again.";
+
+  const CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE =
+    "This service's credential was changed by another save while this one was in progress. Reload the service and save again.";
 
   // Basic has no header name in its config, but the proxy always writes Authorization.
   const credentialHeaderName = (credentialType: AgentVaultCredentialType, headerName?: string): string | null => {
@@ -764,13 +788,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern });
 
-    // Encrypt before the lock: KMS is a network call and the transaction has to stay short.
-    const { config, secret } = splitCredential(credential);
-    assertCustomHeadersDoNotShadowCredential(config, customHeaders);
-
-    const credentialTexts = credentialReferenceTexts(credential);
-    const idOfKey = await resolveVariableKeys(bundle.id, [
-      ...credentialTexts,
+    const { idOfKey, variableIds } = await loadBundleVariables(bundle.id, [
+      ...credentialReferenceTexts(credential),
       ...(customHeaders ?? []).map((header) => ({ label: `The custom header '${header.name}'`, text: header.value })),
       ...(substitutions ?? []).map((substitution) => ({
         label: `The substitution for '${substitution.placeholder}'`,
@@ -779,24 +798,32 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     ]);
     const store = (text: string) => toStoredVariableReferences(text, idOfKey);
 
+    // Encrypt before the lock: KMS is a network call and the transaction has to stay short.
+    const { config, secret } = splitCredential(
+      storeCredentialReferences(credential, store) as TAgentVaultCredentialInput
+    );
+    assertCustomHeadersDoNotShadowCredential(config, customHeaders);
+
     const { encryptor } = await getProjectCipher(rest.projectId);
-    const seal = (value: string) =>
-      encryptor({ plainText: Buffer.from(JSON.stringify({ value: store(value) })) }).cipherTextBlob;
+    const seal = (value: string) => encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
 
     const encryptedCredential = secret
-      ? encryptor({ plainText: Buffer.from(JSON.stringify(storeSecretReferences(secret, store))) }).cipherTextBlob
+      ? encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob
       : null;
+    // Stored once, so the sealed text and the references read off it are the same string.
+    const storedCustomHeaderValues = (customHeaders ?? []).map((header) => store(header.value));
+    const storedSubstitutionValues = (substitutions ?? []).map((substitution) => store(substitution.value));
     const customHeaderRows = (customHeaders ?? []).map((header, position) => ({
       name: header.name,
       prefix: header.prefix ?? "",
       position,
-      encryptedValue: seal(header.value)
+      encryptedValue: seal(storedCustomHeaderValues[position])
     }));
     const substitutionRows = (substitutions ?? []).map((substitution, position) => ({
       placeholder: substitution.placeholder,
       surfaces: substitution.surfaces,
       position,
-      encryptedValue: seal(substitution.value)
+      encryptedValue: seal(storedSubstitutionValues[position])
     }));
 
     // The pre-check above is only a fast failure. The authoritative one runs under the bundle row lock,
@@ -838,21 +865,25 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             )
           : [];
 
-        const customHeaderIdAt = new Map(insertedCustomHeaders.map((row) => [row.position, row.id]));
-        const substitutionIdAt = new Map(insertedSubstitutions.map((row) => [row.position, row.id]));
-        const referenceRows = toReferenceRows(created.id, idOfKey, [
-          ...credentialTexts,
-          ...(customHeaders ?? []).map((header, position) => ({
-            field: AgentVaultVariableReferenceField.CustomHeader,
-            customHeaderId: customHeaderIdAt.get(position),
-            text: header.value
-          })),
-          ...(substitutions ?? []).map((substitution, position) => ({
-            field: AgentVaultVariableReferenceField.Substitution,
-            substitutionId: substitutionIdAt.get(position),
-            text: substitution.value
-          }))
-        ]);
+        const referenceRows = [
+          ...credentialReferenceRowsOf(created.id, secret, variableIds),
+          ...insertedCustomHeaders.flatMap((row) =>
+            referenceRowsOf(
+              created.id,
+              { field: AgentVaultVariableReferenceField.CustomHeader, customHeaderId: row.id },
+              storedCustomHeaderValues[row.position],
+              variableIds
+            )
+          ),
+          ...insertedSubstitutions.flatMap((row) =>
+            referenceRowsOf(
+              created.id,
+              { field: AgentVaultVariableReferenceField.Substitution, substitutionId: row.id },
+              storedSubstitutionValues[row.position],
+              variableIds
+            )
+          )
+        ];
         if (referenceRows.length) await agentVaultServiceVariableReferenceDAL.insertMany(referenceRows, tx);
         const variableReferences = referenceRows.length
           ? await agentVaultServiceVariableReferenceDAL.findByServiceIds([created.id], tx)
@@ -921,55 +952,51 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       });
     }
 
+    // A partial basic update keeps the other half from the sealed secret read here, before the lock, so the write
+    // re-checks under the lock that nothing replaced it since.
+    const needsStoredSecret =
+      credential?.type === AgentVaultCredentialType.Basic &&
+      service.credentialType === AgentVaultCredentialType.Basic &&
+      (credential.username === undefined) !== (credential.password === undefined) &&
+      Boolean(service.encryptedCredential);
+    const storedSecretCipher = needsStoredSecret ? await getProjectCipher(rest.projectId) : null;
+    const storedSecret = storedSecretCipher
+      ? (JSON.parse(
+          storedSecretCipher.decryptor({ cipherTextBlob: service.encryptedCredential! }).toString("utf-8")
+        ) as Record<string, string>)
+      : null;
+
     // Only the values that arrived. One left out keeps what is sealed, and so keeps its references.
-    const credentialTexts = credential ? credentialReferenceTexts(credential) : [];
-    const idOfKey = await resolveVariableKeys(bundle.id, [
-      ...credentialTexts,
-      ...(customHeaders ?? []).flatMap((header) =>
-        header.value === undefined ? [] : [{ label: `The custom header '${header.name}'`, text: header.value }]
-      ),
-      ...(substitutions ?? []).flatMap((substitution) =>
-        substitution.value === undefined
-          ? []
-          : [{ label: `The substitution for '${substitution.placeholder}'`, text: substitution.value }]
-      )
-    ]);
+    const { idOfKey, variableIds } = await loadBundleVariables(
+      bundle.id,
+      [
+        ...(credential ? credentialReferenceTexts(credential) : []),
+        ...(customHeaders ?? []).flatMap((header) =>
+          header.value === undefined ? [] : [{ label: `The custom header '${header.name}'`, text: header.value }]
+        ),
+        ...(substitutions ?? []).flatMap((substitution) =>
+          substitution.value === undefined
+            ? []
+            : [{ label: `The substitution for '${substitution.placeholder}'`, text: substitution.value }]
+        )
+      ],
+      storedSecret ? Object.values(storedSecret) : []
+    );
     const store = (text: string) => toStoredVariableReferences(text, idOfKey);
 
     let credentialUpdate = {};
-    let replacedCredentialFields: AgentVaultVariableReferenceField[] = [];
+    // Undefined leaves the sealed secret, and the references read off it, as they are.
+    let writtenSecret: TCredentialWrite["secret"];
     let effectiveCredentialConfig = service.credentialConfig as TAgentVaultCredentialConfig;
     if (credential) {
-      const needsStoredSecret =
-        credential.type === AgentVaultCredentialType.Basic &&
-        service.credentialType === AgentVaultCredentialType.Basic &&
-        (credential.username === undefined) !== (credential.password === undefined) &&
-        Boolean(service.encryptedCredential);
-      const cipher = needsStoredSecret ? await getProjectCipher(rest.projectId) : null;
-      const storedSecret = cipher
-        ? (JSON.parse(cipher.decryptor({ cipherTextBlob: service.encryptedCredential! }).toString("utf-8")) as Record<
-            string,
-            string
-          >)
-        : null;
-
-      const { config, secret } = mergeCredential(credential, service, storedSecret);
+      const { config, secret } = mergeCredential(storeCredentialReferences(credential, store), service, storedSecret);
       let encryptedCredential: Buffer | null | undefined;
       if (secret === null) encryptedCredential = null;
       if (secret) {
-        const { encryptor } = cipher ?? (await getProjectCipher(rest.projectId));
-        encryptedCredential = encryptor({
-          plainText: Buffer.from(JSON.stringify(storeSecretReferences(secret, store)))
-        }).cipherTextBlob;
+        const { encryptor } = storedSecretCipher ?? (await getProjectCipher(rest.projectId));
+        encryptedCredential = encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob;
       }
-
-      // A new type or a pass-through replaces the whole secret, so neither half keeps its references.
-      if (secret !== undefined) {
-        replacedCredentialFields =
-          secret === null || credential.type !== service.credentialType
-            ? [AgentVaultVariableReferenceField.CredentialValue, AgentVaultVariableReferenceField.CredentialUsername]
-            : credentialTexts.map(({ field }) => field);
-      }
+      writtenSecret = secret;
 
       credentialUpdate = {
         credentialType: credential.type,
@@ -981,30 +1008,40 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     const cipherForTransformations =
       customHeaders?.length || substitutions?.length ? await getProjectCipher(rest.projectId) : null;
-    const seal = (value: string) =>
-      cipherForTransformations!.encryptor({ plainText: Buffer.from(JSON.stringify({ value: store(value) })) })
-        .cipherTextBlob;
+    const seal = (storedValue: string | undefined) =>
+      storedValue === undefined
+        ? undefined
+        : cipherForTransformations!.encryptor({ plainText: Buffer.from(JSON.stringify({ value: storedValue })) })
+            .cipherTextBlob;
+
+    // Stored once, so the sealed text and the references read off it are the same string.
+    const storedCustomHeaderValues = (customHeaders ?? []).map((header) =>
+      header.value === undefined ? undefined : store(header.value)
+    );
+    const storedSubstitutionValues = (substitutions ?? []).map((substitution) =>
+      substitution.value === undefined ? undefined : store(substitution.value)
+    );
 
     const customHeaderWrites: TTransformationWrite<{ name: string; prefix: string }>[] | undefined = customHeaders?.map(
-      (header) => ({
+      (header, index) => ({
         id: header.id,
         naturalKey: header.name.toLowerCase(),
         label: header.name,
         // An omitted prefix is cleared, not kept: it comes back in the response so a caller can resend it,
         // which is the thing a sealed value can never do.
         columns: { name: header.name, prefix: header.prefix ?? "" },
-        encryptedValue: header.value === undefined ? undefined : seal(header.value)
+        encryptedValue: seal(storedCustomHeaderValues[index])
       })
     );
 
     const substitutionWrites:
       | TTransformationWrite<{ placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }>[]
-      | undefined = substitutions?.map((substitution) => ({
+      | undefined = substitutions?.map((substitution, index) => ({
       id: substitution.id,
       naturalKey: substitution.placeholder,
       label: substitution.placeholder,
       columns: { placeholder: substitution.placeholder, surfaces: substitution.surfaces },
-      encryptedValue: substitution.value === undefined ? undefined : seal(substitution.value)
+      encryptedValue: seal(storedSubstitutionValues[index])
     }));
 
     // Same lock as create, and below the credential work so no KMS call sits inside the transaction. The
@@ -1019,6 +1056,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
         if (hostPattern && hostPattern !== service.hostPattern) {
           await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern, excludeServiceId: service.id }, tx);
+        }
+
+        // The credential was merged against the row read before the lock, whose type decided how the request
+        // reads. If another save changed it since, writing now would set a half this request left out back to
+        // an older value.
+        if (credential) {
+          const current = await agentVaultServiceDAL.findById(service.id, tx);
+          if (!current) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
+          const secretChanged =
+            storedSecret !== null && !current.encryptedCredential?.equals(service.encryptedCredential!);
+          if (current.credentialType !== service.credentialType || secretChanged) {
+            throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
+          }
         }
 
         // Both halves read under the lock and on the primary. The service read above the transaction came off
@@ -1111,55 +1161,64 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           "substitution"
         );
 
-        // Every row's position is its index in the list just written, which is how a value finds its row.
-        // A row dropped from the list takes its references with it through the foreign key.
-        const customHeaderIdAt = new Map(updatedCustomHeaders.map((row) => [row.position, row.id]));
-        const substitutionIdAt = new Map(updatedSubstitutions.map((row) => [row.position, row.id]));
-        const rewrittenTargets: (TReferenceTarget & { text: string })[] = [
-          ...credentialTexts,
-          ...(customHeaders ?? []).flatMap((header, position) =>
-            header.value === undefined
-              ? []
-              : [
-                  {
-                    field: AgentVaultVariableReferenceField.CustomHeader,
-                    customHeaderId: customHeaderIdAt.get(position),
-                    text: header.value
-                  }
-                ]
-          ),
-          ...(substitutions ?? []).flatMap((substitution, position) =>
-            substitution.value === undefined
-              ? []
-              : [
-                  {
-                    field: AgentVaultVariableReferenceField.Substitution,
-                    substitutionId: substitutionIdAt.get(position),
-                    text: substitution.value
-                  }
-                ]
-          )
-        ];
-        const rewrittenCustomHeaderIds = rewrittenTargets.flatMap((target) =>
-          target.customHeaderId ? [target.customHeaderId] : []
-        );
-        const rewrittenSubstitutionIds = rewrittenTargets.flatMap((target) =>
-          target.substitutionId ? [target.substitutionId] : []
-        );
+        // Every value this save sealed has its rows rebuilt from what it sealed: the whole secret when it was
+        // rewritten, since a kept half is sealed again with it. A row's position is its index in the list just
+        // written, which is how a value finds its row, and a row dropped from the list takes its references
+        // with it through the foreign key.
+        const rewrittenCustomHeaders = updatedCustomHeaders.flatMap((row) => {
+          const storedValue = storedCustomHeaderValues[row.position];
+          return storedValue === undefined ? [] : [{ id: row.id, storedValue }];
+        });
+        const rewrittenSubstitutions = updatedSubstitutions.flatMap((row) => {
+          const storedValue = storedSubstitutionValues[row.position];
+          return storedValue === undefined ? [] : [{ id: row.id, storedValue }];
+        });
 
-        if (replacedCredentialFields.length) {
+        if (writtenSecret !== undefined) {
           await agentVaultServiceVariableReferenceDAL.delete(
-            { serviceId: service.id, $in: { field: replacedCredentialFields } },
+            {
+              serviceId: service.id,
+              $in: {
+                field: [
+                  AgentVaultVariableReferenceField.CredentialValue,
+                  AgentVaultVariableReferenceField.CredentialUsername
+                ]
+              }
+            },
             tx
           );
         }
-        if (rewrittenCustomHeaderIds.length) {
-          await agentVaultServiceVariableReferenceDAL.delete({ $in: { customHeaderId: rewrittenCustomHeaderIds } }, tx);
+        if (rewrittenCustomHeaders.length) {
+          await agentVaultServiceVariableReferenceDAL.delete(
+            { $in: { customHeaderId: rewrittenCustomHeaders.map((row) => row.id) } },
+            tx
+          );
         }
-        if (rewrittenSubstitutionIds.length) {
-          await agentVaultServiceVariableReferenceDAL.delete({ $in: { substitutionId: rewrittenSubstitutionIds } }, tx);
+        if (rewrittenSubstitutions.length) {
+          await agentVaultServiceVariableReferenceDAL.delete(
+            { $in: { substitutionId: rewrittenSubstitutions.map((row) => row.id) } },
+            tx
+          );
         }
-        const referenceRows = toReferenceRows(service.id, idOfKey, rewrittenTargets);
+        const referenceRows = [
+          ...(writtenSecret === undefined ? [] : credentialReferenceRowsOf(service.id, writtenSecret, variableIds)),
+          ...rewrittenCustomHeaders.flatMap(({ id, storedValue }) =>
+            referenceRowsOf(
+              service.id,
+              { field: AgentVaultVariableReferenceField.CustomHeader, customHeaderId: id },
+              storedValue,
+              variableIds
+            )
+          ),
+          ...rewrittenSubstitutions.flatMap(({ id, storedValue }) =>
+            referenceRowsOf(
+              service.id,
+              { field: AgentVaultVariableReferenceField.Substitution, substitutionId: id },
+              storedValue,
+              variableIds
+            )
+          )
+        ];
         if (referenceRows.length) await agentVaultServiceVariableReferenceDAL.insertMany(referenceRows, tx);
         const variableReferences = await agentVaultServiceVariableReferenceDAL.findByServiceIds([service.id], tx);
 

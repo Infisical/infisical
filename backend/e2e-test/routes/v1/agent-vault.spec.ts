@@ -15,15 +15,24 @@ import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
+import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
-import { initLogger } from "@app/lib/logger";
+import { initLogger, logger } from "@app/lib/logger";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
+import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
+import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
+import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
+import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
+import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
+import { kmsServiceFactory, TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { usageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
@@ -735,6 +744,7 @@ describe("Agent Vault V1 Router", async () => {
 
     type TResolved = {
       services: {
+        name: string;
         credential: Record<string, string>;
         customHeaders: { name: string; prefix: string; value: string }[];
         substitutions: { placeholder: string; surfaces: string[]; value: string }[];
@@ -768,6 +778,118 @@ describe("Agent Vault V1 Router", async () => {
         expect(resolved.statusCode).toBe(200);
         return JSON.parse(resolved.payload) as TResolved;
       };
+    };
+
+    // The project's own key, loaded the way the server loads it, so a test can read and write sealed text directly.
+    // The spec runs in its own module graph, which is why the env config is initialized again here.
+    let kmsService: TKmsServiceFactory | undefined;
+    const cipherFor = async (accessBundleId: string) => {
+      if (!kmsService) {
+        await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+        kmsService = kmsServiceFactory({
+          kmsRootConfigDAL: testKmsRootConfigDAL,
+          kmsLegacyEncryptionKeyDAL: kmsLegacyEncryptionKeyDALFactory(testDb),
+          kmsKekHistoryDAL: kmsKekHistoryDALFactory(testDb),
+          kmsDAL: kmskeyDALFactory(testDb),
+          internalKmsDAL: internalKmsDALFactory(testDb),
+          internalKmsKeyVersionDAL: internalKmsKeyVersionDALFactory(testDb),
+          orgDAL: orgDALFactory(testDb),
+          projectDAL: projectDALFactory(testDb),
+          hsmService: testHsmService,
+          keyStore: {
+            getItem: async () => null,
+            setItemWithExpiry: async () => "OK" as const,
+            deleteItem: async () => 0
+          },
+          envConfig: getConfig()
+        });
+        const hsmStatus = await isHsmActiveAndEnabled({
+          hsmService: testHsmService,
+          kmsRootConfigDAL: testKmsRootConfigDAL
+        });
+        await kmsService.startService(hsmStatus, { skipRotationState: true });
+      }
+      const { projectId } = (await testDb("agent_vault_access_bundles").where({ id: accessBundleId }).first()) as {
+        projectId: string;
+      };
+      return kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    };
+
+    const STORED_REFERENCE = /\{\{([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\}\}/g;
+
+    // What the delete refusal rests on: every field's rows name exactly the ids in its sealed text that resolve
+    // expands, which are those of the bundle's own variables. Read off the sealed text, not through the service.
+    const expectReferencesMatchSealedText = async (accessBundleId: string) => {
+      const { decryptor } = await cipherFor(accessBundleId);
+      const open = (sealed: Buffer) =>
+        JSON.parse(decryptor({ cipherTextBlob: sealed }).toString("utf-8")) as Record<string, string>;
+      const variableIds = new Set(
+        ((await testDb("agent_vault_variables").where({ accessBundleId }).select("id")) as { id: string }[]).map(
+          (row) => row.id
+        )
+      );
+      const idsIn = (text: string) =>
+        [...new Set(Array.from(text.matchAll(STORED_REFERENCE), (match) => match[1]))].filter((id) =>
+          variableIds.has(id)
+        );
+
+      const services = (await testDb("agent_vault_services").where({ accessBundleId })) as {
+        id: string;
+        encryptedCredential: Buffer | null;
+      }[];
+      const serviceIds = services.map((service) => service.id);
+      type TSealedRow = { id: string; serviceId: string; encryptedValue: Buffer };
+      const customHeaders = (await testDb("agent_vault_service_custom_headers").whereIn(
+        "serviceId",
+        serviceIds
+      )) as TSealedRow[];
+      const substitutions = (await testDb("agent_vault_service_substitutions").whereIn(
+        "serviceId",
+        serviceIds
+      )) as TSealedRow[];
+      const references = (await testDb("agent_vault_service_variable_references").whereIn("serviceId", serviceIds)) as {
+        serviceId: string;
+        variableId: string;
+        field: string;
+        customHeaderId: string | null;
+        substitutionId: string | null;
+      }[];
+
+      const expected = [
+        ...services.flatMap((service) =>
+          Object.entries(service.encryptedCredential ? open(service.encryptedCredential) : {}).flatMap(([part, text]) =>
+            idsIn(text).map(
+              (id) => `${service.id} ${part === "username" ? "credential-username" : "credential-value"} ${id}`
+            )
+          )
+        ),
+        ...customHeaders.flatMap((row) =>
+          idsIn(open(row.encryptedValue).value).map((id) => `${row.serviceId} custom-header:${row.id} ${id}`)
+        ),
+        ...substitutions.flatMap((row) =>
+          idsIn(open(row.encryptedValue).value).map((id) => `${row.serviceId} substitution:${row.id} ${id}`)
+        )
+      ];
+      const actual = references.map((row) => {
+        const target = row.customHeaderId ?? row.substitutionId;
+        return `${row.serviceId} ${row.field}${target ? `:${target}` : ""} ${row.variableId}`;
+      });
+      expect(actual.sort()).toEqual(expected.sort());
+    };
+
+    // Resolves once a backend waits on a lock the given one holds: by then a request has done everything it
+    // does before the lock and is queued behind it.
+    const waitUntilBlockedBy = async (pid: number, attemptsLeft = 200): Promise<void> => {
+      const { rows } = await testDb.raw(
+        "select count(*)::int as waiting from pg_stat_activity where ? = any(pg_blocking_pids(pid))",
+        [pid]
+      );
+      if (rows[0].waiting > 0) return;
+      if (attemptsLeft === 0) throw new Error(`No request queued behind the lock held by backend ${pid}`);
+      await new Promise((resolve) => {
+        setTimeout(resolve, 25);
+      });
+      await waitUntilBlockedBy(pid, attemptsLeft - 1);
     };
 
     test("a service uses a variable by key, and resolve puts the value in its place", async () => {
@@ -816,6 +938,7 @@ describe("Agent Vault V1 Router", async () => {
           }
         ])
       );
+      await expectReferencesMatchSealedText(bundle.id);
 
       const resolve = await resolverFor(bundle, "variables-resolve");
       const [resolved] = (await resolve()).services;
@@ -850,6 +973,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(detail.accessBundle.services[0].variableReferences).toEqual([
         expect.objectContaining({ key: "NEW_NAME", field: "credential-value" })
       ]);
+      await expectReferencesMatchSealedText(bundle.id);
       expect((await resolve()).services[0].credential).toMatchObject({ value: "first" });
 
       expect((await inject("PATCH", `${variablesUrl(bundle.id)}/${variable.id}`, { value: "second" })).statusCode).toBe(
@@ -886,6 +1010,7 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(detached.statusCode).toBe(200);
       expect(JSON.parse(detached.payload).service.variableReferences).toEqual([]);
+      await expectReferencesMatchSealedText(bundle.id);
 
       const removed = await inject("DELETE", `${variablesUrl(bundle.id)}/${variable.id}`);
       expect(removed.statusCode).toBe(200);
@@ -988,6 +1113,7 @@ describe("Agent Vault V1 Router", async () => {
         "credential-value:PASS",
         "custom-header:HEADER"
       ]);
+      await expectReferencesMatchSealedText(bundle.id);
 
       const resolve = await resolverFor(bundle, "variables-partial");
       const [resolved] = (await resolve()).services;
@@ -999,11 +1125,124 @@ describe("Agent Vault V1 Router", async () => {
       expect(referencesByField(JSON.parse(switched.payload).service.variableReferences)).toEqual([
         "custom-header:HEADER"
       ]);
+      await expectReferencesMatchSealedText(bundle.id);
 
       const dropped = await inject("PATCH", url, { customHeaders: [] });
       expect(dropped.statusCode).toBe(200);
       expect(JSON.parse(dropped.payload).service.variableReferences).toEqual([]);
       expect(await testDb("agent_vault_service_variable_references").where({ serviceId: service.id })).toHaveLength(0);
+    });
+
+    test("a basic credential's kept half is stored text, so one saved before variables existed stays as it was", async () => {
+      const bundle = await createAccessBundle("variables-legacy-half");
+      await createVariable(bundle.id, { key: "FOO", value: "foo-value" });
+      await createVariable(bundle.id, { key: "USER", value: "the-user" });
+
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "legacy",
+        hostPattern: "legacy.example.com",
+        credential: { type: "basic", username: "u", password: "p" }
+      });
+      expect(created.statusCode).toBe(200);
+      const { service } = JSON.parse(created.payload) as { service: { id: string } };
+
+      // Sealed the way a service saved before variables existed was: literal braces and no reference rows. The
+      // id-shaped pair names no variable at all.
+      const legacyPassword = `{{FOO}}:{{${crypto.randomUUID()}}}`;
+      const { encryptor } = await cipherFor(bundle.id);
+      await testDb("agent_vault_services")
+        .where({ id: service.id })
+        .update({
+          encryptedCredential: encryptor({
+            plainText: Buffer.from(JSON.stringify({ username: "u", password: legacyPassword }))
+          }).cipherTextBlob
+        });
+
+      const patched = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        credential: { type: "basic", username: "{{USER}}" }
+      });
+      expect(patched.statusCode).toBe(200);
+      expect(referencesByField(JSON.parse(patched.payload).service.variableReferences)).toEqual([
+        "credential-username:USER"
+      ]);
+      await expectReferencesMatchSealedText(bundle.id);
+
+      const resolve = await resolverFor(bundle, "variables-legacy-half");
+      expect((await resolve()).services[0].credential).toEqual({
+        type: "basic",
+        username: "the-user",
+        password: legacyPassword
+      });
+    });
+
+    test("a partial basic update refuses to write over a credential another save changed while it waited", async () => {
+      const bundle = await createAccessBundle("variables-stale-half");
+      await createVariable(bundle.id, { key: "FIRST_USER", value: "first-user" });
+      await createVariable(bundle.id, { key: "SECOND_USER", value: "second-user" });
+      await createVariable(bundle.id, { key: "PASS", value: "the-pass" });
+
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "stale",
+        hostPattern: "stale.example.com",
+        credential: { type: "basic", username: "{{FIRST_USER}}", password: "plain-pass" }
+      });
+      expect(created.statusCode).toBe(200);
+      const { service } = JSON.parse(created.payload) as { service: { id: string } };
+      const url = `${servicesUrl(bundle.id)}/${service.id}`;
+
+      // What the other save commits, sealed by the API itself on a second service: a new username.
+      const other = await inject("POST", servicesUrl(bundle.id), {
+        name: "other",
+        hostPattern: "other.example.com",
+        credential: { type: "basic", username: "{{SECOND_USER}}", password: "plain-pass" }
+      });
+      expect(other.statusCode).toBe(200);
+      const otherId = (JSON.parse(other.payload) as { service: { id: string } }).service.id;
+      const otherRow = (await testDb("agent_vault_services").where({ id: otherId }).first()) as {
+        encryptedCredential: Buffer;
+      };
+      const otherReferences = (await testDb("agent_vault_service_variable_references").where({
+        serviceId: otherId
+      })) as { variableId: string; field: string }[];
+
+      // Holding the bundle lock like the other save would, so this one reads the service and then waits.
+      const trx = await testDb.transaction();
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("agent_vault_access_bundles").where({ id: bundle.id }).forUpdate().first();
+
+        const pending = inject("PATCH", url, { credential: { type: "basic", password: "{{PASS}}" } });
+        await waitUntilBlockedBy(rows[0].pid);
+
+        await trx("agent_vault_services")
+          .where({ id: service.id })
+          .update({ encryptedCredential: otherRow.encryptedCredential });
+        await trx("agent_vault_service_variable_references").where({ serviceId: service.id }).del();
+        await trx("agent_vault_service_variable_references").insert(
+          otherReferences.map(({ variableId, field }) => ({ serviceId: service.id, variableId, field }))
+        );
+        await trx.commit();
+
+        const refused = await pending;
+        expect(refused.statusCode).toBe(409);
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        throw err;
+      }
+
+      const kept = (await testDb("agent_vault_services").where({ id: service.id }).first()) as {
+        encryptedCredential: Buffer;
+      };
+      expect(kept.encryptedCredential.equals(otherRow.encryptedCredential)).toBe(true);
+      await expectReferencesMatchSealedText(bundle.id);
+
+      const retried = await inject("PATCH", url, { credential: { type: "basic", password: "{{PASS}}" } });
+      expect(retried.statusCode).toBe(200);
+      await expectReferencesMatchSealedText(bundle.id);
+
+      const resolve = await resolverFor(bundle, "variables-stale-half");
+      const resolved = (await resolve()).services.find((entry) => entry.name === "stale");
+      expect(resolved?.credential).toEqual({ type: "basic", username: "second-user", password: "the-pass" });
     });
 
     test("deleting a bundle takes its variables and every reference to them", async () => {

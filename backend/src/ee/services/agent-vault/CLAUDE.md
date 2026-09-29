@@ -169,13 +169,24 @@ path decides what a service can reach, so it stays literal.
   refusal, and the keys the service sheet lists under a stored value. **Resolve does not read it**: it pulls
   the ids out of the decrypted fields, so a service saved mid-poll can never leave the two describing
   different versions of a field.
+- **The rows are read off the stored text, never off the request**: `findStoredVariableIds`, kept to the
+  bundle's own variables, which is exactly what resolve expands. Nothing in the database can compare the
+  rows with sealed text, and an id with no row is a variable the delete refusal lets go while a service still
+  sends it. Any new path that seals a service field derives its rows the same way, and moving a service to
+  another bundle would have to remap its ids, since resolve expands only its own bundle's.
 - A stored value never comes back in any form, a lone `{{KEY}}` included. The sheet lists the keys a stored
   field uses under the field and keeps the field masked until it is retyped. Settled: putting a lone
   reference back in its field made it the one stored field that shows, and left a field mixing text with a
   reference looking like it used none.
-- An update rebuilds the rows of only the values it wrote. An omitted value keeps its sealed text and its
-  rows, a dropped header or substitution takes its rows through the foreign key, and a new credential type
-  or pass-through clears both credential fields.
+- A save rebuilds the rows of each value it seals: both credential fields whenever the secret is written, since
+  a kept basic half is sealed again with it, and each header or substitution whose value arrived. An omitted
+  value keeps its sealed text and its rows, and a dropped header or substitution takes its rows through the
+  foreign key.
+- Only text that arrived is mapped from keys to ids. A kept basic half is already stored text, and one saved
+  before variables existed has to keep reaching the host as it was, braces included.
+- A credential update merges against the service read before the lock, so under the lock it re-reads the row
+  and returns a 409 if the type changed, or, for a partial basic update, the sealed secret did. Otherwise the
+  half left out is written back stale, and its rows describe text that is no longer sealed.
 - The `variableId` key is `DEFERRABLE INITIALLY DEFERRED`. A bundle delete cascades to its services and its
   variables in one statement, and an immediate check can fire before the service cascade has removed the
   rows, depending on which constraint was created first. The refusal that matters is the check under the
