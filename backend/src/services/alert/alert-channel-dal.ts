@@ -7,7 +7,7 @@ import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TAlertChannelDALFactory = ReturnType<typeof alertChannelDALFactory>;
 
-type TAlertChannelWithAlertId = TAlertChannels & { alertId: string };
+export type TAlertChannelWithAlertId = TAlertChannels & { alertId: string };
 
 export const alertChannelDALFactory = (db: TDbClient) => {
   const alertChannelOrm = ormify(db, TableName.AlertChannel);

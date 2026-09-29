@@ -1,34 +1,26 @@
 import { useState } from "react";
 import { FieldArrayWithId, UseFormReturn } from "react-hook-form";
-import { BellIcon, ChevronDownIcon } from "lucide-react";
+import { BellIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import {
-  Badge,
-  Button,
   Combobox,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyMedia,
-  EmptyTitle,
   FieldDescription,
   FieldError
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
 import { isValidEmail } from "@app/helpers/email";
 import {
-  ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
-  AlertPrincipalType
+  AlertPrincipalType,
+  CertificateAlertResourceType
 } from "@app/hooks/api/alerts";
-import { ChannelCard, TChannelRecipientsRenderProps } from "@app/views/Alerts";
+import { AddChannelMenu, ChannelCard, TChannelRecipientsRenderProps } from "@app/views/Alerts";
 
 import {
-  CERTIFICATE_ALERT_RESOURCE_TYPE,
   MAX_CHANNELS,
   normalizeEmail,
   TCertificateAlertForm,
@@ -38,14 +30,13 @@ import {
 
 type TChannelField = FieldArrayWithId<TCertificateAlertForm, "channels">;
 
-const CHANNEL_TYPES = [
-  AlertChannelType.Email,
-  AlertChannelType.Webhook,
+const ENTERPRISE_CHANNEL_TYPES = [
   AlertChannelType.Slack,
+  AlertChannelType.Webhook,
   AlertChannelType.PagerDuty
 ];
 
-export const AddChannelMenu = ({
+export const CertificateAlertAddChannelMenu = ({
   channelCount,
   onAdd
 }: {
@@ -56,36 +47,14 @@ export const AddChannelMenu = ({
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const isEnterpriseAllowed = Boolean(subscription?.pkiEnterpriseAlerting);
 
-  const addChannel = (channelType: AlertChannelType) => {
-    if (channelType !== AlertChannelType.Email && !isEnterpriseAllowed) {
-      setIsUpgradeOpen(true);
-      return;
-    }
-    onAdd(channelType);
-  };
-
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" isDisabled={channelCount >= MAX_CHANNELS}>
-            Add Channel
-            <ChevronDownIcon />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-56">
-          {CHANNEL_TYPES.map((channelType) => (
-            <DropdownMenuItem key={channelType} onClick={() => addChannel(channelType)}>
-              <span className="flex w-full items-center justify-between gap-4">
-                {ALERT_CHANNEL_TYPE_LABELS[channelType]}
-                {channelType !== AlertChannelType.Email && !isEnterpriseAllowed && (
-                  <Badge variant="neutral">Enterprise</Badge>
-                )}
-              </span>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <AddChannelMenu
+        onAdd={onAdd}
+        isDisabled={channelCount >= MAX_CHANNELS}
+        lockedChannelTypes={isEnterpriseAllowed ? [] : ENTERPRISE_CHANNEL_TYPES}
+        onLockedSelect={() => setIsUpgradeOpen(true)}
+      />
       <UpgradePlanModal
         isOpen={isUpgradeOpen}
         onOpenChange={setIsUpgradeOpen}
@@ -182,7 +151,6 @@ export const ChannelsStep = ({
           <EmptyMedia variant="icon">
             <BellIcon />
           </EmptyMedia>
-          <EmptyTitle>No notification channels</EmptyTitle>
           <EmptyDescription>
             Select &quot;Add Channel&quot; to choose where this alert is sent.
           </EmptyDescription>
@@ -199,7 +167,7 @@ export const ChannelsStep = ({
           key={field.id}
           index={index}
           projectId={projectId}
-          resourceType={CERTIFICATE_ALERT_RESOURCE_TYPE}
+          resourceType={CertificateAlertResourceType.Application}
           resourceId={applicationId}
           canRemove
           onRemove={() => onRemove(index)}

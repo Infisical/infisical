@@ -296,8 +296,8 @@ export const alertChannelServiceFactory = ({
   const getDetailsForChannels = async (
     channels: TAlertChannels[],
     cipher: { decryptor: TAlertDecryptor },
-    tx?: Knex,
-    options: TChannelDetailsOptions = {}
+    options: TChannelDetailsOptions = {},
+    tx?: Knex
   ): Promise<TAlertChannelEmbedded[]> => {
     if (channels.length === 0) return [];
 

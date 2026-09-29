@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import RE2 from "re2";
 import { z } from "zod";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
@@ -11,14 +10,13 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
-  CertificateAlertEvent,
-  LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT
+  CertificateAlertEvent
 } from "@app/services/certificate/certificate-alert-events";
 import { getRevocationReasonLabel } from "@app/services/certificate/certificate-revocation-labels";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType, TAlertPayload, TAlertSeverity } from "../alert-channel-types";
-import { expirySeverity, formatUtcDate, humanizeDays } from "../alert-format-fns";
+import { durationToDays, expirySeverity, formatUtcDate, humanizeDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
   AlertPermissionAction,
@@ -39,19 +37,18 @@ import {
   TCertManagerApplicationAlertDALFactory
 } from "./cert-manager-application-alert-dal";
 
+const TELEMETRY_ALERT_TYPE_BY_EVENT: Record<CertificateAlertEvent, string> = {
+  [CertificateAlertEvent.Expiry]: "expiration",
+  [CertificateAlertEvent.Issuance]: "issuance",
+  [CertificateAlertEvent.Renewal]: "renewal",
+  [CertificateAlertEvent.Revocation]: "revocation"
+};
+
 const MIN_CERTIFICATE_ALERT_BEFORE_DAYS = 1;
 const MAX_CERTIFICATE_ALERT_BEFORE_DAYS = 365;
 
-const alertBeforeRegex = new RE2("^(\\d{1,4})([dwmy])$");
-const DAYS_PER_UNIT: Record<string, number> = { d: 1, w: 7, m: 30, y: 365 };
-
-const alertBeforeDays = (alertBefore: string): number => {
-  const match = alertBeforeRegex.exec(alertBefore);
-  return match ? parseInt(match[1], 10) * DAYS_PER_UNIT[match[2]] : Number.NaN;
-};
-
 const isValidAlertBefore = (alertBefore: string): boolean => {
-  const days = alertBeforeDays(alertBefore);
+  const days = durationToDays(alertBefore);
   return days >= MIN_CERTIFICATE_ALERT_BEFORE_DAYS && days <= MAX_CERTIFICATE_ALERT_BEFORE_DAYS;
 };
 
@@ -112,7 +109,7 @@ const buildSummary = (
   const inApplication = applicationName ? ` in application '${applicationName}'` : "";
   if (alertBefore) {
     const certificates = `${targets.length} certificate${targets.length === 1 ? "" : "s"}`;
-    return `${certificates}${inApplication} expiring within ${humanizeDays(alertBeforeDays(alertBefore))}`;
+    return `${certificates}${inApplication} expiring within ${humanizeDays(durationToDays(alertBefore))}`;
   }
   if (targets.length === 1) return `Certificate '${targets[0].commonName}' ${EVENT_VERBS[eventType]}${inApplication}`;
   return `${targets.length} certificates ${EVENT_VERBS[eventType]}${inApplication}`;
@@ -164,7 +161,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     return certManagerApplicationAlertDAL.findExpiringCertificates({
       projectId: input.projectId,
       applicationId: input.resourceId,
-      alertBeforeInterval: `${alertBeforeDays(alertBefore)} days`,
+      alertBeforeInterval: `${durationToDays(alertBefore)} days`,
       leadInterval: ALERT_SCAN_LEAD_INTERVAL,
       asOf: input.asOf
     });
@@ -196,7 +193,7 @@ export const certManagerApplicationAlertProviderFactory = ({
           event: PostHogEventTypes.PkiAlertCreated,
           properties: {
             ...properties,
-            alertType: LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT[eventType as CertificateAlertEvent]
+            alertType: TELEMETRY_ALERT_TYPE_BY_EVENT[eventType as CertificateAlertEvent]
           }
         };
       case AlertTelemetryAction.Update:
@@ -232,28 +229,27 @@ export const certManagerApplicationAlertProviderFactory = ({
       resourceOwnerKind: "Application",
       severity: eventSeverity(eventType, targets),
       summary: buildSummary(eventType, targets, alertBefore),
-      items: targets.map((certificate) => ({
-        id: certificate.id,
-        title: certificate.commonName,
-        identifier: certificate.serialNumber,
-        summary: buildItemSummary(eventType, certificate),
-        severity: eventSeverity(eventType, [certificate]),
-        fields: [
-          ...(formatAltNames(certificate.altNames)
-            ? [{ label: "SANs", value: formatAltNames(certificate.altNames) }]
-            : []),
-          ...(certificate.profileName ? [{ label: "Profile", value: certificate.profileName }] : []),
-          { label: "Expires", value: formatUtcDate(certificate.notAfter) },
-          ...(eventType === CertificateAlertEvent.Revocation && certificate.revocationReason != null
-            ? [
-                {
-                  label: "Revocation Reason",
-                  value: getRevocationReasonLabel(certificate.revocationReason) as string
-                }
-              ]
-            : [])
-        ]
-      }))
+      items: targets.map((certificate) => {
+        const revocationReason =
+          eventType === CertificateAlertEvent.Revocation
+            ? getRevocationReasonLabel(certificate.revocationReason)
+            : undefined;
+        return {
+          id: certificate.id,
+          title: certificate.commonName,
+          identifier: certificate.serialNumber,
+          summary: buildItemSummary(eventType, certificate),
+          severity: eventSeverity(eventType, [certificate]),
+          fields: [
+            ...(formatAltNames(certificate.altNames)
+              ? [{ label: "SANs", value: formatAltNames(certificate.altNames) }]
+              : []),
+            ...(certificate.profileName ? [{ label: "Profile", value: certificate.profileName }] : []),
+            { label: "Expires", value: formatUtcDate(certificate.notAfter) },
+            ...(revocationReason ? [{ label: "Revocation Reason", value: revocationReason }] : [])
+          ]
+        };
+      })
     };
   };
 
@@ -348,7 +344,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     dedupWindowHours: (condition) => {
       const parsed = ExpirationConditionSchema.safeParse(condition);
       if (!parsed.success) return DEFAULT_DEDUP_WINDOW_HOURS;
-      return expirationDedupWindowHours(alertBeforeDays(parsed.data.alertBefore), parsed.data.dailyReminder);
+      return expirationDedupWindowHours(durationToDays(parsed.data.alertBefore), parsed.data.dailyReminder);
     },
     assertPermission,
     assertResourceInScope,

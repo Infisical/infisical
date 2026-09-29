@@ -19,6 +19,7 @@ import {
 import { useGetWorkspaceUsers } from "@app/hooks/api";
 import {
   AlertChannelType,
+  CertificateAlertResourceType,
   TAlert,
   toChannelInput,
   useCreateAlert,
@@ -26,11 +27,10 @@ import {
 } from "@app/hooks/api/alerts";
 import { buildNewChannel, getNextChannelName } from "@app/views/Alerts";
 
-import { AddChannelMenu, ChannelsStep } from "./ChannelsStep";
+import { CertificateAlertAddChannelMenu, ChannelsStep } from "./ChannelsStep";
 import { DetailsStep } from "./DetailsStep";
 import { ReviewStep } from "./ReviewStep";
 import {
-  CERTIFICATE_ALERT_RESOURCE_TYPE,
   certificateAlertFormSchema,
   emptyCertificateAlertForm,
   STEP_FIELDS,
@@ -93,7 +93,7 @@ const CertificateAlertWizard = ({
         await createAlert.mutateAsync({
           name: values.name,
           description: values.description || undefined,
-          resourceType: CERTIFICATE_ALERT_RESOURCE_TYPE,
+          resourceType: CertificateAlertResourceType.Application,
           resourceId: applicationId,
           eventType: values.eventType,
           condition,
@@ -178,7 +178,9 @@ const CertificateAlertWizard = ({
               <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
               {!isReadOnly && <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>}
             </div>
-            {step === 1 && <AddChannelMenu channelCount={fields.length} onAdd={addChannel} />}
+            {step === 1 && (
+              <CertificateAlertAddChannelMenu channelCount={fields.length} onAdd={addChannel} />
+            )}
           </div>
 
           {step === 0 && <DetailsStep form={form} isEditing={isEditing} />}

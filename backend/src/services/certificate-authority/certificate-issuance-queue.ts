@@ -189,7 +189,7 @@ type TCertificateIssuanceQueueFactoryDep = {
     "updateById" | "findById" | "setPendingMessage" | "transitionToPendingValidation"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
-  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "notify">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL?: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -1191,7 +1191,7 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       if (certificateExistsAfterThisJob && issuedCertificateId) {
-        await certificateAlertEventEmitter?.notify({
+        await certificateAlertEventEmitter.notify({
           certificateId: issuedCertificateId,
           projectId: ca.projectId,
           eventType: getIssuanceAlertEvent(isRenewal),

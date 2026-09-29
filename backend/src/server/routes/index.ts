@@ -450,9 +450,9 @@ import { orgProductStatsServiceFactory } from "@app/services/org-product-stats/o
 import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
 import { pkiAlertDALFactory } from "@app/services/pki-alert/pki-alert-dal";
 import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
-import { pkiAlertV2CompatServiceFactory } from "@app/services/pki-alert/pki-alert-v2-compat-service";
 import { pkiAlertChannelDALFactory } from "@app/services/pki-alert-v2/pki-alert-channel-dal";
 import { pkiAlertHistoryDALFactory } from "@app/services/pki-alert-v2/pki-alert-history-dal";
+import { pkiAlertV2CompatServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-compat-service";
 import { pkiAlertV2DALFactory } from "@app/services/pki-alert-v2/pki-alert-v2-dal";
 import { pkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { pkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";

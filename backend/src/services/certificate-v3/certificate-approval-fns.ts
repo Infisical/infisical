@@ -15,7 +15,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
   CertificateAlertEvent,
-  TCertificateAlertEventEmitter
+  TCertificateAlertEventEmitter,
+  TCertificateAlertEventInput
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -112,7 +113,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
     "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
 };
 
 export type TCertificateApprovalService = {
@@ -231,19 +232,11 @@ export const certificateApprovalServiceFactory = (
     certificateAlertEventEmitter
   } = deps;
 
-  const $emitIssuanceAlert = (tx: Knex, certificateId: string, projectId: string, applicationId?: string | null) =>
-    certificateAlertEventEmitter?.emit(
-      {
-        certificateId,
-        projectId,
-        eventType: CertificateAlertEvent.Issuance,
-        applicationId: applicationId ?? null
-      },
-      tx
-    );
+  const $emitIssuanceAlert = (input: Omit<TCertificateAlertEventInput, "eventType">, tx: Knex) =>
+    certificateAlertEventEmitter.emit({ ...input, eventType: CertificateAlertEvent.Issuance }, tx);
 
   const $queueIssuanceAlert = (certificateId: string, projectId: string) =>
-    certificateAlertEventEmitter?.queueLegacyAlert({
+    certificateAlertEventEmitter.queueLegacyAlert({
       certificateId,
       projectId,
       eventType: CertificateAlertEvent.Issuance
@@ -686,7 +679,15 @@ export const certificateApprovalServiceFactory = (
           tx
         });
 
-        await $emitIssuanceAlert(tx, newCert.id, profile.projectId, certRequest.applicationId);
+        await $emitIssuanceAlert(
+          {
+            certificateId: newCert.id,
+            projectId: profile.projectId,
+            orgId: profile.project?.orgId,
+            applicationId: certRequest.applicationId
+          },
+          tx
+        );
       }
     });
 
@@ -944,7 +945,15 @@ export const certificateApprovalServiceFactory = (
         await certificateDAL.updateById(processResult.certificateData.id, { applicationId }, tx);
       }
 
-      await $emitIssuanceAlert(tx, processResult.certificateData.id, profile.projectId, applicationId);
+      await $emitIssuanceAlert(
+        {
+          certificateId: processResult.certificateData.id,
+          projectId: profile.projectId,
+          orgId: profile.project?.orgId,
+          applicationId
+        },
+        tx
+      );
 
       return processResult;
     });
@@ -1105,7 +1114,15 @@ export const certificateApprovalServiceFactory = (
           tx
         });
 
-        await $emitIssuanceAlert(tx, certificateRecord.id, profile.projectId, applicationId);
+        await $emitIssuanceAlert(
+          {
+            certificateId: certificateRecord.id,
+            projectId: profile.projectId,
+            orgId: profile.project?.orgId,
+            applicationId
+          },
+          tx
+        );
 
         return { ...certResult, cert: certificateRecord };
       });

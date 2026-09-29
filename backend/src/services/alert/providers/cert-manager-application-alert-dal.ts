@@ -29,7 +29,7 @@ export type TApplicationActiveCertificate = {
   profileName: string | null;
   notBefore: Date;
   notAfter: Date;
-  status: string;
+  status: CertStatus;
 };
 
 type TCertificateScope = {

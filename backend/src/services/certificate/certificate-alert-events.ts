@@ -48,7 +48,7 @@ export const certificateAlertEventEmitterFactory = ({
 }: TCertificateAlertEventEmitterDep) => {
   const emit = async (
     { certificateId, projectId, orgId, applicationId, eventType }: TCertificateAlertEventInput,
-    tx?: Knex
+    tx: Knex
   ) => {
     if (!applicationId) return;
 
@@ -66,11 +66,7 @@ export const certificateAlertEventEmitterFactory = ({
       }
     };
 
-    if (tx) {
-      await eventEmitter.emit(event, tx);
-      return;
-    }
-    await projectDAL.transaction((trx) => eventEmitter.emit(event, trx));
+    await eventEmitter.emit(event, tx);
   };
 
   const queueLegacyAlert = async ({ certificateId, projectId, eventType }: TCertificateAlertEventInput) => {
@@ -90,7 +86,7 @@ export const certificateAlertEventEmitterFactory = ({
 
   const notify = async (input: TCertificateAlertEventInput) => {
     try {
-      await emit(input);
+      await projectDAL.transaction((tx) => emit(input, tx));
     } catch (error) {
       logger.warn(
         error,

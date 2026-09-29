@@ -77,7 +77,7 @@ import {
 
 const MAX_CHANNELS = 10;
 
-interface CreatePkiAlertV2FormStepsProps {
+interface EditPkiAlertV2FormStepsProps {
   expandedChannel: string | undefined;
   setExpandedChannel: (channel: string | undefined) => void;
   showPreview?: boolean;
@@ -93,12 +93,12 @@ type ChannelUIState = {
   };
 };
 
-export const CreatePkiAlertV2FormSteps = ({
+export const EditPkiAlertV2FormSteps = ({
   expandedChannel,
   setExpandedChannel,
   showPreview = true,
   showFilters = true
-}: CreatePkiAlertV2FormStepsProps) => {
+}: EditPkiAlertV2FormStepsProps) => {
   const {
     control,
     watch,
@@ -115,7 +115,6 @@ export const CreatePkiAlertV2FormSteps = ({
 
   const [channelUIStates, setChannelUIStates] = useState<Record<string, ChannelUIState>>({});
 
-  // Track when a channel is intentionally added (vs loaded from existing data)
   const justAddedRef = useRef(false);
 
   const { mutateAsync: testWebhookConfig } = useTestPkiWebhookConfigV2();
@@ -221,7 +220,6 @@ export const CreatePkiAlertV2FormSteps = ({
     clearErrors("channels");
   };
 
-  // Auto-expand newly added channel (prepended at index 0)
   useEffect(() => {
     if (justAddedRef.current && channelFields[0]?.id) {
       setExpandedChannel(channelFields[0].id);
@@ -229,7 +227,6 @@ export const CreatePkiAlertV2FormSteps = ({
     }
   }, [channelFields[0]?.id, setExpandedChannel]);
 
-  // Convert index-based expandedChannel (from modal validation) to field.id
   useEffect(() => {
     if (expandedChannel?.startsWith("channel-")) {
       const match = expandedChannel.match(/^channel-(\d+)$/);
@@ -253,7 +250,6 @@ export const CreatePkiAlertV2FormSteps = ({
   const handleTestWebhook = async (fieldId: string, index: number) => {
     if (!currentProject?.id) return;
 
-    // Trigger validation on the URL field - this will show Zod errors (invalid URL, non-HTTPS, etc.)
     const isValid = await trigger(`channels.${index}.config.url`);
     if (!isValid) return;
 
@@ -309,7 +305,6 @@ export const CreatePkiAlertV2FormSteps = ({
 
     removeChannel(index);
 
-    // Clean up unified channel state
     setChannelUIStates((prev) => {
       const newStates = { ...prev };
       delete newStates[fieldId];
@@ -835,14 +830,12 @@ export const CreatePkiAlertV2FormSteps = ({
                                     : recipientsField.value?.join(", ") || ""
                                 }
                                 onChange={(e) => {
-                                  // Store raw text while typing - don't parse yet
                                   setChannelUIStates((prev) => ({
                                     ...prev,
                                     [field.id]: { ...prev[field.id], emailInput: e.target.value }
                                   }));
                                 }}
                                 onBlur={() => {
-                                  // Parse to array only on blur
                                   const rawValue = channelUIStates[field.id]?.emailInput;
                                   if (rawValue !== undefined) {
                                     const emails = rawValue

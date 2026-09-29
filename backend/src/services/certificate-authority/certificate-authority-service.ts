@@ -169,7 +169,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "assertAttachPermission">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "notify">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;

@@ -154,7 +154,7 @@ type TCertificateServiceFactoryDep = {
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "revokeCertificate">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
-  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
@@ -746,11 +746,11 @@ export const certificateServiceFactory = ({
     }
 
     const revokedAt = new Date();
-    const { id: revokedCertificateId, applicationId: revokedApplicationId } = cert;
+    const { id: revokedCertId, applicationId: revokedCertApplicationId } = cert;
     await certificateDAL.transaction(async (tx) => {
       await certificateDAL.update(
         {
-          id: revokedCertificateId
+          id: revokedCertId
         },
         {
           status: CertStatus.REVOKED,
@@ -764,19 +764,20 @@ export const certificateServiceFactory = ({
         await internalCertificateAuthorityDAL.update({ caId: ca.id }, { $incr: { ocspGeneration: 1 } }, tx);
       }
 
-      await certificateAlertEventEmitter?.emit(
+      await certificateAlertEventEmitter.emit(
         {
-          certificateId: revokedCertificateId,
+          certificateId: revokedCertId,
           projectId: ca.projectId,
+          orgId: actorOrgId,
           eventType: CertificateAlertEvent.Revocation,
-          applicationId: revokedApplicationId ?? null
+          applicationId: revokedCertApplicationId ?? null
         },
         tx
       );
     });
 
-    await certificateAlertEventEmitter?.queueLegacyAlert({
-      certificateId: cert.id,
+    await certificateAlertEventEmitter.queueLegacyAlert({
+      certificateId: revokedCertId,
       projectId: ca.projectId,
       eventType: CertificateAlertEvent.Revocation
     });

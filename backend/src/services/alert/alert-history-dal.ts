@@ -13,7 +13,7 @@ export type TAlertTargetDelivery = {
   targetId: string;
   channelId: string;
   channelType: string;
-  status: string;
+  status: AlertRunStatus;
 };
 
 export type TRecentlyAlertedTarget = { channelId: string; targetId: string };
@@ -27,7 +27,7 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
 
   const createWithTargets = async (
     alertId: string,
-    options: { status: string; eventId?: string; error?: string },
+    options: { status: AlertRunStatus; eventId?: string; error?: string },
     deliveries: TAlertTargetDelivery[]
   ): Promise<TAlertHistory> => {
     try {

@@ -22,7 +22,7 @@ import {
   useUpdatePkiAlertV2
 } from "@app/hooks/api/pkiAlertsV2";
 
-import { CreatePkiAlertV2FormSteps } from "./CreatePkiAlertV2FormSteps";
+import { EditPkiAlertV2FormSteps } from "./EditPkiAlertV2FormSteps";
 
 interface Props {
   isOpen: boolean;
@@ -98,7 +98,7 @@ const getChannelsTabIndex = (
   return hasPreviewTab(eventType, false) ? 3 : 2;
 };
 
-export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alertId }: Props) => {
+export const EditPkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alertId }: Props) => {
   const { currentProject } = useProject();
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
   const [expandedChannel, setExpandedChannel] = useState<string | undefined>(undefined);
@@ -180,7 +180,6 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
                 ...channel,
                 config: {
                   url: webhookConfig.url,
-                  // Show mask if secret exists, otherwise undefined
                   signingSecret: webhookConfig.hasSigningSecret ? SECRET_MASK : undefined
                 }
               };
@@ -209,16 +208,12 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
         if (channel.channelType === PkiAlertChannelTypeV2.WEBHOOK) {
           const webhookConfig = channel.config as TPkiAlertChannelConfigWebhook;
 
-          // Determine what to send for signingSecret
           let signingSecret: string | null | undefined;
           if (webhookConfig.signingSecret === SECRET_MASK) {
-            // User didn't change it - send undefined to preserve existing
             signingSecret = undefined;
           } else if (!webhookConfig.signingSecret) {
-            // User cleared it - send null to remove from DB
             signingSecret = null;
           } else {
-            // User entered a new value (or appended to mask)
             signingSecret = webhookConfig.signingSecret;
           }
 
@@ -269,7 +264,6 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
 
   const isFinalStep = selectedTabIndex === formTabs.length - 1;
 
-  // Helper to find first channel with error and expand it
   const getFirstChannelErrorIndex = (): number => {
     if (!errors.channels) return -1;
     const channelsErrors = errors.channels as Array<FieldError | undefined>;
@@ -284,7 +278,6 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
 
     const isValid = await isStepValid(selectedTabIndex);
     if (!isValid) {
-      // If on channels tab and validation failed, expand first channel with error
       if (selectedTabIndex === channelsTabIndex) {
         const firstErrorIdx = getFirstChannelErrorIndex();
         if (firstErrorIdx >= 0) {
@@ -345,7 +338,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
                   ))}
                 </Tab.List>
                 <Tab.Panels>
-                  <CreatePkiAlertV2FormSteps
+                  <EditPkiAlertV2FormSteps
                     expandedChannel={expandedChannel}
                     setExpandedChannel={setExpandedChannel}
                     showPreview={hasPreviewTab(watchedEventType, applicationScoped)}

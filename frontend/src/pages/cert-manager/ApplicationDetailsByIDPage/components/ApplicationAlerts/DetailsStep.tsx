@@ -16,11 +16,11 @@ import {
   TextArea,
   Toggle
 } from "@app/components/v3";
+import { CertificateAlertEventType } from "@app/hooks/api/alerts";
 
 import {
   CERTIFICATE_ALERT_EVENT_DESCRIPTIONS,
   CERTIFICATE_ALERT_EVENT_LABELS,
-  CertificateAlertEvent,
   TCertificateAlertForm
 } from "./types";
 
@@ -43,7 +43,7 @@ export const DetailsStep = ({ form, isEditing }: Props) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {Object.values(CertificateAlertEvent).map((event) => (
+                  {Object.values(CertificateAlertEventType).map((event) => (
                     <SelectItem key={event} value={event}>
                       {CERTIFICATE_ALERT_EVENT_LABELS[event]}
                     </SelectItem>
@@ -93,7 +93,7 @@ export const DetailsStep = ({ form, isEditing }: Props) => {
           </Field>
         )}
       />
-      {eventType === CertificateAlertEvent.Expiry && (
+      {eventType === CertificateAlertEventType.Expiry && (
         <>
           <Controller
             name="alertBefore"

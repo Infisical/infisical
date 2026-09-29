@@ -6,12 +6,12 @@ import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
   AlertPrincipalType,
+  CertificateAlertEventType,
   TChannelForm
 } from "@app/hooks/api/alerts";
 
 import {
   CERTIFICATE_ALERT_EVENT_LABELS,
-  CertificateAlertEvent,
   TCertificateAlertForm,
   toRecipientEmails,
   TProjectMemberEmails
@@ -61,7 +61,7 @@ const describeChannel = (channel: TChannelForm, members: TProjectMemberEmails): 
 
 export const ReviewStep = ({ form, members }: Props) => {
   const values = useWatch({ control: form.control }) as TCertificateAlertForm;
-  const isExpiry = values.eventType === CertificateAlertEvent.Expiry;
+  const isExpiry = values.eventType === CertificateAlertEventType.Expiry;
 
   return (
     <div className="flex flex-col gap-8">

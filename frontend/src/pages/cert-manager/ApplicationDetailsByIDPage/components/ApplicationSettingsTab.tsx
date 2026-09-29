@@ -264,7 +264,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const canEditPolicies = Boolean(
     appAbility?.can(PkiApplicationResourceActions.Edit, PkiApplicationResourceSub.ApprovalPolicies)
   );
-  const canManageAlerts = Boolean(
+  const canCreateAlerts = Boolean(
     appAbility?.can(PkiApplicationResourceActions.Create, PkiApplicationResourceSub.PkiAlerts)
   );
   const canEditAlerts = Boolean(
@@ -621,7 +621,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         projectId={application.projectId}
         applicationId={application.id}
         applicationName={application.name}
-        canCreate={canManageAlerts}
+        canCreate={canCreateAlerts}
         canEdit={canEditAlerts}
         canDelete={canDeleteAlerts}
       />

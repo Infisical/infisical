@@ -2,37 +2,29 @@ import { z } from "zod";
 
 import {
   AlertPrincipalType,
+  CertificateAlertEventType,
   channelFormSchema,
+  MAX_CERTIFICATE_ALERT_BEFORE_DAYS,
   TAlert,
   TAlertChannelRecipient,
   TChannelForm
 } from "@app/hooks/api/alerts";
 
-export const CERTIFICATE_ALERT_RESOURCE_TYPE = "cert-manager.application";
-
-export enum CertificateAlertEvent {
-  Expiry = "cert-manager.application.certificate.expiry",
-  Issuance = "cert-manager.application.certificate.issuance",
-  Renewal = "cert-manager.application.certificate.renewal",
-  Revocation = "cert-manager.application.certificate.revocation"
-}
-
-export const CERTIFICATE_ALERT_EVENT_LABELS: Record<CertificateAlertEvent, string> = {
-  [CertificateAlertEvent.Expiry]: "Certificate Expiration",
-  [CertificateAlertEvent.Issuance]: "Certificate Issuance",
-  [CertificateAlertEvent.Renewal]: "Certificate Renewal",
-  [CertificateAlertEvent.Revocation]: "Certificate Revocation"
+export const CERTIFICATE_ALERT_EVENT_LABELS: Record<CertificateAlertEventType, string> = {
+  [CertificateAlertEventType.Expiry]: "Certificate Expiration",
+  [CertificateAlertEventType.Issuance]: "Certificate Issuance",
+  [CertificateAlertEventType.Renewal]: "Certificate Renewal",
+  [CertificateAlertEventType.Revocation]: "Certificate Revocation"
 };
 
-export const CERTIFICATE_ALERT_EVENT_DESCRIPTIONS: Record<CertificateAlertEvent, string> = {
-  [CertificateAlertEvent.Expiry]: "Fires ahead of a certificate's expiry date.",
-  [CertificateAlertEvent.Issuance]:
+export const CERTIFICATE_ALERT_EVENT_DESCRIPTIONS: Record<CertificateAlertEventType, string> = {
+  [CertificateAlertEventType.Expiry]: "Fires ahead of a certificate's expiry date.",
+  [CertificateAlertEventType.Issuance]:
     "Fires when Infisical issues a certificate in this application.",
-  [CertificateAlertEvent.Renewal]: "Fires when a certificate in this application is renewed.",
-  [CertificateAlertEvent.Revocation]: "Fires when a certificate in this application is revoked."
+  [CertificateAlertEventType.Renewal]: "Fires when a certificate in this application is renewed.",
+  [CertificateAlertEventType.Revocation]: "Fires when a certificate in this application is revoked."
 };
 
-const MAX_ALERT_BEFORE_DAYS = 365;
 export const MAX_CHANNELS = 10;
 
 const ALERT_BEFORE_PATTERN = /^(\d{1,4})([dwmy])$/;
@@ -86,7 +78,7 @@ export const STEPS = [
 
 export const certificateAlertFormSchema = z
   .object({
-    eventType: z.nativeEnum(CertificateAlertEvent),
+    eventType: z.nativeEnum(CertificateAlertEventType),
     name: z.string().trim().min(1, "Name is required").max(255),
     description: z.string().trim().max(1000),
     alertBefore: z.string().trim(),
@@ -95,7 +87,7 @@ export const certificateAlertFormSchema = z
     channels: z.array(channelFormSchema).min(1, "Add at least one channel").max(MAX_CHANNELS)
   })
   .superRefine((form, ctx) => {
-    if (form.eventType !== CertificateAlertEvent.Expiry) return;
+    if (form.eventType !== CertificateAlertEventType.Expiry) return;
     const days = alertBeforeToDays(form.alertBefore);
     if (days === null) {
       ctx.addIssue({
@@ -103,11 +95,11 @@ export const certificateAlertFormSchema = z
         path: ["alertBefore"],
         message: "Use a number and a unit, for example 30d"
       });
-    } else if (days < 1 || days > MAX_ALERT_BEFORE_DAYS) {
+    } else if (days < 1 || days > MAX_CERTIFICATE_ALERT_BEFORE_DAYS) {
       ctx.addIssue({
         code: "custom",
         path: ["alertBefore"],
-        message: `Must be between 1 and ${MAX_ALERT_BEFORE_DAYS} days`
+        message: `Must be between 1 and ${MAX_CERTIFICATE_ALERT_BEFORE_DAYS} days`
       });
     }
   });
@@ -120,7 +112,7 @@ export const STEP_FIELDS: (keyof TCertificateAlertForm)[][] = [
 ];
 
 export const emptyCertificateAlertForm = (): TCertificateAlertForm => ({
-  eventType: CertificateAlertEvent.Expiry,
+  eventType: CertificateAlertEventType.Expiry,
   name: "",
   description: "",
   alertBefore: "30d",
@@ -133,7 +125,7 @@ export const toCertificateAlertForm = (
   alert: TAlert,
   { emailByUserId, isAvailable }: Pick<TProjectMemberEmails, "emailByUserId" | "isAvailable">
 ): TCertificateAlertForm => ({
-  eventType: alert.eventType as CertificateAlertEvent,
+  eventType: alert.eventType as CertificateAlertEventType,
   name: alert.name,
   description: alert.description ?? "",
   alertBefore: alert.condition?.alertBefore ?? "30d",
@@ -163,6 +155,6 @@ export const toCertificateAlertForm = (
 });
 
 export const toCondition = (form: TCertificateAlertForm) =>
-  form.eventType === CertificateAlertEvent.Expiry
+  form.eventType === CertificateAlertEventType.Expiry
     ? { alertBefore: form.alertBefore.trim(), dailyReminder: form.dailyReminder }
     : null;

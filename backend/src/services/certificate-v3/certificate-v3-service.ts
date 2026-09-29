@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
+import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -31,7 +32,8 @@ import {
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
   CertificateAlertEvent,
-  TCertificateAlertEventEmitter
+  TCertificateAlertEventEmitter,
+  TCertificateAlertEventInput
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -181,7 +183,7 @@ type TCertificateV3ServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
-  certificateAlertEventEmitter?: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit" | "queueLegacyAlert">;
   pkiApplicationProfileDAL: Pick<
     TPkiApplicationProfileDALFactory,
     "findAllByProfileId" | "findOneByApplicationAndProfile"
@@ -360,6 +362,9 @@ export const certificateV3ServiceFactory = ({
   telemetryService
 }: TCertificateV3ServiceFactoryDep) => {
   const $quotaDeps = { projectDAL, licenseService, usageCounterDAL, keyStore };
+
+  const $emitIssuanceAlert = (input: Omit<TCertificateAlertEventInput, "eventType">, tx: Knex) =>
+    certificateAlertEventEmitter.emit({ ...input, eventType: CertificateAlertEvent.Issuance }, tx);
 
   // Called once the certificate row exists, never at the check.
   const $recordQuotaUsage = async (usage?: { orgId: string; isNewQuotaKey: boolean; isWildcard: boolean }) => {
@@ -931,12 +936,11 @@ export const certificateV3ServiceFactory = ({
           await certificateDAL.updateById(processResult.certificateData.id, { applicationId }, tx);
         }
 
-        await certificateAlertEventEmitter?.emit(
+        await $emitIssuanceAlert(
           {
             certificateId: processResult.certificateData.id,
             projectId: profile.projectId,
             orgId: profile.project?.orgId,
-            eventType: CertificateAlertEvent.Issuance,
             applicationId
           },
           tx
@@ -985,7 +989,7 @@ export const certificateV3ServiceFactory = ({
 
       const privateKeyForResponse = canReadPrivateKey ? selfSignedResult.privateKey.toString("utf8") : undefined;
 
-      await certificateAlertEventEmitter?.queueLegacyAlert({
+      await certificateAlertEventEmitter.queueLegacyAlert({
         certificateId: certificateData.id,
         projectId: profile.projectId,
         eventType: CertificateAlertEvent.Issuance
@@ -1181,12 +1185,11 @@ export const certificateV3ServiceFactory = ({
         });
       }
 
-      await certificateAlertEventEmitter?.emit(
+      await $emitIssuanceAlert(
         {
           certificateId: certResult.certificateId,
           projectId: profile.projectId,
           orgId: profile.project?.orgId,
-          eventType: CertificateAlertEvent.Issuance,
           applicationId
         },
         tx
@@ -1234,7 +1237,7 @@ export const certificateV3ServiceFactory = ({
 
     const privateKeyForResponse = canReadPrivateKey ? bufferToString(privateKey) : undefined;
 
-    await certificateAlertEventEmitter?.queueLegacyAlert({
+    await certificateAlertEventEmitter.queueLegacyAlert({
       certificateId: cert.id,
       projectId: profile.projectId,
       eventType: CertificateAlertEvent.Issuance
@@ -1685,12 +1688,11 @@ export const certificateV3ServiceFactory = ({
             tx
           );
 
-          await certificateAlertEventEmitter?.emit(
+          await $emitIssuanceAlert(
             {
               certificateId: newCert.id,
               projectId: profile.projectId,
               orgId: profile.project?.orgId,
-              eventType: CertificateAlertEvent.Issuance,
               applicationId
             },
             tx
@@ -1730,7 +1732,7 @@ export const certificateV3ServiceFactory = ({
       certificateChainString = removeRootCaFromChain(certificateChainString);
     }
 
-    await certificateAlertEventEmitter?.queueLegacyAlert({
+    await certificateAlertEventEmitter.queueLegacyAlert({
       certificateId: certResult.certificateId,
       projectId: profile.projectId,
       eventType: CertificateAlertEvent.Issuance

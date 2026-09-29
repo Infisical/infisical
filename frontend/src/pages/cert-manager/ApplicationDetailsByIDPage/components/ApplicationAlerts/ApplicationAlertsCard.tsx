@@ -44,19 +44,18 @@ import {
 } from "@app/components/v3";
 import {
   AlertRunStatus,
+  CertificateAlertEventType,
+  CertificateAlertResourceType,
   TAlert,
   useDeleteAlert,
   useListAlerts,
   useUpdateAlert
 } from "@app/hooks/api/alerts";
+import { formatAlertBefore } from "@app/views/PkiAlertsV2Page/utils/pki-alert-formatters";
 
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { CertificateAlertSheet } from "./CertificateAlertSheet";
-import {
-  CERTIFICATE_ALERT_EVENT_LABELS,
-  CERTIFICATE_ALERT_RESOURCE_TYPE,
-  CertificateAlertEvent
-} from "./types";
+import { CERTIFICATE_ALERT_EVENT_LABELS } from "./types";
 
 const LAST_RUN_BADGES: Record<
   AlertRunStatus,
@@ -109,7 +108,7 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
         </div>
       </TableCell>
       <TableCell className="whitespace-nowrap text-accent">
-        {CERTIFICATE_ALERT_EVENT_LABELS[alert.eventType as CertificateAlertEvent] ??
+        {CERTIFICATE_ALERT_EVENT_LABELS[alert.eventType as CertificateAlertEventType] ??
           alert.eventType}
       </TableCell>
       <TableCell className="whitespace-nowrap">
@@ -119,7 +118,7 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
       </TableCell>
       <TableCell className="whitespace-nowrap text-accent">
         {alert.condition?.alertBefore ? (
-          alert.condition.alertBefore
+          formatAlertBefore(alert.condition.alertBefore)
         ) : (
           <span className="text-surface-selected">—</span>
         )}
@@ -128,8 +127,8 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
         {alert.lastRun ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant={LAST_RUN_BADGES[alert.lastRun.status]?.variant ?? "danger"}>
-                {LAST_RUN_BADGES[alert.lastRun.status]?.label ?? "Failed"}
+              <Badge variant={LAST_RUN_BADGES[alert.lastRun.status].variant}>
+                {LAST_RUN_BADGES[alert.lastRun.status].label}
               </Badge>
             </TooltipTrigger>
             <TooltipContent side="left" className="max-w-sm">
@@ -201,7 +200,7 @@ export const ApplicationAlertsCard = ({
   canDelete
 }: Props) => {
   const { data: alerts = [], isLoading: isAlertsLoading } = useListAlerts({
-    resourceType: CERTIFICATE_ALERT_RESOURCE_TYPE,
+    resourceType: CertificateAlertResourceType.Application,
     projectId,
     resourceId: applicationId
   });
