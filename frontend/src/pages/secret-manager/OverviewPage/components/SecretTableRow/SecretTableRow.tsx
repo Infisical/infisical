@@ -55,9 +55,7 @@ import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnv
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
-  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
-  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
-  TABLE_ROW_NAME_COLUMN_CLASS_NAME
+  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
 } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 import { SecretEditTableRow } from "./SecretEditTableRow";
@@ -611,11 +609,11 @@ export const SecretTableRow = ({
             >
               <Table
                 className="w-full table-fixed"
-                containerClassName="overflow-hidden rounded-none border-0"
+                containerClassName="overflow-hidden rounded-none border-0 max-sm:overflow-x-auto"
               >
                 <colgroup>
                   <col className="w-10" />
-                  <col className="w-[var(--name-column-width,180px)]" />
+                  <col className="w-[min(var(--name-column-width,180px),50%)]" />
                   <col />
                   <col className="w-32" />
                 </colgroup>
@@ -624,7 +622,7 @@ export const SecretTableRow = ({
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead
                       isTruncatable
-                      className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}
+                      className="w-[min(var(--name-column-width,180px),50%)] max-w-none min-w-0"
                       sortDirection={getExpandedTableSortDirection("environment")}
                       onSortChange={(direction) =>
                         handleExpandedTableSortChange("environment", direction)
@@ -679,7 +677,7 @@ export const SecretTableRow = ({
                           <TableCell
                             isTruncatable
                             className={twMerge(
-                              TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+                              "w-[min(var(--name-column-width,180px),50%)] max-w-none min-w-0 pl-1",
                               hasOverride && "border-l border-b-border/50 border-l-override"
                             )}
                           >
