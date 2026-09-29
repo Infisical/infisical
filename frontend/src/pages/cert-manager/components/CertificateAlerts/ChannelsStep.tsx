@@ -28,10 +28,12 @@ import {
 import { ChannelCard, TChannelRecipientsRenderProps } from "@app/views/Alerts";
 
 import {
-  CERTIFICATE_ALERT_RESOURCE_TYPE,
+  getAlertResourceId,
+  getAlertResourceType,
   MAX_CHANNELS,
   normalizeEmail,
   TCertificateAlertForm,
+  TCertificateAlertScope,
   toRecipientEmails,
   TProjectMemberEmails
 } from "./types";
@@ -163,14 +165,14 @@ export const ChannelsStep = ({
   fields,
   onRemove,
   projectId,
-  applicationId,
+  scope,
   members
 }: {
   form: UseFormReturn<TCertificateAlertForm>;
   fields: TChannelField[];
   onRemove: (index: number) => void;
   projectId: string;
-  applicationId: string;
+  scope: TCertificateAlertScope;
   members: TProjectMemberEmails;
 }) => {
   const channelsError = form.formState.errors.channels?.root ?? form.formState.errors.channels;
@@ -199,8 +201,8 @@ export const ChannelsStep = ({
           key={field.id}
           index={index}
           projectId={projectId}
-          resourceType={CERTIFICATE_ALERT_RESOURCE_TYPE}
-          resourceId={applicationId}
+          resourceType={getAlertResourceType(scope)}
+          resourceId={getAlertResourceId(scope)}
           canRemove
           onRemove={() => onRemove(index)}
           renderRecipients={(props) => <EmailRecipientsField {...props} members={members} />}

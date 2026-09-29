@@ -44,12 +44,15 @@ import {
 } from "@app/components/v3";
 import { TAlert, useDeleteAlert, useListAlerts, useUpdateAlert } from "@app/hooks/api/alerts";
 
-import { PkiDocsUrls } from "../../../pki-docs-urls";
+import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CertificateAlertSheet } from "./CertificateAlertSheet";
 import {
   CERTIFICATE_ALERT_EVENT_LABELS,
-  CERTIFICATE_ALERT_RESOURCE_TYPE,
-  CertificateAlertEvent
+  CertificateAlertScopeKind,
+  getAlertResourceId,
+  getAlertResourceType,
+  TCertificateAlertScope,
+  toAlertEventKind
 } from "./types";
 
 const LAST_RUN_BADGES: Record<
@@ -102,8 +105,7 @@ const AlertRow = ({ alert, onEdit, onDelete, canEdit, canDelete }: AlertRowProps
         </div>
       </TableCell>
       <TableCell className="whitespace-nowrap text-accent">
-        {CERTIFICATE_ALERT_EVENT_LABELS[alert.eventType as CertificateAlertEvent] ??
-          alert.eventType}
+        {CERTIFICATE_ALERT_EVENT_LABELS[toAlertEventKind(alert.eventType)] ?? alert.eventType}
       </TableCell>
       <TableCell className="whitespace-nowrap">
         <Badge variant={alert.enabled ? "success" : "neutral"}>
@@ -172,25 +174,25 @@ const AlertRow = ({ alert, onEdit, onDelete, canEdit, canDelete }: AlertRowProps
 
 type Props = {
   projectId: string;
-  applicationId: string;
-  applicationName: string;
+  scope: TCertificateAlertScope;
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
 };
 
-export const ApplicationAlertsCard = ({
+export const CertificateAlertsCard = ({
   projectId,
-  applicationId,
-  applicationName,
+  scope,
   canCreate,
   canEdit,
   canDelete
 }: Props) => {
+  const isApplicationScope = scope.kind === CertificateAlertScopeKind.Application;
+  const resourceId = getAlertResourceId(scope);
   const { data: alerts = [], isLoading: isAlertsLoading } = useListAlerts({
-    resourceType: CERTIFICATE_ALERT_RESOURCE_TYPE,
+    resourceType: getAlertResourceType(scope),
     projectId,
-    resourceId: applicationId
+    ...(resourceId ? { resourceId } : {})
   });
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; alertId?: string }>({
     isOpen: false
@@ -214,10 +216,20 @@ export const ApplicationAlertsCard = ({
       <Card>
         <CardHeader>
           <CardTitle>
-            Alerting
-            <DocumentationLinkBadge href={PkiDocsUrls.applications.alerting.overview} />
+            {isApplicationScope ? "Alerting" : "Project Alerts"}
+            <DocumentationLinkBadge
+              href={
+                isApplicationScope
+                  ? PkiDocsUrls.applications.alerting.overview
+                  : PkiDocsUrls.settings.projectAlerts
+              }
+            />
           </CardTitle>
-          <CardDescription>Get notified about certificate events.</CardDescription>
+          <CardDescription>
+            {isApplicationScope
+              ? "Get notified about certificate events."
+              : "Get notified about certificate events anywhere in this project, inside or outside an application."}
+          </CardDescription>
           <CardAction>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -247,7 +259,9 @@ export const ApplicationAlertsCard = ({
               <EmptyHeader>
                 <EmptyTitle>No alerts configured</EmptyTitle>
                 <EmptyDescription>
-                  Create one to get notified about certificate events for this application.
+                  {isApplicationScope
+                    ? "Create one to get notified about certificate events for this application."
+                    : "Create one to get notified about certificate events across this project."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -296,8 +310,7 @@ export const ApplicationAlertsCard = ({
         isOpen={alertModal.isOpen}
         onOpenChange={(isOpen) => setAlertModal({ isOpen, alertId: undefined })}
         projectId={projectId}
-        applicationId={applicationId}
-        applicationName={applicationName}
+        scope={scope}
         alert={alerts.find((a) => a.id === alertModal.alertId)}
       />
       <DeleteConfirmDialog

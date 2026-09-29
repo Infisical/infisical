@@ -1628,7 +1628,7 @@ export type TPkiAlertCreatedEvent = {
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
     alertType?: string;
   };
 };
@@ -1638,7 +1638,7 @@ export type TPkiAlertUpdatedEvent = {
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
   };
 };
 
@@ -1647,7 +1647,7 @@ export type TPkiAlertDeletedEvent = {
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
   };
 };
 

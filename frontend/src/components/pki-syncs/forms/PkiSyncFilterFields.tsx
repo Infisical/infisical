@@ -1,14 +1,12 @@
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { PlusIcon, TrashIcon, XIcon } from "lucide-react";
 
+import { CertificateFilterList } from "@app/components/certificate-filters";
 import {
   Badge,
   Button,
-  Field,
-  FieldContent,
   FieldError,
-  FieldLabel,
   FilterableSelect,
   HoverCard,
   HoverCardContent,
@@ -253,36 +251,15 @@ export const PkiSyncFilterFields = ({ applicationId, orderNameById, onOpenPicker
         };
 
         return (
-          <div ref={rootRef} className="mt-3 flex flex-col gap-3">
-            {kinds.map((kind, index) => (
-              <Fragment key={kind}>
-                {index > 0 && (
-                  <div className="flex items-center gap-3">
-                    <span className="h-px flex-1 bg-border" />
-                    <span className="text-xs font-medium text-muted">AND</span>
-                    <span className="h-px flex-1 bg-border" />
-                  </div>
-                )}
-                <div className="flex items-start gap-3">
-                  <Field className="min-w-0 flex-1">
-                    <FieldLabel className="text-xs">{FILTER_LABELS[kind]}</FieldLabel>
-                    <FieldContent>{renderBody(kind)}</FieldContent>
-                  </Field>
-                  {kind !== "metadata" && (
-                    <IconButton
-                      type="button"
-                      size="xs"
-                      variant="ghost"
-                      className="mt-6.5 hover:text-danger"
-                      aria-label={`Remove ${FILTER_LABELS[kind]} filter`}
-                      onClick={() => removeFilter(kind)}
-                    >
-                      <TrashIcon className="size-4" />
-                    </IconButton>
-                  )}
-                </div>
-              </Fragment>
-            ))}
+          <div ref={rootRef} className="mt-3">
+            <CertificateFilterList
+              items={kinds.map((kind) => ({
+                key: kind,
+                label: FILTER_LABELS[kind],
+                body: renderBody(kind),
+                onRemove: kind === "metadata" ? undefined : () => removeFilter(kind)
+              }))}
+            />
           </div>
         );
       }}

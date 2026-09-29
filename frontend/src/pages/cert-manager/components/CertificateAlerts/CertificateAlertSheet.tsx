@@ -28,14 +28,20 @@ import { buildNewChannel, getNextChannelName } from "@app/views/Alerts";
 
 import { AddChannelMenu, ChannelsStep } from "./ChannelsStep";
 import { DetailsStep } from "./DetailsStep";
+import { FiltersStep } from "./FiltersStep";
 import { ReviewStep } from "./ReviewStep";
 import {
-  CERTIFICATE_ALERT_RESOURCE_TYPE,
   certificateAlertFormSchema,
+  CertificateAlertScopeKind,
+  CertificateAlertStep,
   emptyCertificateAlertForm,
+  getAlertResourceId,
+  getAlertResourceType,
+  getSteps,
   STEP_FIELDS,
-  STEPS,
   TCertificateAlertForm,
+  TCertificateAlertScope,
+  toAlertEventType,
   toCertificateAlertForm,
   toCondition,
   TProjectMemberEmails
@@ -45,8 +51,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   projectId: string;
-  applicationId: string;
-  applicationName: string;
+  scope: TCertificateAlertScope;
   alert?: TAlert;
 };
 
@@ -55,13 +60,13 @@ type WizardProps = Omit<Props, "isOpen"> & { members: TProjectMemberEmails };
 const CertificateAlertWizard = ({
   onOpenChange,
   projectId,
-  applicationId,
-  applicationName,
+  scope,
   alert,
   members
 }: WizardProps) => {
   const isEditing = Boolean(alert);
   const [step, setStep] = useState(0);
+  const steps = getSteps(scope);
   const createAlert = useCreateAlert();
   const updateAlert = useUpdateAlert();
 
@@ -74,7 +79,7 @@ const CertificateAlertWizard = ({
 
   const onSubmit = async (values: TCertificateAlertForm) => {
     const channels = values.channels.map(toChannelInput);
-    const condition = toCondition(values);
+    const condition = toCondition(scope, values);
 
     try {
       if (alert) {
@@ -91,9 +96,9 @@ const CertificateAlertWizard = ({
         await createAlert.mutateAsync({
           name: values.name,
           description: values.description || undefined,
-          resourceType: CERTIFICATE_ALERT_RESOURCE_TYPE,
-          resourceId: applicationId,
-          eventType: values.eventType,
+          resourceType: getAlertResourceType(scope),
+          resourceId: getAlertResourceId(scope),
+          eventType: toAlertEventType(scope, values.eventKind),
           condition,
           enabled: values.enabled,
           projectId,
@@ -113,16 +118,17 @@ const CertificateAlertWizard = ({
   };
 
   const goNext = async () => {
-    if (step < STEP_FIELDS.length) {
-      if (await form.trigger(STEP_FIELDS[step])) setStep(step + 1);
+    const stepFields = STEP_FIELDS[steps[step].key];
+    if (stepFields) {
+      if (await form.trigger(stepFields)) setStep(step + 1);
       return;
     }
     await form.handleSubmit(onSubmit)();
   };
 
-  const isLast = step === STEPS.length - 1;
+  const isLast = step === steps.length - 1;
   const { isSubmitting } = form.formState;
-  const currentStep = STEPS[step];
+  const currentStep = steps[step];
   const submitLabel = isEditing ? "Update Alert" : "Create Alert";
 
   return (
@@ -138,7 +144,9 @@ const CertificateAlertWizard = ({
                 {isEditing ? "Edit Certificate Alert" : "Create Certificate Alert"}
               </div>
               <SheetDescription className="leading-4 text-muted">
-                Get notified about certificate events in {applicationName}.
+                {scope.kind === CertificateAlertScopeKind.Application
+                  ? `Get notified about certificate events in ${scope.applicationName}.`
+                  : "Get notified about certificate events across this project."}
               </SheetDescription>
             </div>
           </div>
@@ -156,7 +164,7 @@ const CertificateAlertWizard = ({
             }}
           >
             <StepperList>
-              {STEPS.map((item, index) => (
+              {steps.map((item, index) => (
                 <StepperStep
                   key={item.name}
                   index={index}
@@ -174,27 +182,36 @@ const CertificateAlertWizard = ({
               <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
               <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
             </div>
-            {step === 1 && <AddChannelMenu channelCount={fields.length} onAdd={addChannel} />}
+            {currentStep.key === CertificateAlertStep.Channels && (
+              <AddChannelMenu channelCount={fields.length} onAdd={addChannel} />
+            )}
           </div>
 
-          {step === 0 && <DetailsStep form={form} isEditing={isEditing} />}
-          {step === 1 && (
+          {currentStep.key === CertificateAlertStep.Details && (
+            <DetailsStep form={form} scope={scope} isEditing={isEditing} />
+          )}
+          {currentStep.key === CertificateAlertStep.Filters && (
+            <FiltersStep form={form} projectId={projectId} />
+          )}
+          {currentStep.key === CertificateAlertStep.Channels && (
             <ChannelsStep
               form={form}
               fields={fields}
               onRemove={remove}
               projectId={projectId}
-              applicationId={applicationId}
+              scope={scope}
               members={members}
             />
           )}
-          {step === 2 && <ReviewStep form={form} members={members} />}
+          {currentStep.key === CertificateAlertStep.Review && (
+            <ReviewStep form={form} scope={scope} members={members} />
+          )}
         </div>
       </div>
 
       <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
         <span className="text-xs text-muted">
-          Step {step + 1} of {STEPS.length}
+          Step {step + 1} of {steps.length}
         </span>
         <div className="flex items-center gap-3">
           {step > 0 && (

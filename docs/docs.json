@@ -629,6 +629,7 @@
                       "documentation/platform/pki/settings/policies",
                       "documentation/platform/pki/settings/profiles",
                       "documentation/platform/pki/settings/certificate-cleanup",
+                      "documentation/platform/pki/settings/project-alerts",
                       {
                         "group": "HSM",
                         "pages": [

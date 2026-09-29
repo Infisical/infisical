@@ -138,7 +138,10 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
               Legacy
             </span>
           </div>
-          <p className="text-xs text-label-secondary">Create new alerts inside an Application.</p>
+          <p className="text-xs text-label-secondary">
+            Create new alerts inside an Application, or under Settings &gt; Alerts for the whole
+            project.
+          </p>
         </div>
 
         <div className="mb-4 flex items-center">

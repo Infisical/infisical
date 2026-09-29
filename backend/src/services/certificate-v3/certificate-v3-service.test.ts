@@ -163,6 +163,13 @@ describe("CertificateV3Service", () => {
       issueCertFromCa: vi.fn()
     };
 
+  const mockIssueCertFromCaWithPersist = <T extends { certificateId: string }>(result: T) =>
+    vi.mocked(mockInternalCaService.issueCertFromCa).mockImplementation((async (dto: any) => {
+      const persistedCert = await mockCertificateDAL.findById(result.certificateId);
+      await dto.onPersisted?.(persistedCert, {});
+      return result;
+    }) as any);
+
   const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission"> = {
     getProjectPermission: vi.fn().mockResolvedValue({
       permission: {
@@ -549,7 +556,7 @@ describe("CertificateV3Service", () => {
       });
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue(mockCertificateResult as any);
+      mockIssueCertFromCaWithPersist(mockCertificateResult as any);
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(mockCertRecord);
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCertRecord);
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCertRecord);
@@ -700,7 +707,7 @@ describe("CertificateV3Service", () => {
         });
         vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA as any);
         vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy as any);
-        vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue(mockCertificateResult as any);
+        mockIssueCertFromCaWithPersist(mockCertificateResult as any);
         vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(mockCertRecord as any);
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCertRecord as any);
         vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCertRecord as any);
@@ -1103,7 +1110,7 @@ describe("CertificateV3Service", () => {
       });
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue(mockCertificateResultWithCa as any);
+      mockIssueCertFromCaWithPersist(mockCertificateResultWithCa as any);
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(mockCertRecord);
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
         id: "cert-1",
@@ -1778,7 +1785,7 @@ describe("CertificateV3Service", () => {
         warnings: []
       });
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(rsaPolicy);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
+      mockIssueCertFromCaWithPersist({
         certificate: "cert",
         certificateChain: "chain",
         issuingCaCertificate: "ca-cert",
@@ -1953,7 +1960,7 @@ describe("CertificateV3Service", () => {
         warnings: []
       });
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(ecdsaPolicy);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
+      mockIssueCertFromCaWithPersist({
         certificate: "cert",
         certificateChain: "chain",
         issuingCaCertificate: "ca-cert",
@@ -2128,7 +2135,7 @@ describe("CertificateV3Service", () => {
         warnings: []
       });
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(rsaPolicy);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
+      mockIssueCertFromCaWithPersist({
         certificate: "cert",
         certificateChain: "chain",
         issuingCaCertificate: "ca-cert",
@@ -2303,7 +2310,7 @@ describe("CertificateV3Service", () => {
         warnings: []
       });
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(ecdsaPolicy);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
+      mockIssueCertFromCaWithPersist({
         certificate: "cert",
         certificateChain: "chain",
         issuingCaCertificate: "ca-cert",

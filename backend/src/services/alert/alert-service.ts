@@ -129,9 +129,9 @@ export const alertServiceFactory = ({
     return event;
   };
 
-  const $validateCondition = (event: TAlertEventDefinition, condition: unknown) => {
+  const $parseCondition = (event: TAlertEventDefinition, condition: unknown): unknown => {
     try {
-      event.conditionSchema.parse(condition);
+      return event.conditionSchema.parse(condition);
     } catch (err) {
       const message = err instanceof z.ZodError ? err.issues.map((i) => i.message).join(", ") : "Invalid condition";
       throw new BadRequestError({ message: `Invalid alert condition: ${message}` });
@@ -187,16 +187,15 @@ export const alertServiceFactory = ({
   });
 
   const createAlert = async (input: TCreateAlertDTO, options: TChannelDetailsOptions = {}): Promise<TAlertResponse> => {
-    if (!input.resourceId) {
+    const provider = $getProvider(input.resourceType);
+    if (!input.resourceId && !provider.supportsScopeWideAlerts) {
       throw new BadRequestError({
-        message:
-          "Alerts must be bound to a specific resource. Organization wide and project wide alerts are not supported yet."
+        message: `Alerts for resource type '${input.resourceType}' must be bound to a specific resource. Pass resourceId.`
       });
     }
 
-    const provider = $getProvider(input.resourceType);
     const dto =
-      input.projectId || !provider.resolveProjectId
+      !input.resourceId || input.projectId || !provider.resolveProjectId
         ? input
         : {
             ...input,
@@ -204,7 +203,7 @@ export const alertServiceFactory = ({
           };
 
     const event = $getEvent(provider, dto.eventType);
-    $validateCondition(event, dto.condition);
+    const condition = $parseCondition(event, dto.condition);
 
     await $assertAlertPermission(
       provider,
@@ -217,6 +216,13 @@ export const alertServiceFactory = ({
       orgId: dto.actorOrgId,
       projectId: dto.projectId,
       resourceId: dto.resourceId
+    });
+
+    await provider.assertConditionInScope?.({
+      orgId: dto.actorOrgId,
+      projectId: dto.projectId,
+      resourceId: dto.resourceId,
+      condition
     });
 
     if (!provider.allowsMultipleAlertsPerEvent) {
@@ -257,7 +263,7 @@ export const alertServiceFactory = ({
           resourceId: dto.resourceId,
           eventType: dto.eventType,
           triggerType: event.triggerType,
-          condition: dto.condition != null ? JSON.stringify(dto.condition) : null,
+          condition: condition != null ? JSON.stringify(condition) : null,
           enabled: dto.enabled ?? true,
           orgId: dto.actorOrgId,
           projectId: dto.projectId,
@@ -475,7 +481,17 @@ export const alertServiceFactory = ({
       dto
     );
 
-    if (dto.condition !== undefined) $validateCondition($getEvent(provider, alert.eventType), dto.condition);
+    const condition =
+      dto.condition !== undefined ? $parseCondition($getEvent(provider, alert.eventType), dto.condition) : undefined;
+    if (dto.condition !== undefined) {
+      await provider.assertConditionInScope?.({
+        orgId: alert.orgId,
+        projectId: alert.projectId,
+        resourceId: alert.resourceId,
+        condition,
+        previousCondition: alert.condition
+      });
+    }
     if (dto.channels !== undefined && dto.channels.length === 0) {
       throw new BadRequestError({ message: "At least one channel is required" });
     }
@@ -499,9 +515,7 @@ export const alertServiceFactory = ({
       const patch = {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
         ...(dto.description !== undefined ? { description: dto.description } : {}),
-        ...(dto.condition !== undefined
-          ? { condition: dto.condition != null ? JSON.stringify(dto.condition) : null }
-          : {}),
+        ...(dto.condition !== undefined ? { condition: condition != null ? JSON.stringify(condition) : null } : {}),
         ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {})
       };
 

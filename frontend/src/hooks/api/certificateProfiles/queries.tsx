@@ -85,15 +85,17 @@ export const useListCertificateProfiles = ({
   });
 };
 
+export const fetchCertificateProfileById = async (profileId: string) => {
+  const { data } = await apiRequest.get<{
+    certificateProfile: TCertificateProfileWithDetails;
+  }>(`/api/v1/cert-manager/certificate-profiles/${profileId}`);
+  return data.certificateProfile;
+};
+
 export const useGetCertificateProfileById = ({ profileId }: TGetCertificateProfileByIdDTO) => {
   return useQuery({
     queryKey: certificateProfileKeys.getById(profileId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{
-        certificateProfile: TCertificateProfileWithDetails;
-      }>(`/api/v1/cert-manager/certificate-profiles/${profileId}`);
-      return data.certificateProfile;
-    },
+    queryFn: () => fetchCertificateProfileById(profileId),
     enabled: Boolean(profileId)
   });
 };

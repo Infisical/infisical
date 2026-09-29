@@ -26,12 +26,14 @@ const buildService = (opts?: {
   assertPermission?: (input: TAlertPermissionInput) => Promise<void>;
   resourceScopeThrows?: boolean;
   duplicateExists?: boolean;
+  supportsScopeWideAlerts?: boolean;
   // Runs right after a find() has taken its snapshot, to stand in for a concurrent transaction
   // committing between two statements of ours.
   afterFindAlerts?: (alerts: Map<string, Record<string, unknown>>) => void;
 }) => {
   const permissionCalls: TAlertPermissionInput[] = [];
   const gatedChannelTypeCalls: string[][] = [];
+  const conditionScopeCalls: { resourceId?: string | null; condition: unknown; previousCondition?: unknown }[] = [];
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
     events: [
@@ -60,6 +62,10 @@ const buildService = (opts?: {
     },
     assertChannelTypesAllowed: async ({ channelTypes }) => {
       gatedChannelTypeCalls.push(channelTypes);
+    },
+    supportsScopeWideAlerts: opts?.supportsScopeWideAlerts,
+    assertConditionInScope: async ({ resourceId, condition, previousCondition }) => {
+      conditionScopeCalls.push({ resourceId, condition, previousCondition });
     }
   };
   const registry = alertProviderRegistryFactory();
@@ -218,7 +224,16 @@ const buildService = (opts?: {
     alertProviderRegistry: registry
   } as unknown as TAlertServiceFactoryDep);
 
-  return { service, permissionCalls, gatedChannelTypeCalls, alerts, memberships, channels, findFilters };
+  return {
+    service,
+    permissionCalls,
+    gatedChannelTypeCalls,
+    conditionScopeCalls,
+    alerts,
+    memberships,
+    channels,
+    findFilters
+  };
 };
 
 const actor = {
@@ -305,7 +320,28 @@ describe("alert service", () => {
 
   test("rejects a resource-less (scope-wide) alert as unsupported", async () => {
     const { service } = buildService();
-    await expect(service.createAlert({ ...validCreate, resourceId: undefined })).rejects.toThrow(/not supported yet/);
+    await expect(service.createAlert({ ...validCreate, resourceId: undefined })).rejects.toThrow(
+      "must be bound to a specific resource"
+    );
+  });
+
+  test("creates a resource-less alert when the provider supports scope-wide alerts", async () => {
+    const { service } = buildService({ supportsScopeWideAlerts: true });
+    const alert = await service.createAlert({ ...validCreate, resourceId: undefined, projectId: "proj-x" });
+    expect(alert.resourceId).toBeNull();
+    expect(alert.projectId).toBe("proj-x");
+  });
+
+  test("checks the condition's scope on create, and on update with the stored condition", async () => {
+    const { service, conditionScopeCalls } = buildService();
+    await service.createAlert(validCreate);
+    await service.updateAlert({ alertId: "alert-1", condition: { alertBefore: "5d" }, ...actor });
+    await service.updateAlert({ alertId: "alert-1", name: "renamed", ...actor });
+
+    expect(conditionScopeCalls).toHaveLength(2);
+    expect(conditionScopeCalls[0]).toMatchObject({ resourceId: "resource-1", condition: { alertBefore: "30d" } });
+    expect(conditionScopeCalls[1]).toMatchObject({ condition: { alertBefore: "5d" } });
+    expect(conditionScopeCalls[1].previousCondition).toBeDefined();
   });
 
   test("rejects a condition that fails the provider schema", async () => {

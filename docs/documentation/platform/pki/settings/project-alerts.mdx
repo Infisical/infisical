@@ -1,0 +1,75 @@
+---
+title: "Project alerts"
+sidebarTitle: "Project alerts"
+description: "Get notified about certificate events anywhere in the project, inside or outside an application."
+---
+
+A project alert watches every certificate in the project for one event, whether or not the certificate belongs to an [Application](/documentation/platform/pki/applications/overview). Use a project alert when one team needs to hear about certificates across several applications. To alert on a single application, create an [application alert](/documentation/platform/pki/applications/alerting/overview) instead.
+
+Project alerts use the same events and [notification channels](/documentation/platform/pki/applications/alerting/overview#notification-channels) as application alerts.
+
+## Prerequisites
+
+- The **Create** action on **PKI Alerts** at the project level, which only the project **Admin** role has by default
+- For email alerts, recipients who are members of the Certificate Manager project, or addresses on one of your organization's [verified email domains](/documentation/platform/email-domain)
+
+## Create a project alert
+
+<Steps>
+  <Step>
+    Go to **Certificate Manager** > **Settings** and select the **Alerts** tab.
+  </Step>
+  <Step>
+    Select **Create Alert** in the **Project Alerts** section.
+  </Step>
+  <Step>
+    Choose the **Alert Type**, then enter an **Alert Name** and an optional **Description**. For an expiration alert, enter **Alert Before** as a number and a unit, for example `30d` or `2w`, up to 365 days. Select **Continue**.
+  </Step>
+  <Step>
+    On the **Filters** step, optionally select **Add Filter** to narrow the alert by **Applications** or **Certificate Profiles**. See [which certificates an alert covers](#which-certificates-an-alert-covers). **Matched Certificates** lists the active certificates the alert covers. After you change a filter, select **Reload Preview** to update the list. Select **Continue**.
+  </Step>
+  <Step>
+    Select **Add Channel** and choose where to send notifications. You can add up to 10 channels. Select **Continue**.
+  </Step>
+  <Step>
+    Check the summary on the **Review** step, then select **Create Alert**.
+  </Step>
+</Steps>
+
+## Which certificates an alert covers
+
+If you don't add a filter, the alert covers every certificate in the project. Each filter you add narrows the alert:
+
+| Applications filter | Certificate Profiles filter | Certificates covered |
+|---------------------|-----------------------------|----------------------|
+| None | None | Every certificate in the project |
+| Added | None | Every certificate in the selected applications |
+| None | Added | Every certificate issued from the selected profiles |
+| Added | Added | Certificates in the selected applications that were issued from the selected profiles |
+
+You can select up to 100 applications and 100 profiles.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="What happens to an alert when I delete an application or profile it lists?">
+    The alert keeps the deleted application or profile in its list, and the deleted one matches no certificates. When you edit the alert, the **Filters** step shows it as **Deleted application** or **Deleted profile**, so you can remove it.
+  </Accordion>
+  <Accordion title="Why did I get two notifications for the same certificate?">
+    If a certificate is covered by a project alert and an older alert under **Legacy** > **Alerts** in the sidebar, each alert sends its own notification. Older alerts keep running until you delete them. You can also get one notification from a project alert and one from an application alert if both cover the certificate.
+  </Accordion>
+  <Accordion title="What do webhook receivers get from a project alert?">
+    The [application alert webhook payload](/documentation/platform/pki/applications/alerting/webhook-alerts#webhook-payload-format), with four differences: `type` and `subject` use project events such as `com.infisical.cert-manager.certificate.expiry`, `data.alert.resourceType` is `cert-manager.certificate`, `data.metadata.viewUrl` opens the project's certificate inventory, and each item has an `Application` field when the certificate belongs to an application.
+  </Accordion>
+</AccordionGroup>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Application alerts" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Alert on the certificates in one application.
+  </Card>
+  <Card title="Webhook" icon="webhook" href="/documentation/platform/pki/applications/alerting/webhook-alerts">
+    Send alerts to your own endpoint.
+  </Card>
+</CardGroup>

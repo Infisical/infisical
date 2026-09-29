@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -1058,148 +1058,134 @@ export const certificateV3ServiceFactory = ({
       ? { isCA: true, pathLength: policy.basicConstraints?.maxPathLength }
       : undefined;
 
-    const {
-      certificate,
-      certificateChain,
-      issuingCaCertificate,
-      privateKey,
-      serialNumber,
-      cert,
-      certificateRequestId
-    } = await certificateDAL.transaction(async (tx) => {
-      const baseCertParams = {
-        caId: ca.id,
-        friendlyName: certificateSubject.common_name || "Certificate",
-        commonName: certificateSubject.common_name || "",
-        altNames: subjectAlternativeNames,
-        altNameEntries: certificateRequestWithDefaults.altNames,
-        basicConstraints: caBasicConstraints,
-        pathLength: certificateRequestWithDefaults.basicConstraints?.pathLength,
-        ttl: resolveEffectiveTtl({
-          requestTtl: certificateRequest.validity.ttl,
-          profileDefaultTtlDays: profile.defaults?.ttlDays,
-          policyMaxValidity: policy?.validity?.max,
-          flowDefaultTtl: ""
-        }),
-        keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || [],
-        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || [],
-        notBefore: normalizeDateForApi(certificateRequest.notBefore),
-        notAfter: normalizeDateForApi(certificateRequest.notAfter),
-        signatureAlgorithm: effectiveSignatureAlgorithm,
-        keyAlgorithm: effectiveKeyAlgorithm,
-        isFromProfile: true,
-        organization: certificateRequestWithDefaults.organization,
-        ou: certificateRequestWithDefaults.organizationalUnit,
-        country: certificateRequestWithDefaults.country,
-        state: certificateRequestWithDefaults.state,
-        locality: certificateRequestWithDefaults.locality,
-        domainComponents: certificateRequestWithDefaults.domainComponents,
-        customExtensions: resolvedCustomExtensions,
-        tx
-      };
-
-      const certResult = await internalCaService.issueCertFromCa({
-        ...baseCertParams,
-        internal: true as const
-      });
-
-      const certificateRecord = await certificateDAL.findById(certResult.certificateId, tx);
-      if (!certificateRecord) {
-        throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
-      }
-      const effectiveTtl = resolveEffectiveTtl({
-        requestTtl: certificateRequest.validity.ttl,
-        profileDefaultTtlDays: profile.defaults?.ttlDays,
-        policyMaxValidity: policy?.validity?.max,
-        flowDefaultTtl: ""
-      });
-
-      const effectiveApiConfig = await resolveEffectiveApiConfig({
-        applicationId,
-        profileId: profile.id,
-        profileApiConfig: profile.apiConfig,
-        pkiApplicationProfileDAL,
-        apiEnrollmentConfigDAL
-      });
-      const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-        { apiConfig: effectiveApiConfig },
-        effectiveTtl,
-        new Date(certificateRecord.notAfter)
-      );
-
-      const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
-        profileId
-      };
-      if (finalRenewBeforeDays !== undefined) {
-        updateData.renewBeforeDays = finalRenewBeforeDays;
-      }
-      if (applicationId) {
-        updateData.applicationId = applicationId;
-      }
-      await certificateDAL.updateById(certificateRecord.id, updateData, tx);
-
-      const certRequestResult = await certificateRequestService.createCertificateRequest({
-        internal: true,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
-        projectId: profile.projectId,
-        tx,
-        caId: ca.id,
-        profileId: profile.id,
-        applicationId,
-        commonName: certificateRequestWithDefaults.commonName,
-        altNames: certificateRequestWithDefaults.altNames,
-        keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages),
-        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages),
-        notBefore: certificateRequestWithDefaults.notBefore,
-        notAfter: certificateRequestWithDefaults.notAfter,
-        keyAlgorithm: effectiveKeyAlgorithm,
-        signatureAlgorithm: effectiveSignatureAlgorithm,
-        status: CertificateRequestStatus.ISSUED,
-        certificateId: certResult.certificateId,
-        customExtensions: resolvedCustomExtensions,
-        basicConstraints: certificateRequestWithDefaults.basicConstraints,
-        ttl: effectiveTtl,
-        enrollmentType: EnrollmentType.API,
-        organization: certificateRequestWithDefaults.organization,
-        organizationalUnit: certificateRequestWithDefaults.organizationalUnit,
-        country: certificateRequestWithDefaults.country,
-        state: certificateRequestWithDefaults.state,
-        locality: certificateRequestWithDefaults.locality,
-        domainComponents: certificateRequestWithDefaults.domainComponents
-      });
-
-      if (metadata && metadata.length > 0) {
-        await insertMetadataForCertificate(resourceMetadataDAL, {
-          metadata,
-          certificateId: certResult.certificateId,
-          orgId: actorOrgId,
-          tx
-        });
-        await insertMetadataForCertificateRequest(resourceMetadataDAL, {
-          metadata,
-          certificateRequestId: certRequestResult.id,
-          certificateRequestCreatedAt: certRequestResult.createdAt,
-          orgId: actorOrgId,
-          tx
-        });
-      }
-
-      await certificateAlertEventEmitter?.emit(
-        {
-          certificateId: certResult.certificateId,
-          projectId: profile.projectId,
-          orgId: profile.project?.orgId,
-          eventType: CertificateAlertEvent.Issuance,
-          applicationId
-        },
-        tx
-      );
-
-      return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
+    const effectiveTtl = resolveEffectiveTtl({
+      requestTtl: certificateRequest.validity.ttl,
+      profileDefaultTtlDays: profile.defaults?.ttlDays,
+      policyMaxValidity: policy?.validity?.max,
+      flowDefaultTtl: ""
     });
+
+    const effectiveApiConfig = await resolveEffectiveApiConfig({
+      applicationId,
+      profileId: profile.id,
+      profileApiConfig: profile.apiConfig,
+      pkiApplicationProfileDAL,
+      apiEnrollmentConfigDAL
+    });
+
+    let persistedCert: TCertificates | undefined;
+    let certificateRequestId: string | undefined;
+    const certResult = await internalCaService.issueCertFromCa({
+      caId: ca.id,
+      friendlyName: certificateSubject.common_name || "Certificate",
+      commonName: certificateSubject.common_name || "",
+      altNames: subjectAlternativeNames,
+      altNameEntries: certificateRequestWithDefaults.altNames,
+      basicConstraints: caBasicConstraints,
+      pathLength: certificateRequestWithDefaults.basicConstraints?.pathLength,
+      ttl: effectiveTtl,
+      keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || [],
+      extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || [],
+      notBefore: normalizeDateForApi(certificateRequest.notBefore),
+      notAfter: normalizeDateForApi(certificateRequest.notAfter),
+      signatureAlgorithm: effectiveSignatureAlgorithm,
+      keyAlgorithm: effectiveKeyAlgorithm,
+      isFromProfile: true,
+      organization: certificateRequestWithDefaults.organization,
+      ou: certificateRequestWithDefaults.organizationalUnit,
+      country: certificateRequestWithDefaults.country,
+      state: certificateRequestWithDefaults.state,
+      locality: certificateRequestWithDefaults.locality,
+      domainComponents: certificateRequestWithDefaults.domainComponents,
+      customExtensions: resolvedCustomExtensions,
+      internal: true as const,
+      onPersisted: async (newCert, tx) => {
+        const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
+          { apiConfig: effectiveApiConfig },
+          effectiveTtl,
+          new Date(newCert.notAfter)
+        );
+
+        const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
+          profileId
+        };
+        if (finalRenewBeforeDays !== undefined) {
+          updateData.renewBeforeDays = finalRenewBeforeDays;
+        }
+        if (applicationId) {
+          updateData.applicationId = applicationId;
+        }
+        await certificateDAL.updateById(newCert.id, updateData, tx);
+
+        const certRequestResult = await certificateRequestService.createCertificateRequest({
+          internal: true,
+          actor,
+          actorId,
+          actorAuthMethod,
+          actorOrgId,
+          projectId: profile.projectId,
+          tx,
+          caId: ca.id,
+          profileId: profile.id,
+          applicationId,
+          commonName: certificateRequestWithDefaults.commonName,
+          altNames: certificateRequestWithDefaults.altNames,
+          keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages),
+          extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages),
+          notBefore: certificateRequestWithDefaults.notBefore,
+          notAfter: certificateRequestWithDefaults.notAfter,
+          keyAlgorithm: effectiveKeyAlgorithm,
+          signatureAlgorithm: effectiveSignatureAlgorithm,
+          status: CertificateRequestStatus.ISSUED,
+          certificateId: newCert.id,
+          customExtensions: resolvedCustomExtensions,
+          basicConstraints: certificateRequestWithDefaults.basicConstraints,
+          ttl: effectiveTtl,
+          enrollmentType: EnrollmentType.API,
+          organization: certificateRequestWithDefaults.organization,
+          organizationalUnit: certificateRequestWithDefaults.organizationalUnit,
+          country: certificateRequestWithDefaults.country,
+          state: certificateRequestWithDefaults.state,
+          locality: certificateRequestWithDefaults.locality,
+          domainComponents: certificateRequestWithDefaults.domainComponents
+        });
+
+        if (metadata && metadata.length > 0) {
+          await insertMetadataForCertificate(resourceMetadataDAL, {
+            metadata,
+            certificateId: newCert.id,
+            orgId: actorOrgId,
+            tx
+          });
+          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+            metadata,
+            certificateRequestId: certRequestResult.id,
+            certificateRequestCreatedAt: certRequestResult.createdAt,
+            orgId: actorOrgId,
+            tx
+          });
+        }
+
+        await certificateAlertEventEmitter?.emit(
+          {
+            certificateId: newCert.id,
+            projectId: profile.projectId,
+            orgId: profile.project?.orgId,
+            eventType: CertificateAlertEvent.Issuance,
+            applicationId
+          },
+          tx
+        );
+
+        persistedCert = newCert;
+        certificateRequestId = certRequestResult.id;
+      }
+    });
+    const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber } = certResult;
+    if (!persistedCert || !certificateRequestId) {
+      throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
+    }
+    const cert = persistedCert;
 
     let finalCertificateChain = bufferToString(certificateChain);
     if (removeRootsFromChain) {

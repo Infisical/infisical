@@ -19,7 +19,7 @@ export const AlertEventPayloadSchema = z.object({
   orgId: z.string().uuid(),
   projectId: z.string().trim().min(1).max(255).nullish(),
   resourceType: z.string().trim().min(1).max(255),
-  resourceId: z.string().trim().min(1).max(255),
+  resourceId: z.string().trim().min(1).max(255).nullish(),
   targetIds: z.array(z.string().trim().min(1).max(255)).min(1).max(MAX_TARGET_IDS_PER_EVENT)
 });
 
@@ -113,7 +113,7 @@ export const alertEventConsumerFactory = ({
         filter.orgId,
         filter.projectId ?? null,
         filter.resourceType,
-        filter.resourceId,
+        filter.resourceId ?? null,
         filter.eventType
       ]);
       let lookup = alertsByFilter.get(key);

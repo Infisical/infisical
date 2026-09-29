@@ -69,7 +69,12 @@ export type TAlert = {
   resourceType: string;
   resourceId: string | null;
   eventType: string;
-  condition: { alertBefore?: string; dailyReminder?: boolean } | null;
+  condition: {
+    alertBefore?: string;
+    dailyReminder?: boolean;
+    applicationIds?: string[];
+    profileIds?: string[];
+  } | null;
   enabled: boolean;
   orgId: string;
   projectId: string | null;

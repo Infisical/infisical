@@ -18,21 +18,26 @@ import {
 } from "@app/components/v3";
 
 import {
-  CERTIFICATE_ALERT_EVENT_DESCRIPTIONS,
   CERTIFICATE_ALERT_EVENT_LABELS,
-  CertificateAlertEvent,
-  TCertificateAlertForm
+  CertificateAlertEventKind,
+  getAlertEventDescription,
+  TCertificateAlertForm,
+  TCertificateAlertScope
 } from "./types";
 
-type Props = { form: UseFormReturn<TCertificateAlertForm>; isEditing: boolean };
+type Props = {
+  form: UseFormReturn<TCertificateAlertForm>;
+  scope: TCertificateAlertScope;
+  isEditing: boolean;
+};
 
-export const DetailsStep = ({ form, isEditing }: Props) => {
-  const eventType = useWatch({ control: form.control, name: "eventType" });
+export const DetailsStep = ({ form, scope, isEditing }: Props) => {
+  const eventKind = useWatch({ control: form.control, name: "eventKind" });
 
   return (
     <FieldGroup>
       <Controller
-        name="eventType"
+        name="eventKind"
         control={form.control}
         render={({ field }) => (
           <Field>
@@ -43,16 +48,14 @@ export const DetailsStep = ({ form, isEditing }: Props) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {Object.values(CertificateAlertEvent).map((event) => (
+                  {Object.values(CertificateAlertEventKind).map((event) => (
                     <SelectItem key={event} value={event}>
                       {CERTIFICATE_ALERT_EVENT_LABELS[event]}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <FieldDescription>
-                {CERTIFICATE_ALERT_EVENT_DESCRIPTIONS[field.value]}
-              </FieldDescription>
+              <FieldDescription>{getAlertEventDescription(scope, field.value)}</FieldDescription>
             </FieldContent>
           </Field>
         )}
@@ -93,7 +96,7 @@ export const DetailsStep = ({ form, isEditing }: Props) => {
           </Field>
         )}
       />
-      {eventType === CertificateAlertEvent.Expiry && (
+      {eventKind === CertificateAlertEventKind.Expiry && (
         <>
           <Controller
             name="alertBefore"

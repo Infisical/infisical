@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionHsmConnectorActions
@@ -13,6 +13,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { AppConnectionsTab } from "./components/AppConnectionsTab";
 import { CertificateCleanupTab } from "./components/CertificateCleanupTab";
 import { HsmConnectorsTab } from "./components/HsmConnectorsTab";
+import { ProjectAlertsTab } from "./components/ProjectAlertsTab";
 
 export const SettingsPage = () => {
   const { orgId, projectId } = useParams({ strict: false });
@@ -29,7 +30,7 @@ export const SettingsPage = () => {
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Settings"
-          description="Configure app connections, HSM connectors, and cleanup rules."
+          description="Configure app connections, HSM connectors, cleanup rules, and project alerts."
         />
 
         <Tabs
@@ -46,6 +47,7 @@ export const SettingsPage = () => {
             <TabsTrigger value="app-connections">App Connections</TabsTrigger>
             <TabsTrigger value="hsm-connectors">HSM Connectors</TabsTrigger>
             <TabsTrigger value="cleanup">Cleanup</TabsTrigger>
+            <TabsTrigger value="alerts">Alerts</TabsTrigger>
           </TabsList>
 
           <TabsContent value="app-connections">
@@ -70,6 +72,16 @@ export const SettingsPage = () => {
 
           <TabsContent value="cleanup">
             <CertificateCleanupTab />
+          </TabsContent>
+
+          <TabsContent value="alerts">
+            <ProjectPermissionCan
+              renderGuardBanner
+              I={ProjectPermissionActions.Read}
+              a={ProjectPermissionSub.PkiAlerts}
+            >
+              <ProjectAlertsTab />
+            </ProjectPermissionCan>
           </TabsContent>
         </Tabs>
       </div>

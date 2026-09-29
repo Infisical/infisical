@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { UseFormReturn, useWatch } from "react-hook-form";
 
+import { FilterValueBadges } from "@app/components/certificate-filters";
 import { Badge } from "@app/components/v3";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
@@ -11,13 +12,20 @@ import {
 
 import {
   CERTIFICATE_ALERT_EVENT_LABELS,
-  CertificateAlertEvent,
+  CertificateAlertEventKind,
+  CertificateAlertScopeKind,
   TCertificateAlertForm,
+  TCertificateAlertScope,
   toRecipientEmails,
   TProjectMemberEmails
 } from "./types";
+import { useCertificateScopeNames } from "./useCertificateScopeNames";
 
-type Props = { form: UseFormReturn<TCertificateAlertForm>; members: TProjectMemberEmails };
+type Props = {
+  form: UseFormReturn<TCertificateAlertForm>;
+  scope: TCertificateAlertScope;
+  members: TProjectMemberEmails;
+};
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
   <div className="flex flex-col gap-4">
@@ -27,9 +35,9 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
 );
 
 const Detail = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div className="flex flex-col gap-1">
+  <div className="flex min-w-0 flex-col gap-1">
     <span className="text-xs text-muted">{label}</span>
-    <span className="text-sm text-foreground">{children}</span>
+    <div className="text-sm break-words text-foreground">{children}</div>
   </div>
 );
 
@@ -59,16 +67,48 @@ const describeChannel = (channel: TChannelForm, members: TProjectMemberEmails): 
   }
 };
 
-export const ReviewStep = ({ form, members }: Props) => {
+const ScopeDetails = ({
+  applicationIds,
+  profileIds
+}: {
+  applicationIds: string[];
+  profileIds: string[];
+}) => {
+  const { getApplicationName, getProfileName } = useCertificateScopeNames({
+    applicationIds,
+    profileIds
+  });
+
+  return (
+    <>
+      <Detail label="Applications">
+        {applicationIds.length ? (
+          <FilterValueBadges values={applicationIds.map(getApplicationName)} />
+        ) : (
+          "All applications"
+        )}
+      </Detail>
+      <Detail label="Certificate Profiles">
+        {profileIds.length ? (
+          <FilterValueBadges values={profileIds.map(getProfileName)} />
+        ) : (
+          "All profiles"
+        )}
+      </Detail>
+    </>
+  );
+};
+
+export const ReviewStep = ({ form, scope, members }: Props) => {
   const values = useWatch({ control: form.control }) as TCertificateAlertForm;
-  const isExpiry = values.eventType === CertificateAlertEvent.Expiry;
+  const isExpiry = values.eventKind === CertificateAlertEventKind.Expiry;
 
   return (
     <div className="flex flex-col gap-8">
       <Section title="Basic Information">
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4">
           <Detail label="Name">{values.name}</Detail>
-          <Detail label="Alert Type">{CERTIFICATE_ALERT_EVENT_LABELS[values.eventType]}</Detail>
+          <Detail label="Alert Type">{CERTIFICATE_ALERT_EVENT_LABELS[values.eventKind]}</Detail>
           <Detail label="Status">
             <EnabledBadge enabled={values.enabled} />
           </Detail>
@@ -81,6 +121,23 @@ export const ReviewStep = ({ form, members }: Props) => {
           {values.description && <Detail label="Description">{values.description}</Detail>}
         </div>
       </Section>
+
+      {scope.kind === CertificateAlertScopeKind.Project && (
+        <Section title="Certificate Filters">
+          {values.applicationIds?.length || values.profileIds?.length ? (
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+              <ScopeDetails
+                applicationIds={values.applicationIds ?? []}
+                profileIds={values.profileIds ?? []}
+              />
+            </div>
+          ) : (
+            <span className="text-sm text-muted">
+              No filters. This alert watches every certificate in the project.
+            </span>
+          )}
+        </Section>
+      )}
 
       <Section title="Notification Channels">
         <div className="flex flex-col gap-3">

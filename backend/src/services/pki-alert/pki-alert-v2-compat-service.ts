@@ -7,9 +7,9 @@ import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TAlertResponse } from "@app/services/alert/alert-service-types";
 import { AlertPrincipalType, AlertRunStatus } from "@app/services/alert/alert-types";
 import {
-  TApplicationActiveCertificate,
-  TCertManagerApplicationAlertDALFactory
-} from "@app/services/alert/providers/cert-manager-application-alert-dal";
+  TActiveCertificate,
+  TCertManagerCertificateAlertDALFactory
+} from "@app/services/alert/providers/cert-manager-certificate-alert-dal";
 import {
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
   CertificateAlertEvent,
@@ -72,7 +72,7 @@ type TPkiAlertV2CompatServiceFactoryDep = {
   >;
   alertChannelTestService: Pick<TAlertChannelTestServiceFactory, "testChannel">;
   pkiAlertV2DAL: Pick<TPkiAlertV2DALFactory, "findById">;
-  certManagerApplicationAlertDAL: Pick<TCertManagerApplicationAlertDALFactory, "listActiveCertificates">;
+  certManagerCertificateAlertDAL: Pick<TCertManagerCertificateAlertDALFactory, "listActiveCertificates">;
 };
 
 export type TPkiAlertV2CompatServiceFactory = ReturnType<typeof pkiAlertV2CompatServiceFactory>;
@@ -84,7 +84,7 @@ export const pkiAlertV2CompatServiceFactory = ({
   projectDAL,
   pkiAlertV2Service,
   pkiAlertV2DAL,
-  certManagerApplicationAlertDAL,
+  certManagerCertificateAlertDAL,
   alertChannelTestService
 }: TPkiAlertV2CompatServiceFactoryDep) => {
   const $assertNoFilters = (filters: TPkiFilterRule[]) => {
@@ -263,7 +263,7 @@ export const pkiAlertV2CompatServiceFactory = ({
     if (!applicationId) {
       throw new BadRequestError({
         message:
-          "Project-wide certificate alerts can no longer be created. Pass applicationId to create the alert in an application."
+          "Project-wide certificate alerts can no longer be created on this route. Create them with the alerts API (/api/v1/alerts) using resourceType 'cert-manager.certificate', or pass applicationId to create an application alert."
       });
     }
     if (eventType === PkiAlertEventType.EXPIRATION && !alertBefore) {
@@ -397,7 +397,7 @@ export const pkiAlertV2CompatServiceFactory = ({
     return legacy;
   };
 
-  const $toCertificatePreview = (certificate: TApplicationActiveCertificate): TCertificatePreview => {
+  const $toCertificatePreview = (certificate: TActiveCertificate): TCertificatePreview => {
     let enrollmentType = CertificateOrigin.UNKNOWN;
     if (certificate.profileId) enrollmentType = CertificateOrigin.PROFILE;
     else if (certificate.pkiSubscriberId) enrollmentType = CertificateOrigin.IMPORT;
@@ -425,7 +425,7 @@ export const pkiAlertV2CompatServiceFactory = ({
     ...actor
   }: TListMatchingCertificatesDTO): Promise<TListMatchingCertificatesResponse> => {
     const alert = await $getAlert({ alertId, ...actor });
-    const { certificates, total } = await certManagerApplicationAlertDAL.listActiveCertificates({
+    const { certificates, total } = await certManagerCertificateAlertDAL.listActiveCertificates({
       projectId: alert.projectId as string,
       applicationId: alert.resourceId as string,
       limit,

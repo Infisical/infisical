@@ -86,6 +86,12 @@ export type TFindTargetsByIdsInput = {
   payload: Record<string, unknown>;
 };
 
+export type TAlreadyAlertedFilter = {
+  alertId: string;
+  channelIds: string[];
+  since: Date;
+};
+
 export type TFindDueTargetsInput = {
   orgId: string;
   projectId?: string | null;
@@ -93,6 +99,7 @@ export type TFindDueTargetsInput = {
   eventType: string;
   condition: unknown;
   asOf: Date;
+  alreadyAlerted?: TAlreadyAlertedFilter;
 };
 
 // Lets a provider factory declare which discovery method it guarantees.
@@ -162,6 +169,16 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   assertPermission(input: TAlertPermissionInput): Promise<void>;
 
   allowsMultipleAlertsPerEvent?: boolean;
+
+  supportsScopeWideAlerts?: boolean;
+
+  assertConditionInScope?(input: {
+    orgId: string;
+    projectId?: string | null;
+    resourceId?: string | null;
+    condition: unknown;
+    previousCondition?: unknown;
+  }): Promise<void>;
 
   assertChannelTypesAllowed?(input: { orgId: string; channelTypes: string[] }): Promise<void>;
 
