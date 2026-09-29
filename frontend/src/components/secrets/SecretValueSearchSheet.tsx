@@ -198,7 +198,11 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
             containerClassName="flex-1"
             placeholder="Paste a secret value..."
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              setValue(e.target.value);
+              // Results belong to the value that was searched, not the one now in the box.
+              if (search.data) search.reset();
+            }}
             onKeyDown={(e) => {
               // A textarea would otherwise take Enter as a newline rather than a search.
               if (e.key === "Enter" && !e.shiftKey) {

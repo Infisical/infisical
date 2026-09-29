@@ -654,6 +654,14 @@ export const secretRotationV2ServiceFactory = ({
           kmsService
         });
 
+        // Resolved before the transaction opens, so a slow external KMS does not hold a connection
+        // and the advisory lock while it answers.
+        const { encryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+        const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
+
         return secretRotationV2DAL.transaction(async (tx) => {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretRotationV2Creation(folder.id)]);
 
@@ -688,17 +696,6 @@ export const secretRotationV2ServiceFactory = ({
           );
 
           const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
-
-          const { encryptor } = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId
-          });
-          const blindIndexer = await createSecretBlindIndexer({
-            projectId,
-            orgId: actor.orgId,
-            kmsService,
-            tx
-          });
 
           const inputSecretsWithBlindIndex = await Promise.all(
             secretsPayload.map(async ({ key, value }) => ({
@@ -1357,19 +1354,16 @@ export const secretRotationV2ServiceFactory = ({
             kmsService
           });
 
+          // Resolved before the transaction opens, so a slow external KMS does not hold a connection
+          // while it answers.
+          const { encryptor } = await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId
+          });
+          const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: connection.orgId, kmsService });
+
           return secretRotationV2DAL.transaction(async (tx) => {
             const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
-
-            const { encryptor } = await kmsService.createCipherPairWithDataKey({
-              type: KmsDataKey.SecretManager,
-              projectId
-            });
-            const blindIndexer = await createSecretBlindIndexer({
-              projectId,
-              orgId: connection.orgId,
-              kmsService,
-              tx
-            });
 
             // update mapped secrets with new credential values
             const inputSecretsWithBlindIndex = await Promise.all(
@@ -2088,18 +2082,15 @@ export const secretRotationV2ServiceFactory = ({
           kmsService
         });
 
-        return secretRotationV2DAL.transaction(async (tx) => {
-          const { encryptor } = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId
-          });
-          const blindIndexer = await createSecretBlindIndexer({
-            projectId,
-            orgId: actor.orgId,
-            kmsService,
-            tx
-          });
+        // Resolved before the transaction opens, so a slow external KMS does not hold a connection
+        // while it answers.
+        const { encryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+        const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
 
+        return secretRotationV2DAL.transaction(async (tx) => {
           // Update the password secret with the new value
           const secretsMapping = secretRotation.secretsMapping as TLocalAccountRotation["secretsMapping"];
           const passwordBuffer = Buffer.from(localAccountCredentials.password);

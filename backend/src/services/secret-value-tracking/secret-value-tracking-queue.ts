@@ -195,7 +195,12 @@ export const secretValueTrackingQueueFactory = ({
                 generateBlindIndex(value),
                 generateOrgLevelBlindIndex(value)
               ]);
-              return { id: row.id, secretValueBlindIndex, secretValueOrgBlindIndex };
+              return {
+                id: row.id,
+                encryptedValue: row.encryptedValue as Buffer,
+                secretValueBlindIndex,
+                secretValueOrgBlindIndex
+              };
             })
           );
           // eslint-disable-next-line no-await-in-loop

@@ -1303,24 +1303,35 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   };
 
   const batchSetBlindIndexes = async (
-    updates: { id: string; secretValueBlindIndex: string; secretValueOrgBlindIndex: string }[],
+    updates: {
+      id: string;
+      encryptedValue: Buffer;
+      secretValueBlindIndex: string;
+      secretValueOrgBlindIndex: string;
+    }[],
     tx?: Knex
   ) => {
     if (updates.length === 0) return;
 
     try {
-      const bindings: string[] = [];
-      const valuePlaceholders = updates.map(({ id, secretValueBlindIndex, secretValueOrgBlindIndex }) => {
-        bindings.push(id, secretValueBlindIndex, secretValueOrgBlindIndex);
-        return "(CAST(? AS uuid), ?, CAST(? AS varchar))";
-      });
+      const bindings: (string | Buffer)[] = [];
+      const valuePlaceholders = updates.map(
+        ({ id, encryptedValue, secretValueBlindIndex, secretValueOrgBlindIndex }) => {
+          bindings.push(id, encryptedValue, secretValueBlindIndex, secretValueOrgBlindIndex);
+          return "(CAST(? AS uuid), CAST(? AS bytea), ?, CAST(? AS varchar))";
+        }
+      );
 
+      // The digests were computed from the ciphertext read earlier, so a row whose value has changed
+      // since (eg written by an older replica mid-deploy, which leaves the org digest null) is skipped
+      // rather than given digests for its previous value.
       const query = `
         UPDATE ${TableName.SecretV2}
         SET "secretValueBlindIndex" = v.blind_index,
             "secretValueOrgBlindIndex" = v.org_blind_index
-        FROM (VALUES ${valuePlaceholders.join(", ")}) AS v(id, blind_index, org_blind_index)
+        FROM (VALUES ${valuePlaceholders.join(", ")}) AS v(id, encrypted_value, blind_index, org_blind_index)
         WHERE ${TableName.SecretV2}.id = v.id
+          AND ${TableName.SecretV2}."encryptedValue" = v.encrypted_value
           AND (${TableName.SecretV2}."secretValueBlindIndex" IS NULL
                OR ${TableName.SecretV2}."secretValueOrgBlindIndex" IS NULL)
       `;
@@ -1527,12 +1538,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     {
       orgId,
       projectIds,
-      secretValueDigest,
+      secretValueDigests,
       limit
     }: {
       orgId: string;
       projectIds: string[];
-      secretValueDigest: string;
+      secretValueDigests: string[];
       limit: number;
     },
     tx?: Knex
@@ -1543,7 +1554,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
-        .where(`${TableName.SecretV2}.secretValueOrgBlindIndex`, secretValueDigest)
+        .whereIn(`${TableName.SecretV2}.secretValueOrgBlindIndex`, secretValueDigests)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .whereNull(`${TableName.SecretV2}.userId`)
