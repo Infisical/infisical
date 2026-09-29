@@ -1,6 +1,9 @@
 import { OrgServiceActor } from "@app/lib/types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
+import { assertStripeConnectionAuthorized } from "./stripe-connection-fns";
 import { listStripeApiKeys, throwStripeApiKeyManagementError } from "./stripe-connection-public-client";
 import { TStripeConnection } from "./stripe-connection-types";
 
@@ -18,10 +21,15 @@ export type TStripeApiKeySummary = {
   connectPermissions: string[];
 };
 
-export const stripeConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
+export const stripeConnectionService = (
+  getAppConnection: TGetAppConnectionFunc,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+) => {
   const listApiKeys = async (connectionId: string, actor: OrgServiceActor): Promise<TStripeApiKeySummary[]> => {
     const appConnection = await getAppConnection(AppConnection.Stripe, connectionId, actor);
     const { accountId } = appConnection.credentials;
+    await assertStripeConnectionAuthorized(appConnection.id, appConnectionDAL, kmsService);
 
     try {
       const keys = await listStripeApiKeys(accountId);

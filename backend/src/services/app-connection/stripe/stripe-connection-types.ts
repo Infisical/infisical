@@ -5,11 +5,14 @@ import { DiscriminativePick } from "@app/lib/types";
 import { AppConnection } from "../app-connection-enums";
 import {
   CreateStripeConnectionSchema,
+  StripeConnectionOAuthOutputCredentialsSchema,
   StripeConnectionSchema,
   ValidateStripeConnectionCredentialsSchema
 } from "./stripe-connection-schemas";
 
 export type TStripeConnection = z.infer<typeof StripeConnectionSchema>;
+
+export type TStripeConnectionCredentials = z.infer<typeof StripeConnectionOAuthOutputCredentialsSchema>;
 
 export type TStripeConnectionInput = z.infer<typeof CreateStripeConnectionSchema> & {
   app: AppConnection.Stripe;

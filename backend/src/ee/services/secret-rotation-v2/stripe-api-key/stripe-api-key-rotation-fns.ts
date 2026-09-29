@@ -8,6 +8,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { assertStripeConnectionAuthorized } from "@app/services/app-connection/stripe/stripe-connection-fns";
 import {
   getStripeAppRequestConfig,
   getStripeErrorMessage,
@@ -31,7 +32,7 @@ const STRIPE_KEY_NAME_MAX_LENGTH = 100;
 export const stripeApiKeyRotationFactory: TRotationFactory<
   TStripeApiKeyRotationWithConnection,
   TStripeApiKeyRotationGeneratedCredentials
-> = (secretRotation) => {
+> = (secretRotation, appConnectionDAL, kmsService) => {
   const {
     connection,
     parameters: { permissions, connectPermissions },
@@ -39,6 +40,10 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
   } = secretRotation;
 
   const { accountId } = connection.credentials;
+
+  // Runs once at the start of each operation, not per request, so the cleanup a failed operation
+  // does (expiring a key it just created) never fails on authorization half way through.
+  const $assertAuthorized = () => assertStripeConnectionAuthorized(connection.id, appConnectionDAL, kmsService);
 
   // The factory is built without an id at create time, so the name comes from the mapped secret.
   // It is what makes a key stranded by a timed-out create identifiable in the Stripe dashboard.
@@ -164,6 +169,8 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
   const issueCredentials: TRotationFactoryIssueCredentials<TStripeApiKeyRotationGeneratedCredentials> = async (
     callback
   ) => {
+    await $assertAuthorized();
+
     const credentials = await $createApiKey();
 
     return $retireOnFailure(credentials.keyId, () => callback(credentials));
@@ -174,6 +181,8 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
     callback
   ) => {
     if (!credentials?.length) return callback();
+
+    await $assertAuthorized();
 
     // The published key is retired last. A failure part way through aborts the delete, so retiring
     // it first would leave the rotation row and its mapped secret in place pointing at a key that
@@ -195,6 +204,8 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
     credentialsToRevoke,
     callback
   ) => {
+    await $assertAuthorized();
+
     const newCredentials = await $createApiKey();
 
     // Retire before committing, so a failure leaves Postgres and Stripe agreeing with each other and

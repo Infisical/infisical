@@ -15,10 +15,11 @@ export const StripeConnectionOAuthCredentialsSchema = z.object({
   code: z.string().trim().min(1, "OAuth code required").max(500)
 });
 
-// Infisical authenticates with its own Stripe key and names the account with Stripe-Context, so the
-// account ID is the only thing worth keeping from the OAuth exchange.
+// The refresh token is how each operation proves the app is still installed, and it is single-use,
+// so every refresh rewrites it. Only the account ID is ever returned to clients.
 export const StripeConnectionOAuthOutputCredentialsSchema = z.object({
-  accountId: z.string().trim()
+  accountId: z.string().trim(),
+  refreshToken: z.string()
 });
 
 const BaseStripeConnectionSchema = BaseAppConnectionSchema.extend({
@@ -38,7 +39,7 @@ export const StripeConnectionSchema = z.intersection(
 export const SanitizedStripeConnectionSchema = z.discriminatedUnion("method", [
   BaseStripeConnectionSchema.extend({
     method: z.literal(StripeConnectionMethod.OAuth),
-    credentials: StripeConnectionOAuthOutputCredentialsSchema
+    credentials: StripeConnectionOAuthOutputCredentialsSchema.pick({ accountId: true })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Stripe]} (OAuth)` }))
 ]);
 

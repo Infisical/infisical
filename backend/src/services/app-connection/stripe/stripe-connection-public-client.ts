@@ -26,7 +26,11 @@ export const getStripeSecretKey = () => {
   return INF_APP_CONNECTION_STRIPE_SECRET_KEY;
 };
 
-/** The Infisical Stripe App acting on a customer's account, named by Stripe-Context. */
+/**
+ * The Infisical Stripe App acting on a customer's account, named by Stripe-Context. This key reaches
+ * every account the app is installed on, so callers must run assertStripeConnectionAuthorized first.
+ * Stripe only serves the Managed API Keys API to the app's own key, not to OAuth access tokens.
+ */
 export const getStripeAppRequestConfig = (accountId: string): AxiosRequestConfig => ({
   headers: {
     Authorization: `Bearer ${getStripeSecretKey()}`,
@@ -59,8 +63,9 @@ export const getStripeErrorStatus = (error: unknown): number | undefined =>
   error instanceof AxiosError ? error.response?.status : undefined;
 
 /**
- * Nothing proactively notices that a customer uninstalled the app, because the connection stores no
- * tokens, so it arrives here as a 403. The remedy is offered conditionally rather than asserted.
+ * An uninstall is normally caught earlier, by the refresh in assertStripeConnectionAuthorized. One
+ * that lands between that refresh and the call arrives here as a 403, so the remedy is offered
+ * conditionally rather than asserted.
  *
  * Only an Axios error is actually a response from Stripe. Anything else, eg a local
  * misconfiguration like a missing app key, gets rethrown as itself rather than reworded into
