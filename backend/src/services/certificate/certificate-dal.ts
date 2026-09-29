@@ -299,7 +299,10 @@ export const certificateDALFactory = (db: TDbClient) => {
             LIMIT 1
           ),
           pki_certificate_profiles."enrollmentType",
-          CASE WHEN certificates.source IN ('imported', 'discovered') THEN certificates.source ELSE 'api' END
+          CASE
+            WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN certificates.source
+            ELSE 'api'
+          END
         ) IN (${placeholders})`,
         filters.enrollmentTypes
       );
@@ -844,7 +847,10 @@ export const certificateDALFactory = (db: TDbClient) => {
                 LIMIT 1
               ),
               pki_certificate_profiles."enrollmentType",
-              CASE WHEN certificates.source IN ('imported', 'discovered') THEN certificates.source ELSE 'api' END
+              CASE
+                WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN certificates.source
+                ELSE 'api'
+              END
             ) as "enrollmentType"`
           )
         )
@@ -1139,7 +1145,10 @@ export const certificateDALFactory = (db: TDbClient) => {
                 LIMIT 1
               ),
               pki_certificate_profiles."enrollmentType",
-              CASE WHEN certificates.source IN ('imported', 'discovered') THEN certificates.source ELSE 'api' END
+              CASE
+                WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN certificates.source
+                ELSE 'api'
+              END
             ) as label`
           )
         )
