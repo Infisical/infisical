@@ -23,8 +23,7 @@ export const stripUnusedKeystoreOptions = (syncOptions: Record<string, unknown>)
 
 // Files this sync wrote for a certificate last time but no longer writes, such as a truststore
 // after it is turned off. Paths another certificate wrote this run are left alone, and nothing is
-// returned when the files were written to a different host. Records from before hosts were saved
-// have no host and are treated as the current one.
+// returned unless the files are known to have been written to the current host.
 export const getStaleCertificateFiles = ({
   previousFiles,
   previousHost,
@@ -40,7 +39,7 @@ export const getStaleCertificateFiles = ({
   deliveredPaths: Set<string>;
   caseInsensitive?: boolean;
 }): string[] => {
-  if (previousHost && (!currentHost || previousHost.toLowerCase() !== currentHost.toLowerCase())) return [];
+  if (!previousHost || !currentHost || previousHost.toLowerCase() !== currentHost.toLowerCase()) return [];
   const normalize = (filePath: string) => (caseInsensitive ? filePath.toLowerCase() : filePath);
   const current = new Set([...writtenPaths, ...deliveredPaths].map(normalize));
   return previousFiles.filter((filePath) => !current.has(normalize(filePath)));
