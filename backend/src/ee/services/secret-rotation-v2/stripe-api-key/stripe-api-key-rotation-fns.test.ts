@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TSecretRotationV2Raw } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 
-const { getMock, postMock } = vi.hoisted(() => ({
+const { getMock, postMock, authorizeMock } = vi.hoisted(() => ({
   getMock: vi.fn<(url: string, config?: unknown) => Promise<unknown>>(),
-  postMock: vi.fn<(url: string, body?: unknown, config?: unknown) => Promise<unknown>>()
+  postMock: vi.fn<(url: string, body?: unknown, config?: unknown) => Promise<unknown>>(),
+  authorizeMock: vi.fn<(connectionId: string) => Promise<void>>()
 }));
 
 vi.mock("@app/lib/config/env", () => ({
@@ -14,6 +15,9 @@ vi.mock("@app/lib/config/env", () => ({
 }));
 vi.mock("@app/lib/config/request", () => ({
   request: { get: getMock, post: postMock }
+}));
+vi.mock("@app/services/app-connection/stripe/stripe-connection-fns", () => ({
+  assertStripeConnectionAuthorized: authorizeMock
 }));
 vi.mock("@app/lib/logger", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
@@ -42,7 +46,8 @@ const NEW_KEY: TCredential = { keyId: "mk_new", apiKey: "rk_test_mk_new" };
 /** The rotation service hands the factory a transaction body; this stands in for its return. */
 const COMMITTED = "committed" as unknown as TSecretRotationV2Raw;
 
-// The Stripe factory reaches Stripe over HTTP and touches none of the other four dependencies.
+// The factory hands appConnectionDAL and kmsService to the authorization check, which is mocked, so
+// none of these are reached.
 const UNUSED_DEPENDENCIES = [{}, {}, {}, {}] as unknown as [
   Parameters<typeof stripeApiKeyRotationFactory>[1],
   Parameters<typeof stripeApiKeyRotationFactory>[2],
@@ -145,6 +150,8 @@ describe("stripeApiKeyRotationFactory", () => {
     createBody = undefined;
     getMock.mockReset();
     postMock.mockReset();
+    authorizeMock.mockReset();
+    authorizeMock.mockResolvedValue(undefined);
     commit.mockClear();
     commitWithoutCredentials.mockClear();
   });
@@ -173,6 +180,31 @@ describe("stripeApiKeyRotationFactory", () => {
 
       const name = createBody?.name ?? "";
       expect(new RE2(expected).test(name), `expected ${expected}, got "${name}"`).toBe(true);
+    });
+
+    it("confirms the connection is still authorized before acting on the account with the app key", async () => {
+      mockStripe();
+
+      await makeFactory().issueCredentials(commit);
+
+      const { headers } = postMock.mock.calls[0][2] as { headers: Record<string, string> };
+
+      expect(authorizeMock).toHaveBeenCalledWith("connection-id", {}, {});
+      expect(authorizeMock.mock.invocationCallOrder[0]).toBeLessThan(postMock.mock.invocationCallOrder[0]);
+      expect(headers.Authorization).toBe("Bearer sk_test_app");
+      expect(headers["Stripe-Context"]).toBe("acct_123");
+    });
+
+    it.each([
+      { operation: "issue", run: () => makeFactory().issueCredentials(commit) },
+      { operation: "rotate", run: () => makeFactory().rotateCredentials(OLD_KEY, commit, OLD_KEY) },
+      { operation: "revoke", run: () => makeFactory().revokeCredentials([OLD_KEY], commitWithoutCredentials) }
+    ])("does not touch Stripe keys on $operation once the app was uninstalled", async ({ run }) => {
+      mockStripe();
+      authorizeMock.mockRejectedValue(new Error("Infisical is no longer authorized"));
+
+      await expect(run()).rejects.toThrow("Infisical is no longer authorized");
+      expect(calls).toEqual([]);
     });
 
     // The key exists in Stripe before the row does, so both failure points after create have to
