@@ -1,12 +1,30 @@
 import crypto from "crypto";
 
 import { useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, SheetFooter } from "@app/components/v3";
-import { useGetAppConnectionOauthReturnUrl } from "@app/helpers/appConnections";
+import {
+  Button,
+  Field,
+  FieldError,
+  FieldLabel,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SheetFooter,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  useGetAppConnectionOauthReturnUrl
+} from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useScopeVariant } from "@app/hooks";
 import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
@@ -21,6 +39,7 @@ import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
+import { Info } from "lucide-react";
 
 type Props = {
   appConnection?: TStripeConnection;
@@ -66,6 +85,7 @@ export const StripeConnectionForm = ({ appConnection, projectId }: Props) => {
 
   const {
     handleSubmit,
+    control,
     formState: { isSubmitting, isDirty }
   } = form;
 
@@ -113,10 +133,42 @@ export const StripeConnectionForm = ({ appConnection, projectId }: Props) => {
       <form onSubmit={handleSubmit(onSubmit)}>
         {!isUpdate && <GenericAppConnectionsFields />}
 
-        <p className="mb-4 text-sm text-mineshaft-400">
-          You will be redirected to Stripe to install the Infisical app and choose the account
-          Infisical should manage API keys for.
-        </p>
+        <Controller
+          name="method"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    {`The method you would like to use to connect with ${
+                      APP_CONNECTION_MAP[AppConnection.Stripe].name
+                    }. This field cannot be changed after creation.`}
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(StripeConnectionMethod).map((method) => {
+                    return (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}{" "}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
 
         {!isLoading && isMissingConfig && (
           <p className="mb-4 text-sm text-red">

@@ -23,28 +23,16 @@ export const StripeApiKeyRotationGeneratedCredentialsSchema = z
   .min(1)
   .max(2);
 
-const StripeApiKeyPermissionListSchema = StripeApiKeyPermissionSchema.array()
+const StripeApiKeyPermissionListSchema = z
+  .array(StripeApiKeyPermissionSchema)
+  .min(1, "At least one permission is required")
   .max(STRIPE_API_KEY_PERMISSIONS.length)
   .transform((permissions) => [...new Set(permissions)]);
 
-const StripeApiKeyRotationParametersSchema = z
-  .object({
-    permissions: StripeApiKeyPermissionListSchema.optional().describe(
-      SecretRotations.PARAMETERS.STRIPE_API_KEY.permissions
-    ),
-    connectPermissions: StripeApiKeyPermissionListSchema.optional().describe(
-      SecretRotations.PARAMETERS.STRIPE_API_KEY.connectPermissions
-    )
-  })
-  .superRefine((parameters, ctx) => {
-    if (parameters.permissions?.length || parameters.connectPermissions?.length) return;
-
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["permissions"],
-      message: "At least one permission or Connect permission is required"
-    });
-  });
+const StripeApiKeyRotationParametersSchema = z.object({
+  keyName: z.string().optional().describe(SecretRotations.PARAMETERS.STRIPE_API_KEY.keyName),
+  permissions: StripeApiKeyPermissionListSchema.describe(SecretRotations.PARAMETERS.STRIPE_API_KEY.permissions)
+});
 
 const StripeApiKeyRotationSecretsMappingSchema = z.object({
   apiKey: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.STRIPE_API_KEY.apiKey)
@@ -54,7 +42,18 @@ export const StripeApiKeyRotationTemplateSchema = z.object({
   secretsMapping: z.object({
     apiKey: z.string()
   }),
-  permissions: z.string().array()
+  permissionGroups: z
+    .object({
+      name: z.string(),
+      resources: z
+        .object({
+          name: z.string(),
+          read: z.string().optional(),
+          write: z.string().optional()
+        })
+        .array()
+    })
+    .array()
 });
 
 export const StripeApiKeyRotationSchema = BaseSecretRotationSchema(SecretRotation.StripeApiKey).extend({

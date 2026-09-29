@@ -1,12 +1,10 @@
 /* eslint-disable no-await-in-loop */
 import crypto from "node:crypto";
 
-import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import { AxiosError, AxiosRequestConfig } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 // The Managed API Keys API is in private preview and is only served under a preview API version.
@@ -75,78 +73,4 @@ export const throwStripeApiKeyManagementError = (accountId: string, error: unkno
       `Stripe returned ${getStripeErrorStatus(error) ?? "no status"}: ${getStripeErrorMessage(error)}. ` +
       `If the Infisical app was removed from this Stripe account, reinstall it and reconnect.`
   });
-};
-
-export type TStripeApiKeyListItem = {
-  id: string;
-  name?: string | null;
-  status?: string | null;
-  permissions?: string[] | null;
-  connect_permissions?: string[] | null;
-};
-
-type TStripeApiKeyListResponse = {
-  data?: TStripeApiKeyListItem[];
-  next_page_url?: string | null;
-};
-
-const STRIPE_LIST_PAGE_SIZE = 100;
-
-// Stripe rejects limit=200 with "The maximum page limit is 100", so this is the largest page it
-// serves. The page cap is a runaway guard, not an expected bound.
-const STRIPE_LIST_MAX_PAGES = 50;
-
-// Stripe's list response carries secret_key.token, in full plaintext, for every key in the account.
-// TStripeApiKeyListItem omits it only at the type level, so rebuilding each item as a fresh object
-// literal is what actually keeps the raw response object, and the secret it carries, from leaving
-// this function. Downstream callers strip it again on their own responses; this is defense in depth.
-const sanitizeApiKeyListItem = (item: TStripeApiKeyListItem): TStripeApiKeyListItem => ({
-  id: item.id,
-  name: item.name,
-  status: item.status,
-  permissions: item.permissions,
-  connect_permissions: item.connect_permissions
-});
-
-export const listStripeApiKeys = async (accountId: string): Promise<TStripeApiKeyListItem[]> => {
-  const config = getStripeAppRequestConfig(accountId);
-  const keys: TStripeApiKeyListItem[] = [];
-
-  let url: string | undefined = `${STRIPE_API_KEYS_URL}?limit=${STRIPE_LIST_PAGE_SIZE}`;
-  let pages = 0;
-
-  while (url && pages < STRIPE_LIST_MAX_PAGES) {
-    // The explicit AxiosResponse annotation breaks a circular type-inference error TS raises when a
-    // loop variable (url) is both an argument to this generic call and reassigned from its result.
-    const response: AxiosResponse<TStripeApiKeyListResponse> = await request.get<TStripeApiKeyListResponse>(
-      url,
-      config
-    );
-
-    keys.push(...(response.data?.data ?? []).map(sanitizeApiKeyListItem));
-
-    const nextPageUrl = response.data?.next_page_url ?? undefined;
-
-    // config carries the app's own key, which can act on every account the app is installed on, not
-    // a per-connection token. This must be checked before that credential goes out on the next
-    // request, never after, since next_page_url comes from the response body Stripe controls.
-    if (nextPageUrl && !nextPageUrl.startsWith(STRIPE_API_KEYS_URL)) {
-      logger.error(
-        `listStripeApiKeys: next_page_url for account ${accountId} did not point at the Stripe API keys endpoint, stopped paginating`
-      );
-      url = undefined;
-    } else {
-      url = nextPageUrl;
-    }
-
-    pages += 1;
-  }
-
-  if (url) {
-    logger.warn(
-      `listStripeApiKeys: stopped after ${STRIPE_LIST_MAX_PAGES} pages for account ${accountId}, the list is truncated`
-    );
-  }
-
-  return keys;
 };

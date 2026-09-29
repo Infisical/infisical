@@ -34,7 +34,7 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
 > = (secretRotation) => {
   const {
     connection,
-    parameters: { permissions, connectPermissions },
+    parameters: { permissions, keyName },
     secretsMapping
   } = secretRotation;
 
@@ -42,7 +42,8 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
 
   // The factory is built without an id at create time, so the name comes from the mapped secret.
   // It is what makes a key stranded by a timed-out create identifiable in the Stripe dashboard.
-  const $keyName = () => `infisical-${secretsMapping.apiKey}-${Date.now()}`.slice(0, STRIPE_KEY_NAME_MAX_LENGTH);
+  const $keyName = () =>
+    `${keyName ?? `infisical-${secretsMapping.apiKey}-${Date.now()}`}`.slice(0, STRIPE_KEY_NAME_MAX_LENGTH);
 
   /** No 404 on a double expire has ever been observed, so a non-404 failure on retiring a key that
    *  was already expired can't be told apart from a real failure by status code alone. This is only
@@ -129,23 +130,12 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
         {
           type: "secret_key",
           name: $keyName(),
-          ...(permissions?.length ? { permissions } : {}),
-          ...(connectPermissions?.length ? { connect_permissions: connectPermissions } : {}),
+          permissions,
           public_key: { pem_key: { data: publicKey, algorithm: "RSA" } }
         },
         withIdempotencyKey(getStripeAppRequestConfig(accountId))
       ));
     } catch (error) {
-      // Stripe rejects connect_permissions on an account that is not a Connect platform, without
-      // naming the parameter at fault, and nothing we can read off the account says whether it is
-      // one. So the rejection carries the likely cause. Only a 400 qualifies: the auth and
-      // availability failures have their own remedy and keep it.
-      if (connectPermissions?.length && getStripeErrorStatus(error) === 400) {
-        throw new BadRequestError({
-          message: `Stripe rejected the API key for account '${accountId}': ${getStripeErrorMessage(error)}. If this Stripe account is not a Connect platform, remove the Connect permissions from this rotation and try again.`
-        });
-      }
-
       return throwStripeApiKeyManagementError(accountId, error);
     }
 

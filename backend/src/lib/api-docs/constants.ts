@@ -3650,10 +3650,9 @@ export const SecretRotations = {
       modulusLength: "The modulus length in bits of the generated RSA key pairs. Defaults to 2048."
     },
     STRIPE_API_KEY: {
+      keyName: "The name of the Stripe API key that will be created and rotated by Infisical.",
       permissions:
-        "The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do.",
-      connectPermissions:
-        "The permissions that the generated Stripe API key has over connected accounts. If your Stripe account is not a Connect platform account, you cannot configure Connect permissions for the key."
+        "The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do."
     }
   },
   SECRETS_MAPPING: {

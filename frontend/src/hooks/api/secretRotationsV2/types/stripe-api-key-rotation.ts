@@ -8,8 +8,7 @@ import {
 export type TStripeApiKeyRotation = TSecretRotationV2Base & {
   type: SecretRotation.StripeApiKey;
   parameters: {
-    permissions?: string[];
-    connectPermissions?: string[];
+    permissions: string[];
   };
   secretsMapping: {
     apiKey: string;
@@ -27,12 +26,23 @@ export type TStripeApiKeyRotationGeneratedCredentialsResponse =
     TStripeApiKeyRotationGeneratedCredentials
   >;
 
+export type TStripeApiKeyPermissionResource = {
+  name: string;
+  read?: string;
+  write?: string;
+};
+
+export type TStripeApiKeyPermissionGroup = {
+  name: string;
+  resources: TStripeApiKeyPermissionResource[];
+};
+
 export type TStripeApiKeyRotationOption = {
   name: string;
   type: SecretRotation.StripeApiKey;
   connection: AppConnection.Stripe;
   template: {
     secretsMapping: TStripeApiKeyRotation["secretsMapping"];
-    permissions: string[];
+    permissionGroups: TStripeApiKeyPermissionGroup[];
   };
 };
