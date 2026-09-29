@@ -38,6 +38,62 @@ const buildServer = async ({ corsOrigin }: { corsOrigin?: string | string[] } = 
     });
   }
 
+  const hidden = JSON.stringify({ "x-hidden": true });
+
+  app.route({
+    method: "POST",
+    url: "/api/v1/widgets",
+    schema: {
+      hide: false,
+      operationId: "createWidget",
+      body: z.object({
+        name: z.string().describe(JSON.stringify({ title: "Widget name" })),
+        internalFlag: z.boolean().describe(hidden)
+      }),
+      response: {
+        200: z.object({ widget: z.object({ id: z.string(), internalNote: z.string().describe(hidden) }) })
+      }
+    },
+    handler: async () => ({ widget: { id: "w", internalNote: "n" } })
+  });
+
+  const widgetWithProject = z.object({
+    id: z.string(),
+    projectId: z.string(),
+    children: z.object({ name: z.string(), projectId: z.string() }).array()
+  });
+
+  app.route({
+    method: "GET",
+    url: "/api/v1/cert-manager/widgets/:id",
+    schema: {
+      hide: false,
+      operationId: "getCertManagerWidget",
+      response: { 200: z.object({ widget: widgetWithProject }) }
+    },
+    handler: async () => ({ widget: { id: "w", projectId: "p", children: [] } })
+  });
+
+  app.route({
+    method: "GET",
+    url: "/api/v1/projects/:projectId/widgets",
+    schema: {
+      hide: false,
+      operationId: "listProjectWidgets",
+      response: { 200: z.object({ widget: widgetWithProject }) }
+    },
+    handler: async () => ({ widget: { id: "w", projectId: "p", children: [] } })
+  });
+
+  app.route({
+    method: "GET",
+    url: "/api/v1/internal-widgets",
+    schema: { response: { 200: z.object({ id: z.string() }) } },
+    handler: async () => ({ id: "w" })
+  });
+
+  app.get("/api/v1/schemaless-widgets", async () => ({ ok: true }));
+
   await app.ready();
   app.swagger();
   return app;
@@ -193,6 +249,76 @@ describe("OpenAPI spec routes", () => {
     const res = await getSpec();
 
     expect(String(res.headers.vary)).toBe("accept-encoding");
+  });
+
+  describe("published contract", () => {
+    type TJsonSchema = {
+      properties?: Record<string, TJsonSchema>;
+      required?: string[];
+      items?: TJsonSchema;
+      title?: string;
+      description?: string;
+    };
+    type TOperation = {
+      requestBody?: { content: { "application/json": { schema: TJsonSchema } } };
+      responses: Record<string, { content: { "application/json": { schema: TJsonSchema } } }>;
+    };
+    type TSpec = { paths: Record<string, Record<string, TOperation>> };
+
+    let spec: TSpec;
+
+    beforeAll(async () => {
+      spec = JSON.parse((await getSpec()).body) as TSpec;
+    });
+
+    const operation = (path: string, method: string) => spec.paths[path][method];
+    const requestBody = (path: string, method: string) =>
+      operation(path, method).requestBody?.content["application/json"].schema;
+    const response = (path: string, method: string) =>
+      operation(path, method).responses["200"].content["application/json"].schema;
+
+    test("drops x-hidden fields from request bodies and their required list", () => {
+      const body = requestBody("/api/v1/widgets", "post");
+
+      expect(Object.keys(body?.properties ?? {})).toEqual(["name"]);
+      expect(body?.required).toEqual(["name"]);
+    });
+
+    test("drops x-hidden fields from responses and their required list", () => {
+      const widget = response("/api/v1/widgets", "post").properties?.widget;
+
+      expect(Object.keys(widget?.properties ?? {})).toEqual(["id"]);
+      expect(widget?.required).toEqual(["id"]);
+    });
+
+    test("merges JSON descriptions into the schema instead of publishing them as text", () => {
+      const name = requestBody("/api/v1/widgets", "post")?.properties?.name;
+
+      expect(name?.title).toBe("Widget name");
+      expect(name?.description).toBeUndefined();
+    });
+
+    test("strips projectId at every depth of a cert-manager response", () => {
+      const widget = response("/api/v1/cert-manager/widgets/{id}", "get").properties?.widget;
+      const child = widget?.properties?.children?.items;
+
+      expect(widget?.properties).not.toHaveProperty("projectId");
+      expect(widget?.required).not.toContain("projectId");
+      expect(child?.properties).not.toHaveProperty("projectId");
+      expect(child?.required).toEqual(["name"]);
+    });
+
+    test("keeps projectId on responses outside cert-manager", () => {
+      const widget = response("/api/v1/projects/{projectId}/widgets", "get").properties?.widget;
+
+      expect(widget?.properties).toHaveProperty("projectId");
+      expect(widget?.properties?.children?.items?.properties).toHaveProperty("projectId");
+    });
+
+    test("leaves routes out unless they opt in with hide: false", () => {
+      expect(spec.paths).not.toHaveProperty("/api/v1/internal-widgets");
+      expect(spec.paths).not.toHaveProperty("/api/v1/schemaless-widgets");
+    });
   });
 
   test("builds the payload once when a cold server is hit concurrently", async () => {
