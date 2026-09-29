@@ -29,10 +29,15 @@ export const useCertificateScopeNames = ({
     (profilesQuery.data?.certificateProfiles ?? []).map(({ id, slug }) => [id, slug])
   );
 
+  const requestedApplicationIds = new Set(applicationIds);
+  const requestedProfileIds = new Set(profileIds);
+
   return {
     getApplicationName: (id: string) =>
-      applicationNames.get(id) ?? (isApplicationsLoaded ? "Deleted application" : id),
+      applicationNames.get(id) ??
+      (isApplicationsLoaded && requestedApplicationIds.has(id) ? "Deleted application" : id),
     getProfileName: (id: string) =>
-      profileNames.get(id) ?? (isProfilesLoaded ? "Deleted profile" : id)
+      profileNames.get(id) ??
+      (isProfilesLoaded && requestedProfileIds.has(id) ? "Deleted profile" : id)
   };
 };

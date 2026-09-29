@@ -306,14 +306,13 @@ export async function down(knex: Knex): Promise<void> {
   });
 
   const duplicate = await knex(TableName.Alert)
-    .where({ resourceType: RESOURCE_TYPE })
-    .groupByRaw(`"orgId", COALESCE("projectId", ''), COALESCE("resourceId", ''), "eventType"`)
+    .groupByRaw(`"orgId", COALESCE("projectId", ''), "resourceType", COALESCE("resourceId", ''), "eventType"`)
     .havingRaw("count(*) > 1")
     .first(knex.raw("1"));
   if (duplicate) {
     initLogger();
     logger.warn(
-      "Kept the partial alert_unique_scope_resource_event index because application alerts created after the migration share a scope and event"
+      "Kept the partial alert_unique_scope_resource_event index because alerts created after the migration share a scope and event"
     );
   } else {
     await knex.schema.raw(`DROP INDEX IF EXISTS "alert_unique_scope_resource_event"`);
