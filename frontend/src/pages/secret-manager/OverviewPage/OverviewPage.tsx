@@ -2920,9 +2920,17 @@ const OverviewPageContent = () => {
               <DragDropProvider onDragEnd={handleSecretImportReorder}>
                 <Table
                   ref={tableRef}
-                  className="border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
+                  className="w-full table-fixed border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
                   containerClassName="overscroll-x-none rounded-t-none"
+                  style={{
+                    minWidth: 40 + (isSingleEnvView ? 2 * 360 : (visibleEnvs.length + 1) * 240)
+                  }}
                 >
+                  <colgroup>
+                    <col className="w-10" />
+                    <col />
+                    {isSingleEnvView ? <col /> : visibleEnvs.map(({ id }) => <col key={id} />)}
+                  </colgroup>
                   <TableHeader>
                     <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-foreground/5">
                       <TableHead
@@ -2945,7 +2953,7 @@ const OverviewPageContent = () => {
                       <TableHead
                         className={twMerge(
                           !isSingleEnvView && "sticky",
-                          "left-10 z-10 w-full min-w-[180px] border-r bg-container p-0"
+                          "left-10 z-10 min-w-[240px] border-r bg-container p-0"
                         )}
                       >
                         <DropdownMenu>
@@ -2988,7 +2996,7 @@ const OverviewPageContent = () => {
                         visibleEnvs?.map(({ name, slug, id }, index) => {
                           return (
                             <TableHead
-                              className="w-max min-w-40 border-r p-0 text-center whitespace-nowrap last:border-r-0"
+                              className="min-w-[240px] border-r p-0 text-center whitespace-nowrap last:border-r-0"
                               key={`secret-overview-${name}-${index + 1}`}
                             >
                               <DropdownMenu>
@@ -2997,7 +3005,7 @@ const OverviewPageContent = () => {
                                     type="button"
                                     title={name}
                                     aria-label={`Open ${name} environment menu`}
-                                    className="flex h-full w-full min-w-40 cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                                    className="flex h-full w-full min-w-[240px] cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                                   >
                                     <span className="whitespace-nowrap">{name}</span>
                                     <ChevronDownIcon className="size-3.5 shrink-0" />
@@ -3096,7 +3104,7 @@ const OverviewPageContent = () => {
                           );
                         })
                       ) : (
-                        <TableHead>
+                        <TableHead className="min-w-[240px]">
                           <div className="flex w-full items-center justify-between gap-2">
                             Value
                             <div className="flex items-center gap-2">
