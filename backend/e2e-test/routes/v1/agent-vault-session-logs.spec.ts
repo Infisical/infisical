@@ -666,13 +666,13 @@ describe("Agent Vault session logs", async () => {
       expect(JSON.parse((await proxy.resolve(session.token, true)).payload).sessionLogs.enabled).toBe(false);
     });
 
-    test("a proxy that predates session logs sends no body and still resolves", async () => {
+    test("a proxy that predates session logs sends no body, still resolves, and isn't sent a key it can't use", async () => {
       await configure();
       const { session, proxy } = await setup("legacy");
 
       const res = await proxy.resolve(session.token);
       expect(res.statusCode, res.payload).toBe(200);
-      expect(Buffer.from(JSON.parse(res.payload).sessionLogs.sessionKey as string, "base64")).toHaveLength(32);
+      expect(JSON.parse(res.payload).sessionLogs).toEqual({ enabled: true, sessionKey: null });
     });
 
     test("a session log key that can't be opened turns logs off for the session, and its services still resolve", async () => {
@@ -691,7 +691,7 @@ describe("Agent Vault session logs", async () => {
       const { encryptedSessionLogKey } = await testDb("agent_vault_sessions").where({ id: other.id }).first();
       await testDb("agent_vault_sessions").where({ id: session.id }).update({ encryptedSessionLogKey });
 
-      const res = await proxy.resolve(session.token);
+      const res = await proxy.resolve(session.token, false);
       expect(res.statusCode, res.payload).toBe(200);
       const body = JSON.parse(res.payload) as {
         services: { name: string }[];
@@ -828,18 +828,21 @@ describe("Agent Vault session logs", async () => {
       expect(res.headers["cache-control"]).toBe("no-store, no-cache, must-revalidate, proxy-revalidate");
 
       const body = JSON.parse(res.payload) as {
-        sessionLogs: { enabled: boolean; sessionKey: string };
+        sessionLogs: { enabled: boolean; isRecordable: boolean; sessionKey: string };
         chunks: {
           chunkId: string;
           proxyId: string;
           presignedGetUrl: string | null;
           recordCount: number;
           ciphertextSha256: string;
+          createdAt: string;
         }[];
         nextCursor: string | null;
       };
 
       expect(body.sessionLogs.enabled).toBe(true);
+      expect(body.sessionLogs.isRecordable).toBe(true);
+      expect(body.chunks.every((chunk) => Math.abs(Date.parse(chunk.createdAt) - Date.now()) < 60_000)).toBe(true);
       expect(body.chunks.every((chunk) => chunk.ciphertextSha256 === CHUNK_SHA256)).toBe(true);
       expect(Buffer.from(body.sessionLogs.sessionKey, "base64")).toHaveLength(32);
       expect(body.chunks).toHaveLength(3);
@@ -851,6 +854,21 @@ describe("Agent Vault session logs", async () => {
       body.chunks.forEach((chunk) => {
         expect(fakeSessionLogStorage.get(chunk.presignedGetUrl!)).toHaveLength(CHUNK_BYTES);
       });
+    });
+
+    test("a session created before session logs reads as not recordable, on the list and the tail", async () => {
+      await configure();
+      const bundle = await createAccessBundle(`session-logs-keyless-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      await testDb("agent_vault_sessions").where({ id: session.id }).update({ encryptedSessionLogKey: null });
+
+      const listed = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
+      expect(listed.statusCode, listed.payload).toBe(200);
+      expect(JSON.parse(listed.payload).sessionLogs).toMatchObject({ enabled: true, isRecordable: false });
+
+      const tailed = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs/tail`);
+      expect(tailed.statusCode, tailed.payload).toBe(200);
+      expect(JSON.parse(tailed.payload).sessionLogs).toMatchObject({ enabled: true, isRecordable: false });
     });
 
     test("a time window narrows the chunks without disturbing the cursor", async () => {

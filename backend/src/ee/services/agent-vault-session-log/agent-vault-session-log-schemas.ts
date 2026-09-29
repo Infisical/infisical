@@ -92,12 +92,14 @@ export const AgentVaultSessionLogChunkViewSchema = z.object({
   ciphertextBytes: z.number().describe(AGENT_VAULT.SESSION_LOGS.ciphertextBytes),
   iv: z.string().describe(AGENT_VAULT.SESSION_LOGS.iv),
   ciphertextSha256: z.string().describe(AGENT_VAULT.SESSION_LOGS.ciphertextSha256),
-  presignedGetUrl: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.presignedGetUrl)
+  presignedGetUrl: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.presignedGetUrl),
+  createdAt: z.date().describe(AGENT_VAULT.SESSION_LOGS.chunkCreatedAt)
 });
 
 const AgentVaultSessionLogSchema = z
   .object({
     enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.enabled),
+    isRecordable: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.isRecordable),
     sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.sessionKey),
     storageUnavailable: z
       .object({

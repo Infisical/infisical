@@ -179,6 +179,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const isLoadError = isError && !data;
 
   const isEnabled = pages?.[0]?.sessionLogs.enabled ?? false;
+  const isRecordable = pages?.[0]?.sessionLogs.isRecordable ?? true;
   const hasChunks = (pages ?? []).some((page) => page.chunks.length > 0);
   const storageUnavailable =
     data?.pages.find((page) => page.sessionLogs.storageUnavailable)?.sessionLogs
@@ -351,7 +352,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   } else if (isStillLoading) {
     noRecordsTitle = "Loading requests";
     noRecordsDescription = "";
-  } else if (hasChunks && records.length === 0 && !hasNextPage) {
+  } else if (gaps.length > 0 && records.length === 0 && !hasNextPage) {
     noRecordsTitle = "Session logs unavailable";
     noRecordsDescription = "None of this session's logs could be loaded.";
   } else if (isSearchPaused && searchedBackTo) {
@@ -477,6 +478,27 @@ export const SessionLogsPanel = ({ session }: Props) => {
             </Link>
           </Button>
         )}
+      </Empty>
+    );
+  }
+
+  if (
+    !isPending &&
+    !isPlaceholderData &&
+    !isLoadError &&
+    isEnabled &&
+    !isRecordable &&
+    !hasChunks
+  ) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>Session logs aren&apos;t available for this session</EmptyTitle>
+          <EmptyDescription>
+            To record requests, create a new session and run it through a proxy on the latest
+            Infisical CLI.
+          </EmptyDescription>
+        </EmptyHeader>
       </Empty>
     );
   }

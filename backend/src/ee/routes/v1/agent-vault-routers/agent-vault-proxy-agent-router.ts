@@ -146,7 +146,8 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             .describe(AGENT_VAULT.PROXY.sessionToken)
         })
         .passthrough(),
-      // Nullish, not optional: proxies predating session logs send no body, which arrives as null.
+      // Nullish, not optional: proxies predating session logs send no body, which arrives as null. They can't
+      // record, so the handler counts them as already holding the key and never sends it.
       body: z
         .object({
           hasSessionLogKey: z.boolean().default(false).describe(AGENT_VAULT.SESSION_LOGS.hasSessionLogKey)
@@ -198,7 +199,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         proxyId: req.permission.id,
         orgId: req.permission.orgId,
         sessionToken: req.headers[SESSION_HEADER],
-        hasSessionLogKey: req.body?.hasSessionLogKey ?? false
+        hasSessionLogKey: req.body ? req.body.hasSessionLogKey : true
       });
     }
   });

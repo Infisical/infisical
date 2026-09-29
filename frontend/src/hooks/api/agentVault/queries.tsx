@@ -391,11 +391,12 @@ export const useGetAgentVaultSessionLogs = (
   });
 
   const liveFrom = history.isPlaceholderData ? undefined : history.data?.pages[0]?.liveCursor;
+  const isRecordable = history.data?.pages[0]?.sessionLogs.isRecordable !== false;
   const liveKey = agentVaultKeys.sessionLogsLive(currentOrg.id, sessionId ?? "", range);
 
   const live = useQuery({
     queryKey: liveKey,
-    enabled: enabled && isLive && Boolean(sessionId) && Boolean(liveFrom),
+    enabled: enabled && isLive && isRecordable && Boolean(sessionId) && Boolean(liveFrom),
     queryFn: async ({ signal }) => {
       const cache = chunkCache.current as TAgentVaultSessionLogChunkCache;
       let arrived =

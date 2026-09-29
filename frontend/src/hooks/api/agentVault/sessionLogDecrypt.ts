@@ -18,6 +18,10 @@ const AGENT_VAULT_SESSION_LOG_MAX_LOADED_BYTES = 64 * 1024 * 1024;
 
 const CHUNK_DOWNLOAD_TIMEOUT_MS = 60_000;
 
+// A chunk is listed as soon as its proxy registers it, before the upload lands, and the tail rereads
+// chunks this recent, so a 404 inside this window is an upload still in flight.
+const CHUNK_UPLOAD_GRACE_MS = 2 * 60_000;
+
 const AAD_VERSION = "v1";
 
 export const sessionLogRecordKey = (record: TAgentVaultSessionLogRecord) =>
@@ -89,6 +93,9 @@ const gapFor = (
 const isRetryableSessionLogGap = (reason?: TAgentVaultSessionLogGapReason) =>
   reason === "fetch" || reason === "missing" || reason === "refused";
 
+const isRetryableResult = (result: TAgentVaultDecryptedChunk) =>
+  Boolean(result.isUploading) || isRetryableSessionLogGap(result.gap?.reason);
+
 const withTimeout = (signal: AbortSignal | undefined, ms: number) => {
   const controller = new AbortController();
   const abort = () => controller.abort();
@@ -119,6 +126,9 @@ const openChunk = async (
       credentials: "omit",
       signal: download.signal
     });
+    if (res.status === 404 && Date.now() - Date.parse(chunk.createdAt) < CHUNK_UPLOAD_GRACE_MS) {
+      return { records: [], gap: null, arrivedAt: null, isUploading: true };
+    }
     if (!res.ok) return gapFor(chunk, res.status === 404 ? "missing" : "refused");
     body = await res.arrayBuffer();
   } catch (error) {
@@ -213,7 +223,7 @@ export const decryptSessionLogPage = async <P extends TAgentVaultSessionLogPage>
         ? await openChunk(chunk, key, cache.sessionId, signal)
         : gapFor(chunk, "gcm");
       // Failed downloads stay uncached so the next fetch retries with a freshly presigned URL.
-      if (!isRetryableSessionLogGap(result.gap?.reason)) cache.chunks.set(chunk.chunkId, result);
+      if (!isRetryableResult(result)) cache.chunks.set(chunk.chunkId, result);
       decrypted[chunk.chunkId] = result;
       opened.push(chunk.chunkId);
     })
@@ -270,12 +280,7 @@ export const useAgentVaultSessionLogTimeline = (
           dropsByChunk.set(chunkId, { chunkId, proxyId, startedAt, droppedCount });
         }
         const known = opened.get(chunk.chunkId);
-        if (
-          known &&
-          (!isRetryableSessionLogGap(known.gap?.reason) ||
-            isRetryableSessionLogGap(result.gap?.reason))
-        )
-          return;
+        if (known && (!isRetryableResult(known) || isRetryableResult(result))) return;
         opened.set(chunk.chunkId, result);
         openedBytes.set(chunk.chunkId, chunk.ciphertextBytes);
       })
@@ -288,7 +293,7 @@ export const useAgentVaultSessionLogTimeline = (
 
     opened.forEach((result, chunkId) => {
       records.push(...result.records);
-      if (!result.gap) loadedBytes += openedBytes.get(chunkId) ?? 0;
+      if (!result.gap && !result.isUploading) loadedBytes += openedBytes.get(chunkId) ?? 0;
       if (result.arrivedAt !== null) {
         const { arrivedAt } = result;
         result.records.forEach((record) => arrivals.set(sessionLogRecordKey(record), arrivedAt));

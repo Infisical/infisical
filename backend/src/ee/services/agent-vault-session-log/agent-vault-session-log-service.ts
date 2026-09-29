@@ -106,7 +106,8 @@ export const agentVaultSessionLogServiceFactory = ({
     ciphertextBytes: row.ciphertextBytes,
     iv: row.iv,
     ciphertextSha256: row.ciphertextSha256,
-    presignedGetUrl
+    presignedGetUrl,
+    createdAt: row.createdAt
   });
 
   const NO_SETTINGS = { enabled: false, appConnectionId: null, bucket: null, region: null, keyPrefix: null };
@@ -318,6 +319,7 @@ export const agentVaultSessionLogServiceFactory = ({
     Awaited<ReturnType<typeof $loadSessionLogs>> & { rows: TAgentVaultSessionLogChunks[] }) => {
     const unreadSessionLogs = {
       enabled: isSessionLogIngestEnabled(config) && (await areSessionLogsLicensed(licenseService, ctx.actorOrgId)),
+      isRecordable: Boolean(session.encryptedSessionLogKey),
       sessionKey: null,
       storageUnavailable: null
     };

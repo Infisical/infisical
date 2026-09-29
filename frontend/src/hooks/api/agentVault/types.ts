@@ -338,10 +338,12 @@ export type TAgentVaultSessionLogChunk = {
   iv: string;
   ciphertextSha256: string;
   presignedGetUrl: string | null;
+  createdAt: string;
 };
 
 export type TAgentVaultSessionLog = {
   enabled: boolean;
+  isRecordable: boolean;
   sessionKey: string | null;
   storageUnavailable: {
     reason: "no-connection" | "connection-unusable";
@@ -409,6 +411,7 @@ export type TAgentVaultDecryptedChunk = {
   records: TAgentVaultSessionLogRecord[];
   gap: TAgentVaultSessionLogGap | null;
   arrivedAt: number | null;
+  isUploading?: boolean;
 };
 
 export type TAgentVaultDecryptedSessionLogPage<

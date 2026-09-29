@@ -75,6 +75,7 @@ describe("decryptSessionLogPage", () => {
   const page: TAgentVaultSessionLogPage = {
     sessionLogs: {
       enabled: true,
+      isRecordable: true,
       sessionKey: btoa("\0".repeat(32)),
       storageUnavailable: null
     },
@@ -92,7 +93,8 @@ describe("decryptSessionLogPage", () => {
         ciphertextBytes: 64,
         iv: "qrvM3e7/ABEiM0RV",
         ciphertextSha256: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU",
-        presignedGetUrl: "https://bucket.example/chunk"
+        presignedGetUrl: "https://bucket.example/chunk",
+        createdAt: "2026-09-23T10:00:05.000Z"
       }
     ]
   };
@@ -115,6 +117,25 @@ describe("decryptSessionLogPage", () => {
       reason: "missing",
       downloads: 2
     });
+  });
+
+  it("holds a 404 on a chunk registered moments ago as still uploading, and tries it again", async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 404 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const uploading = {
+      ...page,
+      chunks: [{ ...page.chunks[0], createdAt: new Date().toISOString() }]
+    };
+    const cache = createSessionLogChunkCache("session-1");
+    const first = await decryptSessionLogPage(uploading, cache);
+    await decryptSessionLogPage(uploading, cache);
+    assert.deepEqual(first.decrypted[chunkId], {
+      records: [],
+      gap: null,
+      arrivedAt: null,
+      isUploading: true
+    });
+    assert.equal(fetchMock.mock.calls.length, 2);
   });
 
   it("reports a download the bucket refused, and tries it again", async () => {
@@ -155,6 +176,7 @@ describe("decryptSessionLogPage", () => {
     const vectorPage: TAgentVaultSessionLogPage = {
       sessionLogs: {
         enabled: true,
+        isRecordable: true,
         sessionKey: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
         storageUnavailable: null
       },

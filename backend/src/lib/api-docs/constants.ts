@@ -4399,6 +4399,9 @@ export const AGENT_VAULT = {
     presignedGetUrl:
       "The URL to download the chunk from. Null if the chunk is in a bucket session logs no longer use, or if `sessionLogs.storageUnavailable` is set.",
     expiresInSeconds: "The number of seconds before the URL expires.",
+    chunkCreatedAt:
+      "When the proxy registered the chunk with Infisical. Its upload to the bucket finishes shortly after, so a download in between returns 404.",
+    isRecordable: "False if this session's requests can't be recorded.",
     sessionKey: "The key that decrypts every chunk in this response, as base64. Null if no chunk can be read.",
     storageUnavailable: "The reason the chunks can't be downloaded right now. Null if they can.",
     storageUnavailableReason:
