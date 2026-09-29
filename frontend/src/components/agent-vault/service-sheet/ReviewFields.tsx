@@ -18,6 +18,7 @@ import {
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
+import { useServiceVariables } from "./ServiceVariablesContext";
 
 const MASK = "\u2022".repeat(8);
 
@@ -39,6 +40,7 @@ type Props = {
 
 export const ReviewFields = ({ isUpdate }: Props) => {
   const { watch } = useFormContext<TServiceForm>();
+  const { seeded } = useServiceVariables();
   const form = watch();
 
   const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
@@ -59,9 +61,11 @@ export const ReviewFields = ({ isUpdate }: Props) => {
         : ""
     ]);
 
-  const outcome = (value: string | undefined, canClear: boolean) => {
+  const outcome = (value: string | undefined, canClear: boolean, seededValue?: string) => {
     if (!isUpdate) return value ? "Set" : "None";
-    if (value === UNCHANGED_SECRET) return "Unchanged";
+    if (value === UNCHANGED_SECRET || (seededValue !== undefined && value === seededValue)) {
+      return "Unchanged";
+    }
     if (value) return "Replaced";
     return canClear ? "Cleared" : "Unchanged";
   };
@@ -110,13 +114,13 @@ export const ReviewFields = ({ isUpdate }: Props) => {
           {isBasic && (
             <Detail>
               <DetailLabel>Username</DetailLabel>
-              <DetailValue>{outcome(form.username, true)}</DetailValue>
+              <DetailValue>{outcome(form.username, true, seeded.username)}</DetailValue>
             </Detail>
           )}
           {form.credentialType !== AgentVaultCredentialType.Passthrough && (
             <Detail>
               <DetailLabel>{secretLabel}</DetailLabel>
-              <DetailValue>{outcome(form.secret, isBasic)}</DetailValue>
+              <DetailValue>{outcome(form.secret, isBasic, seeded.secret)}</DetailValue>
             </Detail>
           )}
         </div>

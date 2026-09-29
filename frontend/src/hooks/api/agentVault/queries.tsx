@@ -13,6 +13,7 @@ import {
   TAgentVaultProductMemberOf,
   TAgentVaultProxy,
   TAgentVaultSession,
+  TAgentVaultVariable,
   TListAgentVaultAccessBundlesDTO,
   TListAgentVaultMembersDTO,
   TListAgentVaultProxiesDTO,
@@ -54,6 +55,8 @@ export const agentVaultKeys = {
     accessBundleId: string,
     params?: Omit<TListAgentVaultMembersDTO, "actorType">
   ) => [...agentVaultKeys.accessBundleMembers(orgId, accessBundleId), "available", params] as const,
+  accessBundleVariables: (orgId: string, accessBundleId: string) =>
+    [...agentVaultKeys.accessBundle(orgId, accessBundleId), "variables"] as const,
   members: (orgId: string) => [...agentVaultKeys.all(orgId), "members"] as const,
   memberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.members(orgId), params] as const,
@@ -214,5 +217,20 @@ export const useListAgentVaultProxies = (params: TListAgentVaultProxiesDTO = {})
     },
     refetchInterval: 30_000,
     placeholderData: (prev) => prev
+  });
+};
+
+export const useListAgentVaultVariables = (accessBundleId: string, enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.accessBundleVariables(currentOrg.id, accessBundleId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ variables: TAgentVaultVariable[] }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/variables`
+      );
+      return data.variables;
+    },
+    enabled: enabled && Boolean(accessBundleId)
   });
 };

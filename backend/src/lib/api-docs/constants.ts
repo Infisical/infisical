@@ -4296,7 +4296,27 @@ export const AGENT_VAULT = {
       "The fake value your agent already sends. The proxy replaces it with the real secret. Matched as a plain string, so a distinctive placeholder is worth choosing.",
     surfaces: "Where in the request to look for the placeholder: path, query, header or body.",
     substitutionValue: "The real value the placeholder is replaced with. Never returned once saved.",
-    updateSubstitutionValue: "The real value the placeholder is replaced with. Omit to keep the value already stored."
+    updateSubstitutionValue: "The real value the placeholder is replaced with. Omit to keep the value already stored.",
+    variableReferences: "The variables this service's credential, custom header values and substitution values use.",
+    referenceField:
+      "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
+    referenceCustomHeaderId: "The custom header whose value uses the variable.",
+    referenceSubstitutionId: "The substitution whose value uses the variable.",
+    referenceIsWholeValue: "Whether the value is this variable and nothing else."
+  },
+  VARIABLE: {
+    variableId: "The ID of the variable.",
+    key: "The name services use to refer to the variable, as {{KEY}}. Starts with a letter and uses only upper case letters, numbers and underscores.",
+    value: "The value the proxy puts in place of each {{KEY}}.",
+    updateValue: "The value the proxy puts in place of each {{KEY}}. Omit to keep the stored value.",
+    isSecret: "Whether the value is hidden once saved. A secret value is only returned by the value endpoint.",
+    listedValue:
+      "The value, for a variable that is not secret. Null for a secret one: read it from the value endpoint.",
+    revealedValue: "The variable's value.",
+    serviceIds:
+      "The IDs of the services in the access bundle that use this variable. A variable in use can't be deleted.",
+    createdAt: "When the variable was added to the access bundle.",
+    updatedAt: "When the variable was last changed."
   },
   MEMBER: {
     memberId: "The ID of the access bundle membership.",

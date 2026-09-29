@@ -32,6 +32,7 @@ import {
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
+import { useServiceVariables } from "./ServiceVariablesContext";
 import { SubstitutionExample } from "./SubstitutionExample";
 
 export const ADVANCED_ITEM = "advanced-options";
@@ -75,6 +76,7 @@ export const TransformationsFields = ({
   onOpenChange: (item: string) => void;
 }) => {
   const { control, getValues } = useFormContext<TServiceForm>();
+  const { seeded } = useServiceVariables();
   const customHeaders = useFieldArray({ control, name: "customHeaders" });
   const substitutions = useFieldArray({ control, name: "substitutions" });
 
@@ -148,11 +150,14 @@ export const TransformationsFields = ({
                                 field={field}
                                 label="Header value"
                                 ariaLabel="Header value"
-                                placeholder="Enter the value"
+                                placeholder="Enter the value, or type {{"
                                 isError={Boolean(fieldState.error)}
                                 isUntouched={field.value === UNCHANGED_SECRET}
                                 hasStoredSecret={Boolean(getValues(`customHeaders.${index}.id`))}
                                 canBeCleared={false}
+                                storedValue={
+                                  seeded.customHeaders[getValues(`customHeaders.${index}.id`) ?? ""]
+                                }
                               />
                               <FieldError>{fieldState.error?.message}</FieldError>
                             </FieldContent>
@@ -243,11 +248,14 @@ export const TransformationsFields = ({
                                 field={field}
                                 label="Substitution value"
                                 ariaLabel="Substitution value"
-                                placeholder="Enter the real value"
+                                placeholder="Enter the real value, or type {{"
                                 isError={Boolean(fieldState.error)}
                                 isUntouched={field.value === UNCHANGED_SECRET}
                                 hasStoredSecret={Boolean(getValues(`substitutions.${index}.id`))}
                                 canBeCleared={false}
+                                storedValue={
+                                  seeded.substitutions[getValues(`substitutions.${index}.id`) ?? ""]
+                                }
                               />
                               <FieldError>{fieldState.error?.message}</FieldError>
                             </FieldContent>

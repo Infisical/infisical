@@ -24,8 +24,10 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultCredentialType, AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
 import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
+import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { TAgentVaultVariableDALFactory } from "../agent-vault-access-bundle/agent-vault-variable-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
@@ -54,6 +56,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultResolveDAL: TAgentVaultResolveDALFactory;
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
+  agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
@@ -72,6 +75,7 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultResolveDAL,
   agentVaultServiceCustomHeaderDAL,
   agentVaultServiceSubstitutionDAL,
+  agentVaultVariableDAL,
   agentVaultSessionDAL,
   membershipDAL,
   orgDAL,
@@ -313,6 +317,87 @@ export const agentVaultProxyServiceFactory = ({
     return { type: "basic", username: secret.username ?? "", password: secret.password ?? "" };
   };
 
+  // The ids come out of the decrypted fields rather than the reference rows, so a service saved mid-poll can
+  // never leave the two describing different versions of a field. An id with nothing behind it stays as text:
+  // dropping the service instead would also drop its method and path restrictions.
+  const $expandVariableReferences = async ({
+    sessionId,
+    services,
+    accessBundleIdOf,
+    decryptValue
+  }: {
+    sessionId: string;
+    services: TResolvedService[];
+    accessBundleIdOf: Map<string, string>;
+    decryptValue: (encryptedValue: Buffer) => string;
+  }): Promise<TResolvedService[]> => {
+    const sealedTextsOf = ({ credential, customHeaders, substitutions }: TResolvedService) => [
+      ...(credential.type === "bearer" ? [credential.value] : []),
+      ...(credential.type === "basic" ? [credential.username, credential.password] : []),
+      ...customHeaders.map((header) => header.value),
+      ...substitutions.map((substitution) => substitution.value)
+    ];
+
+    const variableIds = [
+      ...new Set(services.flatMap((service) => sealedTextsOf(service).flatMap(findStoredVariableIds)))
+    ];
+    if (!variableIds.length) return services;
+
+    const variables = new Map(
+      (
+        await agentVaultVariableDAL.findValuesForResolve({
+          variableIds,
+          accessBundleIds: [...new Set(accessBundleIdOf.values())]
+        })
+      ).map((variable) => [variable.id, variable])
+    );
+
+    const opened = new Map<string, string>();
+    const unresolvedServiceIds = new Set<string>();
+
+    const expanded = services.map((service) => {
+      const valueOf = (variableId: string) => {
+        const variable = variables.get(variableId);
+        // A stored id only ever names a variable of the service's own bundle.
+        if (!variable || variable.accessBundleId !== accessBundleIdOf.get(service.id)) {
+          unresolvedServiceIds.add(service.id);
+          return undefined;
+        }
+        let value = opened.get(variableId);
+        if (value === undefined) {
+          value = decryptValue(variable.encryptedValue);
+          opened.set(variableId, value);
+        }
+        return value;
+      };
+      const expand = (text: string) => expandStoredVariableReferences(text, valueOf);
+
+      let { credential } = service;
+      if (credential.type === "bearer") credential = { ...credential, value: expand(credential.value) };
+      if (credential.type === "basic") {
+        credential = { ...credential, username: expand(credential.username), password: expand(credential.password) };
+      }
+
+      return {
+        ...service,
+        credential,
+        customHeaders: service.customHeaders.map((header) => ({ ...header, value: expand(header.value) })),
+        substitutions: service.substitutions.map((substitution) => ({
+          ...substitution,
+          value: expand(substitution.value)
+        }))
+      };
+    });
+
+    if (unresolvedServiceIds.size) {
+      logger.error(
+        `agentVaultResolve: stored variable reference with no variable [sessionId=${sessionId}] [serviceIds=${[...unresolvedServiceIds].join(",")}]`
+      );
+    }
+
+    return expanded;
+  };
+
   /** The only endpoint that decrypts a credential. The proxy's JWT authorizes; the session token is a selector. */
   const resolveSession = async ({ proxyId, orgId, sessionToken }: TResolveSessionDTO) => {
     const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
@@ -417,7 +502,7 @@ export const agentVaultProxyServiceFactory = ({
       return (JSON.parse(decryptor({ cipherTextBlob: encryptedValue }).toString("utf-8")) as { value: string }).value;
     };
 
-    const services: TResolvedService[] = rows.map((row) => ({
+    const decryptedServices: TResolvedService[] = rows.map((row) => ({
       id: row.id,
       name: row.name,
       accessBundleName: row.accessBundleName,
@@ -436,6 +521,13 @@ export const agentVaultProxyServiceFactory = ({
           value: $decryptValue(substitution.encryptedValue)
         }))
     }));
+
+    const services = await $expandVariableReferences({
+      sessionId: session.id,
+      services: decryptedServices,
+      accessBundleIdOf: new Map(rows.map((row) => [row.id, row.accessBundleId])),
+      decryptValue: $decryptValue
+    });
 
     logger.info(
       `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}]`

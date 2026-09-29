@@ -10,7 +10,8 @@ import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -36,7 +37,10 @@ import {
   AgentVaultRemovedMemberSchema,
   AgentVaultServiceSchema,
   AgentVaultSubstitutionsInputSchema,
-  AgentVaultSubstitutionsUpdateSchema
+  AgentVaultSubstitutionsUpdateSchema,
+  AgentVaultVariableKeySchema,
+  AgentVaultVariableSchema,
+  AgentVaultVariableValueSchema
 } from "./agent-vault-schemas";
 
 const AccessBundleDescriptionSchema = z
@@ -65,6 +69,10 @@ const isStoredSecretReplaced = (credential?: z.infer<typeof AgentVaultCredential
   }
   return true;
 };
+
+const variableKeysOf = (service: { variableReferences: { key: string }[] }) => [
+  ...new Set(service.variableReferences.map((reference) => reference.key))
+];
 
 export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -328,7 +336,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             allowedMethods: service.allowedMethods,
             allowedPathPrefixes: service.allowedPathPrefixes,
             customHeaderNames: service.customHeaders.map((header) => header.name),
-            substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder)
+            substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder),
+            variableKeys: variableKeysOf(service)
           }
         }
       });
@@ -425,7 +434,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             substitutionsReplaced: req.body.substitutions
               ?.filter((substitution) => substitution.value !== undefined)
               .map((substitution) => substitution.placeholder),
-            credentialReplaced: isStoredSecretReplaced(req.body.credential)
+            credentialReplaced: isStoredSecretReplaced(req.body.credential),
+            variableKeys:
+              req.body.credential || req.body.customHeaders || req.body.substitutions
+                ? variableKeysOf(service)
+                : undefined
           }
         }
       });
@@ -492,6 +505,212 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       });
 
       return { service };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accessBundleId/variables",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listAgentVaultVariables",
+      description: "List the variables in an Agent Vault access bundle",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+      }),
+      response: { 200: z.object({ variables: AgentVaultVariableSchema.array() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const variables = await server.services.agentVaultAccessBundle.listVariables({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId
+      });
+      return { variables };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accessBundleId/variables",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "createAgentVaultVariable",
+      description: "Create a variable in an Agent Vault access bundle",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+      }),
+      body: z.object({
+        key: AgentVaultVariableKeySchema.describe(AGENT_VAULT.VARIABLE.key),
+        value: AgentVaultVariableValueSchema.describe(AGENT_VAULT.VARIABLE.value),
+        isSecret: z.boolean().default(true).describe(AGENT_VAULT.VARIABLE.isSecret)
+      }),
+      response: { 200: z.object({ variable: AgentVaultVariableSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const variable = await server.services.agentVaultAccessBundle.createVariable({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_VARIABLE_CREATE,
+          metadata: {
+            accessBundleId: req.params.accessBundleId,
+            variableId: variable.id,
+            key: variable.key,
+            isSecret: variable.isSecret
+          }
+        }
+      });
+
+      return { variable };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:accessBundleId/variables/:variableId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "updateAgentVaultVariable",
+      description: "Update a variable in an Agent Vault access bundle",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+        variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)
+      }),
+      body: z
+        .object({
+          key: AgentVaultVariableKeySchema.optional().describe(AGENT_VAULT.VARIABLE.key),
+          value: AgentVaultVariableValueSchema.optional().describe(AGENT_VAULT.VARIABLE.updateValue),
+          isSecret: z.boolean().optional().describe(AGENT_VAULT.VARIABLE.isSecret)
+        })
+        .refine(
+          (body) => Object.values(body).some((value) => value !== undefined),
+          "Provide at least one of 'key', 'value' or 'isSecret' to update"
+        ),
+      response: { 200: z.object({ variable: AgentVaultVariableSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { variable, previousKey, previousIsSecret } = await server.services.agentVaultAccessBundle.updateVariable({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        variableId: req.params.variableId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_VARIABLE_UPDATE,
+          metadata: {
+            accessBundleId: req.params.accessBundleId,
+            variableId: variable.id,
+            key: variable.key,
+            previousKey: previousKey === variable.key ? undefined : previousKey,
+            isSecret: variable.isSecret,
+            previousIsSecret: previousIsSecret === variable.isSecret ? undefined : previousIsSecret,
+            valueReplaced: req.body.value !== undefined
+          }
+        }
+      });
+
+      return { variable };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:accessBundleId/variables/:variableId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "deleteAgentVaultVariable",
+      description: "Delete a variable from an Agent Vault access bundle. A variable a service uses can't be deleted.",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+        variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)
+      }),
+      response: { 200: z.object({ variable: AgentVaultVariableSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const variable = await server.services.agentVaultAccessBundle.deleteVariable({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        variableId: req.params.variableId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_VARIABLE_DELETE,
+          metadata: { accessBundleId: req.params.accessBundleId, variableId: variable.id, key: variable.key }
+        }
+      });
+
+      return { variable };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accessBundleId/variables/:variableId/value",
+    config: { rateLimit: secretsLimit },
+    schema: {
+      hide: false,
+      operationId: "getAgentVaultVariableValue",
+      description: "Get the value of a variable in an Agent Vault access bundle, secret or not",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+        variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)
+      }),
+      response: { 200: z.object({ value: z.string().describe(AGENT_VAULT.VARIABLE.revealedValue) }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req, reply) => {
+      const { variableId, key, value } = await server.services.agentVaultAccessBundle.getVariableValue({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        variableId: req.params.variableId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW,
+          metadata: { accessBundleId: req.params.accessBundleId, variableId, key }
+        }
+      });
+
+      addNoCacheHeaders(reply);
+      return { value };
     }
   });
 

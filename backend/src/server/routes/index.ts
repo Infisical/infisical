@@ -29,6 +29,8 @@ import { agentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vau
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { agentVaultServiceVariableReferenceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-variable-reference-dal";
+import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-variable-dal";
 import { agentVaultMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-member-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
@@ -1869,6 +1871,8 @@ export const registerRoutes = async (
   const agentVaultServiceDAL = agentVaultServiceDALFactory(db);
   const agentVaultServiceCustomHeaderDAL = agentVaultServiceCustomHeaderDALFactory(db);
   const agentVaultServiceSubstitutionDAL = agentVaultServiceSubstitutionDALFactory(db);
+  const agentVaultVariableDAL = agentVaultVariableDALFactory(db);
+  const agentVaultServiceVariableReferenceDAL = agentVaultServiceVariableReferenceDALFactory(db);
   const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
@@ -1879,6 +1883,8 @@ export const registerRoutes = async (
     agentVaultServiceDAL,
     agentVaultServiceCustomHeaderDAL,
     agentVaultServiceSubstitutionDAL,
+    agentVaultVariableDAL,
+    agentVaultServiceVariableReferenceDAL,
     permissionService,
     kmsService,
     membershipDAL,
@@ -2001,6 +2007,7 @@ export const registerRoutes = async (
     agentVaultResolveDAL,
     agentVaultServiceCustomHeaderDAL,
     agentVaultServiceSubstitutionDAL,
+    agentVaultVariableDAL,
     agentVaultSessionDAL,
     membershipDAL,
     orgDAL,

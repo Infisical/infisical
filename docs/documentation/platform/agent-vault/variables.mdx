@@ -1,0 +1,100 @@
+---
+title: "Variables"
+description: "Values stored once in an access bundle that any of its services can use."
+---
+
+<Info>
+  This page is for Agent Vault admins. Members can't see or change variables. [Learn more about roles →](/documentation/platform/agent-vault/access-control#product-membership)
+</Info>
+
+A variable is a value stored once in an [access bundle](/documentation/platform/agent-vault/access-bundles) under a key, such as `GITHUB_TOKEN`. Any [service](/documentation/platform/agent-vault/services) in the bundle can use the variable through a reference, which is the key in double braces: `{{GITHUB_TOKEN}}`. Before the [proxy](/documentation/platform/agent-vault/proxies) forwards a request, it replaces each reference with the variable's value.
+
+For example, if several services send the same GitHub token, store the token as `GITHUB_TOKEN` and write `{{GITHUB_TOKEN}}` in each service. When the token changes, you update one variable instead of every service.
+
+## Add a variable
+
+To add a variable to an access bundle:
+
+<Steps>
+  <Step>
+    In Agent Vault, go to **Access Bundles** and select your access bundle.
+  </Step>
+  <Step>
+    Under **Variables**, select **Add Variable**.
+  </Step>
+  <Step>
+    Enter a **Key** and a **Value**.
+
+    A key starts with a letter and uses only upper case letters, numbers, and underscores. Each key is unique within its access bundle. As you type the key, Infisical changes lower case letters to upper case, and spaces and dashes to underscores.
+  </Step>
+  <Step>
+    Leave **Secret** selected to hide the value once you save it. If the value isn't sensitive, such as an organization ID, clear **Secret** so the value stays visible in the list.
+  </Step>
+  <Step>
+    Select **Add Variable**. The variable appears in the **Variables** list.
+  </Step>
+</Steps>
+
+## Use a variable in a service
+
+A variable works in any value a service sends: the **Token** of a Bearer credential, the **Username** and **Password** of a Basic credential, the **Value** of a custom header, and the **With** value of a substitution.
+
+To use a variable:
+
+<Steps>
+  <Step>
+    [Add a service](/documentation/platform/agent-vault/services#add-a-service), or open an existing service's actions menu and select **Edit**. Then go to the **Credential** step.
+  </Step>
+  <Step>
+    In a field that accepts variables, type `{{`. A list of the bundle's variables opens.
+  </Step>
+  <Step>
+    Select a variable, or pick one with the arrow keys and press `Enter`. Infisical inserts the reference, such as `{{GITHUB_TOKEN}}`.
+
+    If the variable doesn't exist yet, finish typing its key and select **Create** at the end of the list. Infisical opens **Add Variable** with the key filled in, and inserts the reference once you save the variable.
+  </Step>
+</Steps>
+
+A reference can be the whole value or part of it. For example, if a custom header's value is `org-{{ORG_ID}}`, the proxy sends `org-` followed by the value of `ORG_ID`.
+
+The **Sends** preview shows each reference in the headers the proxy attaches. If a reference names a key the bundle doesn't have, Infisical marks the reference in red and won't save the service until you correct the key or add the variable.
+
+Variables don't work in any other field, such as a host pattern, a path, a header name or prefix, or a substitution placeholder.
+
+When you edit a service later, Infisical shows the reference in each field that holds only a reference. If a field mixes a reference with other text, the field stays hidden, like any other stored credential.
+
+## Change or delete a variable
+
+To change a variable, open its actions menu in the **Variables** list and select **Edit**. You can change the key, the value, and whether the value is secret. If the variable is secret, leave **Value** blank to keep the current value.
+
+If you rename a variable, every service that uses it keeps working without any changes. If you change a value, running agents get the new value within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval), without a restart.
+
+To delete a variable, open its actions menu and select **Delete**. If any service still uses the variable, Infisical lists those services and won't delete the variable until you remove the reference from each one.
+
+## Secret values
+
+Infisical encrypts every variable's value. **Secret** only controls whether the **Variables** list shows the value:
+
+- A secret value is hidden (select the eye icon next to the value to reveal it)
+- A value that isn't secret appears in the list as plain text
+
+The [endpoint that lists variables](/api-reference/endpoints/agent-vault-variables/list) also returns only the values that aren't secret. To read a secret value from the API, call [the endpoint that gets a variable's value](/api-reference/endpoints/agent-vault-variables/get-value).
+
+Infisical writes an audit event each time someone reveals a value, and each time someone creates, updates, or deletes a variable. The events record the key and what changed, but never the value. To review the events, open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
+
+## Double braces in a value
+
+In a field that accepts variables, Infisical treats every pair of double braces as a reference. If the braces enclose anything other than a valid key, such as `{{my token}}`, Infisical won't save the service.
+
+If an API expects literal double braces in a value, save that text as the value of a variable and use the variable instead. The proxy sends a variable's value exactly as you saved it, without looking for references in it.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services">
+    Configure the external APIs that use your variables.
+  </Card>
+  <Card title="Sessions" icon="monitor" href="/documentation/platform/agent-vault/sessions">
+    Create a session to run an agent with the access bundle.
+  </Card>
+</CardGroup>

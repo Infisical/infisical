@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { addHostIssues, hostError } from "@app/helpers/agentVaultHostPattern";
 import { addPathPrefixIssues, pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
+import { variableReferenceError } from "@app/helpers/agentVaultVariables";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
@@ -97,7 +98,8 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Review]: []
 };
 
-export const buildServiceSchema = (service?: TAgentVaultService | null) =>
+/** `variableKeys` stays undefined while the list loads, so only the shape of a reference is checked. */
+export const buildServiceSchema = (service?: TAgentVaultService | null, variableKeys?: string[]) =>
   z
     .object({
       name: slugSchema({ max: 64, field: "Name" }),
@@ -257,6 +259,14 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
           at("placeholder", "Required");
         } else if (!NO_CONTROL_CHARS_RE.test(substitution.placeholder)) {
           at("placeholder", CONTROL_CHARS_MESSAGE);
+        } else if (
+          substitution.placeholder.includes("{{") ||
+          substitution.placeholder.includes("}}")
+        ) {
+          at(
+            "placeholder",
+            "A placeholder can't contain {{ or }}. Those wrap a variable reference."
+          );
         } else if (seenPlaceholders.has(substitution.placeholder)) {
           at("placeholder", "This placeholder is listed twice.");
         }
@@ -268,6 +278,26 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
           at("surfaces", "Pick at least one place to look for the placeholder.");
         }
       });
+
+      const variableKeySet = variableKeys ? new Set(variableKeys) : undefined;
+      const addReferenceIssue = (value: string | undefined, path: (string | number)[]) => {
+        if (!value || value === UNCHANGED_SECRET) return;
+        const message = variableReferenceError(value, variableKeySet);
+        if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
+      };
+
+      if (data.credentialType !== AgentVaultCredentialType.Passthrough) {
+        addReferenceIssue(data.secret, ["secret"]);
+      }
+      if (data.credentialType === AgentVaultCredentialType.Basic) {
+        addReferenceIssue(data.username, ["username"]);
+      }
+      data.customHeaders.forEach((header, index) =>
+        addReferenceIssue(header.value, ["customHeaders", index, "value"])
+      );
+      data.substitutions.forEach((substitution, index) =>
+        addReferenceIssue(substitution.value, ["substitutions", index, "value"])
+      );
 
       if (data.credentialType === AgentVaultCredentialType.Passthrough) return;
 

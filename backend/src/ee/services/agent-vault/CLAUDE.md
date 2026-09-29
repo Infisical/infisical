@@ -17,7 +17,7 @@ never in anything the agent holds.
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
-agent-vault-access-bundle/   bundles, services, credential encryption, grants
+agent-vault-access-bundle/   bundles, services, variables, credential encryption, grants
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-session/         mint, revoke, list, retention sweep
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
@@ -155,6 +155,37 @@ header" is the name in every layer; unqualified "header" means the credential's 
   error text is both the 403 body and the log line.
 - A PATCH replaces the whole list. Omitting a row's `value` keeps what is sealed; every other field
   replaces.
+
+## Variables
+
+A variable is a key and a sealed value on one bundle. A service uses one as `{{KEY}}` in its token, username,
+password, a custom header value or a substitution value. Nothing else takes one: a host pattern, method or
+path decides what a service can reach, so it stays literal.
+
+- **Sealed text names a variable by id, `{{<uuid>}}`, never by key.** The key form exists only at the API
+  boundary: a service write maps keys to ids before it seals (`toStoredVariableReferences`), reading the
+  primary, since a variable created a moment earlier may not be on a replica yet. So a rename is one row.
+- `agent_vault_service_variable_references` holds a row per field per variable. It drives Used By, the delete
+  refusal, and `isWholeValue`, which is how the sheet shows `{{KEY}}` again for a value that never returns.
+  **Resolve does not read it**: it pulls the ids out of the decrypted fields, so a service saved mid-poll can
+  never leave the two describing different versions of a field.
+- An update rebuilds the rows of only the values it wrote. An omitted value keeps its sealed text and its
+  rows, a dropped header or substitution takes its rows through the foreign key, and a new credential type
+  or pass-through clears both credential fields.
+- The `variableId` key is `DEFERRABLE INITIALLY DEFERRED`. A bundle delete cascades to its services and its
+  variables in one statement, and an immediate check can fire before the service cascade has removed the
+  rows, depending on which constraint was created first. The refusal that matters is the check under the
+  bundle lock (a 409 naming the services); the deferred key is the backstop and only raises at commit.
+- Every `{{...}}` in a value must be an existing, well-formed key, or the save fails. A malformed one is
+  refused without quoting it, because the text was cut from a secret. Placeholders can't contain double
+  braces. A variable's own value is sent as is and never expanded again, which is also how a service sends a
+  literal `{{`.
+- Resolve leaves an id with no variable behind as text and logs it rather than dropping the service, which
+  would also drop the service's method and path restrictions. Values saved before variables existed hold no
+  id tokens, so they pass through untouched.
+- Admin only, reads included: every variable route checks `Edit` on access bundles, which a member lacks.
+  Every value is sealed; `isSecret` only decides whether the list returns it. The value route is a GET with
+  no-store headers and one audit event per read.
 
 ## Credentials at rest
 

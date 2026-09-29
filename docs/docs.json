@@ -798,6 +798,7 @@
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
                   "documentation/platform/agent-vault/services",
+                  "documentation/platform/agent-vault/variables",
                   "documentation/platform/agent-vault/sessions",
                   "documentation/platform/agent-vault/proxies",
                   "documentation/platform/agent-vault/access-control"
@@ -4381,6 +4382,16 @@
                       "api-reference/endpoints/agent-vault-services/create",
                       "api-reference/endpoints/agent-vault-services/update",
                       "api-reference/endpoints/agent-vault-services/delete"
+                    ]
+                  },
+                  {
+                    "group": "Variables",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-variables/list",
+                      "api-reference/endpoints/agent-vault-variables/create",
+                      "api-reference/endpoints/agent-vault-variables/update",
+                      "api-reference/endpoints/agent-vault-variables/delete",
+                      "api-reference/endpoints/agent-vault-variables/get-value"
                     ]
                   },
                   {

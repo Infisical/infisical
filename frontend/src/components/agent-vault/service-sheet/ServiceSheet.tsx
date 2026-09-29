@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
@@ -21,17 +21,25 @@ import {
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { hostError } from "@app/helpers/agentVaultHostPattern";
 import { AgentVaultTemplate } from "@app/helpers/agentVaultTemplates";
+import { toVariableReference } from "@app/helpers/agentVaultVariables";
 import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
   AgentVaultCredentialType,
+  AgentVaultVariableReferenceField,
   useCreateAgentVaultService,
+  useListAgentVaultVariables,
   useUpdateAgentVaultService
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import {
+  TAgentVaultService,
+  TAgentVaultVariable,
+  TAgentVaultVariableReference
+} from "@app/hooks/api/agentVault/types";
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
 import { ServiceTemplateSelect } from "../ServiceTemplateSelect";
+import { VariableFormDialog } from "../VariableFormDialog";
 import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
 import { ReviewFields } from "./ReviewFields";
@@ -45,6 +53,7 @@ import {
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
+import { NO_SEEDED_REFERENCES, ServiceVariablesContext } from "./ServiceVariablesContext";
 import { SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
 import { ADVANCED_ITEM, TransformationsFields } from "./TransformationsFields";
 
@@ -71,6 +80,46 @@ type Props = {
   service?: TAgentVaultService | null;
 };
 
+// A stored value that is one reference and nothing else holds no secret, so it can go back in its field.
+const seedReferences = (service?: TAgentVaultService | null) => {
+  if (!service) return NO_SEEDED_REFERENCES;
+
+  const whole = service.variableReferences.filter((reference) => reference.isWholeValue);
+  const referenceWhere = (match: (reference: TAgentVaultVariableReference) => boolean) => {
+    const reference = whole.find(match);
+    return reference ? toVariableReference(reference.key) : undefined;
+  };
+  const byRow = <TRow extends { id: string }>(
+    rows: TRow[],
+    idOf: (r: TAgentVaultVariableReference) => string | null
+  ) =>
+    Object.fromEntries(
+      rows.flatMap((row) => {
+        const reference = referenceWhere((candidate) => idOf(candidate) === row.id);
+        return reference ? [[row.id, reference]] : [];
+      })
+    );
+
+  return {
+    secret: referenceWhere(
+      (reference) => reference.field === AgentVaultVariableReferenceField.CredentialValue
+    ),
+    username: referenceWhere(
+      (reference) => reference.field === AgentVaultVariableReferenceField.CredentialUsername
+    ),
+    customHeaders: byRow(service.customHeaders, (reference) =>
+      reference.field === AgentVaultVariableReferenceField.CustomHeader
+        ? reference.customHeaderId
+        : null
+    ),
+    substitutions: byRow(service.substitutions, (reference) =>
+      reference.field === AgentVaultVariableReferenceField.Substitution
+        ? reference.substitutionId
+        : null
+    )
+  };
+};
+
 // Long enough for the advanced section to open and settle. There is no event to wait on: the section
 // is a Radix accordion, whose content is unmounted while closed, so the control cannot be measured
 // until after it mounts and takes its height.
@@ -81,9 +130,34 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
   const createService = useCreateAgentVaultService();
   const updateService = useUpdateAgentVaultService();
 
+  const { data: variables } = useListAgentVaultVariables(accessBundleId, isOpen);
+  const variableKeys = useMemo(() => variables?.map((variable) => variable.key), [variables]);
+  const seeded = useMemo(() => seedReferences(service), [service]);
+  // One dialog for every field. The request settles once the dialog has closed, not when the variable is
+  // saved: until then the dialog's focus trap would pull focus back from the field that asked.
+  const [newVariableKey, setNewVariableKey] = useState<string | null>(null);
+  const newVariableRequest = useRef<{
+    resolve: (variable: TAgentVaultVariable | null) => void;
+    created: TAgentVaultVariable | null;
+  } | null>(null);
+  const requestVariable = useCallback(
+    (key: string) =>
+      new Promise<TAgentVaultVariable | null>((resolve) => {
+        newVariableRequest.current?.resolve(null);
+        newVariableRequest.current = { resolve, created: null };
+        setNewVariableKey(key);
+      }),
+    []
+  );
+
+  const serviceVariables = useMemo(
+    () => ({ variables, seeded, requestVariable }),
+    [variables, seeded, requestVariable]
+  );
+
   const [template, setTemplate] = useState<AgentVaultTemplate | null>(null);
 
-  const schema = useMemo(() => buildServiceSchema(service), [service]);
+  const schema = useMemo(() => buildServiceSchema(service, variableKeys), [service, variableKeys]);
 
   const formMethods = useForm<TServiceForm>({
     defaultValues: BLANK_SERVICE_FORM,
@@ -165,28 +239,35 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
             : "Authorization",
         headerPrefix:
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : "Bearer",
-        username: credential.type === AgentVaultCredentialType.Basic ? UNCHANGED_SECRET : undefined,
-        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET,
+        username:
+          credential.type === AgentVaultCredentialType.Basic
+            ? (seeded.username ?? UNCHANGED_SECRET)
+            : undefined,
+        secret:
+          credential.type === AgentVaultCredentialType.Passthrough
+            ? ""
+            : (seeded.secret ?? UNCHANGED_SECRET),
         methods: service.allowedMethods ?? [...HTTP_METHODS],
         pathPrefixes: service.allowedPathPrefixes ?? [],
-        // The stored values never come back, so each row carries the sentinel until it is retyped.
+        // The stored values never come back, so each row carries the sentinel until it is retyped,
+        // unless its value is a lone variable reference.
         customHeaders: service.customHeaders.map((header) => ({
           id: header.id,
           name: header.name,
           prefix: header.prefix,
-          value: UNCHANGED_SECRET
+          value: seeded.customHeaders[header.id] ?? UNCHANGED_SECRET
         })),
         substitutions: service.substitutions.map((substitution) => ({
           id: substitution.id,
           placeholder: substitution.placeholder,
           surfaces: substitution.surfaces,
-          value: UNCHANGED_SECRET
+          value: seeded.substitutions[substitution.id] ?? UNCHANGED_SECRET
         }))
       });
     } else {
       reset(BLANK_SERVICE_FORM);
     }
-  }, [isOpen, service, isUpdate, reset, setStep]);
+  }, [isOpen, service, seeded, isUpdate, reset, setStep]);
 
   const handleTemplatePicked = (picked: AgentVaultTemplate | null) => {
     setTemplate(picked);
@@ -232,16 +313,24 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
     };
   };
 
+  // A seeded reference left as it was is omitted like the sentinel, so a save neither re-seals it nor
+  // records it as replaced. Not across a type change, where the stored secret no longer applies.
+  const isKept = (value: string | undefined, seededValue: string | undefined) =>
+    value === UNCHANGED_SECRET || (seededValue !== undefined && value === seededValue);
+
   const buildCredentialPatch = (data: TServiceForm) => {
     if (data.credentialType === AgentVaultCredentialType.Passthrough) {
       return { type: AgentVaultCredentialType.Passthrough as const };
     }
-    const untouched = data.secret === UNCHANGED_SECRET;
+    const isSameType = service?.credential.type === data.credentialType;
+    const untouched = isKept(data.secret, isSameType ? seeded.secret : undefined);
 
     if (data.credentialType === AgentVaultCredentialType.Basic) {
       return {
         type: AgentVaultCredentialType.Basic as const,
-        username: data.username === UNCHANGED_SECRET ? undefined : (data.username ?? ""),
+        username: isKept(data.username, isSameType ? seeded.username : undefined)
+          ? undefined
+          : (data.username ?? ""),
         password: untouched ? undefined : (data.secret ?? "")
       };
     }
@@ -263,13 +352,20 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
       ...(header.id ? { id: header.id } : {}),
       name: header.name,
       prefix: header.prefix,
-      ...(header.value === UNCHANGED_SECRET ? {} : { value: header.value })
+      ...(isKept(header.value, header.id ? seeded.customHeaders[header.id] : undefined)
+        ? {}
+        : { value: header.value })
     })),
     substitutions: data.substitutions.map((substitution) => ({
       ...(substitution.id ? { id: substitution.id } : {}),
       placeholder: substitution.placeholder,
       surfaces: substitution.surfaces,
-      ...(substitution.value === UNCHANGED_SECRET ? {} : { value: substitution.value })
+      ...(isKept(
+        substitution.value,
+        substitution.id ? seeded.substitutions[substitution.id] : undefined
+      )
+        ? {}
+        : { value: substitution.value })
     }))
   });
 
@@ -488,12 +584,18 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
                   {current.step === ServiceStep.Details && <DetailsFields />}
                   {current.step === ServiceStep.Credential && (
-                    <div className="flex flex-col gap-5">
-                      <CredentialFields storedType={service?.credential.type} />
-                      <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
-                    </div>
+                    <ServiceVariablesContext.Provider value={serviceVariables}>
+                      <div className="flex flex-col gap-5">
+                        <CredentialFields storedType={service?.credential.type} />
+                        <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
+                      </div>
+                    </ServiceVariablesContext.Provider>
                   )}
-                  {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}
+                  {current.step === ServiceStep.Review && (
+                    <ServiceVariablesContext.Provider value={serviceVariables}>
+                      <ReviewFields isUpdate={isUpdate} />
+                    </ServiceVariablesContext.Provider>
+                  )}
                 </div>
 
                 <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
@@ -505,6 +607,9 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                   </div>
                   <p className="text-sm font-semibold text-foreground">What this step does</p>
                   <p className="text-sm leading-relaxed text-muted">{current.rightDescription}</p>
+                  {current.rightTip && (
+                    <p className="text-sm leading-relaxed text-muted">{current.rightTip}</p>
+                  )}
                 </aside>
               </div>
 
@@ -532,6 +637,27 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
             </form>
           )}
         </FormProvider>
+
+        <VariableFormDialog
+          isOpen={newVariableKey !== null}
+          onOpenChange={(open) => {
+            if (!open) setNewVariableKey(null);
+          }}
+          accessBundleId={accessBundleId}
+          initialKey={newVariableKey ?? undefined}
+          existingKeys={variableKeys ?? []}
+          onCreated={(variable) => {
+            if (newVariableRequest.current) newVariableRequest.current.created = variable;
+          }}
+          // The dialog opens from no trigger, so its default would drop focus on the body.
+          onCloseAutoFocus={(event) => {
+            const request = newVariableRequest.current;
+            if (!request) return;
+            event.preventDefault();
+            newVariableRequest.current = null;
+            request.resolve(request.created);
+          }}
+        />
 
         <DiscardChangesAlertDialog
           open={isDiscardDialogOpen}

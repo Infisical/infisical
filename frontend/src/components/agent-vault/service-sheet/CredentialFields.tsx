@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Controller, ControllerRenderProps, useFormContext } from "react-hook-form";
 import { EyeIcon, EyeOffIcon, XIcon } from "lucide-react";
 
@@ -6,7 +6,6 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  CodeBlock,
   Field,
   FieldContent,
   FieldError,
@@ -22,9 +21,18 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
+import { isVariableReferenceOnly } from "@app/helpers/agentVaultVariables";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
+import { SendsPreview } from "./SendsPreview";
 import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import { useServiceVariables } from "./ServiceVariablesContext";
+import {
+  ReferenceHighlights,
+  useVariableAutocomplete,
+  VariableSuggestions
+} from "./VariableReferenceInput";
 
 export const credentialPreview = (
   form: {
@@ -47,6 +55,9 @@ type SecretName =
   | `customHeaders.${number}.value`
   | `substitutions.${number}.value`;
 
+// Keys the input handles itself while suggestions are open, so they must not re-read the caret after.
+const SUGGESTION_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter", "Tab", "Escape"]);
+
 export const SecretInput = <TName extends SecretName>({
   field,
   label,
@@ -55,7 +66,8 @@ export const SecretInput = <TName extends SecretName>({
   isError,
   isUntouched,
   hasStoredSecret,
-  canBeCleared
+  canBeCleared,
+  storedValue
 }: {
   field: ControllerRenderProps<TServiceForm, TName>;
   label: string;
@@ -69,64 +81,135 @@ export const SecretInput = <TName extends SecretName>({
   hasStoredSecret: boolean;
   /** Whether empty is a value this field can hold. Only such a field offers the clear button. */
   canBeCleared: boolean;
+  /** A stored value that is one variable reference, which the field shows in place of the sentinel. */
+  storedValue?: string;
 }) => {
   const { setFocus } = useFormContext<TServiceForm>();
   const [isVisible, setIsVisible] = useState(false);
   const [isCleared, setIsCleared] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  // Where the caret goes after a suggestion is picked. The value is set first, and setting it moves the
+  // caret to the end.
+  const caretRef = useRef<number | null>(null);
+
+  const value = field.value ?? "";
+  const isReferenceOnly = !isUntouched && isVariableReferenceOnly(value);
+  // The sentinel must never render as text, and a lone reference holds no secret.
+  const isShown = (isVisible && !isUntouched) || isReferenceOnly;
+  const isHighlighted = isShown && value.includes("{{");
+
+  const autocomplete = useVariableAutocomplete({
+    inputRef,
+    onInsert: (next, caret) => {
+      setIsCleared(false);
+      field.onChange(next);
+      caretRef.current = caret;
+      setIsVisible(true);
+    }
+  });
 
   // The sheet is not unmounted between opens, so the flag has to follow the value back to the sentinel.
   useEffect(() => {
     if (isUntouched) setIsCleared(false);
   }, [isUntouched]);
 
+  // A value that starts as a reference stays readable as text is typed around it.
+  useEffect(() => {
+    if (isReferenceOnly) setIsVisible(true);
+  }, [isReferenceOnly]);
+
+  const syncOverlay = () => {
+    if (overlayRef.current && inputRef.current) {
+      overlayRef.current.scrollLeft = inputRef.current.scrollLeft;
+    }
+  };
+
+  useLayoutEffect(() => {
+    const caret = caretRef.current;
+    if (caret !== null && inputRef.current) {
+      caretRef.current = null;
+      inputRef.current.setSelectionRange(caret, caret);
+    }
+    syncOverlay();
+  });
+
   const lowerLabel = label.toLowerCase();
 
   return (
-    <InputGroup>
-      <InputGroupInput
-        {...field}
-        aria-label={ariaLabel}
-        type={isVisible ? "text" : "password"}
-        onChange={(event) => {
-          setIsCleared(false);
-          field.onChange(event);
-        }}
-        onFocus={() => {
-          if (isUntouched) field.onChange("");
-        }}
-        // Empty reads the same whether the secret was meant to go or the field was only clicked into,
-        // so the clear button is made the one way to say it and passing through loses nothing.
-        onBlur={() => {
-          if (hasStoredSecret && !field.value && !isCleared) field.onChange(UNCHANGED_SECRET);
-          field.onBlur();
-        }}
-        placeholder={placeholder}
-        isError={isError}
-      />
-      <InputGroupAddon align="inline-end">
-        {canBeCleared && hasStoredSecret && (
-          <InputGroupButton
-            isDisabled={isCleared}
-            aria-label={`Clear ${lowerLabel}`}
-            onClick={() => {
-              setIsCleared(true);
-              field.onChange("");
-              setFocus(field.name);
+    <VariableSuggestions autocomplete={autocomplete}>
+      <InputGroup>
+        <div className="relative flex min-w-0 flex-1 items-center self-stretch">
+          {isHighlighted && <ReferenceHighlights value={value} overlayRef={overlayRef} />}
+          <InputGroupInput
+            {...field}
+            ref={(element) => {
+              field.ref(element);
+              inputRef.current = element;
             }}
+            aria-label={ariaLabel}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={autocomplete.isOpen}
+            aria-controls={autocomplete.isOpen ? autocomplete.listId : undefined}
+            aria-activedescendant={autocomplete.activeOptionId}
+            type={isShown ? "text" : "password"}
+            className={cn(isHighlighted && "text-transparent caret-foreground")}
+            onChange={(event) => {
+              setIsCleared(false);
+              // An emptied field masks again, since what is typed next may be a real secret.
+              if (!event.target.value) setIsVisible(false);
+              field.onChange(event);
+              autocomplete.refresh();
+            }}
+            onKeyDown={autocomplete.onKeyDown}
+            onKeyUp={(event) => {
+              if (!SUGGESTION_KEYS.has(event.key)) autocomplete.refresh();
+            }}
+            onClick={autocomplete.refresh}
+            onSelect={syncOverlay}
+            onScroll={syncOverlay}
+            onFocus={() => {
+              if (isUntouched) field.onChange("");
+            }}
+            // Empty reads the same whether the secret was meant to go or the field was only clicked into,
+            // so the clear button is made the one way to say it and passing through loses nothing.
+            onBlur={() => {
+              autocomplete.close();
+              if (hasStoredSecret && !field.value && !isCleared) {
+                field.onChange(storedValue ?? UNCHANGED_SECRET);
+              }
+              field.onBlur();
+            }}
+            placeholder={placeholder}
+            isError={isError}
+          />
+        </div>
+        <InputGroupAddon align="inline-end">
+          {canBeCleared && hasStoredSecret && (
+            <InputGroupButton
+              isDisabled={isCleared}
+              aria-label={`Clear ${lowerLabel}`}
+              onClick={() => {
+                setIsCleared(true);
+                field.onChange("");
+                setFocus(field.name);
+              }}
+            >
+              <XIcon />
+            </InputGroupButton>
+          )}
+          <InputGroupButton
+            // A stored credential is never returned, so until it is replaced there is nothing to reveal.
+            isDisabled={isUntouched || !field.value || isReferenceOnly}
+            aria-label={`${isVisible ? "Hide" : "Show"} ${lowerLabel}`}
+            onClick={() => setIsVisible((prev) => !prev)}
           >
-            <XIcon />
+            {isVisible ? <EyeOffIcon /> : <EyeIcon />}
           </InputGroupButton>
-        )}
-        <InputGroupButton
-          // A stored credential is never returned, so until it is replaced there is nothing to reveal.
-          isDisabled={isUntouched || !field.value}
-          aria-label={`${isVisible ? "Hide" : "Show"} ${lowerLabel}`}
-          onClick={() => setIsVisible((prev) => !prev)}
-        >
-          {isVisible ? <EyeOffIcon /> : <EyeIcon />}
-        </InputGroupButton>
-      </InputGroupAddon>
-    </InputGroup>
+        </InputGroupAddon>
+      </InputGroup>
+    </VariableSuggestions>
   );
 };
 
@@ -136,11 +219,10 @@ type Props = {
 
 export const CredentialFields = ({ storedType }: Props) => {
   const { control, watch, setValue } = useFormContext<TServiceForm>();
+  const { seeded } = useServiceVariables();
   const credentialType = watch("credentialType");
   const secret = watch("secret");
   const username = watch("username");
-  const headerName = watch("headerName");
-  const headerPrefix = watch("headerPrefix");
 
   const isBasic = credentialType === AgentVaultCredentialType.Basic;
   const isUntouched = secret === UNCHANGED_SECRET;
@@ -165,11 +247,14 @@ export const CredentialFields = ({ storedType }: Props) => {
             <SecretInput
               field={field}
               label={isBasic ? "Password" : "Token"}
-              placeholder={isBasic ? "Enter the password" : "Enter the token"}
+              placeholder={
+                isBasic ? "Enter the password, or type {{" : "Enter the token, or type {{"
+              }
               isError={Boolean(fieldState.error)}
               isUntouched={isUntouched}
               hasStoredSecret={hasStoredSecret}
               canBeCleared={isBasic}
+              storedValue={hasStoredSecret ? seeded.secret : undefined}
             />
             <FieldError>{fieldState.error?.message}</FieldError>
           </FieldContent>
@@ -252,11 +337,12 @@ export const CredentialFields = ({ storedType }: Props) => {
                   <SecretInput
                     field={field}
                     label="Username"
-                    placeholder="Enter the username"
+                    placeholder="Enter the username, or type {{"
                     isError={Boolean(fieldState.error)}
                     isUntouched={isUsernameUntouched}
                     hasStoredSecret={hasStoredSecret}
                     canBeCleared
+                    storedValue={hasStoredSecret ? seeded.username : undefined}
                   />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
@@ -267,18 +353,7 @@ export const CredentialFields = ({ storedType }: Props) => {
         </div>
       )}
 
-      {credentialType !== AgentVaultCredentialType.Passthrough && (
-        <CodeBlock
-          label="Sends"
-          isCopyable={false}
-          value={
-            credentialPreview(
-              { credentialType, headerName, headerPrefix },
-              isBasic ? "base64(<username>:<password>)" : "<token>"
-            ) ?? ""
-          }
-        />
-      )}
+      {credentialType !== AgentVaultCredentialType.Passthrough && <SendsPreview />}
 
       {credentialType === AgentVaultCredentialType.Passthrough && (
         <Alert variant="info">
