@@ -2605,7 +2605,7 @@ const OverviewPageContent = () => {
       type="button"
       aria-label={`Resize ${index === 0 ? "Name" : visibleEnvs[index - 1].name} column`}
       title="Drag or use arrow keys to resize"
-      className="absolute top-0 -right-1 z-20 w-2 cursor-col-resize touch-none focus-visible:outline-2 focus-visible:outline-ring"
+      className="group absolute top-0 -right-1 z-20 w-2 cursor-col-resize touch-none focus-visible:outline-none"
       style={{ height: "var(--resize-handle-height, 100%)" }}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
@@ -2621,14 +2621,25 @@ const OverviewPageContent = () => {
       }}
       onPointerMove={(event) => {
         if (!columnResize.current) return;
+        if (Math.abs(event.clientX - columnResize.current.startX) < 3) return;
         resizeColumns(
           columnResize.current.widths,
           columnResize.current.index,
           event.clientX - columnResize.current.startX
         );
       }}
-      onPointerUp={() => {
+      onPointerUp={(event) => {
+        const resize = columnResize.current;
         columnResize.current = null;
+        if (!resize || Math.abs(event.clientX - resize.startX) >= 3) return;
+        const handle = event.currentTarget;
+        const header = handle.closest("thead");
+        if (!header || event.clientY <= header.getBoundingClientRect().bottom) return;
+
+        handle.style.pointerEvents = "none";
+        const underlying = document.elementFromPoint(event.clientX, event.clientY);
+        handle.style.removeProperty("pointer-events");
+        if (underlying instanceof HTMLElement && !handle.contains(underlying)) underlying.click();
       }}
       onPointerCancel={() => {
         columnResize.current = null;
@@ -2638,7 +2649,9 @@ const OverviewPageContent = () => {
         event.preventDefault();
         resizeColumns(getCurrentColumnWidths(), index, event.key === "ArrowRight" ? 16 : -16);
       }}
-    />
+    >
+      <span className="pointer-events-none absolute top-0 left-0 h-10 w-full group-focus-visible:outline-2 group-focus-visible:outline-ring" />
+    </button>
   );
 
   const hasPendingCreates =
