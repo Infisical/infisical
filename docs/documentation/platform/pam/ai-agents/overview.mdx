@@ -198,7 +198,7 @@ This is also the strongest way to run an agent you don't fully trust, watched or
   Use the environment rather than `--client-secret` and friends. A secret on the command line lands in your shell history and is visible to anything that can list processes. The CLI also strips its own variables before the agent starts, so the agent never inherits the credentials the run was authenticated with.
 </Tip>
 
-See the [CLI reference](/cli/commands/pam-agentic) for the other authentication methods and their variables.
+See the [CLI reference](/cli/reference#pam-agentic-access) for the other authentication methods and their variables.
 
 For a sensitive workload, pair that with a **dedicated machine**: an isolated host or container holding nothing else worth taking, so even an agent that gets past every local defense finds only that one narrowly scoped identity. Its access is still bounded by role, duration, and [approval](/documentation/platform/pam/access-requests/overview), and everything it does is on record.
 
@@ -241,7 +241,7 @@ Because every connection is a normal PAM session, reviewing an agent's work is t
   <Card title="Session Recording" icon="video" href="/documentation/platform/pam/sessions/session-recording">
     Review exactly what the agent ran.
   </Card>
-  <Card title="CLI Reference" icon="terminal" href="/cli/commands/pam-agentic">
+  <Card title="CLI Reference" icon="terminal" href="/cli/reference#pam-agentic-access">
     Every flag for `pam agentic access`.
   </Card>
 </CardGroup>

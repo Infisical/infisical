@@ -106,7 +106,7 @@ Choose how Docker should receive your application secrets:
       Pin the [Infisical CLI version](https://github.com/Infisical/cli/releases) in production images to keep builds reproducible.
     </Tip>
 
-    Next, wrap your application's start command with [`infisical run`](/cli/commands/run). Replace `<project-id>` with the project ID you copied earlier:
+    Next, wrap your application's start command with [`infisical run`](/cli/reference#run). Replace `<project-id>` with the project ID you copied earlier:
 
     <CodeGroup>
       ```dockerfile Node.js
@@ -123,7 +123,7 @@ Choose how Docker should receive your application secrets:
     </CodeGroup>
 
     <Accordion title="Run multiple startup commands">
-      Use the [`--command` option](/cli/commands/run#infisical-run:command) when your application needs to run multiple shell commands in sequence:
+      Use the [`--command` option](/cli/reference#run--flag-command) when your application needs to run multiple shell commands in sequence:
 
       ```dockerfile
       CMD ["infisical", "run", "--projectId=<project-id>", "--env=dev", "--command", "npm run migrate && npm start"]
@@ -189,7 +189,7 @@ Choose how Docker should receive your application secrets:
 
     ### Step 1: Authenticate with the CLI
 
-    Authenticate with Infisical by running [`infisical login`](/cli/commands/login):
+    Authenticate with Infisical by running [`infisical login`](/cli/reference#login):
 
     ```bash
     infisical login
@@ -199,7 +199,7 @@ Choose how Docker should receive your application secrets:
 
     ### Step 2: Connect your project
 
-    In your application's directory, link it to the project you created by running [`infisical init`](/cli/commands/init):
+    In your application's directory, link it to the project you created by running [`infisical init`](/cli/reference#init):
 
     ```bash
     infisical init

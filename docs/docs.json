@@ -4797,6 +4797,110 @@
       "destination": "/documentation/platform/secret-scanning/scan-locally"
     },
     {
+      "source": "/cli/commands/commands",
+      "destination": "/cli/reference"
+    },
+    {
+      "source": "/cli/commands/agent-proxy",
+      "destination": "/cli/reference#secrets-agent-proxy"
+    },
+    {
+      "source": "/cli/commands/agent-vault",
+      "destination": "/cli/reference#agent-vault"
+    },
+    {
+      "source": "/cli/commands/bootstrap",
+      "destination": "/cli/reference#bootstrap"
+    },
+    {
+      "source": "/cli/commands/dynamic-secrets",
+      "destination": "/cli/reference#dynamic-secrets"
+    },
+    {
+      "source": "/cli/commands/export",
+      "destination": "/cli/reference#export"
+    },
+    {
+      "source": "/cli/commands/gateway",
+      "destination": "/cli/reference#gateway"
+    },
+    {
+      "source": "/cli/commands/init",
+      "destination": "/cli/reference#init"
+    },
+    {
+      "source": "/cli/commands/kmip",
+      "destination": "/cli/reference#kmip"
+    },
+    {
+      "source": "/cli/commands/login",
+      "destination": "/cli/reference#login"
+    },
+    {
+      "source": "/cli/commands/logout",
+      "destination": "/cli/reference#logout"
+    },
+    {
+      "source": "/cli/commands/org",
+      "destination": "/cli/reference#org"
+    },
+    {
+      "source": "/cli/commands/pam-agentic",
+      "destination": "/cli/reference#pam-agentic"
+    },
+    {
+      "source": "/cli/commands/pam",
+      "destination": "/cli/reference#pam"
+    },
+    {
+      "source": "/cli/commands/profile",
+      "destination": "/cli/reference#profile"
+    },
+    {
+      "source": "/cli/commands/relay",
+      "destination": "/cli/reference#relay"
+    },
+    {
+      "source": "/cli/commands/reset",
+      "destination": "/cli/reference#reset"
+    },
+    {
+      "source": "/cli/commands/run",
+      "destination": "/cli/reference#run"
+    },
+    {
+      "source": "/cli/commands/scan-git-changes",
+      "destination": "/cli/reference#scan-git-changes"
+    },
+    {
+      "source": "/cli/commands/scan-install",
+      "destination": "/cli/reference#scan-install"
+    },
+    {
+      "source": "/cli/commands/scan",
+      "destination": "/cli/reference#scan"
+    },
+    {
+      "source": "/cli/commands/secrets",
+      "destination": "/cli/reference#secrets"
+    },
+    {
+      "source": "/cli/commands/service-token",
+      "destination": "/cli/reference#service-token"
+    },
+    {
+      "source": "/cli/commands/token",
+      "destination": "/cli/reference#token"
+    },
+    {
+      "source": "/cli/commands/user",
+      "destination": "/cli/reference#user"
+    },
+    {
+      "source": "/cli/commands/vault",
+      "destination": "/cli/reference#vault"
+    },
+    {
       "source": "/api-reference/endpoints/agent-vault-memberships/list-users",
       "destination": "/api-reference/endpoints/agent-vault-members/list"
     },
@@ -4906,7 +5010,7 @@
     },
     {
       "source": "/cli/commands/ssh",
-      "destination": "/cli/commands/pam"
+      "destination": "/cli/reference#ssh"
     },
     {
       "source": "/documentation/platform/agent-sentinel",

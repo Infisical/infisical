@@ -87,7 +87,7 @@ Your next `infisical run` uses the override, and your teammates keep receiving t
 
 ## Export secrets to a file
 
-Some tools read secrets from a file and offer no way to accept them from the environment. For those cases, write the secrets to a file with [`infisical export`](/cli/commands/export):
+Some tools read secrets from a file and offer no way to accept them from the environment. For those cases, write the secrets to a file with [`infisical export`](/cli/reference#export):
 
 ```bash
 infisical export --env=dev --format=dotenv --output-file=./.env
@@ -127,7 +127,7 @@ The hook stops the commit when it finds something that looks like a secret. Chec
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="CLI reference" icon="terminal" href="/cli/commands/run">
+  <Card title="CLI reference" icon="terminal" href="/cli/reference#run">
     All available flags for `run`, `export`, `secrets`, and the rest of the CLI.
   </Card>
   <Card title="Docker" icon="docker" iconType="brands" href="/integrations/platforms/docker">
