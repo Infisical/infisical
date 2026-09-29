@@ -213,6 +213,7 @@ describe("validateStripeConnectionCredentials", () => {
     postMock.mockRejectedValue(oauthError(400, "invalid_grant", "Authorization code does not exist: ac_secret"));
 
     const error = (await validateStripeConnectionCredentials({
+      orgId: "org-id",
       credentials: { code: "ac_secret" }
     } as never).catch((e: Error) => e)) as Error;
 
