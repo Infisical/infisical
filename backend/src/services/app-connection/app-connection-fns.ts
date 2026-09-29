@@ -15,6 +15,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
@@ -310,7 +311,6 @@ import {
 } from "./windmill";
 import { getWinRMConnectionListItem, validateWinRMConnectionCredentials, WinRMConnectionMethod } from "./winrm";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
-import { getConfig } from "@app/lib/config/env";
 
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
   Object.entries(SECRET_SYNC_CONNECTION_MAP).map(([key, value]) => [value, key])
