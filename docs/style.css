@@ -337,30 +337,11 @@
   border-color: #ebebeb;
 }
 
-/* #content-area:hover .mt-8 .block:hover{
-  
-  border-width: 1px;
-  background-color: #FDFFE5;
-  border-color: #EFFF33;
-} */
-
 #content-area div.my-4{
   border-width: 1px;
 }
 
-/* #content-area div.flex-1 {
-  opacity: 0.8;
-  font-weight: 400;
-} */
-
-/* .eyebrow {
-  text-transform: uppercase;
-  font-weight: 400;
-  color: red;
-} */
-
 #content-container {
-  /* background-color: #f5f5f5; */
   margin-top: 2rem;
 }
 
@@ -375,10 +356,6 @@
 
 #topbar-cta-button .group .absolute {
   background-color: black;
-}
-
-.flex-1 .flex .items-center {
-  /* background-color: #f5f5f5; */
 }
 
 .dark #navbar .max-w-8xl {
@@ -688,15 +665,6 @@ a.ifx-steps__label:hover {
   background-color: #1e1f24;
 }
 
-.dark .ifx-home__eyebrow {
-  margin: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #6f6f6f;
-}
-
 .ifx-home__title {
   margin: 1.25rem 0 0;
   max-width: 46rem;
@@ -707,7 +675,7 @@ a.ifx-steps__label:hover {
   color: #101114;
 }
 
-.ifx-home__lede {font-family: var(--font-family-headings-custom, inherit);
+.ifx-home__lede {
   font-family: var(--font-family-headings-custom, inherit);
   margin: 1.25rem 0 0;
   max-width: 40rem;
@@ -872,7 +840,6 @@ a.ifx-steps__label:hover {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1px;
-  background-color: transparent;
 }
 
 .ifx-card {
@@ -1014,14 +981,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
   color: #555555;
 }
 
-.dark .ifx-home__hero {
-  border-bottom-color: #1e1f24;
-}
-
-.dark .ifx-home__eyebrow {
-  color: #707174;
-}
-
 .dark .ifx-home__title {
   color: #ebebeb;
 }
@@ -1050,10 +1009,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
 
 .dark .ifx-home__section-title {
   color: #707174;
-}
-
-.dark .ifx-grid {
-  background-color: transparent;
 }
 
 .dark .ifx-card {
@@ -1164,18 +1119,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
 
   .ifx-home__hero {
     padding: 1.5rem 0;
-  }
-
-  .ifx-grid--2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .ifx-grid--3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .ifx-grid--4 {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .ifx-card--wide {
@@ -1320,7 +1263,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
 #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a {
   /* transparent rule reserves the 2px so nothing shifts when it becomes active */
   border-left: 2px solid transparent;
-  border-radius: 0;
   padding: 10px 16px !important;
   font-family: var(--font-family-headings-custom, inherit);
   font-size: 0.9375rem;
@@ -1358,7 +1300,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
   display: inline-flex;
   align-items: center;
   border: 1px solid transparent;
-  border-radius: 9999px;
   padding: 0.0625rem 0.5rem;
   font-size: 0.6875rem;
   font-weight: 500;
@@ -1587,7 +1528,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
   padding: 1rem 1.25rem;
   border: 1px solid #e5e7eb;
   background: #fafafa;
-  border-radius: 0;
 }
 
 .dark .ifx-avqs {
@@ -1758,7 +1698,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
   width: 100%;
   padding: 0.4rem 0.55rem 0.4rem 1.85rem;
   border: 1px solid #e5e7eb;
-  border-radius: 0;
   background: #f9fafb;
   color: #111827;
   font-size: 0.875rem;
@@ -1816,7 +1755,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
   gap: 0.4rem;
   padding: 0.85rem 0.5rem;
   border: 1px solid #e5e7eb;
-  border-radius: 0;
   background: #ffffff;
   color: #374151;
   font-size: 0.8125rem;
@@ -2084,9 +2022,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
   font-weight: 400;
   line-height: 1.6;
   color: var(--cli-muted);
-}
-
-.cli-cmd__title {
   overflow-wrap: anywhere;
 }
 

@@ -1,7 +1,6 @@
 export const HomeHero = ({ title, description, aside, children }) => (
   <div className="ifx-home__hero">
     <div className="ifx-home__hero-main">
-      {/* <p className="ifx-home__eyebrow">{eyebrow}</p> */}
       <h1 className="ifx-home__title">{title}</h1>
       <div className="ifx-home__lede">{description}</div>
       <div className="ifx-home__actions">{children}</div>
