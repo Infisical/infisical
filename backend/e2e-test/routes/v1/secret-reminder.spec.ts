@@ -1,4 +1,4 @@
-import { seedData1 } from "@app/db/seed-data";
+import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { SECRET_REMINDER_RESOURCE_TYPE } from "@app/services/reminder/reminder-events";
 
 import { up as migrateRemindersToAlerts } from "../../../src/db/migrations/20260929130000_migrate-secret-reminders-to-alerts";
@@ -16,6 +16,7 @@ import {
   waitForReminderEmails
 } from "../../testUtils/reminders";
 import { createSecretV2, getSecretByNameV2 } from "../../testUtils/secrets";
+import { addUserMembership, createUser } from "../../testUtils/users";
 
 const ENVIRONMENT = "dev";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -30,9 +31,15 @@ describe("Secret reminders delivered through alerts", () => {
   let projectId: string;
   let authToken: string;
   let cleanup: () => Promise<void>;
+  // A project member other than the caller, so a reminder's recipients are never just whoever set it.
+  let member: { userId: string; username: string };
 
   beforeEach(async () => {
-    ({ projectId, authToken, cleanup } = await createIsolatedOrgAndProject("reminders"));
+    let orgId: string;
+    ({ orgId, projectId, authToken, cleanup } = await createIsolatedOrgAndProject("reminders"));
+    member = await createUser("reminder-recipient");
+    await addUserMembership({ userId: member.userId, orgId, role: OrgMembershipRole.Member });
+    await addUserMembership({ userId: member.userId, orgId, projectId, role: ProjectMembershipRole.Member });
   });
 
   afterEach(async () => {
@@ -61,20 +68,20 @@ describe("Secret reminders delivered through alerts", () => {
 
   test("setting a reminder creates its alert with an email channel to the recipients", async () => {
     const secretId = await createSecret("CREATE");
-    await setSecretReminder({ secretId, authToken, repeatDays: 30, message: "rotate it", recipients: [seedData1.id] });
+    await setSecretReminder({ secretId, authToken, repeatDays: 30, message: "rotate it", recipients: [member.userId] });
 
     const [alert] = await reminderAlerts(secretId);
     expect(alert.name).toBe("Reminder for CREATE");
     expect(alert.channels).toHaveLength(1);
     expect(alert.channels[0]).toMatchObject({
       channelType: "email",
-      recipients: [{ principalType: "user", principalId: seedData1.id }]
+      recipients: [{ principalType: "user", principalId: member.userId }]
     });
 
     expect(await getSecretReminder({ secretId, authToken })).toMatchObject({
       repeatDays: 30,
       message: "rotate it",
-      recipients: [seedData1.id]
+      recipients: [member.userId]
     });
   });
 
@@ -88,7 +95,7 @@ describe("Secret reminders delivered through alerts", () => {
 
   test("updating the reminder keeps channels added through the alert API", async () => {
     const secretId = await createSecret("KEEP_WEBHOOK");
-    await setSecretReminder({ secretId, authToken, repeatDays: 30, recipients: [seedData1.id] });
+    await setSecretReminder({ secretId, authToken, repeatDays: 30, recipients: [member.userId] });
     const [alert] = await reminderAlerts(secretId);
 
     await updateAlert({
@@ -113,7 +120,7 @@ describe("Secret reminders delivered through alerts", () => {
 
   test("the secret listing reports recipients from the reminder's alert", async () => {
     const secretId = await createSecret("LISTING");
-    await setSecretReminder({ secretId, authToken, repeatDays: 30, recipients: [seedData1.id] });
+    await setSecretReminder({ secretId, authToken, repeatDays: 30, recipients: [member.userId] });
 
     const res = await testServer.inject({
       method: "GET",
@@ -127,7 +134,7 @@ describe("Secret reminders delivered through alerts", () => {
       secretReminderRepeatDays: number;
     }[];
     expect(secret.secretReminderRepeatDays).toBe(30);
-    expect(secret.secretReminderRecipients.map((recipient) => recipient.user.id)).toEqual([seedData1.id]);
+    expect(secret.secretReminderRecipients.map((recipient) => recipient.user.id)).toEqual([member.userId]);
   });
 
   test("listing reminder alerts across a project is refused", async () => {
@@ -144,7 +151,7 @@ describe("Secret reminders delivered through alerts", () => {
       authToken
     });
     const secretId = await createSecret("MOVE");
-    await setSecretReminder({ secretId, authToken, repeatDays: 30, recipients: [seedData1.id] });
+    await setSecretReminder({ secretId, authToken, repeatDays: 30, recipients: [member.userId] });
     const [before] = await reminderAlerts(secretId);
 
     const move = await testServer.inject({
@@ -175,7 +182,7 @@ describe("Secret reminders delivered through alerts", () => {
 
   test("the daily job emails a due reminder and moves its schedule forward", async () => {
     const secretId = await createSecret("DISPATCH");
-    await setSecretReminder({ secretId, authToken, repeatDays: 30, message: "rotate it", recipients: [seedData1.id] });
+    await setSecretReminder({ secretId, authToken, repeatDays: 30, message: "rotate it", recipients: [member.userId] });
     const dueDate = await nextReminderDate(secretId);
 
     await runDailyReminders({ now: new Date() });
@@ -184,7 +191,7 @@ describe("Secret reminders delivered through alerts", () => {
     await runDailyReminders({ now: dueDate });
 
     const [email] = await waitForReminderEmails("DISPATCH");
-    expect(email.recipients).toEqual([seedData1.email]);
+    expect(email.recipients).toEqual([member.username]);
     expect(JSON.stringify(email.substitutions)).toContain("rotate it");
 
     expect((await nextReminderDate(secretId)).getTime()).toBe(dueDate.getTime() + 30 * DAY_MS);
@@ -252,16 +259,14 @@ describe("Secret reminders delivered through alerts", () => {
 
     test("gives existing reminders an alert, keeping only recipients still in the project", async () => {
       const secretId = await createSecret("MIGRATE");
-      const [outsider] = await testDb("users")
-        .insert({ username: "reminder-outsider@localhost.local", email: "reminder-outsider@localhost.local" })
-        .returning("id");
+      const outsider = await createUser("reminder-outsider");
       const reminderId = await seedReminder(secretId, {
         repeatDays: 30,
         nextReminderDate: new Date(Date.now() + DAY_MS)
       });
       await testDb("reminders_recipients").insert([
-        { reminderId, userId: seedData1.id },
-        { reminderId, userId: outsider.id }
+        { reminderId, userId: member.userId },
+        { reminderId, userId: outsider.userId }
       ]);
 
       await migrateRemindersToAlerts(testDb);
@@ -269,7 +274,7 @@ describe("Secret reminders delivered through alerts", () => {
       const [alert] = await reminderAlerts(secretId);
       expect(alert).toMatchObject({ name: "Reminder for MIGRATE", triggerType: "event" });
       expect(alert.channels).toHaveLength(1);
-      expect(alert.channels[0].recipients).toEqual([{ principalType: "user", principalId: seedData1.id }]);
+      expect(alert.channels[0].recipients).toEqual([{ principalType: "user", principalId: member.userId }]);
       // The API does not report who created an alert.
       expect(await testDb("alerts").where({ id: alert.id }).first()).toMatchObject({
         createdByActorType: "platform",
