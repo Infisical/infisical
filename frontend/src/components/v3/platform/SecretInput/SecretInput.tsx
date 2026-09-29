@@ -1,5 +1,5 @@
 /* eslint-disable react/no-danger */
-import { forwardRef, TextareaHTMLAttributes, useEffect, useState } from "react";
+import { forwardRef, ReactNode, TextareaHTMLAttributes, useEffect, useState } from "react";
 
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useToggle } from "@app/hooks";
@@ -7,6 +7,33 @@ import { useToggle } from "@app/hooks";
 import { cn } from "../../utils";
 
 const REGEX = /(\${([@a-zA-Z0-9-_. ]+)})/g;
+
+const INVISIBLE_CHAR_REGEX =
+  // eslint-disable-next-line no-control-regex
+  /([\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u00a0\u00ad\u1680\u2000-\u200f\u2028-\u202f\u205f\u2060\u2066-\u2069\u3000\ufeff])/g;
+
+const markInvisibleChars = (text: string, chunkKey: number) => {
+  const nodes: ReactNode[] = [];
+  let offset = 0;
+
+  text.split(INVISIBLE_CHAR_REGEX).forEach((part, index) => {
+    if (index % 2 === 1) {
+      nodes.push(
+        <span
+          key={`secret-value-invisible-${chunkKey}-${offset}`}
+          className="rounded-xs bg-warning/25 outline outline-1 outline-warning/70"
+        >
+          {part}
+        </span>
+      );
+    } else if (part) {
+      nodes.push(part);
+    }
+    offset += part.length;
+  });
+
+  return nodes;
+};
 
 const syntaxHighlight = (
   content?: string | null,
@@ -81,7 +108,7 @@ const syntaxHighlight = (
                     }
                   }}
                 >
-                  {segment}
+                  {markInvisibleChars(segment, i)}
                 </span>
                 {segmentIndex < parts.length - 1 && (
                   <span className="ph-no-capture pointer-events-none text-secret/80">.</span>
@@ -97,7 +124,7 @@ const syntaxHighlight = (
       skipNext = false;
       return [];
     }
-    return el;
+    return markInvisibleChars(el, i);
   });
 
   // akhilmhdh: Dont remove this br. I am still clueless how this works but weirdly enough

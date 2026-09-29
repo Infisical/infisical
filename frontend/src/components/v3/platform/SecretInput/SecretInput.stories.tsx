@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { SecretInput } from "./SecretInput";
 
+const REFERENCE_WITH_NBSP = `\${FOO${"\u00a0"}BAR}`;
+
 const meta = {
   title: "Platform/SecretInput",
   component: SecretInput,
@@ -46,6 +48,29 @@ export const Default: Story = {
     docs: {
       description: {
         story: "Use the framed variant for secret values in forms."
+      }
+    }
+  }
+};
+
+export const InvisibleCharacters: Story = {
+  args: {
+    isVisible: true,
+    value: [
+      "{",
+      '  "HILTON_BASE_URL":\u00a0"https://kapip-s.hilton.io/gateway",',
+      '  "HILTON_API_KEY": "a1b2c3d4e5",',
+      '  "HILTON_TIMEOUT": 30\u200b',
+      "\ufeff}",
+      REFERENCE_WITH_NBSP
+    ].join("\n"),
+    variant: "plain"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Codepoints that paint as a normal space, or as nothing at all, are marked so they can be spotted in a pasted value. Left to right: a non-breaking space (U+00A0), a zero-width space (U+200B), a byte order mark (U+FEFF), and a non-breaking space inside a secret reference, which stops the reference resolving."
       }
     }
   }
