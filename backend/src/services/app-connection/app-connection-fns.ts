@@ -15,6 +15,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
@@ -349,7 +350,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.MicrosoftIntune
 ];
 
-export const listAppConnectionOptions = (projectType?: ProjectType) => {
+export const listAppConnectionOptions = (orgId: string, projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
     getGitHubConnectionListItem(),
@@ -439,6 +440,12 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getStripeConnectionListItem()
   ]
     .filter((option) => {
+      if (option.app === AppConnection.Stripe) {
+        if (!getConfig().WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.includes(orgId)) {
+          return false;
+        }
+      }
+
       switch (projectType) {
         case ProjectType.SecretManager:
           return (
