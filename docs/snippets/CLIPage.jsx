@@ -153,19 +153,20 @@ export const CLICommand = ({
     return () => observer.disconnect();
   }, []);
 
-  // Descriptions arrive as prop strings, which MDX does not parse, so backticks and
-  // [text](href) links are rendered here. The CLI's help text marks commands as
+  // Descriptions arrive as prop strings, which MDX does not parse, so backticks, **bold**
+  // UI labels, and [text](href) links are rendered here. The CLI's help text marks commands as
   // [infisical ...], which renders as code.
   const inline = (text) => {
     if (!text) return null;
     const parts = [];
-    const pattern = /`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)|\[(infisical [^\]]+)\]/g;
+    const pattern = /`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)|\[(infisical [^\]]+)\]|\*\*([^*]+)\*\*/g;
     let last = 0;
     let match;
     while ((match = pattern.exec(text))) {
       if (match.index > last) parts.push(text.slice(last, match.index));
       if (match[1]) parts.push(<code key={match.index}>{match[1]}</code>);
       else if (match[4]) parts.push(<code key={match.index}>{match[4]}</code>);
+      else if (match[5]) parts.push(<strong key={match.index}>{match[5]}</strong>);
       else parts.push(<a key={match.index} href={match[3]}>{match[2]}</a>);
       last = pattern.lastIndex;
     }
