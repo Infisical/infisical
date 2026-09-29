@@ -1644,8 +1644,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       security: [{ bearerAuth: [] }],
       body: z
         .object({
-          // Not trimmed here: the service matches both the value as sent and its trimmed form, since
-          // not every writer trims before storing.
           secretValue: z.string().min(1).describe("The secret value to look for."),
           scope: z
             .nativeEnum(SecretValueSearchScope)

@@ -1538,12 +1538,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     {
       orgId,
       projectIds,
-      secretValueDigests,
+      secretValueDigest,
       limit
     }: {
       orgId: string;
       projectIds: string[];
-      secretValueDigests: string[];
+      secretValueDigest: string;
       limit: number;
     },
     tx?: Knex
@@ -1554,7 +1554,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
-        .whereIn(`${TableName.SecretV2}.secretValueOrgBlindIndex`, secretValueDigests)
+        .where(`${TableName.SecretV2}.secretValueOrgBlindIndex`, secretValueDigest)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .whereNull(`${TableName.SecretV2}.userId`)

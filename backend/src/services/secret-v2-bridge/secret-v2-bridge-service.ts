@@ -4107,17 +4107,12 @@ export const secretV2BridgeServiceFactory = ({
 
     // Every project in an org shares the org data key, so one digest answers for all of them.
     const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({ orgId: actor.orgId, kmsService });
-    // The raw secret routes trim a value before storing it, but other writers (eg secret sync imports)
-    // store it as received, so both forms are matched.
-    const trimmedValue = dto.secretValue.at(-1) === "\n" ? `${dto.secretValue.trim()}\n` : dto.secretValue.trim();
-    const secretValueDigests = await Promise.all(
-      [...new Set([dto.secretValue, trimmedValue])].map((value) => generateOrgLevelBlindIndex(Buffer.from(value)))
-    );
+    const secretValueDigest = await generateOrgLevelBlindIndex(Buffer.from(dto.secretValue));
 
     const visible = await secretDAL.findSecretsWithMatchingValue({
       orgId: actor.orgId,
       projectIds,
-      secretValueDigests,
+      secretValueDigest,
       limit: SECRET_VALUE_SEARCH_LIMIT
     });
     if (!visible.length) return { secrets: [], searchedProject };
