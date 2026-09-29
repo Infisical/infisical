@@ -2945,7 +2945,7 @@ const OverviewPageContent = () => {
                       <TableHead
                         className={twMerge(
                           !isSingleEnvView && "sticky",
-                          "left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container p-0 lg:w-96 lg:max-w-96 lg:min-w-96"
+                          "left-10 z-10 w-full min-w-[180px] border-r bg-container p-0"
                         )}
                       >
                         <DropdownMenu>
@@ -3096,7 +3096,7 @@ const OverviewPageContent = () => {
                           );
                         })
                       ) : (
-                        <TableHead className="w-full">
+                        <TableHead>
                           <div className="flex w-full items-center justify-between gap-2">
                             Value
                             <div className="flex items-center gap-2">
