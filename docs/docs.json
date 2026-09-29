@@ -4547,7 +4547,7 @@
       "x": "https://www.twitter.com/infisical/",
       "linkedin": "https://www.linkedin.com/company/infisical/",
       "github": "https://github.com/Infisical/infisical-cli",
-      "slack": "https://infisical.com/slack"
+      "website": "https://community.infisical.com"
     },
     "links": [
       {
@@ -4710,7 +4710,7 @@
           },
           {
             "label": "Support",
-            "href": "https://infisical.com/slack"
+            "href": "https://community.infisical.com"
           }
         ]
       }

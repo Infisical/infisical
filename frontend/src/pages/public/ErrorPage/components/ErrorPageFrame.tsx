@@ -125,9 +125,9 @@ export const ErrorPageFrame = ({
                 className="underline underline-offset-4 hover:text-foreground"
                 target="_blank"
                 rel="noopener noreferrer"
-                href="https://infisical.com/slack"
+                href="https://community.infisical.com"
               >
-                join us on Slack
+                join the community forum
               </a>
               .
             </p>
