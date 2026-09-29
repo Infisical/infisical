@@ -98,27 +98,14 @@ The CLI asks your Infisical instance whether your login is valid. If it is, the 
 
 The lines after `Domain` include when your login expires and which organization it belongs to. If the output says `You are not authenticated`, log in again. If it says `Failed to authenticate`, check that the `Domain` line shows your instance, then log in again.
 
+<Check>
+You successfully installed and logged into the Infisical CLI.
+</Check>
+
 ## Next steps
 
-The following guides assume the CLI is installed and logged in.
+Now that you've installed the CLI and logged in, you can start using its commands.
 
-<CardGroup cols={2}>
-  <Card title="Secrets management: local development" icon="laptop" href="/documentation/guides/local-development">
-    Link a codebase to a project and inject secrets into your application with `infisical run`.
-  </Card>
-  <Card title="Privileged access management" icon="users" href="/cli/commands/pam">
-    Open a database, server, or cloud account session with `infisical pam access`.
-  </Card>
-  <Card title="Certificate management" icon="file-key" href="/documentation/platform/pki/guides/applications/infisical-agent">
-    Request, save, and renew certificates on a server with the Infisical Agent.
-  </Card>
-  <Card title="KMS" icon="lock" href="/documentation/platform/kms/kmip">
-    Run a KMIP server with `infisical kmip start` so KMIP clients can use Infisical KMS.
-  </Card>
-  <Card title="Secret scanning" icon="radar" href="/documentation/platform/secret-scanning/scan-locally">
-    Scan files and Git history for leaked secrets, and block commits that contain them.
-  </Card>
-  <Card title="Agent Vault" icon="vault" href="/documentation/platform/agent-vault/quickstart">
-    Run an Agent Vault proxy and launch an AI agent through it.
-  </Card>
-</CardGroup>
+<Card title="Command reference" icon="square-terminal" href="/cli/reference" horizontal>
+  See every CLI command, with its arguments, flags, and examples
+</Card>
