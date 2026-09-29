@@ -17,6 +17,14 @@ export const CLIPage = ({ title, description, children }) => {
     let stopAligning = () => {};
     const hash = decodeURIComponent(window.location.hash.slice(1));
     const target = hash ? document.getElementById(hash) : null;
+    
+    let pinned = target ? target.closest("[data-cli-command]") : null;
+    const unpinEvents = ["wheel", "touchstart", "keydown", "mousedown"];
+    const unpin = () => {
+      pinned = null;
+      unpinEvents.forEach((type) => window.removeEventListener(type, unpin));
+    };
+    if (pinned) unpinEvents.forEach((type) => window.addEventListener(type, unpin, { passive: true }));
     if (target) {
       let aligning = true;
       const block = target.classList.contains("cli-row") ? "center" : "start";
@@ -60,6 +68,7 @@ export const CLIPage = ({ title, description, children }) => {
         }
         const atBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 2;
         if (atBottom && sections.length) reached = sections[sections.length - 1].id;
+        if (pinned) reached = pinned.id;
         if (reached === current) return;
         // A smooth scroll to a flag passes through earlier commands on the way. Writing those
         // into the URL would replace the link the reader just chose, and lighting each one up
@@ -88,6 +97,7 @@ export const CLIPage = ({ title, description, children }) => {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       stopAligning();
+      unpin();
       cancelAnimationFrame(frame);
       clearTimeout(settle);
       window.removeEventListener("scroll", onScroll);

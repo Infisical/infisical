@@ -17,7 +17,7 @@ import { CLIPage, CLICommand } from "/snippets/CLIPage.jsx";
   command="global flags"
   heading="Global flags"
   flags={[
-    { name: "--domain", value: "<string>", type: "string", default: "https://app.infisical.com/api", description: "The Infisical instance to connect to, such as `https://eu.infisical.com` for EU Cloud or your self-hosted URL. Check out [Set the Infisical instance](/cli/project-config#set-the-infisical-instance) for more information." },
+    { name: "--domain", value: "<string>", type: "string", default: "https://app.infisical.com", description: "The Infisical instance to connect to, such as `https://eu.infisical.com` for EU Cloud or your self-hosted URL. Check out [Set the Infisical instance](/cli/project-config#set-the-infisical-instance) for more information." },
     { name: "--log-destination", value: "<string>", type: "string", description: "Where to write logs: `stderr` or `stdout`. Defaults to `stderr`. Can also be set with `LOG_DESTINATION`." },
     { name: "--log-format", value: "<string>", type: "string", description: "How to format logs: `console` for colored text, `plain` for text without color, or `json` for structured logs. Defaults to `console`. Set `NO_COLOR=1` to drop the colors from `console`. Can also be set with `LOG_FORMAT`." },
     { name: "--log-level", short: "-l", value: "<string>", type: "string", description: "The lowest level of log message to print: `trace`, `debug`, `info`, `warn`, `error`, or `fatal`. Defaults to `info`. Can also be set with `LOG_LEVEL`." },
@@ -1648,7 +1648,7 @@ In scripts, pass `--plain --silent` to print only the values, with no other outp
 
 Create secrets, or update the value of secrets that already exist. The result table masks values unless you pass `--show-values`.
 
-Your shell saves the values you pass on the command line in its history file. To keep them out, pass `--file` or `name=@path`, or set your shell to skip these commands, for example with `HISTIGNORE="*infisical secrets set*"` in Bash.
+Your shell saves the values you pass on the command line in its history file. To keep them out, pass `--file` or `name=@path`, or [set your shell to skip these commands](/cli/faq).
 
 </CLICommand>
 

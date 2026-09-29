@@ -18,6 +18,35 @@ If you're still experiencing trouble, please seek support.
 
 </Accordion>
 
+<Accordion title="How do I keep secret values out of my shell history?">
+Your shell saves the commands you run to a history file, so a secret value you pass to `infisical secrets set` stays in that file. To avoid this, pass the values with `--file` or `name=@path`, or configure your shell to skip those commands.
+
+<Tabs>
+  <Tab title="Bash">
+    Add the pattern to `HISTIGNORE` in `~/.bashrc`:
+
+    ```bash
+    echo 'export HISTIGNORE="*infisical secrets set*:$HISTIGNORE"' >> ~/.bashrc && source ~/.bashrc
+    ```
+  </Tab>
+  <Tab title="Zsh">
+    Add the pattern to `HISTORY_IGNORE` in `~/.zshrc`:
+
+    ```bash
+    echo "HISTORY_IGNORE='(*infisical secrets set*)'" >> ~/.zshrc && source ~/.zshrc
+    ```
+
+    Zsh applies `HISTORY_IGNORE` when it writes the history file, so the command still appears when you press the up arrow in the current session.
+  </Tab>
+  <Tab title="Windows">
+    If you use WSL, follow the Bash or Zsh steps.
+
+    In PowerShell, command history is handled by the PSReadLine module. PSReadLine 2.2 and later doesn't write commands that contain words such as `secret`, `token`, or `password` to its history file, so `infisical secrets set` is already skipped. PSReadLine 2.2 ships with PowerShell 7.2 and later. Command Prompt keeps history only until you close the window.
+  </Tab>
+</Tabs>
+
+</Accordion>
+
 <Accordion title="Can I fetch secrets with Infisical while I'm offline?">
 Yes. If you have previously retrieved secrets for a specific project and environment (such as dev, staging, or prod), the  `run`/`secret` command will utilize the saved secrets, even when offline, on subsequent fetch attempts.
 
