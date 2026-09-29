@@ -25,6 +25,7 @@ export const certificateProfileKeys = {
     enrollmentType?: string;
     expiringDays?: number;
     applicationId?: string;
+    profileIds?: string[];
   }) => [...certificateProfileKeys.lists(), params],
   getById: (profileId: string) => [...certificateProfileKeys.all, "get-by-id", profileId],
   getBySlug: (slug: string) => [...certificateProfileKeys.all, "get-by-slug", slug],
@@ -54,6 +55,7 @@ export const useListCertificateProfiles = ({
   includeConfigs = false,
   enrollmentType,
   applicationId,
+  profileIds,
   enabled = true
 }: TListCertificateProfilesDTO) => {
   return useQuery({
@@ -63,7 +65,8 @@ export const useListCertificateProfiles = ({
       search,
       includeConfigs,
       enrollmentType,
-      applicationId
+      applicationId,
+      profileIds
     }),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
@@ -76,7 +79,8 @@ export const useListCertificateProfiles = ({
           search,
           includeConfigs,
           enrollmentType,
-          applicationId
+          applicationId,
+          ...(profileIds?.length ? { profileIds: profileIds.join(",") } : {})
         }
       });
       return data;
@@ -85,17 +89,15 @@ export const useListCertificateProfiles = ({
   });
 };
 
-export const fetchCertificateProfileById = async (profileId: string) => {
-  const { data } = await apiRequest.get<{
-    certificateProfile: TCertificateProfileWithDetails;
-  }>(`/api/v1/cert-manager/certificate-profiles/${profileId}`);
-  return data.certificateProfile;
-};
-
 export const useGetCertificateProfileById = ({ profileId }: TGetCertificateProfileByIdDTO) => {
   return useQuery({
     queryKey: certificateProfileKeys.getById(profileId),
-    queryFn: () => fetchCertificateProfileById(profileId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        certificateProfile: TCertificateProfileWithDetails;
+      }>(`/api/v1/cert-manager/certificate-profiles/${profileId}`);
+      return data.certificateProfile;
+    },
     enabled: Boolean(profileId)
   });
 };

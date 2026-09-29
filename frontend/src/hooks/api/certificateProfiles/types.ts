@@ -148,6 +148,7 @@ export type TListCertificateProfilesDTO = {
   issuerType?: IssuerType;
   caId?: string;
   applicationId?: string;
+  profileIds?: string[];
   enabled?: boolean;
 };
 

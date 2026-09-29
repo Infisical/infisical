@@ -335,6 +335,18 @@ export const registerCertificateProfilesRouter = async (
         issuerType: z.nativeEnum(IssuerType).optional(),
         caId: z.string().uuid().optional(),
         applicationId: z.string().uuid().optional(),
+        profileIds: z
+          .string()
+          .optional()
+          .transform((val) => {
+            if (!val) return undefined;
+            const ids = val
+              .split(",")
+              .map((id) => id.trim())
+              .filter(Boolean);
+            return ids.length > 0 ? ids : undefined;
+          })
+          .pipe(z.array(z.string().uuid()).max(100).optional()),
         projectId: z.string().uuid().optional().describe(openApiHidden())
       }),
       response: {

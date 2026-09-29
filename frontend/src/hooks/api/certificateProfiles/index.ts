@@ -5,7 +5,6 @@ export {
 } from "./mutations";
 export {
   certificateProfileKeys,
-  fetchCertificateProfileById,
   useGetCertificateProfileById,
   useGetCertificateProfileBySlug,
   useGetProfileCertificates,

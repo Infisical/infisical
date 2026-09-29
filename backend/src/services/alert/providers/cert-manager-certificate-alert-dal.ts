@@ -243,7 +243,7 @@ export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
 
   const findProjectApplicationIds = async (projectId: string, applicationIds: string[], tx?: Knex) => {
     try {
-      return (await (tx || db.replicaNode())(TableName.PkiApplication)
+      return (await (tx || db)(TableName.PkiApplication)
         .where({ projectId })
         .whereIn("id", applicationIds)
         .pluck("id")) as string[];
@@ -254,7 +254,7 @@ export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
 
   const findProjectProfileIds = async (projectId: string, profileIds: string[], tx?: Knex) => {
     try {
-      return (await (tx || db.replicaNode())(TableName.PkiCertificateProfile)
+      return (await (tx || db)(TableName.PkiCertificateProfile)
         .where({ projectId })
         .whereIn("id", profileIds)
         .pluck("id")) as string[];
