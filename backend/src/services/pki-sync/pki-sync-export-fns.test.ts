@@ -5,6 +5,7 @@ import {
   getExportedCertificateFileSuffixes,
   PemCertificateExtension,
   PkiSyncExportFormat,
+  stripUnusedKeystoreOptions,
   TExportedCertificateFile
 } from "./pki-sync-export-fns";
 
@@ -203,5 +204,24 @@ describe("getExportedCertificateFileSuffixes matches the real export", () => {
     expect(getExportedCertificateFileSuffixes(shape).sort()).toEqual(suffixes(exported));
     expect(exported.find((f) => f.suffix === ".jks")?.isPrivateKey).toBe(true);
     expect(exported.find((f) => f.suffix === ".truststore.jks")?.isPrivateKey).toBeFalsy();
+  });
+});
+
+describe("stripUnusedKeystoreOptions", () => {
+  test("drops keystore-only options a format does not use", () => {
+    const base = { keystoreAlias: "tomcat", includeTruststore: true, certificateNameSchema: "{{commonName}}" };
+    expect(stripUnusedKeystoreOptions({ ...base, exportFormat: PkiSyncExportFormat.Pem })).toEqual({
+      exportFormat: PkiSyncExportFormat.Pem,
+      certificateNameSchema: "{{commonName}}"
+    });
+    expect(stripUnusedKeystoreOptions({ ...base, exportFormat: PkiSyncExportFormat.Pkcs12 })).toEqual({
+      exportFormat: PkiSyncExportFormat.Pkcs12,
+      keystoreAlias: "tomcat",
+      certificateNameSchema: "{{commonName}}"
+    });
+    expect(stripUnusedKeystoreOptions({ ...base, exportFormat: PkiSyncExportFormat.Jks })).toEqual({
+      ...base,
+      exportFormat: PkiSyncExportFormat.Jks
+    });
   });
 });

@@ -14,6 +14,13 @@ export enum PkiSyncExportFormat {
 export const isKeystoreExportFormat = (format: unknown): boolean =>
   format === PkiSyncExportFormat.Pkcs12 || format === PkiSyncExportFormat.Jks;
 
+export const stripUnusedKeystoreOptions = (syncOptions: Record<string, unknown>): Record<string, unknown> => {
+  const stripped = { ...syncOptions };
+  if (!isKeystoreExportFormat(stripped.exportFormat)) delete stripped.keystoreAlias;
+  if (stripped.exportFormat !== PkiSyncExportFormat.Jks) delete stripped.includeTruststore;
+  return stripped;
+};
+
 export const buildFileCollisionMessage = (filePath: string) =>
   `Another certificate in this sync already writes "${filePath}". Change the certificate name schema so each certificate gets its own file names.`;
 

@@ -36,7 +36,11 @@ import { TSyncMetadata } from "../certificate-sync/certificate-sync-schemas";
 import { encryptPkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";
-import { isKeystoreExportFormat, KEYSTORE_PASSWORD_REQUIRED_MESSAGE } from "./pki-sync-export-fns";
+import {
+  isKeystoreExportFormat,
+  KEYSTORE_PASSWORD_REQUIRED_MESSAGE,
+  stripUnusedKeystoreOptions
+} from "./pki-sync-export-fns";
 import { hasAnyPkiSyncFilter, PKI_SYNC_FILTER_KINDS, PKI_SYNC_PREVIEW_PAGE_SIZE } from "./pki-sync-filter-fns";
 import {
   applyPkiSyncCertificateDiff,
@@ -684,11 +688,13 @@ export const pkiSyncServiceFactory = ({
     });
 
     const providerCapabilities = getPkiSyncProviderCapabilities(destination);
-    const resolvedSyncOptions = normalizeNewHealthCheckCommand(
-      normalizeNewPostSyncCommand({
-        ...providerCapabilities,
-        ...syncOptions
-      })
+    const resolvedSyncOptions = stripUnusedKeystoreOptions(
+      normalizeNewHealthCheckCommand(
+        normalizeNewPostSyncCommand({
+          ...providerCapabilities,
+          ...syncOptions
+        })
+      )
     );
 
     await $assertHostCommandWrite({
@@ -921,9 +927,11 @@ export const pkiSyncServiceFactory = ({
         });
       }
 
-      resolvedSyncOptions = applyHealthCheckCommandUpdate(
-        applyPostSyncCommandUpdate({ ...providerCapabilities, ...syncOptions }, storedSyncOptions?.postSyncCommand),
-        storedSyncOptions?.healthCheckCommand
+      resolvedSyncOptions = stripUnusedKeystoreOptions(
+        applyHealthCheckCommandUpdate(
+          applyPostSyncCommandUpdate({ ...providerCapabilities, ...syncOptions }, storedSyncOptions?.postSyncCommand),
+          storedSyncOptions?.healthCheckCommand
+        )
       );
     }
 

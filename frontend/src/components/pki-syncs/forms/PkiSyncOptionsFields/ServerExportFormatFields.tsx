@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { Info } from "lucide-react";
 
@@ -34,18 +33,10 @@ type Props = {
 };
 
 export const ServerExportFormatFields = ({ isUpdate }: Props) => {
-  const { control, watch, setValue, getValues } = useFormContext<TPkiSyncForm>();
+  const { control, watch } = useFormContext<TPkiSyncForm>();
   const exportFormat = watch("syncOptions.exportFormat");
   const isKeystore = isKeystoreExportFormat(exportFormat);
 
-  useEffect(() => {
-    if (!isKeystore && getValues("syncOptions.keystoreAlias")) {
-      setValue("syncOptions.keystoreAlias", undefined, { shouldDirty: true });
-    }
-    if (exportFormat !== PkiSyncExportFormat.Jks && getValues("syncOptions.includeTruststore")) {
-      setValue("syncOptions.includeTruststore", undefined, { shouldDirty: true });
-    }
-  }, [exportFormat, isKeystore]);
   const keystoreLabel = exportFormat === PkiSyncExportFormat.Jks ? "JKS" : "PKCS#12";
   const keystoreFile = exportFormat === PkiSyncExportFormat.Jks ? ".jks keystore" : ".pfx bundle";
 
