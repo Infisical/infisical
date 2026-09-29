@@ -153,7 +153,7 @@ export const BOOLEAN_SYNC_OPTION_FIELDS = [
   { key: "preserveItemOnRenewal", label: "Preserve Item on Renewal" },
   { key: "updateExistingCertificates", label: "Update Existing Certificates" },
   { key: "combineCertificateChain", label: "Combine Certificate and Chain" },
-  { key: "includeTruststore", label: "Deliver Truststore" },
+  { key: "includeTruststore", label: "Include Truststore" },
   { key: "includePrivateKey", label: "Include Private Key" }
 ] as const;
 

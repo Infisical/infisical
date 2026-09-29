@@ -210,7 +210,7 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
             <Field className="mb-4">
               <Field orientation="horizontal">
                 <FieldContent>
-                  <Label htmlFor="include-truststore">Deliver truststore</Label>
+                  <Label htmlFor="include-truststore">Include truststore</Label>
                   <FieldDescription>
                     When enabled, a separate .truststore.jks file holding the certificate&apos;s CA
                     chain and root CA as trusted entries is written next to the keystore. It uses
