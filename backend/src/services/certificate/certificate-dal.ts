@@ -1066,7 +1066,7 @@ export const certificateDALFactory = (db: TDbClient) => {
       }
 
       interface LabelCountWithId extends LabelCount {
-        id: string;
+        id: string | null;
       }
 
       interface BucketCount {
@@ -1076,8 +1076,7 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       const [totalsRow] = await db
         .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.projectId`, projectId)
         .select(
           db.raw("COUNT(*)::int as total"),
           db.raw(
@@ -1113,16 +1112,19 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       const byAlgorithm = await db
         .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.projectId`, projectId)
         .select(`${TableName.Certificate}.keyAlgorithm as label`)
         .count("* as count")
         .groupBy(`${TableName.Certificate}.keyAlgorithm`);
 
       const byCA = await db
         .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .leftJoin(
+          TableName.CertificateAuthority,
+          `${TableName.Certificate}.caId`,
+          `${TableName.CertificateAuthority}.id`
+        )
+        .where(`${TableName.Certificate}.projectId`, projectId)
         .select(`${TableName.CertificateAuthority}.id as id`)
         .select(`${TableName.CertificateAuthority}.name as label`)
         .count("* as count")
@@ -1137,13 +1139,12 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       const byEnrollmentMethod = await db
         .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
         .leftJoin(
           TableName.PkiCertificateProfile,
           `${TableName.Certificate}.profileId`,
           `${TableName.PkiCertificateProfile}.id`
         )
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.projectId`, projectId)
         .select(
           db.raw(
             `COALESCE(
@@ -1175,8 +1176,7 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       const expirationBuckets = await db
         .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.projectId`, projectId)
         .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
         .where((qb) => {
           void qb
@@ -1240,8 +1240,8 @@ export const certificateDALFactory = (db: TDbClient) => {
             count: Number(r.count)
           })),
           byCA: (byCA as unknown as LabelCountWithId[]).map((r) => ({
-            id: r.id,
-            label: r.label || "Unknown",
+            id: r.id ?? undefined,
+            label: r.id ? r.label || "Unknown" : "External",
             count: Number(r.count)
           })),
           byStatus
@@ -1280,8 +1280,7 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       const issued = await db
         .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.projectId`, projectId)
         .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
         .where(`${TableName.Certificate}.notBefore`, "<=", now)
         .select(periodExpr("notBefore"))
@@ -1291,8 +1290,7 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       const expired = await db
         .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.projectId`, projectId)
         .where(`${TableName.Certificate}.notAfter`, ">=", startDate)
         .where(`${TableName.Certificate}.notAfter`, "<=", now)
         .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
@@ -1303,8 +1301,7 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       const revoked = await db
         .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.projectId`, projectId)
         .where(`${TableName.Certificate}.status`, CertStatus.REVOKED)
         .where(`${TableName.Certificate}.revokedAt`, ">=", startDate)
         .where(`${TableName.Certificate}.revokedAt`, "<=", now)
@@ -1315,8 +1312,7 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       const renewed = await db
         .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.projectId`, projectId)
         .whereNotNull(`${TableName.Certificate}.renewedFromCertificateId`)
         .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
         .where(`${TableName.Certificate}.notBefore`, "<=", now)
@@ -1395,8 +1391,7 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       const rows = await db
         .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.projectId`, projectId)
         .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
         .where(`${TableName.Certificate}.notBefore`, "<=", now)
         .whereIn(`${TableName.Certificate}.keyAlgorithm`, [...PQC_KEY_ALGORITHMS, ...NON_PQC_KEY_ALGORITHMS])
