@@ -66,6 +66,7 @@ type Props = {
   showTimezoneToggle?: boolean;
   earliestDate?: Date;
   showRelativeRanges?: boolean;
+  size?: Extract<ButtonProps["size"], "sm" | "md">;
   className?: string;
 };
 
@@ -188,6 +189,7 @@ export function DateRangeFilter({
   showTimezoneToggle = true,
   earliestDate,
   showRelativeRanges = true,
+  size = "sm",
   className
 }: Props) {
   const today = new Date();
@@ -321,7 +323,7 @@ export function DateRangeFilter({
   const renderTrigger = () => {
     if (!isActive) {
       return (
-        <Button variant="outline" size="sm" className={cn("gap-1.5 font-normal", className)}>
+        <Button variant="outline" size={size} className={cn("gap-1.5 font-normal", className)}>
           <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
           {inactiveLabel}
         </Button>
@@ -332,7 +334,7 @@ export function DateRangeFilter({
       return (
         <Button
           variant="outline"
-          size="sm"
+          size={size}
           className={cn("gap-1.5 font-normal", accentStyles.selectedChip, className)}
         >
           <span className="text-xs">{format(appliedValue.startDate, "MMM d, yyyy")}</span>
@@ -346,7 +348,7 @@ export function DateRangeFilter({
     return (
       <Button
         variant="outline"
-        size="sm"
+        size={size}
         className={cn("gap-1.5 font-normal", accentStyles.selectedChip, className)}
       >
         <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />

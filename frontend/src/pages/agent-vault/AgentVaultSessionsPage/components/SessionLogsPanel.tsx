@@ -563,7 +563,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
         </Select>
         <DateRangeFilter
           accent="av"
-          className="h-9"
+          size="md"
           isActive={Boolean(range)}
           inactiveLabel="Entire Session"
           showTimezoneToggle={false}
