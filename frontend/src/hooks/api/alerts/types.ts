@@ -10,24 +10,6 @@ export enum AlertEventType {
   IdentityAuthMethodChanged = "identity.authentication.auth-method-changed"
 }
 
-// Kept apart from AlertEventType, which the identity alert form offers in full.
-export enum SecretReminderEventType {
-  Due = "secret.reminder.due"
-}
-
-export enum SecretReminderRecurrence {
-  OneTime = "one-time",
-  Recurring = "recurring"
-}
-
-export type TSecretReminderCondition = {
-  recurrence: SecretReminderRecurrence;
-  // ISO date. The one-off date, or the first occurrence of a recurring reminder.
-  startDate: string;
-  repeatDays?: number | null;
-  note?: string | null;
-};
-
 export enum AlertChannelType {
   Email = "email",
   Slack = "slack",
@@ -37,7 +19,8 @@ export enum AlertChannelType {
 
 export enum AlertPrincipalType {
   User = "user",
-  Group = "group"
+  Group = "group",
+  ProjectMembers = "project-members"
 }
 
 export const MIN_ALERT_BEFORE_DAYS = 1;
@@ -88,9 +71,7 @@ export type TAlert = {
   resourceType: string;
   resourceId: string | null;
   eventType: string;
-  condition:
-    | ({ alertBefore?: string; dailyReminder?: boolean } & Partial<TSecretReminderCondition>)
-    | null;
+  condition: { alertBefore?: string; dailyReminder?: boolean } | null;
   enabled: boolean;
   orgId: string;
   projectId: string | null;

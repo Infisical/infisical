@@ -1,1 +1,0 @@
-export { SecretReminders } from "./SecretReminders";
