@@ -11,10 +11,33 @@ export const CLIPage = ({ title, description, children }) => {
 
     const sections = Array.from(root.querySelectorAll("[data-cli-command]"));
 
+    // On a fresh load the page keeps growing after the first frame (subcommand lists fill in,
+    // fonts and sticky headings settle), which pushes the target down. Keep realigning while the
+    // page resizes, until the reader scrolls on their own or the layout has had time to settle.
+    let stopAligning = () => {};
     const hash = decodeURIComponent(window.location.hash.slice(1));
-    if (hash) {
-      const target = document.getElementById(hash);
-      if (target) requestAnimationFrame(() => target.scrollIntoView());
+    const target = hash ? document.getElementById(hash) : null;
+    if (target) {
+      let aligning = true;
+      const block = target.classList.contains("cli-row") ? "center" : "start";
+      const align = () => {
+        if (aligning) target.scrollIntoView({ block });
+      };
+      const alignFrame = requestAnimationFrame(align);
+      const resizes = new ResizeObserver(align);
+      resizes.observe(root);
+      if (document.fonts) document.fonts.ready.then(align);
+      const userEvents = ["wheel", "touchstart", "keydown", "mousedown"];
+      const stop = () => {
+        aligning = false;
+        cancelAnimationFrame(alignFrame);
+        resizes.disconnect();
+        clearTimeout(timeout);
+        userEvents.forEach((type) => window.removeEventListener(type, stop));
+      };
+      const timeout = setTimeout(stop, 2000);
+      userEvents.forEach((type) => window.addEventListener(type, stop, { passive: true }));
+      stopAligning = stop;
     }
 
     // The URL follows the reader so a copied link lands on the command in view. replaceState
@@ -64,6 +87,7 @@ export const CLIPage = ({ title, description, children }) => {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      stopAligning();
       cancelAnimationFrame(frame);
       clearTimeout(settle);
       window.removeEventListener("scroll", onScroll);
