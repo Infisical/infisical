@@ -226,9 +226,9 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         data-variant={variant}
         data-invalid={isError}
         className={cn(
-          "no-scrollbar flex w-full overflow-auto bg-transparent text-foreground",
+          "no-scrollbar w-full overflow-auto bg-transparent text-foreground",
           variant === "default" &&
-            "min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+            "flex min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}
