@@ -204,6 +204,28 @@ export const AgentVaultSessionsPage = () => {
           </Alert>
         )}
 
+      {sessionLogHealth?.connectionError &&
+        sessionLogSettings &&
+        areAgentVaultSessionLogsOn(sessionLogSettings) &&
+        !isSessionLogPlanLapsed && (
+          <Alert variant="danger">
+            <CircleAlertIcon />
+            <AlertDescription>
+              <p>{sessionLogHealth.connectionError}</p>
+              <AlertAction>
+                <Button variant="outline" size="sm" asChild>
+                  <Link
+                    to="/organizations/$orgId/agent-vault/settings"
+                    params={{ orgId: currentOrg.id }}
+                  >
+                    Go to Settings
+                  </Link>
+                </Button>
+              </AlertAction>
+            </AlertDescription>
+          </Alert>
+        )}
+
       {isSessionLogPlanLapsed && (
         <Alert variant="warning">
           <TriangleAlertIcon />
