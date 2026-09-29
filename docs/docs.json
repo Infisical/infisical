@@ -798,8 +798,8 @@
                   "documentation/platform/agent-vault/access-bundles",
                   "documentation/platform/agent-vault/services",
                   "documentation/platform/agent-vault/sessions",
-                  "documentation/platform/agent-vault/proxies",
                   "documentation/platform/agent-vault/session-logs",
+                  "documentation/platform/agent-vault/proxies",
                   "documentation/platform/agent-vault/access-control"
                 ]
               }
@@ -4419,12 +4419,7 @@
                       "api-reference/endpoints/agent-vault-sessions/list",
                       "api-reference/endpoints/agent-vault-sessions/get",
                       "api-reference/endpoints/agent-vault-sessions/create",
-                      "api-reference/endpoints/agent-vault-sessions/revoke"
-                    ]
-                  },
-                  {
-                    "group": "Session logs",
-                    "pages": [
+                      "api-reference/endpoints/agent-vault-sessions/revoke",
                       "api-reference/endpoints/agent-vault-session-logs/list",
                       "api-reference/endpoints/agent-vault-session-logs/tail"
                     ]
