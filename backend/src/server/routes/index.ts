@@ -3180,7 +3180,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     externalGroupOrgRoleMappingDAL,
-    roleDAL
+    roleDAL,
+    orgDAL
   });
 
   const appConnectionCredentialRotationService = appConnectionCredentialRotationServiceFactory({
