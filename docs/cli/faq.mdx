@@ -8,7 +8,7 @@ If you can't find the answer you're looking for, please create an issue on the [
 
 <AccordionGroup>
 
-<Accordion title="I'm getting a Keyring related error message when trying to login" defaultOpen="true">
+<Accordion title="I'm getting a Keyring-related error message when trying to login">
 By default, the CLI will choose the most suitable store available on your system. 
 If you experience issues with the default store, you can switch to a different one. 
 If none of the available stores work for you, you can try using the `file` store type by running `infisical vault set file`, which should work in most cases. 
@@ -18,12 +18,12 @@ If you're still experiencing trouble, please seek support.
 
 </Accordion>
 
-<Accordion title="Can I fetch secrets with Infisical if I am offline?">
+<Accordion title="Can I fetch secrets with Infisical while I'm offline?">
 Yes. If you have previously retrieved secrets for a specific project and environment (such as dev, staging, or prod), the  `run`/`secret` command will utilize the saved secrets, even when offline, on subsequent fetch attempts.
 
 </Accordion>
 
-<Accordion title="Can I upload the .infisical.json file that was generated?">
+<Accordion title="Can I upload the `.infisical.json` file that was generated?">
 Yes. This is simply a configuration file and contains no sensitive data.
 </Accordion>
 

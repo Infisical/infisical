@@ -6,7 +6,7 @@ description: "Get started with the Infisical CLI."
 import InstallCli from "/snippets/cli/install-cli.mdx";
 import LogIn from "/snippets/cli/local-development/log-in.mdx";
 
-Every Infisical product that has a CLI workflow starts the same way: install the CLI, log in, and check that the CLI can reach your Infisical instance. This page covers those steps, then links to the CLI guide for each product.
+Every Infisical product that has a CLI workflow starts the same way: install the CLI, log in, and check that the CLI can reach your Infisical instance. This page covers those steps, then links to the command reference.
 
 ## Prerequisites
 
@@ -28,21 +28,13 @@ infisical --version
 
 Log in with your own account when you use the CLI on your own machine. Log in as a [machine identity](/documentation/platform/identities/machine-identities) when the CLI runs without a person present, such as in a CI/CD pipeline or on a server.
 
-<Note>
-If your Infisical instance is behind a service that requires its own headers, such as Cloudflare Access, set the headers in the `INFISICAL_CUSTOM_HEADERS` environment variable before you log in. The CLI adds them to every request, including the login request.
-
-```bash
-export INFISICAL_CUSTOM_HEADERS="Access-Client-Id=<your-client-id> Access-Client-Secret=<your-client-secret>"
-```
-
-Separate each header from the next with a space, in the form `name=value`.
-</Note>
+If your Infisical instance is behind a service that requires its own headers, such as Cloudflare Access, set them up first as described in the [FAQ](/cli/faq).
 
 <Tabs>
   <Tab title="Your own account">
     <LogIn />
 
-    The CLI saves the instance you select with your login, so later commands use it without asking again. If you've already set an instance with the `--domain` flag, the `INFISICAL_DOMAIN` environment variable, or the `domain` field in [`.infisical.json`](/cli/project-config), `infisical login` uses that instance and skips the prompt.
+    The CLI saves the instance you select with your login, so later commands use it without asking again.
   </Tab>
   <Tab title="Machine identity">
     <Steps>
@@ -64,11 +56,7 @@ Separate each header from the next with a space, in the form `name=value`.
 
         On Windows, `setx` saves the variable for new sessions only, so restart PowerShell before you run the next command.
 
-        Instead of `INFISICAL_DOMAIN`, you can pass `--domain` on every command, or add a `domain` field to your project's [`.infisical.json`](/cli/project-config). If you set more than one, the `--domain` flag takes precedence, then `INFISICAL_DOMAIN`, then `.infisical.json`. The legacy `INFISICAL_API_URL` environment variable still works, but `INFISICAL_DOMAIN` takes precedence if both are set.
-
-        <Warning>
-          `.infisical.json` is usually committed to your repository, and the CLI sends every request and credential to the host in its `domain` field. Only set `domain` to an instance you trust.
-        </Warning>
+        To set the instance another way, such as with the `--domain` flag or in `.infisical.json`, see [Set the Infisical instance](/cli/project-config#set-the-infisical-instance).
       </Step>
       <Step>
         Log in with the client ID and client secret, and store the access token in the `INFISICAL_TOKEN` environment variable:
