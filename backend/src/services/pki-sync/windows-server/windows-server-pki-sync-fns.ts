@@ -418,11 +418,13 @@ export const windowsServerPkiSyncFactory = ({
             ]);
           }
           if (record) {
+            const previousMetadata = record.syncMetadata as TSyncMetadata;
             const previousFiles =
-              (record.syncMetadata as TSyncMetadata)?.files ??
-              [record.externalIdentifier].filter((p): p is string => Boolean(p));
+              previousMetadata?.files ?? [record.externalIdentifier].filter((p): p is string => Boolean(p));
             const staleFiles = getStaleCertificateFiles({
               previousFiles,
+              previousHost: previousMetadata?.host,
+              currentHost: target.credentials.host,
               writtenPaths: paths,
               deliveredPaths,
               caseInsensitive: true
@@ -442,7 +444,7 @@ export const windowsServerPkiSyncFactory = ({
             }
             await certificateSyncDAL.updateById(record.id, {
               externalIdentifier: paths[0],
-              syncMetadata: { files: [...paths, ...staleFilesToRetry] }
+              syncMetadata: { files: [...paths, ...staleFilesToRetry], host: target.credentials.host }
             });
           }
         }

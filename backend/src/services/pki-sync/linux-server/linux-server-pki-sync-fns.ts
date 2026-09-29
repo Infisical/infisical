@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 
 import RE2 from "re2";
-import { Client, SFTPWrapper } from "ssh2";
+import { Client, SFTPWrapper, utils as ssh2Utils } from "ssh2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -240,6 +240,17 @@ const unlinkIfExists = (sftp: SFTPWrapper, filePath: string): Promise<void> =>
     sftp.unlink(filePath, () => resolve());
   });
 
+const unlinkOrThrow = (sftp: SFTPWrapper, filePath: string): Promise<void> =>
+  new Promise<void>((resolve, reject) => {
+    sftp.unlink(filePath, (err) => {
+      if (!err || (err as { code?: number }).code === ssh2Utils.sftp.STATUS_CODE.NO_SUCH_FILE) {
+        resolve();
+        return;
+      }
+      reject(err);
+    });
+  });
+
 const TEMP_FILE_MARKER = ".infisical.tmp";
 // A write completes in seconds, so any temp file older than this was left by an interrupted run
 // (dropped connection between write and rename) and is safe to remove even if another sync shares
@@ -446,10 +457,11 @@ export const linuxServerPkiSyncFactory = ({
 
     const sshConfig = await buildSshConfig(pkiSync, { gatewayV2Service, gatewayPoolService, keyStore });
     const gatewayLabel = await resolveGatewayLabel(gatewayV2Service, sshConfig.gatewayId);
+    const targetHost = sshConfig.credentials.host;
     const describeFailure = (error: unknown) =>
       describeHostFailure({
         error,
-        host: (pkiSync.destinationConfig as TLinuxServerPkiSyncConfig).host,
+        host: targetHost,
         gatewayLabel,
         transport: "SSH"
       });
@@ -549,21 +561,37 @@ export const linuxServerPkiSyncFactory = ({
                 ]);
               }
               if (record) {
+                const previousMetadata = record.syncMetadata as TSyncMetadata;
                 const previousFiles =
-                  (record.syncMetadata as TSyncMetadata)?.files ??
-                  [record.externalIdentifier].filter((p): p is string => Boolean(p));
-                const staleFiles = getStaleCertificateFiles({ previousFiles, writtenPaths, deliveredPaths });
+                  previousMetadata?.files ?? [record.externalIdentifier].filter((p): p is string => Boolean(p));
+                const staleFiles = getStaleCertificateFiles({
+                  previousFiles,
+                  previousHost: previousMetadata?.host,
+                  currentHost: targetHost,
+                  writtenPaths,
+                  deliveredPaths
+                });
+                const staleFilesToRetry: string[] = [];
                 for (const staleFile of staleFiles) {
-                  await unlinkIfExists(sftp, staleFile);
+                  try {
+                    await unlinkOrThrow(sftp, staleFile);
+                  } catch (removeErr) {
+                    staleFilesToRetry.push(staleFile);
+                    failedRemovals.push({
+                      name: staleFile,
+                      error: (removeErr as Error)?.message ?? "Unknown error"
+                    });
+                  }
                 }
-                if (staleFiles.length > 0) {
+                const removedCount = staleFiles.length - staleFilesToRetry.length;
+                if (removedCount > 0) {
                   logger.info(
-                    `Linux Server PKI sync [syncId=${pkiSync.id}]: removed ${staleFiles.length} file(s) "${baseName}" no longer uses`
+                    `Linux Server PKI sync [syncId=${pkiSync.id}]: removed ${removedCount} file(s) "${baseName}" no longer uses`
                   );
                 }
                 await certificateSyncDAL.updateById(record.id, {
                   externalIdentifier: primaryPath,
-                  syncMetadata: { files: writtenPaths }
+                  syncMetadata: { files: [...writtenPaths, ...staleFilesToRetry], host: targetHost }
                 });
               }
             }

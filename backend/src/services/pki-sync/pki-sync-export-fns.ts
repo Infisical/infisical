@@ -22,18 +22,24 @@ export const stripUnusedKeystoreOptions = (syncOptions: Record<string, unknown>)
 };
 
 // Files this sync wrote for a certificate last time but no longer writes, such as a truststore
-// after it is turned off. Paths another certificate wrote this run are left alone.
+// after it is turned off. Paths another certificate wrote this run are left alone, and nothing is
+// returned when the files were written to a different host (or one that was not recorded).
 export const getStaleCertificateFiles = ({
   previousFiles,
+  previousHost,
+  currentHost,
   writtenPaths,
   deliveredPaths,
   caseInsensitive = false
 }: {
   previousFiles: string[];
+  previousHost?: string;
+  currentHost?: string;
   writtenPaths: string[];
   deliveredPaths: Set<string>;
   caseInsensitive?: boolean;
 }): string[] => {
+  if (!previousHost || !currentHost || previousHost.toLowerCase() !== currentHost.toLowerCase()) return [];
   const normalize = (filePath: string) => (caseInsensitive ? filePath.toLowerCase() : filePath);
   const current = new Set([...writtenPaths, ...deliveredPaths].map(normalize));
   return previousFiles.filter((filePath) => !current.has(normalize(filePath)));

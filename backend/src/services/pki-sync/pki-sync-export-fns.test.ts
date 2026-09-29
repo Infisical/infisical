@@ -231,6 +231,8 @@ describe("getStaleCertificateFiles", () => {
   test("returns files written last time that this run no longer writes", () => {
     expect(
       getStaleCertificateFiles({
+        previousHost: "host-a",
+        currentHost: "host-a",
         previousFiles: ["/certs/app.jks", "/certs/app.truststore.jks"],
         writtenPaths: ["/certs/app.jks"],
         deliveredPaths: new Set(["/certs/app.jks"])
@@ -241,6 +243,8 @@ describe("getStaleCertificateFiles", () => {
   test("keeps a file another certificate wrote this run", () => {
     expect(
       getStaleCertificateFiles({
+        previousHost: "host-a",
+        currentHost: "host-a",
         previousFiles: ["/certs/app.pem", "/certs/shared.pem"],
         writtenPaths: ["/certs/app.jks"],
         deliveredPaths: new Set(["/certs/app.jks", "/certs/shared.pem"])
@@ -251,11 +255,36 @@ describe("getStaleCertificateFiles", () => {
   test("ignores case when paths are case-insensitive", () => {
     expect(
       getStaleCertificateFiles({
+        previousHost: "host-a",
+        currentHost: "host-a",
         previousFiles: ["C:\\certs\\App.jks", "C:\\certs\\app.truststore.jks"],
         writtenPaths: ["C:\\certs\\app.jks"],
         deliveredPaths: new Set(["C:\\certs\\app.jks"]),
         caseInsensitive: true
       })
     ).toEqual(["C:\\certs\\app.truststore.jks"]);
+  });
+
+  test("returns nothing when the files were written to another host", () => {
+    expect(
+      getStaleCertificateFiles({
+        previousHost: "host-a",
+        currentHost: "host-b",
+        previousFiles: ["/certs/app.jks"],
+        writtenPaths: ["/certs/other.jks"],
+        deliveredPaths: new Set(["/certs/other.jks"])
+      })
+    ).toEqual([]);
+  });
+
+  test("returns nothing when the previous host was not recorded", () => {
+    expect(
+      getStaleCertificateFiles({
+        currentHost: "host-a",
+        previousFiles: ["/certs/app.jks"],
+        writtenPaths: ["/certs/other.jks"],
+        deliveredPaths: new Set(["/certs/other.jks"])
+      })
+    ).toEqual([]);
   });
 });
