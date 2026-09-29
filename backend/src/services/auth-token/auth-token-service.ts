@@ -386,7 +386,66 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return { user };
   };
 
-  // to parse jwt identity in inject identity plugin
+  const assertActiveOrgMembership = async (userId: string, orgId: string) => {
+    const orgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.USER,
+      actorId: userId,
+      orgId,
+      status: OrgMembershipStatus.Accepted
+    });
+
+    if (!orgMembership) {
+      throw new ForbiddenRequestError({ message: "User not member of organization" });
+    }
+
+    if (!orgMembership.isActive) {
+      throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+    }
+  };
+
+  const validateTokenOrgScope = async ({
+    userId,
+    organizationId,
+    subOrganizationId
+  }: {
+    userId: string;
+    organizationId?: string;
+    subOrganizationId?: string;
+  }) => {
+    if (!organizationId) {
+      if (subOrganizationId) throw new UnauthorizedError({ message: "Invalid token" });
+      return { orgId: "", orgName: "", rootOrgId: "", parentOrgId: "" };
+    }
+
+    if (!subOrganizationId) {
+      const organization = await orgDAL.findOne({ id: organizationId });
+      await assertActiveOrgMembership(userId, organizationId);
+
+      return {
+        orgId: organizationId,
+        orgName: organization.name,
+        rootOrgId: organizationId,
+        parentOrgId: organizationId
+      };
+    }
+
+    const subOrganization = await orgDAL.findOne({ id: subOrganizationId });
+    if (!subOrganization) throw new BadRequestError({ message: `Sub organization ${subOrganizationId} not found` });
+    if (subOrganization.rootOrgId !== organizationId || subOrganization.id === organizationId) {
+      throw new ForbiddenRequestError({ message: "Sub-organization does not belong to the token's organization" });
+    }
+
+    await assertActiveOrgMembership(userId, organizationId);
+    await assertActiveOrgMembership(userId, subOrganization.id);
+
+    return {
+      orgId: subOrganization.id,
+      orgName: subOrganization.name,
+      rootOrgId: organizationId,
+      parentOrgId: subOrganization.parentOrgId as string
+    };
+  };
+
   const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
     const { user } = await validateUserSessionFreshness({
       userId: token.userId,
@@ -394,64 +453,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       accessVersion: token.accessVersion
     });
 
-    let orgId = "";
-    let orgName = "";
-    let rootOrgId = "";
-    let parentOrgId = "";
-    if (token.organizationId) {
-      // Check if token has sub-organization scope
-      if (token.subOrganizationId) {
-        const subOrganization = await orgDAL.findOne({
-          id: token.subOrganizationId
-        });
-        if (!subOrganization)
-          throw new BadRequestError({ message: `Sub organization ${token.subOrganizationId} not found` });
-        // Verify the sub-org belongs to the token's root organization
-        if (subOrganization.rootOrgId !== token.organizationId && subOrganization.id !== token.organizationId) {
-          throw new ForbiddenRequestError({ message: "Sub-organization does not belong to the token's organization" });
-        }
-
-        const orgMembership = await orgDAL.findEffectiveOrgMembership({
-          actorType: ActorType.USER,
-          actorId: user.id,
-          orgId: subOrganization.id,
-          status: OrgMembershipStatus.Accepted
-        });
-
-        if (!orgMembership) {
-          throw new ForbiddenRequestError({ message: "User not member of organization" });
-        }
-
-        if (!orgMembership.isActive) {
-          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
-        }
-        orgId = subOrganization.id;
-        orgName = subOrganization.name;
-        rootOrgId = token.organizationId;
-        parentOrgId = subOrganization.parentOrgId as string;
-      } else {
-        const organization = await orgDAL.findOne({ id: token.organizationId });
-        const orgMembership = await orgDAL.findEffectiveOrgMembership({
-          actorType: ActorType.USER,
-          actorId: user.id,
-          orgId: token.organizationId,
-          status: OrgMembershipStatus.Accepted
-        });
-
-        if (!orgMembership) {
-          throw new ForbiddenRequestError({ message: "User not member of organization" });
-        }
-
-        if (!orgMembership.isActive) {
-          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
-        }
-
-        orgId = token.organizationId;
-        orgName = organization.name;
-        rootOrgId = token.organizationId;
-        parentOrgId = token.organizationId;
-      }
-    }
+    const { orgId, orgName, rootOrgId, parentOrgId } = await validateTokenOrgScope({
+      userId: user.id,
+      organizationId: token.organizationId,
+      subOrganizationId: token.subOrganizationId
+    });
 
     return { user, tokenVersionId: token.tokenVersionId, orgId, orgName, rootOrgId, parentOrgId };
   };
@@ -547,6 +553,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     validateRefreshToken,
     rotateRefreshToken,
     validateUserSessionFreshness,
+    validateTokenOrgScope,
     fnValidateJwtIdentity,
     getUserTokenSessionById,
     createEmailSignupToken,
