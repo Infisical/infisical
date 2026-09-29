@@ -32,7 +32,7 @@ const STRIPE_KEY_NAME_MAX_LENGTH = 100;
 export const stripeApiKeyRotationFactory: TRotationFactory<
   TStripeApiKeyRotationWithConnection,
   TStripeApiKeyRotationGeneratedCredentials
-> = (secretRotation, appConnectionDAL, kmsService) => {
+> = (secretRotation, appConnectionDAL, kmsService, _gatewayV2Service, _gatewayPoolService, keyStore) => {
   const {
     connection,
     parameters: { permissions, connectPermissions },
@@ -43,7 +43,8 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
 
   // Runs once at the start of each operation, not per request, so the cleanup a failed operation
   // does (expiring a key it just created) never fails on authorization half way through.
-  const $assertAuthorized = () => assertStripeConnectionAuthorized(connection.id, appConnectionDAL, kmsService);
+  const $assertAuthorized = () =>
+    assertStripeConnectionAuthorized(connection.id, { appConnectionDAL, kmsService, keyStore });
 
   // The factory is built without an id at create time, so the name comes from the mapped secret.
   // It is what makes a key stranded by a timed-out create identifiable in the Stripe dashboard.

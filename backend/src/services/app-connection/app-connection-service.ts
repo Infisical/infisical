@@ -219,7 +219,10 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne" | "upsertConnectionLink">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem" | "getItem" | "setItemWithExpiry">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "setItemWithExpiryNX" | "deleteItem" | "getItem" | "setItemWithExpiry" | "acquireLock"
+  >;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -1423,7 +1426,7 @@ export const appConnectionServiceFactory = ({
     bitbucket: bitbucketConnectionService(connectAppConnectionById),
     checkly: checklyConnectionService(connectAppConnectionById),
     supabase: supabaseConnectionService(connectAppConnectionById),
-    stripe: stripeConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    stripe: stripeConnectionService(connectAppConnectionById, { appConnectionDAL, kmsService, keyStore }),
     rundeck: rundeckConnectionService(connectAppConnectionById),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),

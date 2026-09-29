@@ -1,5 +1,6 @@
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TSqlCredentialsRotationGeneratedCredentials } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -533,10 +534,11 @@ export type TRotationFactory<
   P extends TSecretRotationV2TemporaryParameters = undefined
 > = (
   secretRotation: T,
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById" | "transaction">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">,
   passwordValidationContext?: TRotationPasswordValidationContext
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C, P>;

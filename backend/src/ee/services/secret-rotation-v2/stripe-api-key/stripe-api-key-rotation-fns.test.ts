@@ -44,13 +44,14 @@ const NEW_KEY: TCredential = { keyId: "mk_new", apiKey: "rk_test_mk_new" };
 /** The rotation service hands the factory a transaction body; this stands in for its return. */
 const COMMITTED = "committed" as unknown as TSecretRotationV2Raw;
 
-// The factory hands appConnectionDAL and kmsService to the authorization check, which is mocked, so
-// none of these are reached.
-const UNUSED_DEPENDENCIES = [{}, {}, {}, {}] as unknown as [
+// The factory hands appConnectionDAL, kmsService and keyStore to the authorization check, which is
+// mocked, so none of these are reached.
+const UNUSED_DEPENDENCIES = [{}, {}, {}, {}, {}] as unknown as [
   Parameters<typeof stripeApiKeyRotationFactory>[1],
   Parameters<typeof stripeApiKeyRotationFactory>[2],
   Parameters<typeof stripeApiKeyRotationFactory>[3],
-  Parameters<typeof stripeApiKeyRotationFactory>[4]
+  Parameters<typeof stripeApiKeyRotationFactory>[4],
+  Parameters<typeof stripeApiKeyRotationFactory>[5]
 ];
 
 // The factory reads these four fields of the rotation row and nothing else, so the rest of the row
@@ -176,7 +177,11 @@ describe("stripeApiKeyRotationFactory", () => {
 
       const { headers } = postMock.mock.calls[0][2] as { headers: Record<string, string> };
 
-      expect(authorizeMock).toHaveBeenCalledWith("connection-id", {}, {});
+      expect(authorizeMock).toHaveBeenCalledWith("connection-id", {
+        appConnectionDAL: {},
+        kmsService: {},
+        keyStore: {}
+      });
       expect(authorizeMock.mock.invocationCallOrder[0]).toBeLessThan(postMock.mock.invocationCallOrder[0]);
       expect(headers.Authorization).toBe("Bearer sk_test_app");
       expect(headers["Stripe-Context"]).toBe("acct_123");

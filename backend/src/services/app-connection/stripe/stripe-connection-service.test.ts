@@ -40,7 +40,6 @@ const makeService = () =>
   stripeConnectionService(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
     vi.fn(async () => ({ id: "connection-id", credentials: { accountId: "acct_123" } })) as any,
-    {} as never,
     {} as never
   );
 

@@ -68,6 +68,7 @@ export const KeyStorePrefixes = {
   LdapDirectoryMachines: (connectionId: string, search: string, limit: number) =>
     `ldap-directory-machines-${connectionId}-${limit}-${search}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
+  StripeConnectionRefreshLock: (connectionId: string) => `stripe-connection-refresh-mutex-${connectionId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
   SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
     `secret-scanning-v2-mutex-${dataSourceId}-${resourceExternalId}` as const,
