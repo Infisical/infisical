@@ -1,6 +1,8 @@
 import { isAxiosError } from "axios";
+import RE2 from "re2";
 
 const MAX_PROVIDER_REASON_LENGTH = 200;
+const WHITESPACE_RUN_REGEX = new RE2("\\s+", "g");
 
 const extractProviderReason = (data: unknown): string | undefined => {
   if (typeof data === "string") return data;
@@ -17,6 +19,6 @@ export const describeDeliveryError = (err: unknown): string => {
   if (!(err instanceof Error)) return "Unknown error";
   if (!isAxiosError(err) || !err.response) return err.message;
 
-  const reason = extractProviderReason(err.response.data)?.replace(/\s+/g, " ").trim();
+  const reason = extractProviderReason(err.response.data)?.replace(WHITESPACE_RUN_REGEX, " ").trim();
   return reason ? `${err.message}: ${reason.slice(0, MAX_PROVIDER_REASON_LENGTH)}` : err.message;
 };

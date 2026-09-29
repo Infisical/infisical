@@ -135,7 +135,8 @@ export const alertChannelServiceFactory = ({
   const $validateRecipients = async (
     orgId: string,
     projectId: string | null | undefined,
-    recipients: TChannelRecipientInput[]
+    recipients: TChannelRecipientInput[],
+    tx?: Knex
   ) => {
     const userIds = [
       ...new Set(recipients.filter((r) => r.principalType === AlertPrincipalType.USER).map((r) => r.principalId))
@@ -147,7 +148,8 @@ export const alertChannelServiceFactory = ({
 
     const inScope = await resolvePrincipalsInScope(
       { orgDAL, projectDAL, groupDAL },
-      { orgId, projectId, userIds, groupIds }
+      { orgId, projectId, userIds, groupIds },
+      tx
     );
     const scopeLabel = projectId ? "project" : "organization";
 
@@ -201,7 +203,7 @@ export const alertChannelServiceFactory = ({
     const recipients = $normalizeRecipients(input.recipients ?? []);
     $assertRecipientRules(definition, input.channelType, recipients);
     assertChannelConfigValid(definition, input.channelType, input.config);
-    await $validateRecipients(input.orgId, input.projectId, recipients);
+    await $validateRecipients(input.orgId, input.projectId, recipients, tx);
     await $validateEmailRecipients(input.orgId, recipients, [], tx);
 
     const created = await alertChannelDAL.create(
@@ -252,7 +254,7 @@ export const alertChannelServiceFactory = ({
     const recipients = input.recipients === undefined ? undefined : $normalizeRecipients(input.recipients);
     if (recipients !== undefined) {
       $assertRecipientRules(definition, channel.channelType, recipients);
-      await $validateRecipients(channel.orgId, channel.projectId, recipients);
+      await $validateRecipients(channel.orgId, channel.projectId, recipients, tx);
       await $validateEmailRecipients(channel.orgId, recipients, await $findEmailRecipients([channel.id], tx), tx);
     }
 

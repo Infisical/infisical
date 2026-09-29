@@ -11,7 +11,8 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
-  CertificateAlertEvent
+  CertificateAlertEvent,
+  LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT
 } from "@app/services/certificate/certificate-alert-events";
 import { getRevocationReasonLabel } from "@app/services/certificate/certificate-revocation-labels";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -102,6 +103,11 @@ const formatAltNames = (altNames: string | null): string =>
     .filter(Boolean)
     .join(", ");
 
+const humanizeAlertBefore = (alertBefore: string): string => {
+  const days = alertBeforeDays(alertBefore);
+  return `${days} day${days === 1 ? "" : "s"}`;
+};
+
 const buildSummary = (
   eventType: CertificateAlertEvent,
   targets: TApplicationAlertCertificate[],
@@ -110,7 +116,8 @@ const buildSummary = (
   const applicationName = targets[0]?.applicationName;
   const inApplication = applicationName ? ` in application '${applicationName}'` : "";
   if (alertBefore) {
-    return `${targets.length} certificate(s)${inApplication} expiring within ${alertBeforeDays(alertBefore)} days`;
+    const certificates = `${targets.length} certificate${targets.length === 1 ? "" : "s"}`;
+    return `${certificates}${inApplication} expiring within ${humanizeAlertBefore(alertBefore)}`;
   }
   if (targets.length === 1) return `Certificate '${targets[0].commonName}' ${EVENT_VERBS[eventType]}${inApplication}`;
   return `${targets.length} certificates ${EVENT_VERBS[eventType]}${inApplication}`;
@@ -188,7 +195,10 @@ export const certManagerApplicationAlertProviderFactory = ({
       case AlertTelemetryAction.Create:
         return {
           event: PostHogEventTypes.PkiAlertCreated,
-          properties: { ...properties, alertType: eventType.replace(`${CERT_MANAGER_APPLICATION_RESOURCE_TYPE}.`, "") }
+          properties: {
+            ...properties,
+            alertType: LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT[eventType as CertificateAlertEvent]
+          }
         };
       case AlertTelemetryAction.Update:
         return { event: PostHogEventTypes.PkiAlertUpdated, properties };
@@ -343,9 +353,12 @@ export const certManagerApplicationAlertProviderFactory = ({
     assertResourceInScope,
     assertChannelTypesAllowed,
     resolveProjectId,
-    getResourceNames: async ({ resourceIds }) =>
+    getResourceNames: async ({ orgId, resourceIds }) =>
       new Map(
-        (await certManagerApplicationAlertDAL.findApplicationNamesByIds(resourceIds)).map((app) => [app.id, app.name])
+        (await certManagerApplicationAlertDAL.findApplicationNamesByIds(resourceIds, orgId)).map((app) => [
+          app.id,
+          app.name
+        ])
       )
   };
 };

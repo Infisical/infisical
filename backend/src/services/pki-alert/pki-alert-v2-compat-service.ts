@@ -263,7 +263,7 @@ export const pkiAlertV2CompatServiceFactory = ({
     if (!applicationId) {
       throw new BadRequestError({
         message:
-          "Project-wide certificate alerts can no longer be created. Pass applicationId to create the alert inside an Application, or use the alerts API (/api/v1/alerts)."
+          "Project-wide certificate alerts can no longer be created. Pass applicationId to create the alert in an application."
       });
     }
     if (eventType === PkiAlertEventType.EXPIRATION && !alertBefore) {

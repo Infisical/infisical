@@ -68,7 +68,7 @@ export const ReviewStep = ({ form, members }: Props) => {
       <Section title="Basic Information">
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4">
           <Detail label="Name">{values.name}</Detail>
-          <Detail label="Event Type">{CERTIFICATE_ALERT_EVENT_LABELS[values.eventType]}</Detail>
+          <Detail label="Alert Type">{CERTIFICATE_ALERT_EVENT_LABELS[values.eventType]}</Detail>
           <Detail label="Status">
             <EnabledBadge enabled={values.enabled} />
           </Detail>

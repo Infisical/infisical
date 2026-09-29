@@ -39,7 +39,11 @@ Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type
 
 ## Webhook payload format
 
-`data.items` lists the certificates the alert fired for. Each item has the certificate's ID, its common name as `title`, its serial number as `identifier`, and a list of display `fields`. An expiration request can include several certificates, and `data.alert.condition` holds the number of days before expiry the alert starts. Issuance, renewal, and revocation requests include the one certificate the event was about.
+`data.items` lists the certificates the alert fired for. Each item has the certificate's ID, its common name as `title`, its serial number as `identifier`, a one-line `summary`, a `severity`, and a list of display `fields`. An expiration request can include several certificates, and `data.alert.condition` holds the alert's lead time as you entered it, such as `30d` or `2w`. Issuance, renewal, and revocation requests include the one certificate the event was about.
+
+<Note>
+  Alerts created before certificate alerts moved to this format now send this payload. If your endpoint reads the older `com.infisical.pki.certificate.*` event types or the `data.certificates` list, update it to read `type` and `data.items` as shown here.
+</Note>
 
 <Tabs>
   <Tab title="Expiration">
@@ -64,6 +68,8 @@ Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type
             "id": "<certificate-id>",
             "title": "api.example.com",
             "identifier": "105d3b4c28132774ab17e350c0e8229ba1bef40d",
+            "summary": "Certificate 'api.example.com' in application 'payments-api' expires on October 4, 2026 at 11:59 PM UTC",
+            "severity": "error",
             "fields": [
               { "label": "SANs", "value": "api.example.com, www.api.example.com" },
               { "label": "Profile", "value": "tls-server" },
@@ -102,6 +108,8 @@ Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type
             "id": "<certificate-id>",
             "title": "api.example.com",
             "identifier": "105d3b4c28132774ab17e350c0e8229ba1bef40d",
+            "summary": "Certificate 'api.example.com' was revoked in application 'payments-api'",
+            "severity": "warning",
             "fields": [
               { "label": "Profile", "value": "tls-server" },
               { "label": "Expires", "value": "October 4, 2026 at 11:59 PM UTC" },

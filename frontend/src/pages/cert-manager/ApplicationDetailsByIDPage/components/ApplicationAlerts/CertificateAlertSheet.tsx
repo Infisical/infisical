@@ -67,6 +67,7 @@ const CertificateAlertWizard = ({
 
   const form = useForm<TCertificateAlertForm>({
     resolver: zodResolver(certificateAlertFormSchema),
+    mode: "onChange",
     defaultValues: alert ? toCertificateAlertForm(alert, members) : emptyCertificateAlertForm()
   });
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "channels" });

@@ -180,12 +180,19 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
 
   const findApplicationNamesByIds = async (
     applicationIds: string[],
+    orgId: string,
     tx?: Knex
   ): Promise<{ id: string; name: string }[]> => {
+    if (applicationIds.length === 0) return [];
     try {
       const applications = (await (tx || db.replicaNode())(TableName.PkiApplication)
-        .whereIn("id", applicationIds)
-        .select("id", "name")) as { id: string; name: string }[];
+        .join(TableName.Project, `${TableName.PkiApplication}.projectId`, `${TableName.Project}.id`)
+        .whereIn(`${TableName.PkiApplication}.id`, applicationIds)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .select(`${TableName.PkiApplication}.id`, `${TableName.PkiApplication}.name`)) as {
+        id: string;
+        name: string;
+      }[];
 
       return applications;
     } catch (error) {

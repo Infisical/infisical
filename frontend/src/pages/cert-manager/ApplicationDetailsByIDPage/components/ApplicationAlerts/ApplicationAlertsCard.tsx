@@ -256,7 +256,7 @@ export const ApplicationAlertsCard = ({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-1/3">Name</TableHead>
-                  <TableHead className="whitespace-nowrap">Event Type</TableHead>
+                  <TableHead className="whitespace-nowrap">Alert Type</TableHead>
                   <TableHead className="whitespace-nowrap">Status</TableHead>
                   <TableHead className="whitespace-nowrap">Alert Before</TableHead>
                   <TableHead className="whitespace-nowrap">Last Run</TableHead>
