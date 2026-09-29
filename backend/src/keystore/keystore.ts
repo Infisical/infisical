@@ -194,6 +194,9 @@ export const KeyStorePrefixes = {
   SecretManagerCachePattern: "secret-manager:*",
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
+  // Set alongside the free plan getPlan caches when the License Server fails, so callers can tell it from a real answer.
+  LicenseCloudPlanFallback: (orgId: string) => `infisical-cloud-plan-fallback-${orgId}` as const,
+  LicenseCloudPlanLastKnown: (orgId: string) => `infisical-cloud-plan-last-known-${orgId}` as const,
   // Set after a billing mutation to flag the org's plan cache for stale-while-revalidate reads.
   LicenseCachePassThrough: (orgId: string) => `license-cache-passthrough-${orgId}` as const,
   // Single-flight guard so only one background revalidation runs per org per lock window.
@@ -263,6 +266,7 @@ export const KeyStoreTtls = {
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 900, // 15 minutes
+  LicenseCloudPlanLastKnownInSeconds: 86400, // 24 hours
   PamDefaultProjectInSeconds: 300, // 5 minutes
   AgentVaultDefaultProjectInSeconds: 300, // 5 minutes
   // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).

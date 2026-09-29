@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrgMembershipStatus, ProjectMembershipRole, TAgentVaultProxies } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultProxyActions,
@@ -32,8 +31,9 @@ import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
 import {
-  areSessionLogsLicensed,
-  isSessionLogIngestEnabled
+  getSessionLogEntitlement,
+  isSessionLogIngestEnabled,
+  TSessionLogLicenseService
 } from "../agent-vault-session-log/agent-vault-session-log-fns";
 import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
@@ -70,7 +70,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TSessionLogLicenseService;
   resourceAuthMethodService: Pick<
     TResourceAuthMethodServiceFactory,
     "initAtCreate" | "mintToken" | "loginWithToken" | "revokeAccess"
@@ -424,11 +424,13 @@ export const agentVaultProxyServiceFactory = ({
     ]);
 
     const sessionLogConfig = await agentVaultSessionLogConfigDAL.findOne({ projectId: session.projectId });
-    const sessionLogsEnabled =
-      isSessionLogIngestEnabled(sessionLogConfig) &&
-      Boolean(session.encryptedSessionLogKey) &&
-      (await areSessionLogsLicensed(licenseService, proxy.orgId));
-    const sessionLogKeyNeeded = sessionLogsEnabled && !hasSessionLogKey;
+    const entitlement =
+      isSessionLogIngestEnabled(sessionLogConfig) && Boolean(session.encryptedSessionLogKey)
+        ? await getSessionLogEntitlement(licenseService, proxy.orgId)
+        : "unlicensed";
+    // While the plan can't be confirmed, a proxy that already holds the key keeps recording, and no key goes out.
+    const sessionLogsEnabled = entitlement === "licensed" || (entitlement === "unknown" && hasSessionLogKey);
+    const sessionLogKeyNeeded = entitlement === "licensed" && !hasSessionLogKey;
 
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
     // a kms_keys read (or an external KMS round trip) per resolve for nothing.

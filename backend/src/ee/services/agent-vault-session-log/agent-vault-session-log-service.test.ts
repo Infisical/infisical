@@ -78,6 +78,8 @@ type TOverrides = {
   connection?: unknown;
   configCreateThrows?: unknown;
   licensed?: boolean;
+  planFallback?: boolean;
+  lastKnownPlan?: { plan: { agentVaultByoS3: boolean }; fetchedAt: number } | null;
 };
 
 const build = (overrides: TOverrides = {}) => {
@@ -140,7 +142,11 @@ const build = (overrides: TOverrides = {}) => {
       }))
     } as never,
     kmsService: { createCipherPairWithDataKey: vi.fn() } as never,
-    licenseService: { getPlan: vi.fn(async () => ({ agentVaultByoS3: overrides.licensed ?? true })) } as never
+    licenseService: {
+      getPlan: vi.fn(async () => ({ agentVaultByoS3: overrides.licensed ?? true })),
+      isServingFallbackPlan: vi.fn(async () => overrides.planFallback ?? false),
+      getLastKnownPlan: vi.fn(async () => overrides.lastKnownPlan ?? null)
+    } as never
   });
 
   return {
@@ -649,5 +655,43 @@ describe("without session logs on the plan", () => {
     const page = await service.listSessionLogs({ projectId: "proj-1", ctx, sessionId: "sess-1", limit: 100 });
     expect(page.chunks).toEqual([]);
     expect(page.sessionLogs.enabled).toBe(false);
+  });
+});
+
+describe("while the License Server can't be reached", () => {
+  const ctx = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never;
+  const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
+  const unreachable = { licensed: false, planFallback: true } as const;
+
+  test("a chunk from a paid org is still accepted on its last known plan", async () => {
+    const { service, createIfAbsent } = build({
+      ...unreachable,
+      lastKnownPlan: { plan: { agentVaultByoS3: true }, fetchedAt: Date.now() - 10 * 60_000 }
+    });
+    await record(service);
+    expect(createIfAbsent).toHaveBeenCalledTimes(1);
+  });
+
+  test("a chunk is held, not refused, when there is no recent real answer", async () => {
+    const { service, createIfAbsent } = build({
+      ...unreachable,
+      lastKnownPlan: { plan: { agentVaultByoS3: true }, fetchedAt: Date.now() - 2 * 60 * 60_000 }
+    });
+    await expect(record(service)).rejects.toMatchObject({ name: "InternalServerError" });
+    expect(createIfAbsent).not.toHaveBeenCalled();
+  });
+
+  test("a save that needs the plan says it couldn't be confirmed", async () => {
+    const { service, updateConfig } = build({ ...unreachable, config: { ...enabledConfig(), enabled: false } });
+    await expect(service.updateSessionLogSettings({ projectId: "proj-1", ctx, actor, enabled: true })).rejects.toThrow(
+      "Infisical couldn't confirm your plan right now. Try again in a few minutes."
+    );
+    expect(updateConfig).not.toHaveBeenCalled();
+  });
+
+  test("a page still reads as recording", async () => {
+    const { service } = build({ ...unreachable, pageRows: [] });
+    const page = await service.listSessionLogs({ projectId: "proj-1", ctx, sessionId: "sess-1", limit: 100 });
+    expect(page.sessionLogs.enabled).toBe(true);
   });
 });

@@ -31,6 +31,10 @@ export const AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS = 100_000;
 // A session's recorded and dropped counts cover the 24 hours before its latest chunk, so an ended session keeps them.
 export const AGENT_VAULT_SESSION_LOG_RECENT_COUNTS_WINDOW_MS = 24 * 60 * 60_000; // 24 hours
 
+// While the License Server can't be reached, the last plan it returned decides for this long, so a downgrade
+// still lands within an hour of an outage starting.
+export const AGENT_VAULT_SESSION_LOG_LAST_KNOWN_PLAN_MAX_AGE_MS = 60 * 60_000; // 1 hour
+
 // A link to upload or download a chunk expires after 5 minutes.
 export const AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS = 300; // 5 minutes
 

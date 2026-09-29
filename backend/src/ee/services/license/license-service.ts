@@ -207,6 +207,12 @@ export const licenseServiceFactory = ({
       jitteredLicenseCloudPlanTtl(),
       JSON.stringify(currentPlan)
     );
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.LicenseCloudPlanLastKnown(orgId),
+      KeyStoreTtls.LicenseCloudPlanLastKnownInSeconds,
+      JSON.stringify({ plan: currentPlan, fetchedAt: Date.now() })
+    );
+    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlanFallback(orgId));
 
     return currentPlan;
   };
@@ -275,16 +281,30 @@ export const licenseServiceFactory = ({
         error,
         `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`
       );
+      const fallbackTtl = jitteredLicenseCloudPlanTtl();
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.LicenseCloudPlan(orgId),
-        jitteredLicenseCloudPlanTtl(),
+        fallbackTtl,
         JSON.stringify(onPremFeatures)
       );
+      await keyStore.setItemWithExpiry(KeyStorePrefixes.LicenseCloudPlanFallback(orgId), fallbackTtl, "1");
       return onPremFeatures;
     } finally {
       logger.info(`getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]`);
     }
     return onPremFeatures;
+  };
+
+  // Whether the plan getPlan serves for this org is the fallback above rather than a real answer.
+  const isServingFallbackPlan = async (orgId: string) => {
+    const [marker] = await keyStore.getItems([KeyStorePrefixes.LicenseCloudPlanFallback(orgId)]);
+    return Boolean(marker);
+  };
+
+  // The last plan the License Server actually returned for this org, and when.
+  const getLastKnownPlan = async (orgId: string) => {
+    const [raw] = await keyStore.getItems([KeyStorePrefixes.LicenseCloudPlanLastKnown(orgId)]);
+    return raw ? (JSON.parse(raw) as { plan: TFeatureSet; fetchedAt: number }) : null;
   };
 
   const refreshPlan = async (orgId: string) => {
@@ -382,6 +402,8 @@ export const licenseServiceFactory = ({
       return onPremFeatures;
     },
     getPlan,
+    isServingFallbackPlan,
+    getLastKnownPlan,
     getOrgSeatUsage,
     getCustomerId,
     getLicenseId,

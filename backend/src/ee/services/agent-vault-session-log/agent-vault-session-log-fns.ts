@@ -2,9 +2,13 @@ import { z } from "zod";
 
 import { TAgentVaultSessionLogConfigs } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { logger } from "@app/lib/logger";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import { AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX } from "./agent-vault-session-log-constants";
+import {
+  AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX,
+  AGENT_VAULT_SESSION_LOG_LAST_KNOWN_PLAN_MAX_AGE_MS
+} from "./agent-vault-session-log-constants";
 import { TResolvedSessionLogStorageConfig } from "./agent-vault-session-log-types";
 
 export const withKeyPrefix = (keyPrefix: string | null | undefined, key: string) =>
@@ -44,8 +48,40 @@ export const resolveStorageConfig = (
 export const isSessionLogIngestEnabled = (config?: TAgentVaultSessionLogConfigs) =>
   Boolean(config?.enabled && resolveStorageConfig(config));
 
-export const areSessionLogsLicensed = async (licenseService: Pick<TLicenseServiceFactory, "getPlan">, orgId: string) =>
-  Boolean((await licenseService.getPlan(orgId)).agentVaultByoS3);
+export type TSessionLogEntitlement = "licensed" | "unlicensed" | "unknown";
+
+export type TSessionLogLicenseService = Pick<
+  TLicenseServiceFactory,
+  "getPlan" | "isServingFallbackPlan" | "getLastKnownPlan"
+>;
+
+const FALLBACK_LOG_INTERVAL_MS = 5 * 60_000;
+const fallbackLoggedAt = new Map<string, number>();
+
+// getPlan answers with the free plan while the License Server is down, which would otherwise read as a downgrade
+// and stop recording. "unknown" is a fallback with no recent real answer to go on.
+export const getSessionLogEntitlement = async (
+  licenseService: TSessionLogLicenseService,
+  orgId: string
+): Promise<TSessionLogEntitlement> => {
+  if ((await licenseService.getPlan(orgId)).agentVaultByoS3) return "licensed";
+  if (!(await licenseService.isServingFallbackPlan(orgId))) return "unlicensed";
+
+  const lastKnown = await licenseService.getLastKnownPlan(orgId);
+  let entitlement: TSessionLogEntitlement = "unknown";
+  if (lastKnown && Date.now() - lastKnown.fetchedAt <= AGENT_VAULT_SESSION_LOG_LAST_KNOWN_PLAN_MAX_AGE_MS) {
+    entitlement = lastKnown.plan.agentVaultByoS3 ? "licensed" : "unlicensed";
+  }
+
+  const now = Date.now();
+  if (now - (fallbackLoggedAt.get(orgId) ?? 0) >= FALLBACK_LOG_INTERVAL_MS) {
+    fallbackLoggedAt.set(orgId, now);
+    logger.warn(
+      `agentVaultSessionLog: the plan is a License Server fallback, deciding session logs from the last known plan [orgId=${orgId}] [entitlement=${entitlement}] [lastKnownAgeMs=${lastKnown ? now - lastKnown.fetchedAt : "none"}]`
+    );
+  }
+  return entitlement;
+};
 
 const CURSOR_VERSION = 1;
 const MAX_CURSOR_LENGTH = 256;

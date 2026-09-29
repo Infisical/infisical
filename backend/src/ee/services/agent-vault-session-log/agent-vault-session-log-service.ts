@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { TAgentVaultSessionLogChunks, TAgentVaultSessionLogConfigs } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
@@ -45,12 +44,13 @@ import {
   AgentVaultSessionLogStorageUnavailableReason
 } from "./agent-vault-session-log-enums";
 import {
-  areSessionLogsLicensed,
   buildSessionLogObjectKey,
   encodeHistoryCursor,
   encodeTailCursor,
+  getSessionLogEntitlement,
   isSessionLogIngestEnabled,
-  resolveStorageConfig
+  resolveStorageConfig,
+  TSessionLogLicenseService
 } from "./agent-vault-session-log-fns";
 import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import { buildSessionLogStorage, TAgentVaultSessionLogStorage } from "./agent-vault-session-log-storage-fns";
@@ -73,7 +73,7 @@ type TAgentVaultSessionLogServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithInputKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TSessionLogLicenseService;
 };
 
 export type TAgentVaultSessionLogServiceFactory = ReturnType<typeof agentVaultSessionLogServiceFactory>;
@@ -162,10 +162,17 @@ export const agentVaultSessionLogServiceFactory = ({
       });
     }
 
-    if (!(await areSessionLogsLicensed(licenseService, proxy.orgId))) {
+    const entitlement = await getSessionLogEntitlement(licenseService, proxy.orgId);
+    if (entitlement === "unlicensed") {
       throw new BadRequestError({
         name: AgentVaultSessionLogErrorName.Disabled,
         message: AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
+      });
+    }
+    // A 5xx, so the proxy holds the chunk and retries instead of switching session logs off.
+    if (entitlement === "unknown") {
+      throw new InternalServerError({
+        message: "Infisical couldn't confirm this organization's plan right now. The proxy keeps the chunk and retries."
       });
     }
 
@@ -318,7 +325,9 @@ export const agentVaultSessionLogServiceFactory = ({
   }: TAgentVaultSessionScoped &
     Awaited<ReturnType<typeof $loadSessionLogs>> & { rows: TAgentVaultSessionLogChunks[] }) => {
     const unreadSessionLogs = {
-      enabled: isSessionLogIngestEnabled(config) && (await areSessionLogsLicensed(licenseService, ctx.actorOrgId)),
+      enabled:
+        isSessionLogIngestEnabled(config) &&
+        (await getSessionLogEntitlement(licenseService, ctx.actorOrgId)) !== "unlicensed",
       isRecordable: Boolean(session.encryptedSessionLogKey),
       sessionKey: null,
       storageUnavailable: null
@@ -513,7 +522,13 @@ export const agentVaultSessionLogServiceFactory = ({
       next.region !== (current.region ?? null) ||
       next.keyPrefix !== (current.keyPrefix ?? null) ||
       (next.appConnectionId !== null && next.appConnectionId !== (current.appConnectionId ?? null));
-    if (needsLicence && !(await areSessionLogsLicensed(licenseService, ctx.actorOrgId))) {
+    const entitlement = needsLicence ? await getSessionLogEntitlement(licenseService, ctx.actorOrgId) : "licensed";
+    if (entitlement === "unknown") {
+      throw new BadRequestError({
+        message: "Infisical couldn't confirm your plan right now. Try again in a few minutes."
+      });
+    }
+    if (entitlement === "unlicensed") {
       throw new BadRequestError({ message: AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN });
     }
 

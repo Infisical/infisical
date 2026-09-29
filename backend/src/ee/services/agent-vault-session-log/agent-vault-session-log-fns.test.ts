@@ -1,8 +1,15 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import { buildSessionLogObjectKey, resolveStorageConfig } from "./agent-vault-session-log-fns";
+import {
+  buildSessionLogObjectKey,
+  getSessionLogEntitlement,
+  resolveStorageConfig,
+  TSessionLogLicenseService
+} from "./agent-vault-session-log-fns";
+
+vi.mock("@app/lib/logger", () => ({ logger: { warn: () => {} } }));
 
 describe("buildSessionLogObjectKey", () => {
   const base = {
@@ -54,5 +61,46 @@ describe("resolveStorageConfig", () => {
 
   test.each(["appConnectionId", "bucket", "region"] as const)("is null when %s is missing", (field) => {
     expect(resolveStorageConfig({ ...complete, [field]: null })).toBeNull();
+  });
+});
+
+describe("getSessionLogEntitlement", () => {
+  const licenseService = ({
+    paid,
+    fallback = false,
+    lastKnown = null
+  }: {
+    paid: boolean;
+    fallback?: boolean;
+    lastKnown?: { paid: boolean; ageMs: number } | null;
+  }) =>
+    ({
+      getPlan: async () => ({ agentVaultByoS3: paid }),
+      isServingFallbackPlan: async () => fallback,
+      getLastKnownPlan: async () =>
+        lastKnown ? { plan: { agentVaultByoS3: lastKnown.paid }, fetchedAt: Date.now() - lastKnown.ageMs } : null
+    }) as unknown as TSessionLogLicenseService;
+
+  test.each([
+    { why: "a paid plan", service: { paid: true }, expected: "licensed" },
+    { why: "a real free plan", service: { paid: false }, expected: "unlicensed" },
+    {
+      why: "a fallback with a recent paid answer",
+      service: { paid: false, fallback: true, lastKnown: { paid: true, ageMs: 10 * 60_000 } },
+      expected: "licensed"
+    },
+    {
+      why: "a fallback with a recent free answer",
+      service: { paid: false, fallback: true, lastKnown: { paid: false, ageMs: 10 * 60_000 } },
+      expected: "unlicensed"
+    },
+    {
+      why: "a fallback whose last answer is over an hour old",
+      service: { paid: false, fallback: true, lastKnown: { paid: true, ageMs: 61 * 60_000 } },
+      expected: "unknown"
+    },
+    { why: "a fallback with no real answer on record", service: { paid: false, fallback: true }, expected: "unknown" }
+  ])("reads $why as $expected", async ({ service, expected }) => {
+    expect(await getSessionLogEntitlement(licenseService(service), "org-1")).toBe(expected);
   });
 });

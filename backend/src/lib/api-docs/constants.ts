@@ -4400,7 +4400,7 @@ export const AGENT_VAULT = {
     lastSeq: "The sequence number of the last record in the chunk. Each proxy numbers its own records.",
     recordCount: "The number of records in the chunk.",
     droppedCount:
-      "The number of requests the proxy couldn't record just before this chunk, for example because too many requests came in at once or session logs were off.",
+      "The number of requests the proxy couldn't record, for example because too many requests came in at once or session logs were off. They're reported on the next chunk the proxy sends, so they happened before this chunk, but not necessarily right before its first record.",
     ciphertextBytes: "The size of the encrypted chunk, in bytes.",
     iv: "The AES-GCM initialization vector for the chunk, as base64.",
     ciphertextSha256:
