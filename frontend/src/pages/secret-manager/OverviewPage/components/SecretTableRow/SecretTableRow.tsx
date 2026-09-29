@@ -55,7 +55,9 @@ import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnv
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
-  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
+  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 import { SecretEditTableRow } from "./SecretEditTableRow";
@@ -97,7 +99,6 @@ type Props = {
         environmentInfo?: ProjectEnv;
       }
     | undefined;
-  tableWidth: number;
   importedBy?: {
     environment: { name: string; slug: string };
     folders: {
@@ -135,7 +136,6 @@ export const SecretTableRow = ({
   onSecretDelete,
   isImportedSecretPresentInEnv,
   getImportedSecretByKey,
-  tableWidth,
   onToggleSecretSelect,
   isSelected,
   importedBy,
@@ -603,17 +603,14 @@ export const SecretTableRow = ({
           className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
         >
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div
-              style={{ maxWidth: tableWidth }}
-              className="sticky left-0 w-full border-y border-border"
-            >
+            <div className="border-y border-border">
               <Table
                 className="w-full table-fixed"
-                containerClassName="overflow-hidden rounded-none border-0 max-sm:overflow-x-auto"
+                containerClassName="overflow-hidden rounded-none border-0"
               >
                 <colgroup>
                   <col className="w-10" />
-                  <col className="w-[min(var(--name-column-width,180px),50%)]" />
+                  <col className="w-[var(--name-column-width,180px)]" />
                   <col />
                   <col className="w-32" />
                 </colgroup>
@@ -622,7 +619,7 @@ export const SecretTableRow = ({
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead
                       isTruncatable
-                      className="w-[min(var(--name-column-width,180px),50%)] max-w-none min-w-0"
+                      className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}
                       sortDirection={getExpandedTableSortDirection("environment")}
                       onSortChange={(direction) =>
                         handleExpandedTableSortChange("environment", direction)
@@ -677,7 +674,7 @@ export const SecretTableRow = ({
                           <TableCell
                             isTruncatable
                             className={twMerge(
-                              "w-[min(var(--name-column-width,180px),50%)] max-w-none min-w-0 pl-1",
+                              TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
                               hasOverride && "border-l border-b-border/50 border-l-override"
                             )}
                           >
