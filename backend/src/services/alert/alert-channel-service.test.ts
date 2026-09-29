@@ -194,39 +194,46 @@ describe("alert channel service", () => {
     ]);
   });
 
-  test("accepts a kept outside address and rejects a new one on an unverified domain", async () => {
-    const { service } = buildService();
-    const input = {
-      name: "Team email",
-      channelType: AlertChannelType.EMAIL,
-      config: {},
-      orgId: "org-1",
-      ...CREATOR
-    };
+  test("keeps an outside address already on the channel and rejects a new one on an unverified domain", async () => {
+    const existing = seedRow({ id: "ch-email", channelType: AlertChannelType.EMAIL, encryptedConfig: encConfig({}) });
+    const { service, recipients } = buildService({ seed: [existing] });
+    recipients.set("ch-email", [
+      { channelId: "ch-email", principalType: AlertPrincipalType.EMAIL, principalId: "outsider@unverified.io" }
+    ]);
+    const outsider = { principalType: AlertPrincipalType.EMAIL, principalId: "outsider@unverified.io" };
+
+    await service.updateChannelInTx({ channelId: "ch-email", recipients: [outsider] }, existing as never, cipher, tx);
+    expect(recipients.get("ch-email")?.map((recipient) => recipient.principalId)).toEqual(["outsider@unverified.io"]);
 
     await expect(
-      service.createChannelInTx(
+      service.updateChannelInTx(
         {
-          ...input,
-          recipients: [{ principalType: AlertPrincipalType.EMAIL, principalId: "outsider@unverified.io" }],
-          keptEmailRecipients: ["outsider@unverified.io"]
+          channelId: "ch-email",
+          recipients: [outsider, { principalType: AlertPrincipalType.EMAIL, principalId: "newcomer@unverified.io" }]
         },
-        encryptor as never,
-        tx
-      )
-    ).resolves.toBeDefined();
-
-    await expect(
-      service.createChannelInTx(
-        {
-          ...input,
-          recipients: [{ principalType: AlertPrincipalType.EMAIL, principalId: "newcomer@unverified.io" }],
-          keptEmailRecipients: ["outsider@unverified.io"]
-        },
-        encryptor as never,
+        existing as never,
+        cipher,
         tx
       )
     ).rejects.toThrow("Not on a verified domain: newcomer@unverified.io");
+  });
+
+  test("rejects an outside address moved onto a new channel", async () => {
+    const { service } = buildService();
+    await expect(
+      service.createChannelInTx(
+        {
+          name: "Team email",
+          channelType: AlertChannelType.EMAIL,
+          config: {},
+          orgId: "org-1",
+          ...CREATOR,
+          recipients: [{ principalType: AlertPrincipalType.EMAIL, principalId: "outsider@unverified.io" }]
+        },
+        encryptor as never,
+        tx
+      )
+    ).rejects.toThrow("Not on a verified domain: outsider@unverified.io");
   });
 
   test("validates standalone email recipients against the verified domains", async () => {

@@ -498,7 +498,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
           .url()
           .refine((url) => url.startsWith("https://"), "Webhook URL must use HTTPS")
           .describe("Webhook URL to test"),
-        signingSecret: z.string().max(256).optional().describe("Optional signing secret for HMAC signature")
+        signingSecret: z.string().max(256).optional().describe("Optional signing secret for HMAC signature"),
+        applicationId: z.string().uuid().optional().describe("Optional application context to scope the test payload")
       }),
       response: {
         200: z.object({
@@ -508,8 +509,9 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const result = await server.services.pkiAlertV2.testWebhookConfig({
+      const result = await server.services.pkiAlertV2Compat.testProjectRouteWebhook({
         projectId: req.internalCertManagerProjectId,
+        applicationId: req.body.applicationId,
         url: req.body.url,
         signingSecret: req.body.signingSecret,
         actor: req.permission.type,

@@ -7,6 +7,7 @@ import {
   TCreatePkiAlertV2,
   TGetAlertV2DTO,
   TListAlertsV2DTO,
+  TTestWebhookConfigDTO,
   TUpdateAlertV2DTO
 } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 
@@ -29,3 +30,5 @@ export type TGetPkiAlertRouteDTO = TGetAlertV2DTO & TApplicationScope;
 export type TUpdatePkiAlertRouteDTO = TUpdateAlertV2DTO & TApplicationScope;
 
 export type TListPkiAlertsRouteDTO = TListAlertsV2DTO & TApplicationScope;
+
+export type TTestPkiAlertWebhookRouteDTO = TTestWebhookConfigDTO & TApplicationScope;

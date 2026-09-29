@@ -1,8 +1,9 @@
+import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { z } from "zod";
 
 import { TAlertChannels, TAlerts } from "@app/db/schemas";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -37,7 +38,7 @@ export type TAlertServiceFactoryDep = {
   alertChannelMembershipDAL: Pick<TAlertChannelMembershipDALFactory, "insertMany">;
   alertChannelService: Pick<
     TAlertChannelServiceFactory,
-    "createChannelInTx" | "updateChannelInTx" | "deleteChannelInTx" | "getDetailsForChannels" | "findEmailRecipients"
+    "createChannelInTx" | "updateChannelInTx" | "deleteChannelInTx" | "getDetailsForChannels"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   alertProviderRegistry: TAlertProviderRegistry;
@@ -76,6 +77,22 @@ export const alertServiceFactory = ({
       resourceId: scope.resourceId,
       actor: toAlertActor(dto)
     });
+
+  const $canRevealSecrets = async (
+    provider: IResourceAlertProvider,
+    scope: { orgId: string; projectId?: string | null; resourceId?: string | null },
+    dto: TGenericPermission,
+    options: TChannelDetailsOptions
+  ) => {
+    if (!options.revealSecrets) return false;
+    try {
+      await $assertAlertPermission(provider, AlertPermissionAction.Edit, scope, dto);
+      return true;
+    } catch (error) {
+      if (error instanceof ForbiddenError || error instanceof ForbiddenRequestError) return false;
+      throw error;
+    }
+  };
 
   const $getEvent = (provider: IResourceAlertProvider, eventType: string): TAlertEventDefinition => {
     const event = provider.events.find((candidate) => candidate.key === eventType);
@@ -271,7 +288,13 @@ export const alertServiceFactory = ({
 
     const channels = await alertChannelDAL.findByAlertId(alert.id);
     const cipher = await getAlertChannelCipher(kmsService, { orgId: alert.orgId, projectId: alert.projectId });
-    const details = await alertChannelService.getDetailsForChannels(channels, cipher, undefined, options);
+    const revealSecrets = await $canRevealSecrets(
+      provider,
+      { orgId: alert.orgId, projectId: alert.projectId, resourceId: alert.resourceId },
+      dto,
+      options
+    );
+    const details = await alertChannelService.getDetailsForChannels(channels, cipher, undefined, { revealSecrets });
     const lastRuns = await $getLastRuns([alert.id]);
     return $assembleResponse(alert, details, {
       resourceName: await $getResourceName(provider, alert),
@@ -299,7 +322,28 @@ export const alertServiceFactory = ({
 
     const channels = await alertChannelDAL.findByAlertIds(alerts.map((alert) => alert.id));
     const cipher = await getAlertChannelCipher(kmsService, { orgId: dto.actorOrgId, projectId: dto.projectId ?? null });
-    const details = await alertChannelService.getDetailsForChannels(channels, cipher, undefined, options);
+    const resourceIds = [...new Set(alerts.map((alert) => alert.resourceId ?? null))];
+    const canReveal = await Promise.all(
+      resourceIds.map((resourceId) =>
+        $canRevealSecrets(provider, { orgId: dto.actorOrgId, projectId: dto.projectId, resourceId }, dto, options)
+      )
+    );
+    const revealableResourceIds = new Set(resourceIds.filter((_, index) => canReveal[index]));
+    const revealableAlertIds = new Set(
+      alerts.filter((alert) => revealableResourceIds.has(alert.resourceId ?? null)).map((alert) => alert.id)
+    );
+    const details = [
+      ...(await alertChannelService.getDetailsForChannels(
+        channels.filter((channel) => revealableAlertIds.has(channel.alertId)),
+        cipher,
+        undefined,
+        { revealSecrets: true }
+      )),
+      ...(await alertChannelService.getDetailsForChannels(
+        channels.filter((channel) => !revealableAlertIds.has(channel.alertId)),
+        cipher
+      ))
+    ];
 
     const lastRuns = await $getLastRuns(alerts.map((alert) => alert.id));
     const resourceNames = await $getResourceNames(
@@ -346,11 +390,6 @@ export const alertServiceFactory = ({
       }
     }
 
-    const keptEmailRecipients = await alertChannelService.findEmailRecipients(
-      existing.map((channel) => channel.id),
-      tx
-    );
-
     const toDelete = existing.filter((channel) => !incomingIds.has(channel.id));
     for (const channel of toDelete) {
       // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
@@ -368,8 +407,7 @@ export const alertServiceFactory = ({
             name: channelInput.name,
             config: channelInput.config,
             enabled: channelInput.enabled,
-            recipients: channelInput.recipients,
-            keptEmailRecipients
+            recipients: channelInput.recipients
           },
           existingChannel,
           cipher,
@@ -387,8 +425,7 @@ export const alertServiceFactory = ({
             orgId: alert.orgId,
             projectId: alert.projectId,
             createdByActorId: alert.createdByActorId,
-            createdByActorType: alert.createdByActorType,
-            keptEmailRecipients
+            createdByActorType: alert.createdByActorType
           },
           cipher.encryptor,
           tx

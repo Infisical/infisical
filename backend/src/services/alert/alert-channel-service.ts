@@ -52,7 +52,6 @@ export type TCreateChannelInTxInput = {
   projectId?: string | null;
   createdByActorId: string;
   createdByActorType: string;
-  keptEmailRecipients?: string[];
 };
 
 export type TUpdateChannelInTxInput = {
@@ -62,7 +61,6 @@ export type TUpdateChannelInTxInput = {
   config?: Record<string, unknown>;
   enabled?: boolean;
   recipients?: TChannelRecipientInput[];
-  keptEmailRecipients?: string[];
 };
 
 export type TChannelDetailsOptions = { revealSecrets?: boolean };
@@ -204,7 +202,7 @@ export const alertChannelServiceFactory = ({
     $assertRecipientRules(definition, input.channelType, recipients);
     assertChannelConfigValid(definition, input.channelType, input.config);
     await $validateRecipients(input.orgId, input.projectId, recipients);
-    await $validateEmailRecipients(input.orgId, recipients, input.keptEmailRecipients ?? [], tx);
+    await $validateEmailRecipients(input.orgId, recipients, [], tx);
 
     const created = await alertChannelDAL.create(
       {
@@ -255,8 +253,7 @@ export const alertChannelServiceFactory = ({
     if (recipients !== undefined) {
       $assertRecipientRules(definition, channel.channelType, recipients);
       await $validateRecipients(channel.orgId, channel.projectId, recipients);
-      const keptEmailRecipients = input.keptEmailRecipients ?? (await $findEmailRecipients([channel.id], tx));
-      await $validateEmailRecipients(channel.orgId, recipients, keptEmailRecipients, tx);
+      await $validateEmailRecipients(channel.orgId, recipients, await $findEmailRecipients([channel.id], tx), tx);
     }
 
     await alertChannelDAL.updateById(

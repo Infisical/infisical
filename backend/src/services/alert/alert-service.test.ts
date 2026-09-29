@@ -443,7 +443,11 @@ describe("alert service", () => {
 
     await service.updateAlert({
       alertId: "alert-1",
-      channels: created.channels.map((c) => ({ id: c.id, name: c.name, channelType: c.channelType })),
+      channels: created.channels.map((c) => ({
+        id: c.id,
+        name: c.name,
+        channelType: c.channelType as AlertChannelType
+      })),
       ...actor
     });
 

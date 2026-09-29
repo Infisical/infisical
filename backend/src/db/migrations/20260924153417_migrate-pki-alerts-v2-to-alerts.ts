@@ -42,6 +42,12 @@ const toAlertBefore = (alertBefore: string | null | undefined): string => {
   return alertBefore as string;
 };
 
+const createUniqueScopeIndex = (knex: Knex, where = "") =>
+  knex.schema.raw(
+    `CREATE UNIQUE INDEX "alert_unique_scope_resource_event" ON "${TableName.Alert}"
+     ("orgId", (COALESCE("projectId", '')), "resourceType", (COALESCE("resourceId", '')), "eventType") ${where}`
+  );
+
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasColumn(TableName.AlertHistory, "error"))) {
     await knex.schema.alterTable(TableName.AlertHistory, (t) => {
@@ -50,11 +56,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   await knex.schema.raw(`DROP INDEX IF EXISTS "alert_unique_scope_resource_event"`);
-  await knex.schema.raw(
-    `CREATE UNIQUE INDEX "alert_unique_scope_resource_event" ON "${TableName.Alert}"
-     ("orgId", (COALESCE("projectId", '')), "resourceType", (COALESCE("resourceId", '')), "eventType")
-     WHERE "resourceType" <> '${RESOURCE_TYPE}'`
-  );
+  await createUniqueScopeIndex(knex, `WHERE "resourceType" <> '${RESOURCE_TYPE}'`);
   await knex.schema.alterTable(TableName.Alert, (t) => {
     t.index("orgId");
   });
@@ -105,9 +107,15 @@ export async function up(knex: Knex): Promise<void> {
 
     const isExpiration = legacyAlert.eventType === EXPIRATION_EVENT;
     const legacyNotificationConfig = legacyAlert.notificationConfig as { enableDailyNotification?: boolean } | null;
-    const condition = isExpiration
+    const alertBefore = isExpiration ? toAlertBefore(legacyAlert.alertBefore) : null;
+    if (alertBefore && alertBefore !== legacyAlert.alertBefore) {
+      logger.warn(
+        `Migration changed the lead time of application alert '${legacyAlert.name}' from '${legacyAlert.alertBefore}' to '${alertBefore}' [pkiAlertId=${legacyAlert.id}]`
+      );
+    }
+    const condition = alertBefore
       ? {
-          alertBefore: toAlertBefore(legacyAlert.alertBefore),
+          alertBefore,
           ...(legacyNotificationConfig
             ? { dailyReminder: Boolean(legacyNotificationConfig.enableDailyNotification) }
             : {})
@@ -219,7 +227,7 @@ export async function up(knex: Knex): Promise<void> {
       );
     }
 
-    if (isExpiration && migratedChannels.length) {
+    if (migratedChannels.length) {
       const history = await knex(TableName.PkiAlertHistory)
         .where({ alertId: legacyAlert.id, hasNotificationSent: true })
         .whereRaw(`"triggeredAt" > now() - ?::interval`, [`${HISTORY_LOOKBACK_DAYS} days`])
@@ -295,6 +303,21 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.Alert, (t) => {
     t.dropIndex("orgId");
   });
+
+  const duplicate = await knex(TableName.Alert)
+    .where({ resourceType: RESOURCE_TYPE })
+    .groupByRaw(`"orgId", COALESCE("projectId", ''), COALESCE("resourceId", ''), "eventType"`)
+    .havingRaw("count(*) > 1")
+    .first(knex.raw("1"));
+  if (duplicate) {
+    initLogger();
+    logger.warn(
+      "Kept the partial alert_unique_scope_resource_event index because application alerts created after the migration share a scope and event"
+    );
+  } else {
+    await knex.schema.raw(`DROP INDEX IF EXISTS "alert_unique_scope_resource_event"`);
+    await createUniqueScopeIndex(knex);
+  }
 
   if (await knex.schema.hasColumn(TableName.AlertHistory, "error")) {
     await knex.schema.alterTable(TableName.AlertHistory, (t) => {

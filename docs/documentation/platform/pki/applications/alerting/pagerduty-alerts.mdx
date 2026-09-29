@@ -47,7 +47,7 @@ A PagerDuty channel on a certificate [alert](/documentation/platform/pki/applica
 
 ## Severity mapping
 
-Infisical sets each incident's PagerDuty severity from the alert's event. For expiration alerts, the severity comes from the certificate closest to expiry in that run.
+Infisical sets each incident's PagerDuty severity from the alert's event. For expiration alerts, each certificate gets its own incident, and that incident's severity comes from how close the certificate is to expiry.
 
 ### Expiration alerts
 

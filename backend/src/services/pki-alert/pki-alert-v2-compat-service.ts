@@ -1,5 +1,6 @@
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAlertChannelInput } from "@app/services/alert/alert-channel-service-types";
+import { TAlertChannelTestServiceFactory } from "@app/services/alert/alert-channel-test-service";
 import { AlertChannelType } from "@app/services/alert/alert-channel-types";
 import { resolvePrincipalsInScope } from "@app/services/alert/alert-principal-scope-fns";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
@@ -38,6 +39,7 @@ import {
   TGetPkiAlertRouteDTO,
   TListPkiAlertsRouteDTO,
   TPkiAlertRouteResponse,
+  TTestPkiAlertWebhookRouteDTO,
   TUpdatePkiAlertRouteDTO
 } from "./pki-alert-v2-compat-types";
 
@@ -66,8 +68,9 @@ type TPkiAlertV2CompatServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   pkiAlertV2Service: Pick<
     TPkiAlertV2ServiceFactory,
-    "listAlerts" | "getAlertById" | "updateAlert" | "deleteAlert" | "listMatchingCertificates"
+    "listAlerts" | "getAlertById" | "updateAlert" | "deleteAlert" | "listMatchingCertificates" | "testWebhookConfig"
   >;
+  alertChannelTestService: Pick<TAlertChannelTestServiceFactory, "testChannel">;
   pkiAlertV2DAL: Pick<TPkiAlertV2DALFactory, "findById">;
   certManagerApplicationAlertDAL: Pick<TCertManagerApplicationAlertDALFactory, "listActiveCertificates">;
 };
@@ -81,7 +84,8 @@ export const pkiAlertV2CompatServiceFactory = ({
   projectDAL,
   pkiAlertV2Service,
   pkiAlertV2DAL,
-  certManagerApplicationAlertDAL
+  certManagerApplicationAlertDAL,
+  alertChannelTestService
 }: TPkiAlertV2CompatServiceFactoryDep) => {
   const $assertNoFilters = (filters: TPkiFilterRule[]) => {
     if (filters.length) {
@@ -164,8 +168,12 @@ export const pkiAlertV2CompatServiceFactory = ({
 
   const $toLegacyChannelConfig = (channel: TAlertResponse["channels"][number]): TChannelConfigResponse => {
     if (channel.channelType !== PkiAlertChannelType.WEBHOOK) return channel.config as TChannelConfigResponse;
-    const { url, signingSecret } = channel.config as { url: string; signingSecret?: string };
-    return { url, hasSigningSecret: Boolean(signingSecret) };
+    const { url, signingSecret, hasSigningSecret } = channel.config as {
+      url: string;
+      signingSecret?: string;
+      hasSigningSecret?: boolean;
+    };
+    return { url, hasSigningSecret: Boolean(signingSecret || hasSigningSecret) };
   };
 
   const $toLegacy = async (alerts: TAlertResponse[]): Promise<TPkiAlertRouteResponse[]> => {
@@ -471,6 +479,24 @@ export const pkiAlertV2CompatServiceFactory = ({
       ? pkiAlertV2Service.listMatchingCertificates(dto)
       : listMatchingCertificates(dto);
 
+  const testProjectRouteWebhook = async ({
+    applicationId,
+    url,
+    signingSecret,
+    ...dto
+  }: TTestPkiAlertWebhookRouteDTO): Promise<{ success: boolean; error?: string }> => {
+    if (!applicationId) return pkiAlertV2Service.testWebhookConfig({ url, signingSecret, ...dto });
+
+    const { success, error } = await alertChannelTestService.testChannel({
+      ...dto,
+      resourceType: CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
+      resourceId: applicationId,
+      channelType: AlertChannelType.WEBHOOK,
+      config: { url, ...(signingSecret ? { signingSecret } : {}) }
+    });
+    return { success, ...(error ? { error } : {}) };
+  };
+
   const deleteProjectRouteAlert = async (dto: TGetPkiAlertRouteDTO): Promise<TPkiAlertRouteResponse> =>
     (await $isLegacyProjectAlert(dto.alertId))
       ? $fromProjectAlert(await pkiAlertV2Service.deleteAlert(dto))
@@ -486,6 +512,7 @@ export const pkiAlertV2CompatServiceFactory = ({
     getProjectRouteAlert,
     updateProjectRouteAlert,
     deleteProjectRouteAlert,
-    listProjectRouteMatchingCertificates
+    listProjectRouteMatchingCertificates,
+    testProjectRouteWebhook
   };
 };
