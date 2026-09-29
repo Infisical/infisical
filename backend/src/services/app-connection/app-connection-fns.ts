@@ -310,6 +310,7 @@ import {
 } from "./windmill";
 import { getWinRMConnectionListItem, validateWinRMConnectionCredentials, WinRMConnectionMethod } from "./winrm";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
+import { getConfig } from "@app/lib/config/env";
 
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
   Object.entries(SECRET_SYNC_CONNECTION_MAP).map(([key, value]) => [value, key])
@@ -349,7 +350,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.MicrosoftIntune
 ];
 
-export const listAppConnectionOptions = (projectType?: ProjectType) => {
+export const listAppConnectionOptions = (orgId: string, projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
     getGitHubConnectionListItem(),
@@ -439,6 +440,12 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getStripeConnectionListItem()
   ]
     .filter((option) => {
+      if (option.app == AppConnection.Stripe) {
+        if (!getConfig().WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.includes(orgId)) {
+          return false;
+        }
+      }
+
       switch (projectType) {
         case ProjectType.SecretManager:
           return (
