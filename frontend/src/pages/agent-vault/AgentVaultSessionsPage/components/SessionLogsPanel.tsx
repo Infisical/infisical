@@ -222,11 +222,20 @@ export const SessionLogsPanel = ({ session }: Props) => {
     proxyFilter !== ALL_PROXIES;
   const isFiltered = hasBrowserFilter || Boolean(range);
 
-  const searched = useMemo(
+  const { searched, searchedUnreadable } = useMemo(
     () =>
       (data?.pages ?? []).reduce(
-        (total, page) => total + page.chunks.reduce((sum, chunk) => sum + chunk.recordCount, 0),
-        0
+        (totals, page) => {
+          const pageRecords = page.chunks.reduce((sum, chunk) => sum + chunk.recordCount, 0);
+          const isReadable = page.chunks.some(
+            (chunk) => (page.decrypted[chunk.chunkId]?.records.length ?? 0) > 0
+          );
+          return {
+            searched: totals.searched + pageRecords,
+            searchedUnreadable: totals.searchedUnreadable + (isReadable ? 0 : pageRecords)
+          };
+        },
+        { searched: 0, searchedUnreadable: 0 }
       ),
     [data]
   );
@@ -238,18 +247,22 @@ export const SessionLogsPanel = ({ session }: Props) => {
     range?.startDate.getTime(),
     range?.endDate.getTime()
   ].join("|");
-  const [allowance, setAllowance] = useState({ filterKey, until: searched + FILTER_SEARCH_STEP });
-  if (allowance.filterKey !== filterKey) {
-    setAllowance({ filterKey, until: searched + FILTER_SEARCH_STEP });
-  }
-  const searchOlder = () => setAllowance({ filterKey, until: searched + FILTER_SEARCH_STEP });
-  // A session whose loaded chunks were all unreadable walks back in the same steps as a filtered
-  // search, so a bucket that refuses every chunk can't pull the whole session.
+  const nextAllowance = () => ({
+    filterKey,
+    until: searched + FILTER_SEARCH_STEP,
+    unreadableUntil: searchedUnreadable + FILTER_SEARCH_STEP
+  });
+  const [allowance, setAllowance] = useState(nextAllowance);
+  if (allowance.filterKey !== filterKey) setAllowance(nextAllowance());
+  const searchOlder = () => setAllowance(nextAllowance());
+  // Pages that add no readable rows walk back in the same steps as a filtered search, so a bucket
+  // that refuses or has expired older chunks can't pull the whole session.
   const isSearchPaused =
-    (hasBrowserFilter || records.length === 0) &&
     Boolean(hasNextPage) &&
     !isTruncated &&
-    searched >= allowance.until;
+    (hasBrowserFilter
+      ? searched >= allowance.until
+      : searchedUnreadable >= allowance.unreadableUntil);
   const isFirstPageLoaded = Boolean(data?.pages.length) && !isPlaceholderData;
 
   const lastPage = data?.pages[data.pages.length - 1];
@@ -276,7 +289,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
       isSearchPaused
     )
       return;
-    if (isFirstPageLoaded && lastVisibleIndex >= rows.length - 30) fetchNextPage().catch(() => {});
+    // Not cancelRefetch, so this walk can't cancel a Reload in flight.
+    if (isFirstPageLoaded && lastVisibleIndex >= rows.length - 30)
+      fetchNextPage({ cancelRefetch: false }).catch(() => {});
   }, [
     lastVisibleIndex,
     rows.length,
