@@ -233,4 +233,29 @@ describe("updateExternalGroupOrgRoleMappings privilege boundary", () => {
       expect(persist).toHaveBeenCalledOnce();
     }
   );
+
+  // The write re-reads under a lock and refuses when the rows moved, so the snapshot it receives
+  // must be the one the checks above ran against, not a second read.
+  test("hands the write the exact snapshot the boundary was checked against", async () => {
+    const currentMappings = [
+      { groupName: "admins", role: OrgMembershipRole.Admin },
+      { groupName: "highs", role: OrgMembershipRole.Custom, roleId: HIGH_ROLE.id }
+    ];
+    const { run, persist } = createService({
+      actorPermission: scimEditor,
+      shouldUseNewPrivilegeSystem: true,
+      currentMappings
+    });
+
+    await run([
+      { groupName: "admins", roleSlug: OrgMembershipRole.Admin },
+      { groupName: "highs", roleSlug: HIGH_ROLE.slug }
+    ]);
+
+    expect(persist).toHaveBeenCalledWith(
+      ORG_ID,
+      expect.any(Array),
+      currentMappings.map((mapping): unknown => expect.objectContaining(mapping))
+    );
+  });
 });

@@ -159,7 +159,11 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
       }
     }
 
-    const data = await externalGroupOrgRoleMappingDAL.updateExternalGroupOrgRoleMappingForOrg(actor.orgId, mappings);
+    const data = await externalGroupOrgRoleMappingDAL.updateExternalGroupOrgRoleMappingForOrg(
+      actor.orgId,
+      mappings,
+      currentMappings
+    );
 
     return data;
   };
