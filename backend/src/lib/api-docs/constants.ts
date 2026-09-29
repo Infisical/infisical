@@ -3371,7 +3371,10 @@ export const SecretSyncs = {
       environment: "The environment of the Cloudflare Pages project to sync secrets to."
     },
     CLOUDFLARE_WORKERS: {
-      scriptId: "The ID of the Cloudflare Workers script to sync secrets to."
+      scriptId: "The ID of the Cloudflare Workers script to sync secrets to.",
+      target:
+        "The Cloudflare Workers destination to sync secrets to: the Worker script, the Previews Base config, or a specific Preview.",
+      previewName: "The name of the Cloudflare Workers Preview to sync secrets to. Required when target is 'preview'."
     },
     ZABBIX: {
       scope: "The Zabbix scope that secrets should be synced to.",

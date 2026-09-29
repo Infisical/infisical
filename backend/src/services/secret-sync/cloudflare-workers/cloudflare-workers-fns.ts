@@ -10,9 +10,12 @@ import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payloa
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+import { CloudflareWorkersSyncTarget } from "./cloudflare-workers-sync-enums";
 import { TCloudflareWorkersSyncWithCredentials } from "./cloudflare-workers-types";
 
 const CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE = 10215;
+const CLOUDFLARE_PREVIEW_NOT_FOUND_ERROR_CODE = 10025;
+const CLOUDFLARE_PREVIEW_NO_DEPLOYMENT_ERROR_CODE = 10032;
 const CLOUDFLARE_SECRET_TYPE = "secret_text";
 // Cloudflare rejects secrets-bulk requests carrying more than 100 secrets (error code 100160).
 const CLOUDFLARE_BULK_SECRETS_LIMIT = 100;
@@ -62,9 +65,19 @@ const $throwCloudflareError = (
   cause: unknown,
   secretKey?: string
 ): never => {
-  const message = errors.some((e) => e.code === CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE)
-    ? "Cloudflare rejected the secret update because the latest Worker version is not deployed; deploy the latest Worker version, then retry the secret sync."
-    : errors.map((e) => e.message).join(". ");
+  let message: string;
+  if (errors.some((e) => e.code === CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE)) {
+    message =
+      "Cloudflare rejected the secret update because the latest Worker version is not deployed; deploy the latest Worker version, then retry the secret sync.";
+  } else if (errors.some((e) => e.code === CLOUDFLARE_PREVIEW_NOT_FOUND_ERROR_CODE)) {
+    message =
+      "Cloudflare could not find a Preview with this name; create the Preview in Cloudflare, then retry the secret sync.";
+  } else if (errors.some((e) => e.code === CLOUDFLARE_PREVIEW_NO_DEPLOYMENT_ERROR_CODE)) {
+    message =
+      "Cloudflare rejected the secret update because this Preview has no deployment yet; deploy the Preview, then retry the secret sync.";
+  } else {
+    message = errors.map((e) => e.message).join(". ");
+  }
 
   throw new SecretSyncError({
     message,
@@ -148,9 +161,194 @@ const getCloudflareBindings = async (
   return { secrets, nonSecretBindings };
 };
 
+type TCloudflarePreviewEnvBinding = { key: string; type: string };
+
+type TCloudflarePreviewEnvPatch = Record<string, { type: string; text: string } | null>;
+
+const getPreviewsBaseSecrets = async (
+  secretSync: TCloudflareWorkersSyncWithCredentials
+): Promise<TCloudflarePreviewEnvBinding[]> => {
+  const {
+    destinationConfig,
+    connection: {
+      credentials: { apiToken, accountId }
+    }
+  } = secretSync;
+
+  const { data } = await request.get<{
+    result: { previews_base_config?: { env?: Record<string, { type: string }> } };
+  }>(
+    `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/workers/${destinationConfig.scriptId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        Accept: "application/json"
+      }
+    }
+  );
+
+  const env = data.result.previews_base_config?.env ?? {};
+  return Object.entries(env).map(([key, binding]) => ({ key, type: binding.type }));
+};
+
+const patchPreviewsBaseSecrets = async (
+  secretSync: TCloudflareWorkersSyncWithCredentials,
+  env: TCloudflarePreviewEnvPatch
+): Promise<void> => {
+  const {
+    destinationConfig,
+    connection: {
+      credentials: { apiToken, accountId }
+    }
+  } = secretSync;
+
+  const { data } = await request.patch<TCloudflareApiResponse>(
+    `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/workers/${destinationConfig.scriptId}`,
+    { previews_base_config: { env } },
+    {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": "application/merge-patch+json"
+      }
+    }
+  );
+  $validateCloudflareResponse(data);
+};
+
+const getPreviewDeploymentSecrets = async (
+  secretSync: TCloudflareWorkersSyncWithCredentials
+): Promise<TCloudflarePreviewEnvBinding[]> => {
+  const {
+    destinationConfig,
+    connection: {
+      credentials: { apiToken, accountId }
+    }
+  } = secretSync;
+
+  const { data } = await request.get<{
+    result: { env?: Record<string, { type: string }> };
+  }>(
+    `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/workers/${destinationConfig.scriptId}/previews/${encodeURIComponent(destinationConfig.previewName ?? "")}/deployments/latest`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        Accept: "application/json"
+      }
+    }
+  );
+
+  const env = data.result.env ?? {};
+  return Object.entries(env).map(([key, binding]) => ({ key, type: binding.type }));
+};
+
+const patchPreviewDeploymentSecrets = async (
+  secretSync: TCloudflareWorkersSyncWithCredentials,
+  env: TCloudflarePreviewEnvPatch
+): Promise<void> => {
+  const {
+    destinationConfig,
+    connection: {
+      credentials: { apiToken, accountId }
+    }
+  } = secretSync;
+
+  const { data } = await request.patch<TCloudflareApiResponse>(
+    `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/workers/${destinationConfig.scriptId}/previews/${encodeURIComponent(destinationConfig.previewName ?? "")}/deployments/latest`,
+    { env },
+    {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": "application/merge-patch+json"
+      }
+    }
+  );
+  $validateCloudflareResponse(data);
+};
+
+// Previews Base and a single Preview only support secret_text env entries (no plaintext/JSON bindings),
+// so both share the same sync/remove logic and differ only in which API endpoint they hit.
+
+const syncPreviewEnvSecrets = async (
+  secretSync: TCloudflareWorkersSyncWithCredentials,
+  secretMap: TSecretMap,
+  target: CloudflareWorkersSyncTarget.PreviewsBase | CloudflareWorkersSyncTarget.Preview
+) => {
+  const getExisting =
+    target === CloudflareWorkersSyncTarget.PreviewsBase ? getPreviewsBaseSecrets : getPreviewDeploymentSecrets;
+  const patchEnv =
+    target === CloudflareWorkersSyncTarget.PreviewsBase ? patchPreviewsBaseSecrets : patchPreviewDeploymentSecrets;
+  const secretMapKeys = new Set(Object.keys(secretMap));
+
+  try {
+    const env: TCloudflarePreviewEnvPatch = Object.create(null) as TCloudflarePreviewEnvPatch;
+
+    for (const [key, val] of Object.entries(secretMap)) {
+      env[key] = { type: CLOUDFLARE_SECRET_TYPE, text: val.value };
+    }
+
+    if (!secretSync.syncOptions.disableSecretDeletion) {
+      const existing = await getExisting(secretSync);
+      for (const existingSecret of existing) {
+        const isManagedBySchema = matchesSchema(
+          existingSecret.key,
+          secretSync.environment?.slug || "",
+          secretSync.syncOptions.keySchema
+        );
+        if (!secretMapKeys.has(existingSecret.key) && isManagedBySchema) {
+          env[existingSecret.key] = null;
+        }
+      }
+    }
+
+    await patchEnv(secretSync, env);
+  } catch (err) {
+    throwOnCloudflareRequestError(err);
+  }
+};
+
+const removePreviewEnvSecrets = async (
+  secretSync: TCloudflareWorkersSyncWithCredentials,
+  secretMap: TSecretMap,
+  target: CloudflareWorkersSyncTarget.PreviewsBase | CloudflareWorkersSyncTarget.Preview
+) => {
+  const getExisting =
+    target === CloudflareWorkersSyncTarget.PreviewsBase ? getPreviewsBaseSecrets : getPreviewDeploymentSecrets;
+  const patchEnv =
+    target === CloudflareWorkersSyncTarget.PreviewsBase ? patchPreviewsBaseSecrets : patchPreviewDeploymentSecrets;
+  const secretMapToRemoveKeys = new Set(Object.keys(secretMap));
+
+  try {
+    const existing = await getExisting(secretSync);
+    const env: TCloudflarePreviewEnvPatch = Object.create(null) as TCloudflarePreviewEnvPatch;
+
+    for (const existingSecret of existing) {
+      const isManagedBySchema = matchesSchema(
+        existingSecret.key,
+        secretSync.environment?.slug || "",
+        secretSync.syncOptions.keySchema
+      );
+      if (secretMapToRemoveKeys.has(existingSecret.key) && isManagedBySchema) {
+        env[existingSecret.key] = null;
+      }
+    }
+
+    if (Object.keys(env).length > 0) {
+      await patchEnv(secretSync, env);
+    }
+  } catch (err) {
+    throwOnCloudflareRequestError(err);
+  }
+};
+
 export const CloudflareWorkersSyncFns = {
   syncSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, payload: TSecretSyncPayload) => {
     const secretMap = payload.flatten();
+
+    const target = secretSync.destinationConfig.target ?? CloudflareWorkersSyncTarget.Script;
+    if (target !== CloudflareWorkersSyncTarget.Script) {
+      return syncPreviewEnvSecrets(secretSync, secretMap, target);
+    }
+
     const {
       connection: {
         credentials: { apiToken, accountId }
@@ -352,6 +550,11 @@ export const CloudflareWorkersSyncFns = {
 
   removeSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, payload: TSecretSyncPayload) => {
     const secretMap = payload.flatten();
+
+    const target = secretSync.destinationConfig.target ?? CloudflareWorkersSyncTarget.Script;
+    if (target !== CloudflareWorkersSyncTarget.Script) {
+      return removePreviewEnvSecrets(secretSync, secretMap, target);
+    }
     const {
       connection: {
         credentials: { apiToken, accountId }
