@@ -174,3 +174,204 @@ describe("orphaned reminder alert reaping", () => {
     expect(reaped).toEqual([]);
   });
 });
+
+type TStoredAlert = {
+  id: string;
+  name: string;
+  resourceId: string;
+  channels: Array<{
+    id: string;
+    name: string;
+    channelType: string;
+    enabled: boolean;
+    recipients: { principalType: string; principalId: string }[];
+  }>;
+};
+
+const buildWriteService = (opts: { existingAlert?: TStoredAlert; projectUserIds?: string[] } = {}) => {
+  const calls: string[] = [];
+  const created: unknown[] = [];
+  const updated: Array<{ alertId: string; name?: string; channels?: unknown[] }> = [];
+  const deletedAlerts: Array<{ resourceIds: string[]; tx: unknown }> = [];
+  const repointed: Array<{ fromResourceId: string; toResourceId: string; tx: unknown }> = [];
+
+  const service = reminderServiceFactory({
+    reminderDAL: {
+      findOne: async () => undefined,
+      create: async (data: Record<string, unknown>) => {
+        calls.push("reminder:create");
+        return { id: "rem-1", ...data };
+      },
+      updateById: async () => ({}),
+      delete: async () => [],
+      findSecretReminders: async (secretIds: string[]) =>
+        secretIds.map((secretId) => ({ id: `rem-${secretId}`, secretId, recipients: ["stale-user"] }))
+    },
+    eventEmitter: { emit: async () => {} },
+    projectDAL: { findById: async () => ({ id: "proj-1", orgId: "org-1" }) },
+    secretV2BridgeDAL: {
+      findOneWithTags: async () => ({ id: "secret-1", key: "DB_PASSWORD", projectId: "proj-1" }),
+      invalidateSecretCacheByProjectId: async () => {}
+    },
+    alertService: {
+      filterRecipientsInScope: async (_scope: unknown, recipients: { principalType: string; principalId: string }[]) =>
+        opts.projectUserIds ? recipients.filter((r) => opts.projectUserIds!.includes(r.principalId)) : recipients,
+      findAlertsForResources: async () => (opts.existingAlert ? [opts.existingAlert] : []),
+      createAlertInternal: async (input: unknown) => {
+        calls.push("alert:create");
+        created.push(input);
+        return input;
+      },
+      updateAlertInternal: async (input: { alertId: string; name?: string; channels?: unknown[] }) => {
+        calls.push("alert:update");
+        updated.push(input);
+        return input;
+      },
+      findRecipientsForResources: async ({ resourceIds }: { resourceIds: string[] }) =>
+        resourceIds.map((resourceId) => ({ resourceId, principalId: "user-1" })),
+      deleteAlertsForDeletedResources: async ({ resourceIds }: { resourceIds: string[] }, tx?: unknown) => {
+        calls.push("alert:delete");
+        deletedAlerts.push({ resourceIds, tx });
+        return resourceIds.length;
+      },
+      repointAlertsForResource: async (input: { fromResourceId: string; toResourceId: string }, tx: unknown) => {
+        calls.push("alert:repoint");
+        repointed.push({ ...input, tx });
+      }
+    }
+  } as never);
+
+  return { service, calls, created, updated, deletedAlerts, repointed };
+};
+
+const createInput = (recipients?: string[] | null) => ({
+  secretId: "secret-1",
+  projectId: "proj-1",
+  repeatDays: 30,
+  message: "rotate it",
+  recipients
+});
+
+describe("reminder alert sync", () => {
+  test("a new reminder gets an alert with an email channel to its recipients, created by the platform", async () => {
+    const { service, created } = buildWriteService();
+    await service.createReminderInternal(createInput(["user-1", "user-2"]));
+
+    expect(created).toEqual([
+      expect.objectContaining({
+        name: "Reminder for DB_PASSWORD",
+        resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+        resourceId: "secret-1",
+        eventType: SECRET_REMINDER_DUE_EVENT,
+        orgId: "org-1",
+        projectId: "proj-1",
+        createdBy: { actorType: "platform", actorId: null },
+        channels: [
+          {
+            name: "Email",
+            channelType: "email",
+            recipients: [
+              { principalType: "user", principalId: "user-1" },
+              { principalType: "user", principalId: "user-2" }
+            ]
+          }
+        ]
+      })
+    ]);
+  });
+
+  test("syncs the alert before writing the reminder, so a reminder never exists without one", async () => {
+    const { service, calls } = buildWriteService();
+    await service.createReminderInternal(createInput(["user-1"]));
+    expect(calls).toEqual(["alert:create", "reminder:create"]);
+  });
+
+  test("no recipients means everyone in the project", async () => {
+    const { service, created } = buildWriteService();
+    await service.createReminderInternal(createInput([]));
+    expect((created[0] as { channels: { recipients: unknown }[] }).channels[0].recipients).toEqual([
+      { principalType: "project-members", principalId: "proj-1" }
+    ]);
+  });
+
+  test("recipients who left the project are dropped instead of failing the write", async () => {
+    const { service, created } = buildWriteService({ projectUserIds: ["user-1"] });
+    await service.createReminderInternal(createInput(["user-1", "user-gone"]));
+    expect((created[0] as { channels: { recipients: unknown }[] }).channels[0].recipients).toEqual([
+      { principalType: "user", principalId: "user-1" }
+    ]);
+  });
+
+  test("falls back to everyone when every listed recipient has left", async () => {
+    const { service, created } = buildWriteService({ projectUserIds: [] });
+    await service.createReminderInternal(createInput(["user-gone"]));
+    expect((created[0] as { channels: { recipients: unknown }[] }).channels[0].recipients).toEqual([
+      { principalType: "project-members", principalId: "proj-1" }
+    ]);
+  });
+
+  test("more than 20 recipients are split across email channels", async () => {
+    const { service, created } = buildWriteService();
+    await service.createReminderInternal(createInput(Array.from({ length: 45 }, (_, i) => `user-${i}`)));
+    const { channels } = created[0] as { channels: { name: string; recipients: unknown[] }[] };
+    expect(channels.map((c) => c.name)).toEqual(["Email", "Email 2", "Email 3"]);
+    expect(channels.map((c) => c.recipients.length)).toEqual([20, 20, 5]);
+  });
+
+  test("updating keeps Slack, webhook and PagerDuty channels and reuses the email channel", async () => {
+    const { service, updated, created } = buildWriteService({
+      existingAlert: {
+        id: "alert-1",
+        name: "Reminder for OLD_NAME",
+        resourceId: "secret-1",
+        channels: [
+          { id: "ch-email", name: "Team email", channelType: "email", enabled: true, recipients: [] },
+          { id: "ch-hook", name: "Webhook", channelType: "webhook", enabled: false, recipients: [] }
+        ]
+      }
+    });
+    await service.createReminderInternal(createInput(["user-1"]));
+
+    expect(created).toHaveLength(0);
+    expect(updated).toEqual([
+      {
+        alertId: "alert-1",
+        name: "Reminder for DB_PASSWORD",
+        channels: [
+          {
+            id: "ch-email",
+            name: "Team email",
+            channelType: "email",
+            recipients: [{ principalType: "user", principalId: "user-1" }]
+          },
+          { id: "ch-hook", name: "Webhook", channelType: "webhook", enabled: false }
+        ]
+      }
+    ]);
+  });
+
+  test("deleting a reminder by secret also removes its alert inside the caller's transaction", async () => {
+    const { service, deletedAlerts } = buildWriteService();
+    const tx = { tx: true } as never;
+    await service.deleteReminderBySecretId("secret-1", "proj-1", tx);
+    expect(deletedAlerts).toEqual([{ resourceIds: ["secret-1"], tx }]);
+  });
+
+  test("moving reminders clears the destination's alert, then moves the source alert onto it", async () => {
+    const { service, calls, deletedAlerts, repointed } = buildWriteService();
+    const tx = { tx: true } as never;
+    await service.moveReminderAlerts([{ fromSecretId: "secret-src", toSecretId: "secret-dst" }], tx);
+
+    expect(calls).toEqual(["alert:delete", "alert:repoint"]);
+    expect(deletedAlerts).toEqual([{ resourceIds: ["secret-dst"], tx }]);
+    expect(repointed).toEqual([
+      { resourceType: SECRET_REMINDER_RESOURCE_TYPE, fromResourceId: "secret-src", toResourceId: "secret-dst", tx }
+    ]);
+  });
+
+  test("dashboard recipients come from the alert, not the old recipients table", async () => {
+    const { service } = buildWriteService();
+    const reminders = await service.getRemindersForDashboard(["secret-1"]);
+    expect(reminders["secret-1"].recipients).toEqual(["user-1"]);
+  });
+});

@@ -558,6 +558,11 @@ export const alertServiceFactory = ({
     await alertDAL.update({ resourceType, resourceId: fromResourceId }, { resourceId: toResourceId }, tx);
   };
 
+  const findRecipientsForResources = (
+    input: { resourceType: string; resourceIds: string[]; channelType: string; principalType: string },
+    tx?: Knex
+  ) => alertDAL.findRecipientsForResources(input, tx);
+
   const filterRecipientsInScope = (
     scope: { orgId: string; projectId?: string | null },
     recipients: TChannelRecipientInput[],
@@ -577,6 +582,7 @@ export const alertServiceFactory = ({
     findAlertsForResources,
     deleteAlertsForDeletedResources,
     repointAlertsForResource,
+    findRecipientsForResources,
     filterRecipientsInScope
   };
 };

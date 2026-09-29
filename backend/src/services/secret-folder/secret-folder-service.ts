@@ -117,7 +117,7 @@ type TSecretFolderServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "findImportByFolderIds">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
-  reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
+  reminderService: Pick<TReminderServiceFactory, "batchCreateReminders" | "moveReminderAlerts">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 

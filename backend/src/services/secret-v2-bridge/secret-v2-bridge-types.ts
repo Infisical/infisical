@@ -311,7 +311,7 @@ export type TFnSecretMove = {
   >;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
-  reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
+  reminderService: Pick<TReminderServiceFactory, "batchCreateReminders" | "moveReminderAlerts">;
 };
 
 export type TFnSecretMoveResult = {

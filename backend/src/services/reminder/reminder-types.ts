@@ -34,7 +34,6 @@ export type TBatchCreateReminderDTO = {
   repeatDays?: number | null;
   nextReminderDate?: string | Date | null;
   fromDate?: Date | null;
-  recipients?: string[] | null;
   projectId?: string;
 }[];
 
@@ -85,6 +84,8 @@ export interface TReminderServiceFactory {
     created: number;
     reminderIds: string[];
   }>;
+
+  moveReminderAlerts: (moves: { fromSecretId: string; toSecretId: string }[], tx: Knex) => Promise<void>;
 
   createReminderInternal: ({
     secretId,
