@@ -33,7 +33,7 @@ const buildService = (opts?: {
 }) => {
   const permissionCalls: TAlertPermissionInput[] = [];
   const gatedChannelTypeCalls: string[][] = [];
-  const conditionScopeCalls: { resourceId?: string | null; condition: unknown; previousCondition?: unknown }[] = [];
+  const conditionScopeCalls: { projectId?: string | null; condition: unknown; previousCondition?: unknown }[] = [];
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
     events: [
@@ -64,8 +64,8 @@ const buildService = (opts?: {
       gatedChannelTypeCalls.push(channelTypes);
     },
     supportsScopeWideAlerts: opts?.supportsScopeWideAlerts,
-    assertConditionInScope: async ({ resourceId, condition, previousCondition }) => {
-      conditionScopeCalls.push({ resourceId, condition, previousCondition });
+    assertConditionInScope: async ({ projectId, condition, previousCondition }) => {
+      conditionScopeCalls.push({ projectId, condition, previousCondition });
     }
   };
   const registry = alertProviderRegistryFactory();
@@ -339,7 +339,7 @@ describe("alert service", () => {
     await service.updateAlert({ alertId: "alert-1", name: "renamed", ...actor });
 
     expect(conditionScopeCalls).toHaveLength(2);
-    expect(conditionScopeCalls[0]).toMatchObject({ resourceId: "resource-1", condition: { alertBefore: "30d" } });
+    expect(conditionScopeCalls[0]).toMatchObject({ condition: { alertBefore: "30d" } });
     expect(conditionScopeCalls[1]).toMatchObject({ condition: { alertBefore: "5d" } });
     expect(conditionScopeCalls[1].previousCondition).toBeDefined();
   });

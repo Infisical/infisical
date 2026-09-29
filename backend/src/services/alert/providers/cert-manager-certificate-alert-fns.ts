@@ -8,8 +8,8 @@ import { CertificateAlertEvent } from "@app/services/certificate/certificate-ale
 import { getRevocationReasonLabel } from "@app/services/certificate/certificate-revocation-labels";
 
 import { AlertChannelType, TAlertPayload, TAlertSeverity } from "../alert-channel-types";
-import { expirySeverity, formatUtcDate } from "../alert-format-fns";
-import { AlertPermissionAction, TAlertContext } from "../alert-types";
+import { expirySeverity, formatUtcDate, humanizeDays } from "../alert-format-fns";
+import { AlertPermissionAction, DEFAULT_DEDUP_WINDOW_HOURS, TAlertContext } from "../alert-types";
 import { TAlertCertificate } from "./cert-manager-certificate-alert-dal";
 
 const MIN_CERTIFICATE_ALERT_BEFORE_DAYS = 1;
@@ -26,11 +26,6 @@ export const alertBeforeDays = (alertBefore: string): number => {
 const isValidAlertBefore = (alertBefore: string): boolean => {
   const days = alertBeforeDays(alertBefore);
   return days >= MIN_CERTIFICATE_ALERT_BEFORE_DAYS && days <= MAX_CERTIFICATE_ALERT_BEFORE_DAYS;
-};
-
-const humanizeAlertBefore = (alertBefore: string): string => {
-  const days = alertBeforeDays(alertBefore);
-  return `${days} day${days === 1 ? "" : "s"}`;
 };
 
 export const ExpiryConditionFieldsSchema = z.object({
@@ -88,7 +83,7 @@ const buildSummary = (
 ): string => {
   if (alertBefore) {
     const certificates = `${targets.length} certificate${targets.length === 1 ? "" : "s"}`;
-    return `${certificates}${inApplication(applicationName)} expiring within ${humanizeAlertBefore(alertBefore)}`;
+    return `${certificates}${inApplication(applicationName)} expiring within ${humanizeDays(alertBeforeDays(alertBefore))}`;
   }
   if (targets.length === 1) {
     return `Certificate '${targets[0].commonName}' ${EVENT_VERBS[eventType]}${inApplication(targets[0].applicationName)}`;
@@ -103,12 +98,20 @@ const buildItemSummary = (eventType: CertificateAlertEvent, certificate: TAlertC
   return `Certificate '${certificate.commonName}' ${EVENT_VERBS[eventType]}${inApplication(certificate.applicationName)}`;
 };
 
-export const expiryDedupWindowHours = (alertBefore: string, dailyReminder?: boolean): number => {
+const DAILY_CRON_DRIFT_MARGIN_HOURS = 4;
+
+const expiryDedupWindowDays = (alertBefore: string, dailyReminder?: boolean): number => {
   const days = alertBeforeDays(alertBefore);
-  if (dailyReminder || days <= 7) return 24;
-  if (days <= 30) return 48;
-  if (days <= 90) return 168;
-  return 720;
+  if (dailyReminder || days <= 7) return 1;
+  if (days <= 30) return 2;
+  if (days <= 90) return 7;
+  return 30;
+};
+
+export const certificateAlertDedupWindowHours = (condition: unknown): number => {
+  const parsed = ExpiryConditionFieldsSchema.safeParse(condition);
+  if (!parsed.success) return DEFAULT_DEDUP_WINDOW_HOURS;
+  return expiryDedupWindowDays(parsed.data.alertBefore, parsed.data.dailyReminder) * 24 - DAILY_CRON_DRIFT_MARGIN_HOURS;
 };
 
 export const buildCertificateAlertPayload = ({
@@ -143,7 +146,7 @@ export const buildCertificateAlertPayload = ({
     eventLabel: EVENT_LABELS[eventType],
     webhookType: `com.infisical.${alert.eventType}`,
     resourceKind: "Certificate",
-    resourceOwnerKind: isApplicationAlert ? "Application" : "Project",
+    resourceOwnerKind: isApplicationAlert ? "Application" : "Certificate Manager",
     severity: eventSeverity(eventType, targets),
     summary: buildSummary(
       eventType,

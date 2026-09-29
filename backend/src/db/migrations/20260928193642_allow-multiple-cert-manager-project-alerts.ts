@@ -1,5 +1,7 @@
 import { Knex } from "knex";
 
+import { initLogger, logger } from "@app/lib/logger";
+
 import { TableName } from "../schemas";
 
 const CERTIFICATE_RESOURCE_TYPE = "cert-manager.certificate";
@@ -20,20 +22,20 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const projectAlertIds = knex(TableName.Alert).where({ resourceType: CERTIFICATE_RESOURCE_TYPE }).select("id");
-
-  await knex(TableName.AlertChannel)
-    .whereIn("id", knex(TableName.AlertChannelMembership).whereIn("alertId", projectAlertIds).select("channelId"))
-    .whereNotExists(
-      knex(TableName.AlertChannelMembership)
-        .join(TableName.Alert, `${TableName.AlertChannelMembership}.alertId`, `${TableName.Alert}.id`)
-        .whereRaw(`??.?? = ??.??`, [TableName.AlertChannelMembership, "channelId", TableName.AlertChannel, "id"])
-        .whereNot(`${TableName.Alert}.resourceType`, CERTIFICATE_RESOURCE_TYPE)
-        .select(knex.raw("1"))
-    )
-    .delete();
-  await knex(TableName.Alert).where({ resourceType: CERTIFICATE_RESOURCE_TYPE }).delete();
   await knex(TableName.EventOutbox).where("eventType", "like", `${CERTIFICATE_RESOURCE_TYPE}.%`).delete();
+
+  const duplicate = await knex(TableName.Alert)
+    .where({ resourceType: CERTIFICATE_RESOURCE_TYPE })
+    .groupByRaw(`"orgId", COALESCE("projectId", ''), COALESCE("resourceId", ''), "eventType"`)
+    .havingRaw("count(*) > 1")
+    .first(knex.raw("1"));
+  if (duplicate) {
+    initLogger();
+    logger.warn(
+      "Kept the alert_unique_scope_resource_event index exemption for project certificate alerts because a project has several alerts for the same event"
+    );
+    return;
+  }
 
   await recreateUniqueScopeIndex(knex, `WHERE "resourceType" <> 'cert-manager.application'`);
 }

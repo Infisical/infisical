@@ -13,13 +13,12 @@ import {
   CertificateAlertEvent,
   LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT
 } from "@app/services/certificate/certificate-alert-events";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import {
   ALERT_SCAN_LEAD_INTERVAL,
   AlertTelemetryAction,
   AlertTriggerType,
-  DEFAULT_DEDUP_WINDOW_HOURS,
   IEventAlertProvider,
   IScheduledAlertProvider,
   TAlertContext,
@@ -34,8 +33,8 @@ import {
   alertBeforeDays,
   assertCertificateAlertChannelTypesAllowed,
   buildCertificateAlertPayload,
+  certificateAlertDedupWindowHours,
   ExpiryConditionFieldsSchema,
-  expiryDedupWindowHours,
   PERMISSION_ACTIONS
 } from "./cert-manager-certificate-alert-fns";
 
@@ -96,7 +95,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     eventType
   }: TAlertTelemetryInput): TAlertTelemetryEvent | undefined => {
     if (!projectId || !resourceId) return undefined;
-    const properties = { orgId, projectId, applicationId: resourceId };
+    const properties = { orgId, projectId, applicationId: resourceId, alertScope: PkiAlertScope.Application };
     switch (action) {
       case AlertTelemetryAction.Create:
         return {
@@ -196,11 +195,7 @@ export const certManagerApplicationAlertProviderFactory = ({
       }),
     getTelemetryEvent,
     targetId: (certificate) => certificate.id,
-    dedupWindowHours: (condition) => {
-      const parsed = ExpirationConditionSchema.safeParse(condition);
-      if (!parsed.success) return DEFAULT_DEDUP_WINDOW_HOURS;
-      return expiryDedupWindowHours(parsed.data.alertBefore, parsed.data.dailyReminder);
-    },
+    dedupWindowHours: certificateAlertDedupWindowHours,
     assertPermission,
     assertResourceInScope,
     assertChannelTypesAllowed: (input) => assertCertificateAlertChannelTypesAllowed(licenseService, input),

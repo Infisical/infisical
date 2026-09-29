@@ -30,7 +30,7 @@ export const SettingsPage = () => {
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Settings"
-          description="Configure app connections, HSM connectors, cleanup rules, and project alerts."
+          description="Configure app connections, HSM connectors, cleanup rules, and alerts."
         />
 
         <Tabs

@@ -46,7 +46,6 @@ const ScopeCombobox = ({
       getOptionValue={(option) => option.id}
       getOptionLabel={(option) => option.name}
       onSearchChange={onSearchChange}
-      includeMissingSelectedOptions
       isLoading={isLoading}
       placeholder={placeholder}
     />

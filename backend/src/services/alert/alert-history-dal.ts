@@ -5,7 +5,7 @@ import { TableName, TAlertHistory } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-import { AlertRunStatus } from "./alert-types";
+import { AlertRunStatus, getDedupCutoff } from "./alert-types";
 
 export type TAlertHistoryDALFactory = ReturnType<typeof alertHistoryDALFactory>;
 
@@ -17,15 +17,6 @@ export type TAlertTargetDelivery = {
 };
 
 export type TRecentlyAlertedTarget = { channelId: string; targetId: string };
-
-const DEDUP_DRIFT_BUFFER_MINUTES = 15;
-
-export const getDedupCutoff = (withinHours: number): Date => {
-  const cutoffDate = new Date();
-  cutoffDate.setHours(cutoffDate.getHours() - withinHours);
-  cutoffDate.setMinutes(cutoffDate.getMinutes() - DEDUP_DRIFT_BUFFER_MINUTES);
-  return cutoffDate;
-};
 
 const ALERT_HISTORY_PRUNE_BATCH_SIZE = 5_000;
 const ALERT_HISTORY_PRUNE_MAX_BATCHES = 20;

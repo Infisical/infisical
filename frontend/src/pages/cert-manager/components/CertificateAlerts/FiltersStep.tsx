@@ -59,6 +59,7 @@ export const FiltersStep = ({ form, projectId }: Props) => {
 
   const setFilter = (kind: TScopeFilterKind, ids: string[] | undefined) =>
     form.setValue(kind, ids, { shouldDirty: true, shouldValidate: true });
+  const addFilter = (kind: TScopeFilterKind) => form.setValue(kind, [], { shouldDirty: true });
 
   const presentKinds = FILTER_KINDS.filter((kind) => filters[kind] !== undefined);
   const items: TCertificateFilterItem[] = presentKinds.map((kind) => {
@@ -84,7 +85,7 @@ export const FiltersStep = ({ form, projectId }: Props) => {
   if (preview && !isPreviewing) {
     previewSummary = isPreviewFiltered
       ? `${certificatesLabel} ${matchedCount === 1 ? "matches" : "match"} these filters.`
-      : `${certificatesLabel} in this project.`;
+      : `${certificatesLabel} in Certificate Manager.`;
   }
 
   return (
@@ -104,8 +105,8 @@ export const FiltersStep = ({ form, projectId }: Props) => {
             <FilterIcon />
           </EmptyMedia>
           <EmptyDescription>
-            Without filters, this alert watches every certificate in the project. Add a filter to
-            narrow it.
+            Without filters, this alert watches every certificate in Certificate Manager. Add a
+            filter to narrow it.
           </EmptyDescription>
         </Empty>
       )}
@@ -116,7 +117,7 @@ export const FiltersStep = ({ form, projectId }: Props) => {
             kind,
             ...FILTER_DEFINITIONS[kind]
           }))}
-          onAdd={(kind) => setFilter(kind, [])}
+          onAdd={addFilter}
         />
       </div>
 
@@ -142,8 +143,8 @@ export const FiltersStep = ({ form, projectId }: Props) => {
           emptyTitle={isPreviewFiltered ? "No certificates match" : "No active certificates"}
           emptyDescription={
             isPreviewFiltered
-              ? "No active certificate in this project matches these filters yet."
-              : "This project has no active certificates yet."
+              ? "No active certificate matches these filters yet."
+              : "There are no active certificates yet."
           }
         />
       </div>

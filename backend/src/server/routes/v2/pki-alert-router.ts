@@ -102,7 +102,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     schema: {
       deprecated: true,
       operationId: "listPkiAlerts",
-      description: "Deprecated: new certificate alerts are managed with the alerts API (/api/v1/alerts). List PKI alerts.",
+      description:
+        "Deprecated: new certificate alerts are managed with the alerts API (/api/v1/alerts). List PKI alerts.",
       tags: [ApiDocsTags.PkiAlerting],
       querystring: z.object({
         projectId: z.string().uuid().optional().describe(openApiHidden()),

@@ -218,12 +218,7 @@ export const alertServiceFactory = ({
       resourceId: dto.resourceId
     });
 
-    await provider.assertConditionInScope?.({
-      orgId: dto.actorOrgId,
-      projectId: dto.projectId,
-      resourceId: dto.resourceId,
-      condition
-    });
+    await provider.assertConditionInScope?.({ projectId: dto.projectId, condition });
 
     if (!provider.allowsMultipleAlertsPerEvent) {
       const duplicate = await alertDAL.findScopedDuplicate({
@@ -485,9 +480,7 @@ export const alertServiceFactory = ({
       dto.condition !== undefined ? $parseCondition($getEvent(provider, alert.eventType), dto.condition) : undefined;
     if (dto.condition !== undefined) {
       await provider.assertConditionInScope?.({
-        orgId: alert.orgId,
         projectId: alert.projectId,
-        resourceId: alert.resourceId,
         condition,
         previousCondition: alert.condition
       });

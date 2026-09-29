@@ -7,7 +7,7 @@ import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TAlertResponse } from "@app/services/alert/alert-service-types";
 import { AlertPrincipalType, AlertRunStatus } from "@app/services/alert/alert-types";
 import {
-  TActiveCertificate,
+  TApplicationActiveCertificate,
   TCertManagerCertificateAlertDALFactory
 } from "@app/services/alert/providers/cert-manager-certificate-alert-dal";
 import {
@@ -404,7 +404,7 @@ export const pkiAlertV2CompatServiceFactory = ({
     return legacy;
   };
 
-  const $toCertificatePreview = (certificate: TActiveCertificate): TCertificatePreview => {
+  const $toCertificatePreview = (certificate: TApplicationActiveCertificate): TCertificatePreview => {
     let enrollmentType = CertificateOrigin.UNKNOWN;
     if (certificate.profileId) enrollmentType = CertificateOrigin.PROFILE;
     else if (certificate.pkiSubscriberId) enrollmentType = CertificateOrigin.IMPORT;

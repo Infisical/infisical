@@ -55,25 +55,23 @@ export const CERTIFICATE_ALERT_EVENT_LABELS: Record<CertificateAlertEventKind, s
   [CertificateAlertEventKind.Revocation]: "Certificate Revocation"
 };
 
+const ALERT_EVENT_DESCRIPTIONS: Record<CertificateAlertEventKind, (where: string) => string> = {
+  [CertificateAlertEventKind.Expiry]: () => "Fires ahead of a certificate's expiry date.",
+  [CertificateAlertEventKind.Issuance]: (where) =>
+    `Fires when Infisical issues a certificate ${where}.`,
+  [CertificateAlertEventKind.Renewal]: (where) => `Fires when a certificate ${where} is renewed.`,
+  [CertificateAlertEventKind.Revocation]: (where) => `Fires when a certificate ${where} is revoked.`
+};
+
 export const getAlertEventDescription = (
   scope: TCertificateAlertScope,
   eventKind: CertificateAlertEventKind
-) => {
-  const where =
+) =>
+  ALERT_EVENT_DESCRIPTIONS[eventKind](
     scope.kind === CertificateAlertScopeKind.Application
       ? "in this application"
-      : "in this project";
-  switch (eventKind) {
-    case CertificateAlertEventKind.Issuance:
-      return `Fires when Infisical issues a certificate ${where}.`;
-    case CertificateAlertEventKind.Renewal:
-      return `Fires when a certificate ${where} is renewed.`;
-    case CertificateAlertEventKind.Revocation:
-      return `Fires when a certificate ${where} is revoked.`;
-    default:
-      return "Fires ahead of a certificate's expiry date.";
-  }
-};
+      : "in Certificate Manager"
+  );
 
 const MAX_ALERT_BEFORE_DAYS = 365;
 const MAX_SCOPE_FILTER_IDS = 100;

@@ -10,21 +10,23 @@ export const useCertificateScopeNames = ({
   applicationIds: string[];
   profileIds: string[];
 }) => {
-  const { data: applicationsData, isSuccess: isApplicationsLoaded } = useListPkiApplications(
+  const applicationsQuery = useListPkiApplications(
     { limit: SCOPE_IDS_LIMIT, applicationIds },
     { enabled: applicationIds.length > 0 }
   );
-  const { data: profilesData, isSuccess: isProfilesLoaded } = useListCertificateProfiles({
+  const profilesQuery = useListCertificateProfiles({
     limit: SCOPE_IDS_LIMIT,
     profileIds,
     enabled: profileIds.length > 0
   });
+  const isApplicationsLoaded = applicationsQuery.isSuccess && !applicationsQuery.isPlaceholderData;
+  const isProfilesLoaded = profilesQuery.isSuccess && !profilesQuery.isPlaceholderData;
 
   const applicationNames = new Map(
-    (applicationsData?.applications ?? []).map(({ id, name }) => [id, name])
+    (applicationsQuery.data?.applications ?? []).map(({ id, name }) => [id, name])
   );
   const profileNames = new Map(
-    (profilesData?.certificateProfiles ?? []).map(({ id, slug }) => [id, slug])
+    (profilesQuery.data?.certificateProfiles ?? []).map(({ id, slug }) => [id, slug])
   );
 
   return {

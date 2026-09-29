@@ -148,7 +148,7 @@ const CertificateAlertWizard = ({
               <SheetDescription className="leading-4 text-muted">
                 {scope.kind === CertificateAlertScopeKind.Application
                   ? `Get notified about certificate events in ${scope.applicationName}.`
-                  : "Get notified about certificate events across this project."}
+                  : "Get notified about certificate events across Certificate Manager."}
               </SheetDescription>
             </div>
           </div>

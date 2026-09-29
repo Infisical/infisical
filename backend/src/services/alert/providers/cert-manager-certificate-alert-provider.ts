@@ -13,13 +13,12 @@ import {
   LEGACY_PKI_ALERT_EVENT_BY_CERTIFICATE_ALERT_EVENT,
   ProjectCertificateAlertEvent
 } from "@app/services/certificate/certificate-alert-events";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import {
   ALERT_SCAN_LEAD_INTERVAL,
   AlertTelemetryAction,
   AlertTriggerType,
-  DEFAULT_DEDUP_WINDOW_HOURS,
   IEventAlertProvider,
   IScheduledAlertProvider,
   TAlertContext,
@@ -34,8 +33,8 @@ import {
   alertBeforeDays,
   assertCertificateAlertChannelTypesAllowed,
   buildCertificateAlertPayload,
+  certificateAlertDedupWindowHours,
   ExpiryConditionFieldsSchema,
-  expiryDedupWindowHours,
   PERMISSION_ACTIONS
 } from "./cert-manager-certificate-alert-fns";
 
@@ -111,7 +110,7 @@ export const certManagerCertificateAlertProviderFactory = ({
     eventType
   }: TAlertTelemetryInput): TAlertTelemetryEvent | undefined => {
     if (!projectId) return undefined;
-    const properties = { orgId, projectId };
+    const properties = { orgId, projectId, alertScope: PkiAlertScope.Project };
     switch (action) {
       case AlertTelemetryAction.Create:
         return {
@@ -133,7 +132,7 @@ export const certManagerCertificateAlertProviderFactory = ({
 
   const assertPermission = async ({ action, projectId, actor }: TAlertPermissionInput): Promise<void> => {
     if (!projectId) {
-      throw new BadRequestError({ message: "Certificate alerts must be created in a Certificate Manager project" });
+      throw new BadRequestError({ message: "Certificate alerts must be created in Certificate Manager" });
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -151,7 +150,7 @@ export const certManagerCertificateAlertProviderFactory = ({
     if (resourceId) {
       throw new BadRequestError({
         message:
-          "Project alerts cover the whole project and can't be bound to a resource. Remove resourceId, or narrow the alert with applicationIds and profileIds."
+          "These alerts cover all of Certificate Manager and can't be bound to a resource. Remove resourceId, or narrow the alert with applicationIds and profileIds."
       });
     }
   };
@@ -183,13 +182,13 @@ export const certManagerCertificateAlertProviderFactory = ({
     const missingApplicationIds = addedApplicationIds.filter((id) => !foundApplicationIds.includes(id));
     if (missingApplicationIds.length) {
       throw new NotFoundError({
-        message: `Application(s) not found in this project: ${formatIds(missingApplicationIds)}`
+        message: `Application(s) not found in Certificate Manager: ${formatIds(missingApplicationIds)}`
       });
     }
     const missingProfileIds = addedProfileIds.filter((id) => !foundProfileIds.includes(id));
     if (missingProfileIds.length) {
       throw new NotFoundError({
-        message: `Certificate profile(s) not found in this project: ${formatIds(missingProfileIds)}`
+        message: `Certificate profile(s) not found in Certificate Manager: ${formatIds(missingProfileIds)}`
       });
     }
   };
@@ -228,11 +227,7 @@ export const certManagerCertificateAlertProviderFactory = ({
       }),
     getTelemetryEvent,
     targetId: (certificate) => certificate.id,
-    dedupWindowHours: (condition) => {
-      const parsed = ExpirationConditionSchema.safeParse(condition);
-      if (!parsed.success) return DEFAULT_DEDUP_WINDOW_HOURS;
-      return expiryDedupWindowHours(parsed.data.alertBefore, parsed.data.dailyReminder);
-    },
+    dedupWindowHours: certificateAlertDedupWindowHours,
     assertPermission,
     assertResourceInScope,
     assertConditionInScope,

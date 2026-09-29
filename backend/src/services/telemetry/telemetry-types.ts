@@ -1623,12 +1623,18 @@ export type TPkiSyncExecutedEvent = {
   };
 };
 
+export enum PkiAlertScope {
+  Project = "project",
+  Application = "application"
+}
+
 export type TPkiAlertCreatedEvent = {
   event: PostHogEventTypes.PkiAlertCreated;
   properties: {
     orgId: string;
     projectId: string;
     applicationId?: string;
+    alertScope: PkiAlertScope;
     alertType?: string;
   };
 };
@@ -1639,6 +1645,7 @@ export type TPkiAlertUpdatedEvent = {
     orgId: string;
     projectId: string;
     applicationId?: string;
+    alertScope: PkiAlertScope;
   };
 };
 
@@ -1648,6 +1655,7 @@ export type TPkiAlertDeletedEvent = {
     orgId: string;
     projectId: string;
     applicationId?: string;
+    alertScope: PkiAlertScope;
   };
 };
 

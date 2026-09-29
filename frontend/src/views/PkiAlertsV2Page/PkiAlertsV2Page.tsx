@@ -139,8 +139,8 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
             </span>
           </div>
           <p className="text-xs text-label-secondary">
-            Create new alerts inside an Application, or under Settings &gt; Alerts for the whole
-            project.
+            Create new alerts inside an Application, or under Settings &gt; Alerts for all of
+            Certificate Manager.
           </p>
         </div>
 

@@ -19,7 +19,7 @@ export type TAlertCertificate = {
   applicationName: string | null;
 };
 
-export type TActiveCertificate = {
+export type TApplicationActiveCertificate = {
   id: string;
   serialNumber: string;
   commonName: string;
@@ -140,7 +140,7 @@ export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
       excludeAlertedByAlertId?: string;
     },
     tx?: Knex
-  ): Promise<{ certificates: TActiveCertificate[]; total: number }> => {
+  ): Promise<{ certificates: TApplicationActiveCertificate[]; total: number }> => {
     try {
       const reader = tx || db.replicaNode();
       const query = reader(TableName.Certificate)
@@ -188,7 +188,7 @@ export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
       ]);
 
       return {
-        certificates: certificates as TActiveCertificate[],
+        certificates: certificates as TApplicationActiveCertificate[],
         total: parseInt(String((countResult as { count: string | number } | undefined)?.count ?? 0), 10)
       };
     } catch (error) {

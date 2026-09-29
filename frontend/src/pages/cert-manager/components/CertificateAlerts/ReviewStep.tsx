@@ -133,7 +133,7 @@ export const ReviewStep = ({ form, scope, members }: Props) => {
             </div>
           ) : (
             <span className="text-sm text-muted">
-              No filters. This alert watches every certificate in the project.
+              No filters. This alert watches every certificate in Certificate Manager.
             </span>
           )}
         </Section>

@@ -52,6 +52,15 @@ export const toAlertActor = (dto: TGenericPermission): TGenericPermission => ({
 
 export const DEFAULT_DEDUP_WINDOW_HOURS = 24;
 
+const DEDUP_DRIFT_BUFFER_MINUTES = 15;
+
+export const getDedupCutoff = (withinHours: number): Date => {
+  const cutoffDate = new Date();
+  cutoffDate.setHours(cutoffDate.getHours() - withinHours);
+  cutoffDate.setMinutes(cutoffDate.getMinutes() - DEDUP_DRIFT_BUFFER_MINUTES);
+  return cutoffDate;
+};
+
 // Providers scan this many days ahead of `alertBefore` so alerts fire at LEAST `alertBefore` before
 // expiry despite the coarse daily poll. Keep >= the DailyAlertProcessing cadence (alert-queue.ts).
 export const ALERT_SCAN_LEAD_DAYS = 1;
@@ -173,9 +182,7 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   supportsScopeWideAlerts?: boolean;
 
   assertConditionInScope?(input: {
-    orgId: string;
     projectId?: string | null;
-    resourceId?: string | null;
     condition: unknown;
     previousCondition?: unknown;
   }): Promise<void>;

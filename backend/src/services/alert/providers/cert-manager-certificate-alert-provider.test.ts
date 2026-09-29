@@ -1,7 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
 import { TAlertCertificate } from "./cert-manager-certificate-alert-dal";
@@ -118,6 +118,14 @@ describe("cert manager project certificate alert provider", () => {
     expect(issuance.safeParse({ alertBefore: "30d" }).success).toBe(false);
   });
 
+  test("dedup windows end before the next daily run, whatever filters the condition carries", () => {
+    const provider = buildProvider();
+    const applicationIds = ["0e0d19d0-5edd-4984-b5cb-028e8b4a23a2"];
+    expect(provider.dedupWindowHours?.({ alertBefore: "7d", applicationIds })).toBe(20);
+    expect(provider.dedupWindowHours?.({ alertBefore: "30d", applicationIds })).toBe(44);
+    expect(provider.dedupWindowHours?.({ alertBefore: "1y", dailyReminder: true, applicationIds })).toBe(20);
+  });
+
   test("findDueTargets scans the whole project narrowed by the condition's lists", async () => {
     let args: Record<string, unknown> | undefined;
     const provider = buildProvider({
@@ -159,7 +167,7 @@ describe("cert manager project certificate alert provider", () => {
     const provider = buildProvider();
     const payload = provider.buildPayload(alertContext(), [sampleCertificate()], "https://app.infisical.com/view");
 
-    expect(payload.resourceOwnerKind).toBe("Project");
+    expect(payload.resourceOwnerKind).toBe("Certificate Manager");
     expect(payload.webhookType).toBe(`com.infisical.${EXPIRY_EVENT}`);
     expect(payload.eventLabel).toBe("Expiration");
     expect(payload.summary).toBe("1 certificate expiring within 30 days");
@@ -182,7 +190,7 @@ describe("cert manager project certificate alert provider", () => {
     ).rejects.toThrow();
     await expect(
       provider.assertPermission({ action: AlertPermissionAction.Read, orgId: "org-1", actor })
-    ).rejects.toThrow("Certificate alerts must be created in a Certificate Manager project");
+    ).rejects.toThrow("Certificate alerts must be created in Certificate Manager");
   });
 
   test("assertResourceInScope rejects a resource-bound project alert", async () => {
@@ -197,18 +205,16 @@ describe("cert manager project certificate alert provider", () => {
     const provider = buildProvider();
     await expect(
       provider.assertConditionInScope?.({
-        orgId: "org-1",
         projectId: "proj-1",
         condition: { applicationIds: [APPLICATION_ID], profileIds: [PROFILE_ID] }
       })
     ).resolves.toBeUndefined();
     await expect(
       provider.assertConditionInScope?.({
-        orgId: "org-1",
         projectId: "proj-1",
         condition: { applicationIds: [OTHER_APPLICATION_ID] }
       })
-    ).rejects.toThrow(`Application(s) not found in this project: '${OTHER_APPLICATION_ID}'`);
+    ).rejects.toThrow(`Application(s) not found in Certificate Manager: '${OTHER_APPLICATION_ID}'`);
   });
 
   test("assertConditionInScope only checks ids the update adds, so a deleted one can stay", async () => {
@@ -219,7 +225,6 @@ describe("cert manager project certificate alert provider", () => {
     });
     await expect(
       provider.assertConditionInScope?.({
-        orgId: "org-1",
         projectId: "proj-1",
         condition: { applicationIds: [OTHER_APPLICATION_ID, APPLICATION_ID] },
         previousCondition: { applicationIds: [OTHER_APPLICATION_ID] }
@@ -240,7 +245,7 @@ describe("cert manager project certificate alert provider", () => {
       })
     ).toEqual({
       event: PostHogEventTypes.PkiAlertCreated,
-      properties: { orgId: "org-1", projectId: "proj-1", alertType: "issuance" }
+      properties: { orgId: "org-1", projectId: "proj-1", alertScope: PkiAlertScope.Project, alertType: "issuance" }
     });
   });
 });

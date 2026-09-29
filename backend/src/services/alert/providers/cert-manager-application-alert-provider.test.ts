@@ -1,7 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
 import { AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
@@ -158,7 +158,7 @@ describe("cert manager application alert provider", () => {
     ).resolves.toEqual([]);
   });
 
-  test("dedup window tightens as the lead time shrinks and a daily reminder forces 24h", () => {
+  test("dedup window tightens as the lead time shrinks and each window ends before the next daily run", () => {
     const { provider } = buildProvider();
     expect(provider.dedupWindowHours?.({ alertBefore: "7d" })).toBe(20);
     expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(44);
@@ -309,7 +309,13 @@ describe("cert manager application alert provider", () => {
       })
     ).toEqual({
       event: PostHogEventTypes.PkiAlertCreated,
-      properties: { orgId: "org-1", projectId: "proj-1", applicationId: "app-1", alertType: "expiration" }
+      properties: {
+        orgId: "org-1",
+        projectId: "proj-1",
+        applicationId: "app-1",
+        alertScope: PkiAlertScope.Application,
+        alertType: "expiration"
+      }
     });
     expect(
       provider.getTelemetryEvent?.({
