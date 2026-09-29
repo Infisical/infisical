@@ -76,6 +76,20 @@ export const InvisibleCharacters: Story = {
   }
 };
 
+export const InvisibleCharactersMasked: Story = {
+  args: {
+    value: 'API_URL=\u00a0"https://example.com"\u200b'
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "The warning icon stays visible while the value is masked, and its tooltip lists the invisible characters by type without revealing the value."
+      }
+    }
+  }
+};
+
 export const Plain: Story = {
   args: {
     variant: "plain"

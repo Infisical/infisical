@@ -1,16 +1,15 @@
 /* eslint-disable react/no-danger */
-import { forwardRef, ReactNode, TextareaHTMLAttributes, useEffect, useState } from "react";
+import { forwardRef, ReactNode, TextareaHTMLAttributes, useEffect, useMemo, useState } from "react";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useToggle } from "@app/hooks";
 
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
 import { cn } from "../../utils";
+import { getInvisibleCharacterSummary, INVISIBLE_CHAR_REGEX } from "./invisibleCharacters";
 
 const REGEX = /(\${([@a-zA-Z0-9-_. ]+)})/g;
-
-const INVISIBLE_CHAR_REGEX =
-  // eslint-disable-next-line no-control-regex
-  /([\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u00a0\u00ad\u1680\u2000-\u200f\u2028-\u202f\u205f\u2060\u2066-\u2069\u3000\ufeff])/g;
 
 const markInvisibleChars = (text: string, chunkKey: number) => {
   const nodes: ReactNode[] = [];
@@ -215,15 +214,21 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const shouldShowMask =
       !isErrorLoadingValue && (isLoadingValue || (Boolean(value) && !shouldRevealValue));
 
+    const invisibleChars = useMemo(
+      () =>
+        value && !isLoadingValue && !isErrorLoadingValue ? getInvisibleCharacterSummary(value) : [],
+      [value, isLoadingValue, isErrorLoadingValue]
+    );
+
     return (
       <div
         data-slot="secret-input"
         data-variant={variant}
         data-invalid={isError}
         className={cn(
-          "no-scrollbar w-full overflow-auto bg-transparent text-foreground",
+          "no-scrollbar flex w-full overflow-auto bg-transparent text-foreground",
           variant === "default" &&
-            "flex min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+            "min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}
@@ -293,6 +298,32 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
           />
         </div>
+        {invisibleChars.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label="Value contains invisible characters"
+                className={cn(
+                  "sticky top-0 flex h-5 shrink-0 items-center self-start",
+                  variant === "default" && "mt-1 mr-2.5"
+                )}
+              >
+                <TriangleAlertIcon className="size-4 text-warning" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-72">
+              <p>This value contains invisible characters that can break it when used:</p>
+              <ul className="mt-1 list-disc pl-4">
+                {invisibleChars.map(({ codePoint, label, count }) => (
+                  <li key={codePoint}>
+                    {count}x {label} ({codePoint})
+                  </li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     );
   }
