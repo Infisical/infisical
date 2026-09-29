@@ -216,9 +216,6 @@ lost silently.
   project, the general routes included. The UI uses the general `/app-connections/aws` routes.
 - **The admin role carries the CASL `AppConnections` subject**, the one exception to `hasRole(Admin)`, because
   the shared connection modals read CASL.
-- **e2e swaps in the S3 fake through an alias in `vitest.e2e.config.mts`.** It matches the
-  `@app/lib/aws/s3` import exactly, so importing that helper by another path, or renaming it without
-  the alias, makes e2e silently talk to real S3.
 
 ## The CLI
 
