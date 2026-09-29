@@ -33,6 +33,7 @@ import {
 } from "@app/helpers/pkiSyncs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
+  isKeystoreExportFormat,
   PkiSync,
   PkiSyncExportFormat,
   TPkiSync,
@@ -42,6 +43,7 @@ import {
   usePkiSyncOption
 } from "@app/hooks/api/pkiSyncs";
 
+import { KEYSTORE_PASSWORD_REQUIRED_MESSAGE } from "./schemas/base-pki-sync-schema";
 import { KEMP_DEFAULT_CA_NAME_SCHEMA } from "./schemas/kemp-loadmaster-pki-sync-destination-schema";
 import { PkiSyncFormSchema, TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
@@ -305,12 +307,12 @@ export const CreatePkiSyncForm = ({
       const requiresPassword =
         (values.destination === PkiSync.WindowsServer ||
           values.destination === PkiSync.LinuxServer) &&
-        values.syncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&
+        isKeystoreExportFormat(values.syncOptions?.exportFormat) &&
         !values.credentials?.exportPassword;
       if (requiresPassword) {
         setError("credentials.exportPassword" as FieldPath<TPkiSyncForm>, {
           type: "manual",
-          message: "A password is required for PKCS#12 exports"
+          message: KEYSTORE_PASSWORD_REQUIRED_MESSAGE
         });
         return false;
       }

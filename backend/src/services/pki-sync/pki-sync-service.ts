@@ -36,7 +36,7 @@ import { TSyncMetadata } from "../certificate-sync/certificate-sync-schemas";
 import { encryptPkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";
-import { PkiSyncExportFormat } from "./pki-sync-export-fns";
+import { isKeystoreExportFormat, KEYSTORE_PASSWORD_REQUIRED_MESSAGE } from "./pki-sync-export-fns";
 import { hasAnyPkiSyncFilter, PKI_SYNC_FILTER_KINDS, PKI_SYNC_PREVIEW_PAGE_SIZE } from "./pki-sync-filter-fns";
 import {
   applyPkiSyncCertificateDiff,
@@ -970,11 +970,11 @@ export const pkiSyncServiceFactory = ({
     }
 
     if (
-      effectiveSyncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&
+      isKeystoreExportFormat(effectiveSyncOptions?.exportFormat) &&
       !credentials?.exportPassword &&
       !pkiSync.encryptedCredentials
     ) {
-      throw new BadRequestError({ message: "A password is required when the export format is PKCS#12" });
+      throw new BadRequestError({ message: KEYSTORE_PASSWORD_REQUIRED_MESSAGE });
     }
 
     const encryptedCredentials = credentials?.exportPassword

@@ -5,6 +5,7 @@ import { PemCertificateExtension, PkiSync, PkiSyncExportFormat } from "@app/hook
 import {
   BasePkiSyncSchema,
   HostCommandSchema,
+  KeystoreAliasSchema,
   PkiSyncConnectionSchema,
   PkiSyncTargetHostSchema,
   PkiSyncTargetPortSchema
@@ -27,6 +28,8 @@ const LinuxServerSyncOptionsSchema = z.object({
     .nativeEnum(PemCertificateExtension)
     .default(PemCertificateExtension.Pem),
   combineCertificateChain: z.boolean().default(false),
+  keystoreAlias: KeystoreAliasSchema,
+  includeTruststore: z.boolean().optional(),
   includePrivateKey: z.boolean().default(true),
   fileMode: z
     .string()

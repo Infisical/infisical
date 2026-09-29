@@ -16,8 +16,18 @@ export enum PkiSync {
 
 export enum PkiSyncExportFormat {
   Pem = "pem",
-  Pkcs12 = "pkcs12"
+  Pkcs12 = "pkcs12",
+  Jks = "jks"
 }
+
+export const PKI_SYNC_EXPORT_FORMAT_LABELS: Record<PkiSyncExportFormat, string> = {
+  [PkiSyncExportFormat.Pem]: "PEM",
+  [PkiSyncExportFormat.Pkcs12]: "PKCS#12 (.pfx)",
+  [PkiSyncExportFormat.Jks]: "Java KeyStore (.jks)"
+};
+
+export const isKeystoreExportFormat = (format?: PkiSyncExportFormat) =>
+  format === PkiSyncExportFormat.Pkcs12 || format === PkiSyncExportFormat.Jks;
 
 export enum PemCertificateExtension {
   Pem = "pem",

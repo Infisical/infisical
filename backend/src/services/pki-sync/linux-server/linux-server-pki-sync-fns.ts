@@ -26,7 +26,12 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 import { PkiSyncError } from "../pki-sync-errors";
-import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
+import {
+  exportCertificateForSync,
+  isKeystoreExportFormat,
+  PemCertificateExtension,
+  PkiSyncExportFormat
+} from "../pki-sync-export-fns";
 import {
   buildHealthCheckCommandFailureMessage,
   buildHealthCheckCommandPlan,
@@ -63,6 +68,8 @@ type TLinuxServerSyncOptions = {
   exportFormat?: PkiSyncExportFormat;
   pemCertificateExtension?: PemCertificateExtension;
   combineCertificateChain?: boolean;
+  keystoreAlias?: string;
+  includeTruststore?: boolean;
   includePrivateKey?: boolean;
   canRemoveCertificates?: boolean;
   fileMode?: string;
@@ -322,7 +329,8 @@ const resolveLinuxExportOptions = (options: TLinuxServerSyncOptions) => ({
   format: options.exportFormat ?? PkiSyncExportFormat.Pem,
   includePrivateKey: options.includePrivateKey ?? true,
   pemCertificateExtension: options.pemCertificateExtension,
-  combineCertificateChain: options.combineCertificateChain
+  combineCertificateChain: options.combineCertificateChain,
+  includeTruststore: options.includeTruststore
 });
 
 const executeLinuxServerHostCommand = (
@@ -363,8 +371,7 @@ const runLinuxServerHealthCheckCommand = async ({
     certificateMap,
     exportOptions,
     joinPath: (directory, fileName) => path.posix.join(directory, fileName),
-    pkcs12Password:
-      exportOptions.format === PkiSyncExportFormat.Pkcs12 ? pkiSync.syncCredentials?.exportPassword : undefined
+    pkcs12Password: isKeystoreExportFormat(exportOptions.format) ? pkiSync.syncCredentials?.exportPassword : undefined
   });
   if (!plan) return undefined;
 
@@ -466,7 +473,7 @@ export const linuxServerPkiSyncFactory = ({
         await removeStaleTempFiles(sftp, config.destinationPath);
 
         for (const [baseName, certData] of Object.entries(certificateMap)) {
-          const { cert, privateKey, certificateChain, certificateId } = certData;
+          const { cert, privateKey, certificateChain, caCertificate, certificateId } = certData;
 
           if (!cert) {
             skippedCertificates.push({ name: baseName, reason: "Missing certificate data" });
@@ -474,9 +481,9 @@ export const linuxServerPkiSyncFactory = ({
             continue;
           }
 
-          // Private key is required for PKCS#12, and for PEM when the operator asked to include it.
+          // Private key is required for PKCS#12 and JKS, and for PEM when the operator asked to include it.
           // If the key is not available (external CSR or HSM key), fail rather than deliver a keyless file.
-          const keyRequired = format === PkiSyncExportFormat.Pkcs12 || includePrivateKey;
+          const keyRequired = isKeystoreExportFormat(format) || includePrivateKey;
           if (keyRequired && !privateKey) {
             failedUploads.push({
               name: baseName,
@@ -492,9 +499,10 @@ export const linuxServerPkiSyncFactory = ({
               ...exportOptions,
               certificate: cert,
               certificateChain,
+              caCertificate,
               privateKey,
               password: exportPassword,
-              alias: baseName
+              alias: options.keystoreAlias || baseName
             });
 
             const writtenPaths: string[] = [];
@@ -573,7 +581,7 @@ export const linuxServerPkiSyncFactory = ({
       destinationDirectory: config.destinationPath,
       deliveredPaths,
       deliveredCertificates,
-      pkcs12Password: format === PkiSyncExportFormat.Pkcs12 ? exportPassword : undefined
+      pkcs12Password: isKeystoreExportFormat(format) ? exportPassword : undefined
     });
     const postSyncCommand = postSyncCommandPlan
       ? await runLinuxServerPostSyncCommand({

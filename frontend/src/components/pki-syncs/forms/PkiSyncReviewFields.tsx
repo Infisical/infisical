@@ -19,7 +19,12 @@ import {
   VALUE_SYNC_OPTION_FIELDS
 } from "@app/helpers/pkiSyncs";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
-import { usePkiSyncOption, usePkiSyncPreviewCertificates } from "@app/hooks/api/pkiSyncs";
+import {
+  PKI_SYNC_EXPORT_FORMAT_LABELS,
+  PkiSyncExportFormat,
+  usePkiSyncOption,
+  usePkiSyncPreviewCertificates
+} from "@app/hooks/api/pkiSyncs";
 import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
@@ -224,7 +229,12 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
               return null;
             return (
               <ReviewFieldLabel key={key} label={label}>
-                <Badge variant="neutral">{String(optionValue)}</Badge>
+                <Badge variant="neutral">
+                  {key === "exportFormat"
+                    ? (PKI_SYNC_EXPORT_FORMAT_LABELS[optionValue as PkiSyncExportFormat] ??
+                      String(optionValue))
+                    : String(optionValue)}
+                </Badge>
               </ReviewFieldLabel>
             );
           })}

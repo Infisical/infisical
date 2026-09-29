@@ -102,7 +102,7 @@ describe("getExportedCertificateFileSuffixes matches the real export", () => {
   );
 
   const realPair = (() => {
-    const keys = forge.pki.rsa.generateKeyPair(1024);
+    const keys = forge.pki.rsa.generateKeyPair(2048);
     const cert = forge.pki.createCertificate();
     cert.publicKey = keys.publicKey;
     cert.serialNumber = "01";
@@ -157,5 +157,51 @@ describe("getExportedCertificateFileSuffixes matches the real export", () => {
         alias: "api.example.com"
       })
     ).rejects.toThrow(/PKCS#12 export is not supported for this key type/);
+  });
+
+  const otherCa = (() => {
+    const keys = forge.pki.rsa.generateKeyPair(2048);
+    const cert = forge.pki.createCertificate();
+    cert.publicKey = keys.publicKey;
+    cert.serialNumber = "02";
+    cert.validity.notBefore = new Date(2026, 0, 1);
+    cert.validity.notAfter = new Date(2027, 0, 1);
+    const attrs = [{ name: "commonName", value: "Example CA" }];
+    cert.setSubject(attrs);
+    cert.setIssuer(attrs);
+    cert.sign(keys.privateKey);
+    return forge.pki.certificateToPem(cert);
+  })();
+
+  test.each([
+    [true, true, false],
+    [true, false, true],
+    [true, false, false],
+    [false, true, true]
+  ])("JKS truststore=%s chain=%s root=%s", async (includeTruststore, hasCertificateChain, hasRoot) => {
+    const shape = {
+      format: PkiSyncExportFormat.Jks as const,
+      includePrivateKey: true,
+      hasCertificateChain,
+      hasPrivateKey: true,
+      includeTruststore,
+      hasTruststoreCertificates: hasCertificateChain || hasRoot
+    };
+
+    const exported = await exportCertificateForSync({
+      format: shape.format,
+      certificate: realPair.certificate,
+      certificateChain: hasCertificateChain ? otherCa : undefined,
+      caCertificate: hasRoot ? otherCa : undefined,
+      privateKey: realPair.privateKey,
+      includePrivateKey: true,
+      includeTruststore,
+      password: "changeit",
+      alias: "api.example.com"
+    });
+
+    expect(getExportedCertificateFileSuffixes(shape).sort()).toEqual(suffixes(exported));
+    expect(exported.find((f) => f.suffix === ".jks")?.isPrivateKey).toBe(true);
+    expect(exported.find((f) => f.suffix === ".truststore.jks")?.isPrivateKey).toBeFalsy();
   });
 });

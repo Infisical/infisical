@@ -1,10 +1,11 @@
 import { BadRequestError } from "@app/lib/errors";
+import { getJksTruststoreCertificates } from "@app/services/certificate/certificate-jks-fns";
 
 import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSyncStatus } from "./pki-sync-enums";
 import {
   getExportedCertificateFileSuffixes,
-  PemCertificateExtension,
-  PkiSyncExportFormat
+  PkiSyncExportFormat,
+  TExportedCertificateFileShape
 } from "./pki-sync-export-fns";
 import {
   applyHostCommandOptionUpdate,
@@ -68,11 +69,27 @@ export const assertHealthCheckCommandIsTestable = (
   return command;
 };
 
-type THealthCheckExportOptions = {
-  format: PkiSyncExportFormat;
-  includePrivateKey: boolean;
-  pemCertificateExtension?: PemCertificateExtension;
-  combineCertificateChain?: boolean;
+type THealthCheckExportOptions = Omit<
+  TExportedCertificateFileShape,
+  "hasCertificateChain" | "hasPrivateKey" | "hasTruststoreCertificates"
+>;
+
+const hasTruststoreCertificates = (
+  exportOptions: THealthCheckExportOptions,
+  certData: TCertificateMap[string]
+): boolean => {
+  if (exportOptions.format !== PkiSyncExportFormat.Jks || !exportOptions.includeTruststore) return false;
+  try {
+    return (
+      getJksTruststoreCertificates({
+        certificate: certData.cert,
+        certificateChain: certData.certificateChain,
+        caCertificate: certData.caCertificate
+      }).length > 0
+    );
+  } catch {
+    return false;
+  }
 };
 
 const buildProspectiveCertificates = (args: {
@@ -87,7 +104,8 @@ const buildProspectiveCertificates = (args: {
     paths: getExportedCertificateFileSuffixes({
       ...exportOptions,
       hasCertificateChain: Boolean(certData.certificateChain),
-      hasPrivateKey: Boolean(certData.privateKey)
+      hasPrivateKey: Boolean(certData.privateKey),
+      hasTruststoreCertificates: hasTruststoreCertificates(exportOptions, certData)
     }).map((suffix) => joinPath(destinationDirectory, `${baseName}${suffix}`)),
     commonName: certData.commonName ?? undefined
   }));

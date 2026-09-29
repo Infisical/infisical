@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
+import { isKeystoreExportFormat, PkiSync } from "@app/hooks/api/pkiSyncs";
 import { GCP_MAX_CERTIFICATES_PER_MAP_ENTRY } from "@app/hooks/api/pkiSyncs/types/gcp-certificate-manager-sync";
 
 import {
@@ -20,6 +20,7 @@ import {
   AzureKeyVaultPkiSyncDestinationSchema,
   UpdateAzureKeyVaultPkiSyncDestinationSchema
 } from "./azure-key-vault-pki-sync-destination-schema";
+import { KEYSTORE_PASSWORD_REQUIRED_MESSAGE } from "./base-pki-sync-schema";
 import {
   ChefPkiSyncDestinationSchema,
   UpdateChefPkiSyncDestinationSchema
@@ -130,13 +131,13 @@ export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
 
   if (
     (data.destination === PkiSync.WindowsServer || data.destination === PkiSync.LinuxServer) &&
-    data.syncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&
+    isKeystoreExportFormat(data.syncOptions?.exportFormat) &&
     !data.credentials?.exportPassword
   ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["credentials", "exportPassword"],
-      message: "A password is required for PKCS#12 exports"
+      message: KEYSTORE_PASSWORD_REQUIRED_MESSAGE
     });
   }
 

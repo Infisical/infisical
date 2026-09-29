@@ -16,6 +16,28 @@ export const HostCommandSchema = z
   .nullable()
   .optional();
 
+const KEYSTORE_ALIAS = new RE2("^[a-zA-Z0-9._-]+$");
+
+export const KeystoreAliasSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .refine((v) => KEYSTORE_ALIAS.test(v), {
+    message: "Keystore alias may only contain letters, digits, dots (.), dashes (-), and underscores (_)"
+  })
+  .optional()
+  .describe(
+    "Alias of the private key entry in a PKCS#12 or JKS keystore. Defaults to the certificate's file base name. JKS stores aliases in lowercase."
+  );
+
+export const IncludeTruststoreSchema = z
+  .boolean()
+  .optional()
+  .describe(
+    "Java KeyStore only: also deliver '<name>.truststore.jks' holding the chain and root CA as trusted certificates."
+  );
+
 export const PkiSyncTargetPortSchema = z.coerce
   .number()
   .int()

@@ -6,6 +6,23 @@ export const HOST_COMMAND_MAX_LENGTH = 8192;
 
 export const MAX_FILTER_CERTIFICATE_ORDERS = 10_000;
 
+const KEYSTORE_ALIAS_CHARACTERS =
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-";
+
+export const KEYSTORE_PASSWORD_REQUIRED_MESSAGE =
+  "A password is required for PKCS#12 and JKS exports";
+
+export const KeystoreAliasSchema = z
+  .string()
+  .trim()
+  .max(128, "Keystore alias must be at most 128 characters")
+  .refine((v) => [...v].every((c) => KEYSTORE_ALIAS_CHARACTERS.includes(c)), {
+    message:
+      "Keystore alias may only contain letters, digits, dots (.), dashes (-), and underscores (_)"
+  })
+  .transform((v) => v || undefined)
+  .optional();
+
 export const HostCommandSchema = z
   .string()
   .trim()

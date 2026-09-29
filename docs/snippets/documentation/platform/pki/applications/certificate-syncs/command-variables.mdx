@@ -6,7 +6,7 @@ Write a variable where you want this run's value. Infisical substitutes it befor
 | `{{certificateDirectory}}` | The destination directory |
 | `{{certificateFiles}}` | Every path this run writes, one per line |
 | `{{commonName}}` | The certificate's common name. Single-certificate syncs only |
-| `{{pkcs12Password}}` | The PKCS#12 export password, set only when the export format is PKCS#12 |
+| `{{pkcs12Password}}` | The export password, set only when the export format is PKCS#12 or Java KeyStore |
 
 The paths are the same for both commands, but a health check runs before anything is written, so they describe the files the run is *about to* write rather than files already on the host.
 
