@@ -712,12 +712,6 @@ Invariants worth knowing before extending it:
 
   Wire it into **every** path that deletes or detaches the resource, not just the obvious one. A resource usually has several (a hard delete, an org-membership removal, a project-membership removal), and each needs its own reap. Call it **inside the delete transaction** and pass `tx`; the reap is pure DB (no KMS or network), so it is safe there. The `(resourceType, resourceId)` index on `alerts` is what keeps the unscoped reap off a seq scan, so a provider whose resource is deleted in bulk depends on it.
 
-**Secret reminders are the exception to reaping on every delete path.** `reminders` stays the source of truth for the schedule (it backs the `secretReminder*` fields on secret responses, Insights and audit reports), the reminder cron emits `secret.reminder.due` into the outbox in the same short transaction that advances the reminder (`reminder-events.ts`), and each reminder's `secret.reminder` alert only holds its channels. An event can only come from a reminder row, and reminder rows cascade with their secret, so an alert left behind by a deleted secret can never fire. The reminder cron therefore reaps orphaned reminder alerts once a day (`reapOrphanedReminderAlerts`) instead of every secret delete path doing it. Do not copy this shortcut to a provider whose alerts can fire without such a row.
-
-**Domain services that own their resource's authorization use the internal entry points** on `alertService` (`createAlertInternal`, `updateAlertInternal`, `findAlertsForResources`, `findRecipientsForResources`, `deleteAlertsForDeletedResources`, `repointAlertsForResource`, `filterRecipientsInScope`). They skip the provider's `assertPermission`, take an explicit creator (`ActorType.PLATFORM` with a null `createdByActorId` for background work) and accept `tx`. The reminder layer (`reminder-service.ts`) is the worked example: it keeps its own interface and callers never import the alert module. Encrypting a channel config can call out to KMS, so it writes the alert before opening its own transaction rather than inside it.
-
-**`project-members` is an email recipient principal for everyone in the channel's project**, expanded at send time by the recipient resolver and still re-checked against org and project scope. It is only valid on a project-scoped channel for that channel's own project.
-
 ### Event Outbox (transactional and generic; alerting is its first consumer)
 
 `src/services/event-outbox/` writes "this happened" as a row inside the caller's own transaction, so
