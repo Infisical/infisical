@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
-import { fakeSessionLogStorage } from "e2e-test/fakes/agent-vault-session-log-storage-fns";
+import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
+import { fakeS3Bucket } from "e2e-test/fakes/s3";
 import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
 import { v7 as uuidv7 } from "uuid";
 
@@ -167,6 +168,7 @@ const saveConfig = async (patch: Record<string, unknown>) => inject("PATCH", SET
 
 describe("Agent Vault session logs", async () => {
   let connectionId: string;
+  let connectionName: string;
   let projectId: string;
 
   beforeAll(async () => {
@@ -174,7 +176,8 @@ describe("Agent Vault session logs", async () => {
     expect(
       (await inject("POST", `/api/v1/organization-admin/projects/${projectId}/grant-admin-access`)).statusCode
     ).toBe(200);
-    connectionId = await createAwsAppConnection({ name: `session-logs-aws-${Date.now()}`, authToken: jwtAuthToken });
+    connectionName = `session-logs-aws-${Date.now()}`;
+    connectionId = await createAwsAppConnection({ name: connectionName, authToken: jwtAuthToken });
   });
 
   // This file sorts before agent-vault.spec.ts, which asserts the Agent Vault project bootstraps with no members.
@@ -189,7 +192,8 @@ describe("Agent Vault session logs", async () => {
   });
 
   beforeEach(async () => {
-    fakeSessionLogStorage.reset();
+    fakeS3Bucket.reset();
+    fakeAwsConnection.reset();
     await testDb("agent_vault_session_log_chunks").where({ projectId }).del();
     await testDb("agent_vault_session_log_configs").where({ projectId }).del();
     // Tests create their own proxies, and an org can hold only AGENT_VAULT_MAX_PROXIES_PER_ORG.
@@ -230,13 +234,11 @@ describe("Agent Vault session logs", async () => {
       const probe = await inject("GET", `${SETTINGS_URL}/cors-probe`);
       expect(probe.statusCode).toBe(200);
       const probeBody = JSON.parse(probe.payload) as { probe: { url: string; expiresInSeconds: number } | null };
-      expect(probeBody.probe?.url).toContain("cors-probe");
+      expect(new URL(probeBody.probe?.url as string).pathname).toBe("/logs/.cors-probe");
     });
 
     test("a bucket it cannot write to is refused with the actionable message, and nothing is saved", async () => {
-      fakeSessionLogStorage.failsValidationWith(
-        "Bucket 'nope' is reachable but writing to it failed. Grant s3:PutObject on the configured key prefix"
-      );
+      fakeS3Bucket.failsAccessCheckWith("unwritable");
 
       const res = await saveConfig({
         enabled: true,
@@ -245,7 +247,9 @@ describe("Agent Vault session logs", async () => {
         region: "us-east-1"
       });
       expect(res.statusCode).toBe(400);
-      expect(JSON.parse(res.payload).message).toContain("s3:PutObject");
+      expect(JSON.parse(res.payload).message).toBe(
+        "Bucket 'nope' is reachable but writing to it failed. Grant s3:PutObject on the configured key prefix"
+      );
 
       expect(await testDb("agent_vault_session_log_configs").where({ projectId }).first()).toBeUndefined();
     });
@@ -258,7 +262,7 @@ describe("Agent Vault session logs", async () => {
         region: "us-east-1"
       });
 
-      fakeSessionLogStorage.failsValidationWith("Unable to reach bucket");
+      fakeS3Bucket.failsAccessCheckWith("unreachable");
 
       const res = await saveConfig({ enabled: false });
       expect(res.statusCode).toBe(200);
@@ -272,14 +276,15 @@ describe("Agent Vault session logs", async () => {
         (await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1" }))
           .statusCode
       ).toBe(200);
-      fakeSessionLogStorage.failsBuildWith("AWS refused to assume the role");
+      fakeAwsConnection.failsConfigWith("AWS refused to assume the role");
 
       const health = await inject("GET", `${SETTINGS_URL}/health`);
-      expect(JSON.parse(health.payload).health.connectionError).toBe("AWS refused to assume the role");
+      const refused = `Couldn't use the AWS connection '${connectionName}' for session logs: AWS refused to assume the role`;
+      expect(JSON.parse(health.payload).health.connectionError).toBe(refused);
 
       const save = await saveConfig({ keyPrefix: "elsewhere" });
       expect(save.statusCode).toBe(400);
-      expect(JSON.parse(save.payload).message).toBe("AWS refused to assume the role");
+      expect(JSON.parse(save.payload).message).toBe(refused);
     });
 
     test("turning session logs on without a complete destination names what is missing", async () => {
@@ -407,12 +412,12 @@ describe("Agent Vault session logs", async () => {
       expect(row).toMatchObject({ chunkId: chunk.chunkId, proxyId: proxy.id, proxyName: proxy.name, recordCount: 10 });
       expect(row.objectKey).toMatch(/^logs\/.+\/\d{4}-\d{2}-\d{2}\/.+\.json\.enc$/);
 
-      expect(fakeSessionLogStorage.objectKeys(BUCKET)).toEqual([]);
+      expect(fakeS3Bucket.objectKeys(BUCKET)).toEqual([]);
 
-      fakeSessionLogStorage.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES));
-      expect(fakeSessionLogStorage.objectKeys(BUCKET)).toEqual([row.objectKey]);
+      fakeS3Bucket.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES));
+      expect(fakeS3Bucket.objectKeys(BUCKET)).toEqual([row.objectKey]);
 
-      expect(() => fakeSessionLogStorage.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES + 1))).toThrow();
+      expect(() => fakeS3Bucket.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES + 1))).toThrow();
     });
 
     test("counts each chunk once against the org, whatever it holds", async () => {
@@ -455,14 +460,14 @@ describe("Agent Vault session logs", async () => {
 
       const first = await recordChunk(proxy, session.id, chunk);
       const stored = Buffer.alloc(CHUNK_BYTES, 1);
-      fakeSessionLogStorage.put(first.uploadUrl, stored);
+      fakeS3Bucket.put(first.uploadUrl, stored);
 
       const second = await recordChunk(proxy, session.id, chunk);
-      expect(() => fakeSessionLogStorage.put(second.uploadUrl, Buffer.alloc(CHUNK_BYTES, 2))).toThrow(/create-only/);
+      expect(() => fakeS3Bucket.put(second.uploadUrl, Buffer.alloc(CHUNK_BYTES, 2))).toThrow(/create-only/);
 
       const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
       const [only] = (JSON.parse(read.payload) as { chunks: { presignedGetUrl: string }[] }).chunks;
-      expect(fakeSessionLogStorage.get(only.presignedGetUrl)).toEqual(stored);
+      expect(fakeS3Bucket.get(only.presignedGetUrl)).toEqual(stored);
     });
 
     test("a chunk re-sent after the destination moved is uploaded to the new one and reads back", async () => {
@@ -478,16 +483,16 @@ describe("Agent Vault session logs", async () => {
 
       const resent = await recordChunk(proxy, session.id, chunk);
       const stored = Buffer.alloc(CHUNK_BYTES, 3);
-      fakeSessionLogStorage.put(resent.uploadUrl, stored);
+      fakeS3Bucket.put(resent.uploadUrl, stored);
 
       const row = await testDb("agent_vault_session_log_chunks").where({ sessionId: session.id }).first();
       expect(row.bucket).toBe(movedBucket);
       expect(row.objectKey).toMatch(/^moved\//);
-      expect(fakeSessionLogStorage.objectKeys(movedBucket)).toEqual([row.objectKey]);
+      expect(fakeS3Bucket.objectKeys(movedBucket)).toEqual([row.objectKey]);
 
       const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
       const [only] = (JSON.parse(read.payload) as { chunks: { presignedGetUrl: string | null }[] }).chunks;
-      expect(fakeSessionLogStorage.get(only.presignedGetUrl as string)).toEqual(stored);
+      expect(fakeS3Bucket.get(only.presignedGetUrl as string)).toEqual(stored);
     });
 
     test("a chunk re-sent after the destination moved to a bucket with no prefix is uploaded to its root", async () => {
@@ -502,12 +507,12 @@ describe("Agent Vault session logs", async () => {
       expect((await configure({ bucket: movedBucket, keyPrefix: "" })).statusCode).toBe(200);
 
       const resent = await recordChunk(proxy, session.id, chunk);
-      fakeSessionLogStorage.put(resent.uploadUrl, Buffer.alloc(CHUNK_BYTES));
+      fakeS3Bucket.put(resent.uploadUrl, Buffer.alloc(CHUNK_BYTES));
 
       const row = await testDb("agent_vault_session_log_chunks").where({ sessionId: session.id }).first();
       expect(row.bucket).toBe(movedBucket);
       expect(row.objectKey.startsWith(`${projectId}/${session.id}/${proxy.id}/`)).toBe(true);
-      expect(fakeSessionLogStorage.objectKeys(movedBucket)).toEqual([row.objectKey]);
+      expect(fakeS3Bucket.objectKeys(movedBucket)).toEqual([row.objectKey]);
     });
 
     test("two proxies can write to one session, and a chunk id is only unique within it", async () => {
@@ -532,7 +537,7 @@ describe("Agent Vault session logs", async () => {
 
     test("a connection that can't be used refuses the chunk as retryable and writes no row", async () => {
       await configure();
-      fakeSessionLogStorage.failsBuildWith("AWS refused to assume the role");
+      fakeAwsConnection.failsConfigWith("AWS refused to assume the role");
       const bundle = await createAccessBundle(`session-logs-unusable-${Date.now()}`);
       const session = await mintSession(bundle.name);
       const proxy = await createProxy(`session-logs-unusable-${Date.now()}`);
@@ -814,7 +819,7 @@ describe("Agent Vault session logs", async () => {
           session.id,
           chunkBody({ firstSeq: i * 10, lastSeq: i * 10 + 9 })
         );
-        fakeSessionLogStorage.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
+        fakeS3Bucket.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
       }
       return { session, proxy };
     };
@@ -852,7 +857,7 @@ describe("Agent Vault session logs", async () => {
       expect([...ids].sort().reverse()).toEqual(ids);
 
       body.chunks.forEach((chunk) => {
-        expect(fakeSessionLogStorage.get(chunk.presignedGetUrl!)).toHaveLength(CHUNK_BYTES);
+        expect(fakeS3Bucket.get(chunk.presignedGetUrl!)).toHaveLength(CHUNK_BYTES);
       });
     });
 
@@ -882,7 +887,7 @@ describe("Agent Vault session logs", async () => {
       for (const startedAt of startedAts) {
         // eslint-disable-next-line no-await-in-loop
         const { uploadUrl } = await recordChunk(proxy, session.id, chunkBody({ startedAt, endedAt: startedAt }));
-        fakeSessionLogStorage.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
+        fakeS3Bucket.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
       }
 
       const windowed = await inject(
@@ -904,7 +909,7 @@ describe("Agent Vault session logs", async () => {
           endedAt: new Date(Date.now() - 2 * hour)
         })
       );
-      fakeSessionLogStorage.put(straddling.uploadUrl, Buffer.alloc(CHUNK_BYTES));
+      fakeS3Bucket.put(straddling.uploadUrl, Buffer.alloc(CHUNK_BYTES));
 
       const overlapping = await inject(
         "GET",
@@ -1033,7 +1038,7 @@ describe("Agent Vault session logs", async () => {
         session.id,
         chunkBody({ chunkId: uuidv7({ msecs: Date.now() - 60 * 60_000 }) })
       );
-      fakeSessionLogStorage.put(late.uploadUrl, Buffer.alloc(CHUNK_BYTES));
+      fakeS3Bucket.put(late.uploadUrl, Buffer.alloc(CHUNK_BYTES));
 
       const newest = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs?limit=20`);
       expect((JSON.parse(newest.payload) as THistoryBody).chunks.map((c) => c.chunkId)).not.toContain(late.chunkId);
@@ -1116,7 +1121,7 @@ describe("Agent Vault session logs", async () => {
       expect(await readLink(session.id)).toBeNull();
 
       expect((await saveConfig({ bucket: BUCKET })).statusCode).toBe(200);
-      expect(fakeSessionLogStorage.get((await readLink(session.id)) as string)).toEqual(Buffer.alloc(CHUNK_BYTES));
+      expect(fakeS3Bucket.get((await readLink(session.id)) as string)).toEqual(Buffer.alloc(CHUNK_BYTES));
     });
 
     test("a chunk keeps its link after only the prefix changes", async () => {
@@ -1124,7 +1129,7 @@ describe("Agent Vault session logs", async () => {
       const { session } = await seedChunks(1);
 
       expect((await saveConfig({ keyPrefix: "other" })).statusCode).toBe(200);
-      expect(fakeSessionLogStorage.get((await readLink(session.id)) as string)).toEqual(Buffer.alloc(CHUNK_BYTES));
+      expect(fakeS3Bucket.get((await readLink(session.id)) as string)).toEqual(Buffer.alloc(CHUNK_BYTES));
     });
 
     test("a key copied from another session is refused rather than handed out", async () => {
@@ -1189,7 +1194,7 @@ describe("Agent Vault session logs", async () => {
     test("when the connection can't be used, a session lists what it recorded and says why", async () => {
       await configure();
       const { session } = await seedChunks(1);
-      fakeSessionLogStorage.failsBuildWith("AWS refused to assume the role");
+      fakeAwsConnection.failsConfigWith("AWS refused to assume the role");
 
       const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
       expect(res.statusCode).toBe(200);
@@ -1199,7 +1204,7 @@ describe("Agent Vault session logs", async () => {
       };
       expect(body.sessionLogs.storageUnavailable).toEqual({
         reason: "connection-unusable",
-        message: "AWS refused to assume the role"
+        message: `Couldn't use the AWS connection '${connectionName}' for session logs: AWS refused to assume the role`
       });
       expect(body.chunks.map((chunk) => chunk.presignedGetUrl)).toEqual([null]);
     });
@@ -1248,7 +1253,7 @@ describe("Agent Vault session logs", async () => {
 
         const proxy = await createProxy(`session-logs-reader-${Date.now()}`);
         const { uploadUrl } = await recordChunk(proxy, ownSession.id);
-        fakeSessionLogStorage.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
+        fakeS3Bucket.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
 
         const own = await member.as("GET", `/api/v1/agent-vault/sessions/${ownSession.id}/logs`);
         expect(own.statusCode, own.payload).toBe(200);

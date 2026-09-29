@@ -1,9 +1,6 @@
-import { GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { STSServiceException } from "@aws-sdk/client-sts";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-import { CustomAWSHasher } from "@app/lib/aws/hashing";
-import { crypto } from "@app/lib/crypto/cryptography";
+import { createS3Bucket } from "@app/lib/aws/s3";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -16,34 +13,6 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS } from "./agent-vault-session-log-constants";
 import { withKeyPrefix } from "./agent-vault-session-log-fns";
 import { TResolvedSessionLogStorageConfig } from "./agent-vault-session-log-types";
-
-// These headers are signed so S3 enforces them: the body must be the declared size and hash to the declared
-// digest, and If-None-Match stops a link re-minted for a retried chunk from overwriting one already stored.
-export const presignSessionLogPut = (
-  client: S3Client,
-  {
-    bucket,
-    objectKey,
-    ciphertextBytes,
-    ciphertextSha256
-  }: { bucket: string; objectKey: string; ciphertextBytes: number; ciphertextSha256: string }
-) =>
-  getSignedUrl(
-    client,
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: objectKey,
-      ContentLength: ciphertextBytes,
-      ContentType: "application/octet-stream",
-      IfNoneMatch: "*",
-      // Stored unpadded; S3 wants the padded form
-      ChecksumSHA256: `${ciphertextSha256}=`
-    }),
-    {
-      expiresIn: AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS,
-      unhoistableHeaders: new Set(["content-length", "if-none-match", "x-amz-checksum-sha256"])
-    }
-  );
 
 type TStorageDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -89,14 +58,8 @@ export const buildSessionLogStorage = async (
     });
   }
 
-  const client = new S3Client({
-    region: config.region,
-    useFipsEndpoint: crypto.isFipsModeEnabled(),
-    sha256: CustomAWSHasher,
-    credentials
-  });
-
   const { bucket, keyPrefix } = config;
+  const s3 = createS3Bucket({ region: config.region, bucket, credentials });
 
   const presignPut = async ({
     objectKey,
@@ -106,41 +69,35 @@ export const buildSessionLogStorage = async (
     objectKey: string;
     ciphertextBytes: number;
     ciphertextSha256: string;
-  }) => presignSessionLogPut(client, { bucket, objectKey, ciphertextBytes, ciphertextSha256 });
+  }) =>
+    s3.presignCreateOnlyPut({
+      key: objectKey,
+      contentLength: ciphertextBytes,
+      // Stored unpadded; S3 wants the padded form
+      sha256Base64: `${ciphertextSha256}=`,
+      expiresInSeconds: AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS
+    });
 
   const presignGet = async (objectKey: string) =>
-    getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: objectKey }), {
-      expiresIn: AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS
-    });
+    s3.presignGet(objectKey, AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS);
 
   const mintCorsProbeUrl = async () => presignGet(withKeyPrefix(keyPrefix, ".cors-probe"));
 
   const validate = async () => {
-    try {
-      await client.send(new HeadBucketCommand({ Bucket: bucket }));
-    } catch (err) {
-      logger.warn({ err, bucket }, `Agent Vault session logs HeadBucket failed [bucket=${bucket}]`);
-      throw new BadRequestError({
-        message: `Unable to reach bucket '${bucket}'. Check the bucket name, the region, and that the connection's credentials can access it`
-      });
-    }
-
     const testKey = withKeyPrefix(keyPrefix, ".test/write-check");
-    try {
-      await client.send(
-        new PutObjectCommand({
-          Bucket: bucket,
-          Key: testKey,
-          Body: Buffer.from("infisical-agent-vault-session-log-config-test"),
-          ContentType: "application/octet-stream"
-        })
-      );
-    } catch (err) {
-      logger.warn({ err, bucket, testKey }, `Agent Vault session logs PutObject failed [bucket=${bucket}]`);
-      throw new BadRequestError({
-        message: `Bucket '${bucket}' is reachable but writing to it failed. Grant s3:PutObject on the configured key prefix`
-      });
-    }
+    const access = await s3.checkAccess(testKey);
+    if (access.ok) return;
+
+    logger.warn(
+      { err: access.error, bucket, testKey },
+      `Agent Vault session logs bucket check failed [bucket=${bucket}] [failure=${access.failure}]`
+    );
+    throw new BadRequestError({
+      message:
+        access.failure === "unreachable"
+          ? `Unable to reach bucket '${bucket}'. Check the bucket name, the region, and that the connection's credentials can access it`
+          : `Bucket '${bucket}' is reachable but writing to it failed. Grant s3:PutObject on the configured key prefix`
+    });
   };
 
   return { presignPut, presignGet, mintCorsProbeUrl, validate };

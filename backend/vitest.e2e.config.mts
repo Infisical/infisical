@@ -49,15 +49,16 @@ export default defineConfig({
     },
     fileParallelism: false,
 
-    // AWS Parameter Store, the AWS IAM user secret rotation provider and the AWS app connection
-    // are replaced by fakes for the whole e2e run, so the secret sync and secret rotation specs
-    // can assert what Infisical hands a destination or a rotation provider without reaching AWS.
+    // AWS Parameter Store, the AWS IAM user secret rotation provider, the AWS app connection and the
+    // S3 bucket helper are replaced by fakes for the whole e2e run, so the specs can assert what
+    // Infisical hands a destination, a rotation provider or a bucket without reaching AWS.
     // Nothing under src/ knows the fakes exist (see e2e-test/fakes/).
     //
     // Entries match the *import specifier*, which is what keeps this surgical rather than
     // sweeping: "./aws-parameter-store-sync-fns" is imported only by its own barrel,
     // "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns" only by
-    // secret-rotation-v2-service.ts, and "./aws-connection-fns" only by aws/index.ts. The
+    // secret-rotation-v2-service.ts, "@app/lib/aws/s3" only by the session log storage module,
+    // and "./aws-connection-fns" only by aws/index.ts. The
     // full-path entry covers the twelve modules that import the connection functions directly,
     // of which secret-sync-maps.ts matters here: it calls getAwsAccountId on every sync
     // creation, which would otherwise be a real STS request that fails slowly and silently.
@@ -86,8 +87,8 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "./e2e-test/fakes/aws-connection-fns")
       },
       {
-        find: "./agent-vault-session-log-storage-fns",
-        replacement: path.resolve(__dirname, "./e2e-test/fakes/agent-vault-session-log-storage-fns")
+        find: /^@app\/lib\/aws\/s3$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/s3")
       }
     ]
   },

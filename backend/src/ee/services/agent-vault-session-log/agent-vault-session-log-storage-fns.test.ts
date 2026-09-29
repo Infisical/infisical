@@ -1,11 +1,10 @@
-import { S3Client } from "@aws-sdk/client-s3";
 import { STSServiceException } from "@aws-sdk/client-sts";
 import { describe, expect, test, vi } from "vitest";
 
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 
-import { buildSessionLogStorage, presignSessionLogPut } from "./agent-vault-session-log-storage-fns";
+import { buildSessionLogStorage } from "./agent-vault-session-log-storage-fns";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} }
@@ -16,29 +15,6 @@ vi.mock("@app/services/app-connection/app-connection-fns", () => ({
 vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
   getAwsConnectionConfig: vi.fn()
 }));
-
-describe("presignSessionLogPut", () => {
-  const client = new S3Client({
-    region: "us-east-1",
-    credentials: { accessKeyId: "AKIAEXAMPLE", secretAccessKey: "example-secret" }
-  });
-
-  test("signs the length, the digest and a create-only condition, so none can be dropped or changed", async () => {
-    const url = new URL(
-      await presignSessionLogPut(client, {
-        bucket: "my-bucket",
-        objectKey: "logs/a.json.enc",
-        ciphertextBytes: 42,
-        ciphertextSha256: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU"
-      })
-    );
-    const signed = (url.searchParams.get("X-Amz-SignedHeaders") ?? "").split(";");
-    expect(signed).toContain("content-length");
-    expect(signed).toContain("if-none-match");
-    expect(signed).toContain("x-amz-checksum-sha256");
-    expect(url.searchParams.has("x-amz-checksum-sha256")).toBe(false);
-  });
-});
 
 describe("buildSessionLogStorage", () => {
   const config = { appConnectionId: "conn-1", bucket: "logs", region: AWSRegion.US_EAST_1, keyPrefix: null };
