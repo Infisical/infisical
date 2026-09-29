@@ -1080,7 +1080,8 @@ export const registerRoutes = async (
     userDAL,
     userGroupMembershipDAL,
     orgDAL,
-    projectDAL
+    projectDAL,
+    projectMembershipDAL
   });
   const alertEngine = alertEngineFactory({
     alertChannelDAL,

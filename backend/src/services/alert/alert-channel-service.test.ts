@@ -20,13 +20,14 @@ type TRow = {
   enabled: boolean;
   orgId: string;
   projectId: string | null;
-  createdByActorId: string;
+  createdByActorId: string | null;
   createdByActorType: string;
   createdAt: Date;
   updatedAt: Date;
 };
 
-const buildService = (opts?: { seed?: TRow[] }) => {
+const buildService = (opts?: { seed?: TRow[]; projectUserIds?: string[] }) => {
+  const scopeCheckTxs: unknown[] = [];
   const store = new Map<string, TRow>();
   (opts?.seed ?? []).forEach((r) => store.set(r.id, r));
   const recipients = new Map<string, Array<{ channelId: string; principalType: string; principalId: string }>>();
@@ -75,19 +76,24 @@ const buildService = (opts?: { seed?: TRow[] }) => {
     projectDAL: {
       findEffectiveProjectSubjectsMembership: async ({
         userIds,
-        groupIds
+        groupIds,
+        tx: scopeTx
       }: {
         userIds: string[];
         groupIds: string[];
-      }) => ({
-        effectiveUserIds: userIds,
-        effectiveGroupIds: groupIds
-      })
+        tx?: unknown;
+      }) => {
+        scopeCheckTxs.push(scopeTx);
+        return {
+          effectiveUserIds: opts?.projectUserIds ? userIds.filter((id) => opts.projectUserIds!.includes(id)) : userIds,
+          effectiveGroupIds: groupIds
+        };
+      }
     },
     groupDAL: { find: async (filter: { $in?: { id?: string[] } }) => (filter.$in?.id ?? []).map((id) => ({ id })) }
   } as unknown as TAlertChannelServiceFactoryDep);
 
-  return { service, store, recipients };
+  return { service, store, recipients, scopeCheckTxs };
 };
 
 const seedRow = (
@@ -261,5 +267,116 @@ describe("alert channel service", () => {
     await expect(
       service.updateChannelInTx({ channelId: "ch-1", config: { webhookUrl: "" } }, channel as never, cipher, tx)
     ).rejects.toThrow(/Invalid slack channel config/);
+  });
+
+  test("accepts all project members on a channel in the same project", async () => {
+    const { service, recipients } = buildService();
+    const channel = await service.createChannelInTx(
+      {
+        name: "Email",
+        channelType: AlertChannelType.EMAIL,
+        config: {},
+        recipients: [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }],
+        orgId: "org-1",
+        projectId: "proj-1",
+        ...CREATOR
+      },
+      encryptor as never,
+      tx
+    );
+    expect(recipients.get(channel.id)).toEqual([
+      { channelId: channel.id, principalType: "project-members", principalId: "proj-1" }
+    ]);
+  });
+
+  test("rejects all project members on an org-scoped channel", async () => {
+    const { service } = buildService();
+    await expect(
+      service.createChannelInTx(
+        {
+          name: "Email",
+          channelType: AlertChannelType.EMAIL,
+          config: {},
+          recipients: [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }],
+          orgId: "org-1",
+          ...CREATOR
+        },
+        encryptor as never,
+        tx
+      )
+    ).rejects.toThrow("All project members can only be notified by a project alert");
+  });
+
+  test("rejects all project members that names another project", async () => {
+    const { service } = buildService();
+    await expect(
+      service.createChannelInTx(
+        {
+          name: "Email",
+          channelType: AlertChannelType.EMAIL,
+          config: {},
+          recipients: [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "other-project" }],
+          orgId: "org-1",
+          projectId: "proj-1",
+          ...CREATOR
+        },
+        encryptor as never,
+        tx
+      )
+    ).rejects.toThrow("All project members must refer to the alert's own project");
+  });
+
+  test("checks recipient scope inside the caller's transaction", async () => {
+    const { service, scopeCheckTxs } = buildService();
+    await service.createChannelInTx(
+      {
+        name: "Email",
+        channelType: AlertChannelType.EMAIL,
+        config: {},
+        recipients: [{ principalType: AlertPrincipalType.USER, principalId: "user-1" }],
+        orgId: "org-1",
+        projectId: "proj-1",
+        ...CREATOR
+      },
+      encryptor as never,
+      tx
+    );
+    expect(scopeCheckTxs).toEqual([tx]);
+  });
+
+  test("accepts a platform creator with no actor id", async () => {
+    const { service, store } = buildService();
+    const channel = await service.createChannelInTx(
+      {
+        name: "Email",
+        channelType: AlertChannelType.EMAIL,
+        config: {},
+        recipients: [{ principalType: AlertPrincipalType.USER, principalId: "user-1" }],
+        orgId: "org-1",
+        createdByActorId: null,
+        createdByActorType: "platform"
+      },
+      encryptor as never,
+      tx
+    );
+    expect(store.get(channel.id)).toMatchObject({ createdByActorId: null, createdByActorType: "platform" });
+  });
+
+  test("filterRecipientsInScope drops users who left the project and keeps the rest", async () => {
+    const { service } = buildService({ projectUserIds: ["user-1"] });
+    const kept = await service.filterRecipientsInScope(
+      { orgId: "org-1", projectId: "proj-1" },
+      [
+        { principalType: AlertPrincipalType.USER, principalId: "user-1" },
+        { principalType: AlertPrincipalType.USER, principalId: "user-gone" },
+        { principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" },
+        { principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "other-project" }
+      ],
+      tx
+    );
+    expect(kept).toEqual([
+      { principalType: "user", principalId: "user-1" },
+      { principalType: "project-members", principalId: "proj-1" }
+    ]);
   });
 });

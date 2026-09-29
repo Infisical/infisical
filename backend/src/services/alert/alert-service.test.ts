@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { DatabaseError } from "@app/lib/errors";
+
 import { TAlertChannelInput } from "./alert-channel-service-types";
 import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
 import { alertProviderRegistryFactory } from "./alert-provider-registry";
@@ -24,6 +27,7 @@ const buildService = (opts?: {
   assertPermission?: (input: TAlertPermissionInput) => Promise<void>;
   resourceScopeThrows?: boolean;
   duplicateExists?: boolean;
+  createError?: Error;
   // Runs right after a find() has taken its snapshot, to stand in for a concurrent transaction
   // committing between two statements of ours.
   afterFindAlerts?: (alerts: Map<string, Record<string, unknown>>) => void;
@@ -63,7 +67,15 @@ const buildService = (opts?: {
   const channels = new Map<string, TChannelRow>(); // channelId -> row
   const memberships = new Map<string, string[]>(); // alertId -> channelIds
   const findFilters: Array<Record<string, unknown>> = [];
+  const createTxs: unknown[] = [];
+  let transactionsOpened = 0;
   let channelSeq = 0;
+
+  const matches = (row: Record<string, unknown>, filter: Record<string, unknown>) => {
+    const { $in: inFilter, ...equality } = filter as { $in?: Record<string, unknown[]> };
+    const inMatch = Object.entries(inFilter ?? {}).every(([key, values]) => values.includes(row[key]));
+    return inMatch && Object.entries(equality).every(([key, value]) => value === undefined || row[key] === value);
+  };
 
   const detach = (channelId: string) => {
     memberships.forEach((ids, alertId) =>
@@ -76,8 +88,13 @@ const buildService = (opts?: {
 
   const service = alertServiceFactory({
     alertDAL: {
-      transaction: async (cb: (tx: unknown) => unknown) => cb({}),
-      create: async (data: Record<string, unknown>) => {
+      transaction: async (cb: (tx: unknown) => unknown) => {
+        transactionsOpened += 1;
+        return cb({});
+      },
+      create: async (data: Record<string, unknown>, tx?: unknown) => {
+        createTxs.push(tx);
+        if (opts?.createError) throw opts.createError;
         const row = {
           id: "alert-1",
           ...data,
@@ -105,18 +122,17 @@ const buildService = (opts?: {
       deleteById: async (id: string) => alerts.delete(id),
       find: async (filter: Record<string, unknown>) => {
         findFilters.push(filter);
-        const rows = [...alerts.values()].filter((row) =>
-          Object.entries(filter).every(([key, value]) => value === undefined || row[key] === value)
-        );
+        const rows = [...alerts.values()].filter((row) => matches(row, filter));
         opts?.afterFindAlerts?.(alerts);
         return rows;
       },
-      delete: async (filter: Record<string, unknown> & { $in?: { id?: string[] } }) => {
-        const { $in: inFilter, ...equality } = filter;
-        const removed = [...alerts.values()].filter((row) => {
-          if (inFilter?.id && !inFilter.id.includes(row.id as string)) return false;
-          return Object.entries(equality).every(([key, value]) => value === undefined || row[key] === value);
-        });
+      update: async (filter: Record<string, unknown>, data: Record<string, unknown>) => {
+        const updated = [...alerts.values()].filter((row) => matches(row, filter));
+        updated.forEach((row) => alerts.set(row.id as string, { ...row, ...data }));
+        return updated;
+      },
+      delete: async (filter: Record<string, unknown>) => {
+        const removed = [...alerts.values()].filter((row) => matches(row, filter));
         removed.forEach((row) => alerts.delete(row.id as string));
         return removed;
       }
@@ -210,7 +226,16 @@ const buildService = (opts?: {
     alertProviderRegistry: registry
   } as unknown as TAlertServiceFactoryDep);
 
-  return { service, permissionCalls, alerts, memberships, channels, findFilters };
+  return {
+    service,
+    permissionCalls,
+    alerts,
+    memberships,
+    channels,
+    findFilters,
+    createTxs,
+    transactionsOpened: () => transactionsOpened
+  };
 };
 
 const actor = {
@@ -661,5 +686,113 @@ describe("alert service", () => {
 
     expect(deleted).toBe(1);
     expect([...alerts.keys()]).toEqual(["other-resource", "other-type"]);
+  });
+});
+
+describe("alert service internal entry points", () => {
+  const internalCreate = {
+    name: "Reminder for DB_PASSWORD",
+    resourceType: RESOURCE_TYPE,
+    resourceId: "resource-1",
+    eventType: "test.resource.opened",
+    condition: null,
+    orgId: "org-1",
+    projectId: "proj-1",
+    channels: [emailChannel],
+    createdBy: { actorType: "platform", actorId: null }
+  };
+
+  test("createAlertInternal skips the provider permission check and records the given creator", async () => {
+    const { service, permissionCalls, alerts } = buildService();
+    const alert = await service.createAlertInternal(internalCreate);
+
+    expect(permissionCalls).toHaveLength(0);
+    expect(alerts.get(alert.id)).toMatchObject({ createdByActorType: "platform", createdByActorId: null });
+    expect(alert.channels).toHaveLength(1);
+  });
+
+  test("createAlertInternal still validates the condition", async () => {
+    const { service } = buildService();
+    await expect(
+      service.createAlertInternal({
+        ...internalCreate,
+        eventType: "test.resource.expiration",
+        condition: { wrong: true }
+      })
+    ).rejects.toThrow("Invalid alert condition");
+  });
+
+  test("createAlertInternal writes inside the caller's transaction when given one", async () => {
+    const { service, createTxs, transactionsOpened } = buildService();
+    const callerTx = { caller: true } as never;
+    await service.createAlertInternal(internalCreate, callerTx);
+
+    expect(createTxs).toEqual([callerTx]);
+    expect(transactionsOpened()).toBe(0);
+  });
+
+  test("updateAlertInternal skips the provider permission check", async () => {
+    const { service, permissionCalls } = buildService();
+    const created = await service.createAlertInternal(internalCreate);
+    const updated = await service.updateAlertInternal({ alertId: created.id, enabled: false });
+
+    expect(permissionCalls).toHaveLength(0);
+    expect(updated.enabled).toBe(false);
+  });
+
+  test("findAlertsForResources returns each resource's alert with its channels", async () => {
+    const { service } = buildService();
+    await service.createAlertInternal(internalCreate);
+
+    const found = await service.findAlertsForResources({
+      resourceType: RESOURCE_TYPE,
+      resourceIds: ["resource-1", "resource-2"]
+    });
+
+    expect(found.map((a) => a.resourceId)).toEqual(["resource-1"]);
+    expect(found[0].channels).toHaveLength(1);
+  });
+
+  test("findAlertsForResources with no ids reads nothing", async () => {
+    const { service, findFilters } = buildService();
+    expect(await service.findAlertsForResources({ resourceType: RESOURCE_TYPE, resourceIds: [] })).toEqual([]);
+    expect(findFilters).toHaveLength(0);
+  });
+
+  test("deleteAlertsForDeletedResources reaps every listed resource and its channels", async () => {
+    const { service, alerts, channels } = buildService();
+    await service.createAlertInternal(internalCreate);
+    alerts.set("alert-2", { id: "alert-2", orgId: "org-1", resourceType: RESOURCE_TYPE, resourceId: "resource-2" });
+    alerts.set("alert-3", { id: "alert-3", orgId: "org-1", resourceType: RESOURCE_TYPE, resourceId: "resource-3" });
+
+    const deleted = await service.deleteAlertsForDeletedResources({
+      resourceType: RESOURCE_TYPE,
+      resourceIds: ["resource-1", "resource-2"]
+    });
+
+    expect(deleted).toBe(2);
+    expect([...alerts.keys()]).toEqual(["alert-3"]);
+    expect(channels.size).toBe(0);
+  });
+
+  test("a concurrent duplicate create surfaces as a readable error, not a 500", async () => {
+    const { service } = buildService({
+      createError: new DatabaseError({ error: { code: DatabaseErrorCode.UniqueViolation }, name: "Create" })
+    });
+    await expect(service.createAlertInternal(internalCreate)).rejects.toThrow(
+      "An alert for this resource and event already exists"
+    );
+  });
+
+  test("repointAlertsForResource moves a resource's alerts to its new id", async () => {
+    const { service, alerts } = buildService();
+    const created = await service.createAlertInternal(internalCreate);
+
+    await service.repointAlertsForResource(
+      { resourceType: RESOURCE_TYPE, fromResourceId: "resource-1", toResourceId: "resource-9" },
+      {} as never
+    );
+
+    expect(alerts.get(created.id)).toMatchObject({ resourceId: "resource-9" });
   });
 });
