@@ -77,7 +77,7 @@ export const ProductSettingsPage = () => {
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="h-full">
-        <div className="mx-auto h-full w-full max-w-8xl text-white">
+        <div className="mx-auto h-full w-full max-w-8xl bg-page text-foreground-inverse">
           <PageHeader
             scope={ProjectType.SecretManager}
             title="Product Settings"
@@ -156,6 +156,7 @@ export const ProductSettingsPage = () => {
         </div>
       </div>
       <UpgradePlanModal
+        paywallKey="organization.product-settings"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Cross-project secret sharing is not available on your plan. Upgrade to the Infisical Pro plan to enable this feature."

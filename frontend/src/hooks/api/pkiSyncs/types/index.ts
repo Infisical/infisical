@@ -6,6 +6,7 @@ import { TAwsSecretsManagerPkiSync } from "./aws-secrets-manager-sync";
 import { TAzureKeyVaultPkiSync } from "./azure-key-vault-sync";
 import { TChefPkiSync } from "./chef-sync";
 import { TCloudflareCustomCertificatePkiSync } from "./cloudflare-custom-certificate-sync";
+import { TPkiSyncFilters } from "./common";
 import { TF5BigIpPkiSync } from "./f5-big-ip-sync";
 import {
   GcpCertificateManagerScope,
@@ -84,7 +85,7 @@ type TCreatePkiSyncDTOBase = {
   };
   isAutoSyncEnabled: boolean;
   subscriberId?: string | null;
-  certificateIds?: string[];
+  filters?: TPkiSyncFilters | null;
   projectId: string;
   applicationId?: string;
 };
@@ -122,7 +123,7 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
   };
 };
 
-export type TUpdatePkiSyncDTO = Partial<Omit<TCreatePkiSyncDTO, "projectId" | "certificateIds">> & {
+export type TUpdatePkiSyncDTO = Partial<Omit<TCreatePkiSyncDTO, "projectId">> & {
   syncId: string;
   projectId: string;
 };

@@ -77,6 +77,7 @@ import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { OVHConnectionForm } from "./OVHConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
+import { PowerDnsConnectionForm } from "./PowerDnsConnectionForm";
 import { QoveryConnectionForm } from "./QoveryConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
@@ -87,6 +88,7 @@ import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
 import { SpaceliftConnectionForm } from "./SpaceliftConnectionForm";
 import { SshConnectionForm } from "./SshConnectionForm";
+import { StripeConnectionForm } from "./StripeConnectionForm";
 import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
@@ -128,12 +130,12 @@ const RotationConfirmation = ({
 
   return (
     <div className="p-4">
-      <div className="flex flex-col rounded-xs border border-l-2 border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
+      <div className="flex flex-col rounded-xs border border-l-2 border-border-control border-l-project bg-surface-hover/80 px-4 py-3">
         <div className="mb-1 flex items-center text-sm">
-          <InfoIcon className="mr-1.5 size-4 text-primary" />
+          <InfoIcon className="mr-1.5 size-4 text-project" />
           Automatic Credential Rotation
         </div>
-        <p className="bor mt-1 text-sm text-bunker-200">
+        <p className="bor mt-1 text-sm text-foreground-soft">
           Enabling automatic credential rotation will give Infisical full control over the lifecycle
           of this credential. Infisical will automatically rotate the credential on the schedule you
           configured and you will no longer be able to manage it manually. The original credential
@@ -253,6 +255,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <OnePassConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Heroku:
         return <HerokuConnectionForm onSubmit={onSubmit} projectId={projectId} />;
+      case AppConnection.Stripe:
+        return <StripeConnectionForm onSubmit={onSubmit} projectId={projectId} />;
       case AppConnection.HasuraCloud:
         return <HasuraCloudConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Render:
@@ -365,6 +369,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <RundeckConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NutanixPrismCentral:
         return <NutanixPrismCentralConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.PowerDns:
+        return <PowerDnsConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -526,6 +532,14 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
             projectId={appConnection.projectId}
           />
         );
+      case AppConnection.Stripe:
+        return (
+          <StripeConnectionForm
+            onSubmit={onSubmit}
+            appConnection={appConnection}
+            projectId={appConnection.projectId}
+          />
+        );
       case AppConnection.HasuraCloud:
         return <HasuraCloudConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Render:
@@ -638,6 +652,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return (
           <NutanixPrismCentralConnectionForm onSubmit={onSubmit} appConnection={appConnection} />
         );
+      case AppConnection.PowerDns:
+        return <PowerDnsConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:

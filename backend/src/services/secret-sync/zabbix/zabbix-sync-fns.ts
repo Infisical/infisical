@@ -4,6 +4,7 @@ import { request } from "@app/lib/config/request";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import {
   TZabbixSecret,
@@ -195,7 +196,8 @@ const deleteZabbixSecrets = async (
 };
 
 export const ZabbixSyncFns = {
-  syncSecrets: async (secretSync: TZabbixSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TZabbixSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { connection, environment, destinationConfig } = secretSync;
     const { apiToken, instanceUrl } = connection.credentials;
     await blockLocalAndPrivateIpAddresses(instanceUrl);
@@ -239,7 +241,8 @@ export const ZabbixSyncFns = {
     }
   },
 
-  removeSecrets: async (secretSync: TZabbixSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TZabbixSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { connection, destinationConfig } = secretSync;
     const { apiToken, instanceUrl } = connection.credentials;
     await blockLocalAndPrivateIpAddresses(instanceUrl);

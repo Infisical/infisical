@@ -94,6 +94,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
           metadata: {
             pkiAlertId: alert.id,
             applicationId: req.params.applicationId,
+            ...(alert.applicationName && { applicationName: alert.applicationName }),
             name: alert.name,
             alertBefore: alert.alertBefore ?? undefined,
             eventType: alert.eventType
@@ -153,6 +154,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
           metadata: {
             pkiAlertId: alert.id,
             applicationId: req.params.applicationId,
+            ...(alert.applicationName && { applicationName: alert.applicationName }),
             name: alert.name,
             alertBefore: alert.alertBefore ?? undefined,
             eventType: alert.eventType
@@ -208,7 +210,8 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
           type: EventType.DELETE_PKI_ALERT,
           metadata: {
             pkiAlertId: alert.id,
-            applicationId: req.params.applicationId
+            applicationId: req.params.applicationId,
+            ...(alert.applicationName && { applicationName: alert.applicationName })
           }
         }
       });

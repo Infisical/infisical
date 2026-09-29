@@ -11,9 +11,9 @@ import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
-import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -42,7 +42,12 @@ import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-co
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { TAwsAuthMethodConfig, TKubernetesAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
+import {
+  TAwsAuthMethodConfig,
+  TGcpAuthMethodConfig,
+  TKubernetesAuthMethodConfig
+} from "../resource-auth-method/resource-auth-method-types";
+import { issueGatewayServerCertificate } from "./gateway-v2-certificate-fns";
 import {
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
@@ -708,47 +713,13 @@ export const gatewayV2ServiceFactory = ({
       ["sign"]
     );
 
-    const gatewayServerKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const gatewayServerCertIssuedAt = new Date();
-    const gatewayServerCertExpireAt = new Date(new Date().setDate(new Date().getDate() + 1));
-    const gatewayServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(gatewayServerKeys.privateKey);
-
-    const subjectAlternativeNames: x509.JsonGeneralName[] = [
-      { type: "dns", value: "localhost" },
-      { type: "ip", value: "127.0.0.1" },
-      { type: "ip", value: "::1" }
-    ];
-    if (gateway.directAddress) {
-      const { host } = parseDirectAddress(gateway.directAddress);
-      subjectAlternativeNames.push(net.isIP(host) ? { type: "ip", value: host } : { type: "dns", value: host });
-    }
-
-    const gatewayServerCertExtensions: x509.Extension[] = [
-      new x509.BasicConstraintsExtension(false),
-      await x509.AuthorityKeyIdentifierExtension.create(gatewayServerCaCert, false),
-      await x509.SubjectKeyIdentifierExtension.create(gatewayServerKeys.publicKey),
-      new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
-      new x509.KeyUsagesExtension(
-        // eslint-disable-next-line no-bitwise
-        x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] | x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT],
-        true
-      ),
-      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
-      new x509.SubjectAlternativeNameExtension(subjectAlternativeNames)
-    ];
-
-    const gatewayServerSerialNumber = createSerialNumber();
-    const gatewayServerCertificate = await x509.X509CertificateGenerator.create({
-      serialNumber: gatewayServerSerialNumber,
-      subject: `O=${orgId},CN=Gateway`,
-      issuer: gatewayServerCaCert.subject,
-      notBefore: getNotBeforeWithClockSkew(gatewayServerCertIssuedAt),
-      notAfter: getNotAfterWithClockSkew(gatewayServerCertExpireAt),
-      signingKey: gatewayServerCaPrivateKey,
-      publicKey: gatewayServerKeys.publicKey,
-      signingAlgorithm: alg,
-      extensions: gatewayServerCertExtensions
-    });
+    const { certificate: gatewayServerCertificate, privateKey: gatewayServerCertPrivateKey } =
+      await issueGatewayServerCertificate({
+        orgId,
+        gateway,
+        caCertificate: gatewayServerCaCert,
+        caPrivateKey: gatewayServerCaPrivateKey
+      });
 
     const relayCredentials = relayName
       ? await relayService.getCredentialsForGateway({
@@ -1055,7 +1026,11 @@ export const gatewayV2ServiceFactory = ({
     capabilities
   }: {
     orgPermission: OrgServiceActor;
-    capabilities?: { pkcs11?: boolean };
+    capabilities?: {
+      pkcs11?: boolean;
+      sessionLogMaskingBuiltInDetection?: boolean;
+      supported_account_types?: string[];
+    };
   }) => {
     const nextCapabilities = capabilities ?? {};
 
@@ -1313,6 +1288,74 @@ export const gatewayV2ServiceFactory = ({
 
   // --- V3 service methods ---
 
+  const $assertCanEditGateway = async (orgPermission: OrgServiceActor, gatewayId: string) => {
+    const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: orgPermission.orgId });
+    if (!gateway) {
+      throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: gateway.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.EditGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    return gateway;
+  };
+
+  // Setting an auth method dials the customer's cluster, so the two halves of an update cannot
+  // share a transaction. Checking the name first means the ordinary rejection lands before the
+  // auth method is committed; the unique violation in renameGateway still covers the race.
+  const assertGatewayNameAvailable = async ({
+    orgPermission,
+    gatewayId,
+    name
+  }: {
+    orgPermission: OrgServiceActor;
+    gatewayId: string;
+    name: string;
+  }) => {
+    const gateway = await $assertCanEditGateway(orgPermission, gatewayId);
+    if (gateway.name === name) return;
+
+    const existing = await gatewayV2DAL.findOne({ orgId: orgPermission.orgId, name });
+    if (existing && existing.id !== gatewayId) {
+      throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
+    }
+  };
+
+  const renameGateway = async ({
+    orgPermission,
+    gatewayId,
+    name
+  }: {
+    orgPermission: OrgServiceActor;
+    gatewayId: string;
+    name: string;
+  }) => {
+    const gateway = await $assertCanEditGateway(orgPermission, gatewayId);
+    if (gateway.name === name) return { gateway, previousName: name };
+
+    try {
+      const renamed = await gatewayV2DAL.updateById(gateway.id, { name });
+      return { gateway: renamed, previousName: gateway.name };
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
+      }
+
+      throw err;
+    }
+  };
+
   const createGateway = async ({
     orgId,
     actorId,
@@ -1328,6 +1371,7 @@ export const gatewayV2ServiceFactory = ({
     name: string;
     authMethod:
       | { method: "aws"; config: TAwsAuthMethodConfig }
+      | { method: "gcp"; config: TGcpAuthMethodConfig }
       | { method: "kubernetes"; config: TKubernetesAuthMethodConfig }
       | { method: "token" };
   }) => {
@@ -1475,6 +1519,8 @@ export const gatewayV2ServiceFactory = ({
     enrollGateway,
     // V3
     createGateway,
+    renameGateway,
+    assertGatewayNameAvailable,
     connectGateway
   };
 };

@@ -70,7 +70,6 @@ const buildService = (
       ),
       updateById
     },
-    gatewayService: { fnGetGatewayClientTlsByGatewayId: vi.fn() },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
     gatewayPoolService: { resolveEffectiveGatewayId: vi.fn(async () => "gw-1") },
     kmsService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },

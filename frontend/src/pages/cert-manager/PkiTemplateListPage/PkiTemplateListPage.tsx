@@ -27,7 +27,6 @@ import {
   EmptyState,
   Modal,
   ModalContent,
-  PageHeader,
   Pagination,
   Table,
   TableContainer,
@@ -40,10 +39,13 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
+import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub,
+  useProject,
   useSubscription
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -53,6 +55,8 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CertificateModal } from "../CertificatesPage/components/CertificateModal";
 import { CertificateTemplateEnrollmentModal } from "../CertificatesPage/components/CertificateTemplateEnrollmentModal";
+import { LegacyPkiCreationBlockedModal } from "../components/LegacyPkiCreationBlockedModal";
+import { LegacyPkiDeprecationAlert } from "../components/LegacyPkiDeprecationAlert";
 import { PkiTemplateForm } from "./components/PkiTemplateForm";
 
 const PER_PAGE_INIT = 25;
@@ -66,12 +70,15 @@ export const PkiTemplateListPage = () => {
     "deleteTemplate",
     "enrollmentOptions",
     "estUpgradePlan",
-    "certificateFromTemplate"
+    "certificateFromTemplate",
+    "creationBlocked"
   ] as const);
 
   const { subscription } = useSubscription();
+  const { currentProject } = useProject();
 
   const { data, isPending } = useListCertificateTemplates({
+    projectId: currentProject.id,
     offset: (page - 1) * perPage,
     limit: perPage
   });
@@ -80,7 +87,8 @@ export const PkiTemplateListPage = () => {
 
   const onRemovePkiSubscriberSubmit = async () => {
     const pkiTemplate = await deleteCertTemplate.mutateAsync({
-      templateName: popUp?.deleteTemplate?.data?.name
+      templateName: popUp?.deleteTemplate?.data?.name,
+      projectId: currentProject.id
     });
 
     createNotification({
@@ -96,194 +104,196 @@ export const PkiTemplateListPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "PKI Templates" })}</title>
       </Helmet>
-      <div className="h-full bg-bunker-800">
-        <div className="mx-auto flex flex-col justify-between text-white">
-          <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="h-full bg-page">
+        <div className="mx-auto flex flex-col justify-between text-foreground-inverse">
+          <div className="mx-auto flex w-full max-w-8xl flex-col gap-8">
             <PageHeader
               scope={ProjectType.CertificateManager}
               title="Certificate Templates"
               description="Manage certificate template to request and issue dynamic certificates following a strict format."
             />
-          </div>
-          <div className="container mx-auto mb-6 max-w-8xl rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-            {/* TODO: Use subscription.pkiLegacyTemplates to block legacy templates creation */}
-            <div className="mb-4 flex justify-between">
-              <p className="text-xl font-medium text-mineshaft-100">Templates</p>
-              <div className="flex w-full justify-end">
-                <ProjectPermissionCan
-                  I={ProjectPermissionPkiTemplateActions.Create}
-                  a={ProjectPermissionSub.CertificateTemplates}
-                >
-                  {(isAllowed) => (
-                    <Button
-                      colorSchema="primary"
-                      type="submit"
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                      onClick={() => handlePopUpOpen("certificateTemplate")}
-                      isDisabled={!isAllowed}
-                      className="ml-4"
-                    >
-                      Add Template
-                    </Button>
-                  )}
-                </ProjectPermissionCan>
+            <LegacyPkiDeprecationAlert resource={LegacyPkiResource.CertificateTemplate} />
+            <div className="container mx-auto mb-6 max-w-8xl rounded-lg border border-border-control bg-surface-base p-4">
+              <div className="mb-4 flex justify-between">
+                <p className="text-xl font-medium text-foreground">Templates</p>
+                <div className="flex w-full justify-end">
+                  <ProjectPermissionCan
+                    I={ProjectPermissionPkiTemplateActions.Create}
+                    a={ProjectPermissionSub.CertificateTemplates}
+                  >
+                    {(isAllowed) => (
+                      <Button
+                        colorSchema="primary"
+                        type="submit"
+                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                        onClick={() => handlePopUpOpen("creationBlocked")}
+                        isDisabled={!isAllowed}
+                        className="ml-4"
+                      >
+                        Add Template
+                      </Button>
+                    )}
+                  </ProjectPermissionCan>
+                </div>
               </div>
-            </div>
-            <TableContainer>
-              <Table>
-                <THead>
-                  <Tr>
-                    <Th>Name</Th>
-                    <Th>Issuing CA</Th>
-                    <Th className="w-64">Last Updated At</Th>
-                    <Th />
-                  </Tr>
-                </THead>
-                <TBody>
-                  {isPending && <TableSkeleton columns={4} innerKey="project-cert-templates" />}
-                  {!isPending &&
-                    data?.certificateTemplates?.map((template) => {
-                      return (
-                        <Tr className="h-10" key={`certificate-template-${template.id}`}>
-                          <Td>{template.name}</Td>
-                          <Td>
-                            <Tag size="xs">{template.ca.name}</Tag>
-                          </Td>
-                          <Td>{format(new Date(template.updatedAt), "yyyy-MM-dd | HH:mm:ss")}</Td>
-                          <Td className="text-right align-middle">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild className="rounded-lg">
-                                <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                                  <Tooltip content="More options">
-                                    <FontAwesomeIcon size="lg" icon={faEllipsis} />
-                                  </Tooltip>
-                                </div>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="start" className="p-1">
-                                <ProjectPermissionCan
-                                  I={ProjectPermissionCertificateActions.Create}
-                                  a={ProjectPermissionSub.Certificates}
-                                >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      className={twMerge(
-                                        !isAllowed &&
-                                          "pointer-events-none cursor-not-allowed opacity-50"
-                                      )}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handlePopUpOpen("certificateFromTemplate", template);
-                                      }}
-                                      disabled={!isAllowed}
-                                      icon={<FontAwesomeIcon icon={faFileContract} />}
-                                    >
-                                      Issue Certificate
-                                    </DropdownMenuItem>
-                                  )}
-                                </ProjectPermissionCan>
-                                <ProjectPermissionCan
-                                  I={ProjectPermissionPkiTemplateActions.Edit}
-                                  a={ProjectPermissionSub.CertificateTemplates}
-                                >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      className={twMerge(
-                                        !isAllowed &&
-                                          "pointer-events-none cursor-not-allowed opacity-50"
-                                      )}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handlePopUpOpen("certificateTemplate", template);
-                                      }}
-                                      disabled={!isAllowed}
-                                      icon={<FontAwesomeIcon icon={faPencil} />}
-                                    >
-                                      Edit Template
-                                    </DropdownMenuItem>
-                                  )}
-                                </ProjectPermissionCan>
-                                <ProjectPermissionCan
-                                  I={ProjectPermissionPkiTemplateActions.Edit}
-                                  a={ProjectPermissionSub.CertificateTemplates}
-                                >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      className={twMerge(
-                                        !isAllowed &&
-                                          "pointer-events-none cursor-not-allowed opacity-50"
-                                      )}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (!subscription.pkiEst) {
-                                          handlePopUpOpen("estUpgradePlan", {
-                                            isEnterpriseFeature: true
-                                          });
-                                          return;
-                                        }
-                                        handlePopUpOpen("enrollmentOptions", {
-                                          id: template.id
-                                        });
-                                      }}
-                                      disabled={!isAllowed}
-                                      icon={<FontAwesomeIcon icon={faCog} />}
-                                    >
-                                      Manage Enrollment
-                                    </DropdownMenuItem>
-                                  )}
-                                </ProjectPermissionCan>
-                                <ProjectPermissionCan
-                                  I={ProjectPermissionPkiTemplateActions.Delete}
-                                  a={ProjectPermissionSub.CertificateTemplates}
-                                >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      className={twMerge(
-                                        !isAllowed &&
-                                          "pointer-events-none cursor-not-allowed opacity-50"
-                                      )}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handlePopUpOpen("deleteTemplate", template);
-                                      }}
-                                      disabled={!isAllowed}
-                                      icon={<FontAwesomeIcon icon={faTrash} />}
-                                    >
-                                      Delete Template
-                                    </DropdownMenuItem>
-                                  )}
-                                </ProjectPermissionCan>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </Td>
-                        </Tr>
-                      );
-                    })}
-                  {!isPending && !data?.certificateTemplates?.length && (
+              <TableContainer>
+                <Table>
+                  <THead>
                     <Tr>
-                      <Td colSpan={4}>
-                        <EmptyState title="No certificate templates found" icon={faCertificate} />
-                      </Td>
+                      <Th>Name</Th>
+                      <Th>Issuing CA</Th>
+                      <Th className="w-64">Last Updated At</Th>
+                      <Th />
                     </Tr>
+                  </THead>
+                  <TBody>
+                    {isPending && <TableSkeleton columns={4} innerKey="project-cert-templates" />}
+                    {!isPending &&
+                      data?.certificateTemplates?.map((template) => {
+                        return (
+                          <Tr className="h-10" key={`certificate-template-${template.id}`}>
+                            <Td>{template.name}</Td>
+                            <Td>
+                              <Tag size="xs">{template.ca.name}</Tag>
+                            </Td>
+                            <Td>{format(new Date(template.updatedAt), "yyyy-MM-dd | HH:mm:ss")}</Td>
+                            <Td className="text-right align-middle">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild className="rounded-lg">
+                                  <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                                    <Tooltip content="More options">
+                                      <FontAwesomeIcon size="lg" icon={faEllipsis} />
+                                    </Tooltip>
+                                  </div>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="p-1">
+                                  <ProjectPermissionCan
+                                    I={ProjectPermissionCertificateActions.Create}
+                                    a={ProjectPermissionSub.Certificates}
+                                  >
+                                    {(isAllowed) => (
+                                      <DropdownMenuItem
+                                        className={twMerge(
+                                          !isAllowed &&
+                                            "pointer-events-none cursor-not-allowed opacity-50"
+                                        )}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handlePopUpOpen("certificateFromTemplate", template);
+                                        }}
+                                        disabled={!isAllowed}
+                                        icon={<FontAwesomeIcon icon={faFileContract} />}
+                                      >
+                                        Issue Certificate
+                                      </DropdownMenuItem>
+                                    )}
+                                  </ProjectPermissionCan>
+                                  <ProjectPermissionCan
+                                    I={ProjectPermissionPkiTemplateActions.Edit}
+                                    a={ProjectPermissionSub.CertificateTemplates}
+                                  >
+                                    {(isAllowed) => (
+                                      <DropdownMenuItem
+                                        className={twMerge(
+                                          !isAllowed &&
+                                            "pointer-events-none cursor-not-allowed opacity-50"
+                                        )}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handlePopUpOpen("certificateTemplate", template);
+                                        }}
+                                        disabled={!isAllowed}
+                                        icon={<FontAwesomeIcon icon={faPencil} />}
+                                      >
+                                        Edit Template
+                                      </DropdownMenuItem>
+                                    )}
+                                  </ProjectPermissionCan>
+                                  <ProjectPermissionCan
+                                    I={ProjectPermissionPkiTemplateActions.Edit}
+                                    a={ProjectPermissionSub.CertificateTemplates}
+                                  >
+                                    {(isAllowed) => (
+                                      <DropdownMenuItem
+                                        className={twMerge(
+                                          !isAllowed &&
+                                            "pointer-events-none cursor-not-allowed opacity-50"
+                                        )}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (!subscription.pkiEst) {
+                                            handlePopUpOpen("estUpgradePlan", {
+                                              isEnterpriseFeature: true
+                                            });
+                                            return;
+                                          }
+                                          handlePopUpOpen("enrollmentOptions", {
+                                            id: template.id
+                                          });
+                                        }}
+                                        disabled={!isAllowed}
+                                        icon={<FontAwesomeIcon icon={faCog} />}
+                                      >
+                                        Manage Enrollment
+                                      </DropdownMenuItem>
+                                    )}
+                                  </ProjectPermissionCan>
+                                  <ProjectPermissionCan
+                                    I={ProjectPermissionPkiTemplateActions.Delete}
+                                    a={ProjectPermissionSub.CertificateTemplates}
+                                  >
+                                    {(isAllowed) => (
+                                      <DropdownMenuItem
+                                        className={twMerge(
+                                          !isAllowed &&
+                                            "pointer-events-none cursor-not-allowed opacity-50"
+                                        )}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handlePopUpOpen("deleteTemplate", template);
+                                        }}
+                                        disabled={!isAllowed}
+                                        icon={<FontAwesomeIcon icon={faTrash} />}
+                                      >
+                                        Delete Template
+                                      </DropdownMenuItem>
+                                    )}
+                                  </ProjectPermissionCan>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </Td>
+                          </Tr>
+                        );
+                      })}
+                    {!isPending && !data?.certificateTemplates?.length && (
+                      <Tr>
+                        <Td colSpan={4}>
+                          <EmptyState title="No certificate templates found" icon={faCertificate} />
+                        </Td>
+                      </Tr>
+                    )}
+                  </TBody>
+                </Table>
+                {!isPending &&
+                  data?.totalCount !== undefined &&
+                  data.totalCount >= PER_PAGE_INIT && (
+                    <Pagination
+                      count={data.totalCount}
+                      page={page}
+                      perPage={perPage}
+                      onChangePage={(newPage) => setPage(newPage)}
+                      onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+                    />
                   )}
-                </TBody>
-              </Table>
-              {!isPending && data?.totalCount !== undefined && data.totalCount >= PER_PAGE_INIT && (
-                <Pagination
-                  count={data.totalCount}
-                  page={page}
-                  perPage={perPage}
-                  onChangePage={(newPage) => setPage(newPage)}
-                  onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
-                />
-              )}
-            </TableContainer>
-            <DeleteActionModal
-              isOpen={popUp.deleteTemplate.isOpen}
-              title="Are you sure you want to remove the PKI Template?"
-              onChange={(isOpen) => handlePopUpToggle("deleteTemplate", isOpen)}
-              deleteKey="confirm"
-              onDeleteApproved={() => onRemovePkiSubscriberSubmit()}
-            />
+              </TableContainer>
+              <DeleteActionModal
+                isOpen={popUp.deleteTemplate.isOpen}
+                title="Are you sure you want to remove the PKI Template?"
+                onChange={(isOpen) => handlePopUpToggle("deleteTemplate", isOpen)}
+                deleteKey="confirm"
+                onDeleteApproved={() => onRemovePkiSubscriberSubmit()}
+              />
+            </div>
           </div>
           <div className="container mx-auto max-w-8xl" />
         </div>
@@ -305,6 +315,11 @@ export const PkiTemplateListPage = () => {
           </ModalContent>
         </Modal>
         <CertificateTemplateEnrollmentModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <LegacyPkiCreationBlockedModal
+          resource={LegacyPkiResource.CertificateTemplate}
+          isOpen={popUp.creationBlocked.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("creationBlocked", isOpen)}
+        />
         <CertificateModal
           popUp={{
             certificate: {
@@ -317,6 +332,7 @@ export const PkiTemplateListPage = () => {
         />
       </div>
       <UpgradePlanModal
+        paywallKey="cert-manager.pki-template-list"
         isOpen={popUp.estUpgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("estUpgradePlan", isOpen)}
         text="Your current plan does not include access to configuring template enrollment methods. To unlock this feature, please upgrade to Infisical Enterprise plan."

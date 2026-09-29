@@ -3,13 +3,14 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  PageHeader,
   PageLoader
 } from "@app/components/v3";
 import {
@@ -72,18 +73,19 @@ const Page = () => {
       : "Installation");
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
-      <div className="mx-auto mb-6 w-full max-w-8xl">
-        <Link
-          to="/organizations/$orgId/projects/cert-manager/$projectId/discovery"
-          params={{ orgId: currentOrg.id, projectId: currentProject.id }}
-          search={{ selectedTab: "installations" }}
-          className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-        >
-          <ChevronLeftIcon size={16} />
-          Installations
-        </Link>
+    <div className="mx-auto flex flex-col justify-between text-foreground-inverse">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
+          backLink={
+            <Link
+              to="/organizations/$orgId/projects/cert-manager/$projectId/discovery"
+              params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+              search={{ selectedTab: "installations" }}
+            >
+              <ChevronLeftIcon size={16} />
+              Installations
+            </Link>
+          }
           scope={ProjectType.CertificateManager}
           description="Certificate Installation Details"
           title={displayName}

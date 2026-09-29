@@ -42,7 +42,7 @@ export const AGENT_VAULT_PRODUCT_ROLE_OPTIONS = [
   {
     value: ProjectMembershipRole.Member,
     label: "Member",
-    description: "Create sessions over the access bundles they're granted"
+    description: "Create sessions with the access bundles they're granted"
   }
 ];
 

@@ -3,6 +3,7 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import { addSeconds, formatISO } from "date-fns";
 import { z } from "zod";
 
+import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { createNotification } from "@app/components/notifications";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { SessionStorageKeys } from "@app/const";
@@ -57,9 +58,8 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         window.dataLayer.push({ event: "signup_completed" });
       }
 
-      // posthog-js never initializes on the signup path, so the anonymous marketing-site visitor
-      // is never merged into the new account. Identify on user.username, the distinct id the
-      // backend captures signup events with.
+      // Identify on user.username, the distinct id the backend captures signup events with, before
+      // recording the provider-verified conversion.
       try {
         const user = await context.queryClient.ensureQueryData({
           queryKey: userKeys.getUser,
@@ -70,6 +70,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
       } catch {
         // best-effort attribution; it must never block the signup redirect
       }
+      captureSignupCompleted("sso");
 
       // Provider-verified signups arrive with no org; send them to org setup instead of the
       // personal-org fallback. Fetch errors fall through to the strip-redirect, whose main
@@ -85,7 +86,11 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         hasNoOrg = false;
       }
       if (hasNoOrg) {
-        throw redirect({ to: "/organizations/onboarding", replace: true });
+        throw redirect({
+          to: "/organizations/onboarding",
+          search: { callback_port: search.callback_port },
+          replace: true
+        });
       }
 
       // Consume the one-shot param so refresh/back-nav can't re-fire the conversion event
@@ -182,7 +187,8 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
               callbackPort: search.callback_port
             })
           );
-          throw redirect({ to: "/cli-redirect" });
+          setAuthToken(result.token);
+          throw redirect({ to: "/cli-redirect", search: { org_id: targetOrgId } });
         }
 
         setAuthToken(result.token);

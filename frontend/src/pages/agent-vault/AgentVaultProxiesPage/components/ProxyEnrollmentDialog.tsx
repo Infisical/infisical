@@ -72,8 +72,8 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
         <DialogHeader>
           <DialogTitle>Enrollment Token</DialogTitle>
           <DialogDescription>
-            Run this where the proxy lives. It enrolls once and keeps its own certificate after
-            that.
+            Run this wherever agents&apos; requests leave your network. The proxy enrolls once, then
+            keeps its own certificate.
           </DialogDescription>
         </DialogHeader>
 
@@ -83,7 +83,7 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
             <AlertDescription>
               {isExpired
                 ? "This token has expired. Generate a new one from the proxy's menu."
-                : "This token is shown once and expires in an hour. Copy it now, it cannot be retrieved later."}
+                : "This token is shown once and expires in an hour. Copy it now, since it cannot be retrieved later."}
             </AlertDescription>
           </Alert>
 

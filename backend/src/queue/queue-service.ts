@@ -52,6 +52,8 @@ import { TCreateUserNotificationDTO } from "@app/services/notification/notificat
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import {
   TQueuePkiSyncImportCertificatesByIdDTO,
+  TQueuePkiSyncLinkMatchingCertificatesDTO,
+  TQueuePkiSyncReconcileFiltersDTO,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
   TQueuePkiSyncRunHealthCheckByIdDTO,
   TQueuePkiSyncSyncCertificatesByIdDTO
@@ -112,6 +114,7 @@ export enum QueueName {
   SecretScanningV2RealtimeScan = "secret-scanning-v2-realtime-scan",
   UserNotification = "user-notification",
   AlertDispatch = "alert-dispatch",
+  EventOutboxFlush = "event-outbox-flush",
   AuditReportGeneration = "audit-report-generation",
   PamSessionExpiration = "pam-session-expiration",
   PamDiscoveryScan = "pam-discovery-scan",
@@ -127,7 +130,8 @@ export enum QueueName {
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event",
-  IntegrationDeprecationNotice = "integration-deprecation-notice"
+  IntegrationDeprecationNotice = "integration-deprecation-notice",
+  LegacyPkiDeprecationNotice = "legacy-pki-deprecation-notice"
 }
 
 export enum QueueJobs {
@@ -162,6 +166,8 @@ export enum QueueJobs {
   SecretSyncRemoveSecrets = "secret-sync-remove-secrets",
   SecretSyncSendActionFailedNotifications = "secret-sync-send-action-failed-notifications",
   PkiSyncSyncCertificates = "pki-sync-sync-certificates",
+  PkiSyncLinkMatchingCertificates = "pki-sync-link-matching-certificates",
+  PkiSyncReconcileFilters = "pki-sync-reconcile-filters",
   PkiSyncImportCertificates = "pki-sync-import-certificates",
   PkiSyncRemoveCertificates = "pki-sync-remove-certificates",
   PkiSyncRunHealthCheck = "pki-sync-run-health-check",
@@ -188,6 +194,7 @@ export enum QueueJobs {
   SecretReminderMigration = "secret-reminder-migration",
   UserNotification = "user-notification-job",
   AlertDispatch = "alert-dispatch-job",
+  EventOutboxFlush = "event-outbox-flush-job",
   GenerateAuditReport = "generate-audit-report-job",
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
@@ -214,7 +221,8 @@ export enum QueueJobs {
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event-job",
-  SendIntegrationDeprecationNotice = "send-integration-deprecation-notice"
+  SendIntegrationDeprecationNotice = "send-integration-deprecation-notice",
+  SendLegacyPkiDeprecationNotice = "send-legacy-pki-deprecation-notice"
 }
 
 export enum JobState {
@@ -369,6 +377,14 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.PkiSyncRemoveCertificates;
         payload: TQueuePkiSyncRemoveCertificatesByIdDTO;
+      }
+    | {
+        name: QueueJobs.PkiSyncLinkMatchingCertificates;
+        payload: TQueuePkiSyncLinkMatchingCertificatesDTO;
+      }
+    | {
+        name: QueueJobs.PkiSyncReconcileFilters;
+        payload: TQueuePkiSyncReconcileFiltersDTO;
       };
   [QueueName.PkiSyncHealthCheck]: {
     name: QueueJobs.PkiSyncRunHealthCheck;
@@ -527,6 +543,10 @@ export type TQueueJobTypes = {
     name: QueueJobs.AlertDispatch;
     payload: { alertId: string; scheduledAt: string };
   };
+  [QueueName.EventOutboxFlush]: {
+    name: QueueJobs.EventOutboxFlush;
+    payload: { consumer: string };
+  };
   [QueueName.AuditReportGeneration]: {
     name: QueueJobs.GenerateAuditReport;
     payload: { auditReportId: string };
@@ -615,6 +635,11 @@ export type TQueueJobTypes = {
     // period is a YYYY-MM stamp computed once by the cron tick so every retry of the same fire is deduped alike
     payload: { orgId: string; period: string };
   };
+  [QueueName.LegacyPkiDeprecationNotice]: {
+    name: QueueJobs.SendLegacyPkiDeprecationNotice;
+    // period is a YYYY-MM stamp computed once by the cron tick so every retry of the same fire is deduped alike
+    payload: { orgId: string; period: string };
+  };
 };
 
 const SECRET_SCANNING_QUEUES = [
@@ -640,7 +665,8 @@ export type TQueueServiceFactory = {
       token?: string,
       signal?: AbortSignal
     ) => Promise<void>,
-    queueSettings?: Omit<QueueOptions, "connection"> & Pick<WorkerOptions, "concurrency" | "limiter">
+    queueSettings?: Omit<QueueOptions, "connection"> &
+      Pick<WorkerOptions, "concurrency" | "limiter" | "maxStalledCount">
   ) => void;
   listen: <
     T extends QueueName,

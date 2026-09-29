@@ -127,6 +127,12 @@ export type THerokuConnectionOption = TAppConnectionOptionBase & {
   oauthClientId?: string;
 };
 
+export type TStripeConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Stripe;
+  oauthClientId?: string;
+  oauthAuthorizeUrl?: string;
+};
+
 export type TOnePassConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OnePass;
 };
@@ -214,6 +220,10 @@ export type TDNSMadeEasyConnectionOption = TAppConnectionOptionBase & {
 
 export type TAzureDNSConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureDNS;
+};
+
+export type TPowerDnsConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.PowerDns;
 };
 
 export type TSshConnectionOption = TAppConnectionOptionBase & {
@@ -375,6 +385,7 @@ export type TAppConnectionOption =
   | TOCIConnectionOption
   | TOnePassConnectionOption
   | THerokuConnectionOption
+  | TStripeConnectionOption
   | TRenderConnectionOption
   | TFlyioConnectionOption
   | TGitlabConnectionOption
@@ -400,6 +411,7 @@ export type TAppConnectionOption =
   | TChefConnectionOption
   | TDNSMadeEasyConnectionOption
   | TAzureDNSConnectionOption
+  | TPowerDnsConnectionOption
   | TOctopusDeployConnectionOption
   | TSshConnectionOption
   | TDbtConnectionOption
@@ -461,6 +473,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.OCI]: TOCIConnectionOption;
   [AppConnection.OnePass]: TOnePassConnectionOption;
   [AppConnection.Heroku]: THerokuConnectionOption;
+  [AppConnection.Stripe]: TStripeConnectionOption;
   [AppConnection.Render]: TRenderConnectionOption;
   [AppConnection.Flyio]: TFlyioConnectionOption;
   [AppConnection.GitLab]: TGitlabConnectionOption;
@@ -484,6 +497,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
   [AppConnection.Chef]: TChefConnectionOption;
   [AppConnection.AzureDNS]: TAzureDNSConnectionOption;
+  [AppConnection.PowerDns]: TPowerDnsConnectionOption;
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
   [AppConnection.SSH]: TSshConnectionOption;
   [AppConnection.Dbt]: TDbtConnectionOption;

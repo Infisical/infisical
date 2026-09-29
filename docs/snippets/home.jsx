@@ -280,6 +280,13 @@ export const HomeCard = ({
         <path d="m16 18 6-6-6-6" />
         <path d="m8 6-6 6 6 6" />
       </>
+    ),
+    "shield-keyhole": (
+      <>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <circle cx="12" cy="10" r="1.5" />
+        <path d="M12 11.5v3" />
+      </>
     )
   };
 

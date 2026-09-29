@@ -34,8 +34,8 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
       <DialogHeader>
         <DialogTitle>Session Created</DialogTitle>
         <DialogDescription>
-          Run this where your agent runs. Its traffic reaches the proxy with the credentials this
-          session carries.
+          Run this where your agent runs. The agent&apos;s traffic goes through the proxy, which
+          attaches the credentials this session carries.
         </DialogDescription>
       </DialogHeader>
 
@@ -43,7 +43,8 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
         <Alert variant="warning">
           <TriangleAlertIcon />
           <AlertDescription>
-            This command is shown once. Copy it now, the session token cannot be retrieved later.
+            This command is shown once. Copy it now, since the session token cannot be retrieved
+            later.
           </AlertDescription>
         </Alert>
 

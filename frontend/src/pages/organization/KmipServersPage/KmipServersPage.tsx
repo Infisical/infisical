@@ -9,8 +9,10 @@ export const KmipServersPage = () => {
         <title>Infisical | KMIP Servers</title>
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="mx-auto flex w-full max-w-8xl flex-col">
-        <KmipServerTab />
+      <div className="flex w-full justify-center bg-page text-foreground-inverse">
+        <div className="w-full max-w-8xl">
+          <KmipServerTab />
+        </div>
       </div>
     </>
   );

@@ -15,12 +15,14 @@ import {
   ApprovalRequestStepStatus,
   ApproverType
 } from "./approval-policy-enums";
-import { ApprovalPolicyStep, TApprovalRequestData } from "./approval-policy-types";
+import { ApprovalPolicyStep, TApprovalRequestData, TApprovalRequestSubjectMetadata } from "./approval-policy-types";
 import {
   TApprovalRequestDALFactory,
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
+import { TCertRequestRequestData } from "./cert-request/cert-request-policy-types";
+import { TCodeSigningRequestData } from "./code-signing/code-signing-policy-types";
 
 export interface TCreateApprovalRequestWithStepsParams {
   projectId: string;
@@ -280,4 +282,23 @@ export const notifyStepApprovers = async (
   } catch (err) {
     logger.error(err, `Failed to send approval request emails to approvers [requestId=${request.id}]`);
   }
+};
+
+export const getApprovalRequestSubjectMetadata = (
+  request: Pick<TApprovalRequests, "type" | "requestData">
+): TApprovalRequestSubjectMetadata => {
+  const requestData = (request.requestData as { requestData?: unknown } | null)?.requestData;
+  if (!requestData) return {};
+
+  if (request.type === ApprovalPolicyType.CertRequest) {
+    const { certificateRequestId, certificateRequest, profileName } = requestData as TCertRequestRequestData;
+    return { certificateRequestId, commonName: certificateRequest?.commonName, profileName };
+  }
+
+  if (request.type === ApprovalPolicyType.CertCodeSigning) {
+    const { signerId, signerName } = requestData as TCodeSigningRequestData;
+    return { signerId, signerName };
+  }
+
+  return {};
 };

@@ -3,7 +3,13 @@ import { PackRule } from "@casl/ability/extra";
 import { MongoQuery } from "@ucast/mongo2js";
 import { Knex } from "knex";
 
-import { ActionProjectType, OrganizationActionScope, ResourceType, TMemberships } from "@app/db/schemas";
+import {
+  AccessScopeData,
+  ActionProjectType,
+  OrganizationActionScope,
+  ResourceType,
+  TMemberships
+} from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
@@ -215,6 +221,11 @@ export type TPermissionServiceFactory = {
     projectId: string;
     checkPermissions: ProjectPermissionSet;
   }) => Promise<boolean>;
+  getActorGrantAbilities: (arg: {
+    scopeData: AccessScopeData;
+    actorId: string;
+    actorType: ActorType.USER | ActorType.IDENTITY;
+  }) => Promise<{ permission: MongoAbility }[]>;
   getMembershipPermissionAudit: (arg: TGetMembershipPermissionAuditArg) => Promise<{
     sources: TPermissionAuditSource[];
   }>;

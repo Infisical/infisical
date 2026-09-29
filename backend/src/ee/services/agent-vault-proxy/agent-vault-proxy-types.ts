@@ -9,7 +9,13 @@ export type TAgentVaultProxyConfig = {
   pollInterval: number;
 };
 
-export type TListProxiesDTO = TAgentVaultProxyScoped;
+export type TListProxiesDTO = TAgentVaultProxyScoped & {
+  search?: string;
+  orderBy: "name" | "createdAt";
+  orderDirection: "asc" | "desc";
+  limit: number;
+  offset: number;
+};
 
 export type TCreateProxyDTO = TAgentVaultProxyScoped & {
   name: string;
@@ -48,8 +54,12 @@ export type TResolvedService = {
   name: string;
   accessBundleName: string;
   hostPattern: string;
+  allowedMethods: string[] | null;
+  allowedPathPrefixes: string[] | null;
   credential:
     | { type: "bearer"; headerName: string; headerPrefix: string; value: string }
     | { type: "basic"; username: string; password: string }
     | { type: "passthrough" };
+  customHeaders: { name: string; prefix: string; value: string }[];
+  substitutions: { placeholder: string; surfaces: string[]; value: string }[];
 };

@@ -141,6 +141,7 @@ export const InsightsPage = withProjectPermission(
           </div>
         </div>
         <UpgradePlanModal
+          paywallKey="secret-manager.insights"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => {
             handlePopUpToggle("upgradePlan", isOpen);

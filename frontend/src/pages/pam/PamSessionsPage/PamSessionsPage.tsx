@@ -25,6 +25,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  ProviderIcon,
   Select,
   SelectContent,
   SelectItem,
@@ -315,8 +316,8 @@ export const PamSessionsPage = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {accountTypeDetails && (
-                          <img
-                            src={`/images/integrations/${accountTypeDetails.icon}`}
+                          <ProviderIcon
+                            icon={accountTypeDetails.icon}
                             alt={accountTypeDetails.name}
                             className="size-5 shrink-0 rounded-sm"
                           />

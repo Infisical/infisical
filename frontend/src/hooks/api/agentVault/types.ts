@@ -1,7 +1,10 @@
 import {
   AgentVaultCredentialType,
+  AgentVaultHttpMethod,
+  AgentVaultMemberType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
+  AgentVaultSubstitutionSurface,
   AgentVaultTrafficPolicy
 } from "./enums";
 
@@ -30,29 +33,130 @@ export type TAgentVaultCredentialUpdate =
   | { type: AgentVaultCredentialType.Basic; username?: string; password?: string }
   | { type: AgentVaultCredentialType.Passthrough };
 
+export type TAgentVaultCustomHeaderSummary = { id: string; name: string; prefix: string };
+
+export type TAgentVaultSubstitutionSummary = {
+  id: string;
+  placeholder: string;
+  surfaces: AgentVaultSubstitutionSurface[];
+};
+
+/** `id` is optional because the API matches a row by name (or placeholder) when one is not sent, and
+ * `value` is optional because omitting it keeps whatever is already stored for that row. */
+export type TAgentVaultCustomHeaderInput = {
+  id?: string;
+  name: string;
+  prefix?: string;
+  value?: string;
+};
+
+export type TAgentVaultSubstitutionInput = {
+  id?: string;
+  placeholder: string;
+  surfaces: AgentVaultSubstitutionSurface[];
+  value?: string;
+};
+
 export type TAgentVaultService = {
   id: string;
   accessBundleId: string;
   name: string;
   hostPattern: string;
+  // null means unrestricted.
+  allowedMethods: AgentVaultHttpMethod[] | null;
+  allowedPathPrefixes: string[] | null;
   credential: TAgentVaultCredentialSummary;
+  customHeaders: TAgentVaultCustomHeaderSummary[];
+  substitutions: TAgentVaultSubstitutionSummary[];
   createdAt: string;
+  updatedAt: string;
 };
+
+export type TAgentVaultActor =
+  | {
+      type: AgentVaultMemberType.User;
+      id: string;
+      username: string;
+      email: string | null;
+      firstName: string | null;
+      lastName: string | null;
+    }
+  | { type: AgentVaultMemberType.MachineIdentity; id: string; name: string }
+  | { type: AgentVaultMemberType.Group; id: string; name: string };
+
+export type TAgentVaultActorRef = { type: AgentVaultMemberType; id: string };
 
 export type TAgentVaultMember = {
   id: string;
-  userId: string | null;
-  identityId: string | null;
-  groupId: string | null;
   createdAt: string;
-  user: {
-    username: string;
-    email: string | null;
-    firstName: string | null;
-    lastName: string | null;
-  } | null;
-  identity: { name: string } | null;
-  group: { name: string } | null;
+  actor: TAgentVaultActor;
+};
+
+export type TAgentVaultProductActor =
+  | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
+      isOrgMembershipPending: boolean;
+    })
+  | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.MachineIdentity }> & {
+      isManagedByAgentVault: boolean;
+      orgId: string | null;
+    })
+  | Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>;
+
+export type TAgentVaultProductMember = {
+  id: string;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
+  actor: TAgentVaultProductActor;
+};
+
+export type TAgentVaultProductMemberOf<T extends AgentVaultMemberType> = Omit<
+  TAgentVaultProductMember,
+  "actor"
+> & {
+  actor: Extract<TAgentVaultProductActor, { type: T }>;
+};
+
+export type TListAgentVaultProxiesDTO = {
+  search?: string;
+  orderBy?: "name" | "createdAt";
+  orderDirection?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+};
+
+export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "orderBy"> & {
+  orderBy?: "name" | "serviceCount" | "createdAt";
+};
+
+export type TListAgentVaultMembersDTO = {
+  actorType?: AgentVaultMemberType;
+  search?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type TAgentVaultActorIdsDTO = {
+  userIds?: string[];
+  groupIds?: string[];
+  machineIdentityIds?: string[];
+};
+
+export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
+  emails?: string[];
+  role: string;
+};
+
+export type TAgentVaultWrittenMember = {
+  id: string;
+  role: string;
+  createdAt: string;
+  actor: TAgentVaultActorRef;
+};
+
+export type TAgentVaultMemberWriteResult<T> = {
+  members: T[];
+  skipped: (TAgentVaultActorRef & { identifier: string })[];
 };
 
 export type TAgentVaultAccessBundle = {
@@ -60,6 +164,7 @@ export type TAgentVaultAccessBundle = {
   name: string;
   description?: string | null;
   createdAt: string;
+  updatedAt: string;
 };
 
 export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
@@ -70,7 +175,6 @@ export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
 
 export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
   services: TAgentVaultService[];
-  members?: TAgentVaultMember[];
 };
 
 export type TAgentVaultSessionAccessBundle = {
@@ -141,7 +245,11 @@ export type TCreateAgentVaultServiceDTO = {
   accessBundleId: string;
   name: string;
   hostPattern: string;
+  allowedMethods?: AgentVaultHttpMethod[] | null;
+  allowedPathPrefixes?: string[] | null;
   credential: TAgentVaultCredentialInput;
+  customHeaders?: TAgentVaultCustomHeaderInput[];
+  substitutions?: TAgentVaultSubstitutionInput[];
 };
 
 export type TUpdateAgentVaultServiceDTO = {
@@ -149,14 +257,15 @@ export type TUpdateAgentVaultServiceDTO = {
   serviceId: string;
   name?: string;
   hostPattern?: string;
+  allowedMethods?: AgentVaultHttpMethod[] | null;
+  allowedPathPrefixes?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;
+  customHeaders?: TAgentVaultCustomHeaderInput[];
+  substitutions?: TAgentVaultSubstitutionInput[];
 };
 
-export type TAddAgentVaultMembersDTO = {
+export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
   accessBundleId: string;
-  userIds: string[];
-  identityIds: string[];
-  groupIds: string[];
 };
 
 export type TCreateAgentVaultSessionDTO = {
@@ -169,38 +278,4 @@ export type TAgentVaultProxySettingsDTO = {
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
-};
-
-export type TAgentVaultProductMember = {
-  membershipId: string;
-  userId: string | null;
-  groupId: string | null;
-  identityId: string | null;
-  role: string;
-  isActive: boolean;
-  createdAt: string;
-};
-
-export type TAgentVaultProductUserMember = TAgentVaultProductMember & {
-  email: string | null;
-  username: string;
-  firstName: string | null;
-  lastName: string | null;
-  isOrgMembershipPending: boolean;
-};
-
-export type TAgentVaultProductGroupMember = TAgentVaultProductMember & {
-  name: string;
-};
-
-export type TAgentVaultProductIdentityMember = TAgentVaultProductMember & {
-  name: string;
-  identityProjectId: string | null;
-  identityOrgId: string | null;
-};
-
-export type TAgentVaultProductMemberActor = {
-  userId?: string;
-  groupId?: string;
-  identityId?: string;
 };

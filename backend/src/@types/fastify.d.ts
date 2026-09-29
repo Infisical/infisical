@@ -16,13 +16,13 @@ import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/au
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { TAuditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
 import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-types";
+import { TCertificateAuthorityOcspServiceFactory } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-types";
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
 import { TEmailDomainServiceFactory } from "@app/ee/services/email-domain/email-domain-service";
 import { TEventBusService as TInternalEventBusService } from "@app/ee/services/event-bus";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
@@ -376,6 +376,7 @@ declare module "fastify" {
       certManagerExport: TCertManagerExportServiceFactory;
       certificateAuthority: TCertificateAuthorityServiceFactory;
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
+      certificateAuthorityOcsp: TCertificateAuthorityOcspServiceFactory;
       certificateEst: TCertificateEstServiceFactory;
       pkiAcme: TPkiAcmeServiceFactory;
       pkiScep: TPkiScepServiceFactory;
@@ -419,7 +420,6 @@ declare module "fastify" {
       kmip: TKmipServiceFactory;
       kmipOperation: TKmipOperationServiceFactory;
       kmipServer: TKmipServerServiceFactory;
-      gateway: TGatewayServiceFactory;
       secretRotationV2: TSecretRotationV2ServiceFactory;
       microsoftTeams: TMicrosoftTeamsServiceFactory;
       assumePrivileges: TAssumePrivilegeServiceFactory;

@@ -155,7 +155,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
             <HoverCardTrigger>
               <Tag>+{remainingPorts.length}</Tag>
             </HoverCardTrigger>
-            <HoverCardContent className="border border-gray-700 bg-mineshaft-800 p-3">
+            <HoverCardContent className="border border-border-cool bg-surface-raised p-3">
               <div className="flex flex-wrap gap-1">
                 {remainingPorts.map((port) => (
                   <Tag key={port}>{port}</Tag>
@@ -364,6 +364,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
       />
 
       <UpgradePlanModal
+        paywallKey="cert-manager.discovery-jobs"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={(popUp.upgradePlan?.data as { text: string })?.text}

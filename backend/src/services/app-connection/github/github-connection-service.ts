@@ -1,4 +1,3 @@
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { OrgServiceActor } from "@app/lib/types";
@@ -25,7 +24,6 @@ type TListGitHubEnvironmentsDTO = {
 
 export const githubConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   gitHubAppDeps: TGitHubAppCredentialResolverDeps
@@ -35,7 +33,6 @@ export const githubConnectionService = (
 
     const repositories = await getGitHubRepositories(
       appConnection,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService,
       gitHubAppDeps
@@ -49,7 +46,6 @@ export const githubConnectionService = (
 
     const organizations = await getGitHubOrganizations(
       appConnection,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService,
       gitHubAppDeps
@@ -66,7 +62,6 @@ export const githubConnectionService = (
 
     const environments = await getGitHubEnvironments(
       appConnection,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService,
       owner,

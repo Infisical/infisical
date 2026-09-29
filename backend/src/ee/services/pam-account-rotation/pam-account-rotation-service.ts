@@ -1,6 +1,5 @@
 import pLimit from "p-limit";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -90,7 +89,6 @@ type TPamAccountRotationServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   pamAccountDependencyDAL: Pick<TPamAccountDependencyDALFactory, "findByAccountId" | "updateById">;
@@ -107,7 +105,6 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     membershipRoleDAL,
     kmsService,
     keyStore,
-    gatewayService,
     gatewayV2Service,
     gatewayPoolService,
     pamAccountDependencyDAL,
@@ -116,7 +113,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     rotationHandlers = PAM_ROTATION_FACTORY_MAP
   } = deps;
 
-  const gatewayDeps = { gatewayService, gatewayV2Service, gatewayPoolService };
+  const gatewayDeps = { gatewayV2Service, gatewayPoolService };
 
   const getProjectCipher = (projectId: string) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });

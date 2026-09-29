@@ -7,7 +7,7 @@ import { Loader } from "./Loader";
 
 /**
  * `Loader` is the branded Infisical loading animation — the stroke-draw of the
- * logo mark. It is the single source for that animation: the mark, the three
+ * logo mark. It is the single source for that animation: the mark, the four
  * tints, and the size scale all live here, and every product call site composes
  * it rather than naming a Lottie asset itself. `main.tsx` is the deliberate
  * exception: the entry module has to keep importing the `v2` barrel to hold
@@ -46,7 +46,7 @@ const meta = {
   argTypes: {
     variant: {
       control: "select",
-      options: ["default", "inverse", "brand"]
+      options: ["neutral", "default", "inverse", "brand"]
     },
     size: {
       control: "select",
@@ -62,7 +62,7 @@ const meta = {
   args: {
     label: "Loading",
     size: "md",
-    variant: "default"
+    variant: "neutral"
   }
 } satisfies Meta<typeof Loader>;
 
@@ -74,7 +74,22 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          "The in-product default: the white mark at `md`. Use it on any dark product surface — a `Card` body waiting on a fetch, a section that owns its own loading state. The animation loops for as long as the wait lasts, or remains on its fully drawn first frame when the operating system requests reduced motion. It carries no progress information, so pair it with copy when the wait is long enough to need explaining."
+          "The in-product default: the theme-aware neutral mark at `md`. Use it on standard product surfaces — a `Card` body waiting on a fetch, or a section that owns its own loading state. The animation loops for as long as the wait lasts, or remains on its fully drawn first frame when the operating system requests reduced motion. It carries no progress information, so pair it with copy when the wait is long enough to need explaining."
+      }
+    }
+  }
+};
+
+export const VariantNeutral: Story = {
+  name: "Variant: Neutral",
+  args: {
+    variant: "neutral"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Theme-aware monochrome mark. It renders white in dark mode and black in light mode, making it the default for standard product surfaces and controls."
       }
     }
   }
@@ -89,7 +104,7 @@ export const VariantDefault: Story = {
     docs: {
       description: {
         story:
-          "White mark. The in-product default — correct on every dark surface in the app (`bg-page`, `bg-card`, `bg-popover`) and on tinted controls, where the button's own tint shows through around the stroke."
+          "Fixed white mark. Use it only when the surrounding surface is always dark, regardless of the active application theme. Prefer `neutral` on theme-aware product surfaces."
       }
     }
   }

@@ -387,6 +387,7 @@ export const OrgGeneralAuthSection = ({
       </Card>
 
       <UpgradePlanModal
+        paywallKey="organization.org-general-auth"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName ?? "enforce SAML SSO"}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.planName ?? "Pro"} plan.`}

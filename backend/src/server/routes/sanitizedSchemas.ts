@@ -337,6 +337,7 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   showSnapshotsLegacy: true,
   secretDetectionIgnoreValues: true,
   enforceEncryptedSecretManagerSecretMetadata: true,
+  secretBlindIndexEnabled: true,
   isLegacyAdditionalPrivilegesEnabled: true
 });
 

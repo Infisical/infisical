@@ -139,10 +139,10 @@ describe("SCIM v1 Router", () => {
         testUsers.push({ user, membership });
       }
 
-      // Call GET /Users
+      // Big count so one page holds every match, otherwise totalResults won't line up with Resources.
       const res = await testServer.inject({
         method: "GET",
-        url: "/api/v1/scim/Users",
+        url: "/api/v1/scim/Users?count=500",
         headers: {
           authorization: `Bearer ${scimToken}`
         }
@@ -889,6 +889,356 @@ describe("SCIM v1 Router", () => {
       const [row] = await db(TableName.Users).where({ id: user.id }).select("username", "email");
       expect(row.username).toBe(primaryEmail);
       expect(row.email).toBe(primaryEmail);
+    });
+  });
+  describe("GET /Users - Superseded alias lookup", () => {
+    const seedScimUser = async (db: Knex, label: string) => {
+      const email = `scim-${label}@${TEST_DOMAIN}`;
+      const externalId = `ext-${label}`;
+
+      const createRes = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/scim/Users",
+        headers: { authorization: `Bearer ${scimToken}` },
+        body: {
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+          userName: externalId,
+          name: { givenName: "Superseded", familyName: "Alias" },
+          emails: [{ primary: true, value: email }],
+          active: true
+        }
+      });
+
+      expect(createRes.statusCode).toBe(200);
+      const membershipId = (JSON.parse(createRes.payload) as { id: string }).id;
+      createdMembershipIds.push(membershipId);
+
+      const [membership] = await db(TableName.Membership).where({ id: membershipId }).select("actorUserId");
+      if (membership?.actorUserId) createdUserIds.push(membership.actorUserId);
+
+      return { membershipId, externalId, actorUserId: membership?.actorUserId as string };
+    };
+
+    test("should still match the SCIM userName after a later alias supersedes it", async () => {
+      const db = getDb();
+      const label = `superseded-${crypto.randomUUID().slice(0, 8)}`;
+      const { membershipId, externalId, actorUserId } = await seedScimUser(db, label);
+
+      // A SAML login with a different subject adds a second, newer alias. That used to hide the user
+      // from `userName eq`, so the IdP provisioned them again.
+      const samlSubject = `saml-subject-${label}`;
+      await db(TableName.UserAliases).insert({
+        userId: actorUserId,
+        orgId: ORG_ID,
+        aliasType: "saml",
+        externalId: samlSubject
+      });
+
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(`userName eq "${externalId}"`)}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(res.statusCode).toBe(200);
+      const payload = JSON.parse(res.payload) as {
+        totalResults: number;
+        Resources: { id: string; userName: string }[];
+      };
+
+      expect(payload.totalResults).toBe(1);
+      expect(payload.Resources).toHaveLength(1);
+      expect(payload.Resources[0].id).toBe(membershipId);
+      // We echo back what the caller filtered on, not the newer alias.
+      expect(payload.Resources[0].userName).toBe(externalId);
+    });
+
+    test("should match the newer alias too, and return each user once", async () => {
+      const db = getDb();
+      const label = `newer-${crypto.randomUUID().slice(0, 8)}`;
+      const { membershipId, actorUserId } = await seedScimUser(db, label);
+
+      const samlSubject = `saml-subject-${label}`;
+      await db(TableName.UserAliases).insert({
+        userId: actorUserId,
+        orgId: ORG_ID,
+        aliasType: "saml",
+        externalId: samlSubject
+      });
+
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(`userName eq "${samlSubject}"`)}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(res.statusCode).toBe(200);
+      const payload = JSON.parse(res.payload) as {
+        totalResults: number;
+        Resources: { id: string; userName: string }[];
+      };
+
+      expect(payload.totalResults).toBe(1);
+      expect(payload.Resources).toHaveLength(1);
+      expect(payload.Resources[0].id).toBe(membershipId);
+      expect(payload.Resources[0].userName).toBe(samlSubject);
+    });
+
+    test("should exclude a user from `userName ne` when any of their aliases is the excluded one", async () => {
+      const db = getDb();
+      const label = `ne-${crypto.randomUUID().slice(0, 8)}`;
+      const { membershipId, externalId, actorUserId } = await seedScimUser(db, label);
+
+      await db(TableName.UserAliases).insert({
+        userId: actorUserId,
+        orgId: ORG_ID,
+        aliasType: "saml",
+        externalId: `saml-subject-${label}`
+      });
+
+      // Pinned to the membership so an empty page proves exclusion rather than paging.
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(
+          `id eq "${membershipId}" and userName ne "${externalId}"`
+        )}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(res.statusCode).toBe(200);
+      const payload = JSON.parse(res.payload) as { totalResults: number; Resources: { id: string }[] };
+
+      // The other alias must not smuggle the user back in.
+      expect(payload.totalResults).toBe(0);
+      expect(payload.Resources).toHaveLength(0);
+    });
+
+    test("should exclude a user from `not (userName eq)` through their newest alias", async () => {
+      const db = getDb();
+      const label = `not-${crypto.randomUUID().slice(0, 8)}`;
+      const { membershipId, actorUserId } = await seedScimUser(db, label);
+
+      const samlSubject = `saml-subject-${label}`;
+      await db(TableName.UserAliases).insert({
+        userId: actorUserId,
+        orgId: ORG_ID,
+        aliasType: "saml",
+        externalId: samlSubject
+      });
+
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(
+          `id eq "${membershipId}" and not (userName eq "${samlSubject}")`
+        )}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(res.statusCode).toBe(200);
+      const payload = JSON.parse(res.payload) as { totalResults: number; Resources: { id: string }[] };
+
+      expect(payload.totalResults).toBe(0);
+      expect(payload.Resources).toHaveLength(0);
+    });
+
+    test("should keep a member with no alias in a `userName ne` result", async () => {
+      const db = getDb();
+      const [seedMembership] = await db(TableName.Membership)
+        .where({ scopeOrgId: ORG_ID, scope: AccessScope.Organization, actorUserId: seedData1.id })
+        .select("id");
+      await db(TableName.UserAliases).where({ userId: seedData1.id, orgId: ORG_ID, aliasType: "saml" }).del();
+
+      // Pinned to one membership so the assertion does not depend on which page the member sorts into.
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(
+          `id eq "${seedMembership.id}" and userName ne "nobody-${crypto.randomUUID()}"`
+        )}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(res.statusCode).toBe(200);
+      const payload = JSON.parse(res.payload) as { totalResults: number; Resources: { id: string }[] };
+
+      // Before this was a set comparison, a NULL alias made `ne` silently drop the member.
+      expect(payload.totalResults).toBe(1);
+      expect(payload.Resources.map((r) => r.id)).toEqual([seedMembership.id]);
+    });
+
+    test("should match a user through either alias with `or` and still echo the alias asked for", async () => {
+      const db = getDb();
+      const label = `or-${crypto.randomUUID().slice(0, 8)}`;
+      const { membershipId, externalId, actorUserId } = await seedScimUser(db, label);
+
+      await db(TableName.UserAliases).insert({
+        userId: actorUserId,
+        orgId: ORG_ID,
+        aliasType: "saml",
+        externalId: `saml-subject-${label}`
+      });
+
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(
+          `userName eq "${externalId}" or userName eq "never-${label}"`
+        )}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(res.statusCode).toBe(200);
+      const payload = JSON.parse(res.payload) as {
+        totalResults: number;
+        Resources: { id: string; userName: string }[];
+      };
+
+      expect(payload.totalResults).toBe(1);
+      expect(payload.Resources[0].id).toBe(membershipId);
+      expect(payload.Resources[0].userName).toBe(externalId);
+    });
+
+    test("should report totalResults as the match count rather than the page size", async () => {
+      const db = getDb();
+      const suffix = crypto.randomUUID().slice(0, 8);
+      await seedScimUser(db, `page-a-${suffix}`);
+      await seedScimUser(db, `page-b-${suffix}`);
+
+      const res = await testServer.inject({
+        method: "GET",
+        url: "/api/v1/scim/Users?count=1",
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(res.statusCode).toBe(200);
+      const payload = JSON.parse(res.payload) as { totalResults: number; Resources: unknown[] };
+
+      expect(payload.Resources).toHaveLength(1);
+      // A paging client needs the real count to know there's another page.
+      expect(payload.totalResults).toBeGreaterThan(1);
+    });
+  });
+
+  describe("DELETE /Users/:orgMembershipId", () => {
+    test("should return 204 with an empty body per RFC 7644 §3.6", async () => {
+      const db = getDb();
+      const label = `delete-${crypto.randomUUID().slice(0, 8)}`;
+      const email = `scim-${label}@${TEST_DOMAIN}`;
+
+      const createRes = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/scim/Users",
+        headers: { authorization: `Bearer ${scimToken}` },
+        body: {
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+          userName: `ext-${label}`,
+          name: { givenName: "Delete", familyName: "Me" },
+          emails: [{ primary: true, value: email }],
+          active: true
+        }
+      });
+
+      expect(createRes.statusCode).toBe(200);
+      const membershipId = (JSON.parse(createRes.payload) as { id: string }).id;
+
+      const [membership] = await db(TableName.Membership).where({ id: membershipId }).select("actorUserId");
+      if (membership?.actorUserId) createdUserIds.push(membership.actorUserId);
+
+      const deleteRes = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v1/scim/Users/${membershipId}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      // OneLogin and Entra treat any non-204 as a failed delete and retry it indefinitely.
+      expect(deleteRes.statusCode).toBe(204);
+      expect(deleteRes.payload).toBe("");
+
+      const rows = await db(TableName.Membership).where({ id: membershipId });
+      expect(rows).toHaveLength(0);
+
+      const getRes = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users/${membershipId}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+      expect(getRes.statusCode).toBe(404);
+    });
+
+    test("should delete a member that was suspended first", async () => {
+      const db = getDb();
+      const label = `suspend-delete-${crypto.randomUUID().slice(0, 8)}`;
+      const email = `scim-${label}@${TEST_DOMAIN}`;
+      const externalId = `ext-${label}`;
+
+      const createRes = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/scim/Users",
+        headers: { authorization: `Bearer ${scimToken}` },
+        body: {
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+          userName: externalId,
+          name: { givenName: "Suspend", familyName: "Then Delete" },
+          emails: [{ primary: true, value: email }],
+          active: true
+        }
+      });
+
+      expect(createRes.statusCode).toBe(200);
+      const membershipId = (JSON.parse(createRes.payload) as { id: string }).id;
+
+      const [membership] = await db(TableName.Membership).where({ id: membershipId }).select("actorUserId");
+      if (membership?.actorUserId) createdUserIds.push(membership.actorUserId);
+
+      const suspendRes = await testServer.inject({
+        method: "PUT",
+        url: `/api/v1/scim/Users/${membershipId}`,
+        headers: { authorization: `Bearer ${scimToken}` },
+        body: {
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+          userName: externalId,
+          name: { givenName: "Suspend", familyName: "Then Delete" },
+          emails: [{ primary: true, value: email }],
+          active: false
+        }
+      });
+
+      expect(suspendRes.statusCode).toBe(200);
+      expect((JSON.parse(suspendRes.payload) as { active: boolean }).active).toBe(false);
+
+      const deleteRes = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v1/scim/Users/${membershipId}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(deleteRes.statusCode).toBe(204);
+
+      const rows = await db(TableName.Membership).where({ id: membershipId });
+      expect(rows).toHaveLength(0);
+    });
+
+    test("should stay successful for an unresolved id but record that nothing was deleted", async () => {
+      const db = getDb();
+      const unknownMembershipId = crypto.randomUUID();
+
+      const deleteRes = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v1/scim/Users/${unknownMembershipId}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(deleteRes.statusCode).toBe(204);
+
+      const events = await db(TableName.ScimEvents)
+        .where({ orgId: ORG_ID, eventType: "delete-user" })
+        .orderBy("createdAt", "desc")
+        .limit(1);
+
+      expect(events).toHaveLength(1);
+      // Otherwise a stale id looks just like a real delete and the IdP reports success forever.
+      expect((events[0].event as { deleted: boolean; orgMembershipId: string }).deleted).toBe(false);
+      expect((events[0].event as { deleted: boolean; orgMembershipId: string }).orgMembershipId).toBe(
+        unknownMembershipId
+      );
     });
   });
 });

@@ -90,38 +90,39 @@ export const FilterableSelect = <T,>({
           twMerge("w-full font-inter text-sm", isDisabled && "pointer-events-auto! opacity-50"),
         control: ({ isFocused, isDisabled }) =>
           twMerge(
-            isFocused ? "border-primary-400/50" : "border-mineshaft-600",
-            `w-full rounded-md border bg-mineshaft-900 p-0.5 font-inter text-mineshaft-200 ${
-              isDisabled ? "cursor-not-allowed!" : "hover:cursor-pointer hover:border-gray-400"
+            isFocused ? "border-project/50" : "border-border-control",
+            `w-full rounded-md border bg-surface-base p-0.5 font-inter text-foreground-secondary ${
+              isDisabled
+                ? "cursor-not-allowed!"
+                : "hover:cursor-pointer hover:border-border-cool-emphasis"
             } `
           ),
-        placeholder: () =>
-          `${isMulti ? "py-[0.22rem]" : "leading-7"} text-mineshaft-400 text-sm pl-1`,
+        placeholder: () => `${isMulti ? "py-[0.22rem]" : "leading-7"} text-muted text-sm pl-1`,
         input: () => `pl-1 ${isMulti ? "py-[0.22rem]" : ""}`,
         valueContainer: () =>
           `px-1 max-h-[8.2rem] ${
             isMulti ? "overflow-y-auto! thin-scrollbar py-1" : "py-[0.1rem]"
           } gap-1`,
         singleValue: () => "leading-7 ml-1",
-        multiValue: () => "bg-mineshaft-600 text-sm rounded-sm items-center py-0.5 px-2 gap-1.5",
+        multiValue: () => "bg-surface-active text-sm rounded-sm items-center py-0.5 px-2 gap-1.5",
         multiValueLabel: () => "leading-6 text-sm",
-        multiValueRemove: () => "hover:text-red text-bunker-400",
+        multiValueRemove: () => "hover:text-danger text-muted-secondary",
         indicatorsContainer: () => "p-1 gap-1",
-        clearIndicator: () => "p-1 hover:text-red text-bunker-400",
-        indicatorSeparator: () => "bg-bunker-400",
-        dropdownIndicator: () => "text-bunker-200 p-1",
+        clearIndicator: () => "p-1 hover:text-danger text-muted-secondary",
+        indicatorSeparator: () => "bg-muted-secondary",
+        dropdownIndicator: () => "text-foreground-soft p-1",
         menuList: () => twMerge("flex flex-col gap-1", menuListClassName),
         menu: () =>
-          "my-2 p-2 border text-sm text-mineshaft-200 thin-scrollbar bg-mineshaft-900 border-mineshaft-600 rounded-md",
-        groupHeading: () => "ml-3 mt-2 mb-1 text-mineshaft-400 text-sm",
+          "my-2 p-2 border text-sm text-foreground-secondary thin-scrollbar bg-surface-base border-border-control rounded-md",
+        groupHeading: () => "ml-3 mt-2 mb-1 text-muted text-sm",
         option: ({ isFocused, isSelected }) =>
           twMerge(
-            isFocused && "bg-mineshaft-700 active:bg-mineshaft-600",
-            isSelected && "text-mineshaft-200",
+            isFocused && "bg-surface-hover active:bg-surface-active",
+            isSelected && "text-foreground-secondary",
             "rounded-sm px-3 py-2 text-xs hover:cursor-pointer"
           ),
-        noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md",
-        loadingMessage: () => "text-mineshaft-400 p-2 rounded-md"
+        noOptionsMessage: () => "text-muted p-2 rounded-md",
+        loadingMessage: () => "text-muted p-2 rounded-md"
       }}
       {...props}
     />

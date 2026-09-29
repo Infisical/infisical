@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { OrgMembershipStatus } from "@app/db/schemas";
+import { OrgMembershipStatus, ProjectType } from "@app/db/schemas";
+import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { projectServiceFactory } from "./project-service";
@@ -11,6 +12,7 @@ const setup = () => {
     { isActive: boolean; status: OrgMembershipStatus | null; actorGroupId: string | null }
   >([["accessible-sub-org", { isActive: true, status: OrgMembershipStatus.Accepted, actorGroupId: null }]]);
   const orgDAL = {
+    findOne: vi.fn().mockResolvedValue({ id: "root" }),
     listOrganizationsWithSubOrgs: vi.fn().mockResolvedValue([
       { id: "root", subOrganizations: [{ id: "accessible-sub-org" }] },
       { id: "other-root", subOrganizations: [{ id: "other-sub-org" }] }
@@ -20,13 +22,24 @@ const setup = () => {
       return membership && (membership.status === status || membership.status === null) ? membership : null;
     })
   };
-  const projectDAL = { findUserProjects: vi.fn().mockResolvedValue([]) };
+  const tx = { raw: vi.fn() };
+  const projectDAL = {
+    findUserProjects: vi.fn().mockResolvedValue([]),
+    find: vi.fn().mockResolvedValue([]),
+    transaction: vi.fn(<T>(cb: (trx: unknown) => Promise<T>) => cb(tx))
+  };
+  const permissionService = {
+    getOrgPermission: vi.fn().mockResolvedValue({ permission: { cannot: () => false } })
+  };
+  const licenseService = { getPlan: vi.fn().mockResolvedValue({ workspaceLimit: null }) };
   const service = projectServiceFactory({
     orgDAL,
-    projectDAL
+    projectDAL,
+    permissionService,
+    licenseService
   } as unknown as Parameters<typeof projectServiceFactory>[0]);
 
-  return { service, orgDAL, projectDAL, memberships };
+  return { service, orgDAL, projectDAL, permissionService, licenseService, memberships, tx };
 };
 
 describe("project navigation across sub-organizations", () => {
@@ -128,5 +141,39 @@ describe("project navigation across sub-organizations", () => {
     await expect(service.getAccessibleProjectsWithSubOrgs({ actorId: "user", actorOrgId: "root" })).resolves.toEqual([
       project
     ]);
+  });
+});
+
+describe("secret scanning project uniqueness", () => {
+  const createSecretScanningProject = (service: ReturnType<typeof setup>["service"]) =>
+    service.createProject({
+      actor: ActorType.USER,
+      actorId: "user",
+      actorOrgId: "root",
+      actorAuthMethod: null,
+      projectName: "Scanning",
+      type: ProjectType.SecretScanning
+    });
+
+  test("rejects a second secret scanning project in the same organization", async () => {
+    const { service, projectDAL } = setup();
+    projectDAL.find.mockResolvedValue([{ id: "existing-scanning-project" }]);
+
+    await expect(createSecretScanningProject(service)).rejects.toThrow(BadRequestError);
+    await expect(createSecretScanningProject(service)).rejects.toThrow(
+      "Secret Scanning is limited to one project per organization at this time."
+    );
+  });
+
+  test("scopes the uniqueness lookup to the organization and the secret scanning type", async () => {
+    const { service, projectDAL, tx } = setup();
+    projectDAL.find.mockResolvedValue([{ id: "existing-scanning-project" }]);
+
+    await expect(createSecretScanningProject(service)).rejects.toThrow(BadRequestError);
+
+    expect(projectDAL.find).toHaveBeenCalledExactlyOnceWith(
+      { orgId: "root", type: ProjectType.SecretScanning },
+      { limit: 1, tx }
+    );
   });
 });

@@ -9,26 +9,37 @@ infisical user
 
 ## Description
 
-This command allows you to manage the current logged in users on the CLI
+This command manages the accounts that are logged in to the CLI.
+
+Each login is stored as a profile: an account on the specified Infisical instance, and the organization you chose for it. See [profile](./profile) to create profiles, to select one per terminal or per directory, and to work in several organizations at the same time.
 
 ### Sub-commands
 
 <Accordion title="infisical user switch" defaultOpen="true">
-  Use this command to switch between profiles that are currently logged into the CLI
+  Pick which profile the CLI uses by default on this machine.
 
 ```bash
 infisical user switch
 ```
 
+<Tip>
+  `infisical profile use <name>` does the same thing without a prompt.
+  `infisical profile list` shows the available profile names.
+</Tip>
+
 </Accordion>
 
 <Accordion title="infisical user update domain">
-  With this command, you can modify the backend API that is utilized for all requests associated with a specific profile. 
-  For instance, you have the option to point the profile to use either the Infisical Cloud or your own self-hosted Infisical instance.
+  Change the Infisical instance that a profile points to. Use this to move a profile between Infisical Cloud and your own self-hosted instance.
 
 ```bash
 infisical user update domain
 ```
+
+<Warning>
+  The command clears the stored session of that profile. Run
+  `infisical login --profile <name>` to sign in to the new instance.
+</Warning>
 
 </Accordion>
 

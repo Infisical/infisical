@@ -49,9 +49,10 @@ For detailed information on resource inheritance, project ownership, and enterpr
     - **[KMS](/documentation/platform/kms/overview)**: Generate, store, and use cryptographic keys to encrypt, decrypt, sign, and verify against managed CMKs.
     - **[Secret Scanning](/documentation/platform/secret-scanning/overview)**: Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.
     - **[Privileged Access Manager](/documentation/platform/pam/overview)**: Connect to databases and servers securely with session brokering, recording, and credential vaulting.
+    - **[Agent Vault](/documentation/platform/agent-vault/overview)**: Broker outbound API calls from AI agents through a proxy so agents never hold real credentials.
 - **How Products Are Structured**: Products differ in how they organize work, so not everything is project-based:
     - **Secrets Management**, **KMS**, and **Secret Scanning** organize their resources into one or more **[projects](/documentation/platform/project)** (see below).
-    - **Certificate Manager** and **Privileged Access Manager** operate at the organization level as a single workspace, rather than a list of separate projects.
+    - **Certificate Manager**, **Privileged Access Manager**, and **Agent Vault** operate at the organization level as a single workspace, rather than a list of separate projects.
 
 ### 2.1 Projects
 

@@ -13,9 +13,11 @@ import { PemCertificateExtension, PkiSyncExportFormat } from "@app/services/pki-
 import {
   BaseHealthCheckTestSchema,
   HostCommandSchema,
+  PkiSyncFiltersField,
   PkiSyncSchema,
   PkiSyncTargetHostSchema,
-  PkiSyncTargetPortSchema
+  PkiSyncTargetPortSchema,
+  UpdatePkiSyncFiltersField
 } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { LINUX_SERVER_NAMING } from "./linux-server-pki-sync-constants";
@@ -129,7 +131,8 @@ export const CreateLinuxServerPkiSyncSchema = z
     subscriberId: z.string().nullish(),
     connectionId: z.string(),
     applicationId: z.string().uuid().optional(),
-    certificateIds: z.array(z.string().uuid()).optional()
+    certificateIds: z.array(z.string().uuid()).optional(),
+    filters: PkiSyncFiltersField
   })
   .superRefine((data, ctx) => {
     if (data.syncOptions.exportFormat === PkiSyncExportFormat.Pkcs12 && !data.credentials?.exportPassword) {
@@ -149,7 +152,8 @@ export const UpdateLinuxServerPkiSyncSchema = z.object({
   syncOptions: LinuxServerPkiSyncOptionsSchema.optional(),
   credentials: LinuxServerPkiSyncCredentialsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const LinuxServerPkiSyncListItemSchema = z.object({

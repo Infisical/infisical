@@ -6,7 +6,7 @@ Check out CLAUDE.md for additional context on project file structure and general
 
 **Read the [Backend Code Quality Guide](backend/CODE_QUALITY.md) for any change under `backend/`, and check your work against it before reporting the task done.** Features, refactors, bug fixes, and reviews all count.
 
-It is a short, deliberately non-exhaustive floor: error messages users can understand (and no pointless 500s), validation on every API input, correct pagination when calling third-party APIs, no deadlock conditions on a small connection pool, and REST-aligned API interfaces.
+It is a short, deliberately non-exhaustive floor: error messages users can understand (and no pointless 500s), validation on every API input, correct pagination when calling third-party APIs, no deadlock conditions on a small connection pool, REST-aligned API interfaces, and audit log events an admin can actually read.
 
 Treat that list as a summary of the guide's current contents, not as a condition for reading it. A change that does not look like any of those topics still gets checked, because the guide grows and because the items apply in places they are not obviously about (a bug fix that adds a query inside an existing transaction, a refactor that moves a third-party list call).
 
@@ -20,7 +20,7 @@ If the user wrote or edited the docs prose themselves, don't just accept it. Tel
 
 The style guide covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, the sentence-level writing rules in section 5, and the bolding and UI conventions in section 11.
 
-Run `make lint-docs-branch` after any change under `docs/` (or `make lint-docs` for the whole site; the `Check docs style` CI check runs the branch variant). It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide. A clean run is not a substitute for reading the guide: the judgment calls it cannot check are the ones that matter most. Vale cannot see prose indented inside Mintlify components, so a clean run is not evidence that nested content was checked, and two rules report below error level so they never change the exit code.
+Run `make lint-docs-branch` after any change under `docs/` (or `make lint-docs` for the whole site; the `Check docs style` CI check runs the branch variant). It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide. A clean run is not a substitute for reading the guide: the judgment calls it cannot check are the ones that matter most. Vale cannot see prose indented inside Mintlify components, so a clean run is not evidence that nested content was checked, and `Infisical.EmDashes` reports at warning level, so its findings never change the exit code.
 
 ## UI Development
 
@@ -33,3 +33,9 @@ Before changing a shared frontend component's lifecycle, read the [shared compon
 - Never create a GitHub issue.
 - When creating a pull request, use and fully complete the repository's
   `.github/pull_request_template.md` template.
+
+## Workflow Guardrails
+
+- Do not reformat existing code as incidental cleanup. Preserve the repository's current formatting unless a review agent, CI check, or user explicitly asks for a formatting change.
+- Never push changes to `license-fns` or local UI fixtures to a remote branch. Those edits are local-only support for review and test passes; keep them out of commits and pull requests.
+- When resolving merge conflicts, optimize for a correct, minimal, strategically unblocking resolution. Do not let a slow or stalled local check block the push when the corresponding frontend or backend CI checks on GitHub can validate the branch; push the resolved code and use CI to complete the expensive verification.

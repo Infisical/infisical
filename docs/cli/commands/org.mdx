@@ -1,0 +1,65 @@
+---
+title: "infisical org"
+description: "List organizations and set the one a profile uses"
+---
+
+```bash
+infisical org
+```
+
+## Description
+
+This command shows the organizations that your account can use, and sets the organization that the current profile uses by default.
+
+A profile is a single login: an account on the specified Infisical instance, and the organization you chose for it. See [profile](./profile) for how the CLI selects a profile.
+
+### Sub-commands
+
+<Accordion title="infisical org list" defaultOpen="true">
+  List the organizations that the account of this profile can use. The organization that the current profile uses is marked with an asterisk.
+
+```bash
+infisical org list
+```
+
+Sub-organizations appear indented under the organization that it belongs to.
+
+```bash
+CURRENT  NAME           SLUG             ID
+         Acme           acme             9c0f4df6-57fb-4b5f-927b-799dc0121520
+*          └─ Research  acme-research    ff714dbe-8a8a-4a88-83b8-2bf776f91ed3
+         Globex         globex-inc       d68da2e6-8441-4341-a6cd-fd6d7643e3bc
+```
+
+</Accordion>
+
+<Accordion title="infisical org switch">
+  Set the organization that the current profile uses by default. This command is an alias for `infisical profile set-org`.
+
+```bash
+infisical org switch globex-inc
+```
+
+If you omit the organization, the CLI will ask you to pick one.
+
+<Tip>
+  To use another organization for a single command, pass `--org`. To keep a
+  second organization available at the same time, run `infisical profile create`.
+</Tip>
+
+</Accordion>
+
+### Choosing an organization for one command
+
+Pass `--org` to point a single command at another organization. Name the organization by name, slug, or id.
+
+```bash
+infisical secrets --org globex-inc
+```
+
+The default organization of the profile doesn't change. The CLI caches the session for each organization that you use this way.
+
+<Tip>
+  The `org` flag can be substituted with the `INFISICAL_ORG` environment
+  variable.
+</Tip>

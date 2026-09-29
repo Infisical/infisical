@@ -23,7 +23,6 @@ vi.mock("node:dns/promises", () => ({
 
 const ORG_ID = "org-id";
 const TEMPLATE_ID = "template-id";
-const GATEWAY_ID = "gateway-id";
 const GATEWAY_V2_ID = "gateway-v2-id";
 const PRIVATE_HOST = "https://10.0.0.1";
 // a literal IP keeps the suite hermetic: blockLocalAndPrivateIpAddresses skips the DNS lookup
@@ -36,19 +35,17 @@ const baseBlobFields = {
   allowedAudience: ""
 };
 
-const NO_GATEWAY = { gatewayId: null, gatewayV2Id: null, gatewayPoolId: null };
+const NO_GATEWAY = { gatewayV2Id: null, gatewayPoolId: null };
 
 const createService = ({
   authMethod = IdentityAuthTemplateMethod.KUBERNETES,
   blobFields = baseBlobFields,
-  gatewayColumns = { gatewayId: GATEWAY_ID, gatewayV2Id: null, gatewayPoolId: null },
-  liveGatewayIds = [GATEWAY_ID],
+  gatewayColumns = { gatewayV2Id: GATEWAY_V2_ID, gatewayPoolId: null },
   liveGatewayV2Ids = [GATEWAY_V2_ID]
 }: {
   authMethod?: IdentityAuthTemplateMethod;
   blobFields?: Record<string, unknown>;
-  gatewayColumns?: { gatewayId: string | null; gatewayV2Id: string | null; gatewayPoolId: string | null };
-  liveGatewayIds?: string[];
+  gatewayColumns?: { gatewayV2Id: string | null; gatewayPoolId: string | null };
   liveGatewayV2Ids?: string[];
 } = {}) => {
   const identityKubernetesAuthDAL = {
@@ -80,9 +77,6 @@ const createService = ({
     transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb({}))
   };
 
-  const gatewayDAL = {
-    find: vi.fn().mockImplementation(({ id }: { id: string }) => (liveGatewayIds.includes(id) ? [{ id }] : []))
-  };
   const gatewayV2DAL = {
     find: vi.fn().mockImplementation(({ id }: { id: string }) => (liveGatewayV2Ids.includes(id) ? [{ id }] : []))
   };
@@ -94,7 +88,6 @@ const createService = ({
     identityLdapAuthDAL: { updateByTemplateId: vi.fn().mockResolvedValue([]) },
     identityKubernetesAuthDAL,
     identityOidcAuthDAL,
-    gatewayDAL,
     gatewayV2DAL,
     gatewayPoolDAL,
     permissionService: {
@@ -176,7 +169,7 @@ describe("identityAuthTemplateServiceFactory kubernetes host validation", () => 
     const { service } = createService();
 
     await expect(patchTemplate(service, { gatewayId: "11111111-1111-1111-1111-111111111111" })).rejects.toThrow(
-      "was not found in this organization"
+      "11111111-1111-1111-1111-111111111111' was not found"
     );
   });
 
@@ -206,15 +199,14 @@ describe("identityAuthTemplateServiceFactory gateway column storage", () => {
     await patchTemplate(service, { gatewayId: GATEWAY_V2_ID });
 
     const [, update] = identityAuthTemplateDAL.updateById.mock.calls[0] as [string, Record<string, unknown>];
-    // a v2 gateway resolves onto its own column, mirroring identity_kubernetes_auths
+    // the gateway resolves onto its own column, mirroring identity_kubernetes_auths
     expect(update.gatewayV2Id).toBe(GATEWAY_V2_ID);
-    expect(update.gatewayId).toBeNull();
     expect(JSON.parse((update.templateFields as Buffer).toString())).not.toHaveProperty("gatewayId");
   });
 
-  it("reports the logical gatewayId from whichever column holds it", async () => {
+  it("reports the gatewayV2Id column as the logical gatewayId", async () => {
     const { service } = createService({
-      gatewayColumns: { gatewayId: null, gatewayV2Id: GATEWAY_V2_ID, gatewayPoolId: null }
+      gatewayColumns: { gatewayV2Id: GATEWAY_V2_ID, gatewayPoolId: null }
     });
 
     const updated = await patchTemplate(service, { allowedAudience: "aud" });
@@ -225,11 +217,11 @@ describe("identityAuthTemplateServiceFactory gateway column storage", () => {
   it("propagates the template's gateway columns onto linked identities", async () => {
     const { service, identityKubernetesAuthDAL } = createService({ gatewayColumns: NO_GATEWAY });
 
-    await patchTemplate(service, { gatewayId: GATEWAY_ID });
+    await patchTemplate(service, { gatewayId: GATEWAY_V2_ID });
 
     expect(identityKubernetesAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
       { templateId: TEMPLATE_ID },
-      expect.objectContaining({ gatewayId: GATEWAY_ID, gatewayV2Id: null, gatewayPoolId: null }),
+      expect.objectContaining({ gatewayV2Id: GATEWAY_V2_ID, gatewayPoolId: null }),
       expect.anything()
     );
   });
@@ -259,7 +251,7 @@ describe("identityAuthTemplateServiceFactory gateway column storage", () => {
     // linked rows still get the row's existing gateway, so they cannot drift from the template
     expect(identityKubernetesAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
       { templateId: TEMPLATE_ID },
-      expect.objectContaining({ gatewayId: GATEWAY_ID }),
+      expect.objectContaining({ gatewayV2Id: GATEWAY_V2_ID }),
       expect.anything()
     );
   });

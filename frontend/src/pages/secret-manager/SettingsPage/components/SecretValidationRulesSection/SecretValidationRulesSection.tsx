@@ -86,6 +86,7 @@ import {
   CONSTRAINT_OPTIONS,
   ConstraintTarget,
   ConstraintType,
+  DEFAULT_PREVENT_VALUE_REUSE_VERSIONS,
   DYNAMIC_SECRET_PROVIDER_OPTIONS,
   DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS,
   DynamicSecretRuleProvider,
@@ -414,7 +415,7 @@ const RuleFormContent = ({
                   pattern and the min/max length constraints are ignored. Define the length
                   requirement inside the regex pattern itself
                   <br /> (e.g.{" "}
-                  <code className="rounded-md bg-mineshaft-700 px-1 py-0.5">{"[A-Z]{12,20}"}</code>
+                  <code className="rounded-md bg-surface-hover px-1 py-0.5">{"[A-Z]{12,20}"}</code>
                   ).
                 </p>
               </AlertDescription>
@@ -464,10 +465,13 @@ const RuleFormContent = ({
                             append({
                               type: opt.type,
                               appliesTo: defaultTarget,
-                              value:
-                                opt.type === ConstraintType.PreventValueReuse
-                                  ? String(opt.placeholder || 10)
-                                  : ""
+                              ...(opt.type === ConstraintType.PreventValueReuse
+                                ? {
+                                    value: String(DEFAULT_PREVENT_VALUE_REUSE_VERSIONS),
+                                    checkPreviousVersions: true,
+                                    checkOtherSecretsInScope: false
+                                  }
+                                : { value: "" })
                             })
                           }
                         >

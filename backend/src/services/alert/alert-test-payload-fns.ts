@@ -9,11 +9,8 @@ const TEST_ALERT_NAME = "Sample alert";
 const TEST_ITEMS = [
   {
     id: "sample",
-    title: "Sample credential",
-    fields: [
-      { label: "Type", value: "Sample" },
-      { label: "Expires", value: "7 days from now" }
-    ]
+    title: "Sample item",
+    fields: [{ label: "Detail", value: "Sample value" }]
   }
 ];
 
@@ -36,9 +33,9 @@ export const buildTestAlertPayload = ({
       viewUrl: appCfg.SITE_URL ?? ""
     },
     eventKey: "alert.channel.test",
-    eventLabel: "Expiry",
+    eventLabel: "Test",
     webhookType: "com.infisical.alert.channel.test",
-    resourceKind: "Sample Credential",
+    resourceKind: "Channel",
     resourceOwnerKind: "resource",
     severity: "info",
     summary: "This is a test notification from Infisical, showing how a real alert will look",

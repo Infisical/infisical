@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   ActivityIcon,
-  AsteriskIcon,
   ChevronDownIcon,
   EditIcon,
+  EyeIcon,
   HandshakeIcon,
   InfoIcon,
   LoaderCircleIcon,
@@ -20,6 +20,7 @@ import {
   Badge,
   Checkbox,
   IconButton,
+  ProviderIcon,
   Table,
   TableBody,
   TableCell,
@@ -50,8 +51,12 @@ import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
-  TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME
+  TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME,
+  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
+import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 
 type Props = {
   secretRotationName: string;
@@ -68,6 +73,8 @@ type Props = {
   onViewGeneratedCredentials: (secretRotation: TSecretRotationV2) => void;
   onDelete: (secretRotation: TSecretRotationV2) => void;
   onCheckActiveCredentials: (secretRotation: TSecretRotationV2) => Promise<void> | void;
+  activityId: TableRowActivityId;
+  onActivityChange: TableRowActivityChangeHandler;
 };
 
 const shouldShowReconciliationButton = (secretRotation: TSecretRotationV2) =>
@@ -93,7 +100,9 @@ export const SecretRotationTableRow = ({
   onViewGeneratedCredentials,
   onDelete,
   onReconcile,
-  onCheckActiveCredentials
+  onCheckActiveCredentials,
+  activityId,
+  onActivityChange
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const [checkingRotationId, setCheckingRotationId] = useState<string | null>(null);
@@ -118,6 +127,17 @@ export const SecretRotationTableRow = ({
   const singleEnvRotation = isSingleEnvView
     ? getSecretRotationByName(singleEnvSlug, secretRotationName)
     : undefined;
+
+  useEffect(() => {
+    onActivityChange(activityId, isExpanded);
+  }, [activityId, isExpanded, onActivityChange]);
+
+  useEffect(
+    () => () => {
+      onActivityChange(activityId, false);
+    },
+    [activityId, onActivityChange]
+  );
 
   const renderActionButtons = (secretRotation: TSecretRotationV2) => {
     const { environment, folder } = secretRotation;
@@ -189,7 +209,7 @@ export const SecretRotationTableRow = ({
                   isDisabled={!isAllowed}
                   onClick={() => onViewGeneratedCredentials(secretRotation)}
                 >
-                  <AsteriskIcon />
+                  <EyeIcon />
                 </IconButton>
               </TooltipTrigger>
               <TooltipContent>View Generated Credentials</TooltipContent>
@@ -320,7 +340,10 @@ export const SecretRotationTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge(
+          "group hover:z-10",
+          (isExpanded || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
+        )}
       >
         <TableCell
           className={twMerge(
@@ -369,8 +392,8 @@ export const SecretRotationTableRow = ({
             <div className="relative flex w-full items-center">
               <span className="truncate">{secretRotationName}</span>
               <Badge variant="neutral" className="mx-2.5">
-                <img
-                  src={`/images/integrations/${SECRET_ROTATION_MAP[singleEnvRotation.type].image}`}
+                <ProviderIcon
+                  icon={SECRET_ROTATION_MAP[singleEnvRotation.type].image}
                   style={{ width: "11px" }}
                   alt={`${SECRET_ROTATION_MAP[singleEnvRotation.type].name} logo`}
                 />
@@ -438,16 +461,29 @@ export const SecretRotationTableRow = ({
           })}
       </TableRow>
       {!isSingleEnvView && isExpanded && (
-        <TableRow>
-          <TableCell colSpan={totalCols} className={`${isExpanded && "bg-card p-0"}`}>
+        <TableRow
+          className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
+        >
+          <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 flex flex-col gap-y-4 bg-card p-4"
+              className="sticky left-0 border-y border-border"
             >
-              <Table containerClassName="border-none rounded-none bg-transparent">
-                <TableHeader>
+              <Table
+                className="w-full min-w-[calc(var(--name-column-width,180px)+24rem)] table-fixed"
+                containerClassName="rounded-none border-0"
+              >
+                <colgroup>
+                  <col className="w-10" />
+                  <col className="w-[var(--name-column-width,180px)]" />
+                  <col />
+                </colgroup>
+                <TableHeader className="bg-container-hover">
                   <TableRow>
-                    <TableHead className="w-full">Environment</TableHead>
+                    <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
+                    <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
+                      Environment
+                    </TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
@@ -468,12 +504,15 @@ export const SecretRotationTableRow = ({
 
                       return (
                         <TableRow key={slug} className="group relative hover:z-10">
-                          <TableCell colSpan={2}>
+                          <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
+                          <TableCell className={TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME}>
+                            {envName}
+                          </TableCell>
+                          <TableCell>
                             <div className="relative flex w-full flex-wrap items-center">
-                              <span>{envName}</span>
-                              <Badge variant="neutral" className="mx-2.5">
-                                <img
-                                  src={`/images/integrations/${image}`}
+                              <Badge variant="neutral">
+                                <ProviderIcon
+                                  icon={image}
                                   style={{
                                     width: "11px"
                                   }}

@@ -153,7 +153,7 @@ export const ProjectTemplateEditRoleForm = ({
             {isDisabled ? (
               <div className="flex flex-col">
                 <span className="text-lg font-medium">{role?.name}</span>
-                <span className="text-mineshaft-400">{role?.slug}</span>
+                <span className="text-muted">{role?.slug}</span>
               </div>
             ) : (
               <div className="flex w-full gap-2">

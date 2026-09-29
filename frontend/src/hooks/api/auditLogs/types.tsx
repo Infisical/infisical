@@ -1,4 +1,5 @@
 import { CaStatus } from "../ca";
+import { CrlReason } from "../certificates/enums";
 import { IdentityTrustedIp } from "../identities/types";
 import { PkiItemType } from "../pkiCollections/constants";
 import { WorkflowIntegration } from "../workflowIntegrations/types";
@@ -695,7 +696,13 @@ interface DeleteCert {
   metadata: {
     certId: string;
     cn: string;
+    friendlyName?: string | null;
     serialNumber: string;
+    notAfter: string;
+    source: string;
+    deletionAllowedReason: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -705,6 +712,7 @@ interface RevokeCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    revocationReason?: CrlReason;
   };
 }
 

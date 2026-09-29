@@ -389,9 +389,14 @@ export const POPULAR_AGENT_VAULT_TEMPLATES = [
 
 const stripPort = (pattern: string) => pattern.split(":")[0];
 
+// A template whose host starts with a placeholder label, such as <your-tenant>.atlassian.net, is
+// saved with that label replaced. Treat it exactly like a "*." wildcard, or the icon is lost the
+// moment someone fills their tenant in.
+const ONE_LABEL_PREFIX_RE = /^(?:\*|<[^>]+>)\./;
+
 const hostMatchesTemplateHost = (host: string, templateHost: string) => {
-  if (!templateHost.startsWith("*.")) return host === templateHost;
-  const suffix = templateHost.slice(2);
+  if (!ONE_LABEL_PREFIX_RE.test(templateHost)) return host === templateHost;
+  const suffix = templateHost.replace(ONE_LABEL_PREFIX_RE, "");
   if (!host.endsWith(`.${suffix}`)) return false;
   return !host.slice(0, host.length - suffix.length - 1).includes(".");
 };

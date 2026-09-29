@@ -72,7 +72,9 @@ import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
-const buildSchema = (maxAccessTokenTTL: number, isUpdate: boolean) =>
+const normalizeUrl = (value?: string) => value?.trim() ?? "";
+
+const buildSchema = (maxAccessTokenTTL: number, isUpdate: boolean, currentUrl?: string) =>
   z
     .object({
       scope: z.enum(["template", "custom"]),
@@ -177,10 +179,12 @@ const buildSchema = (maxAccessTokenTTL: number, isUpdate: boolean) =>
             path: ["bindDN"]
           });
         }
-        if (!isUpdate && !data.bindPass) {
+        if (!data.bindPass && (!isUpdate || normalizeUrl(data.url) !== normalizeUrl(currentUrl))) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "Bind Pass is required when using custom scope",
+            message: isUpdate
+              ? "Bind Pass is required when the LDAP URL changes"
+              : "Bind Pass is required when using custom scope",
             path: ["bindPass"]
           });
         }
@@ -253,8 +257,8 @@ export const IdentityLdapAuthForm = ({
   });
 
   const resolver = useMemo(
-    () => zodResolver(buildSchema(maxAccessTokenTTL, Boolean(isUpdate))),
-    [maxAccessTokenTTL, isUpdate]
+    () => zodResolver(buildSchema(maxAccessTokenTTL, Boolean(isUpdate), data?.url)),
+    [maxAccessTokenTTL, isUpdate, data?.url]
   );
 
   const {
@@ -288,6 +292,13 @@ export const IdentityLdapAuthForm = ({
 
   const scope = watch("scope");
   const templateId = watch("templateId");
+  const urlValue = watch("url");
+  const hasUrlChanged = Boolean(
+    isUpdate &&
+      scope !== "template" &&
+      data?.url &&
+      normalizeUrl(urlValue) !== normalizeUrl(data.url)
+  );
 
   const configurationOptions = useMemo<ConfigurationOption[]>(
     () => [
@@ -668,7 +679,9 @@ export const IdentityLdapAuthForm = ({
                   />
                   {isUpdate && scope !== "template" && (
                     <FieldDescription>
-                      Leave blank to keep the current password. Type a new value to rotate it.
+                      {hasUrlChanged
+                        ? "The LDAP URL changed, so the bind password must be re-entered."
+                        : "Leave blank to keep the current password. Type a new value to rotate it."}
                     </FieldDescription>
                   )}
                   <FieldError>{error?.message}</FieldError>

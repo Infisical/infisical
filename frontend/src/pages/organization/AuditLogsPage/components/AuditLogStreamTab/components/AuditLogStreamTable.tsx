@@ -18,6 +18,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  ProviderIcon,
   Skeleton,
   Table,
   TableBody,
@@ -200,9 +201,9 @@ export const AuditLogStreamTable = () => {
                   >
                     <div className="flex items-center gap-2">
                       {providerDetails.image ? (
-                        <img
+                        <ProviderIcon
                           alt={providerDetails.name}
-                          src={`/images/integrations/${providerDetails.image}`}
+                          icon={providerDetails.image}
                           className="h-4 w-4"
                         />
                       ) : (

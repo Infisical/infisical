@@ -81,8 +81,10 @@ export enum AppConnection {
   KempLoadMaster = "kemp-loadmaster",
   MicrosoftIntune = "microsoft-intune",
   NutanixPrismCentral = "nutanix-prism-central",
+  PowerDns = "powerdns",
   Spacelift = "spacelift",
-  Daytona = "daytona"
+  Daytona = "daytona",
+  Stripe = "stripe"
 }
 
 export enum AWSRegion {

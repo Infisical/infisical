@@ -109,6 +109,7 @@ export const CertificateProfilesTab = () => {
 
       <CreateProfileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
       <UpgradePlanModal
+        paywallKey="cert-manager.certificate-profiles"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}

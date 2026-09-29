@@ -62,6 +62,7 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
           type: EventType.SET_PKI_APPLICATION_ACME_ENROLLMENT,
           metadata: {
             applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
             profileId: req.params.profileId,
             skipDnsOwnershipVerification: result.acme.skipDnsOwnershipVerification,
             skipEabBinding: result.acme.skipEabBinding
@@ -111,7 +112,11 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
         projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.CLEAR_PKI_APPLICATION_ACME_ENROLLMENT,
-          metadata: { applicationId: req.params.applicationId, profileId: req.params.profileId }
+          metadata: {
+            applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
+            profileId: req.params.profileId
+          }
         }
       });
       await server.services.telemetry.sendPostHogEvents({
@@ -163,7 +168,11 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
         projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.REVEAL_PKI_APPLICATION_ACME_EAB_SECRET,
-          metadata: { applicationId: req.params.applicationId, profileId: req.params.profileId }
+          metadata: {
+            applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
+            profileId: req.params.profileId
+          }
         }
       });
       return result;
@@ -198,7 +207,11 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
         projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.ROTATE_PKI_APPLICATION_ACME_EAB_SECRET,
-          metadata: { applicationId: req.params.applicationId, profileId: req.params.profileId }
+          metadata: {
+            applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
+            profileId: req.params.profileId
+          }
         }
       });
       return result;

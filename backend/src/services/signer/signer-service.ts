@@ -2136,6 +2136,12 @@ export const signerServiceFactory = ({
     return signer.projectId;
   };
 
+  const getSignerAuditContext = async (signerId: string): Promise<{ projectId: string; name: string }> => {
+    const signer = await signerDAL.findById(signerId);
+    if (!signer) throw new NotFoundError({ message: `Signer '${signerId}' not found.` });
+    return { projectId: signer.projectId, name: signer.name };
+  };
+
   return {
     create,
     list,
@@ -2143,6 +2149,7 @@ export const signerServiceFactory = ({
     checkIssuanceNow,
     getMyPermissions,
     getProjectIdForSigner,
+    getSignerAuditContext,
     update,
     delete: deleteSigner,
     enable,

@@ -9,9 +9,11 @@ import { PemCertificateExtension, PkiSyncExportFormat } from "@app/services/pki-
 import {
   BaseHealthCheckTestSchema,
   HostCommandSchema,
+  PkiSyncFiltersField,
   PkiSyncSchema,
   PkiSyncTargetHostSchema,
-  PkiSyncTargetPortSchema
+  PkiSyncTargetPortSchema,
+  UpdatePkiSyncFiltersField
 } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { WINDOWS_SERVER_NAMING } from "./windows-server-pki-sync-constants";
@@ -139,7 +141,8 @@ export const CreateWindowsServerPkiSyncSchema = z
     subscriberId: z.string().nullish(),
     connectionId: z.string(),
     applicationId: z.string().uuid().optional(),
-    certificateIds: z.array(z.string().uuid()).optional()
+    certificateIds: z.array(z.string().uuid()).optional(),
+    filters: PkiSyncFiltersField
   })
   .superRefine((data, ctx) => {
     if (data.syncOptions.exportFormat === PkiSyncExportFormat.Pkcs12 && !data.credentials?.exportPassword) {
@@ -159,7 +162,8 @@ export const UpdateWindowsServerPkiSyncSchema = z.object({
   syncOptions: WindowsServerPkiSyncOptionsSchema.optional(),
   credentials: WindowsServerPkiSyncCredentialsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const WindowsServerPkiSyncListItemSchema = z.object({

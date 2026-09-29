@@ -473,9 +473,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
+      // Cloud only: the limit targets signup spam, and self-hosted keeps the old behavior.
+      const appCfg = getConfig();
+
       const organization = await server.services.org.createOrganization({
         userId: req.permission.id,
-        orgName: req.body.name
+        orgName: req.body.name,
+        blockIfUserHasCreatedOrg: appCfg.isCloud
       });
 
       void server.services.telemetry.sendPostHogEvents({

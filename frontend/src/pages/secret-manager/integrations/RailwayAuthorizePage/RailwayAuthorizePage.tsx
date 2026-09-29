@@ -60,7 +60,7 @@ export const RailwayAuthorizePage = () => {
         </FormControl>
         <Button
           onClick={handleButtonClick}
-          color="mineshaft"
+          colorSchema="secondary"
           className="mt-4"
           isLoading={isLoading}
         >

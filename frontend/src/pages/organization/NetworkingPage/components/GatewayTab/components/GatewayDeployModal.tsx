@@ -40,7 +40,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const navigate = useNavigate({ from: ROUTE_PATHS.Organization.NetworkingPage.path });
-  const { data: gateways } = useQuery(gatewaysQueryKeys.listWithTokens());
+  const { data: gateways } = useQuery(gatewaysQueryKeys.listAll());
   const { mutateAsync: createGateway, isPending } = useCreateGateway();
 
   const {

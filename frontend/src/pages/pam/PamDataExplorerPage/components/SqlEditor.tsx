@@ -9,53 +9,69 @@ import { tags } from "@lezer/highlight";
 import type { SqlDialect } from "../sql-generation";
 
 const infisicalTheme = EditorView.theme({
-  "&": { height: "100%", fontSize: "13px", backgroundColor: "#16181a" },
-  "&.cm-editor": { backgroundColor: "#16181a" },
+  "&": { height: "100%", fontSize: "13px", backgroundColor: "var(--color-card)" },
+  "&.cm-editor": { backgroundColor: "var(--color-card)" },
   ".cm-scroller": {
     overflow: "auto",
     fontFamily: "ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace",
-    backgroundColor: "#16181a",
+    backgroundColor: "var(--color-card)",
     scrollbarWidth: "thin",
-    scrollbarColor: "#39393d transparent"
+    scrollbarColor: "var(--color-scrollbar-track-thumb) transparent"
   },
   ".cm-scroller::-webkit-scrollbar": { width: "4px", height: "4px" },
   ".cm-scroller::-webkit-scrollbar-track": { background: "transparent" },
-  ".cm-scroller::-webkit-scrollbar-thumb": { background: "#39393d", borderRadius: "2px" },
-  ".cm-content": { padding: "8px 0", caretColor: "#e0ed34", backgroundColor: "#16181a" },
+  ".cm-scroller::-webkit-scrollbar-thumb": {
+    background: "var(--color-scrollbar-track-thumb)",
+    borderRadius: "2px"
+  },
+  ".cm-content": {
+    padding: "8px 0",
+    caretColor: "var(--color-project)",
+    backgroundColor: "var(--color-card)"
+  },
   ".cm-line": { backgroundColor: "transparent" },
   ".cm-gutters": {
-    backgroundColor: "#16181a",
-    borderRight: "1px solid #2b2c30",
-    color: "#707174"
+    backgroundColor: "var(--color-card)",
+    borderRight: "1px solid var(--color-border)",
+    color: "var(--color-muted)"
   },
   ".cm-lineNumbers .cm-gutterElement": { padding: "0 12px 0 8px" },
-  ".cm-activeLine": { backgroundColor: "rgba(45, 47, 51, 0.5)" },
-  ".cm-activeLineGutter": { backgroundColor: "rgba(45, 47, 51, 0.5)" },
-  ".cm-cursor": { borderLeftColor: "#e0ed34" },
-  ".cm-selectionBackground": { backgroundColor: "#2d2f33 !important" },
-  "&.cm-focused .cm-selectionBackground": { backgroundColor: "#2d2f33 !important" },
-  ".cm-matchingBracket": { backgroundColor: "#323439", color: "#e0ed34 !important" }
+  ".cm-activeLine": {
+    backgroundColor: "color-mix(in srgb, var(--color-border-control) 50%, transparent)"
+  },
+  ".cm-activeLineGutter": {
+    backgroundColor: "color-mix(in srgb, var(--color-border-control) 50%, transparent)"
+  },
+  ".cm-cursor": { borderLeftColor: "var(--color-project)" },
+  ".cm-selectionBackground": { backgroundColor: "var(--color-border-control) !important" },
+  "&.cm-focused .cm-selectionBackground": {
+    backgroundColor: "var(--color-border-control) !important"
+  },
+  ".cm-matchingBracket": {
+    backgroundColor: "var(--color-surface-selected)",
+    color: "var(--color-project) !important"
+  }
 });
 
 const infisicalHighlight = HighlightStyle.define(
   [
-    { tag: tags.keyword, color: "#63b0bd", fontWeight: "600" },
-    { tag: tags.string, color: "#29b866" },
-    { tag: tags.number, color: "#f39c12" },
-    { tag: tags.comment, color: "#707174", fontStyle: "italic" },
-    { tag: tags.operator, color: "#adaeb0" },
-    { tag: tags.punctuation, color: "#adaeb0" },
-    { tag: tags.separator, color: "#adaeb0" },
-    { tag: tags.bracket, color: "#adaeb0" },
-    { tag: tags.name, color: "#ebebeb" },
-    { tag: tags.function(tags.name), color: "#63b0bd" },
-    { tag: tags.typeName, color: "#f39c12" },
-    { tag: tags.bool, color: "#63b0bd" },
-    { tag: tags.null, color: "#707174" },
-    { tag: tags.special(tags.string), color: "#29b866" },
-    { tag: tags.invalid, color: "#e74c3c" }
+    { tag: tags.keyword, color: "var(--color-info)", fontWeight: "600" },
+    { tag: tags.string, color: "var(--color-success)" },
+    { tag: tags.number, color: "var(--color-warning)" },
+    { tag: tags.comment, color: "var(--color-muted)", fontStyle: "italic" },
+    { tag: tags.operator, color: "var(--color-label)" },
+    { tag: tags.punctuation, color: "var(--color-label)" },
+    { tag: tags.separator, color: "var(--color-label)" },
+    { tag: tags.bracket, color: "var(--color-label)" },
+    { tag: tags.name, color: "var(--color-foreground)" },
+    { tag: tags.function(tags.name), color: "var(--color-info)" },
+    { tag: tags.typeName, color: "var(--color-warning)" },
+    { tag: tags.bool, color: "var(--color-info)" },
+    { tag: tags.null, color: "var(--color-muted)" },
+    { tag: tags.special(tags.string), color: "var(--color-success)" },
+    { tag: tags.invalid, color: "var(--color-danger)" }
   ],
-  { all: { color: "#ebebeb" } }
+  { all: { color: "var(--color-foreground)" } }
 );
 
 const MAX_SQL_BYTES = 50 * 1024; // 50KB — matches backend Zod limit

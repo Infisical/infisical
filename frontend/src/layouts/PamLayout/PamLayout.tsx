@@ -22,6 +22,7 @@ export const PamLayout = () => {
       {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
       <Outlet />
       <UpgradePlanModal
+        paywallKey="pam.product-access"
         isOpen={isUpgradeModalOpen}
         onOpenChange={setIsUpgradeModalOpen}
         text="PAM is not available on your current plan. Upgrade to continue using it."

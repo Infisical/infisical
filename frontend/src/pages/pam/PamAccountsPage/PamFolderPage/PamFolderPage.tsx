@@ -32,6 +32,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ProviderIcon,
   Table,
   TableBody,
   TableHead,
@@ -310,8 +311,8 @@ export const PamFolderPage = () => {
                     <DropdownMenuRadioItem value="all">All types</DropdownMenuRadioItem>
                     {accountTypes.map((meta) => (
                       <DropdownMenuRadioItem key={meta.type} value={meta.type}>
-                        <img
-                          src={`/images/integrations/${meta.icon}`}
+                        <ProviderIcon
+                          icon={meta.icon}
                           alt={meta.name}
                           className="size-4 rounded-sm"
                         />

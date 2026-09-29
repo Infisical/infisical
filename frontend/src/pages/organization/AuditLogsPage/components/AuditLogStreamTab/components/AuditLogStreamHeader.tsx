@@ -1,6 +1,6 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DocumentationLinkBadge, ProviderIcon } from "@app/components/v3";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP } from "@app/helpers/auditLogStreams";
 import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 
@@ -16,9 +16,9 @@ export const AuditLogStreamHeader = ({ provider, logStreamExists }: Props) => {
     <div className="flex w-full items-start gap-2">
       <div className="relative flex h-10 w-10 items-center justify-center rounded-md bg-container">
         {providerDetails.image ? (
-          <img
+          <ProviderIcon
             alt={providerDetails.name}
-            src={`/images/integrations/${providerDetails.image}`}
+            icon={providerDetails.image}
             className="h-7 w-7 object-contain"
           />
         ) : (

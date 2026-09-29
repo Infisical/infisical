@@ -52,9 +52,7 @@ export const PermissionAuditRow = ({ audit }: Props) => {
                   </button>
                 </HoverCardTrigger>
                 <HoverCardContent align="end" className="w-auto min-w-56 p-2">
-                  <div className="mb-2 text-xs font-semibold text-mineshaft-100">
-                    {overflowLabel}
-                  </div>
+                  <div className="mb-2 text-xs font-semibold text-foreground">{overflowLabel}</div>
                   <div className="flex flex-col items-start gap-1">
                     {extraSources.map((source) => (
                       <SourcePill key={source.id} source={source} forbidding={isForbidden} />

@@ -1,8 +1,7 @@
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, PluginOption } from "vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
-import topLevelAwait from "vite-plugin-top-level-await";
 import wasm from "vite-plugin-wasm";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -44,7 +43,9 @@ export default defineConfig(({ mode }) => {
       // }
     },
     build: {
-      rollupOptions: {
+      target: ["es2020", "edge88", "firefox78", "chrome87", "safari14"],
+      cssTarget: ["edge88", "firefox78", "chrome87", "safari14"],
+      rolldownOptions: {
         output: {
           entryFileNames: `assets/[name]-${version}-[hash].js`,
           chunkFileNames: `assets/[name]-${version}-[hash].js`,
@@ -67,8 +68,8 @@ export default defineConfig(({ mode }) => {
       }
     },
     optimizeDeps: {
-      // Deps that the initial esbuild scan can't reach: `react/jsx-runtime` is injected by the
-      // SWC transform (the scanner reads pre-transform source), and the rest are only imported
+      // Deps that the initial dependency scan can't reach: `react/jsx-runtime` is injected by the
+      // JSX transform (the scanner reads pre-transform source), and the rest are only imported
       // from lazy route components. Discovering them mid-session re-runs optimizeDeps, which
       // rotates the ?v= hash on every /node_modules/.vite/deps URL and force-reloads the page.
       include: [
@@ -100,7 +101,6 @@ export default defineConfig(({ mode }) => {
         }
       }),
       wasm(),
-      topLevelAwait(),
       TanStackRouterVite({
         virtualRouteConfig: "./src/routes.ts"
       }),

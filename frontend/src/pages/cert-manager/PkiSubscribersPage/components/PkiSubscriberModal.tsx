@@ -161,7 +161,9 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [tabValue, setTabValue] = useState<FormTab>(FormTab.Configuration);
 
   const { data: pkiSubscriber } = useGetPkiSubscriber({
-    subscriberName: (popUp?.pkiSubscriber?.data as { subscriberName: string })?.subscriberName || ""
+    subscriberName:
+      (popUp?.pkiSubscriber?.data as { subscriberName: string })?.subscriberName || "",
+    projectId
   });
 
   const { mutateAsync: createMutateAsync } = useCreatePkiSubscriber();
@@ -403,7 +405,11 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
             <TabPanel value={FormTab.Configuration}>
               {pkiSubscriber && (
                 <FormControl label="Subscriber ID">
-                  <Input value={pkiSubscriber.id} isDisabled className="bg-white/[0.07]" />
+                  <Input
+                    value={pkiSubscriber.id}
+                    isDisabled
+                    className="bg-foreground-inverse/[0.07]"
+                  />
                 </FormControl>
               )}
               <Controller

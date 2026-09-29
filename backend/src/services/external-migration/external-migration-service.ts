@@ -8,8 +8,6 @@ import {
   TAuditLogServiceFactory
 } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
-import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -22,7 +20,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { GatewayVersion } from "@app/lib/gateway/types";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
@@ -161,9 +159,7 @@ type TExternalMigrationServiceFactoryDep = {
     "connectAppConnectionById" | "validateAppConnectionUsageById"
   >;
   userDAL: Pick<TUserDALFactory, "findById">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
@@ -180,9 +176,7 @@ export const externalMigrationServiceFactory = ({
   permissionService,
   externalMigrationQueue,
   userDAL,
-  gatewayService,
   gatewayV2Service,
-  gatewayDAL,
   gatewayV2DAL,
   gatewayPoolService,
   secretService,
@@ -221,25 +215,12 @@ export const externalMigrationServiceFactory = ({
 
       if (gatewayV2Details) {
         gatewayDetails = {
-          gatewayVersion: GatewayVersion.V2,
           details: gatewayV2Details,
           target: {
             host: targetHost,
             port: targetPort
           }
         };
-      } else {
-        const gatewayV1Details = await gatewayService.fnGetGatewayClientTlsByGatewayId(effectiveGatewayId);
-        if (gatewayV1Details) {
-          gatewayDetails = {
-            gatewayVersion: GatewayVersion.V1,
-            details: gatewayV1Details,
-            target: {
-              host: targetHost,
-              port: targetPort
-            }
-          };
-        }
       }
     }
 
@@ -329,14 +310,11 @@ export const externalMigrationServiceFactory = ({
 
     let effectiveGatewayId: string | null = gatewayId ?? null;
     if (gatewayId) {
-      const [gateway, gatewayV2] = await Promise.all([
-        gatewayDAL.find({ id: gatewayId, orgId: actorOrgId }, { limit: 1 }),
-        gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId }, { limit: 1 })
-      ]);
+      const gatewayV2 = await gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId }, { limit: 1 });
 
       // Ensure gatewayId is part of the actor's org
-      if (!gateway.length && !gatewayV2.length) {
-        throw new NotFoundError({ message: `Gateway with ID ${gatewayId} not found` });
+      if (!gatewayV2.length) {
+        throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
     }
 
@@ -360,7 +338,6 @@ export const externalMigrationServiceFactory = ({
         orgId: actorOrgId
       },
       {
-        gatewayService,
         gatewayV2Service
       }
     );
@@ -422,7 +399,7 @@ export const externalMigrationServiceFactory = ({
       connectionId,
       actor
     );
-    return listHCVaultNamespaces(connection, gatewayService, gatewayV2Service);
+    return listHCVaultNamespaces(connection, gatewayV2Service);
   };
 
   const getVaultPolicies = async ({
@@ -442,7 +419,7 @@ export const externalMigrationServiceFactory = ({
 
     const gatewayDetails = await getGatewayDetails(connection);
 
-    return listHCVaultPolicies(namespace, connection, gatewayService, gatewayV2Service, gatewayDetails);
+    return listHCVaultPolicies(namespace, connection, gatewayV2Service, gatewayDetails);
   };
 
   const getVaultMounts = async ({
@@ -462,7 +439,7 @@ export const externalMigrationServiceFactory = ({
 
     const gatewayDetails = await getGatewayDetails(connection);
 
-    return listHCVaultMounts(connection, gatewayService, gatewayV2Service, namespace, gatewayDetails);
+    return listHCVaultMounts(connection, gatewayV2Service, namespace, gatewayDetails);
   };
 
   const getVaultSecretPaths = async ({
@@ -484,7 +461,7 @@ export const externalMigrationServiceFactory = ({
 
     const gatewayDetails = await getGatewayDetails(connection);
 
-    return listHCVaultSecretPaths(namespace, connection, gatewayService, gatewayV2Service, mountPath, gatewayDetails);
+    return listHCVaultSecretPaths(namespace, connection, gatewayV2Service, mountPath, gatewayDetails);
   };
 
   const $importVaultSecretsPreservingStructure = async ({
@@ -727,7 +704,6 @@ export const externalMigrationServiceFactory = ({
       mountPath,
       uniqueVaultSecretPaths,
       connection,
-      gatewayService,
       gatewayV2Service
     );
 
@@ -846,7 +822,7 @@ export const externalMigrationServiceFactory = ({
       connectionId,
       actor
     );
-    return getHCVaultAuthMounts(namespace, authType as HCVaultAuthType, connection, gatewayService, gatewayV2Service);
+    return getHCVaultAuthMounts(namespace, authType as HCVaultAuthType, connection, gatewayV2Service);
   };
 
   const getVaultKubernetesAuthRoles = async ({
@@ -865,7 +841,7 @@ export const externalMigrationServiceFactory = ({
       connectionId,
       actor
     );
-    return getHCVaultKubernetesAuthRoles(namespace, mountPath, connection, gatewayService, gatewayV2Service);
+    return getHCVaultKubernetesAuthRoles(namespace, mountPath, connection, gatewayV2Service);
   };
 
   const getVaultKubernetesRoles = async ({
@@ -884,7 +860,7 @@ export const externalMigrationServiceFactory = ({
       connectionId,
       actor
     );
-    return getHCVaultKubernetesRoles(namespace, mountPath, connection, gatewayService, gatewayV2Service);
+    return getHCVaultKubernetesRoles(namespace, mountPath, connection, gatewayV2Service);
   };
 
   const getVaultDatabaseRoles = async ({
@@ -903,7 +879,7 @@ export const externalMigrationServiceFactory = ({
       connectionId,
       actor
     );
-    return getHCVaultDatabaseRoles(namespace, mountPath, connection, gatewayService, gatewayV2Service);
+    return getHCVaultDatabaseRoles(namespace, mountPath, connection, gatewayV2Service);
   };
 
   const getVaultLdapRoles = async ({
@@ -922,7 +898,7 @@ export const externalMigrationServiceFactory = ({
       connectionId,
       actor
     );
-    return getHCVaultLdapRoles(namespace, mountPath, connection, gatewayService, gatewayV2Service);
+    return getHCVaultLdapRoles(namespace, mountPath, connection, gatewayV2Service);
   };
 
   // ─── Doppler In-Platform Migration ──────────────────────────────────────────

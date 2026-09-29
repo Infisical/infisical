@@ -1380,8 +1380,7 @@ export const pkiAcmeServiceFactory = ({
               extendedKeyUsages: certificateRequest.extendedKeyUsages || null,
               notBefore: finalizingOrder.notBefore || null,
               notAfter: finalizingOrder.notAfter || null,
-              keyAlgorithm: null,
-              signatureAlgorithm: null,
+              ...extractAlgorithmsFromCSR(csr),
               ttl,
               enrollmentType: EnrollmentType.ACME,
               status: CertificateRequestStatus.PENDING_APPROVAL,
@@ -1542,6 +1541,7 @@ export const pkiAcmeServiceFactory = ({
         await certificateIssuanceQueue.queueCertificateIssuance(certIssuanceJobData);
       }
       const updatedOrder = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId))!;
+      const finalizedCsr = extractCertificateRequestFromCSR(updatedOrder.csr!);
       order = updatedOrder;
       await auditLogService.createAuditLog({
         ...auditLogInfo,
@@ -1557,6 +1557,7 @@ export const pkiAcmeServiceFactory = ({
           type: EventType.FINALIZE_ACME_ORDER,
           metadata: {
             orderId: updatedOrder.id,
+            commonName: finalizedCsr.commonName || "",
             csr: updatedOrder.csr!
           }
         }
@@ -1635,7 +1636,10 @@ export const pkiAcmeServiceFactory = ({
       event: {
         type: EventType.DOWNLOAD_ACME_CERTIFICATE,
         metadata: {
-          orderId
+          orderId,
+          certificateId: syncedOrder.certificateId,
+          commonName: Array.from(certObj.subjectName.getField("CN")?.values() || [])[0] || "",
+          serialNumber: certObj.serialNumber
         }
       }
     });

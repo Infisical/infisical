@@ -138,7 +138,7 @@ export const buildHostCommandContext = (args: {
         singleCertificateVariables
       )}. A variable that names one certificate cannot be resolved for a run that ${delivered} ${
         certificates.length
-      } certificates. Unlink all but one certificate, or use {{certificateFiles}} instead.`,
+      } certificates. Narrow this sync's filters to one certificate, or use {{certificateFiles}} instead.`,
       shouldRetry: false
     });
   }

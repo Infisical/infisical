@@ -86,6 +86,7 @@ import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-con
 import { OpenAIConnectionMethod } from "@app/hooks/api/appConnections/types/open-ai-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { OVHConnectionMethod } from "@app/hooks/api/appConnections/types/ovh-connection";
+import { PowerDnsConnectionMethod } from "@app/hooks/api/appConnections/types/powerdns-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { RundeckConnectionMethod } from "@app/hooks/api/appConnections/types/rundeck-connection";
@@ -94,6 +95,7 @@ import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-con
 import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
 import { SpaceliftConnectionMethod } from "@app/hooks/api/appConnections/types/spacelift-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
+import { StripeConnectionMethod } from "@app/hooks/api/appConnections/types/stripe-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
 import { TriggerDevConnectionMethod } from "@app/hooks/api/appConnections/types/trigger-dev-connection";
@@ -289,6 +291,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "HOSTING",
     description: "App and config var access for Heroku."
   },
+  [AppConnection.Stripe]: {
+    name: "Stripe",
+    image: "Stripe.svg",
+    category: "PLATFORM",
+    description: "API key management for Stripe."
+  },
   [AppConnection.Render]: {
     name: "Render",
     image: "Render.png",
@@ -319,6 +327,12 @@ export const APP_CONNECTION_MAP: Record<
     size: 120,
     category: "DNS",
     description: "Manage DNS records on DNS Made Easy."
+  },
+  [AppConnection.PowerDns]: {
+    name: "PowerDNS",
+    image: "PowerDNS.png",
+    category: "DNS",
+    description: "Manage DNS records on a self-hosted PowerDNS server."
   },
   [AppConnection.Zabbix]: {
     name: "Zabbix",
@@ -659,6 +673,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case HerokuConnectionMethod.OAuth:
     case GitLabConnectionMethod.OAuth:
     case VenafiTppConnectionMethod.OAuth:
+    case StripeConnectionMethod.OAuth:
       return { name: "OAuth", icon: IdCardIcon };
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
@@ -741,6 +756,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TriggerDevConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
     case DaytonaConnectionMethod.ApiKey:
+    case PowerDnsConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: KeyRoundIcon };

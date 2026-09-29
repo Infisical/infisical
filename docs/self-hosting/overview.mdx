@@ -21,22 +21,22 @@ Before you begin, check the [hardware requirements](/self-hosting/configuration/
 Pick the platform you already run:
 
 <CardGroup cols={3}>
-  <Card title="Docker" icon="docker" href="/self-hosting/deployment-options/standalone-infisical">
+  <Card title="Docker" icon="docker" iconType="brands" href="/self-hosting/deployment-options/standalone-infisical">
     A single packaged container. The quickest way to get an instance running.
   </Card>
-  <Card title="Docker Compose" icon="docker" href="/self-hosting/deployment-options/docker-compose">
+  <Card title="Docker Compose" icon="docker" iconType="brands" href="/self-hosting/deployment-options/docker-compose">
     Infisical, PostgreSQL, and Redis together from one template.
   </Card>
-  <Card title="Kubernetes" icon="dharmachakra" href="/self-hosting/deployment-options/kubernetes-helm">
+  <Card title="Kubernetes" icon="settings" href="/self-hosting/deployment-options/kubernetes-helm">
     Deploy with the official Helm chart, with bundled PostgreSQL and Redis.
   </Card>
-  <Card title="Linux package" icon="linux" href="/self-hosting/deployment-options/native/linux-package/installation">
+  <Card title="Linux package" icon="linux" iconType="brands" href="/self-hosting/deployment-options/native/linux-package/installation">
     Install directly on a host, with no containers involved.
   </Card>
-  <Card title="AWS" icon="aws" href="/self-hosting/deployment-options/aws-native">
+  <Card title="AWS" icon="aws" iconType="brands" href="/self-hosting/deployment-options/aws-native">
     ECS with Fargate, backed by RDS, ElastiCache, and an ALB.
   </Card>
-  <Card title="GCP" icon="google" href="/self-hosting/deployment-options/gcp-native">
+  <Card title="GCP" icon="google" iconType="brands" href="/self-hosting/deployment-options/gcp-native">
     GKE, backed by Cloud SQL and Memorystore.
   </Card>
 </CardGroup>
@@ -49,10 +49,10 @@ Apply settings once the instance is running:
   <Card title="Environment variables" icon="list" href="/self-hosting/configuration/envars">
     Every variable the instance reads, and which ones are required.
   </Card>
-  <Card title="Custom certificates" icon="certificate" href="/self-hosting/guides/custom-certificates">
+  <Card title="Custom certificates" icon="award" href="/self-hosting/guides/custom-certificates">
     Trust an internal certificate authority or use your own TLS certificates.
   </Card>
-  <Card title="HSM integration" icon="microchip" href="/self-hosting/guides/hsm-integration">
+  <Card title="HSM integration" icon="cpu" href="/self-hosting/guides/hsm-integration">
     Back the encryption root key with a hardware security module.
   </Card>
   <Card title="Programmatic provisioning" icon="terminal" href="/self-hosting/guides/automated-bootstrapping">
@@ -68,7 +68,7 @@ Apply settings once the instance is running:
 Keep the instance healthy once it's carrying real traffic:
 
 <CardGroup cols={3}>
-  <Card title="Server admin console" icon="sliders" href="/documentation/platform/admin-panel/server-admin">
+  <Card title="Server admin console" icon="sliders-horizontal" href="/documentation/platform/admin-panel/server-admin">
     Instance-wide settings, user management, and sign-up controls.
   </Card>
   <Card title="Upgrade Infisical" icon="arrow-up" href="/self-hosting/guides/upgrading-infisical">
@@ -77,7 +77,7 @@ Keep the instance healthy once it's carrying real traffic:
   <Card title="Multi-region replication" icon="globe" href="/self-hosting/guides/replication">
     Run read replicas closer to the teams that use them.
   </Card>
-  <Card title="Production hardening" icon="shield-halved" href="/self-hosting/guides/production-hardening">
+  <Card title="Production hardening" icon="shield-half" href="/self-hosting/guides/production-hardening">
     What to lock down before you put an instance in front of a team.
   </Card>
   <Card title="Monitoring and telemetry" icon="chart-line" href="/self-hosting/guides/monitoring-telemetry">
@@ -92,6 +92,6 @@ Keep the instance healthy once it's carrying real traffic:
 
 Answers to the questions that come up most often when running your own instance, including licensing, upgrades, and backups.
 
-<Card title="Self-hosting FAQ" icon="circle-question" href="/self-hosting/faq">
+<Card title="Self-hosting FAQ" icon="circle-help" href="/self-hosting/faq">
   Read the FAQ.
 </Card>

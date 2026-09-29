@@ -183,8 +183,11 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           metadata: {
             certificateProfileId: req.body.profileId,
             certificateId: certificateData.certificateId,
+            certificateRequestId: certificateData.certificateRequestId,
             commonName: req.body.commonName || "",
-            profileName: certificateData.profileName
+            profileName: certificateData.profileName,
+            status: certificateData.status,
+            serialNumber: certificateData.serialNumber
           }
         }
       });
@@ -305,8 +308,11 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           metadata: {
             certificateProfileId: req.body.profileId,
             certificateId: certificateData.certificateId,
+            certificateRequestId: certificateData.certificateRequestId,
             profileName: certificateData.profileName,
-            commonName: certificateRequestData.commonName || ""
+            commonName: certificateRequestData.commonName || "",
+            status: certificateData.status,
+            serialNumber: certificateData.serialNumber
           }
         }
       });
@@ -427,7 +433,11 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           type: EventType.ORDER_CERTIFICATE_FROM_PROFILE,
           metadata: {
             certificateProfileId: req.body.profileId,
-            profileName: data.profileName
+            certificateRequestId: data.certificateRequestId,
+            commonName: data.commonName || "",
+            profileName: data.profileName,
+            status: data.status,
+            ...(data.serialNumber && { serialNumber: data.serialNumber })
           }
         }
       });
@@ -504,12 +514,16 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         event: {
           type: EventType.RENEW_CERTIFICATE,
           metadata: {
+            applicationId: certificateData.applicationId,
+            applicationName: certificateData.applicationName,
             renewalKeySource: CertificateRenewalKeySource.New,
             changedAttributes: certificateData.changedAttributes ?? [],
             originalCertificateId: req.params.certificateId,
             newCertificateId: certificateData.certificateId,
+            certificateRequestId: certificateData.certificateRequestId,
             profileName: certificateData.profileName,
-            commonName: certificateData.commonName ?? ""
+            commonName: certificateData.commonName ?? "",
+            serialNumber: certificateData.serialNumber
           }
         }
       });
@@ -563,7 +577,9 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG,
             metadata: {
               certificateId: req.params.certificateId,
-              commonName: data.commonName
+              commonName: data.commonName,
+              applicationId: data.applicationId,
+              applicationName: data.applicationName
             }
           }
         });
@@ -591,7 +607,9 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             metadata: {
               certificateId: req.params.certificateId,
               renewBeforeDays: req.body.renewBeforeDays.toString(),
-              commonName: data.commonName
+              commonName: data.commonName,
+              applicationId: data.applicationId,
+              applicationName: data.applicationName
             }
           }
         });

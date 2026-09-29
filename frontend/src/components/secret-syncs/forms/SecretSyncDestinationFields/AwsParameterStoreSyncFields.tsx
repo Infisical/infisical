@@ -80,9 +80,18 @@ export const AwsParameterStoreSyncFields = () => {
                 </TooltipTrigger>
                 <TooltipContent className="max-w-lg">
                   The path is required and will be prepended to the key schema. For example, if you
-                  have a path of <Code>/demo/path/</Code> and a key schema of{" "}
-                  <Code>INFISICAL_{"{{secretKey}}"}</Code>, then the result will be{" "}
-                  <Code>/demo/path/INFISICAL_{"{{secretKey}}"}</Code>
+                  have a path of{" "}
+                  <Code className="bg-surface-active px-0.5 py-px text-sm text-label">
+                    /demo/path/
+                  </Code>{" "}
+                  and a key schema of{" "}
+                  <Code className="bg-surface-active px-0.5 py-px text-sm text-label">
+                    INFISICAL_{"{{secretKey}}"}
+                  </Code>
+                  , then the result will be{" "}
+                  <Code className="bg-surface-active px-0.5 py-px text-sm text-label">
+                    /demo/path/INFISICAL_{"{{secretKey}}"}
+                  </Code>
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>

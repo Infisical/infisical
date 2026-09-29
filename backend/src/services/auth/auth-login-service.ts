@@ -58,7 +58,8 @@ import {
   enforceUserLockStatus,
   getRequiredMfaMethod,
   isOAuthLoginMethodDisabled,
-  OAuthAuthMethod
+  OAuthAuthMethod,
+  RECOVERY_CODE_MFA_ASSURANCE
 } from "./auth-fns";
 import {
   TLoginClientProofDTO,
@@ -740,8 +741,13 @@ export const authLoginServiceFactory = ({
     // Open the grace window for THIS session only (the one that just proved MFA), so
     // MFA-management step-up isn't re-prompted right after login - including recovery-code
     // logins, which is what lets a user with a lost factor still manage their MFA. Keyed
-    // by the new session's tokenVersionId so no other session inherits it.
-    await mfaLockoutService.recordRecentMfaAuth(user.id, token.tokenVersionId);
+    // by the new session's tokenVersionId so no other session inherits it. A non-recovery
+    // login can only have proven the required method.
+    await mfaLockoutService.recordRecentMfaAuth(
+      user.id,
+      token.tokenVersionId,
+      isRecoveryCode ? RECOVERY_CODE_MFA_ASSURANCE : requiredMfaMethod
+    );
 
     if (isRecoveryCode && userEnc.email) {
       await smtpService

@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import {
@@ -69,7 +69,12 @@ import {
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import {
+  describeSecretValidationFailures,
+  SecretValidationError
+} from "@app/services/secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
+import { TValidateSecretsDTO } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -86,6 +91,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
+  ProjectPermissionSet,
   ProjectPermissionSub
 } from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
@@ -206,6 +212,29 @@ export const secretApprovalRequestServiceFactory = ({
   queueService,
   secretValidationRuleService
 }: TSecretApprovalRequestServiceFactoryDep) => {
+  // Which secret already holds a duplicated value is only named to a writer who may read there, so the
+  // message is resolved against their permission rather than formatted inside validation.
+  const $validateSecrets = async (
+    dto: TValidateSecretsDTO,
+    permission: MongoAbility<ProjectPermissionSet>,
+    tx?: Knex
+  ) => {
+    try {
+      await secretValidationRuleService.validateSecrets(dto, tx);
+    } catch (error) {
+      if (!(error instanceof SecretValidationError)) throw error;
+
+      throw new BadRequestError({
+        message: describeSecretValidationFailures(error.failures, (environment, secretPath) =>
+          permission.can(
+            ProjectPermissionSecretActions.DescribeSecret,
+            subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+          )
+        )
+      });
+    }
+  };
+
   const requestCount = async ({
     projectId,
     policyId,
@@ -796,7 +825,8 @@ export const secretApprovalRequestServiceFactory = ({
         message: "The policy associated with this secret approval request has been deleted."
       });
     }
-    if (!policy.envId) {
+    const { envId: policyEnvId } = policy;
+    if (!policyEnvId) {
       throw new BadRequestError({
         message: "The policy associated with this secret approval request is not linked to the environment."
       });
@@ -806,7 +836,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (secretApprovalRequest.status !== RequestState.Open)
       throw new BadRequestError({ message: "You can only approve or reject open approval requests" });
 
-    const { hasRole } = await permissionService.getProjectPermission({
+    const { hasRole, permission } = await permissionService.getProjectPermission({
       actor: ActorType.USER,
       actorId,
       projectId,
@@ -903,6 +933,42 @@ export const secretApprovalRequestServiceFactory = ({
 
       const secretDeletionCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Delete);
       mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
+        // The request-time check ran before the approvals did. Another write, or another pending
+        // request, may have claimed a proposed value since, so the rules are enforced again here,
+        // under the same transaction that applies the writes.
+        const secretsToValidate = [
+          ...secretCreationCommits.map((el) => ({
+            key: el.key,
+            value: el.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+              : undefined
+          })),
+          ...secretUpdationCommits
+            .filter((el) => !el.secret?.isRotatedSecret && (Boolean(el.encryptedValue) || el.key !== el.secret?.key))
+            .map((el) => ({
+              key: el.key,
+              value: el.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                : undefined,
+              secretId: el.secretId ?? undefined
+            }))
+        ];
+
+        if (secretsToValidate.length) {
+          const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
+          await $validateSecrets(
+            {
+              projectId,
+              environment,
+              envId: policyEnvId,
+              secretPath: folderPaths?.[0]?.path || "/",
+              secrets: secretsToValidate
+            },
+            permission,
+            tx
+          );
+        }
+
         const creationBlindIndexes = await Promise.all(
           secretCreationCommits.map((el) =>
             el.encryptedValue
@@ -2468,7 +2534,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (!commits.length) throw new BadRequestError({ message: "Empty commits" });
 
     if (secretsToValidate.length) {
-      await secretValidationRuleService.validateSecrets(
+      await $validateSecrets(
         {
           projectId,
           environment,
@@ -2476,6 +2542,7 @@ export const secretApprovalRequestServiceFactory = ({
           secretPath,
           secrets: secretsToValidate
         },
+        permission,
         providedTx
       );
     }

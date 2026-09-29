@@ -12,6 +12,7 @@ import {
   resolveLdapBackedHostCredentials
 } from "@app/services/app-connection/ldap/ldap-directory-fns";
 import { executeWinRMGatewayOperation, TWinRMConnection, TWinRMCredentials } from "@app/services/app-connection/winrm";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
@@ -43,6 +44,7 @@ type TWindowsServerPkiSyncFactoryDeps = {
     TCertificateSyncDALFactory,
     "findByPkiSyncId" | "findByPkiSyncAndCertificate" | "updateById" | "addCertificates" | "removeCertificates"
   >;
+  certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
@@ -159,9 +161,10 @@ const reconcileWindowsServerRemovals = async (args: {
   deliveredPaths: Set<string>;
   target: TWinRMSyncTarget;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findByPkiSyncId" | "removeCertificates">;
+  certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
   gatewayDeps: Parameters<typeof executeWinRMGatewayOperation>[1];
 }): Promise<{ removed: number; failedRemovals: Array<{ name: string; error: string }> }> => {
-  const { pkiSync, certificateMap, deliveredPaths, target, certificateSyncDAL, gatewayDeps } = args;
+  const { pkiSync, certificateMap, deliveredPaths, target, certificateSyncDAL, certificateDAL, gatewayDeps } = args;
   const failedRemovals: Array<{ name: string; error: string }> = [];
   let removed = 0;
 
@@ -171,8 +174,19 @@ const reconcileWindowsServerRemovals = async (args: {
       .filter((id): id is string => typeof id === "string")
   );
   const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+
+  const untrackCandidateIds = existingSyncRecords
+    .map((record) => record.certificateId)
+    .filter((id): id is string => Boolean(id) && !activeCertificateIds.has(id));
+  const stillActiveIds = new Set(
+    (await certificateDAL.findActiveCertificatesByIds(untrackCandidateIds)).map((cert) => cert.id)
+  );
+
   const orphans = existingSyncRecords.filter(
-    (record) => record.certificateId && !activeCertificateIds.has(record.certificateId)
+    (record) =>
+      record.certificateId &&
+      !activeCertificateIds.has(record.certificateId) &&
+      !stillActiveIds.has(record.certificateId)
   );
   if (orphans.length === 0) return { removed, failedRemovals };
 
@@ -282,6 +296,7 @@ const runWindowsServerPostSyncCommand = ({
 
 export const windowsServerPkiSyncFactory = ({
   certificateSyncDAL,
+  certificateDAL,
   gatewayV2Service,
   gatewayPoolService,
   keyStore
@@ -405,6 +420,7 @@ export const windowsServerPkiSyncFactory = ({
         deliveredPaths,
         target,
         certificateSyncDAL,
+        certificateDAL,
         gatewayDeps
       });
       removed += reconciliation.removed;

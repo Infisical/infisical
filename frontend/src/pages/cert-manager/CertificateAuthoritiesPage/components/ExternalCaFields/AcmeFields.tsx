@@ -22,6 +22,7 @@ import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
 import { TAzureDNSZone } from "@app/hooks/api/appConnections/azure-dns";
 import { TCloudflareZone } from "@app/hooks/api/appConnections/cloudflare";
 import { TDNSMadeEasyZone } from "@app/hooks/api/appConnections/dns-made-easy";
+import { TPowerDnsZone } from "@app/hooks/api/appConnections/powerdns";
 import { AcmeDnsProvider } from "@app/hooks/api/ca";
 import {
   ACME_DNS_PROVIDER_APP_CONNECTION_MAP,
@@ -46,6 +47,9 @@ type Props = {
   isDNSMadeEasyZonesPending: boolean;
   azureDnsZones: TAzureDNSZone[];
   isAzureDNSZonesPending: boolean;
+  powerDnsZones: TPowerDnsZone[];
+  isPowerDnsZonesPending: boolean;
+  onDnsSelectionChange: () => void;
 };
 
 export const AcmeFields = ({
@@ -61,7 +65,10 @@ export const AcmeFields = ({
   dnsMadeEasyZones,
   isDNSMadeEasyZonesPending,
   azureDnsZones,
-  isAzureDNSZonesPending
+  isAzureDNSZonesPending,
+  powerDnsZones,
+  isPowerDnsZonesPending,
+  onDnsSelectionChange
 }: Props) => (
   <>
     <Controller
@@ -71,7 +78,14 @@ export const AcmeFields = ({
       render={({ field: { onChange, value }, fieldState: { error } }) => (
         <Field className="mb-4">
           <FieldLabel>DNS Provider</FieldLabel>
-          <Select value={value} onValueChange={(val) => onChange(val)} disabled={isExistingCa}>
+          <Select
+            value={value}
+            onValueChange={(val) => {
+              onChange(val);
+              onDnsSelectionChange();
+            }}
+            disabled={isExistingCa}
+          >
             <SelectTrigger className="w-full" isError={Boolean(error)}>
               <SelectValue />
             </SelectTrigger>
@@ -91,6 +105,7 @@ export const AcmeFields = ({
       control={control}
       name="configuration.dnsAppConnection"
       label="DNS App Connection"
+      onAfterChange={onDnsSelectionChange}
       options={availableConnections}
       isLoading={isPending}
       tooltip={
@@ -199,6 +214,36 @@ export const AcmeFields = ({
         )}
       />
     )}
+    {dnsProvider === AcmeDnsProvider.PowerDns && (
+      <Controller
+        name="configuration.dnsProviderConfig.hostedZoneId"
+        control={control}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <Field className="mb-4">
+            <FieldLabel>
+              Zone <span className="text-danger">*</span>
+            </FieldLabel>
+            <FilterableSelect
+              isLoading={isPowerDnsZonesPending && !!dnsAppConnection.id}
+              isDisabled={!dnsAppConnection.id}
+              value={
+                powerDnsZones.find((zone) => zone.id === value) ||
+                (value ? { id: value, name: value } : null)
+              }
+              onChange={(option) => {
+                onChange((option as SingleValue<TPowerDnsZone>)?.id ?? null);
+              }}
+              options={powerDnsZones}
+              placeholder="Select a zone..."
+              getOptionLabel={(option) => option.name.replace(/\.$/, "")}
+              getOptionValue={(option) => option.id}
+              isError={Boolean(error)}
+            />
+            <FieldError errors={[error]} />
+          </Field>
+        )}
+      />
+    )}
     <Controller
       control={control}
       defaultValue=""
@@ -213,6 +258,13 @@ export const AcmeFields = ({
             placeholder="https://acme-v02.api.letsencrypt.org/directory"
             isError={Boolean(error)}
           />
+          {field.value?.startsWith("http://") && (
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-warning">
+              <Info className="size-3.5" />
+              This directory is served over plain HTTP. Account credentials and EAB keys will be
+              sent unencrypted. Use HTTPS unless this is a local test directory.
+            </p>
+          )}
           <FieldError errors={[error]} />
         </Field>
       )}
@@ -246,6 +298,16 @@ export const AcmeFields = ({
               ) : (
                 <span className="text-muted">(optional)</span>
               )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  The key identifier your CA issued for External Account Binding. It ties this ACME
+                  account to your existing account with the CA. Required by CAs such as DigiCert,
+                  ZeroSSL and Google Trust Services.
+                </TooltipContent>
+              </Tooltip>
             </FieldLabel>
             <Input
               {...field}
@@ -265,6 +327,15 @@ export const AcmeFields = ({
         <Field className="mb-4">
           <FieldLabel>
             EAB HMAC Key <span className="text-muted">(optional)</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-md">
+                The base64-encoded HMAC key issued alongside the EAB Key Identifier. Provide both or
+                neither.
+              </TooltipContent>
+            </Tooltip>
           </FieldLabel>
           <Input
             type="password"

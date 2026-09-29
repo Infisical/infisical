@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, ContentLoader, EmptyState } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
@@ -55,7 +56,7 @@ const PageContent = () => {
   }
 
   return (
-    <div className="mx-auto flex flex-col justify-between font-inter text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page font-inter text-foreground-inverse">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <Button
           variant="link"
@@ -74,14 +75,14 @@ const PageContent = () => {
           Data Sources
         </Button>
         <div className="mb-6 flex w-full items-center gap-3">
-          <img
+          <ProviderIcon
             alt={`${details.name} data source`}
-            src={`/images/integrations/${details.image}`}
+            icon={details.image}
             className="mt-3 ml-1 w-14"
           />
           <div>
-            <p className="text-3xl font-medium text-white">{dataSource.name}</p>
-            <p className="leading-3 text-bunker-300">{details.name} Data Source</p>
+            <p className="text-3xl font-medium text-foreground-inverse">{dataSource.name}</p>
+            <p className="leading-3 text-label-secondary">{details.name} Data Source</p>
           </div>
         </div>
         <div className="flex justify-center">

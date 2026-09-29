@@ -6,6 +6,7 @@ import {
   ClockAlertIcon,
   ClockIcon,
   FolderIcon,
+  PlusIcon,
   RefreshCwIcon,
   Trash2Icon,
   UsersIcon
@@ -19,11 +20,14 @@ import {
   Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
@@ -42,6 +46,7 @@ import {
 import {
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission
 } from "@app/context";
@@ -52,6 +57,7 @@ import {
   useListIdentityFolderAccess,
   useListUserFolderAccess
 } from "@app/hooks/api/folderAccess";
+import { analytics, AnalyticsEvent, FolderAccessGrantSheetSource } from "@app/lib/analytics";
 import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
   formatExpirationTime,
@@ -61,7 +67,11 @@ import {
 import { RemoveFolderAccessDialog } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/RemoveFolderAccessDialog";
 
 import { EditFolderAccessSheet } from "./EditFolderAccessSheet";
+import { GrantFolderAccessSheet } from "./GrantFolderAccessSheet";
 import { TFolderAccessSectionActor } from "./types";
+
+const FOLDER_ACCESS_DOCS_URL =
+  "https://infisical.com/docs/documentation/platform/access-controls/folder-rbac";
 
 type Props = {
   actor: TFolderAccessSectionActor;
@@ -70,8 +80,10 @@ type Props = {
 
 export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
   const { projectId, currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
 
+  const [isGrantOpen, setIsGrantOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<TFolderAccess | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TFolderAccess | null>(null);
 
@@ -106,6 +118,15 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
     );
 
   const actorNoun = actor.type === "user" ? "user" : "machine identity";
+
+  const openGrantSheet = (source: FolderAccessGrantSheetSource) => {
+    setIsGrantOpen(true);
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessGrantSheetOpened, currentOrg.id, {
+      source,
+      actorType: actor.type,
+      projectId
+    });
+  };
 
   const dialogActor = (() => {
     if (!deleteTarget) return null;
@@ -160,11 +181,22 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Folder Access</CardTitle>
+          <CardTitle>
+            Folder Access
+            <DocumentationLinkBadge href={FOLDER_ACCESS_DOCS_URL} />
+          </CardTitle>
           <CardDescription>
             Folder-level access for this {actorNoun}. Overrides{" "}
             {actor.type === "user" ? "their" : "its"} project roles within each folder.
           </CardDescription>
+          {!hideActions && (
+            <CardAction>
+              <Button size="xs" variant="outline" onClick={() => openGrantSheet("card_header")}>
+                <PlusIcon />
+                Grant Access
+              </Button>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent>
           {isError && (
@@ -300,14 +332,32 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
                 <EmptyHeader>
                   <EmptyTitle>This {actorNoun} has no folder access</EmptyTitle>
                   <EmptyDescription>
-                    Grant folder-level access from the Secrets overview using a folder&apos;s Manage
-                    Access action
+                    Grant access to a folder to override {actor.type === "user" ? "their" : "its"}{" "}
+                    project roles within it
                   </EmptyDescription>
                 </EmptyHeader>
+                {!hideActions && (
+                  <EmptyContent>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => openGrantSheet("empty_state")}
+                    >
+                      <PlusIcon />
+                      Grant Access
+                    </Button>
+                  </EmptyContent>
+                )}
               </Empty>
             ))}
         </CardContent>
       </Card>
+      <GrantFolderAccessSheet
+        isOpen={isGrantOpen}
+        onOpenChange={setIsGrantOpen}
+        actor={actor}
+        existingAccess={folderAccess ?? []}
+      />
       <EditFolderAccessSheet
         access={editTarget}
         actor={actor}

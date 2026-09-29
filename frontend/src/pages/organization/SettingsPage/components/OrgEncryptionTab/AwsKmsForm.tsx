@@ -60,7 +60,11 @@ const AWS_REGIONS = [
   { name: "Middle East (UAE)", slug: "me-central-1" },
   { name: "South America (Sao Paulo)", slug: "sa-east-1" },
   { name: "AWS GovCloud (US-East)", slug: "us-gov-east-1" },
-  { name: "AWS GovCloud (US-West)", slug: "us-gov-west-1" }
+  { name: "AWS GovCloud (US-West)", slug: "us-gov-west-1" },
+  { name: "AWS US ISOB (East)", slug: "us-isob-east-1" },
+  { name: "AWS US ISOB (West)", slug: "us-isob-west-1" },
+  { name: "AWS US ISO (East)", slug: "us-iso-east-1" },
+  { name: "AWS US ISO (West)", slug: "us-iso-west-1" }
 ];
 
 type Props = {

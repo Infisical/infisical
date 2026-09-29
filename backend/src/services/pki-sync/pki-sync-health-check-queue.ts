@@ -29,6 +29,7 @@ import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PKI_SYNC_CONNECTION_LOCK_RETRY, PkiSync, PkiSyncFailureKind, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
 import { notifyPkiSyncFailure } from "./pki-sync-failure-notification-fns";
+import { hasAnyPkiSyncFilter } from "./pki-sync-filter-fns";
 import { PkiSyncFns, truncateSyncMessage } from "./pki-sync-fns";
 import {
   assertHealthCheckCommandIsTestable,
@@ -41,7 +42,7 @@ import {
 } from "./pki-sync-health-check-command-fns";
 import { commandNeedsCertificateData, HostCommandFailure } from "./pki-sync-host-command-fns";
 import { getPkiSyncTargetHost } from "./pki-sync-target-host-fns";
-import { TCertificateMap, THealthCheckTarget, TPkiSyncRaw } from "./pki-sync-types";
+import { TCertificateMap, THealthCheckTarget, TPkiSyncFilters, TPkiSyncRaw } from "./pki-sync-types";
 
 const ENQUEUE_CHUNK_SIZE = 200;
 const WORKER_CONCURRENCY = 3;
@@ -199,10 +200,14 @@ export const pkiSyncHealthCheckQueueFactory = ({
     return certificateMap;
   };
 
+  const HEALTH_CHECK_TEST_CERTIFICATE_LIMIT = 10;
+
   const $certificatesForTest = async (args: {
     projectId: string;
     syncId?: string;
+    applicationId?: string;
     certificateIds?: string[];
+    filters?: TPkiSyncFilters | null;
     syncOptions: Record<string, unknown>;
   }): Promise<TCertificateMap> => {
     const command = getHealthCheckCommand(args.syncOptions);
@@ -213,7 +218,18 @@ export const pkiSyncHealthCheckQueueFactory = ({
       return pkiSync ? $certificatesForCheck(pkiSync, command) : {};
     }
 
-    if (!args.certificateIds?.length) return {};
+    let { certificateIds } = args;
+
+    if (!certificateIds?.length && args.applicationId && hasAnyPkiSyncFilter(args.filters)) {
+      const matched = await certificateDAL.findCertificatesMatchingSyncFilters(
+        args.filters,
+        { projectId: args.projectId, applicationId: args.applicationId },
+        { limit: HEALTH_CHECK_TEST_CERTIFICATE_LIMIT }
+      );
+      certificateIds = matched.map((certificate) => certificate.id);
+    }
+
+    if (!certificateIds?.length) return {};
 
     const { certificateMap } = await buildCertificateMap(
       { id: "", projectId: args.projectId, subscriberId: null, syncOptions: args.syncOptions } as TPkiSyncRaw,
@@ -227,7 +243,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
         projectDAL,
         kmsService
       },
-      args.certificateIds
+      certificateIds
     );
 
     return certificateMap;
@@ -328,6 +344,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
         try {
           const checkResult = await PkiSyncFns.runHealthCheck(pkiSyncWithCredentials, certificateMap, {
             certificateSyncDAL,
+            certificateDAL,
             gatewayV2Service,
             gatewayPoolService,
             keyStore
@@ -426,6 +443,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
 
     await PkiSyncFns.testReachability(target, {
       certificateSyncDAL,
+      certificateDAL,
       gatewayV2Service,
       gatewayPoolService,
       keyStore
@@ -440,7 +458,9 @@ export const pkiSyncHealthCheckQueueFactory = ({
     connectionId: string;
     projectId: string;
     syncId?: string;
+    applicationId?: string;
     certificateIds?: string[];
+    filters?: TPkiSyncFilters | null;
     destinationConfig: Record<string, unknown>;
     syncOptions: Record<string, unknown>;
   }) => {
@@ -479,6 +499,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
     return $withConnectionHostAccess(connection.id, getPkiSyncTargetHost(target.destinationConfig), async () => {
       const result = await PkiSyncFns.runHealthCheck(target, linkedCertificates, {
         certificateSyncDAL,
+        certificateDAL,
         gatewayV2Service,
         gatewayPoolService,
         keyStore

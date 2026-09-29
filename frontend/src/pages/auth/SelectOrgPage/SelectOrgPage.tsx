@@ -298,7 +298,8 @@ export const SelectOrgPage = () => {
           callbackPort
         })
       );
-      navigate({ to: "/cli-redirect" });
+      setAuthToken(token);
+      navigate({ to: "/cli-redirect", search: { org_id: targetOrgId } });
     } else {
       setAuthToken(token);
       createNotification({ text: "Successfully logged in", type: "success" });
@@ -436,7 +437,7 @@ export const SelectOrgPage = () => {
 
   if (userLoading || !user) {
     return (
-      <div className="h-screen w-screen bg-bunker-800">
+      <div className="h-screen w-screen bg-page">
         <ContentLoader />
       </div>
     );

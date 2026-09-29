@@ -111,7 +111,7 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
           selectedDataSource ? (
             <SecretScanningDataSourceModalHeader isConfigured={false} type={selectedDataSource} />
           ) : (
-            <div className="flex items-center gap-x-2 text-mineshaft-300">
+            <div className="flex items-center gap-x-2 text-label">
               Add Data Source
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/overview" />
             </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { subject } from "@casl/ability";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
   ChevronLeftIcon,
@@ -50,6 +51,7 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { AdditionalPrivilegesRemovedSection } from "@app/pages/project/components/AdditionalPrivilegesRemovedSection";
 import { FolderAccessSection } from "@app/pages/project/components/FolderAccessSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
@@ -143,6 +145,8 @@ export const Page = () => {
 
   const isOwnProjectMembershipDetails = currentUserId === membershipDetails?.user?.id;
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const isSecretManager = currentProject.type === ProjectType.SecretManager;
+  const hasFolderRbacPlan = Boolean(subscription?.secretsFolderRbac);
   const canAssumePrivileges = !isCertManager && supportsAssumePrivileges(currentProject.type);
   let memberDisplayName = "Unnamed User";
   if (membershipDetails) {
@@ -154,7 +158,7 @@ export const Page = () => {
   }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
       {membershipDetails ? (
         <>
           <PageHeader
@@ -224,7 +228,9 @@ export const Page = () => {
                     {canAssumePrivileges && (
                       <ProjectPermissionCan
                         I={ProjectPermissionMemberActions.AssumePrivileges}
-                        a={ProjectPermissionSub.Member}
+                        a={subject(ProjectPermissionSub.Member, {
+                          userEmail: membershipDetails.user.email
+                        })}
                       >
                         {(isAllowed) => (
                           <Tooltip>
@@ -272,9 +278,9 @@ export const Page = () => {
               )}
             </div>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <ProjectMemberDetailsSection membership={membershipDetails} />
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               <MemberRoleDetailsSection
                 membershipDetails={membershipDetails}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}
@@ -288,21 +294,25 @@ export const Page = () => {
               {!isCertManager && currentProject.isLegacyAdditionalPrivilegesEnabled && (
                 <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
               )}
-              {currentProject.type === ProjectType.SecretManager &&
-                subscription?.secretsFolderRbac && (
-                  <FolderAccessSection
-                    actor={{
-                      type: "user",
-                      id: membershipDetails.user.id,
-                      membershipId: membershipDetails.id,
-                      username: membershipDetails.user.username,
-                      email: membershipDetails.user.email,
-                      firstName: membershipDetails.user.firstName,
-                      lastName: membershipDetails.user.lastName
-                    }}
-                    hideActions={isOwnProjectMembershipDetails}
-                  />
+              {isSecretManager &&
+                !hasFolderRbacPlan &&
+                !currentProject.isLegacyAdditionalPrivilegesEnabled && (
+                  <AdditionalPrivilegesRemovedSection />
                 )}
+              {isSecretManager && hasFolderRbacPlan && (
+                <FolderAccessSection
+                  actor={{
+                    type: "user",
+                    id: membershipDetails.user.id,
+                    membershipId: membershipDetails.id,
+                    username: membershipDetails.user.username,
+                    email: membershipDetails.user.email,
+                    firstName: membershipDetails.user.firstName,
+                    lastName: membershipDetails.user.lastName
+                  }}
+                  hideActions={isOwnProjectMembershipDetails}
+                />
+              )}
             </div>
           </div>
           <DeleteConfirmDialog
@@ -330,6 +340,7 @@ export const Page = () => {
             actorId={(popUp.assumePrivileges.data as { userId: string })?.userId}
           />
           <UpgradePlanModal
+            paywallKey="project.member-details-by-id"
             isOpen={popUp.upgradePlan.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
             text={popUp.upgradePlan?.data?.text}

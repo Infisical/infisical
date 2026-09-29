@@ -11,6 +11,7 @@ export enum AppConnection {
   AzureADCS = "azure-adcs",
   ADCS = "adcs",
   AzureDNS = "azure-dns",
+  PowerDns = "powerdns",
   Databricks = "databricks",
   Humanitec = "humanitec",
   TerraformCloud = "terraform-cloud",
@@ -82,5 +83,6 @@ export enum AppConnection {
   Fireworks = "fireworks",
   NutanixPrismCentral = "nutanix-prism-central",
   Spacelift = "spacelift",
-  Daytona = "daytona"
+  Daytona = "daytona",
+  Stripe = "stripe"
 }

@@ -595,6 +595,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
         />
       )}
       <UpgradePlanModal
+        paywallKey="secret-manager.approval-policy-list"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Adding secret approval policies can be unlocked if you upgrade to Infisical Pro plan."

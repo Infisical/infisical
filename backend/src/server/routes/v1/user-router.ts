@@ -3,10 +3,11 @@ import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 
 import { ensureStepUpMfa, getStepUpSessionId, MfaStepUpResource } from "../mfa-step-up-fns";
 
@@ -234,13 +235,15 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      await server.services.user.assertMfaFactorRemovable(req.permission.id, MfaMethod.TOTP);
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
         orgId: req.permission.orgId,
         tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.query.mfaSessionId,
-        message: "MFA verification is required to remove your authenticator app"
+        message: "MFA verification is required to remove your authenticator app",
+        excludeMfaMethod: MfaMethod.TOTP
       });
       return server.services.totp.deleteUserTotpConfig({
         userId: req.permission.id
@@ -572,7 +575,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "deleteWebAuthnCredential",
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       querystring: z.object({
         mfaSessionId: z.string().trim().optional()
@@ -585,17 +588,30 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      const { credentials } = await server.services.webAuthn.getUserWebAuthnCredentials({
+        userId: req.permission.id
+      });
+      const credential = credentials.find((cred) => cred.id.toLowerCase() === req.params.id.toLowerCase());
+      if (!credential) {
+        throw new NotFoundError({ message: "Credential not found" });
+      }
+      const isRemovingLastPasskey = credentials.length === 1;
+      if (isRemovingLastPasskey) {
+        await server.services.user.assertMfaFactorRemovable(req.permission.id, MfaMethod.WEBAUTHN);
+      }
+
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
         orgId: req.permission.orgId,
         tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.query.mfaSessionId,
-        message: "MFA verification is required to remove a passkey"
+        message: "MFA verification is required to remove a passkey",
+        excludeMfaMethod: isRemovingLastPasskey ? MfaMethod.WEBAUTHN : undefined
       });
       await server.services.webAuthn.deleteWebAuthnCredential({
         userId: req.permission.id,
-        id: req.params.id
+        id: credential.id
       });
       return { success: true };
     }

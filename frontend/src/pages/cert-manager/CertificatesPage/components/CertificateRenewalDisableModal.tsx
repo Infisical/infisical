@@ -49,11 +49,11 @@ export const CertificateRenewalDisableModal = ({ popUp, handlePopUpToggle }: Pro
     >
       <ModalContent title={`Disable Auto-Renewal: ${certificateData?.commonName || ""}`}>
         <div className="mb-4">
-          <p className="mb-3 text-sm text-mineshaft-300">
+          <p className="mb-3 text-sm text-label">
             Are you sure you want to disable auto-renewal for this certificate?
           </p>
-          <div className="rounded border border-yellow-700/50 bg-yellow-900/20 p-3">
-            <p className="text-sm text-yellow-300">
+          <div className="rounded border border-warning/50 bg-warning/20 p-3">
+            <p className="text-sm text-warning">
               <strong>Warning:</strong> Once disabled, this certificate will not be automatically
               renewed and may expire without notice. You can re-enable auto-renewal at any time.
             </p>

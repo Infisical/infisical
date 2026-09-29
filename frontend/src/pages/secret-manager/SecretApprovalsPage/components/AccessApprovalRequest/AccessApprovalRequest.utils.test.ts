@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
 import { ApprovalStatus } from "@app/hooks/api/types";

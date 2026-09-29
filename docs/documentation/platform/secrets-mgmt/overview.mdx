@@ -2,7 +2,7 @@
 title: "Secrets management"
 description: "Store, manage, and deliver secrets like API keys and database credentials across every environment, from local development to production."
 sidebarTitle: "Secrets Management"
-icon: "vault"
+icon: "key"
 ---
 
 Infisical Secrets Management centralizes secrets such as API keys, database credentials, and application configuration. Teams eliminate hardcoded secrets, scope access by environment and path, and deliver secrets to applications and infrastructure through the CLI, SDKs, agents, Kubernetes, and CI/CD.
@@ -19,7 +19,7 @@ Store a secret and deliver it to a running application:
   <Card title="Quickstart" icon="rocket" href="/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret">
     Add your secrets and deliver them to your stack in under 10 minutes.
   </Card>
-  <Card title="Local development" icon="laptop-code" href="/documentation/guides/local-development">
+  <Card title="Local development" icon="laptop" href="/documentation/guides/local-development">
     Run your app on your own machine and pull secrets from Infisical.
   </Card>
 </CardGroup>
@@ -32,10 +32,10 @@ Work with secrets once they're in a project:
   <Card title="Organization" icon="folder-tree" href="/documentation/platform/secrets-mgmt/organization">
     Projects, folders, and referencing one secret from another.
   </Card>
-  <Card title="Versioning" icon="clock-rotate-left" href="/documentation/platform/secrets-mgmt/versioning">
+  <Card title="Versioning" icon="history" href="/documentation/platform/secrets-mgmt/versioning">
     Secret history, and rolling a secret or an environment back to an earlier state.
   </Card>
-  <Card title="Access control" icon="shield-halved" href="/documentation/platform/secrets-mgmt/access-control">
+  <Card title="Access control" icon="shield-half" href="/documentation/platform/secrets-mgmt/access-control">
     Validation rules, approval workflows, access requests, and folder-level roles.
   </Card>
   <Card title="Monitoring" icon="chart-line" href="/documentation/platform/secrets-mgmt/monitoring">
@@ -51,7 +51,7 @@ Deliver secrets from your project to applications, infrastructure, and third-par
   <Card title="Overview" icon="plug" href="/integrations/overview">
     What separates the three kinds of integration, and how to pick one.
   </Card>
-  <Card title="Search integrations" icon="magnifying-glass" href="/integrations/all">
+  <Card title="Search integrations" icon="search" href="/integrations/all">
     Every framework, platform, and sync destination in one searchable list.
   </Card>
 </CardGroup>
@@ -61,10 +61,10 @@ Deliver secrets from your project to applications, infrastructure, and third-par
 Replace a long-lived credential on a schedule:
 
 <CardGroup cols={2}>
-  <Card title="Overview" icon="rotate" href="/documentation/platform/secret-rotation/overview">
+  <Card title="Overview" icon="refresh-cw" href="/documentation/platform/secret-rotation/overview">
     Replace a credential on a schedule, with no gap where the old one stops working.
   </Card>
-  <Card title="Search providers" icon="magnifying-glass" href="/integrations/secret-rotations">
+  <Card title="Search providers" icon="search" href="/integrations/secret-rotations">
     Databases, cloud IAM, SaaS API keys, and local machine accounts.
   </Card>
 </CardGroup>
@@ -77,7 +77,7 @@ Issue a credential per request and expire it after use:
   <Card title="Overview" icon="bolt" href="/documentation/platform/dynamic-secrets/overview">
     Generate a credential when someone asks for one, and revoke it when its lease ends.
   </Card>
-  <Card title="Search services" icon="magnifying-glass" href="/integrations/dynamic-secrets">
+  <Card title="Search services" icon="search" href="/integrations/dynamic-secrets">
     Databases, cloud IAM, message queues, directories, and Kubernetes.
   </Card>
 </CardGroup>
@@ -87,10 +87,10 @@ Issue a credential per request and expire it after use:
 Plant decoy credentials and watch for anyone using them:
 
 <CardGroup cols={2}>
-  <Card title="Overview" icon="jar" href="/documentation/platform/honey-tokens/overview">
+  <Card title="Overview" icon="package" href="/documentation/platform/honey-tokens/overview">
     Plant a decoy credential that alerts you the moment someone uses it.
   </Card>
-  <Card title="AWS" icon="aws" href="/documentation/platform/honey-tokens/aws/setup">
+  <Card title="AWS" icon="aws" iconType="brands" href="/documentation/platform/honey-tokens/aws/setup">
     Set up AWS honey tokens and read the alerts they raise.
   </Card>
 </CardGroup>

@@ -1,12 +1,12 @@
 import { AxiosRequestConfig } from "axios";
 import https from "https";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -40,7 +40,7 @@ const requestWithNetScalerGateway = async <T>(
   const { hostname, port: credPort } = credentials;
   const port = credPort ?? 443;
 
-  if (gatewayId && gatewayV2Service) {
+  if (gatewayId) {
     await blockLocalAndPrivateIpAddresses(`https://${hostname}`, true);
 
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
@@ -94,7 +94,6 @@ const requestWithNetScalerGateway = async <T>(
 
 export const validateNetScalerConnectionCredentials = async (
   config: TNetScalerConnectionConfig,
-  _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { hostname, port, username, password } = config.credentials;
@@ -158,7 +157,13 @@ export const executeNetScalerOperationWithGateway = async <T>(
   const { hostname, port: credPort } = credentials;
   const port = credPort ?? 443;
 
-  if (gatewayId && gatewayV2Service) {
+  if (gatewayId) {
+    // the service is optional on this overload, but a pinned gateway must never fall through to
+    // the direct-dial branch below, so a missing one is an error rather than a silent bypass
+    if (!gatewayV2Service) {
+      throw new BadRequestError({ message: getMissingGatewayMessage(gatewayId) });
+    }
+
     await blockLocalAndPrivateIpAddresses(`https://${hostname}`, true);
 
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({

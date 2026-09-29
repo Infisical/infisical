@@ -74,8 +74,9 @@ Upload certificates managed in Infisical to GCP Certificate Manager as self-mana
     ### Sample request
 
     <Note>
-      You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
-      If not provided, you can add them later using the certificate management endpoints.
+      Pass `filters` to describe the certificates this sync holds. Anything in the Application that matches is
+      attached automatically, as it is issued. Omit it and the sync starts empty, and you can set filters later.
+      See [Certificate filters](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-filters).
     </Note>
 
     ```bash Request
@@ -90,9 +91,9 @@ Upload certificates managed in Infisical to GCP Certificate Manager as self-mana
         "connectionId": "550e8400-e29b-41d4-a716-446655440000",
         "destination": "gcp-certificate-manager",
         "isAutoSyncEnabled": true,
-        "certificateIds": [
-            "550e8400-e29b-41d4-a716-446655440000"
-        ],
+        "filters": {
+            "certificateOrderIds": ["550e8400-e29b-41d4-a716-446655440000"]
+        },
         "destinationConfig": {
             "gcpProjectId": "my-prod-project",
             "location": "global",
@@ -210,7 +211,7 @@ For a **global** certificate, a certificate map entry maps a hostname to the cer
 
 **Preserve certificate on renewal** is enabled by default. An existing GCP certificate is updated in place and keeps its resource name, so certificate map entries and target proxies keep working with no change in GCP. This also pins the resource name against later edits to the certificate name schema. This is the recommended setting.
 
-When disabled, a renewal or a name change creates a new GCP certificate under a new resource name. Whether the old certificate is deleted depends on **Remove Expired/Revoked Certificates**:
+When disabled, a renewal or a name change creates a new GCP certificate under a new resource name. Whether the old certificate is deleted depends on **Allow to remove certificates from destination**:
 
 - **Removal enabled**: Infisical deletes the old certificate. If a certificate map entry references it, Infisical moves its own entry to the new certificate first. Anything else pointing at the old certificate has to be updated by hand, and GCP refuses to delete a certificate that is still referenced.
 - **Removal disabled**: the old certificate stays in your GCP project. Infisical never deletes it, and it's no longer tracked by the sync.
@@ -272,16 +273,16 @@ Use the [Sync Certificates](/api-reference/endpoints/pki/syncs/gcp-certificate-m
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
+  <Card title="AWS Certificate Manager" icon="aws" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
     Import certificates into ACM for use with AWS services.
   </Card>
-  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+  <Card title="Auto-Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
     Enable automatic certificate renewal and syncing.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified about certificate lifecycle events.
   </Card>
-  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Other Sync Destinations" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     View all supported sync destinations.
   </Card>
 </CardGroup>

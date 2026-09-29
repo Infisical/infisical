@@ -169,6 +169,7 @@ export const pkiAlertV2ServiceFactory = ({
       enabled: alert.enabled ?? true,
       projectId: alert.projectId,
       applicationId: alert.applicationId ?? null,
+      applicationName: alert.applicationName ?? null,
       channels: (alert.channels || []).map((channel) => {
         const config = decryptChannelConfig<TChannelConfig>(channel, decryptor);
 
@@ -897,9 +898,12 @@ export const pkiAlertV2ServiceFactory = ({
 
     const matchingPerCert = await Promise.all(
       certificateIds.map((certId) =>
+        // The event is queued right after the certificate commits, and an empty match ends the job
+        // for good, so a lagging replica would silently drop the notification.
         pkiAlertV2DAL.findMatchingCertificates(projectId, filters, {
           certificateId: certId,
-          ...applicationScope
+          ...applicationScope,
+          readFromPrimary: true
         })
       )
     );

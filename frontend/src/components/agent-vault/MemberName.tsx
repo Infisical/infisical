@@ -1,37 +1,36 @@
 import { BotIcon, UserIcon, UsersIcon } from "lucide-react";
 
-import { TAgentVaultMember } from "@app/hooks/api/agentVault/types";
+import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
+import { TAgentVaultActor, TAgentVaultMember } from "@app/hooks/api/agentVault/types";
 
-export const memberDisplayName = (member: TAgentVaultMember) => {
-  if (member.group) return member.group.name;
-  if (member.identity) return member.identity.name;
-  if (!member.user) return "Unknown";
-
-  const fullName = [member.user.firstName, member.user.lastName].filter(Boolean).join(" ");
-  return fullName || member.user.username || member.user.email || "Unknown";
+export const MEMBER_KIND: Record<AgentVaultMemberType, { label: string; icon: typeof UserIcon }> = {
+  [AgentVaultMemberType.User]: { label: "User", icon: UserIcon },
+  [AgentVaultMemberType.MachineIdentity]: { label: "Machine Identity", icon: BotIcon },
+  [AgentVaultMemberType.Group]: { label: "Group", icon: UsersIcon }
 };
 
-const memberKind = (member: TAgentVaultMember) => {
-  if (member.groupId) return { label: "Group", icon: UsersIcon };
-  if (member.identityId) return { label: "Machine Identity", icon: BotIcon };
-  return { label: "User", icon: UserIcon };
+export const memberDisplayName = (actor: TAgentVaultActor) => {
+  if (actor.type !== AgentVaultMemberType.User) return actor.name;
+
+  const fullName = [actor.firstName, actor.lastName].filter(Boolean).join(" ");
+  return fullName || actor.username || actor.email || "Unknown";
 };
 
-const memberSubtitle = (member: TAgentVaultMember, kindLabel: string) => {
-  if (member.user) return member.user.email || member.user.username;
-  return kindLabel;
+export const memberSubtitle = (actor: TAgentVaultActor) => {
+  if (actor.type !== AgentVaultMemberType.User) return MEMBER_KIND[actor.type].label;
+  return actor.email || actor.username;
 };
 
 export const MemberName = ({ member }: { member: TAgentVaultMember }) => {
-  const { label, icon: Icon } = memberKind(member);
+  const { label, icon: Icon } = MEMBER_KIND[member.actor.type];
 
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       <Icon className="size-4 shrink-0 text-muted" />
       <span className="sr-only">{label}</span>
       <div className="min-w-0">
-        <div className="truncate">{memberDisplayName(member)}</div>
-        <div className="truncate text-xs leading-4 text-muted">{memberSubtitle(member, label)}</div>
+        <div className="truncate">{memberDisplayName(member.actor)}</div>
+        <div className="truncate text-xs leading-4 text-muted">{memberSubtitle(member.actor)}</div>
       </div>
     </div>
   );

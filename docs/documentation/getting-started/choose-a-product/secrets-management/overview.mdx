@@ -6,7 +6,7 @@ description: "Store credentials centrally in Infisical and deliver them to the a
 
 Infisical Secrets Management is a central store for the secrets used by applications and infrastructure. It replaces `.env` files, hardcoded credentials, and secrets that are shared between team members through channels such as Slack. Once secrets are stored in Infisical, they can be delivered to the systems that use them.
 
-<Card title="Secrets Management docs" icon="vault" href="/documentation/platform/secrets-mgmt/overview">
+<Card title="Secrets Management docs" icon="key" href="/documentation/platform/secrets-mgmt/overview">
   Quickstart, project structure, delivery methods, rotation, dynamic secrets, and integrations.
 </Card>
 
@@ -15,10 +15,10 @@ Infisical Secrets Management is a central store for the secrets used by applicat
 ### Pull at runtime
 
 <CardGroup cols={2}>
-  <Card title="Deliver secrets to running apps" icon="truck-fast" href="/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret">
+  <Card title="Deliver secrets to running apps" icon="truck" href="/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret">
     Fetch secrets from Infisical at runtime through the CLI, SDKs, agents, Kubernetes, or CI/CD.
   </Card>
-  <Card title="Replace .env in local development" icon="laptop-code" href="/documentation/guides/local-development">
+  <Card title="Replace .env in local development" icon="laptop" href="/documentation/guides/local-development">
     Run an application locally and fetch its secrets from Infisical instead of a `.env` file.
   </Card>
 </CardGroup>
@@ -26,7 +26,7 @@ Infisical Secrets Management is a central store for the secrets used by applicat
 ### Sync to a native store
 
 <CardGroup cols={1}>
-  <Card title="Sync secrets to third-party stores" icon="arrows-rotate" href="/integrations/secret-syncs/overview">
+  <Card title="Sync secrets to third-party stores" icon="refresh-cw" href="/integrations/secret-syncs/overview">
     Forward secrets from Infisical to platforms such as GitHub, GitLab, AWS Secrets Manager, and Vercel.
   </Card>
 </CardGroup>
@@ -34,7 +34,7 @@ Infisical Secrets Management is a central store for the secrets used by applicat
 ### Generate per request
 
 <CardGroup cols={2}>
-  <Card title="Rotate a long-lived credential" icon="rotate" href="/documentation/platform/secret-rotation/overview">
+  <Card title="Rotate a long-lived credential" icon="refresh-cw" href="/documentation/platform/secret-rotation/overview">
     Automatically replace a credential on a schedule managed by Infisical.
   </Card>
   <Card title="Generate short-lived credentials" icon="bolt" href="/documentation/platform/dynamic-secrets/overview">
@@ -45,7 +45,7 @@ Infisical Secrets Management is a central store for the secrets used by applicat
 ### Broker to AI agents
 
 <CardGroup cols={1}>
-  <Card title="Broker credentials to AI agents" icon="robot" href="/documentation/platform/agent-proxy/overview">
+  <Card title="Broker credentials to AI agents" icon="bot" href="/documentation/platform/agent-proxy/overview">
     Attach credentials to agent requests at a proxy so that the agent never receives the credential.
   </Card>
 </CardGroup>

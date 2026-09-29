@@ -92,7 +92,7 @@ module "infisical_relay_instance" {
 
   name          = "infisical-relay-example"
   ami           = "ami-065778886ef8ec7c8" # Change to your desired AMI ID
-  instance_type = "t3.micro"
+  instance_type = "t3.micro" # 2 vCPU / 1 GB, the minimum for a production relay
   subnet_id     = "subnet-0fd2337a1c604a494" # Change to your Subnet ID
 
   vpc_security_group_ids      = [aws_security_group.infisical_relay_sg.id]

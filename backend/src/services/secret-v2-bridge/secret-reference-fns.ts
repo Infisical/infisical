@@ -1,8 +1,9 @@
 import path from "node:path";
 
+import { Knex } from "knex";
 import RE2 from "re2";
 
-import { ForbiddenRequestError } from "@app/lib/errors";
+import { ClientClosedRequestError, ForbiddenRequestError, throwIfClientDisconnected } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -108,6 +109,8 @@ type TInterpolateSecretArg = {
   // same-project relative references; cross-project reads must stay raw so source
   // project imports are not resolved through the target project context.
   crossProjectSecretDAL?: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
+  abortSignal?: AbortSignal;
+  tx?: Knex;
 };
 
 const MAX_SECRET_REFERENCE_DEPTH = 10;
@@ -123,7 +126,9 @@ export const expandSecretReferencesFactory = ({
   projectFolderGrantDAL,
   projectDAL,
   kmsService,
-  crossProjectSecretDAL
+  crossProjectSecretDAL,
+  abortSignal,
+  tx
 }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, { value: string; tags: string[]; exists: boolean }>> = {};
   let crossProjectAllowedCache: boolean | undefined;
@@ -163,11 +168,13 @@ export const expandSecretReferencesFactory = ({
 
   const loadFolderSecrets = async (environment: string, secretPath: string, cacheKey: string) => {
     try {
-      const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+      const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath, tx);
       if (!folder) return;
+      throwIfClientDisconnected(abortSignal);
       // When userId is provided, findByFolderId returns both shared and personal secrets.
       // Personal overrides will take precedence over shared secrets in the reduce below.
-      const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId });
+      const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId, tx });
+      throwIfClientDisconnected(abortSignal);
 
       const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[]; exists: boolean }>>(
         (prev, secret) => {
@@ -191,6 +198,8 @@ export const expandSecretReferencesFactory = ({
 
       secretCache[cacheKey] = decryptedSecret;
     } catch (error) {
+      // Rethrown so every expansion waiting on this shared load stops, rather than caching the folder as empty.
+      if (error instanceof ClientClosedRequestError) throw error;
       secretCache[cacheKey] = {};
     }
   };
@@ -228,6 +237,8 @@ export const expandSecretReferencesFactory = ({
     const stackTrace = { ...dto, key: "root", children: [] } as TSecretReferenceTraceNode;
 
     if (!dto.value) return { expandedValue: "", stackTrace };
+
+    throwIfClientDisconnected(abortSignal);
 
     // Track visited secrets to prevent circular references
     const createSecretId = (env: string, secretPath: string, key: string) => `${env}:${secretPath}:${key}`;
@@ -278,6 +289,8 @@ export const expandSecretReferencesFactory = ({
         }
 
         for (const interpolationSyntax of refs) {
+          throwIfClientDisconnected(abortSignal);
+
           const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
           const entities = interpolationKey.trim().split(".");
 
@@ -342,7 +355,8 @@ export const expandSecretReferencesFactory = ({
             } else {
               try {
                 // eslint-disable-next-line no-await-in-loop
-                const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, crossProjEnv, crossProjPath);
+                const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, crossProjEnv, crossProjPath, tx);
+                throwIfClientDisconnected(abortSignal);
                 if (!sourceFolder) {
                   secretCache[crossProjCacheKey] = {};
                   crossProjSecretData = { value: "", tags: [], exists: false };
@@ -371,8 +385,10 @@ export const expandSecretReferencesFactory = ({
                     // with import-aware behavior.
                     // eslint-disable-next-line no-await-in-loop
                     const sourceSecrets = await (crossProjectSecretDAL || secretDAL).findByFolderId({
-                      folderId: sourceFolder.id
+                      folderId: sourceFolder.id,
+                      tx
                     });
+                    throwIfClientDisconnected(abortSignal);
 
                     const crossProjDecrypted = sourceSecrets.reduce<
                       Record<string, { value: string; tags: string[]; exists: boolean }>
@@ -394,6 +410,7 @@ export const expandSecretReferencesFactory = ({
                   }
                 }
               } catch (error) {
+                if (error instanceof ClientClosedRequestError) throw error;
                 logger.error(
                   { err: error, crossProjSlug, crossProjEnv, crossProjPath, crossProjKey },
                   `Failed to expand cross-project reference [slug=${crossProjSlug}] [env=${crossProjEnv}] [path=${crossProjPath}] [key=${crossProjKey}]`

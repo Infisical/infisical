@@ -4,7 +4,7 @@ import { useReducedMotion } from "motion/react";
 
 import { cn } from "../../utils";
 
-type LoaderVariant = "default" | "inverse" | "brand";
+type LoaderVariant = "neutral" | "default" | "inverse" | "brand";
 
 type LoaderSize = "xs" | "sm" | "md" | "lg";
 
@@ -15,6 +15,7 @@ type LoaderProps = Omit<ComponentProps<"div">, "children"> & {
 };
 
 const animationSources: Record<LoaderVariant, string> = {
+  neutral: "/lotties/infisical_loading_white.json",
   default: "/lotties/infisical_loading_white.json",
   inverse: "/lotties/infisical_loading_bw.json",
   brand: "/lotties/infisical_loading.json"
@@ -33,7 +34,7 @@ function Loader({
   className,
   label = "Loading",
   size = "md",
-  variant = "default",
+  variant = "neutral",
   ...props
 }: LoaderProps) {
   const prefersReducedMotion = Boolean(useReducedMotion());
@@ -67,7 +68,7 @@ function Loader({
         src={animationSources[variant]}
         loop
         autoplay={!prefersReducedMotion}
-        className="h-full w-full"
+        className={cn("h-full w-full", variant === "neutral" && "in-data-[theme=light]:invert")}
       />
     </div>
   );

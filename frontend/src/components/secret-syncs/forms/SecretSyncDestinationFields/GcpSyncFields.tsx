@@ -189,7 +189,7 @@ export const GcpSyncFields = () => {
                   onValueChange={(option) => {
                     setValue("destinationConfig.locationId", "");
                     setValue("destinationConfig.userReplicaLocationIds", []);
-                    onChange(option.id);
+                    onChange(option?.id ?? "");
                   }}
                   options={projects ?? []}
                   placeholder="Select a GCP project..."
@@ -224,7 +224,7 @@ export const GcpSyncFields = () => {
                         {Object.values(GCP_SYNC_SCOPES).map(({ name, description }) => (
                           <li key={name}>
                             <p className="text-label">
-                              <span className="font-medium text-foreground">{name}</span>:{" "}
+                              <span className="font-medium text-foreground-soft">{name}</span>:{" "}
                               {description}
                             </p>
                           </li>
@@ -281,7 +281,7 @@ export const GcpSyncFields = () => {
                     isLoading={areLocationsPending && Boolean(projectId)}
                     isDisabled={!projectId}
                     value={locations?.find((option) => option.locationId === value) ?? null}
-                    onValueChange={(option) => onChange(option.locationId)}
+                    onValueChange={(option) => onChange(option?.locationId ?? "")}
                     options={locations ?? []}
                     placeholder="Select a region..."
                     getOptionLabel={(option) => `${option.displayName} (${option.locationId})`}

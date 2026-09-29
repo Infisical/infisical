@@ -49,7 +49,7 @@ export const OrgSidebar = () => {
   return (
     <Sidebar scope={scope} collapsible="none" side="left">
       <SidebarContent>{body}</SidebarContent>
-      <SidebarFooter className="border-t border-border p-2">
+      <SidebarFooter className="border-t border-border-soft p-2">
         <SidebarTrigger variant="ghost" className="w-full" />
       </SidebarFooter>
     </Sidebar>

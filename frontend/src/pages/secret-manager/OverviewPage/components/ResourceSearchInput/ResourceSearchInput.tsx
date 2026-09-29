@@ -96,14 +96,18 @@ export const ResourceSearchInput = ({
                 onFocus={() => {
                   setIsFocused(true);
                 }}
-                onBlur={() => {
+                onBlur={(e) => {
+                  if (e.relatedTarget === deepSearchBtnRef.current) return;
                   setIsFocused(false);
                   setIsOptionHighlighted(false);
                 }}
                 onKeyDown={(e) => {
                   if (!isFocused) return;
 
-                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                  if (e.key === "Tab" && !e.shiftKey) {
+                    e.preventDefault();
+                    deepSearchBtnRef.current?.focus();
+                  } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                     e.preventDefault();
                     setIsOptionHighlighted(true);
                   } else if (e.key === "Enter" && isOptionHighlighted) {
@@ -132,13 +136,30 @@ export const ResourceSearchInput = ({
           align="start"
           className="w-[var(--radix-popover-trigger-width)] p-1"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => {
+            e.preventDefault();
+            inputRef.current?.focus();
+            setIsFocused(false);
+            setIsOptionHighlighted(false);
+          }}
         >
           <button
             ref={deepSearchBtnRef}
             type="button"
             className={`flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-foreground hover:bg-foreground/5 ${isOptionHighlighted ? "bg-foreground/5" : ""}`}
-            onMouseDown={(e) => {
-              e.preventDefault();
+            onFocus={() => setIsOptionHighlighted(true)}
+            onBlur={() => {
+              setIsOptionHighlighted(false);
+              setIsFocused(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Tab" && e.shiftKey) {
+                e.preventDefault();
+                inputRef.current?.focus();
+              }
+            }}
+            onClick={() => {
               setIsOpen(true);
               setIsFocused(false);
               setIsOptionHighlighted(false);

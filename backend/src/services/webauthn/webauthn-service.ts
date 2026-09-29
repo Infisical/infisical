@@ -17,6 +17,7 @@ import { MfaMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TUserDALFactory } from "../user/user-dal";
+import { TUserServiceFactory } from "../user/user-service";
 import { TWebAuthnCredentialDALFactory } from "./webauthn-credential-dal";
 import {
   TDeleteWebAuthnCredentialDTO,
@@ -33,6 +34,7 @@ type TWebAuthnServiceFactoryDep = {
   webAuthnCredentialDAL: TWebAuthnCredentialDALFactory;
   tokenService: TAuthTokenServiceFactory;
   keyStore: TKeyStoreFactory;
+  userService: Pick<TUserServiceFactory, "resolveMfaMethodAfterRemoval">;
 };
 
 export type TWebAuthnServiceFactory = ReturnType<typeof webAuthnServiceFactory>;
@@ -41,7 +43,8 @@ export const webAuthnServiceFactory = ({
   userDAL,
   webAuthnCredentialDAL,
   tokenService,
-  keyStore
+  keyStore,
+  userService
 }: TWebAuthnServiceFactoryDep) => {
   const storeChallenge = async (userId: string, challenge: string) => {
     const challengeKey = KeyStorePrefixes.WebAuthnChallenge(userId);
@@ -337,33 +340,28 @@ export const webAuthnServiceFactory = ({
    * Delete a WebAuthn credential
    */
   const deleteWebAuthnCredential = async ({ userId, id }: TDeleteWebAuthnCredentialDTO) => {
+    const credential = await webAuthnCredentialDAL.findById(id);
+
+    if (!credential) {
+      throw new NotFoundError({
+        message: "Credential not found"
+      });
+    }
+
+    if (userId !== credential.userId) {
+      throw new ForbiddenRequestError({
+        message: "Credential does not belong to this user"
+      });
+    }
+
+    const userCredentials = await webAuthnCredentialDAL.find({ userId });
+    const replacementMfaMethod =
+      userCredentials.length === 1 ? await userService.resolveMfaMethodAfterRemoval(userId, MfaMethod.WEBAUTHN) : null;
+
     await webAuthnCredentialDAL.transaction(async (tx) => {
-      const credential = await webAuthnCredentialDAL.findById(id, tx);
-
-      if (!credential) {
-        throw new NotFoundError({
-          message: "Credential not found"
-        });
-      }
-
-      if (userId !== credential.userId) {
-        throw new ForbiddenRequestError({
-          message: "Credential does not belong to this user"
-        });
-      }
-
       await webAuthnCredentialDAL.deleteById(credential.id, tx);
-
-      // If that was the user's last credential and webauthn is their preferred
-      // method, reset the preference so getRequiredMfaMethod doesn't keep
-      // challenging for webauthn with no credential left, which would lock the
-      // user out. Fall back to email, which is always available.
-      const remainingCredentials = await webAuthnCredentialDAL.find({ userId }, { tx });
-      if (remainingCredentials.length === 0) {
-        const user = await userDAL.findById(userId, tx);
-        if (user?.selectedMfaMethod === MfaMethod.WEBAUTHN) {
-          await userDAL.updateById(userId, { selectedMfaMethod: MfaMethod.EMAIL }, tx);
-        }
+      if (replacementMfaMethod) {
+        await userDAL.updateById(userId, { selectedMfaMethod: replacementMfaMethod }, tx);
       }
     });
 

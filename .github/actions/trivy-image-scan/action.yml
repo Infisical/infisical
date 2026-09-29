@@ -1,0 +1,83 @@
+name: "Trivy image scan"
+description: >-
+  Scans a published image by digest, keeps the JSON report as a run artifact, and
+  writes the finding counts to the job summary. Reports nothing through the job
+  status: callers mark the step continue-on-error, because the image this scans is
+  already published by the time it runs.
+
+inputs:
+  image:
+    description: "Image repository to scan, without a tag, e.g. infisical/infisical."
+    required: true
+  digest:
+    description: "Digest of the pushed manifest, from the build step's digest output."
+    required: true
+  artifact-name:
+    description: "Name for the uploaded report artifact. Must be unique within the run."
+    required: true
+  trivy-version:
+    description: >-
+      Trivy CLI version to install. Pinned by the caller so an upstream release cannot
+      change what CI reports on its own, and named out of Trivy's TRIVY_* env namespace.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+      - name: 🔍 Scan the image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0, Apr 22, 2026
+        env:
+            # Trivy already defaults to the GCR mirror then GHCR, falling back between
+            # them on rate limits and 5xx. ECR goes in front of both; they stay behind it
+            # so overriding the default does not narrow it to a single source.
+            TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2,mirror.gcr.io/aquasec/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
+            # The digest is a manifest list, so pick an arch rather than letting the
+            # runner decide. arm64 is published but deliberately not scanned: the OS
+            # packages are pinned to the same versions for both arches and Debian
+            # advisories match on package version, so its findings are amd64's.
+            TRIVY_PLATFORM: linux/amd64
+        with:
+            scan-type: image
+            image-ref: ${{ inputs.image }}@${{ inputs.digest }}
+            version: ${{ inputs.trivy-version }}
+            scanners: vuln
+            severity: CRITICAL,HIGH
+            # Not actionable at release time; the Debian security pins in the
+            # Dockerfiles cover the ones that are.
+            ignore-unfixed: true
+            format: json
+            output: trivy-report.json
+            timeout: 15m
+            exit-code: "0"
+      # The only record of this release's fixable findings, so it outlives the default
+      # retention. Unfixed CVEs are filtered out above and are not in it.
+      - name: 📤 Keep the report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+            name: ${{ inputs.artifact-name }}
+            path: trivy-report.json
+            retention-days: 90
+            if-no-files-found: error
+      # Nothing here touches job status, so without a summary the run reads the same
+      # whether the image shipped clean or with twenty criticals.
+      - name: 📋 Summarize the findings
+        shell: bash
+        env:
+            REPORT: trivy-report.json
+            IMAGE: ${{ inputs.image }}
+            ARTIFACT: ${{ inputs.artifact-name }}
+        run: |
+            set -euo pipefail
+            total=$(jq '[.Results[]?.Vulnerabilities[]?] | length' "$REPORT")
+            crit=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "$REPORT")
+            cves=$(jq -r '[.Results[]?.Vulnerabilities[]?.VulnerabilityID] | unique | length' "$REPORT")
+            {
+              echo "### Trivy: $IMAGE"
+              echo
+              echo "| findings | critical | unique CVEs |"
+              echo "| --- | --- | --- |"
+              echo "| $total | $crit | $cves |"
+            } >> "$GITHUB_STEP_SUMMARY"
+            if [ "$total" -gt 0 ]; then
+              echo "::warning::$IMAGE: $total fixable CRITICAL/HIGH findings across $cves CVEs. See the $ARTIFACT artifact."
+            fi

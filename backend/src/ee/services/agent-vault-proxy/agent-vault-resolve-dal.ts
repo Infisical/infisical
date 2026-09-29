@@ -14,6 +14,8 @@ export type TResolveServiceRow = {
   credentialType: string;
   credentialConfig: unknown;
   encryptedCredential: Buffer | null;
+  allowedMethods: string[] | null;
+  allowedPathPrefixes: string[] | null;
   position: number;
 };
 
@@ -65,6 +67,8 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
           db.ref("credentialType").withSchema(TableName.AgentVaultService),
           db.ref("credentialConfig").withSchema(TableName.AgentVaultService),
           db.ref("encryptedCredential").withSchema(TableName.AgentVaultService),
+          db.ref("allowedMethods").withSchema(TableName.AgentVaultService),
+          db.ref("allowedPathPrefixes").withSchema(TableName.AgentVaultService),
           // Resolve only reaches live bundles, so the current name is always the truthful one here.
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName"),
           db.ref("position").withSchema(TableName.AgentVaultSessionAccessBundle)

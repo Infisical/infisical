@@ -139,6 +139,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
         handlePopUpToggle={handleAuthMethodPopUpToggle}
       />
       <UpgradePlanModal
+        paywallKey="project.project-identity-auth"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={(popUp.upgradePlan?.data as { description: string })?.description}

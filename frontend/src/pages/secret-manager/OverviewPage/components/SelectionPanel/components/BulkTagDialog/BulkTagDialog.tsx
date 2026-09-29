@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { KeyIcon, TagsIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -10,7 +9,6 @@ import {
   Button,
   CreatableSelect,
   Dialog,
-  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -21,12 +19,6 @@ import {
   FieldContent,
   FieldDescription,
   FieldLabel,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Toggle
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
@@ -35,6 +27,8 @@ import { useCreateWsTag, useGetWsTags, useUpdateSecretBatch } from "@app/hooks/a
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { slugSchema } from "@app/lib/schemas";
+
+import { BulkSelectionTable } from "../BulkSelectionTable";
 
 const formSchema = z.object({
   tags: z
@@ -102,6 +96,7 @@ const BulkTagDialogContent = ({
   const selectedResources = useMemo(
     () =>
       Object.entries(secrets).map(([name, envRecord]) => ({
+        type: "secret" as const,
         name,
         envSlugs: new Set(Object.keys(envRecord))
       })),
@@ -259,7 +254,7 @@ const BulkTagDialogContent = ({
   return (
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <form
-      className="flex min-h-0 min-w-0 flex-1 flex-col gap-4"
+      className="flex min-h-0 min-w-0 flex-1 flex-col gap-6"
       onSubmit={handleSubmit(onSubmit)}
       onKeyDown={(e) => {
         if (e.key === "Enter") e.preventDefault();
@@ -273,53 +268,7 @@ const BulkTagDialogContent = ({
         </DialogDescription>
       </DialogHeader>
       {selectedResources.length > 0 && (
-        <DialogBody className="overflow-hidden">
-          <Table containerClassName="max-h-full overflow-auto">
-            <TableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
-              <TableRow>
-                <TableHead className="sticky left-0 z-20 w-10 max-w-10 min-w-10 border-b-0 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-                  Type
-                </TableHead>
-                <TableHead className="sticky left-10 z-20 max-w-[30vw] min-w-[30vw] border-b-0 bg-container shadow-[inset_-1px_0_0_var(--color-border),inset_0_-1px_0_var(--color-border)]">
-                  Name
-                </TableHead>
-                {visibleEnvs.map((env) => (
-                  <TableHead
-                    key={env.slug}
-                    className="w-32 max-w-32 border-r border-b-0 text-center shadow-[inset_0_-1px_0_var(--color-border)] last:border-r-0"
-                    isTruncatable
-                  >
-                    {env.name}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {selectedResources.map((item) => (
-                <TableRow key={item.name} className="group">
-                  <TableCell className="sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover">
-                    <KeyIcon className="size-4 text-secret" />
-                  </TableCell>
-                  <TableCell
-                    className="sticky left-10 z-10 max-w-80 bg-container shadow-[inset_-1px_0_0_var(--color-border)] transition-colors duration-75 group-hover:bg-container-hover"
-                    isTruncatable
-                  >
-                    {item.name}
-                  </TableCell>
-                  {visibleEnvs.map((env) => (
-                    <TableCell key={env.slug} className="border-r text-center last:border-r-0">
-                      {item.envSlugs.has(env.slug) ? (
-                        <TagsIcon className="inline-block size-4 text-project" />
-                      ) : (
-                        <span className="text-muted">&mdash;</span>
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </DialogBody>
+        <BulkSelectionTable action="tag" items={selectedResources} environments={visibleEnvs} />
       )}
 
       <div className="flex shrink-0 flex-col gap-4">
@@ -381,9 +330,17 @@ const BulkTagDialogContent = ({
       </div>
       <DialogFooter>
         <DialogClose asChild>
-          <Button variant="outline">Cancel</Button>
+          <Button variant="ghost" size="sm">
+            Cancel
+          </Button>
         </DialogClose>
-        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={!isValid}>
+        <Button
+          type="submit"
+          variant="project"
+          size="sm"
+          isPending={isSubmitting}
+          isDisabled={!isValid}
+        >
           Apply Tags
         </Button>
       </DialogFooter>
@@ -395,7 +352,10 @@ export const BulkTagDialog = ({ isOpen, onOpenChange, ...contentProps }: Props) 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {isOpen && (
-        <DialogContent className="max-w-3xl">
+        <DialogContent
+          className="max-w-3xl [&>*]:min-w-0"
+          overlayClassName="bg-black/10 supports-backdrop-filter:backdrop-blur-xs"
+        >
           <BulkTagDialogContent {...contentProps} onClose={() => onOpenChange(false)} />
         </DialogContent>
       )}

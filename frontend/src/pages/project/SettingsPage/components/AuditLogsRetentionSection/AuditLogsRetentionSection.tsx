@@ -137,6 +137,7 @@ export const AuditLogsRetentionSection = () => {
         </Card>
       </form>
       <UpgradePlanModal
+        paywallKey="project.audit-logs-retention"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan?.data?.text}

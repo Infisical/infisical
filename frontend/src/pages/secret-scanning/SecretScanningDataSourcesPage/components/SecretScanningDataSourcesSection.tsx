@@ -38,14 +38,14 @@ export const SecretScanningDataSourcesSection = () => {
 
   return (
     <>
-      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-x-2">
-              <p className="text-xl font-medium text-mineshaft-100">Data Sources</p>
+              <p className="text-xl font-medium text-foreground">Data Sources</p>
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/overview" />
             </div>
-            <p className="text-sm text-bunker-300">
+            <p className="text-sm text-label-secondary">
               Configure Data Sources to scan for secret leaks from third-party services.
             </p>
           </div>
@@ -82,6 +82,7 @@ export const SecretScanningDataSourcesSection = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("addDataSource", isOpen)}
       />
       <UpgradePlanModal
+        paywallKey="secret-scanning.secret-scanning-data-sources"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Creating data sources can be unlocked if you upgrade to Infisical Enterprise plan."

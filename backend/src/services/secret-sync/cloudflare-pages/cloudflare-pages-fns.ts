@@ -1,6 +1,7 @@
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
@@ -42,7 +43,8 @@ const getProjectEnvironmentSecrets = async (secretSync: TCloudflarePagesSyncWith
 };
 
 export const CloudflarePagesSyncFns = {
-  syncSecrets: async (secretSync: TCloudflarePagesSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TCloudflarePagesSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       destinationConfig,
       connection: {
@@ -95,7 +97,8 @@ export const CloudflarePagesSyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  removeSecrets: async (secretSync: TCloudflarePagesSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TCloudflarePagesSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       destinationConfig,
       connection: {

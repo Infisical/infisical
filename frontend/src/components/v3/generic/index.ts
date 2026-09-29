@@ -47,6 +47,7 @@ export * from "./Spinner";
 export * from "./Stepper";
 export * from "./Table";
 export * from "./Tabs";
+export * from "./TagsInput";
 export * from "./TextArea";
 export * from "./Toast";
 export * from "./Toggle";

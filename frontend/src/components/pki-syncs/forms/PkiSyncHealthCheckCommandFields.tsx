@@ -4,6 +4,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v3";
 import { HEALTH_CHECK_COMMAND_VARIABLE_DESCRIPTIONS } from "@app/helpers/pkiSyncs";
 import { PkiSync, PkiSyncStatus, useTestPkiSyncHealthCheck } from "@app/hooks/api/pkiSyncs";
+import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { notifyUnhandledHostCommandError } from "./hostCommandErrors";
@@ -43,7 +44,7 @@ export const PkiSyncHealthCheckCommandFields = ({
         connectionId,
         applicationId: applicationId ?? undefined,
         syncId,
-        certificateIds: syncId ? undefined : watch("certificateIds"),
+        filters: syncId ? undefined : ((watch("filters") ?? null) as TPkiSyncFilters | null),
         destinationConfig: (destinationConfig ?? {}) as Record<string, unknown>,
         syncOptions: { ...(watch("syncOptions") ?? {}), healthCheckCommand: command }
       });

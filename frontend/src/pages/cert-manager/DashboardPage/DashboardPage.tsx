@@ -4,8 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
-import { PageLoader } from "@app/components/v3";
+import { PageHeader, PageLoader } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
@@ -59,14 +58,13 @@ export const DashboardPage = () => {
     return <PageLoader />;
   }
   return (
-    <div className="h-full bg-bunker-800">
+    <div className="h-full bg-page">
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Dashboard" })}</title>
       </Helmet>
-      <div className="mx-auto flex flex-col text-white">
-        <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto flex flex-col text-foreground-inverse">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
-            className="mb-6 md:mb-10"
             scope={ProjectType.CertificateManager}
             title="Certificate Dashboard"
             description="See the overall state of your certificates at a glance."

@@ -38,6 +38,9 @@ export const pluralizeUnit = (noun: string): string => {
   return `${noun}s`;
 };
 
+export const unitForCount = (noun: string, count: number): string =>
+  count === 1 ? noun : pluralizeUnit(noun);
+
 export const cadenceWord = (cad: BillingV2Cadence): string => {
   if (cad === "annual") {
     return "year";

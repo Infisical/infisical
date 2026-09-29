@@ -448,6 +448,7 @@ export const CrossProjectSharingSection = () => {
         sourceProjectId={currentProject.id}
       />
       <UpgradePlanModal
+        paywallKey="project.cross-project-sharing"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Your current plan does not allow sharing secrets across projects. To unlock this feature, please upgrade to Infisical Pro plan."

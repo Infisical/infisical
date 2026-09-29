@@ -59,7 +59,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
     activeConnectionId
   );
 
-  const handleConnectionChange = (id: string) => {
+  const handleConnectionChange = (id: string | null) => {
     setSelectedConnectionId(id);
     setSelectedNamespace(null);
     setSelectedMountPath(null);
@@ -68,7 +68,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
     setShouldFetchRoles(false);
   };
 
-  const handleNamespaceChange = (ns: string) => {
+  const handleNamespaceChange = (ns: string | null) => {
     setSelectedNamespace(ns);
     setSelectedMountPath(null);
     setSelectedRole(null);
@@ -147,7 +147,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
             isClearable
             className="w-full"
           />
-          <p className="mt-1 text-xs text-mineshaft-400">
+          <p className="mt-1 text-xs text-muted">
             Choose a Kubernetes auth engine to filter available roles
           </p>
         </>
@@ -176,7 +176,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
             isClearable
             className="w-full"
           />
-          <p className="mt-1 text-xs text-mineshaft-400">
+          <p className="mt-1 text-xs text-muted">
             Select the Kubernetes role to load configuration from
           </p>
         </>

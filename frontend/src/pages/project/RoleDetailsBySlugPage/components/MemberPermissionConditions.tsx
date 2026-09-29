@@ -50,7 +50,7 @@ export const MemberPermissionConditions = ({ position = 0, isDisabled }: Props) 
         {
           value: "userEmail",
           label: "User Email",
-          description: "The email address of the target user whose roles are being updated"
+          description: "The email address of the target user"
         },
         {
           value: "assignableRole",

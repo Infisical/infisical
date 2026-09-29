@@ -110,10 +110,10 @@ const STEP_META: Record<
   },
   certificates: {
     short: "Certificates to sync",
-    subtitle: "Select which of this application's certificates are included in the sync.",
+    subtitle: "Link the certificates this sync pushes.",
     rightLabel: "CERTIFICATES",
     rightDescription:
-      "Select which of this application's certificates are included in the sync. You can change this selection after the sync is created."
+      "Anything in the application matching these filters is synced as it is issued. A sync with no filters syncs nothing."
   },
   review: {
     short: "Confirm and create",
@@ -168,7 +168,7 @@ const getFormTabs = (
     {
       name: "Certificates",
       key: "certificates",
-      fields: ["certificateIds"] as FieldPath<TPkiSyncForm>[]
+      fields: ["filters"] as FieldPath<TPkiSyncForm>[]
     }
   );
 
@@ -210,7 +210,7 @@ export const CreatePkiSyncForm = ({
     defaultValues: {
       destination,
       isAutoSyncEnabled: false,
-      certificateIds: [],
+      filters: null,
       syncOptions: {
         canImportCertificates: false,
         canRemoveCertificates: false,
@@ -255,34 +255,24 @@ export const CreatePkiSyncForm = ({
     selectedConnectionApp === AppConnection.LDAP
   );
 
-  const onSubmit = async ({
-    connection,
-    destinationConfig,
-    certificateIds,
-    ...formData
-  }: TPkiSyncForm) => {
+  const onSubmit = async ({ connection, destinationConfig, ...formData }: TPkiSyncForm) => {
     try {
       const pkiSync = await createPkiSync.mutateAsync({
         ...formData,
         connectionId: connection.id,
         projectId: currentProject.id,
         applicationId,
-        destinationConfig,
-        certificateIds: certificateIds || []
+        destinationConfig
       });
 
       createNotification({
-        text: `Successfully created ${destinationName} Certificate Sync${
-          certificateIds && certificateIds.length > 0
-            ? ` with ${certificateIds.length} certificate(s)`
-            : ""
-        }`,
+        text: `Successfully created ${destinationName} Certificate Sync`,
         type: "success"
       });
       setShowConfirmation(false);
       onComplete(pkiSync);
     } catch {
-      /* empty */
+      setShowConfirmation(false);
     }
   };
 
@@ -443,7 +433,7 @@ export const CreatePkiSyncForm = ({
             {currentKey === "certificates" && (
               <PkiSyncCertificatesFields applicationId={applicationId} />
             )}
-            {currentKey === "review" && <PkiSyncReviewFields />}
+            {currentKey === "review" && <PkiSyncReviewFields applicationId={applicationId} />}
           </div>
 
           <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
@@ -508,8 +498,9 @@ export const CreatePkiSyncForm = ({
                 </p>
                 {syncOption?.canRemoveCertificates && canRemoveCertificates && (
                   <p>
-                    Certificates in {destinationName} that are no longer active in Infisical will be
-                    removed.
+                    Certificates that leave this sync will be deleted from {destinationName},
+                    whether they stopped being active, were deleted, or stopped matching the
+                    sync&apos;s filters.
                   </p>
                 )}
               </div>

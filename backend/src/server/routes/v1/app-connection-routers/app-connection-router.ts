@@ -200,6 +200,10 @@ import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
+import {
+  PowerDnsConnectionListItemSchema,
+  SanitizedPowerDnsConnectionSchema
+} from "@app/services/app-connection/powerdns";
 import { QoveryConnectionListItemSchema, SanitizedQoveryConnectionSchema } from "@app/services/app-connection/qovery";
 import {
   RailwayConnectionListItemSchema,
@@ -228,6 +232,7 @@ import {
   SpaceliftConnectionListItemSchema
 } from "@app/services/app-connection/spacelift";
 import { SanitizedSshConnectionSchema, SshConnectionListItemSchema } from "@app/services/app-connection/ssh";
+import { SanitizedStripeConnectionSchema, StripeConnectionListItemSchema } from "@app/services/app-connection/stripe";
 import {
   SanitizedSupabaseConnectionSchema,
   SupabaseConnectionListItemSchema
@@ -349,8 +354,10 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
   ...SanitizedNutanixPrismCentralConnectionSchema.options,
+  ...SanitizedPowerDnsConnectionSchema.options,
   ...SanitizedSpaceliftConnectionSchema.options,
-  ...SanitizedDaytonaConnectionSchema.options
+  ...SanitizedDaytonaConnectionSchema.options,
+  ...SanitizedStripeConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -436,8 +443,10 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,
   NutanixPrismCentralConnectionListItemSchema,
+  PowerDnsConnectionListItemSchema,
   SpaceliftConnectionListItemSchema,
-  DaytonaConnectionListItemSchema
+  DaytonaConnectionListItemSchema,
+  StripeConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

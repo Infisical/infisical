@@ -20,7 +20,7 @@ export const AgentVaultAuditLogsPage = () => {
         scope={ProjectType.AgentVault}
         icon={FileText}
         title="Audit Logs"
-        description="Audit logs for security and compliance teams to monitor information access."
+        description="Review Agent Vault activity for security and compliance."
       />
       <LogsSection pageView project={currentProject} />
     </div>

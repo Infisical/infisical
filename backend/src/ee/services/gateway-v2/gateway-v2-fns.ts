@@ -1,8 +1,8 @@
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { callSqlRotateCredential, TSqlRpcResponse } from "@app/lib/gateway-v2/sql-rpc";
 import { callTestConnection, TestConnectionResponse } from "@app/lib/gateway-v2/test-connection-rpc";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "./gateway-v2-service";

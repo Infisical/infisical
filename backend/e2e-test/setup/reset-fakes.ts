@@ -1,4 +1,5 @@
 import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
+import { fakeIamUserSecret } from "e2e-test/fakes/aws-iam-user-secret-rotation-fns";
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
 
 // The fakes are module singletons shared with the server booted in this same process, and the
@@ -14,4 +15,5 @@ import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns"
 beforeAll(() => {
   fakeParameterStore.reset();
   fakeAwsConnection.reset();
+  fakeIamUserSecret.reset();
 });

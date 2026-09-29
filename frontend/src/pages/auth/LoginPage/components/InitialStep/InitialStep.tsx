@@ -323,7 +323,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
       >
         <AuthPagePanel>
           <CardHeader className="mb-8 gap-2">
-            <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+            <CardTitle className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
               Log in to Infisical
             </CardTitle>
             <CardAction>
@@ -352,7 +352,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
     >
       <AuthPagePanel>
         <CardHeader className="mb-6 gap-2">
-          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+          <CardTitle className="ml-0.5 bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
             Welcome back
           </CardTitle>
           <CardDescription className="ml-0.5 text-base">
@@ -511,6 +511,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
             <span className="text-label">Don&apos;t have an account?</span>
             <Link
               to="/signup"
+              search={{ callback_port: callbackPort ? Number(callbackPort) : undefined }}
               className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
             >
               Sign up

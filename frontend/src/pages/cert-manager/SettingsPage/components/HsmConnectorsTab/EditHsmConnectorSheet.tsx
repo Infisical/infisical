@@ -58,7 +58,6 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
       return "";
     })();
     const gatewayOptions: ReachedFromOption[] = gateways
-      .filter((g) => !g.isV1)
       .filter((g) => g.capabilities?.pkcs11 === true)
       .map((g) => ({ value: `gateway:${g.id}`, label: g.name, group: "gateway" as const }));
     const poolOptions: ReachedFromOption[] = pools.map((p) => ({
@@ -167,7 +166,7 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1100px]">
+      <SheetContent size="wide" className="flex h-full max-h-full flex-col gap-y-0">
         <SheetHeader className="border-b">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
@@ -175,10 +174,8 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
                 <ShieldCheckIcon className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-x-2 text-mineshaft-300">
-                  Edit HSM Connector
-                </div>
-                <p className="text-sm leading-4 text-mineshaft-400">
+                <div className="flex items-center gap-x-2 text-label">Edit HSM Connector</div>
+                <p className="text-sm leading-4 text-muted">
                   Update name, description, Gateway, slot label, key label prefix, or rotate the
                   PIN. Changes to the PIN, slot, or Gateway re-run a Verify before saving.
                 </p>
@@ -353,7 +350,7 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
                     PIN or point to a different slot on the same HSM.
                   </li>
                 </ul>
-                <div className="mt-6 rounded-md border border-border bg-mineshaft-800 p-3 text-xs text-muted">
+                <div className="mt-6 rounded-md border border-border bg-surface-raised p-3 text-xs text-muted">
                   If you change the PIN, slot, or Gateway, Infisical re-runs a Verify against the
                   HSM before saving. A bad PIN or unreachable Gateway will surface here.
                 </div>

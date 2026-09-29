@@ -59,8 +59,9 @@ Store certificates in Azure Key Vault as certificate objects. Certificates synce
         ### Sample request
 
         <Note>
-          You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
-          If not provided, you can add certificates later using the certificate management endpoints.
+          Pass `filters` to describe the certificates this sync holds. Anything in the Application that matches is
+          attached automatically, as it is issued. Omit it and the sync starts empty, and you can set filters later.
+          See [Certificate filters](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-filters).
         </Note>
 
         ```bash Request
@@ -75,10 +76,12 @@ Store certificates in Azure Key Vault as certificate objects. Certificates synce
             "connectionId": "550e8400-e29b-41d4-a716-446655440000",
             "destination": "azure-key-vault",
             "isAutoSyncEnabled": true,
-            "certificateIds": [
-                "550e8400-e29b-41d4-a716-446655440000",
-                "660f1234-e29b-41d4-a716-446655440001"
-            ],
+            "filters": {
+                "certificateOrderIds": [
+                    "550e8400-e29b-41d4-a716-446655440000",
+                    "660f1234-e29b-41d4-a716-446655440001"
+                ]
+            },
             "syncOptions": {
                 "canRemoveCertificates": true,
                 "enableVersioningOnRenewal": true,
@@ -158,16 +161,16 @@ To manually sync certificates, use the [Sync Certificates](/api-reference/endpoi
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
+  <Card title="AWS Certificate Manager" icon="aws" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
     Import certificates into ACM for AWS services.
   </Card>
-  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+  <Card title="Auto-Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
     Enable automatic certificate renewal and syncing.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified about certificate lifecycle events.
   </Card>
-  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Other Sync Destinations" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     View all supported sync destinations.
   </Card>
 </CardGroup>

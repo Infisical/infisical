@@ -986,6 +986,7 @@ export const AccessApprovalRequest = ({
       )}
 
       <UpgradePlanModal
+        paywallKey="secret-manager.access-approval-request"
         text={popUp.upgradePlan.data?.text}
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={() => handlePopUpClose("upgradePlan")}

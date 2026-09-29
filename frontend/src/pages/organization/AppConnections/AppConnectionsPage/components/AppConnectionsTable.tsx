@@ -39,6 +39,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { OrgPermissionSubjects, ProjectPermissionSub } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
@@ -394,9 +395,9 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
                         }}
                       >
                         <div className="flex items-center gap-2">
-                          <img
+                          <ProviderIcon
                             alt={`${APP_CONNECTION_MAP[app].name} integration`}
-                            src={`/images/integrations/${APP_CONNECTION_MAP[app].image}`}
+                            icon={APP_CONNECTION_MAP[app].image}
                             className="h-4 w-4"
                           />
                           <span>{APP_CONNECTION_MAP[app].name}</span>
@@ -404,7 +405,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
                       </DropdownMenuCheckboxItem>
                     ))
                 ) : (
-                  <DropdownMenuLabel className="font-normal text-mineshaft-400">
+                  <DropdownMenuLabel className="font-normal text-muted">
                     No Connections Configured
                   </DropdownMenuLabel>
                 )}

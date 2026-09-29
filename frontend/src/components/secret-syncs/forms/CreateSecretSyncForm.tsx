@@ -35,6 +35,7 @@ import {
   TSecretSync,
   useCreateSecretSync,
   useDuplicateDestinationCheck,
+  useRecursiveConflictsCheck,
   useSecretSyncOption
 } from "@app/hooks/api/secretSyncs";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
@@ -56,6 +57,8 @@ type Props = {
   onCancel: () => void;
   onDirtyChange: (isDirty: boolean) => void;
   initialFormData?: Partial<TSecretSyncForm>;
+  initialFormDataIsDirty?: boolean;
+  startOnDestination?: boolean;
 };
 
 type FormTab = {
@@ -149,7 +152,9 @@ export const CreateSecretSyncForm = ({
   onComplete,
   onCancel,
   onDirtyChange,
-  initialFormData
+  initialFormData,
+  initialFormDataIsDirty = Boolean(initialFormData),
+  startOnDestination = Boolean(initialFormData)
 }: Props) => {
   const createSecretSync = useCreateSecretSync();
   const { currentProject } = useProject();
@@ -159,8 +164,7 @@ export const CreateSecretSyncForm = ({
 
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // scoot: right now we only do this when creating a connection so we know index 1
-  const [selectedTabIndex, setSelectedTabIndex] = useState(initialFormData ? 1 : 0);
+  const [selectedTabIndex, setSelectedTabIndex] = useState(startOnDestination ? 1 : 0);
 
   const { syncOption } = useSecretSyncOption(destination);
 
@@ -184,7 +188,7 @@ export const CreateSecretSyncForm = ({
   });
 
   const { handleSubmit, trigger, control, watch, formState } = formMethods;
-  const hasUnsavedChanges = formState.isDirty || Boolean(initialFormData);
+  const hasUnsavedChanges = formState.isDirty || initialFormDataIsDirty;
   const {
     confirmDiscard,
     isDiscardDialogOpen,
@@ -240,18 +244,35 @@ export const CreateSecretSyncForm = ({
     initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination &&
     !disableSecretDeletion &&
     !keySchema;
+  const importsFromDestination =
+    initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeSource ||
+    initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeDestination;
+
+  const { conflicts: recursiveConflicts } = useRecursiveConflictsCheck({
+    destination,
+    projectId: currentProject?.id || "",
+    environment: watch("environment")?.slug,
+    secretPath: watch("secretPath"),
+    keySchema,
+    includeAllSubFolders:
+      Boolean(watch("syncOptions.includeAllSubFolders")) && !importsFromDestination
+  });
 
   const isStepValid = async (index: number) => trigger(formTabs[index].fields);
 
   const isFinalStep = selectedTabIndex === formTabs.length - 1;
-  const isCreateButtonDisabled =
-    isFinalStep && hasDuplicate && currentOrg?.blockDuplicateSecretSyncDestinations;
+  const isSourceStep = selectedTabIndex === 0;
+  const isNextButtonDisabled =
+    (isFinalStep && hasDuplicate && currentOrg?.blockDuplicateSecretSyncDestinations) ||
+    (isSourceStep && recursiveConflicts.length > 0);
 
   const handleNext = async () => {
     if (isFinalStep) {
       setShowConfirmation(true);
       return;
     }
+
+    if (isSourceStep && recursiveConflicts.length > 0) return;
 
     const isValid = await isStepValid(selectedTabIndex);
 
@@ -276,6 +297,10 @@ export const CreateSecretSyncForm = ({
       setSelectedTabIndex(targetTab);
       return;
     }
+
+    // The Source step (index 0) is always behind a forward jump, since targetTab > selectedTabIndex
+    // here, so a conflict there must block the jump the same way it blocks handleNext.
+    if (recursiveConflicts.length > 0) return;
 
     let canJump = true;
     for (let i = selectedTabIndex; i < targetTab; i += 1) {
@@ -400,7 +425,7 @@ export const CreateSecretSyncForm = ({
             <Button variant="outline" onClick={handlePrev}>
               Back
             </Button>
-            <Button variant="project" onClick={handleNext} isDisabled={isCreateButtonDisabled}>
+            <Button variant="project" onClick={handleNext} isDisabled={isNextButtonDisabled}>
               {isFinalStep ? "Create Sync" : "Continue"}
             </Button>
           </div>

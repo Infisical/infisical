@@ -8,4 +8,12 @@ infisical reset
 ```
 
 ## Description
-This command provides a way to clear all Infisical-generated configuration data, effectively resetting the software to its default settings. This can be an effective way to address any persistent issues that arise while using the CLI.
+
+This command removes all configuration data that Infisical created, and returns the CLI to its default settings. Use it when a problem persists and you want a clean state.
+
+The command removes every profile and its stored credentials. It also revokes those sessions on the server.
+
+<Warning>
+  Run this only when you want to start again. You must log in after it, and any
+  terminal that you pinned to a profile will no longer resolve.
+</Warning>

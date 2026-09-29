@@ -268,6 +268,13 @@ export const AppConnectionsBrowser = () => {
       category: "Networking & DNS",
     },
     {
+      name: "PowerDNS",
+      slug: "powerdns",
+      path: "/integrations/app-connections/powerdns",
+      description: "Learn how to connect Infisical to PowerDNS for ACME DNS validation.",
+      category: "Networking & DNS",
+    },
+    {
       name: "Windmill",
       slug: "windmill",
       path: "/integrations/app-connections/windmill",
@@ -642,6 +649,14 @@ export const AppConnectionsBrowser = () => {
       path: "/integrations/app-connections/openai",
       description: "Learn how to connect OpenAI to manage and rotate API keys with Infisical.",
       category: "AI & LLM",
+    },
+    {
+      name: "Stripe",
+      slug: "stripe",
+      path: "/integrations/app-connections/stripe",
+      description:
+        "Learn how to connect Stripe to manage and rotate API keys with Infisical.",
+      category: "SaaS",
     },
     {
       name: "Spacelift",
