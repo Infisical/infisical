@@ -114,6 +114,7 @@ type Props = {
     source: { id: string; name: string; path: string; isValueHidden: boolean };
     environmentSlug: string;
   }) => void;
+  onAccessInsightsUpgrade: (onGranted: () => void) => void;
 };
 
 type ExpandedTableSortColumn = "environment";
@@ -141,7 +142,8 @@ export const SecretTableRow = ({
   isBatchMode,
   onBatchRevert,
   isSelectionDisabled,
-  onCopySecret
+  onCopySecret,
+  onAccessInsightsUpgrade
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 2; // secret key row + icon
@@ -402,6 +404,7 @@ export const SecretTableRow = ({
                     })
                 : undefined
             }
+            onAccessInsightsUpgrade={onAccessInsightsUpgrade}
           />
         ) : (
           <TableCell
@@ -724,6 +727,7 @@ export const SecretTableRow = ({
                                       })
                                   : undefined
                               }
+                              onAccessInsightsUpgrade={onAccessInsightsUpgrade}
                             />
                           </TableCell>
                         </TableRow>

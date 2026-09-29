@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -181,6 +180,7 @@ type Props = {
   pendingKeyName?: string;
   revokedProjectFolderGrant?: boolean;
   onCopySecret?: () => void;
+  onAccessInsightsUpgrade: (onGranted: () => void) => void;
 };
 
 export const SecretEditTableRow = ({
@@ -219,11 +219,11 @@ export const SecretEditTableRow = ({
   hasPendingValueChange,
   pendingKeyName,
   revokedProjectFolderGrant,
-  onCopySecret
+  onCopySecret,
+  onAccessInsightsUpgrade
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
-    "accessInsightsUpgrade",
     "createSharedSecret"
   ] as const);
 
@@ -1591,7 +1591,7 @@ export const SecretEditTableRow = ({
                     className="px-2.5 py-1.5"
                     onClick={() => {
                       if (!subscription?.secretAccessInsights) {
-                        handlePopUpOpen("accessInsightsUpgrade");
+                        onAccessInsightsUpgrade(() => setIsAccessInsightsOpen(true));
                       } else {
                         setIsAccessInsightsOpen(true);
                       }
@@ -1909,13 +1909,6 @@ export const SecretEditTableRow = ({
           )}
         </SheetContent>
       </Sheet>
-      <UpgradePlanModal
-        paywallKey="secret-manager.secret-edit-table-row"
-        isOpen={popUp.accessInsightsUpgrade.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("accessInsightsUpgrade", isOpen)}
-        text="Secret access insights can be unlocked if you upgrade to Infisical Pro plan."
-      />
-
       <AlertDialog
         open={popUp.editSecret.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editSecret", isOpen)}
