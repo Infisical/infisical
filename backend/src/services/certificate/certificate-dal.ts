@@ -2,7 +2,6 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TCertificates, TCertificatesInsert } from "@app/db/schemas";
-import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
@@ -20,7 +19,6 @@ import {
   buildCertificateQuotaKey,
   certificateHasWildcard
 } from "@app/services/certificate-common/certificate-quota-key";
-import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { keySizeToAlgorithms } from "./certificate-fns";
@@ -293,31 +291,17 @@ export const certificateDALFactory = (db: TDbClient) => {
       const placeholders = filters.enrollmentTypes.map(() => "?").join(", ");
       q = q.whereRaw(
         `COALESCE(
-          (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
-          ??.??,
-          CASE WHEN ??.?? IN (?, ?) THEN ??.?? ELSE ? END
+          (
+            SELECT certificate_requests."enrollmentType"
+            FROM certificate_requests
+            WHERE certificate_requests."certificateId" = certificates.id
+            ORDER BY certificate_requests."createdAt" ASC
+            LIMIT 1
+          ),
+          pki_certificate_profiles."enrollmentType",
+          CASE WHEN certificates.source IN ('imported', 'discovered') THEN certificates.source ELSE 'api' END
         ) IN (${placeholders})`,
-        [
-          TableName.CertificateRequests,
-          "enrollmentType",
-          TableName.CertificateRequests,
-          TableName.CertificateRequests,
-          "certificateId",
-          TableName.Certificate,
-          "id",
-          TableName.CertificateRequests,
-          "createdAt",
-          TableName.PkiCertificateProfile,
-          "enrollmentType",
-          TableName.Certificate,
-          "source",
-          CertificateSource.Imported,
-          CertificateSource.Discovered,
-          TableName.Certificate,
-          "source",
-          EnrollmentType.API,
-          ...filters.enrollmentTypes
-        ]
+        filters.enrollmentTypes
       );
     }
 
@@ -852,31 +836,16 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(
           db.raw(
             `COALESCE(
-              (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
-              ??.??,
-              CASE WHEN ??.?? IN (?, ?) THEN ??.?? ELSE ? END
-            ) as ??`,
-            [
-              TableName.CertificateRequests,
-              "enrollmentType",
-              TableName.CertificateRequests,
-              TableName.CertificateRequests,
-              "certificateId",
-              TableName.Certificate,
-              "id",
-              TableName.CertificateRequests,
-              "createdAt",
-              TableName.PkiCertificateProfile,
-              "enrollmentType",
-              TableName.Certificate,
-              "source",
-              CertificateSource.Imported,
-              CertificateSource.Discovered,
-              TableName.Certificate,
-              "source",
-              EnrollmentType.API,
-              "enrollmentType"
-            ]
+              (
+                SELECT certificate_requests."enrollmentType"
+                FROM certificate_requests
+                WHERE certificate_requests."certificateId" = certificates.id
+                ORDER BY certificate_requests."createdAt" ASC
+                LIMIT 1
+              ),
+              pki_certificate_profiles."enrollmentType",
+              CASE WHEN certificates.source IN ('imported', 'discovered') THEN certificates.source ELSE 'api' END
+            ) as "enrollmentType"`
           )
         )
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"));
@@ -1162,30 +1131,16 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(
           db.raw(
             `COALESCE(
-              (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
-              ??.??,
-              CASE WHEN ??.?? IN (?, ?) THEN ??.?? ELSE ? END
-            ) as label`,
-            [
-              TableName.CertificateRequests,
-              "enrollmentType",
-              TableName.CertificateRequests,
-              TableName.CertificateRequests,
-              "certificateId",
-              TableName.Certificate,
-              "id",
-              TableName.CertificateRequests,
-              "createdAt",
-              TableName.PkiCertificateProfile,
-              "enrollmentType",
-              TableName.Certificate,
-              "source",
-              CertificateSource.Imported,
-              CertificateSource.Discovered,
-              TableName.Certificate,
-              "source",
-              EnrollmentType.API
-            ]
+              (
+                SELECT certificate_requests."enrollmentType"
+                FROM certificate_requests
+                WHERE certificate_requests."certificateId" = certificates.id
+                ORDER BY certificate_requests."createdAt" ASC
+                LIMIT 1
+              ),
+              pki_certificate_profiles."enrollmentType",
+              CASE WHEN certificates.source IN ('imported', 'discovered') THEN certificates.source ELSE 'api' END
+            ) as label`
           )
         )
         .count("* as count")
