@@ -411,7 +411,6 @@ export type TAgentVaultDecryptedChunk = {
   records: TAgentVaultSessionLogRecord[];
   gap: TAgentVaultSessionLogGap | null;
   arrivedAt: number | null;
-  isUploading?: boolean;
 };
 
 export type TAgentVaultDecryptedSessionLogPage<

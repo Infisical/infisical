@@ -159,7 +159,6 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const retryLive = () => live.refetch().catch(() => {});
   const {
     data,
-    dataUpdatedAt,
     isPending,
     isPlaceholderData,
     isError,
@@ -176,15 +175,19 @@ export const SessionLogsPanel = ({ session }: Props) => {
     if (!data) return undefined;
     return arrived ? [arrived, ...data.pages] : data.pages;
   }, [data, arrived]);
+  const [now, setNow] = useState(() => Date.now());
   const { records, gaps, drops, arrivals, isTruncated, isOverByteBudget, hasUploadingChunks } =
-    useAgentVaultSessionLogTimeline(pages);
-  // Only the live tail rereads recent chunks, so once the sheet stops following the session, an upload that
-  // hadn't landed yet is checked again here until it lands or its grace runs out and it reads as missing.
+    useAgentVaultSessionLogTimeline(pages, now);
+  // While a chunk may still be uploading, the clock keeps moving so it turns into a missing gap once its
+  // grace runs out. The live tail already rereads recent chunks; otherwise nothing would, so history reloads.
   useEffect(() => {
-    if (!hasUploadingChunks || isLive || isFetching) return undefined;
-    const timer = setTimeout(() => refetch().catch(() => {}), UPLOAD_RECHECK_MS);
+    if (!hasUploadingChunks) return undefined;
+    const timer = setTimeout(() => {
+      setNow(Date.now());
+      if (!isLive) refetch({ cancelRefetch: false }).catch(() => {});
+    }, UPLOAD_RECHECK_MS);
     return () => clearTimeout(timer);
-  }, [hasUploadingChunks, isLive, isFetching, dataUpdatedAt, refetch]);
+  }, [hasUploadingChunks, isLive, now, refetch]);
   if (isOverByteBudget && !isPlaceholderData && !isPausedForBudget) pauseForBudget();
   const isLoadError = isError && !data;
 

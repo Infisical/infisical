@@ -119,25 +119,6 @@ describe("decryptSessionLogPage", () => {
     });
   });
 
-  it("holds a 404 on a chunk registered moments ago as still uploading, and tries it again", async () => {
-    const fetchMock = vi.fn(async () => new Response(null, { status: 404 }));
-    vi.stubGlobal("fetch", fetchMock);
-    const uploading = {
-      ...page,
-      chunks: [{ ...page.chunks[0], createdAt: new Date().toISOString() }]
-    };
-    const cache = createSessionLogChunkCache("session-1");
-    const first = await decryptSessionLogPage(uploading, cache);
-    await decryptSessionLogPage(uploading, cache);
-    assert.deepEqual(first.decrypted[chunkId], {
-      records: [],
-      gap: null,
-      arrivedAt: null,
-      isUploading: true
-    });
-    assert.equal(fetchMock.mock.calls.length, 2);
-  });
-
   it("reports a download the bucket refused, and tries it again", async () => {
     assert.deepEqual(await openTwice(async () => new Response(null, { status: 403 })), {
       reason: "refused",

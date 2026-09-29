@@ -11,10 +11,6 @@ import {
 
 const CHUNK_DOWNLOAD_TIMEOUT_MS = 60_000;
 
-// A chunk is listed as soon as its proxy registers it, before the upload lands, and the tail rereads
-// chunks this recent, so a 404 inside this window is an upload still in flight.
-const CHUNK_UPLOAD_GRACE_MS = 2 * 60_000;
-
 const AAD_VERSION = "v1";
 
 const base64ToBytes = (value: string) => {
@@ -84,7 +80,7 @@ const isRetryableSessionLogGap = (reason?: TAgentVaultSessionLogGapReason) =>
   reason === "fetch" || reason === "missing" || reason === "refused";
 
 export const isRetryableResult = (result: TAgentVaultDecryptedChunk) =>
-  Boolean(result.isUploading) || isRetryableSessionLogGap(result.gap?.reason);
+  isRetryableSessionLogGap(result.gap?.reason);
 
 const withTimeout = (signal: AbortSignal | undefined, ms: number) => {
   const controller = new AbortController();
@@ -116,9 +112,6 @@ const openChunk = async (
       credentials: "omit",
       signal: download.signal
     });
-    if (res.status === 404 && Date.now() - Date.parse(chunk.createdAt) < CHUNK_UPLOAD_GRACE_MS) {
-      return { records: [], gap: null, arrivedAt: null, isUploading: true };
-    }
     if (!res.ok) return gapFor(chunk, res.status === 404 ? "missing" : "refused");
     body = await res.arrayBuffer();
   } catch (error) {
