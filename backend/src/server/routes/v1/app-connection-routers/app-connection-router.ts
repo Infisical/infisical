@@ -232,6 +232,7 @@ import {
   SpaceliftConnectionListItemSchema
 } from "@app/services/app-connection/spacelift";
 import { SanitizedSshConnectionSchema, SshConnectionListItemSchema } from "@app/services/app-connection/ssh";
+import { SanitizedStripeConnectionSchema, StripeConnectionListItemSchema } from "@app/services/app-connection/stripe";
 import {
   SanitizedSupabaseConnectionSchema,
   SupabaseConnectionListItemSchema
@@ -355,7 +356,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedNutanixPrismCentralConnectionSchema.options,
   ...SanitizedPowerDnsConnectionSchema.options,
   ...SanitizedSpaceliftConnectionSchema.options,
-  ...SanitizedDaytonaConnectionSchema.options
+  ...SanitizedDaytonaConnectionSchema.options,
+  ...SanitizedStripeConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -443,7 +445,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   NutanixPrismCentralConnectionListItemSchema,
   PowerDnsConnectionListItemSchema,
   SpaceliftConnectionListItemSchema,
-  DaytonaConnectionListItemSchema
+  DaytonaConnectionListItemSchema,
+  StripeConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

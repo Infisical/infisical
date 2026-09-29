@@ -3660,6 +3660,12 @@ export const SecretRotations = {
       username:
         "The Snowflake user whose RSA key pair will be rotated. If the user does not exist, it is created as a key-pair-only SERVICE user.",
       modulusLength: "The modulus length in bits of the generated RSA key pairs. Defaults to 2048."
+    },
+    STRIPE_API_KEY: {
+      keyName:
+        "The name for each Stripe API key this rotation creates, up to 80 characters. Infisical appends a timestamp so the old and new key can be told apart. Defaults to 'infisical-managed'.",
+      permissions:
+        "The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do."
     }
   },
   SECRETS_MAPPING: {
@@ -3759,6 +3765,9 @@ export const SecretRotations = {
     SNOWFLAKE_USER_KEY_PAIR: {
       privateKey: "The name of the secret that the generated RSA private key (PKCS#8 PEM) will be mapped to.",
       publicKey: "The name of the secret that the generated RSA public key (SPKI PEM) will be mapped to."
+    },
+    STRIPE_API_KEY: {
+      apiKey: "The name of the secret that the rotated Stripe API key will be mapped to."
     }
   }
 };

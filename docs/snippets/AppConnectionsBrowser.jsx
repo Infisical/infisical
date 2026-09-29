@@ -651,6 +651,14 @@ export const AppConnectionsBrowser = () => {
       category: "AI & LLM",
     },
     {
+      name: "Stripe",
+      slug: "stripe",
+      path: "/integrations/app-connections/stripe",
+      description:
+        "Learn how to connect Stripe to manage and rotate API keys with Infisical.",
+      category: "SaaS",
+    },
+    {
       name: "Spacelift",
       slug: "spacelift",
       path: "/integrations/app-connections/spacelift",
