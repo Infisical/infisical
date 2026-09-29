@@ -3,30 +3,12 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TProjectEnvironments, TProjects, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
 import { RemindersSchema } from "@app/db/schemas/reminders";
-import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TReminderDALFactory = ReturnType<typeof reminderDALFactory>;
 
 export const reminderDALFactory = (db: TDbClient) => {
   const reminderOrm = ormify(db, TableName.Reminder);
-
-  const getTodayDateRange = () => {
-    const today = new Date();
-    const year = today.getUTCFullYear();
-    const month = today.getUTCMonth();
-    const date = today.getUTCDate();
-
-    // Start of day: 00:00:00.000 UTC
-    const startOfDay = new Date(Date.UTC(year, month, date, 0, 0, 0, 0));
-
-    // End of day: 23:59:59.999 UTC
-    const endOfDay = new Date(Date.UTC(year, month, date, 23, 59, 59, 999));
-
-    return {
-      startOfDay,
-      endOfDay
-    };
-  };
 
   // Due reminders whose secret is still live. Soft-deleted environments and projects keep their
   // reminders so a restore brings them back, but they do not fire in the meantime.
@@ -79,67 +61,20 @@ export const reminderDALFactory = (db: TDbClient) => {
     return rows.map((row) => row.resourceId);
   };
 
-  const findUpcomingReminders = async (daysAhead: number = 7, tx?: Knex) => {
-    const { startOfDay } = getTodayDateRange();
-    const futureDate = new Date(startOfDay);
-    futureDate.setDate(futureDate.getDate() + daysAhead);
-
-    const reminders = await (tx || db.replicaNode())(TableName.Reminder)
-      .where("nextReminderDate", ">=", startOfDay)
-      .where("nextReminderDate", "<=", futureDate)
-      .orderBy("nextReminderDate", "asc")
-      .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
-      .select(selectAllTableCols(TableName.Reminder))
-      .select(db.ref("userId").withSchema(TableName.ReminderRecipient));
-    return reminders;
-  };
-
+  // Recipients are not stored here: they live on the reminder's alert email channel.
   const findSecretReminder = async (secretId: string, tx?: Knex) => {
-    const rawReminders = await (tx || db.replicaNode())(TableName.Reminder)
+    const reminder = await (tx || db.replicaNode())(TableName.Reminder)
       .where(`${TableName.Reminder}.secretId`, secretId)
-      .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
       .select(selectAllTableCols(TableName.Reminder))
-      .select(db.ref("userId").withSchema(TableName.ReminderRecipient));
-    const reminders = sqlNestRelationships({
-      data: rawReminders,
-      key: "id",
-      parentMapper: (el) => ({
-        _id: el.id,
-        ...RemindersSchema.parse(el)
-      }),
-      childrenMapper: [
-        {
-          key: "userId",
-          label: "recipients" as const,
-          mapper: ({ userId }) => userId
-        }
-      ]
-    });
-    return reminders[0] || null;
+      .first();
+    return reminder ? RemindersSchema.parse(reminder) : null;
   };
 
   const findSecretReminders = async (secretIds: string[], tx?: Knex) => {
-    const rawReminders = await (tx || db.replicaNode())(TableName.Reminder)
+    const reminders = await (tx || db.replicaNode())(TableName.Reminder)
       .whereIn(`${TableName.Reminder}.secretId`, secretIds)
-      .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
-      .select(selectAllTableCols(TableName.Reminder))
-      .select(db.ref("userId").withSchema(TableName.ReminderRecipient));
-    const reminders = sqlNestRelationships({
-      data: rawReminders,
-      key: "id",
-      parentMapper: (el) => ({
-        _id: el.id,
-        ...RemindersSchema.parse(el)
-      }),
-      childrenMapper: [
-        {
-          key: "userId",
-          label: "recipients" as const,
-          mapper: ({ userId }) => userId
-        }
-      ]
-    });
-    return reminders;
+      .select(selectAllTableCols(TableName.Reminder));
+    return reminders.map((reminder) => RemindersSchema.parse(reminder));
   };
 
   const findByProjectAndDateRange = async (
@@ -193,7 +128,6 @@ export const reminderDALFactory = (db: TDbClient) => {
     ...reminderOrm,
     findDueReminders,
     findOrphanedReminderAlertResourceIds,
-    findUpcomingReminders,
     findSecretReminder,
     findSecretReminders,
     findByProjectAndDateRange

@@ -13,6 +13,7 @@ import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outb
 import { reminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { reminderServiceFactory } from "@app/services/reminder/reminder-service";
 
+import { up as migrateRemindersToAlerts } from "../../../src/db/migrations/20260929130000_migrate-secret-reminders-to-alerts";
 import { createFolder } from "../../testUtils/folders";
 import { createSecretV2, deleteSecretV2 } from "../../testUtils/secrets";
 
@@ -81,7 +82,19 @@ const setReminder = async (secretId: string, body: Record<string, unknown>) => {
   expect(res.statusCode).toBe(200);
 };
 
-const reminderAlert = async (secretId: string) => {
+type TReminderAlert = {
+  id: string;
+  name: string;
+  channels: {
+    id: string;
+    name: string;
+    channelType: string;
+    enabled: boolean;
+    recipients: { principalType: string; principalId: string }[];
+  }[];
+};
+
+const reminderAlert = async (secretId: string): Promise<TReminderAlert[]> => {
   const res = await testServer.inject({
     method: "GET",
     url: "/api/v1/alerts",
@@ -89,8 +102,7 @@ const reminderAlert = async (secretId: string) => {
     query: { resourceType: RESOURCE_TYPE, projectId, resourceId: secretId }
   });
   expect(res.statusCode).toBe(200);
-  const { alerts } = res.json();
-  return alerts;
+  return res.json<{ alerts: TReminderAlert[] }>().alerts;
 };
 
 const reminderAlertRows = (secretId: string) =>
@@ -302,5 +314,76 @@ describe("Secret reminders delivered through alerts", async () => {
 
     expect(await reminderAlertRows(secretId)).toHaveLength(0);
     expect(await reminderAlertRows("11111111-1111-4111-8111-111111111111")).toHaveLength(0);
+  });
+
+  test("the migration gives existing reminders an alert, keeping only recipients still in the project", async () => {
+    const secretId = await createSecret("REMINDER_E2E_MIGRATE");
+    const [outsider] = await testDb("users")
+      .insert({ username: "reminder-outsider@localhost.local", email: "reminder-outsider@localhost.local" })
+      .returning("id");
+    const [reminder] = await testDb("reminders")
+      .insert({ secretId, repeatDays: 30, nextReminderDate: new Date(Date.now() + 24 * 60 * 60 * 1000) })
+      .returning("id");
+    await testDb("reminders_recipients").insert([
+      { reminderId: reminder.id, userId: seedData1.id },
+      { reminderId: reminder.id, userId: outsider.id }
+    ]);
+
+    await migrateRemindersToAlerts(testDb);
+
+    const [alert] = await reminderAlert(secretId);
+    expect(alert.name).toBe("Reminder for REMINDER_E2E_MIGRATE");
+    expect(alert.channels).toHaveLength(1);
+    expect(alert.channels[0].recipients).toEqual([{ principalType: "user", principalId: seedData1.id }]);
+    expect(await reminderAlertRows(secretId)).toEqual([
+      expect.objectContaining({ createdByActorType: "platform", createdByActorId: null, triggerType: "event" })
+    ]);
+  });
+
+  test("the migration falls back to all project members when no listed recipient is left", async () => {
+    const secretId = await createSecret("REMINDER_E2E_MIGRATE_EVERYONE");
+    await testDb("reminders").insert({
+      secretId,
+      repeatDays: 7,
+      nextReminderDate: new Date(Date.now() + 24 * 60 * 60 * 1000)
+    });
+
+    await migrateRemindersToAlerts(testDb);
+
+    const [alert] = await reminderAlert(secretId);
+    expect(alert.channels[0].recipients).toEqual([{ principalType: "project-members", principalId: projectId }]);
+  });
+
+  test("rerunning the migration does not duplicate alerts", async () => {
+    const secretId = await createSecret("REMINDER_E2E_MIGRATE_TWICE");
+    await testDb("reminders").insert({
+      secretId,
+      repeatDays: 7,
+      nextReminderDate: new Date(Date.now() + 24 * 60 * 60 * 1000)
+    });
+
+    await migrateRemindersToAlerts(testDb);
+    await migrateRemindersToAlerts(testDb);
+
+    expect(await reminderAlertRows(secretId)).toHaveLength(1);
+  });
+
+  test("the migration resumes long-dead recurring reminders on their schedule without sending", async () => {
+    const secretId = await createSecret("REMINDER_E2E_MIGRATE_STALE");
+    const dayMs = 24 * 60 * 60 * 1000;
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+    // Died 100 days ago on a 30 day schedule: the next date on that schedule is 20 days from today.
+    await testDb("reminders").insert({
+      secretId,
+      repeatDays: 30,
+      nextReminderDate: new Date(startOfToday.getTime() - 100 * dayMs)
+    });
+
+    await migrateRemindersToAlerts(testDb);
+
+    const migrated = await testDb("reminders").where({ secretId }).first();
+    expect(new Date(migrated.nextReminderDate).getTime()).toBe(startOfToday.getTime() + 20 * dayMs);
+    expect(await testDb("event_outbox").whereRaw(`payload->>'resourceId' = ?`, [secretId])).toHaveLength(0);
   });
 });

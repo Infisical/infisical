@@ -541,7 +541,7 @@ export const reminderServiceFactory = ({
       reminders.map((reminder) => reminder.secretId).filter((id): id is string => Boolean(id))
     );
 
-    const reminderMap: Record<string, (typeof reminders)[number]> = {};
+    const reminderMap: Record<string, (typeof reminders)[number] & { recipients: string[] }> = {};
 
     reminders.forEach((reminder) => {
       if (reminder.secretId) {
