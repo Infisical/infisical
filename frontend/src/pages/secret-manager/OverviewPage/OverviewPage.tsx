@@ -3007,7 +3007,7 @@ const OverviewPageContent = () => {
                                     aria-label={`Open ${name} environment menu`}
                                     className="flex h-full w-full min-w-[240px] cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                                   >
-                                    <span className="whitespace-nowrap">{name}</span>
+                                    <span className="min-w-0 truncate">{name}</span>
                                     <ChevronDownIcon className="size-3.5 shrink-0" />
                                   </button>
                                 </DropdownMenuTrigger>
