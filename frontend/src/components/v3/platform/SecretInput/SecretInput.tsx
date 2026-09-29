@@ -5,6 +5,7 @@ import { TriangleAlertIcon } from "lucide-react";
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useToggle } from "@app/hooks";
 
+import { IconButton } from "../../generic/IconButton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
 import { cn } from "../../utils";
 import { getInvisibleCharacterSummary, INVISIBLE_CHAR_REGEX } from "./invisibleCharacters";
@@ -229,12 +230,16 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
           "no-scrollbar w-full overflow-auto bg-transparent text-foreground",
           variant === "default" &&
             "flex min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+          variant === "plain" && invisibleChars.length > 0 && "flex",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}
       >
         <div
-          className={cn("relative w-full overflow-hidden", variant === "default" && "px-2.5 py-1")}
+          className={cn(
+            "relative w-full min-w-0 overflow-hidden",
+            variant === "default" && "px-2.5 py-1"
+          )}
         >
           <div
             aria-hidden
@@ -301,16 +306,18 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         {invisibleChars.length > 0 && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                type="button"
+              <IconButton
                 aria-label="Value contains invisible characters"
+                variant="ghost"
+                size="xs"
                 className={cn(
-                  "sticky top-0 flex h-5 shrink-0 items-center self-start",
+                  "border-transparent bg-transparent text-warning hover:bg-transparent hover:text-warning data-[state=open]:bg-transparent",
+                  "sticky top-0 self-start",
                   variant === "default" && "mt-1 mr-2.5"
                 )}
               >
-                <TriangleAlertIcon className="size-4 text-warning" />
-              </button>
+                <TriangleAlertIcon />
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent className="max-w-72">
               <p>This value contains invisible characters that can break it when used:</p>

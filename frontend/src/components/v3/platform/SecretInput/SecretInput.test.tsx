@@ -1,4 +1,5 @@
 /* eslint-disable no-template-curly-in-string */
+import { type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import assert from "node:assert/strict";
 import { describe, it, vi } from "vitest";
@@ -11,10 +12,28 @@ import { SecretInput } from "./SecretInput";
 // The @app/hooks barrel pulls in the router and API client, which cannot load outside the app.
 vi.mock("@app/hooks", async () => import("@app/hooks/useToggle"));
 
+// Radix keeps tooltip content unmounted until it opens, which static markup never does.
+vi.mock("../../generic/Tooltip", async () => {
+  const { createElement } = await import("react");
+
+  return {
+    Tooltip: ({ children }: { children: ReactNode }) => children,
+    TooltipTrigger: ({ children }: { children: ReactNode }) => children,
+    TooltipContent: ({ children }: { children: ReactNode }) =>
+      createElement("div", { "data-slot": "tooltip-content" }, children)
+  };
+});
+
 const MARKER_REGEX = /<span class="[^"]*bg-warning\/25[^"]*">([^<]*)<\/span>/g;
 const WARNING_ICON = 'aria-label="Value contains invisible characters"';
+const ICON_BUTTON = 'data-slot="icon-button"';
+const TOOLTIP_INTRO = "This value contains invisible characters that can break it when used:";
+const TOOLTIP_ITEM_REGEX = /<li>([^<]*)<\/li>/g;
 
 const markedChars = (markup: string) => [...markup.matchAll(MARKER_REGEX)].map(([, char]) => char);
+
+const tooltipItems = (markup: string) =>
+  [...markup.matchAll(TOOLTIP_ITEM_REGEX)].map(([, text]) => text);
 
 const render = (value: string, isVisible = true) =>
   renderToStaticMarkup(<SecretInput value={value} isVisible={isVisible} readOnly />);
@@ -85,11 +104,15 @@ describe("SecretInput invisible characters", () => {
 
 describe("SecretInput invisible characters warning icon", () => {
   it("shows the warning icon when the value contains invisible characters", () => {
-    assert.ok(render("KEY=\u00a0value").includes(WARNING_ICON));
+    const markup = render("KEY=\u00a0value");
+    assert.ok(markup.includes(WARNING_ICON));
+    assert.ok(markup.includes(ICON_BUTTON));
   });
 
   it("shows the warning icon while the value is masked", () => {
-    assert.ok(render("KEY=\u200bvalue", false).includes(WARNING_ICON));
+    const markup = render("KEY=\u200bvalue", false);
+    assert.ok(markup.includes(WARNING_ICON));
+    assert.ok(markup.includes(ICON_BUTTON));
   });
 
   it("does not show the warning icon for an ordinary value", () => {
@@ -103,6 +126,46 @@ describe("SecretInput invisible characters warning icon", () => {
     );
     assert.ok(
       !renderToStaticMarkup(<SecretInput {...props} isErrorLoadingValue />).includes(WARNING_ICON)
+    );
+  });
+});
+
+describe("SecretInput invisible characters tooltip", () => {
+  it("lists each invisible character with its count, label, and code point", () => {
+    const markup = render("\u00a0a\u00a0\u200b\u0001");
+    assert.ok(markup.includes(TOOLTIP_INTRO));
+    assert.deepEqual(tooltipItems(markup), [
+      "2x Non-breaking space (U+00A0)",
+      "1x Zero-width space (U+200B)",
+      "1x Control character (U+0001)"
+    ]);
+  });
+
+  it("uses the range label when a character has no specific name", () => {
+    assert.deepEqual(tooltipItems(render("\u2003\u202e\u0085")), [
+      "1x Unicode space (U+2003)",
+      "1x Bidirectional control (U+202E)",
+      "1x Control character (U+0085)"
+    ]);
+  });
+
+  it("lists the same characters while the value is masked", () => {
+    const markup = render("secret\u00a0value", false);
+    assert.deepEqual(tooltipItems(markup), ["1x Non-breaking space (U+00A0)"]);
+    assert.ok(!markup.includes("secret\u00a0value"));
+  });
+
+  it("renders no tooltip entries for an ordinary value, while loading, or after a load error", () => {
+    assert.deepEqual(tooltipItems(render("KEY=value with spaces\ttab\n")), []);
+
+    const props = { value: "KEY=\u00a0value", isVisible: true, readOnly: true };
+    assert.deepEqual(
+      tooltipItems(renderToStaticMarkup(<SecretInput {...props} isLoadingValue />)),
+      []
+    );
+    assert.deepEqual(
+      tooltipItems(renderToStaticMarkup(<SecretInput {...props} isErrorLoadingValue />)),
+      []
     );
   });
 });

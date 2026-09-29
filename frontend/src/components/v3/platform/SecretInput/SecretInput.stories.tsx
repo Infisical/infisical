@@ -58,9 +58,9 @@ export const InvisibleCharacters: Story = {
     isVisible: true,
     value: [
       "{",
-      '  "HILTON_BASE_URL":\u00a0"https://kapip-s.hilton.io/gateway",',
-      '  "HILTON_API_KEY": "a1b2c3d4e5",',
-      '  "HILTON_TIMEOUT": 30\u200b',
+      '  "BASE_URL":\u00a0"https://example.com",',
+      '  "API_KEY": "a1b2c3d4e5",',
+      '  "TIMEOUT": 30\u200b',
       "\ufeff}",
       REFERENCE_WITH_NBSP
     ].join("\n"),
