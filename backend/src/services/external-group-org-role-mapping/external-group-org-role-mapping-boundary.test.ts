@@ -19,6 +19,7 @@ import { externalGroupOrgRoleMappingServiceFactory } from "./external-group-org-
 
 const ORG_ID = "org-id";
 const HIGH_ROLE = { id: "high-role-id", slug: "high" };
+const PRIMARY = { node: "primary" };
 
 const admin = createMongoAbility<MongoAbility>(orgAdminPermissions);
 const member = createMongoAbility<MongoAbility>(orgMemberPermissions);
@@ -60,7 +61,8 @@ const createService = ({
 
   const externalGroupOrgRoleMappingDAL = {
     find: vi.fn().mockResolvedValue(currentMappings.map((mapping) => ({ orgId: ORG_ID, roleId: null, ...mapping }))),
-    updateExternalGroupOrgRoleMappingForOrg: vi.fn().mockResolvedValue([])
+    updateExternalGroupOrgRoleMappingForOrg: vi.fn().mockResolvedValue([]),
+    primaryNode: vi.fn().mockReturnValue(PRIMARY)
   };
 
   const service = externalGroupOrgRoleMappingServiceFactory({
@@ -87,7 +89,8 @@ const createService = ({
   return {
     run,
     getOrgPermissionByRoles,
-    persist: externalGroupOrgRoleMappingDAL.updateExternalGroupOrgRoleMappingForOrg
+    persist: externalGroupOrgRoleMappingDAL.updateExternalGroupOrgRoleMappingForOrg,
+    findCurrent: externalGroupOrgRoleMappingDAL.find
   };
 };
 
@@ -257,5 +260,14 @@ describe("updateExternalGroupOrgRoleMappings privilege boundary", () => {
       expect.any(Array),
       currentMappings.map((mapping): unknown => expect.objectContaining(mapping))
     );
+  });
+
+  // A replica read here would lag the write's primary re-read and 409 a save nobody raced.
+  test("reads the snapshot from the primary the write re-checks against", async () => {
+    const { run, findCurrent } = createService({ actorPermission: admin, shouldUseNewPrivilegeSystem: true });
+
+    await run([{ groupName: "g", roleSlug: OrgMembershipRole.NoAccess }]);
+
+    expect(findCurrent).toHaveBeenCalledWith({ orgId: ORG_ID }, { tx: PRIMARY });
   });
 });

@@ -94,7 +94,10 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
       orgDAL.findById(actor.orgId)
     );
 
-    const currentMappings = await externalGroupOrgRoleMappingDAL.find({ orgId: actor.orgId });
+    const currentMappings = await externalGroupOrgRoleMappingDAL.find(
+      { orgId: actor.orgId },
+      { tx: externalGroupOrgRoleMappingDAL.primaryNode() }
+    );
     const currentByGroupName = new Map(currentMappings.map((mapping) => [mapping.groupName, mapping]));
     const nextByGroupName = new Map(mappings.map((mapping) => [mapping.groupName, mapping]));
 

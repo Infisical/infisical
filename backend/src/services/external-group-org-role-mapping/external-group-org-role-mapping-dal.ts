@@ -62,5 +62,7 @@ export const externalGroupOrgRoleMappingDALFactory = (db: TDbClient) => {
     return mappings;
   };
 
-  return { ...externalGroupOrgRoleMappingOrm, updateExternalGroupOrgRoleMappingForOrg };
+  const primaryNode = () => db.primaryNode();
+
+  return { ...externalGroupOrgRoleMappingOrm, updateExternalGroupOrgRoleMappingForOrg, primaryNode };
 };
