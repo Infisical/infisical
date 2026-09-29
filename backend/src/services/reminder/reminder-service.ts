@@ -336,8 +336,7 @@ export const reminderServiceFactory = ({
     return { ...reminder, recipients: recipientIds.get(secretId) ?? [] };
   };
 
-  const dispatchDueReminders: TReminderServiceFactory["dispatchDueReminders"] = async () => {
-    const now = new Date();
+  const dispatchDueReminders: TReminderServiceFactory["dispatchDueReminders"] = async ({ now = new Date() } = {}) => {
     const dueReminders = await reminderDAL.findDueReminders(getReminderDueWindow(now));
 
     for (const reminder of dueReminders) {

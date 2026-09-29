@@ -82,24 +82,18 @@ const buildService = (opts: {
 };
 
 describe("reminder dispatch", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-10-10T00:00:05.000Z"));
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
+  const now = new Date("2026-10-10T00:00:05.000Z");
 
   test("looks back over the catch-up window", async () => {
     const { service, window } = buildService({});
-    await service.dispatchDueReminders();
+    await service.dispatchDueReminders({ now });
     expect(window()?.from.toISOString()).toBe("2026-10-03T00:00:00.000Z");
     expect(window()?.to.toISOString()).toBe("2026-10-10T23:59:59.999Z");
   });
 
   test("emits the due event and advances a recurring reminder in the same transaction", async () => {
     const { service, emitted, updates } = buildService({ due: [reminder()] });
-    await service.dispatchDueReminders();
+    await service.dispatchDueReminders({ now });
 
     expect(emitted).toHaveLength(1);
     expect(emitted[0]).toMatchObject({
@@ -123,7 +117,7 @@ describe("reminder dispatch", () => {
 
   test("deletes a one-time reminder once its event is emitted", async () => {
     const { service, emitted, deletes, updates } = buildService({ due: [reminder({ repeatDays: null })] });
-    await service.dispatchDueReminders();
+    await service.dispatchDueReminders({ now });
 
     expect(emitted).toHaveLength(1);
     expect(deletes).toEqual([{ id: "rem-1", tx: emitted[0].tx }]);
@@ -134,7 +128,7 @@ describe("reminder dispatch", () => {
     const { service, emitted, updates } = buildService({
       due: [reminder({ repeatDays: 2, nextReminderDate: new Date("2026-10-05T00:00:00.000Z") })]
     });
-    await service.dispatchDueReminders();
+    await service.dispatchDueReminders({ now });
 
     expect(emitted).toHaveLength(1);
     expect(emitted[0].payload.occurrenceDate).toBe("2026-10-05");
@@ -146,7 +140,7 @@ describe("reminder dispatch", () => {
       due: [reminder({ id: "rem-1", secretId: "secret-1" }), reminder({ id: "rem-2", secretId: "secret-2" })],
       emitFails: (secretId) => secretId === "secret-1"
     });
-    await service.dispatchDueReminders();
+    await service.dispatchDueReminders({ now });
 
     expect(emitted.map((event) => event.payload.resourceId)).toEqual(["secret-2"]);
     expect(updates.map((update) => update.id)).toEqual(["rem-2"]);
@@ -154,7 +148,7 @@ describe("reminder dispatch", () => {
 
   test("skips a reminder with no secret", async () => {
     const { service, emitted } = buildService({ due: [reminder({ secretId: null })] });
-    await service.dispatchDueReminders();
+    await service.dispatchDueReminders({ now });
     expect(emitted).toHaveLength(0);
   });
 });

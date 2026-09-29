@@ -78,6 +78,16 @@ export default defineConfig({
       {
         find: "./aws-connection-fns",
         replacement: path.resolve(__dirname, "./e2e-test/fakes/aws-connection-fns")
+      },
+      // Pass-through wrappers that hand a spec the real job, to run on demand. Only
+      // server/routes/index.ts imports either specifier.
+      {
+        find: /^@app\/services\/reminder\/reminder-queue$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/reminder-queue")
+      },
+      {
+        find: /^@app\/services\/event-outbox\/event-outbox-queue$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/event-outbox-queue")
       }
     ]
   },

@@ -3,12 +3,11 @@ import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns"
 import { SecretSyncInitialSyncBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncStatus } from "@app/services/secret-sync/secret-sync-types";
 
+import { pollUntil } from "./poll";
+
 // Every spec drives AWS Parameter Store, which is faked for the whole e2e run. See
 // e2e-test/fakes/ and the alias block in vitest.e2e.config.mts.
 const DESTINATION = "aws-parameter-store";
-
-const SYNC_TIMEOUT_MS = 20_000;
-const SYNC_POLL_MS = 100;
 
 type TSecretSyncRecord = {
   id: string;
@@ -174,25 +173,6 @@ export const deleteSecretSync = async (dto: { syncId: string; authToken: string 
   });
 
   expect(res.statusCode).toBe(200);
-};
-
-const pollUntil = async <T>(dto: { describe: string; read: () => Promise<T> | T; done: (value: T) => boolean }) => {
-  const deadline = Date.now() + SYNC_TIMEOUT_MS;
-
-  for (;;) {
-    // eslint-disable-next-line no-await-in-loop
-    const value = await dto.read();
-    if (dto.done(value)) return value;
-
-    if (Date.now() >= deadline) {
-      throw new Error(`Timed out after ${SYNC_TIMEOUT_MS}ms waiting for ${dto.describe}`);
-    }
-
-    // eslint-disable-next-line no-await-in-loop
-    await new Promise((resolve) => {
-      setTimeout(resolve, SYNC_POLL_MS);
-    });
-  }
 };
 
 // Waits on the fake's own run counter before reading the record, rather than on the record
