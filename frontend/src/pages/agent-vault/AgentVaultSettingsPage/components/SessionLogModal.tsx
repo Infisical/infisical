@@ -112,9 +112,17 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   onSaved: (settings: TAgentVaultSessionLogSettings) => void;
   onEditCredentials?: () => void;
+  // Without the plan, recording can only be switched off and the connection removed.
+  isCleanupOnly?: boolean;
 };
 
-export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentials }: Props) => {
+export const SessionLogModal = ({
+  isOpen,
+  onOpenChange,
+  onSaved,
+  onEditCredentials,
+  isCleanupOnly = false
+}: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const { data: settings } = useGetAgentVaultSessionLogSettings();
@@ -164,9 +172,13 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
   );
 
   const connectionOptions = [
-    ...(canCreateConnection ? [{ id: CREATE_CONNECTION, name: "Create New Connection" }] : []),
+    ...(canCreateConnection && !isCleanupOnly
+      ? [{ id: CREATE_CONNECTION, name: "Create New Connection" }]
+      : []),
     ...(isEnabled ? [] : [{ id: NO_CONNECTION, name: "None" }]),
-    ...(connections ?? [])
+    ...(connections ?? []).filter(
+      (connection) => !isCleanupOnly || connection.id === settings?.appConnectionId
+    )
   ];
 
   const typedBucket = bucket.trim();
@@ -210,6 +222,15 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
             </DialogDescription>
           </DialogHeader>
 
+          {isCleanupOnly && (
+            <Alert variant="warning">
+              <AlertDescription>
+                Your plan no longer includes session logs. You can turn them off and remove the AWS
+                connection.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <FieldGroup>
             <FieldSet>
               <Controller
@@ -228,6 +249,7 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                       variant="av"
                       checked={field.value ?? false}
                       onCheckedChange={field.onChange}
+                      disabled={isCleanupOnly && !settings?.enabled}
                     />
                   </Field>
                 )}
@@ -266,6 +288,7 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                         }}
                         isLoading={isLoadingConnections}
                         isError={Boolean(fieldState.error)}
+                        isDisabled={isCleanupOnly && isEnabled}
                         options={connectionOptions}
                         placeholder="Select a connection..."
                         getOptionLabel={(option) => option.name}
@@ -336,6 +359,7 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                         value={field.value}
                         onChange={field.onChange}
                         isError={Boolean(fieldState.error)}
+                        isDisabled={isCleanupOnly}
                         aria-labelledby="agent-vault-session-log-region-label"
                       />
                       <FieldError>{fieldState.error?.message}</FieldError>
@@ -356,6 +380,7 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                           {...field}
                           placeholder="acme-agent-vault-session-logs"
                           isError={Boolean(fieldState.error)}
+                          disabled={isCleanupOnly}
                         />
                         <FieldError>{fieldState.error?.message}</FieldError>
                       </FieldContent>
@@ -375,6 +400,7 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                           {...field}
                           placeholder="agent-vault"
                           isError={Boolean(fieldState.error)}
+                          disabled={isCleanupOnly}
                         />
                         <FieldDescription>
                           Session logs are written under this prefix.

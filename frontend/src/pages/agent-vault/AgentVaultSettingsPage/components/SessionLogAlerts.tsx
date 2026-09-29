@@ -63,8 +63,8 @@ export const SessionLogAlerts = () => {
           <TriangleAlertIcon />
           <AlertDescription>
             <p>
-              Your plan no longer includes session logs, so new requests aren&apos;t recorded. Saved
-              logs stay viewable.
+              Your plan no longer includes session logs, so new requests aren&apos;t recorded.
+              {config?.appConnectionId && " Saved logs stay viewable."}
             </p>
             <AlertAction>
               <Button variant="outline" size="sm" onClick={() => setIsUpgradeOpen(true)}>

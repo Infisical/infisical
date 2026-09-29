@@ -83,6 +83,10 @@ export const SessionLogSection = () => {
 
   const hasDestination = Boolean(config?.bucket);
   const isEnabled = Boolean(config?.enabled) && subscription.agentVaultByoS3;
+  // Without the plan, Configure still opens for an existing setup so an admin can switch it off and
+  // detach the connection; there is nothing to clean up otherwise, so it offers the upgrade.
+  const isCleanupOnly =
+    !subscription.agentVaultByoS3 && Boolean(config?.enabled || config?.appConnectionId);
 
   // Saving with session logs on already proved Infisical can write, so the dialog only opens for a
   // step the read check finds missing.
@@ -130,7 +134,9 @@ export const SessionLogSection = () => {
                 variant="av"
                 isDisabled={isPending}
                 onClick={() =>
-                  subscription.agentVaultByoS3 ? setIsModalOpen(true) : setIsUpgradeOpen(true)
+                  subscription.agentVaultByoS3 || isCleanupOnly
+                    ? setIsModalOpen(true)
+                    : setIsUpgradeOpen(true)
                 }
               >
                 {!config || hasDestination ? "Configure" : "Set Up Session Logs"}
@@ -229,6 +235,7 @@ export const SessionLogSection = () => {
         onOpenChange={setIsModalOpen}
         onSaved={offerAwsSetup}
         onEditCredentials={canEditConnection ? () => setIsEditCredentialsOpen(true) : undefined}
+        isCleanupOnly={isCleanupOnly}
       />
 
       <AgentVaultSessionLogUpgradeModal isOpen={isUpgradeOpen} onOpenChange={setIsUpgradeOpen} />
