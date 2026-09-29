@@ -8,7 +8,7 @@ import { useToggle } from "@app/hooks";
 import { IconButton } from "../../generic/IconButton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
 import { cn } from "../../utils";
-import { getInvisibleCharacterSummary, INVISIBLE_CHAR_REGEX } from "./invisibleCharacters";
+import { getInvisibleCharacterSummary, splitSuspiciousCharacters } from "./invisibleCharacters";
 
 const REGEX = /(\${([@a-zA-Z0-9-_. ]+)})/g;
 
@@ -16,8 +16,8 @@ const markInvisibleChars = (text: string, chunkKey: number) => {
   const nodes: ReactNode[] = [];
   let offset = 0;
 
-  text.split(INVISIBLE_CHAR_REGEX).forEach((part, index) => {
-    if (index % 2 === 1) {
+  splitSuspiciousCharacters(text).forEach(({ text: part, isSuspicious }) => {
+    if (isSuspicious) {
       nodes.push(
         <span
           key={`secret-value-invisible-${chunkKey}-${offset}`}
@@ -26,7 +26,7 @@ const markInvisibleChars = (text: string, chunkKey: number) => {
           {part}
         </span>
       );
-    } else if (part) {
+    } else {
       nodes.push(part);
     }
     offset += part.length;

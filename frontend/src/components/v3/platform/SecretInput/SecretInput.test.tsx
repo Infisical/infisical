@@ -6,7 +6,7 @@ import { describe, it, vi } from "vitest";
 
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 
-import { getInvisibleCharacterSummary } from "./invisibleCharacters";
+import { getInvisibleCharacterSummary, isSuspiciousCharacter } from "./invisibleCharacters";
 import { SecretInput } from "./SecretInput";
 
 // The @app/hooks barrel pulls in the router and API client, which cannot load outside the app.
@@ -37,6 +37,12 @@ const tooltipItems = (markup: string) =>
 
 const render = (value: string, isVisible = true) =>
   renderToStaticMarkup(<SecretInput value={value} isVisible={isVisible} readOnly />);
+
+const UNICODE_TEXT =
+  "caf\u00e9 na\u00efve \u03a9\u03bc\u03ad\u03b3\u03b1 \u65e5\u672c\u8a9e \ud55c\uad6d\uc5b4 \u0645\u0631\u062d\u0628\u0627 \u{1F600} \u{1F44D}\u{1F3FD}";
+const FAMILY_EMOJI = "\u{1F468}\u200d\u{1F469}\u200d\u{1F467}";
+const RAINBOW_FLAG_EMOJI = "\u{1F3F3}\ufe0f\u200d\u{1F308}";
+const ENGLAND_FLAG_EMOJI = "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
 
 describe("SecretInput invisible characters", () => {
   it("marks nothing in a value made of ordinary characters", () => {
@@ -80,6 +86,32 @@ describe("SecretInput invisible characters", () => {
     assert.deepEqual(markedChars(markup), ["\u00a0", "\u00a0"]);
     assert.match(markup, /before<span/);
     assert.match(markup, /<\/span>after/);
+  });
+
+  it("marks nothing in accented, CJK, RTL, or emoji text", () => {
+    const markup = render(UNICODE_TEXT);
+    assert.deepEqual(markedChars(markup), []);
+    assert.ok(!markup.includes(WARNING_ICON));
+  });
+
+  it("marks nothing in emoji built from joiners or tag characters", () => {
+    const markup = render(`${FAMILY_EMOJI} ${RAINBOW_FLAG_EMOJI} ${ENGLAND_FLAG_EMOJI}`);
+    assert.deepEqual(markedChars(markup), []);
+    assert.ok(!markup.includes(WARNING_ICON));
+  });
+
+  it("marks a joiner that is not part of an emoji sequence", () => {
+    assert.deepEqual(markedChars(render("a\u200db")), ["\u200d"]);
+    assert.deepEqual(markedChars(render("\u{1F600}\u200d")), ["\u200d"]);
+  });
+
+  it("marks invisible characters outside a hardcoded list", () => {
+    assert.deepEqual(markedChars(render("a\u2062b\u180ec\u061cd\u{E0001}")), [
+      "\u2062",
+      "\u180e",
+      "\u061c",
+      "\u{E0001}"
+    ]);
   });
 
   it("marks a non-breaking space that stops a reference from resolving", () => {
@@ -135,13 +167,13 @@ describe("SecretInput invisible characters tooltip", () => {
     const markup = render("\u00a0a\u00a0\u200b\u0001");
     assert.ok(markup.includes(TOOLTIP_INTRO));
     assert.deepEqual(tooltipItems(markup), [
-      "2x Non-breaking space (U+00A0)",
-      "1x Zero-width space (U+200B)",
+      "2x Unicode space (U+00A0)",
+      "1x Formatting character (U+200B)",
       "1x Control character (U+0001)"
     ]);
   });
 
-  it("uses the range label when a character has no specific name", () => {
+  it("labels each character by its Unicode category", () => {
     assert.deepEqual(tooltipItems(render("\u2003\u202e\u0085")), [
       "1x Unicode space (U+2003)",
       "1x Bidirectional control (U+202E)",
@@ -151,7 +183,7 @@ describe("SecretInput invisible characters tooltip", () => {
 
   it("lists the same characters while the value is masked", () => {
     const markup = render("secret\u00a0value", false);
-    assert.deepEqual(tooltipItems(markup), ["1x Non-breaking space (U+00A0)"]);
+    assert.deepEqual(tooltipItems(markup), ["1x Unicode space (U+00A0)"]);
     assert.ok(!markup.includes("secret\u00a0value"));
   });
 
@@ -170,6 +202,24 @@ describe("SecretInput invisible characters tooltip", () => {
   });
 });
 
+describe("isSuspiciousCharacter", () => {
+  it("allows the whitespace SecretInput supports", () => {
+    [" ", "\t", "\n", "\r"].forEach((char) => assert.equal(isSuspiciousCharacter(char), false));
+  });
+
+  it("allows ordinary non-ASCII characters", () => {
+    ["\u00e9", "\u00df", "\u65e5", "\u0645", "\u{1F600}"].forEach((char) =>
+      assert.equal(isSuspiciousCharacter(char), false)
+    );
+  });
+
+  it("flags control, format, and separator characters", () => {
+    ["\u0001", "\u0085", "\u200b", "\u00a0", "\u3000", "\u2028", "\u2029", "\u{1D173}"].forEach(
+      (char) => assert.equal(isSuspiciousCharacter(char), true)
+    );
+  });
+});
+
 describe("getInvisibleCharacterSummary", () => {
   it("returns nothing for ordinary text", () => {
     assert.deepEqual(getInvisibleCharacterSummary("plain value\twith\ttabs\n"), []);
@@ -177,16 +227,44 @@ describe("getInvisibleCharacterSummary", () => {
 
   it("groups characters by code point in first-seen order", () => {
     assert.deepEqual(getInvisibleCharacterSummary("\u00a0a\u00a0\u200b\u0001"), [
-      { codePoint: "U+00A0", label: "Non-breaking space", count: 2 },
-      { codePoint: "U+200B", label: "Zero-width space", count: 1 },
+      { codePoint: "U+00A0", label: "Unicode space", count: 2 },
+      { codePoint: "U+200B", label: "Formatting character", count: 1 },
       { codePoint: "U+0001", label: "Control character", count: 1 }
     ]);
   });
 
-  it("labels characters that fall back to a range", () => {
+  it("labels characters by their Unicode category", () => {
     assert.deepEqual(
-      getInvisibleCharacterSummary("\u2003\u202e\u0085").map(({ label }) => label),
-      ["Unicode space", "Bidirectional control", "Control character"]
+      getInvisibleCharacterSummary(
+        "\u2003\u00a0\u202e\u200e\u0085\u061c\u2062\ufeff\u2028\u2029"
+      ).map(({ label }) => label),
+      [
+        "Unicode space",
+        "Unicode space",
+        "Bidirectional control",
+        "Bidirectional control",
+        "Control character",
+        "Bidirectional control",
+        "Formatting character",
+        "Formatting character",
+        "Line separator",
+        "Paragraph separator"
+      ]
+    );
+  });
+
+  it("reports astral characters by their full code point", () => {
+    assert.deepEqual(getInvisibleCharacterSummary("a\u{1D173}b\u{1D173}"), [
+      { codePoint: "U+1D173", label: "Formatting character", count: 2 }
+    ]);
+  });
+
+  it("returns nothing for accented, CJK, RTL, or emoji text", () => {
+    assert.deepEqual(
+      getInvisibleCharacterSummary(
+        `${UNICODE_TEXT} ${FAMILY_EMOJI} ${RAINBOW_FLAG_EMOJI} ${ENGLAND_FLAG_EMOJI}`
+      ),
+      []
     );
   });
 });

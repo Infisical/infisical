@@ -1,43 +1,73 @@
-export const INVISIBLE_CHAR_REGEX =
-  // eslint-disable-next-line no-control-regex
-  /([\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u00a0\u00ad\u1680\u2000-\u200f\u2028-\u202f\u205f\u2060\u2066-\u2069\u3000\ufeff])/g;
-
 export type InvisibleCharacterSummary = {
   codePoint: string;
   label: string;
   count: number;
 };
 
-const CHARACTER_LABELS: Record<number, string> = {
-  0x00a0: "Non-breaking space",
-  0x00ad: "Soft hyphen",
-  0x1680: "Ogham space mark",
-  0x200b: "Zero-width space",
-  0x200c: "Zero-width non-joiner",
-  0x200d: "Zero-width joiner",
-  0x200e: "Left-to-right mark",
-  0x200f: "Right-to-left mark",
-  0x2028: "Line separator",
-  0x2029: "Paragraph separator",
-  0x202f: "Narrow no-break space",
-  0x205f: "Medium mathematical space",
-  0x2060: "Word joiner",
-  0x3000: "Ideographic space",
-  0xfeff: "Byte order mark"
+export type SecretValuePart = {
+  text: string;
+  isSuspicious: boolean;
 };
 
-const getCharacterLabel = (code: number) => {
-  if (CHARACTER_LABELS[code]) return CHARACTER_LABELS[code];
-  if (code <= 0x001f || (code >= 0x007f && code <= 0x009f)) return "Control character";
-  if (code >= 0x2000 && code <= 0x200a) return "Unicode space";
-  return "Bidirectional control";
+const ALLOWED_WHITESPACE = new Set([" ", "\t", "\n", "\r"]);
+
+const SUSPICIOUS_CATEGORY_REGEX = /^[\p{Cc}\p{Cf}\p{Zs}\p{Zl}\p{Zp}]$/u;
+
+const EMOJI_SEQUENCE_REGEX =
+  /\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F)*(?:\u200D\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F)*)+|\u{1F3F4}[\u{E0020}-\u{E007E}]+\u{E007F}/gu;
+
+export const isSuspiciousCharacter = (char: string) =>
+  !ALLOWED_WHITESPACE.has(char) && SUSPICIOUS_CATEGORY_REGEX.test(char);
+
+const getCharacterLabel = (char: string) => {
+  if (/\p{Bidi_Control}/u.test(char)) return "Bidirectional control";
+  if (/\p{Cc}/u.test(char)) return "Control character";
+  if (/\p{Zs}/u.test(char)) return "Unicode space";
+  if (/\p{Zl}/u.test(char)) return "Line separator";
+  if (/\p{Zp}/u.test(char)) return "Paragraph separator";
+  return "Formatting character";
+};
+
+export const splitSuspiciousCharacters = (value: string): SecretValuePart[] => {
+  const parts: SecretValuePart[] = [];
+
+  const pushPlain = (text: string) => {
+    const last = parts[parts.length - 1];
+    if (last && !last.isSuspicious) {
+      last.text += text;
+    } else {
+      parts.push({ text, isSuspicious: false });
+    }
+  };
+
+  const scan = (text: string) => {
+    Array.from(text).forEach((char) => {
+      if (isSuspiciousCharacter(char)) {
+        parts.push({ text: char, isSuspicious: true });
+      } else {
+        pushPlain(char);
+      }
+    });
+  };
+
+  let offset = 0;
+  Array.from(value.matchAll(EMOJI_SEQUENCE_REGEX)).forEach((match) => {
+    const index = match.index ?? 0;
+    scan(value.slice(offset, index));
+    pushPlain(match[0]);
+    offset = index + match[0].length;
+  });
+  scan(value.slice(offset));
+
+  return parts;
 };
 
 export const getInvisibleCharacterSummary = (value: string): InvisibleCharacterSummary[] => {
   const summary = new Map<number, InvisibleCharacterSummary>();
 
-  Array.from(value.matchAll(INVISIBLE_CHAR_REGEX)).forEach(([char]) => {
-    const code = char.charCodeAt(0);
+  splitSuspiciousCharacters(value).forEach(({ text, isSuspicious }) => {
+    if (!isSuspicious) return;
+    const code = text.codePointAt(0) ?? 0;
     const entry = summary.get(code);
     if (entry) {
       entry.count += 1;
@@ -45,7 +75,7 @@ export const getInvisibleCharacterSummary = (value: string): InvisibleCharacterS
     }
     summary.set(code, {
       codePoint: `U+${code.toString(16).toUpperCase().padStart(4, "0")}`,
-      label: getCharacterLabel(code),
+      label: getCharacterLabel(text),
       count: 1
     });
   });
