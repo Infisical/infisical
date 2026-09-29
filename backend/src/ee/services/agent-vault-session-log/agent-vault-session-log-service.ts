@@ -158,7 +158,7 @@ export const agentVaultSessionLogServiceFactory = ({
     if (!config?.enabled || !storage) {
       throw new BadRequestError({
         name: AgentVaultSessionLogErrorName.Disabled,
-        message: "Session logs aren't on for this project"
+        message: "Session logs are disabled"
       });
     }
 
