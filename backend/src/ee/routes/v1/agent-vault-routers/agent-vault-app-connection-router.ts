@@ -53,7 +53,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
     if (!projectId) {
       throw new InternalServerError({
         message:
-          "Could not determine which project these AWS Connections belong to. Try again, and contact support if it keeps happening."
+          "Could not load Agent Vault for this organization. Try again, and contact support if it keeps happening."
       });
     }
     return { projectId };
