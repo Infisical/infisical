@@ -79,7 +79,7 @@ const ZGetTenantEnv = z.object({
     getTenantEnv: z.object({
       hash: z.string(),
       envVars: z.object({
-        environment: z.record(z.any()).optional()
+        environment: z.record(z.string(), z.any()).optional()
       })
     })
   })
@@ -89,7 +89,7 @@ const ZUpdateTenantEnv = z.object({
   data: z.object({
     updateTenantEnv: z.object({
       hash: z.string(),
-      envVars: z.record(z.any())
+      envVars: z.record(z.string(), z.any())
     })
   })
 });
@@ -123,7 +123,7 @@ const syncSecretsGCPSecretManager = async ({
   let pageToken: string | undefined;
   let hasMorePages = true;
 
-  const metadata = z.record(z.any()).parse(integration.metadata);
+  const metadata = z.record(z.string(), z.any()).parse(integration.metadata);
   const filterParam = metadata.secretGCPLabel
     ? `?filter=labels.${metadata.secretGCPLabel.labelName}=${metadata.secretGCPLabel.labelValue}`
     : "";
@@ -1367,7 +1367,7 @@ const syncSecretsHeroku = async ({
   const secretsToAdd: { [key: string]: string } = {};
   const secretsToUpdate: { [key: string]: string } = {};
 
-  const metadata = z.record(z.any()).parse(integration.metadata);
+  const metadata = z.record(z.string(), z.any()).parse(integration.metadata);
 
   Object.keys(herokuSecrets).forEach((key) => {
     if (!integration.lastUsed) {
@@ -2146,7 +2146,7 @@ const syncSecretsRender = async ({
   );
 
   if (integration.metadata) {
-    const metadata = z.record(z.any()).parse(integration.metadata);
+    const metadata = z.record(z.string(), z.any()).parse(integration.metadata);
     if (metadata.shouldAutoRedeploy === true) {
       await request.post(
         `${IntegrationUrls.RENDER_API_URL}/v1/services/${integration.appId}/deploys`,
@@ -3419,7 +3419,7 @@ const syncSecretsTerraformCloud = async ({
   const secretsToAdd: { [key: string]: string } = {};
   const secretsToUpdate: { [key: string]: string } = {};
 
-  const metadata = z.record(z.any()).parse(integration.metadata);
+  const metadata = z.record(z.string(), z.any()).parse(integration.metadata);
 
   Object.keys(terraformSecrets).forEach((key) => {
     if (!integration.lastUsed) {
@@ -3840,7 +3840,7 @@ const syncSecretsCloudflarePages = async ({
     }
   );
 
-  const metadata = z.record(z.any()).parse(integration.metadata);
+  const metadata = z.record(z.string(), z.any()).parse(integration.metadata);
   if (metadata.shouldAutoRedeploy && integration.targetEnvironment === "production") {
     await request
       .post(

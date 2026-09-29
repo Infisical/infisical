@@ -39,7 +39,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       ]),
       response: {
         200: z.object({
-          proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
+          proxyId: z.string().guid().describe(AGENT_VAULT.PROXY.proxyId),
           name: z.string().describe(AGENT_VAULT.PROXY.name),
           accessToken: z.string(),
           config: ProxyConfigSchema
@@ -136,11 +136,11 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         .passthrough(),
       response: {
         200: z.object({
-          sessionId: z.string().uuid(),
+          sessionId: z.string().guid(),
           expiresAt: z.date().nullable(),
           services: z
             .object({
-              id: z.string().uuid(),
+              id: z.string().guid(),
               name: z.string(),
               accessBundleName: z.string(),
               hostPattern: z.string(),

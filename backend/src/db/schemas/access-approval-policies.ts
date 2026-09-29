@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AccessApprovalPoliciesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   approvals: z.number().default(1),
   secretPath: z.string(),
-  envId: z.string().uuid(),
+  envId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   enforcementLevel: z.string().default("hard"),

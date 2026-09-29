@@ -25,9 +25,9 @@ export const BaseSecretRotationSchema = (type: SecretRotation) =>
     connection: z.object({
       app: z.literal(SECRET_ROTATION_CONNECTION_MAP[type]),
       name: z.string(),
-      id: z.string().uuid()
+      id: z.string().guid()
     }),
-    environment: z.object({ slug: z.string(), name: z.string(), id: z.string().uuid() }),
+    environment: z.object({ slug: z.string(), name: z.string(), id: z.string().guid() }),
     projectId: z.string(),
     folder: z.object({ id: z.string(), path: z.string() }),
     rotateAtUtc: RotateAtUtcSchema,
@@ -44,7 +44,7 @@ export const BaseCreateSecretRotationSchema = (type: SecretRotation) =>
       .max(256, "Description cannot exceed 256 characters")
       .nullish()
       .describe(SecretRotations.CREATE(type).description),
-    connectionId: z.string().uuid().describe(SecretRotations.CREATE(type).connectionId),
+    connectionId: z.string().guid().describe(SecretRotations.CREATE(type).connectionId),
     environment: slugSchema({ field: "environment", max: 64 }).describe(SecretRotations.CREATE(type).environment),
     secretPath: z
       .string()

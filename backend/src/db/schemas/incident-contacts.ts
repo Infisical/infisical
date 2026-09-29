@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IncidentContactsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   email: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid()
+  orgId: z.string().guid()
 });
 
 export type TIncidentContacts = z.infer<typeof IncidentContactsSchema>;

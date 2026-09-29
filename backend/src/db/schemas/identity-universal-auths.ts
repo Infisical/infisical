@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityUniversalAuthsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   clientId: z.string(),
   accessTokenTTL: z.coerce.number().default(7200),
   accessTokenMaxTTL: z.coerce.number().default(7200),
@@ -17,7 +17,7 @@ export const IdentityUniversalAuthsSchema = z.object({
   accessTokenTrustedIps: z.unknown(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  identityId: z.string().uuid(),
+  identityId: z.string().guid(),
   accessTokenPeriod: z.coerce.number().default(0),
   lockoutEnabled: z.boolean().default(true),
   lockoutThreshold: z.number().default(3),

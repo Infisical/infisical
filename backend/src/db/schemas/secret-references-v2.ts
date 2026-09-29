@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretReferencesV2Schema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   environment: z.string(),
   secretPath: z.string(),
   secretKey: z.string(),
-  secretId: z.string().uuid(),
+  secretId: z.string().guid(),
   targetProjectSlug: z.string().nullable().optional()
 });
 

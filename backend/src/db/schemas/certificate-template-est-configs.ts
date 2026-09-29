@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const CertificateTemplateEstConfigsSchema = z.object({
-  id: z.string().uuid(),
-  certificateTemplateId: z.string().uuid(),
+  id: z.string().guid(),
+  certificateTemplateId: z.string().guid(),
   encryptedCaChain: zodBuffer.nullable().optional(),
   hashedPassphrase: z.string(),
   isEnabled: z.boolean(),

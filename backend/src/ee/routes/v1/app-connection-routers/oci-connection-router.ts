@@ -30,7 +30,7 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z
@@ -58,7 +58,7 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         compartmentOcid: z.string().min(1, "Compartment OCID required")
@@ -93,7 +93,7 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         compartmentOcid: z.string().min(1, "Compartment OCID required"),

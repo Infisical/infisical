@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretApprovalPoliciesBypassersSchema = z.object({
-  id: z.string().uuid(),
-  bypasserGroupId: z.string().uuid().nullable().optional(),
-  bypasserUserId: z.string().uuid().nullable().optional(),
-  policyId: z.string().uuid(),
+  id: z.string().guid(),
+  bypasserGroupId: z.string().guid().nullable().optional(),
+  bypasserUserId: z.string().guid().nullable().optional(),
+  policyId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

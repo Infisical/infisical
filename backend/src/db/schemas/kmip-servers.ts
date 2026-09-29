@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const KmipServersSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   name: z.string(),
   tokenVersion: z.number().default(0),
   hostnamesOrIps: z.string().nullable().optional(),

@@ -8,12 +8,12 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const FolderCommitChangesSchema = z.object({
-  id: z.string().uuid(),
-  folderCommitId: z.string().uuid(),
+  id: z.string().guid(),
+  folderCommitId: z.string().guid(),
   changeType: z.string(),
   isUpdate: z.boolean().default(false),
-  secretVersionId: z.string().uuid().nullable().optional(),
-  folderVersionId: z.string().uuid().nullable().optional(),
+  secretVersionId: z.string().guid().nullable().optional(),
+  folderVersionId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

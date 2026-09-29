@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const KmipClientsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   permissions: z.string().array().nullable().optional(),
   description: z.string().nullable().optional(),

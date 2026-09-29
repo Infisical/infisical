@@ -32,7 +32,7 @@ export const registerVercelConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listVercelProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         projectSearch: z.string().optional()

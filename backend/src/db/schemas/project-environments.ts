@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ProjectEnvironmentsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   slug: z.string(),
   position: z.number(),
@@ -17,8 +17,8 @@ export const ProjectEnvironmentsSchema = z.object({
   updatedAt: z.date(),
   deleteAfter: z.date().nullable().optional(),
   softDeletedAt: z.date().nullable().optional(),
-  deletedByUserId: z.string().uuid().nullable().optional(),
-  deletedByIdentityId: z.string().uuid().nullable().optional()
+  deletedByUserId: z.string().guid().nullable().optional(),
+  deletedByIdentityId: z.string().guid().nullable().optional()
 });
 
 export type TProjectEnvironments = z.infer<typeof ProjectEnvironmentsSchema>;

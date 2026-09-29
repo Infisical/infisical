@@ -8,12 +8,12 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const RolesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   slug: z.string(),
   permissions: z.unknown(),
-  orgId: z.string().uuid().nullable().optional(),
+  orgId: z.string().guid().nullable().optional(),
   projectId: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()

@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const OrganizationAssetsSchema = z.object({
-  id: z.string().uuid(),
-  orgId: z.string().uuid(),
+  id: z.string().guid(),
+  orgId: z.string().guid(),
   assetType: z.string(),
   data: zodBuffer,
   contentType: z.string(),

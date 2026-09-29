@@ -70,6 +70,9 @@ const requestExpirationTimeSchema = z
     return val;
   });
 
+// Access approval policies reuse the secret approval policy shape but have no machine identity bypass.
+const AccessApprovalPolicyResponseSchema = sapPubSchema.omit({ bypassForMachineIdentities: true });
+
 export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -142,7 +145,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         ),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: AccessApprovalPolicyResponseSchema
         })
       }
     },
@@ -193,23 +196,22 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema
-            .extend({
-              approvers: z
-                .object({
-                  type: z.nativeEnum(ApproverType),
-                  id: z.string().nullable().optional(),
-                  name: z.string().nullable().optional(),
-                  sequence: z.number().nullable().optional(),
-                  approvalsRequired: z.number().nullable().optional()
-                })
-                .array()
-                .nullable()
-                .optional(),
-              bypassers: z.object({ type: z.nativeEnum(BypasserType), id: z.string().nullable().optional() }).array(),
-              maxTimePeriod: z.string().nullable().optional(),
-              requestExpirationTime: z.string().nullable().optional()
-            })
+          approvals: AccessApprovalPolicyResponseSchema.extend({
+            approvers: z
+              .object({
+                type: z.nativeEnum(ApproverType),
+                id: z.string().nullable().optional(),
+                name: z.string().nullable().optional(),
+                sequence: z.number().nullable().optional(),
+                approvalsRequired: z.number().nullable().optional()
+              })
+              .array()
+              .nullable()
+              .optional(),
+            bypassers: z.object({ type: z.nativeEnum(BypasserType), id: z.string().nullable().optional() }).array(),
+            maxTimePeriod: z.string().nullable().optional(),
+            requestExpirationTime: z.string().nullable().optional()
+          })
             .array()
             .nullable()
             .optional()
@@ -323,7 +325,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: AccessApprovalPolicyResponseSchema
         })
       }
     },
@@ -361,7 +363,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: AccessApprovalPolicyResponseSchema
         })
       }
     },
@@ -404,7 +406,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema.extend({
+          approval: AccessApprovalPolicyResponseSchema.extend({
             approvers: z
               .object({
                 type: z.nativeEnum(ApproverType),

@@ -17,7 +17,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
     },
     schema: {
       params: z.object({
-        secretId: z.string().uuid()
+        secretId: z.string().guid()
       }),
       body: z
         .object({
@@ -93,7 +93,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
     schema: {
       operationId: "getSecretReminder",
       params: z.object({
-        secretId: z.string().uuid()
+        secretId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -138,7 +138,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
     schema: {
       operationId: "deleteSecretReminder",
       params: z.object({
-        secretId: z.string().uuid()
+        secretId: z.string().guid()
       }),
       response: {
         200: z.object({

@@ -31,7 +31,7 @@ export const registerHCVaultConnectionRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "listHcVaultMounts",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.string().array()

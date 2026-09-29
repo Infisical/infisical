@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { partialWithoutDefaults } from "@app/lib/zod";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 import {
   kubernetesHostSchema,
@@ -43,12 +44,12 @@ export const kubernetesTemplateFieldsBaseSchema = z.object({
     .describe("Optional JWT token for accessing the Kubernetes TokenReview API"),
   gatewayId: z
     .string()
-    .uuid()
+    .guid()
     .nullish()
     .describe("The ID of the gateway to use when performing Kubernetes API requests"),
   gatewayPoolId: z
     .string()
-    .uuid()
+    .guid()
     .nullish()
     .describe("The ID of the gateway pool to use when performing Kubernetes API requests"),
   allowedAudience: z
@@ -153,13 +154,13 @@ export const templateFieldPatchKeysByMethod = {
 
 // not a union of per-method partials: zod reports only the first failing branch, so every
 // bad value surfaced as an LDAP unrecognized-key error. The service checks method membership
-export const templateFieldsPatchSchema = ldapTemplateFieldsSchema
-  .merge(kubernetesTemplateFieldsBaseSchema)
-  .merge(oidcTemplateFieldsSchema)
-  .extend({
-    caCert: oidcTemplateFieldsSchema.shape.caCert.describe(
-      "The PEM-encoded CA certificate used to validate the TLS certificate of the Kubernetes API server or identity provider"
-    )
-  })
-  .partial()
-  .strict();
+export const templateFieldsPatchSchema = partialWithoutDefaults(
+  ldapTemplateFieldsSchema
+    .merge(kubernetesTemplateFieldsBaseSchema)
+    .merge(oidcTemplateFieldsSchema)
+    .extend({
+      caCert: oidcTemplateFieldsSchema.shape.caCert.describe(
+        "The PEM-encoded CA certificate used to validate the TLS certificate of the Kubernetes API server or identity provider"
+      )
+    })
+).strict();

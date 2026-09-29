@@ -74,7 +74,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
           SanitizedGatewayPoolSchema.extend({
             memberCount: z.number(),
             healthyMemberCount: z.number(),
-            memberGatewayIds: z.array(z.string().uuid()),
+            memberGatewayIds: z.array(z.string().guid()),
             connectedResourcesCount: z.number()
           })
         )
@@ -94,7 +94,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "getGatewayPoolById",
       params: z.object({
-        poolId: z.string().uuid()
+        poolId: z.string().guid()
       }),
       response: {
         200: SanitizedGatewayPoolSchema.extend({
@@ -119,7 +119,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "updateGatewayPool",
       params: z.object({
-        poolId: z.string().uuid()
+        poolId: z.string().guid()
       }),
       body: z.object({
         name: slugSchema({ min: 1, max: 32, field: "name" }).optional().describe("New name for the pool")
@@ -160,7 +160,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "deleteGatewayPool",
       params: z.object({
-        poolId: z.string().uuid()
+        poolId: z.string().guid()
       }),
       response: {
         200: SanitizedGatewayPoolSchema
@@ -197,10 +197,10 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "addGatewayToPool",
       params: z.object({
-        poolId: z.string().uuid()
+        poolId: z.string().guid()
       }),
       body: z.object({
-        gatewayId: z.string().uuid().describe("ID of the gateway to add to the pool")
+        gatewayId: z.string().guid().describe("ID of the gateway to add to the pool")
       }),
       response: {
         200: GatewayPoolMembershipsSchema.pick({
@@ -245,8 +245,8 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "removeGatewayFromPool",
       params: z.object({
-        poolId: z.string().uuid(),
-        gatewayId: z.string().uuid()
+        poolId: z.string().guid(),
+        gatewayId: z.string().guid()
       }),
       response: {
         200: GatewayPoolMembershipsSchema.pick({
@@ -291,7 +291,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "getGatewayPoolConnectedResources",
       params: z.object({
-        poolId: z.string().uuid()
+        poolId: z.string().guid()
       }),
       response: {
         200: z.object({

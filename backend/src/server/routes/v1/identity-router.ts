@@ -378,16 +378,8 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        orderBy: z
-          .nativeEnum(OrgIdentityOrderBy)
-          .default(OrgIdentityOrderBy.Name)
-          .describe(IDENTITIES.SEARCH.orderBy)
-          .optional(),
-        orderDirection: z
-          .nativeEnum(OrderByDirection)
-          .default(OrderByDirection.ASC)
-          .describe(IDENTITIES.SEARCH.orderDirection)
-          .optional(),
+        orderBy: z.nativeEnum(OrgIdentityOrderBy).describe(IDENTITIES.SEARCH.orderBy).optional(),
+        orderDirection: z.nativeEnum(OrderByDirection).describe(IDENTITIES.SEARCH.orderDirection).optional(),
         limit: z.number().max(100).default(50).describe(IDENTITIES.SEARCH.limit),
         offset: z.number().default(0).describe(IDENTITIES.SEARCH.offset),
         search: buildSearchZodSchema(

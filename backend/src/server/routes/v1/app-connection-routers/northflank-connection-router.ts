@@ -31,7 +31,7 @@ export const registerNorthflankConnectionRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listNorthflankProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -61,7 +61,7 @@ export const registerNorthflankConnectionRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listNorthflankSecretGroups",
       params: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().guid(),
         projectId: z.string()
       }),
       response: {

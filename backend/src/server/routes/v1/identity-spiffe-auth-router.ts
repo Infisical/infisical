@@ -4,6 +4,7 @@ import { IdentitySpiffeAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SPIFFE_AUTH } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
+import { partialWithoutDefaults } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -101,7 +102,7 @@ const CommonCreateFields = z.object({
   accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(SPIFFE_AUTH.ATTACH.accessTokenNumUsesLimit)
 });
 
-const CommonUpdateFields = CommonCreateFields.partial();
+const CommonUpdateFields = partialWithoutDefaults(CommonCreateFields);
 
 export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvider) => {
   server.route({

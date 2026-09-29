@@ -30,7 +30,7 @@ export const AzureClientSecretsConnectionOAuthOutputCredentialsSchema = z.object
 export const AzureClientSecretsConnectionClientSecretInputCredentialsSchema = z.object({
   clientId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .min(1, "Client ID required")
     .max(50, "Client ID must be at most 50 characters long")
@@ -43,13 +43,13 @@ export const AzureClientSecretsConnectionClientSecretInputCredentialsSchema = z.
     .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.clientSecret),
   tenantId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .min(1, "Tenant ID required")
     .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.tenantId),
   clientSecretKeyId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .optional()
     .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.clientSecretKeyId)
@@ -58,13 +58,13 @@ export const AzureClientSecretsConnectionClientSecretInputCredentialsSchema = z.
 export const AzureClientSecretsConnectionCertificateInputCredentialsSchema = z.object({
   tenantId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .min(1, "Tenant ID required")
     .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.tenantId),
   clientId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .min(1, "Client ID required")
     .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.clientId),

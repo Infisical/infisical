@@ -10,13 +10,13 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamSessionsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
-  accountId: z.string().uuid().nullable().optional(),
+  accountId: z.string().guid().nullable().optional(),
   accountType: z.string(),
   resourceName: z.string().nullable().optional(),
   accountName: z.string(),
-  userId: z.string().uuid().nullable().optional(),
+  userId: z.string().guid().nullable().optional(),
   actorName: z.string(),
   actorEmail: z.string(),
   actorIp: z.string(),
@@ -29,18 +29,18 @@ export const PamSessionsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   accessMethod: z.string().nullable().optional(),
-  resourceId: z.string().uuid().nullable().optional(),
+  resourceId: z.string().guid().nullable().optional(),
   encryptedAiInsights: zodBuffer.nullable().optional(),
   aiInsightsStatus: z.string().nullable().optional(),
   aiInsightsError: z.string().nullable().optional(),
   reason: z.string().nullable().optional(),
-  selectedResourceId: z.string().uuid().nullable().optional(),
+  selectedResourceId: z.string().guid().nullable().optional(),
   encryptedSessionKey: zodBuffer.nullable().optional(),
   gatewayUploadTokenHash: zodBuffer.nullable().optional(),
-  gatewayId: z.string().uuid().nullable().optional(),
+  gatewayId: z.string().guid().nullable().optional(),
   folderName: z.string().nullable().optional(),
   selectedHost: z.string().nullable().optional(),
-  identityId: z.string().uuid().nullable().optional()
+  identityId: z.string().guid().nullable().optional()
 });
 
 export type TPamSessions = z.infer<typeof PamSessionsSchema>;

@@ -30,7 +30,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "listDigiCertOrganizations",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z
@@ -59,7 +59,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "listDigiCertProducts",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z
@@ -88,7 +88,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "getDigiCertOrgValidation",
       params: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().guid(),
         organizationId: z.coerce.number().int().positive()
       }),
       querystring: z.object({
@@ -122,7 +122,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "listDigiCertOrders",
       params: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().guid(),
         organizationId: z.coerce.number().int().positive()
       }),
       querystring: z.object({

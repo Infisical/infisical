@@ -1,6 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { partialWithoutDefaults } from "@app/lib/zod";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
@@ -140,8 +141,8 @@ export const CreateWindowsServerPkiSyncSchema = z
     credentials: WindowsServerPkiSyncCredentialsSchema.optional(),
     subscriberId: z.string().nullish(),
     connectionId: z.string(),
-    applicationId: z.string().uuid().optional(),
-    certificateIds: z.array(z.string().uuid()).optional(),
+    applicationId: z.string().guid().optional(),
+    certificateIds: z.array(z.string().guid()).optional(),
     filters: PkiSyncFiltersField
   })
   .superRefine((data, ctx) => {
@@ -177,5 +178,5 @@ export const WindowsServerPkiSyncListItemSchema = z.object({
 
 export const WindowsServerPkiSyncHealthCheckTestSchema = BaseHealthCheckTestSchema.extend({
   destinationConfig: WindowsServerPkiSyncConfigSchema,
-  syncOptions: WindowsServerPkiSyncOptionsSchema.partial()
+  syncOptions: partialWithoutDefaults(WindowsServerPkiSyncOptionsSchema)
 });

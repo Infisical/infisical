@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const KmsLegacyEncryptionKeysSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   encryptedKeySnapshot: zodBuffer,
   createdAt: z.date(),
   updatedAt: z.date()

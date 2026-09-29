@@ -185,7 +185,7 @@ const BillingV2OverviewSchema = z.object({
     })
     .nullable(),
   invoices: BillingV2InvoiceSchema.array(),
-  entitlements: z.record(BillingV2EntitlementSchema),
+  entitlements: z.record(z.string(), BillingV2EntitlementSchema),
   trialedProductKeys: z.string().array(),
   trials: BillingV2TrialSchema.array(),
   onDemandAmount: z.number(),
@@ -298,7 +298,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       operationId: "listBillableOrganizations",
       description:
         "List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.",
-      params: z.object({ organizationId: z.string().trim().uuid() }),
+      params: z.object({ organizationId: z.string().trim().guid() }),
       querystring: z.object({
         search: z
           .string()
@@ -346,7 +346,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       description:
         "Break one metered usage dimension down by the organizations and projects its units were created in.",
       params: z.object({
-        organizationId: z.string().trim().uuid(),
+        organizationId: z.string().trim().guid(),
         dimensionKey: z.nativeEnum(BillingV2BreakdownDimension).describe("The metered dimension to break down.")
       }),
       querystring: z.object({
@@ -586,7 +586,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       body: z.object({
         productId: BillingV2KeySchema,
         plan: BillingV2KeySchema,
-        expectedPlanVersionId: z.string().trim().uuid(),
+        expectedPlanVersionId: z.string().trim().guid(),
         prorationDate: z.number().int().positive().optional()
       }),
       response: {

@@ -10,22 +10,22 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const HoneyTokensSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   type: z.string(),
   status: z.string().default("active"),
   projectId: z.string(),
-  folderId: z.string().uuid(),
+  folderId: z.string().guid(),
   encryptedCredentials: zodBuffer,
   secretsMapping: z.unknown(),
   tokenIdentifier: z.string().nullable().optional(),
   lastTriggeredAt: z.date().nullable().optional(),
   lastResetAt: z.date().nullable().optional(),
   revokedAt: z.date().nullable().optional(),
-  createdByUserId: z.string().uuid().nullable().optional(),
-  resetByUserId: z.string().uuid().nullable().optional(),
-  revokedByUserId: z.string().uuid().nullable().optional(),
+  createdByUserId: z.string().guid().nullable().optional(),
+  resetByUserId: z.string().guid().nullable().optional(),
+  revokedByUserId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

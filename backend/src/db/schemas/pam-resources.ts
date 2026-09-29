@@ -10,10 +10,10 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamResourcesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   name: z.string(),
-  gatewayId: z.string().uuid().nullable().optional(),
+  gatewayId: z.string().guid().nullable().optional(),
   resourceType: z.string(),
   encryptedConnectionDetails: zodBuffer,
   createdAt: z.date(),
@@ -21,9 +21,9 @@ export const PamResourcesSchema = z.object({
   encryptedRotationAccountCredentials: zodBuffer.nullable().optional(),
   encryptedResourceMetadata: zodBuffer.nullable().optional(),
   discoveryFingerprint: z.string().nullable().optional(),
-  domainId: z.string().uuid().nullable().optional(),
+  domainId: z.string().guid().nullable().optional(),
   encryptedSessionSummaryConfig: zodBuffer.nullable().optional(),
-  gatewayPoolId: z.string().uuid().nullable().optional()
+  gatewayPoolId: z.string().guid().nullable().optional()
 });
 
 export type TPamResources = z.infer<typeof PamResourcesSchema>;

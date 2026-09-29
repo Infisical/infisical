@@ -34,7 +34,7 @@ export const registerLiteLLMConnectionRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "listLiteLLMUsers",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         search: z.string().trim().optional()
@@ -66,7 +66,7 @@ export const registerLiteLLMConnectionRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "listLiteLLMTeams",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         search: z.string().trim().optional()
@@ -98,7 +98,7 @@ export const registerLiteLLMConnectionRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "listLiteLLMModels",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

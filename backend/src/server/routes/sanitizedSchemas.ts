@@ -20,6 +20,7 @@ import {
   SanitizedProxiedServiceBaseSchema,
   SanitizedProxiedServiceCredentialSchema
 } from "@app/ee/services/proxied-service/proxied-service-schemas";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { UnpackedPermissionSchema } from "./sanitizedSchema/permission";
@@ -164,7 +165,7 @@ export const secretRawSchema = z.object({
   secretComment: z.string(),
   secretReminderNote: z.string().nullable().optional(),
   secretReminderRepeatDays: z.number().nullable().optional(),
-  skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
+  skipMultilineEncoding: z.boolean().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   actor: z
@@ -178,7 +179,7 @@ export const secretRawSchema = z.object({
     .optional()
     .nullable(),
   isRotatedSecret: z.boolean().optional(),
-  rotationId: z.string().uuid().nullish()
+  rotationId: z.string().guid().nullish()
 });
 
 export const ProjectPermissionSchema = z.object({
@@ -229,7 +230,7 @@ export const ProjectSpecificPrivilegePermissionSchema = z.object({
 });
 
 export const SanitizedIdentityPrivilegeSchema = IdentityProjectAdditionalPrivilegeSchema.extend({
-  permissions: UnpackedPermissionSchema.array().transform((permissions) =>
+  permissions: bidirectionalTransform(UnpackedPermissionSchema.array(), (permissions) =>
     permissions.filter(
       (caslRule) =>
         ![
@@ -250,7 +251,7 @@ export const SanitizedRoleSchema = ProjectRolesSchema.omit({ version: true }).ex
 });
 
 export const SanitizedRoleSchemaV1 = ProjectRolesSchema.omit({ version: true }).extend({
-  permissions: UnpackedPermissionSchema.array().transform((caslPermission) =>
+  permissions: bidirectionalTransform(UnpackedPermissionSchema.array(), (caslPermission) =>
     // first map and remove other actions of folder permission
     caslPermission
       .map((caslRule) =>

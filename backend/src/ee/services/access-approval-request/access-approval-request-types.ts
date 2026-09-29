@@ -60,7 +60,7 @@ export interface TAccessApprovalRequestServiceFactory {
       privilegeId?: string | null | undefined;
       requestedBy?: string | null | undefined;
       temporaryRange?: string | null | undefined;
-      permissions?: unknown;
+      permissions: unknown;
       note?: string | null | undefined;
       privilegeDeletedAt?: Date | null | undefined;
       expiresAt?: Date | null | undefined;
@@ -79,7 +79,7 @@ export interface TAccessApprovalRequestServiceFactory {
       privilegeId?: string | null | undefined;
       requestedBy?: string | null | undefined;
       temporaryRange?: string | null | undefined;
-      permissions?: unknown;
+      permissions: unknown;
       note?: string | null | undefined;
       privilegeDeletedAt?: Date | null | undefined;
       expiresAt?: Date | null | undefined;
@@ -165,7 +165,7 @@ export interface TAccessApprovalRequestServiceFactory {
       privilegeId?: string | null | undefined;
       requestedBy?: string | null | undefined;
       temporaryRange?: string | null | undefined;
-      permissions?: unknown;
+      permissions: unknown;
       note?: string | null | undefined;
       privilegeDeletedAt?: Date | null | undefined;
       expiresAt?: Date | null | undefined;
@@ -224,7 +224,7 @@ export interface TAccessApprovalRequestServiceFactory {
       privilegeId?: string | null | undefined;
       requestedBy?: string | null | undefined;
       temporaryRange?: string | null | undefined;
-      permissions?: unknown;
+      permissions: unknown;
       note?: string | null | undefined;
       privilegeDeletedAt?: Date | null | undefined;
       expiresAt?: Date | null | undefined;

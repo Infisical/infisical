@@ -6,9 +6,9 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 
 const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
 
-export const SignerIdParamsSchema = z.object({ signerId: z.string().uuid() });
+export const SignerIdParamsSchema = z.object({ signerId: z.string().guid() });
 
-export const SignerRequestParamsSchema = SignerIdParamsSchema.extend({ requestId: z.string().uuid() });
+export const SignerRequestParamsSchema = SignerIdParamsSchema.extend({ requestId: z.string().guid() });
 
 export const SignerExternalConfigurationSchema = z.discriminatedUnion("caType", [
   z.object({
@@ -62,8 +62,8 @@ export const ApprovalPolicyBodySchema = z
         stepNumber: z.number().int().min(1),
         name: z.string().trim().max(64).nullable().optional(),
         requiredApprovals: z.number().int().min(1),
-        approverUserIds: z.array(z.string().uuid()).default([]),
-        approverGroupIds: z.array(z.string().uuid()).default([])
+        approverUserIds: z.array(z.string().guid()).default([]),
+        approverGroupIds: z.array(z.string().guid()).default([])
       })
     ),
     constraints: z

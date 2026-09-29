@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiDiscoveryInstallationsSchema = z.object({
-  id: z.string().uuid(),
-  discoveryId: z.string().uuid(),
-  installationId: z.string().uuid(),
+  id: z.string().guid(),
+  discoveryId: z.string().guid(),
+  installationId: z.string().guid(),
   lastScannedAt: z.date(),
   createdAt: z.date(),
   updatedAt: z.date()

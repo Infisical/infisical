@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { bidirectionalTransform } from "@app/lib/zod";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { GCP_GLOBAL_LOCATION, GCP_PROJECT_ID_PATTERN } from "@app/services/app-connection/gcp/gcp-connection-constants";
@@ -36,15 +37,11 @@ const GcpCertificateMapBindingSchema = z.object({
     .refine((value) => GCP_CERTIFICATE_MAP_NAME_PATTERN.test(value), {
       message: "Certificate map name must contain only lowercase letters, digits and hyphens (1-63 characters)"
     }),
-  hostname: z
-    .string()
-    .trim()
-    .max(253)
-    .optional()
-    .transform((value) => value || undefined)
+  hostname: bidirectionalTransform(z.string().trim().max(253).optional(), (value) => value || undefined)
     .refine((value) => value === undefined || GCP_HOSTNAME_PATTERN.test(value), {
       message: 'Hostname must be a fully qualified domain name or a wildcard expression such as "*.example.com"'
     })
+    .optional()
 });
 
 const GcpCertificateManagerPkiSyncConfigFieldsSchema = z.object({
@@ -181,10 +178,10 @@ export const CreateGcpCertificateManagerPkiSyncSchema = z
     destinationConfig: GcpCertificateManagerPkiSyncConfigSchema,
     syncOptions: GcpCertificateManagerPkiSyncOptionsSchema,
     subscriberId: z.string().nullish(),
-    connectionId: z.string().uuid(),
+    connectionId: z.string().guid(),
     projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
-    applicationId: z.string().uuid().optional(),
-    certificateIds: z.array(z.string().uuid()).optional(),
+    applicationId: z.string().guid().optional(),
+    certificateIds: z.array(z.string().guid()).optional(),
     filters: PkiSyncFiltersField
   })
   .superRefine((value, ctx) => {
@@ -212,7 +209,7 @@ export const UpdateGcpCertificateManagerPkiSyncSchema = z.object({
   destinationConfig: GcpCertificateManagerPkiSyncConfigUpdateSchema.optional(),
   syncOptions: GcpCertificateManagerPkiSyncOptionsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().uuid().optional(),
+  connectionId: z.string().guid().optional(),
   filters: UpdatePkiSyncFiltersField
 });
 

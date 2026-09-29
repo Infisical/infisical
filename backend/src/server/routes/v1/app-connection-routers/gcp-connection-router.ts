@@ -32,7 +32,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       operationId: "listGcpSecretManagerProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({ id: z.string(), name: z.string() }).array()
@@ -57,7 +57,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       operationId: "listGcpSecretManagerProjectLocations",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         projectId: z.string()
@@ -90,7 +90,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       operationId: "listGcpCertificateManagerProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({ id: z.string(), name: z.string() }).array()
@@ -118,7 +118,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       operationId: "listGcpCertificateManagerLocations",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         gcpProjectId: z
@@ -157,7 +157,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       operationId: "listGcpCertificateMaps",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         gcpProjectId: z

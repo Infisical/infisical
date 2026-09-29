@@ -8,25 +8,25 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AccessApprovalRequestsSchema = z.object({
-  id: z.string().uuid(),
-  policyId: z.string().uuid(),
-  privilegeId: z.string().uuid().nullable().optional(),
+  id: z.string().guid(),
+  policyId: z.string().guid(),
+  privilegeId: z.string().guid().nullable().optional(),
   isTemporary: z.boolean(),
   temporaryRange: z.string().nullable().optional(),
   permissions: z.unknown(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  requestedByUserId: z.string().uuid(),
+  requestedByUserId: z.string().guid(),
   note: z.string().nullable().optional(),
   privilegeDeletedAt: z.date().nullable().optional(),
   status: z.string().default("pending"),
-  editedByUserId: z.string().uuid().nullable().optional(),
+  editedByUserId: z.string().guid().nullable().optional(),
   editNote: z.string().nullable().optional(),
   expiresAt: z.date().nullable().optional(),
   approvedAt: z.date().nullable().optional(),
   revokedAt: z.date().nullable().optional(),
-  approvedByUserId: z.string().uuid().nullable().optional(),
-  revokedByUserId: z.string().uuid().nullable().optional(),
+  approvedByUserId: z.string().guid().nullable().optional(),
+  revokedByUserId: z.string().guid().nullable().optional(),
   bypassReason: z.string().nullable().optional()
 });
 

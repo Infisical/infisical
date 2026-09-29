@@ -10,12 +10,12 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityLdapAuthsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   accessTokenTTL: z.coerce.number().default(7200),
   accessTokenMaxTTL: z.coerce.number().default(7200),
   accessTokenNumUsesLimit: z.coerce.number().default(0),
   accessTokenTrustedIps: z.unknown(),
-  identityId: z.string().uuid(),
+  identityId: z.string().guid(),
   encryptedBindDN: zodBuffer,
   encryptedBindPass: zodBuffer,
   encryptedLdapCaCertificate: zodBuffer.nullable().optional(),
@@ -26,7 +26,7 @@ export const IdentityLdapAuthsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   accessTokenPeriod: z.coerce.number().default(0),
-  templateId: z.string().uuid().nullable().optional(),
+  templateId: z.string().guid().nullable().optional(),
   lockoutEnabled: z.boolean().default(true),
   lockoutThreshold: z.number().default(3),
   lockoutDurationSeconds: z.number().default(300),

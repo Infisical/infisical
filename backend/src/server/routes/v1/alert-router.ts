@@ -19,22 +19,22 @@ const ChannelRecipientSchema = z.object({
 const CreateChannelInputSchema = z.object({
   name: z.string().min(1).max(255),
   channelType: z.nativeEnum(AlertChannelType),
-  config: z.record(z.unknown()).default({}),
+  config: z.record(z.string(), z.unknown()).default({}),
   enabled: z.boolean().optional(),
   recipients: z.array(ChannelRecipientSchema).max(MAX_RECIPIENTS_PER_CHANNEL).optional()
 });
 
 const UpdateChannelInputSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().guid().optional(),
   name: z.string().min(1).max(255),
   channelType: z.nativeEnum(AlertChannelType),
-  config: z.record(z.unknown()).optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
   enabled: z.boolean().optional(),
   recipients: z.array(ChannelRecipientSchema).max(MAX_RECIPIENTS_PER_CHANNEL).optional()
 });
 
 const AlertResponseSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable(),
   resourceType: z.string(),
@@ -47,11 +47,11 @@ const AlertResponseSchema = z.object({
   projectId: z.string().nullable(),
   channels: z.array(
     z.object({
-      id: z.string().uuid(),
+      id: z.string().guid(),
       name: z.string(),
       channelType: z.string(),
       enabled: z.boolean(),
-      config: z.record(z.unknown()),
+      config: z.record(z.string(), z.unknown()),
       recipients: z.array(z.object({ principalType: z.string(), principalId: z.string() }))
     })
   ),
@@ -118,9 +118,9 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         resourceType: z.string().min(1),
         resourceId: z.string().nullable().optional(),
         projectId: z.string().nullable().optional(),
-        channelId: z.string().uuid().optional(),
+        channelId: z.string().guid().optional(),
         channelType: z.nativeEnum(AlertChannelType),
-        config: z.record(z.unknown()).default({}),
+        config: z.record(z.string(), z.unknown()).default({}),
         recipients: z.array(ChannelRecipientSchema).max(MAX_RECIPIENTS_PER_CHANNEL).optional()
       }),
       response: {
@@ -198,7 +198,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getAlertById",
-      params: z.object({ alertId: z.string().uuid() }),
+      params: z.object({ alertId: z.string().guid() }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -220,7 +220,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "updateAlert",
-      params: z.object({ alertId: z.string().uuid() }),
+      params: z.object({ alertId: z.string().guid() }),
       body: z.object({
         name: z.string().min(1).max(255).optional(),
         description: z.string().max(1000).nullable().optional(),
@@ -265,8 +265,8 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "deleteAlert",
-      params: z.object({ alertId: z.string().uuid() }),
-      response: { 200: z.object({ alert: z.object({ id: z.string().uuid() }) }) }
+      params: z.object({ alertId: z.string().guid() }),
+      response: { 200: z.object({ alert: z.object({ id: z.string().guid() }) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {

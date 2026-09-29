@@ -4,6 +4,7 @@ import { OauthClientsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getRequestValidationIssues } from "@app/server/lib/request-validation-issues";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { isAllowedRedirectUri, parseBasicAuthHeader } from "@app/services/oauth-client/oauth-client-fns";
@@ -69,12 +70,11 @@ const tokenExchangeIdpSatisfiesMfaSchema = z
     "Declares that authentication at the identity provider satisfies this organization's MFA requirement. Required for token exchange in an organization that enforces MFA."
   );
 
-// The zod validator compiler hands Fastify the raw ZodError, whose `message` is the whole issue list
-// stringified as JSON. Summarise it instead, so error_description names the offending fields.
 const describeValidationError = (error: Error) => {
-  if (!(error instanceof z.ZodError)) return error.message;
+  const issues = getRequestValidationIssues(error);
+  if (!issues) return error.message;
 
-  return error.issues
+  return issues
     .map((issue) => (issue.path.length ? `${issue.path.join(".")}: ${issue.message}` : issue.message))
     .join("; ");
 };
@@ -165,7 +165,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "getOauthClientById",
       params: z.object({
-        clientDbId: z.string().uuid()
+        clientDbId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -189,7 +189,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "updateOauthClient",
       params: z.object({
-        clientDbId: z.string().uuid()
+        clientDbId: z.string().guid()
       }),
       body: z.object({
         name: z.string().trim().min(1).max(64).optional(),
@@ -244,7 +244,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "rotateOauthClientSecret",
       params: z.object({
-        clientDbId: z.string().uuid()
+        clientDbId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -286,7 +286,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "deleteOauthClient",
       params: z.object({
-        clientDbId: z.string().uuid()
+        clientDbId: z.string().guid()
       }),
       response: {
         200: z.object({

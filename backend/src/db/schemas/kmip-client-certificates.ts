@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const KmipClientCertificatesSchema = z.object({
-  id: z.string().uuid(),
-  kmipClientId: z.string().uuid(),
+  id: z.string().guid(),
+  kmipClientId: z.string().guid(),
   serialNumber: z.string(),
   keyAlgorithm: z.string(),
   issuedAt: z.date(),

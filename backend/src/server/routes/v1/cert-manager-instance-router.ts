@@ -103,7 +103,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
       description:
         "Set the active Certificate Manager project for this organization. New API requests resolve to this project when no projectId is supplied.",
       tags: [ApiDocsTags.CertManagerInstance],
-      body: z.object({ projectId: z.string().uuid() }),
+      body: z.object({ projectId: z.string().guid() }),
       response: {
         200: z.object({
           activeProjectId: z.string(),

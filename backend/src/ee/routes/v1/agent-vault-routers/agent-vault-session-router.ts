@@ -24,15 +24,15 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SessionAccessBundleSchema = z.object({
-  id: z.string().uuid().nullable(),
+  id: z.string().guid().nullable(),
   name: z.string(),
   position: z.number()
 });
 
 const SessionSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
-  userId: z.string().uuid().nullable(),
-  identityId: z.string().uuid().nullable(),
+  id: z.string().guid().describe(AGENT_VAULT.SESSION.sessionId),
+  userId: z.string().guid().nullable(),
+  identityId: z.string().guid().nullable(),
   actorName: z.string(),
   actorEmail: z.string().nullable(),
   status: z.nativeEnum(AgentVaultSessionStatus),
@@ -134,7 +134,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       response: {
         200: z.object({
           session: z.object({
-            id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
+            id: z.string().guid().describe(AGENT_VAULT.SESSION.sessionId),
             token: z.string().describe(AGENT_VAULT.SESSION.token),
             expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
             createdAt: z.date(),
@@ -206,7 +206,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       operationId: "revokeAgentVaultSession",
       description: "Revoke an Agent Vault session",
       tags: [ApiDocsTags.AgentVaultSessions],
-      params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
+      params: z.object({ sessionId: z.string().guid().describe(AGENT_VAULT.SESSION.sessionId) }),
       response: { 200: z.object({ session: SessionSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),

@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const TrustedIpsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   ipAddress: z.string(),
   type: z.string(),
   prefix: z.number().nullable().optional(),
-  isActive: z.boolean().default(true).nullable().optional(),
+  isActive: z.boolean().nullable().optional(),
   comment: z.string().nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),

@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const GitAppInstallSessionsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   sessionId: z.string(),
-  userId: z.string().uuid().nullable().optional(),
-  orgId: z.string().uuid(),
+  userId: z.string().guid().nullable().optional(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

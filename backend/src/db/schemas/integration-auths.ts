@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IntegrationAuthsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   integration: z.string(),
   teamId: z.string().nullable().optional(),
   url: z.string().nullable().optional(),

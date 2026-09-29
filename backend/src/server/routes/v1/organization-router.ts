@@ -621,7 +621,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           users: z
             .object({
-              id: z.string().uuid(),
+              id: z.string().guid(),
               username: z.string(),
               email: z.string().nullable().optional(),
               firstName: z.string().nullable().optional(),
@@ -655,7 +655,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           identities: z
             .object({
-              id: z.string().uuid(),
+              id: z.string().guid(),
               name: z.string(),
               hasDeleteProtection: z.boolean()
             })

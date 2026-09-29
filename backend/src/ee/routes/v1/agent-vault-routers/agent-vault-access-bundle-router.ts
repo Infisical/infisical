@@ -160,7 +160,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       description: "Get an Agent Vault access bundle with its services",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+        accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       response: {
         200: z.object({
@@ -189,7 +189,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       description: "Update an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+        accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       body: z
         .object({
@@ -244,7 +244,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       description: "Delete an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+        accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       response: { 200: z.object({ accessBundle: AccessBundleSchema }) }
     },
@@ -285,7 +285,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       description: "Create a service in an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+        accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       body: z.object({
         name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
@@ -361,8 +361,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       description: "Update a service in an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-        serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
+        accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+        serviceId: z.string().guid().describe(AGENT_VAULT.SERVICE.serviceId)
       }),
       body: z
         .object({
@@ -458,8 +458,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       description: "Delete a service from an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-        serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
+        accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+        serviceId: z.string().guid().describe(AGENT_VAULT.SERVICE.serviceId)
       }),
       response: { 200: z.object({ service: AgentVaultServiceSchema }) }
     },
@@ -505,7 +505,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       description: "List who can reach an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+        accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       querystring: z.object(agentVaultListQuery(AGENT_VAULT.MEMBER)),
       response: { 200: z.object({ members: AgentVaultMemberSchema.array(), totalCount: z.number() }) }
@@ -530,7 +530,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       description: "List the Agent Vault members who can still be granted an access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+        accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       querystring: z.object(agentVaultListQuery(AGENT_VAULT.AVAILABLE_GRANTEE)),
       response: {
@@ -557,7 +557,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       description: "Grant an Agent Vault access bundle to users, machine identities or groups",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+        accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       body: AgentVaultMemberIdsSchema,
       response: {
@@ -616,7 +616,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       description: "Revoke an Agent Vault access bundle from users, machine identities or groups",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+        accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       body: AgentVaultMemberRevokeIdsSchema,
       response: {

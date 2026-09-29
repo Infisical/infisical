@@ -152,7 +152,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "getVaultNamespacesV3",
       querystring: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -181,7 +181,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       operationId: "getVaultPoliciesV3",
       querystring: z.object({
         namespace: z.string(),
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -211,7 +211,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       operationId: "getVaultMountsV3",
       querystring: z.object({
         namespace: z.string(),
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -242,7 +242,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       querystring: z.object({
         namespace: z.string(),
         authType: z.string().optional(),
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -289,7 +289,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
             message: `Select at most ${MAX_VAULT_IMPORT_PATHS} Vault paths per import. Import the remaining paths in another run.`
           })
           .describe(`The Vault secret paths to import, at most ${MAX_VAULT_IMPORT_PATHS} per request.`),
-        connectionId: z.string().uuid(),
+        connectionId: z.string().guid(),
         keepVaultStructure: z
           .boolean()
           .default(false)
@@ -354,7 +354,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       querystring: z.object({
         namespace: z.string(),
         mountPath: z.string(),
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -372,8 +372,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
               kubernetes_role_type: z.string().nullish(),
               generated_role_rules: z.string().nullish(),
               name_template: z.string().nullish(),
-              extra_annotations: z.record(z.string()).nullish(),
-              extra_labels: z.record(z.string()).nullish(),
+              extra_annotations: z.record(z.string(), z.string()).nullish(),
+              extra_labels: z.record(z.string(), z.string()).nullish(),
               config: z.object({
                 kubernetes_host: z.string(),
                 kubernetes_ca_cert: z.string().nullish()
@@ -407,7 +407,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       querystring: z.object({
         namespace: z.string(),
         mountPath: z.string(),
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -459,7 +459,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       querystring: z.object({
         namespace: z.string(),
         mountPath: z.string(),
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -492,7 +492,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       querystring: z.object({
         namespace: z.string(),
         mountPath: z.string(),
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
 
       response: {
@@ -550,7 +550,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       querystring: z.object({
         namespace: z.string(),
         mountPath: z.string(),
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -596,7 +596,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "getDopplerProjectsV3",
       querystring: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -628,7 +628,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "getDopplerEnvironmentsV3",
       querystring: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().guid(),
         projectSlug: z.string().min(1)
       }),
       response: {
@@ -663,7 +663,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "getDopplerConfigsV3",
       querystring: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().guid(),
         projectSlug: z.string().min(1)
       }),
       response: {
@@ -698,7 +698,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "importDopplerSecretsV3",
       body: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().guid(),
         dopplerProject: z.string().min(1),
         dopplerEnvironment: z.string().min(1),
         targetProjectId: z.string().min(1),

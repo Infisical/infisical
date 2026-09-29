@@ -31,7 +31,7 @@ export const registerFireworksConnectionRouter = async (server: FastifyZodProvid
     schema: {
       operationId: "listFireworksServiceAccounts",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

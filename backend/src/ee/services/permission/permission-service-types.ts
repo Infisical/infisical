@@ -189,7 +189,7 @@ export type TPermissionServiceFactory = {
         createdAt: Date;
         updatedAt: Date;
         slug: string;
-        permissions?: unknown;
+        permissions: unknown;
         description?: string | null | undefined;
       };
     }[]

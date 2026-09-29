@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamProjectRecordingConfigsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   storageBackend: z.string(),
-  connectionId: z.string().uuid(),
+  connectionId: z.string().guid(),
   bucket: z.string(),
   region: z.string(),
   keyPrefix: z.string().nullable().optional(),

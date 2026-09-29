@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const KmipOrgServerCertificatesSchema = z.object({
-  id: z.string().uuid(),
-  orgId: z.string().uuid(),
+  id: z.string().guid(),
+  orgId: z.string().guid(),
   commonName: z.string(),
   altNames: z.string().nullable().optional(),
   serialNumber: z.string(),

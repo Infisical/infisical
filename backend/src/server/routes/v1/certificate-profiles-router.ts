@@ -120,8 +120,8 @@ export const registerCertificateProfilesRouter = async (
       body: z
         .object({
           projectId: z.string().min(1).optional().describe(openApiHidden()),
-          caId: z.string().uuid().optional(),
-          certificatePolicyId: z.string().uuid(),
+          caId: z.string().guid().optional(),
+          certificatePolicyId: z.string().guid(),
           slug: z
             .string()
             .min(1)
@@ -333,9 +333,9 @@ export const registerCertificateProfilesRouter = async (
         search: z.string().optional(),
         enrollmentType: z.nativeEnum(EnrollmentType).optional(),
         issuerType: z.nativeEnum(IssuerType).optional(),
-        caId: z.string().uuid().optional(),
-        applicationId: z.string().uuid().optional(),
-        projectId: z.string().uuid().optional().describe(openApiHidden())
+        caId: z.string().guid().optional(),
+        applicationId: z.string().guid().optional(),
+        projectId: z.string().guid().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({
@@ -442,7 +442,7 @@ export const registerCertificateProfilesRouter = async (
       ...(enableOperationId ? { operationId: "getCertificateProfile" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -585,7 +585,7 @@ export const registerCertificateProfilesRouter = async (
       ...(enableOperationId ? { operationId: "updateCertificateProfile" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       body: z
         .object({
@@ -733,7 +733,7 @@ export const registerCertificateProfilesRouter = async (
       ...(enableOperationId ? { operationId: "deleteCertificateProfile" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -791,7 +791,7 @@ export const registerCertificateProfilesRouter = async (
       ...(enableOperationId ? { operationId: "listCertificateProfileCertificates" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0),
@@ -843,7 +843,7 @@ export const registerCertificateProfilesRouter = async (
       tags: [ApiDocsTags.PkiCertificateProfiles],
       description: "Get latest active certificate bundle for a profile",
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -908,7 +908,7 @@ export const registerCertificateProfilesRouter = async (
       ...(enableOperationId ? { operationId: "revealCertificateProfileAcmeEabSecret" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({

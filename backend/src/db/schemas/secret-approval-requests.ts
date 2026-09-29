@@ -8,21 +8,21 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretApprovalRequestsSchema = z.object({
-  id: z.string().uuid(),
-  policyId: z.string().uuid(),
+  id: z.string().guid(),
+  policyId: z.string().guid(),
   hasMerged: z.boolean().default(false),
   status: z.string().default("open"),
   conflicts: z.unknown().nullable().optional(),
   slug: z.string(),
-  folderId: z.string().uuid(),
+  folderId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   isReplicated: z.boolean().nullable().optional(),
-  committerUserId: z.string().uuid().nullable().optional(),
-  statusChangedByUserId: z.string().uuid().nullable().optional(),
+  committerUserId: z.string().guid().nullable().optional(),
+  statusChangedByUserId: z.string().guid().nullable().optional(),
   bypassReason: z.string().nullable().optional(),
   commitMessage: z.string().nullable().optional(),
-  committerIdentityId: z.string().uuid().nullable().optional()
+  committerIdentityId: z.string().guid().nullable().optional()
 });
 
 export type TSecretApprovalRequests = z.infer<typeof SecretApprovalRequestsSchema>;

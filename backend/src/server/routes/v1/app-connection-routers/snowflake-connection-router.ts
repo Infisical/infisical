@@ -32,7 +32,7 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
     schema: {
       operationId: "listSnowflakeDatabases",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -59,7 +59,7 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
     schema: {
       operationId: "listSnowflakeSchemas",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         database: z.string().min(1)
@@ -92,7 +92,7 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
     schema: {
       operationId: "listSnowflakeUsers",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

@@ -285,7 +285,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get list of past and current CA certificates for a CA",
       params: z.object({
-        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.caId)
+        caId: z.string().trim().guid().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.caId)
       }),
       response: {
         200: z.array(
@@ -320,7 +320,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get current CA cert and cert chain of a CA",
       params: z.object({
-        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId)
+        caId: z.string().trim().guid().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId)
       }),
       response: {
         200: z.object({
@@ -357,8 +357,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get a specific CA certificate by ID",
       params: z.object({
-        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId),
-        certId: z.string().trim().uuid().describe("Certificate ID to retrieve")
+        caId: z.string().trim().guid().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId),
+        certId: z.string().trim().guid().describe("Certificate ID to retrieve")
       }),
       response: {
         200: z.object({
@@ -369,7 +369,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
           notBefore: z.string().optional(),
           notAfter: z.string().optional(),
           maxPathLength: z.number().optional(),
-          parentCaId: z.string().uuid().optional()
+          parentCaId: z.string().guid().optional()
         })
       }
     },
@@ -775,24 +775,24 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       body: z.discriminatedUnion("type", [
         z.object({
           type: z.literal(CaSigningConfigType.Internal),
-          parentCaId: z.string().uuid().optional()
+          parentCaId: z.string().guid().optional()
         }),
         z.object({
           type: z.literal(CaSigningConfigType.Manual)
         }),
         z.object({
           type: z.literal(CaSigningConfigType.Venafi),
-          appConnectionId: z.string().uuid(),
+          appConnectionId: z.string().guid(),
           destinationConfig: VenafiDestinationConfigSchema
         }),
         z.object({
           type: z.literal(CaSigningConfigType.AzureAdCs),
-          appConnectionId: z.string().uuid(),
+          appConnectionId: z.string().guid(),
           destinationConfig: AzureAdCsDestinationConfigSchema
         }),
         z.object({
           type: z.literal(CaSigningConfigType.Adcs),
-          appConnectionId: z.string().uuid(),
+          appConnectionId: z.string().guid(),
           destinationConfig: AdcsDestinationConfigSchema
         })
       ]),
@@ -888,8 +888,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.UPDATE_SIGNING_CONFIG.caId)
       }),
       body: z.object({
-        parentCaId: z.string().uuid().optional(),
-        appConnectionId: z.string().uuid().optional(),
+        parentCaId: z.string().guid().optional(),
+        appConnectionId: z.string().guid().optional(),
         destinationConfig: DestinationConfigSchema.optional()
       }),
       response: {

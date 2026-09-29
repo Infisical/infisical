@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretScanningConfigsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   content: z.string().nullable().optional(),
   createdAt: z.date(),

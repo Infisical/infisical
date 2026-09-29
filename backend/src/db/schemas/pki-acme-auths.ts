@@ -8,14 +8,14 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiAcmeAuthsSchema = z.object({
-  id: z.string().uuid(),
-  accountId: z.string().uuid(),
+  id: z.string().guid(),
+  accountId: z.string().guid(),
   status: z.string(),
   token: z.string().nullable().optional(),
   identifierType: z.string(),
   identifierValue: z.string(),
   expiresAt: z.date(),
-  certificateId: z.string().uuid().nullable().optional(),
+  certificateId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   wildcard: z.boolean().default(false)

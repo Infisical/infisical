@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretsV2Schema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   version: z.number().default(1),
   type: z.string().default("shared"),
   key: z.string(),
@@ -18,10 +18,10 @@ export const SecretsV2Schema = z.object({
   encryptedComment: zodBuffer.nullable().optional(),
   reminderNote: z.string().nullable().optional(),
   reminderRepeatDays: z.number().nullable().optional(),
-  skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
+  skipMultilineEncoding: z.boolean().nullable().optional(),
   metadata: z.unknown().nullable().optional(),
-  userId: z.string().uuid().nullable().optional(),
-  folderId: z.string().uuid(),
+  userId: z.string().guid().nullable().optional(),
+  folderId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   secretValueBlindIndex: z.string().nullable().optional()

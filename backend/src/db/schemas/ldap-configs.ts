@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const LdapConfigsSchema = z.object({
-  id: z.string().uuid(),
-  orgId: z.string().uuid(),
+  id: z.string().guid(),
+  orgId: z.string().guid(),
   isActive: z.boolean(),
   url: z.string(),
   encryptedBindDN: z.string().nullable().optional(),

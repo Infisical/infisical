@@ -12,7 +12,7 @@ import {
 
 const HOST_LABELS_RE = new RE2(/^(?:\*\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i);
 const PORT_RE = new RE2(/^\d+$/);
-const IPV6_SCHEMA = z.string().ip({ version: "v6" });
+const IPV6_SCHEMA = z.ipv6();
 
 const isValidPort = (portStr: string) => {
   const port = Number(portStr);

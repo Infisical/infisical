@@ -8,18 +8,18 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiAlertsV2Schema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   eventType: z.string(),
   alertBefore: z.string().nullable().optional(),
   filters: z.unknown().nullable().optional(),
-  enabled: z.boolean().default(true).nullable().optional(),
+  enabled: z.boolean().nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
   notificationConfig: z.unknown().nullable().optional(),
-  applicationId: z.string().uuid().nullable().optional()
+  applicationId: z.string().guid().nullable().optional()
 });
 
 export type TPkiAlertsV2 = z.infer<typeof PkiAlertsV2Schema>;

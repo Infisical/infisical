@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const CertificateCleanupConfigsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   isEnabled: z.boolean().default(false),
   postExpiryRetentionDays: z.number().default(3),

@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const UserMfaRecoveryCodesSchema = z.object({
-  id: z.string().uuid(),
-  userId: z.string().uuid(),
+  id: z.string().guid(),
+  userId: z.string().guid(),
   encryptedRecoveryCodes: zodBuffer,
   createdAt: z.date(),
   updatedAt: z.date()

@@ -8,12 +8,12 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ProjectTemplatesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   roles: z.unknown(),
   environments: z.unknown().nullable().optional(),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   type: z.string().default("secret-manager"),

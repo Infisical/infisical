@@ -32,7 +32,7 @@ export const registerDatabricksConnectionRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listDatabricksSecretScopes",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -62,7 +62,7 @@ export const registerDatabricksConnectionRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listDatabricksServicePrincipals",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

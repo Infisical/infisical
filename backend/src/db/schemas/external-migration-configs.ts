@@ -10,11 +10,11 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ExternalMigrationConfigsSchema = z.object({
-  id: z.string().uuid(),
-  orgId: z.string().uuid(),
+  id: z.string().guid(),
+  orgId: z.string().guid(),
   provider: z.string(),
   encryptedConfig: zodBuffer,
-  connectionId: z.string().uuid().nullable().optional(),
+  connectionId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

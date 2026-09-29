@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ApprovalRequestsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
-  organizationId: z.string().uuid(),
-  policyId: z.string().uuid().nullable().optional(),
-  requesterId: z.string().uuid().nullable().optional(),
+  organizationId: z.string().guid(),
+  policyId: z.string().guid().nullable().optional(),
+  requesterId: z.string().guid().nullable().optional(),
   requesterName: z.string(),
   requesterEmail: z.string(),
   type: z.string(),
@@ -23,9 +23,9 @@ export const ApprovalRequestsSchema = z.object({
   expiresAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  machineIdentityId: z.string().uuid().nullable().optional(),
+  machineIdentityId: z.string().guid().nullable().optional(),
   scopeType: z.string().nullable().optional(),
-  scopeId: z.string().uuid().nullable().optional()
+  scopeId: z.string().guid().nullable().optional()
 });
 
 export type TApprovalRequests = z.infer<typeof ApprovalRequestsSchema>;

@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AZURE_AUTH } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { withoutDefault } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -254,7 +255,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         .object({
           tenantId: z.string().trim().optional().describe(AZURE_AUTH.UPDATE.tenantId),
           resource: z.string().trim().optional().describe(AZURE_AUTH.UPDATE.resource),
-          allowedServicePrincipalIds: validateAzureAuthField
+          allowedServicePrincipalIds: withoutDefault(validateAzureAuthField)
             .optional()
             .describe(AZURE_AUTH.UPDATE.allowedServicePrincipalIds),
           accessTokenTrustedIps: z

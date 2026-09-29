@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const RemindersSchema = z.object({
-  id: z.string().uuid(),
-  secretId: z.string().uuid().nullable().optional(),
+  id: z.string().guid(),
+  secretId: z.string().guid().nullable().optional(),
   message: z.string().nullable().optional(),
   repeatDays: z.number().nullable().optional(),
   nextReminderDate: z.date(),

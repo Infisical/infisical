@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretScanningFindingsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   dataSourceName: z.string(),
   dataSourceType: z.string(),
   resourceName: z.string(),
@@ -20,7 +20,7 @@ export const SecretScanningFindingsSchema = z.object({
   fingerprint: z.string(),
   details: z.unknown(),
   projectId: z.string(),
-  scanId: z.string().uuid().nullable().optional(),
+  scanId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

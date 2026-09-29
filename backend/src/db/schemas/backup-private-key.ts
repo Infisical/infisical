@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const BackupPrivateKeySchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   encryptedPrivateKey: z.string(),
   iv: z.string(),
   tag: z.string(),
@@ -18,7 +18,7 @@ export const BackupPrivateKeySchema = z.object({
   verifier: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  userId: z.string().uuid()
+  userId: z.string().guid()
 });
 
 export type TBackupPrivateKey = z.infer<typeof BackupPrivateKeySchema>;

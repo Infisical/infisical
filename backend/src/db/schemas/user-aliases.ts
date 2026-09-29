@@ -8,16 +8,16 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const UserAliasesSchema = z.object({
-  id: z.string().uuid(),
-  userId: z.string().uuid(),
+  id: z.string().guid(),
+  userId: z.string().guid(),
   username: z.string().nullable().optional(),
   aliasType: z.string(),
   externalId: z.string(),
   emails: z.string().array().nullable().optional(),
-  orgId: z.string().uuid().nullable().optional(),
+  orgId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  isEmailVerified: z.boolean().default(false).nullable().optional()
+  isEmailVerified: z.boolean().nullable().optional()
 });
 
 export type TUserAliases = z.infer<typeof UserAliasesSchema>;

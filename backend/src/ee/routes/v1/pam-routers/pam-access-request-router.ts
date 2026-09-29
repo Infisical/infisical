@@ -33,7 +33,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     schema: {
       body: z
         .object({
-          accountId: z.string().uuid().optional(),
+          accountId: z.string().guid().optional(),
           path: z.string().min(3).optional().describe("Account path in the format 'folderName/accountName'"),
           reason: z.string().max(500).optional(),
           duration: z.string().min(1),
@@ -142,10 +142,10 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     config: { rateLimit: readLimit },
     schema: {
       querystring: z.object({
-        folderId: z.string().uuid(),
+        folderId: z.string().guid(),
         status: z.string().optional(),
-        offset: z.coerce.number().min(0).default(0).optional(),
-        limit: z.coerce.number().min(1).max(100).default(20).optional()
+        offset: z.coerce.number().min(0).optional(),
+        limit: z.coerce.number().min(1).max(100).optional()
       }),
       response: {
         200: z.object({
@@ -177,7 +177,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     config: { rateLimit: readLimit },
     schema: {
       querystring: z.object({
-        folderId: z.string().uuid().optional()
+        folderId: z.string().guid().optional()
       }),
       response: {
         200: z.object({
@@ -230,7 +230,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     config: { rateLimit: readLimit },
     schema: {
       params: z.object({
-        accountId: z.string().uuid()
+        accountId: z.string().guid()
       }),
       querystring: z.object({
         accessType: z.nativeEnum(PamAccessType).default(PamAccessType.Session)
@@ -273,7 +273,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     config: { rateLimit: writeLimit },
     schema: {
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().guid()
       }),
       body: z.object({
         status: z.nativeEnum(ApprovalRequestApprovalDecision),
@@ -338,7 +338,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
       operationId: "breakGlassPamAccessRequest",
       description: "Self-approve your own pending PAM access request in an emergency",
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().guid()
       }),
       body: z.object({
         bypassReason: z
@@ -415,12 +415,12 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     config: { rateLimit: writeLimit },
     schema: {
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().guid()
       }),
       response: {
         200: z.object({
           grant: z.object({
-            id: z.string().uuid(),
+            id: z.string().guid(),
             status: z.string(),
             revokedAt: z.date().nullable()
           })

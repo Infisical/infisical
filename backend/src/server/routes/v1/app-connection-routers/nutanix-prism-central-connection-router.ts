@@ -30,7 +30,7 @@ export const registerNutanixPrismCentralConnectionRouter = async (server: Fastif
     schema: {
       operationId: "listNutanixPrismCentralClusters",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

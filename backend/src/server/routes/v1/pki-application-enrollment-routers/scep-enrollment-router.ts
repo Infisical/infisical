@@ -19,7 +19,7 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
       operationId: "setPkiApplicationScepEnrollment",
       description: "Enable or update the SCEP enrollment method for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
-      params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
+      params: z.object({ applicationId: z.string().guid(), profileId: z.string().guid() }),
       body: z.object({
         challengeType: z.nativeEnum(ScepChallengeType).optional(),
         challengePassword: z.string().optional(),
@@ -27,14 +27,14 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
         allowCertBasedRenewal: z.boolean().optional(),
         dynamicChallengeExpiryMinutes: z.number().int().min(5).max(1440).optional(),
         dynamicChallengeMaxPending: z.number().int().min(1).max(1000).optional(),
-        validationConnectionId: z.string().uuid().optional(),
+        validationConnectionId: z.string().guid().optional(),
         signRaWithCa: z.boolean().optional()
       }),
       response: {
         200: z.object({
-          applicationId: z.string().uuid(),
-          profileId: z.string().uuid(),
-          scep: z.object({ id: z.string().uuid(), challengeType: z.nativeEnum(ScepChallengeType) })
+          applicationId: z.string().guid(),
+          profileId: z.string().guid(),
+          scep: z.object({ id: z.string().guid(), challengeType: z.nativeEnum(ScepChallengeType) })
         })
       }
     },
@@ -94,8 +94,8 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
       operationId: "clearPkiApplicationScepEnrollment",
       description: "Disable the SCEP enrollment method for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
-      params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
-      response: { 200: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }) }
+      params: z.object({ applicationId: z.string().guid(), profileId: z.string().guid() }),
+      response: { 200: z.object({ applicationId: z.string().guid(), profileId: z.string().guid() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {

@@ -19,14 +19,14 @@ export const SecretMetadataQuerySchema = z.object({
     .default("/")
     .transform(removeTrailingSlash)
     .describe(docs.secretPath),
-  cursor: z.string().trim().uuid().optional().describe(docs.cursor),
+  cursor: z.string().trim().guid().optional().describe(docs.cursor),
   limit: z.coerce.number().int().min(1).max(500).default(500).describe(docs.limit)
 });
 
 export const SecretMetadataResponseSchema = z.object({
   secrets: z
     .object({
-      id: z.string().uuid().describe(docs.id),
+      id: z.string().guid().describe(docs.id),
       secretKey: z.string().describe(docs.secretKey),
       secretPath: z.string().describe(docs.path),
       type: z.nativeEnum(SecretType).describe(docs.type),
@@ -36,5 +36,5 @@ export const SecretMetadataResponseSchema = z.object({
     })
     .array()
     .describe(docs.secrets),
-  nextCursor: z.string().uuid().nullable().describe(docs.nextCursor)
+  nextCursor: z.string().guid().nullable().describe(docs.nextCursor)
 });

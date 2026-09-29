@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiAlertHistorySchema = z.object({
-  id: z.string().uuid(),
-  alertId: z.string().uuid(),
+  id: z.string().guid(),
+  alertId: z.string().guid(),
   triggeredAt: z.date().nullable().optional(),
-  hasNotificationSent: z.boolean().default(false).nullable().optional(),
+  hasNotificationSent: z.boolean().nullable().optional(),
   notificationError: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()

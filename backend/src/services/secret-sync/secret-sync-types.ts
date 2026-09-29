@@ -442,12 +442,7 @@ export type TSecretSyncListItem =
   | TSpaceliftSyncListItem
   | TDaytonaSyncListItem;
 
-export type TSyncOptionsConfig = {
-  canImportSecrets: boolean;
-  canRemoveSecretsOnDeletion?: boolean;
-  supportsKeySchema?: boolean;
-  supportsDisableSecretDeletion?: boolean;
-};
+export type { TSyncOptionsConfig } from "./secret-sync-options-config";
 
 export type TListSecretSyncsByProjectId = {
   projectId: string;

@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ProjectKeysSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   encryptedKey: z.string(),
   nonce: z.string(),
-  receiverId: z.string().uuid(),
-  senderId: z.string().uuid().nullable().optional(),
+  receiverId: z.string().guid(),
+  senderId: z.string().guid().nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()

@@ -148,7 +148,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          encryptionVersion: z.number().default(1).nullable().optional(),
+          encryptionVersion: z.number().nullable().optional(),
           protectedKey: z.string().nullish(),
           protectedKeyIV: z.string().nullish(),
           protectedKeyTag: z.string().nullish(),
@@ -178,7 +178,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          encryptionVersion: z.number().default(1).nullable().optional(),
+          encryptionVersion: z.number().nullable().optional(),
           protectedKey: z.string().nullish(),
           protectedKeyIV: z.string().nullish(),
           protectedKeyTag: z.string().nullish(),

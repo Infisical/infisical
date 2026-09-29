@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const UserActionsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   action: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  userId: z.string().uuid()
+  userId: z.string().guid()
 });
 
 export type TUserActions = z.infer<typeof UserActionsSchema>;

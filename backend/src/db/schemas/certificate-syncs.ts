@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const CertificateSyncsSchema = z.object({
-  id: z.string().uuid(),
-  pkiSyncId: z.string().uuid(),
-  certificateId: z.string().uuid(),
-  syncStatus: z.string().default("pending").nullable().optional(),
+  id: z.string().guid(),
+  pkiSyncId: z.string().guid(),
+  certificateId: z.string().guid(),
+  syncStatus: z.string().nullable().optional(),
   lastSyncMessage: z.string().nullable().optional(),
   lastSyncedAt: z.date().nullable().optional(),
   createdAt: z.date(),

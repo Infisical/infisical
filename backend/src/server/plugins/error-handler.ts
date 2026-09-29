@@ -34,6 +34,7 @@ import {
   rateLimitExceededCounter,
   shouldRecordHighCardinalityMetrics
 } from "@app/lib/telemetry/metrics";
+import { getRequestValidationIssues } from "@app/server/lib/request-validation-issues";
 import { OauthTokenError, OauthTokenErrorCode, toErrorDescription } from "@app/services/oauth-client/oauth-token-error";
 
 enum JWTErrors {
@@ -97,6 +98,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
   });
 
   server.setErrorHandler((error: Error, req, res) => {
+    const requestValidationIssues = getRequestValidationIssues(error);
     // Expected client errors don't need stack traces. Log them without the Error object to
     // avoid stack serialization; keep full-stack logging for unexpected / server errors.
     const isExpectedClientError =
@@ -110,6 +112,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       error instanceof PermissionBoundaryError ||
       error instanceof ZodError ||
       isBodyParserError(error) ||
+      requestValidationIssues !== null ||
       (error instanceof OauthTokenError && error.statusCode < HttpStatusCodes.InternalServerError) ||
       error instanceof RateLimitError ||
       error instanceof PolicyViolationError ||
@@ -303,6 +306,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         statusCode: HttpStatusCodes.GatewayTimeout,
         message: error.message,
         error: error.name
+      });
+    } else if (requestValidationIssues) {
+      void res.status(HttpStatusCodes.UnprocessableContent).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.UnprocessableContent,
+        error: "ValidationFailure",
+        message: requestValidationIssues
       });
     } else if (error instanceof ZodError) {
       void res.status(HttpStatusCodes.UnprocessableContent).send({

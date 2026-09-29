@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const OrgBotsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   publicKey: z.string(),
   encryptedSymmetricKey: z.string(),
@@ -21,7 +21,7 @@ export const OrgBotsSchema = z.object({
   privateKeyTag: z.string(),
   privateKeyAlgorithm: z.string(),
   privateKeyKeyEncoding: z.string(),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

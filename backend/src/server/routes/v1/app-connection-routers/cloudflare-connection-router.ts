@@ -32,7 +32,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listCloudflarePagesProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z
@@ -61,7 +61,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listCloudflareWorkersScripts",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z
@@ -89,7 +89,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listCloudflareZones",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z
@@ -118,7 +118,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listCloudflarePermissionGroups",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z
@@ -151,7 +151,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listCloudflareR2Buckets",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z

@@ -10,12 +10,12 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ExternalKmsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   provider: z.string(),
   encryptedProviderInputs: zodBuffer,
   status: z.string().nullable().optional(),
   statusDetails: z.string().nullable().optional(),
-  kmsKeyId: z.string().uuid()
+  kmsKeyId: z.string().guid()
 });
 
 export type TExternalKms = z.infer<typeof ExternalKmsSchema>;

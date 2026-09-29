@@ -13,27 +13,27 @@ import { PkiSync, PkiSyncStatus } from "@app/services/pki-sync/pki-sync-enums";
 import { PkiSyncFiltersField, PkiSyncStoredFiltersField } from "@app/services/pki-sync/pki-sync-schemas";
 
 const PkiSyncCertificateRefSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   commonName: z.string(),
   altNames: z.string().nullable().optional(),
   serialNumber: z.string().optional(),
   notAfter: z.date().optional(),
-  orderId: z.string().uuid().optional(),
+  orderId: z.string().guid().optional(),
   profileName: z.string().nullable().optional()
 });
 
 export const PkiSyncSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   destination: z.nativeEnum(PkiSync),
   isAutoSyncEnabled: z.boolean(),
-  destinationConfig: z.record(z.unknown()),
-  syncOptions: z.record(z.unknown()),
-  projectId: z.string().uuid(),
-  applicationId: z.string().uuid().nullable().optional(),
-  subscriberId: z.string().uuid().nullable().optional(),
-  connectionId: z.string().uuid(),
+  destinationConfig: z.record(z.string(), z.unknown()),
+  syncOptions: z.record(z.string(), z.unknown()),
+  projectId: z.string().guid(),
+  applicationId: z.string().guid().nullable().optional(),
+  subscriberId: z.string().guid().nullable().optional(),
+  connectionId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   // Sync status fields
@@ -62,12 +62,12 @@ export const PkiSyncSchema = z.object({
     name: z.string(),
     app: z.string(),
     encryptedCredentials: z.unknown().nullable(),
-    orgId: z.string().uuid(),
-    projectId: z.string().uuid().nullable().optional(),
+    orgId: z.string().guid(),
+    projectId: z.string().guid().nullable().optional(),
     method: z.string(),
     description: z.string().nullable().optional(),
     version: z.number(),
-    gatewayId: z.string().uuid().nullable().optional(),
+    gatewayId: z.string().guid().nullable().optional(),
     createdAt: z.date(),
     updatedAt: z.date(),
     isPlatformManagedCredentials: z.boolean().nullable().optional()
@@ -101,9 +101,9 @@ const PkiSyncOptionsSchema = z.object({
 });
 
 const PkiSyncCertificateSchema = z.object({
-  id: z.string().uuid(),
-  pkiSyncId: z.string().uuid(),
-  certificateId: z.string().uuid(),
+  id: z.string().guid(),
+  pkiSyncId: z.string().guid(),
+  certificateId: z.string().guid(),
   syncStatus: z.nativeEnum(CertificateSyncStatus),
   lastSyncMessage: z.string().nullable().optional(),
   lastSyncedAt: z.date().nullable().optional(),
@@ -111,7 +111,7 @@ const PkiSyncCertificateSchema = z.object({
   updatedAt: z.date(),
   certificateSerialNumber: z.string().optional(),
   certificateCommonName: z.string().optional(),
-  certificateOrderId: z.string().uuid().optional(),
+  certificateOrderId: z.string().guid().optional(),
   certificateAltNames: z.string().optional(),
   certificateStatus: z.string().optional(),
   certificateNotBefore: z.date().optional(),
@@ -162,8 +162,8 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
       description: "List all the PKI Syncs for the specified project.",
       querystring: z.object({
         projectId: z.string().trim().optional().describe(openApiHidden()),
-        certificateId: z.string().uuid().optional(),
-        applicationId: z.string().uuid().optional()
+        certificateId: z.string().guid().optional(),
+        applicationId: z.string().guid().optional()
       }),
       response: {
         200: z.object({ pkiSyncs: PkiSyncSchema.array() })
@@ -251,7 +251,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
       tags: [ApiDocsTags.PkiSyncs],
       description: "List all certificates associated with a PKI Sync.",
       params: z.object({
-        pkiSyncId: z.string().uuid()
+        pkiSyncId: z.string().guid()
       }),
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0),
@@ -307,8 +307,8 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
       description: "List the certificates a set of filters matches, for an existing PKI Sync or an Application.",
       body: z
         .object({
-          pkiSyncId: z.string().uuid().optional().describe(PKI_SYNC_FILTERS.previewPkiSyncId),
-          applicationId: z.string().uuid().optional().describe(PKI_SYNC_FILTERS.previewApplicationId),
+          pkiSyncId: z.string().guid().optional().describe(PKI_SYNC_FILTERS.previewPkiSyncId),
+          applicationId: z.string().guid().optional().describe(PKI_SYNC_FILTERS.previewApplicationId),
           filters: PkiSyncFiltersField,
           offset: z.coerce.number().min(0).default(0).describe(PKI_SYNC_FILTERS.previewOffset),
           limit: z.coerce.number().min(1).max(500).default(100).describe(PKI_SYNC_FILTERS.previewLimit)
@@ -355,9 +355,9 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
       description: "Resolve certificate orders to the certificate each one currently holds.",
       body: z
         .object({
-          pkiSyncId: z.string().uuid().optional().describe(PKI_SYNC_FILTERS.previewPkiSyncId),
-          applicationId: z.string().uuid().optional().describe(PKI_SYNC_FILTERS.previewApplicationId),
-          certificateOrderIds: z.string().uuid().array().max(200).describe(PKI_SYNC_FILTERS.certificateOrderIds)
+          pkiSyncId: z.string().guid().optional().describe(PKI_SYNC_FILTERS.previewPkiSyncId),
+          applicationId: z.string().guid().optional().describe(PKI_SYNC_FILTERS.previewApplicationId),
+          certificateOrderIds: z.string().guid().array().max(200).describe(PKI_SYNC_FILTERS.certificateOrderIds)
         })
         .refine((body) => Boolean(body.pkiSyncId) !== Boolean(body.applicationId), {
           message: "Provide either pkiSyncId or applicationId."
@@ -366,7 +366,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         200: z.object({
           orders: z
             .object({
-              certificateOrderId: z.string().uuid(),
+              certificateOrderId: z.string().guid(),
               commonName: z.string(),
               altNames: z.string().nullish()
             })
@@ -399,19 +399,19 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
       tags: [ApiDocsTags.PkiSyncs],
       description: "Add certificates to a PKI Sync.",
       params: z.object({
-        pkiSyncId: z.string().uuid()
+        pkiSyncId: z.string().guid()
       }),
       body: z.object({
-        certificateIds: z.array(z.string().uuid()).min(1, "At least one certificate ID is required")
+        certificateIds: z.array(z.string().guid()).min(1, "At least one certificate ID is required")
       }),
       response: {
         200: z.object({
           addedCertificates: z.array(
             z.object({
-              id: z.string().uuid(),
-              pkiSyncId: z.string().uuid(),
-              certificateId: z.string().uuid(),
-              syncStatus: z.string().default("pending").optional().nullable(),
+              id: z.string().guid(),
+              pkiSyncId: z.string().guid(),
+              certificateId: z.string().guid(),
+              syncStatus: z.string().optional().nullable(),
               lastSyncMessage: z.string().optional().nullable(),
               lastSyncedAt: z.date().optional().nullable(),
               createdAt: z.date(),
@@ -447,10 +447,10 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
       tags: [ApiDocsTags.PkiSyncs],
       description: "Remove certificates from a PKI Sync.",
       params: z.object({
-        pkiSyncId: z.string().uuid()
+        pkiSyncId: z.string().guid()
       }),
       body: z.object({
-        certificateIds: z.array(z.string().uuid()).min(1, "At least one certificate ID is required")
+        certificateIds: z.array(z.string().guid()).min(1, "At least one certificate ID is required")
       }),
       response: {
         200: z.object({

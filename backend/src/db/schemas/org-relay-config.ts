@@ -10,10 +10,10 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const OrgRelayConfigSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   encryptedRelayPkiClientCaPrivateKey: zodBuffer,
   encryptedRelayPkiClientCaCertificate: zodBuffer,
   encryptedRelayPkiClientCaCertificateChain: zodBuffer,

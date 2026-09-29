@@ -10,13 +10,13 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const CertificateAuthoritySecretSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  caId: z.string().uuid(),
+  caId: z.string().guid(),
   encryptedPrivateKey: zodBuffer.nullable().optional(),
   keySource: z.string().default("infisical"),
-  hsmConnectorId: z.string().uuid().nullable().optional(),
+  hsmConnectorId: z.string().guid().nullable().optional(),
   hsmKeyLabel: z.string().nullable().optional(),
   hsmPublicKeySpki: zodBuffer.nullable().optional()
 });

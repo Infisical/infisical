@@ -10,16 +10,16 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityAuthTemplatesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   templateFields: zodBuffer,
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   name: z.string(),
   authMethod: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  gatewayId: z.string().uuid().nullable().optional(),
-  gatewayV2Id: z.string().uuid().nullable().optional(),
-  gatewayPoolId: z.string().uuid().nullable().optional()
+  gatewayId: z.string().guid().nullable().optional(),
+  gatewayV2Id: z.string().guid().nullable().optional(),
+  gatewayPoolId: z.string().guid().nullable().optional()
 });
 
 export type TIdentityAuthTemplates = z.infer<typeof IdentityAuthTemplatesSchema>;

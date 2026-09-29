@@ -133,7 +133,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
             .object({
               app: z.literal(app),
               name: z.string(),
-              id: z.string().uuid(),
+              id: z.string().guid(),
               projectId: z.string().nullish(),
               orgId: z.string()
             })
@@ -180,7 +180,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       tags: [ApiDocsTags.AppConnections],
       description: `Get the specified ${appName} Connection by ID.`,
       params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.GET_BY_ID(app).connectionId)
+        connectionId: z.string().guid().describe(AppConnections.GET_BY_ID(app).connectionId)
       }),
       response: {
         200: z.object({ appConnection: sanitizedResponseSchema })
@@ -362,7 +362,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       tags: [ApiDocsTags.AppConnections],
       description: `Update the specified ${appName} Connection.`,
       params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.UPDATE(app).connectionId)
+        connectionId: z.string().guid().describe(AppConnections.UPDATE(app).connectionId)
       }),
       body: updateSchema,
       response: {
@@ -441,7 +441,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       tags: [ApiDocsTags.AppConnections],
       description: `Delete the specified ${appName} Connection.`,
       params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.DELETE(app).connectionId)
+        connectionId: z.string().guid().describe(AppConnections.DELETE(app).connectionId)
       }),
       response: {
         200: z.object({ appConnection: sanitizedResponseSchema })
@@ -497,7 +497,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       tags: [ApiDocsTags.AppConnections],
       description: `Rotate the credentials for the specified ${appName} Connection.`,
       params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.ROTATE_CREDENTIALS(app).connectionId)
+        connectionId: z.string().guid().describe(AppConnections.ROTATE_CREDENTIALS(app).connectionId)
       }),
       response: {
         200: z.object({ appConnection: sanitizedResponseSchema })
@@ -542,7 +542,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
   //     hide: true, // scott: we could expose this in the future but just for UI right now
   //     tags: [ApiDocsTags.AppConnections],
   //     params: z.object({
-  //       connectionId: z.string().uuid()
+  //       connectionId: z.string().guid()
   //     }),
   //     response: {
   //       200: z.object({

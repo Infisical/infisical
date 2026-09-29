@@ -10,12 +10,12 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityJwtAuthsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   accessTokenTTL: z.coerce.number().default(7200),
   accessTokenMaxTTL: z.coerce.number().default(7200),
   accessTokenNumUsesLimit: z.coerce.number().default(0),
   accessTokenTrustedIps: z.unknown(),
-  identityId: z.string().uuid(),
+  identityId: z.string().guid(),
   configurationType: z.string(),
   jwksUrl: z.string(),
   encryptedJwksCaCert: zodBuffer,

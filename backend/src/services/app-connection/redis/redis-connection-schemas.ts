@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { bidirectionalTransform } from "@app/lib/zod";
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
@@ -19,11 +20,7 @@ export const BaseRedisUsernameAndPasswordConnectionSchema = z.object({
 
   sslRejectUnauthorized: z.boolean(),
   sslEnabled: z.boolean(),
-  sslCertificate: z
-    .string()
-    .trim()
-    .transform((value) => value || undefined)
-    .optional()
+  sslCertificate: bidirectionalTransform(z.string().trim().optional(), (value) => value || undefined).optional()
 });
 
 export const RedisConnectionAccessTokenCredentialsSchema = BaseRedisUsernameAndPasswordConnectionSchema;

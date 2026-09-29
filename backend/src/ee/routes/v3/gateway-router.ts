@@ -102,8 +102,8 @@ const KubernetesAuthMethodInputSchema = z
       .nativeEnum(KubernetesTokenReviewMode)
       .default(KubernetesTokenReviewMode.Api)
       .describe(GATEWAYS.AUTH_METHOD.tokenReviewMode),
-    gatewayId: z.string().uuid().nullable().optional().describe(GATEWAYS.AUTH_METHOD.gatewayId),
-    gatewayPoolId: z.string().uuid().nullable().optional().describe(GATEWAYS.AUTH_METHOD.gatewayPoolId),
+    gatewayId: z.string().guid().nullable().optional().describe(GATEWAYS.AUTH_METHOD.gatewayId),
+    gatewayPoolId: z.string().guid().nullable().optional().describe(GATEWAYS.AUTH_METHOD.gatewayPoolId),
     allowedNamespaces: validateAllowedNamespaces.describe(GATEWAYS.AUTH_METHOD.allowedNamespaces),
     allowedNames: validateAllowedNames.describe(GATEWAYS.AUTH_METHOD.allowedNames),
     allowedAudience: z.string().trim().max(255).default("").describe(GATEWAYS.AUTH_METHOD.allowedAudience),
@@ -310,7 +310,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "getGateway",
       tags: [ApiDocsTags.GatewaysV3],
-      params: z.object({ gatewayId: z.string().trim().uuid() }),
+      params: z.object({ gatewayId: z.string().trim().guid() }),
       response: { 200: GatewayWithAuthMethodSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -334,7 +334,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "updateGateway",
       tags: [ApiDocsTags.GatewaysV3],
-      params: z.object({ gatewayId: z.string().trim().uuid() }),
+      params: z.object({ gatewayId: z.string().trim().guid() }),
       body: z.object({
         name: slugSchema({ field: "name" }).optional().describe(GATEWAYS.UPDATE.name),
         authMethod: SettableAuthMethodInputSchema.optional().describe(GATEWAYS.UPDATE.authMethod)
@@ -436,7 +436,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "mintGatewayEnrollmentToken",
       tags: [ApiDocsTags.GatewaysV3],
-      params: z.object({ gatewayId: z.string().trim().uuid() }),
+      params: z.object({ gatewayId: z.string().trim().guid() }),
       response: {
         200: z.object({
           token: z.string(),
@@ -473,7 +473,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "revokeGatewayAccess",
       tags: [ApiDocsTags.GatewaysV3],
-      params: z.object({ gatewayId: z.string().trim().uuid() }),
+      params: z.object({ gatewayId: z.string().trim().guid() }),
       response: {
         200: z.object({
           method: z.enum(["aws", "gcp", "kubernetes", "token"])
@@ -518,19 +518,19 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       body: z.discriminatedUnion("method", [
         z.object({
           method: z.literal(ResourceAuthMethodType.Aws),
-          gatewayId: z.string().trim().uuid().describe(GATEWAYS.LOGIN.gatewayId),
+          gatewayId: z.string().trim().guid().describe(GATEWAYS.LOGIN.gatewayId),
           iamHttpRequestMethod: z.string().default("POST").describe(GATEWAYS.LOGIN.iamHttpRequestMethod),
           iamRequestBody: z.string().describe(GATEWAYS.LOGIN.iamRequestBody),
           iamRequestHeaders: z.string().describe(GATEWAYS.LOGIN.iamRequestHeaders)
         }),
         z.object({
           method: z.literal(ResourceAuthMethodType.Gcp),
-          gatewayId: z.string().trim().uuid().describe(GATEWAYS.LOGIN.gatewayId),
+          gatewayId: z.string().trim().guid().describe(GATEWAYS.LOGIN.gatewayId),
           jwt: z.string().trim().min(1).max(8192).describe(GATEWAYS.LOGIN.gcpJwt)
         }),
         z.object({
           method: z.literal(ResourceAuthMethodType.Kubernetes),
-          gatewayId: z.string().trim().uuid().describe(GATEWAYS.LOGIN.gatewayId),
+          gatewayId: z.string().trim().guid().describe(GATEWAYS.LOGIN.gatewayId),
           jwt: z.string().trim().min(1).max(8192).describe(GATEWAYS.LOGIN.jwt)
         }),
         z.object({

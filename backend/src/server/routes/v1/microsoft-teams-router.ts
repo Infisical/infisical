@@ -61,7 +61,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
       operationId: "completeMicrosoftTeamsIntegration",
       body: z.object({
         redirectUri: z.string(),
-        tenantId: z.string().uuid(),
+        tenantId: z.string().guid(),
         slug: z.string(),
         description: z.string().optional(),
         code: z.string().trim()

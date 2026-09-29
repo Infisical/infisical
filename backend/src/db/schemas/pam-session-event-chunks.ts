@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamSessionEventChunksSchema = z.object({
-  id: z.string().uuid(),
-  sessionId: z.string().uuid(),
+  id: z.string().guid(),
+  sessionId: z.string().guid(),
   chunkIndex: z.number(),
   startElapsedMs: z.coerce.number(),
   endElapsedMs: z.coerce.number(),

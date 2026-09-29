@@ -73,7 +73,7 @@ describe("templateFieldsPatchSchema", () => {
 
     expect(result.success).toBe(false);
     expect(result.success === false && result.error.issues).toEqual([
-      expect.objectContaining({ code: "invalid_enum_value", path: ["tokenReviewMode"] })
+      expect.objectContaining({ code: "invalid_value", path: ["tokenReviewMode"] })
     ]);
   });
 

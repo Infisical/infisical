@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ScimEventsSchema = z.object({
-  id: z.string().uuid(),
-  orgId: z.string().uuid(),
+  id: z.string().guid(),
+  orgId: z.string().guid(),
   eventType: z.string().nullable().optional(),
   event: z.unknown().nullable().optional(),
   createdAt: z.date(),

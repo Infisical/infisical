@@ -128,8 +128,8 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
       description: "Update an alert on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
-        applicationId: z.string().uuid(),
-        alertId: z.string().uuid()
+        applicationId: z.string().guid(),
+        alertId: z.string().guid()
       }),
       body: UpdatePkiAlertV2Schema,
       response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
@@ -187,8 +187,8 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
       description: "Delete an alert from an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
-        applicationId: z.string().uuid(),
-        alertId: z.string().uuid()
+        applicationId: z.string().guid(),
+        alertId: z.string().guid()
       }),
       response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
     },

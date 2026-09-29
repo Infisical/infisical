@@ -81,7 +81,7 @@ export const CreateAcmeAccountBodySchema = z.object({
 // New Account endpoint
 export const CreateAcmeAccountSchema = z.object({
   params: z.object({
-    profileId: z.string().uuid()
+    profileId: z.string().guid()
   }),
   body: CreateAcmeAccountBodySchema
 });

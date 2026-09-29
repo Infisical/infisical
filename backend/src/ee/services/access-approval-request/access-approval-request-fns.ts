@@ -73,7 +73,7 @@ const AccessApprovalRequestConditionsSchema = z
 // returning an array at runtime, declare their output as the union (generic narrowing).
 const accessApprovalRequestRuleSchema = <
   TSub extends ProjectPermissionSub,
-  TAction extends z.ZodType<string | string[], z.ZodTypeDef, unknown>
+  TAction extends z.ZodType<string | string[], unknown>
 >(
   subject: TSub,
   action: TAction

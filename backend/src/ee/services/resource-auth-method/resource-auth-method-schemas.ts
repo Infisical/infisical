@@ -3,7 +3,7 @@ import { z } from "zod";
 import { ResourceAuthMethodType } from "./resource-auth-method-fns";
 
 export const AwsAuthMethodConfigSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   stsEndpoint: z.string(),
   allowedPrincipalArns: z.string(),
   allowedAccountIds: z.string(),
@@ -12,7 +12,7 @@ export const AwsAuthMethodConfigSchema = z.object({
 });
 
 export const GcpAuthMethodConfigSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   type: z.string(),
   allowedServiceAccounts: z.string(),
   allowedProjects: z.string(),
@@ -22,7 +22,7 @@ export const GcpAuthMethodConfigSchema = z.object({
 });
 
 export const KubernetesAuthMethodConfigSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   kubernetesHost: z.string(),
   tokenReviewMode: z.string(),
   gatewayId: z.string().nullable(),

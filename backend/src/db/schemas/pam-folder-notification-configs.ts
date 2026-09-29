@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamFolderNotificationConfigsSchema = z.object({
-  id: z.string().uuid(),
-  folderId: z.string().uuid(),
-  workflowIntegrationId: z.string().uuid(),
+  id: z.string().guid(),
+  folderId: z.string().guid(),
+  workflowIntegrationId: z.string().guid(),
   channels: z.unknown(),
   events: z.unknown(),
   createdAt: z.date(),

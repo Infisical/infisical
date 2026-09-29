@@ -13,7 +13,7 @@ export enum DigiCertCaPurpose {
 }
 
 export const DigiCertCertificateAuthorityConfigurationSchema = z.object({
-  appConnectionId: z.string().uuid().trim().describe("DigiCert App Connection ID"),
+  appConnectionId: z.string().guid().trim().describe("DigiCert App Connection ID"),
   organizationId: z
     .number()
     .int()
@@ -69,6 +69,6 @@ export const DigiCertCertificateRequestMetadataSchema = z.object({
     lastCheckedAt: z.string().optional(),
     lastCheckStatus: z.string().optional(),
     isRenewal: z.boolean().optional(),
-    originalCertificateId: z.string().uuid().optional()
+    originalCertificateId: z.string().guid().optional()
   })
 });

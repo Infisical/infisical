@@ -32,7 +32,7 @@ export const registerCamundaConnectionRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "listCamundaClusters",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

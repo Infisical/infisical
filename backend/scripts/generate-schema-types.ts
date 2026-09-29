@@ -16,7 +16,7 @@ const db = knex({
 const getZodPrimitiveType = (type: string) => {
   switch (type) {
     case "uuid":
-      return "z.string().uuid()";
+      return "z.string().guid()";
     case "character varying":
       return "z.string()";
     case "ARRAY":
@@ -125,7 +125,9 @@ const main = async () => {
       }
 
       // don't put optional on id
-      if (colInfo.defaultValue && columnName !== "id") {
+      // A nullable column ends in .nullable().optional(), which Zod 4 would fill with the default on
+      // every omitted key; the database applies the default on insert anyway.
+      if (colInfo.defaultValue && columnName !== "id" && !colInfo.nullable) {
         const { defaultValue } = colInfo;
         const zSchema = getZodDefaultValue(colInfo.type, defaultValue);
         if (zSchema) {

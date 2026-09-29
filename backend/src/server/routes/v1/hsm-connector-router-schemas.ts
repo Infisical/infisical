@@ -22,7 +22,7 @@ export const HsmConnectorTestResultSchema = z.object({
     .array(
       z.discriminatedUnion("ok", [
         z.object({
-          gatewayId: z.string().uuid(),
+          gatewayId: z.string().guid(),
           ok: z.literal(true),
           slotInfo: z.object({
             manufacturer: z.string(),
@@ -31,7 +31,7 @@ export const HsmConnectorTestResultSchema = z.object({
           })
         }),
         z.object({
-          gatewayId: z.string().uuid(),
+          gatewayId: z.string().guid(),
           ok: z.literal(false),
           errorCode: z.string(),
           errorMessage: z.string()
@@ -45,8 +45,8 @@ export const CreateHsmConnectorBodySchema = z
   .object({
     name: slugSchema({ min: 1, max: HSM_CONNECTOR_NAME_MAX, field: "name" }),
     description: z.string().max(HSM_CONNECTOR_DESCRIPTION_MAX).optional(),
-    gatewayId: z.string().uuid().optional(),
-    gatewayPoolId: z.string().uuid().optional(),
+    gatewayId: z.string().guid().optional(),
+    gatewayPoolId: z.string().guid().optional(),
     credentials: HsmConnectorCredentialsSchema
   })
   .refine(gatewayPickRefiner, { message: GATEWAY_PICK_MESSAGE, path: ["gatewayId"] });
@@ -55,8 +55,8 @@ export const UpdateHsmConnectorBodySchema = z
   .object({
     name: slugSchema({ min: 1, max: HSM_CONNECTOR_NAME_MAX, field: "name" }).optional(),
     description: z.string().max(HSM_CONNECTOR_DESCRIPTION_MAX).optional(),
-    gatewayId: z.string().uuid().nullable().optional(),
-    gatewayPoolId: z.string().uuid().nullable().optional(),
+    gatewayId: z.string().guid().nullable().optional(),
+    gatewayPoolId: z.string().guid().nullable().optional(),
     credentials: HsmConnectorCredentialsSchema.partial().optional()
   })
   .refine(
@@ -71,7 +71,7 @@ export const UpdateHsmConnectorBodySchema = z
   );
 
 export const HsmConnectorIdParamSchema = z.object({
-  connectorId: z.string().uuid()
+  connectorId: z.string().guid()
 });
 
 export const HsmConnectorLinkedResourcesQuerySchema = z.object({
@@ -82,7 +82,7 @@ export const HsmConnectorLinkedResourcesQuerySchema = z.object({
 export const HsmConnectorLinkedResourcesResponseSchema = z.object({
   certificates: z.array(
     z.object({
-      id: z.string().uuid(),
+      id: z.string().guid(),
       commonName: z.string(),
       status: z.string(),
       notAfter: z.date(),
@@ -92,7 +92,7 @@ export const HsmConnectorLinkedResourcesResponseSchema = z.object({
   ),
   certificateAuthorities: z.array(
     z.object({
-      id: z.string().uuid(),
+      id: z.string().guid(),
       name: z.string(),
       commonName: z.string().nullable(),
       status: z.nativeEnum(CaStatus),

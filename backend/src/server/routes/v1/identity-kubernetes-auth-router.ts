@@ -46,7 +46,7 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   tokenReviewerJwt: z.string().optional().nullable(),
   // declared rather than picked: the row's own gatewayId is the retired v1 column, and the
   // service fills this field from gatewayV2Id so the API name stays unchanged
-  gatewayId: z.string().uuid().optional().nullable()
+  gatewayId: z.string().guid().optional().nullable()
 });
 
 export const registerIdentityKubernetesRouter = async (server: FastifyZodProvider) => {
@@ -175,7 +175,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }),
       body: z
         .object({
-          templateId: z.string().uuid().optional().describe(KUBERNETES_AUTH.ATTACH.templateId),
+          templateId: z.string().guid().optional().describe(KUBERNETES_AUTH.ATTACH.templateId),
           kubernetesHost: kubernetesHostSchema.nullish().describe(KUBERNETES_AUTH.ATTACH.kubernetesHost),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.ATTACH.caCert),
           verifyTlsCertificate: z.boolean().optional().describe(KUBERNETES_AUTH.ATTACH.verifyTlsCertificate),
@@ -190,8 +190,8 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           allowedNamespaces: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNamespaces), // TODO: validation
           allowedNames: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNames),
           allowedAudience: z.string().trim().max(1000).optional().describe(KUBERNETES_AUTH.ATTACH.allowedAudience),
-          gatewayId: z.string().uuid().optional().nullable().describe(KUBERNETES_AUTH.ATTACH.gatewayId),
-          gatewayPoolId: z.string().uuid().optional().nullable(),
+          gatewayId: z.string().guid().optional().nullable().describe(KUBERNETES_AUTH.ATTACH.gatewayId),
+          gatewayPoolId: z.string().guid().optional().nullable(),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -313,7 +313,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }),
       body: z
         .object({
-          templateId: z.string().uuid().nullable().optional().describe(KUBERNETES_AUTH.UPDATE.templateId),
+          templateId: z.string().guid().nullable().optional().describe(KUBERNETES_AUTH.UPDATE.templateId),
           kubernetesHost: kubernetesHostSchema.nullish().describe(KUBERNETES_AUTH.UPDATE.kubernetesHost),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
           verifyTlsCertificate: z.boolean().optional().describe(KUBERNETES_AUTH.UPDATE.verifyTlsCertificate),
@@ -325,8 +325,8 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           allowedNamespaces: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNamespaces), // TODO: validation
           allowedNames: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNames),
           allowedAudience: z.string().trim().max(1000).optional().describe(KUBERNETES_AUTH.UPDATE.allowedAudience),
-          gatewayId: z.string().uuid().optional().nullable().describe(KUBERNETES_AUTH.UPDATE.gatewayId),
-          gatewayPoolId: z.string().uuid().optional().nullable(),
+          gatewayId: z.string().guid().optional().nullable().describe(KUBERNETES_AUTH.UPDATE.gatewayId),
+          gatewayPoolId: z.string().guid().optional().nullable(),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()

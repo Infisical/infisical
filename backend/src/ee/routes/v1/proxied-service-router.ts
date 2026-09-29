@@ -132,7 +132,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       tags: [ApiDocsTags.ProxiedServices],
       description: "Get a proxied service by ID",
       params: z.object({
-        serviceId: z.string().uuid().describe(PROXIED_SERVICES.GET.serviceId)
+        serviceId: z.string().guid().describe(PROXIED_SERVICES.GET.serviceId)
       }),
       response: {
         200: z.object({
@@ -192,7 +192,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
       description: "Update a proxied service",
-      params: z.object({ serviceId: z.string().uuid().describe(PROXIED_SERVICES.UPDATE.serviceId) }),
+      params: z.object({ serviceId: z.string().guid().describe(PROXIED_SERVICES.UPDATE.serviceId) }),
       body: z.object({
         name: slugSchema({ field: "name" }).optional().describe(PROXIED_SERVICES.UPDATE.name),
         hostPattern: hostPatternSchema.optional().describe(PROXIED_SERVICES.UPDATE.hostPattern),
@@ -242,7 +242,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       hide: true,
       tags: [ApiDocsTags.ProxiedServices],
       description: "Report that the agent proxy brokered a request for this service",
-      params: z.object({ serviceId: z.string().uuid() }),
+      params: z.object({ serviceId: z.string().guid() }),
       response: {
         200: z.object({ success: z.boolean() })
       }
@@ -262,7 +262,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
       description: "Delete a proxied service",
-      params: z.object({ serviceId: z.string().uuid().describe(PROXIED_SERVICES.DELETE.serviceId) }),
+      params: z.object({ serviceId: z.string().guid().describe(PROXIED_SERVICES.DELETE.serviceId) }),
       response: {
         200: z.object({ service: SanitizedProxiedServiceBaseSchema })
       }

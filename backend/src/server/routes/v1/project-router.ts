@@ -1051,6 +1051,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.record(
+          z.string(),
           ProjectEnvironmentsSchema.extend({ folders: SecretFoldersSchema.extend({ path: z.string() }).array() })
         )
       }
@@ -1284,15 +1285,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         commonName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.commonName),
         offset: z.coerce.number().min(0).default(0).describe(PROJECTS.LIST_CERTIFICATES.offset),
         limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CERTIFICATES.limit),
-        forPkiSync: z.coerce
-          .boolean()
-          .default(false)
-          .optional()
-          .describe("Retrieve only certificates available for PKI sync"),
+        forPkiSync: z.coerce.boolean().optional().describe("Retrieve only certificates available for PKI sync"),
         search: z.string().trim().optional().describe("Search by SAN, CN, certificate ID, or serial number"),
         status: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.status),
         profileIds: z
-          .union([z.string().uuid(), z.array(z.string().uuid())])
+          .union([z.string().guid(), z.array(z.string().guid())])
           .transform((val) => (Array.isArray(val) ? val : [val]))
           .optional()
           .describe("Filter by profile IDs"),
@@ -1342,10 +1339,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         commonName: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.commonName),
         offset: z.number().min(0).default(0).describe(PROJECTS.SEARCH_CERTIFICATES.offset),
         limit: z.number().min(1).max(100).default(25).describe(PROJECTS.SEARCH_CERTIFICATES.limit),
-        forPkiSync: z.boolean().default(false).optional().describe(PROJECTS.SEARCH_CERTIFICATES.forPkiSync),
+        forPkiSync: z.boolean().optional().describe(PROJECTS.SEARCH_CERTIFICATES.forPkiSync),
         search: z.string().trim().optional().describe(PROJECTS.SEARCH_CERTIFICATES.search),
         status: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.status),
-        profileIds: z.array(z.string().uuid()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.profileIds),
+        profileIds: z.array(z.string().guid()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.profileIds),
         fromDate: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.fromDate),
         toDate: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.toDate),
         metadata: z
@@ -1364,7 +1361,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECTS.SEARCH_CERTIFICATES.keyAlgorithm),
         signatureAlgorithm: z.string().trim().optional().describe(PROJECTS.SEARCH_CERTIFICATES.signatureAlgorithm),
         keySizes: z.array(z.number()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.keySizes),
-        caIds: z.array(z.string().uuid()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.caIds),
+        caIds: z.array(z.string().guid()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.caIds),
         enrollmentTypes: z.array(z.string().trim()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.enrollmentTypes),
         source: z
           .union([z.string().trim(), z.array(z.string().trim())])
@@ -1376,11 +1373,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         notBeforeTo: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notBeforeTo),
         applicationId: z
           .string()
-          .uuid()
+          .guid()
           .optional()
           .describe("Filter to certificates issued through a specific Application."),
         applicationIds: z
-          .array(z.string().uuid())
+          .array(z.string().guid())
           .optional()
           .describe("Filter to certificates issued through any of the supplied Applications."),
         sortBy: z

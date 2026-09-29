@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AlertHistoryTargetSchema = z.object({
-  id: z.string().uuid(),
-  alertHistoryId: z.string().uuid(),
+  id: z.string().guid(),
+  alertHistoryId: z.string().guid(),
   targetId: z.string(),
-  channelId: z.string().uuid().nullable().optional(),
+  channelId: z.string().guid().nullable().optional(),
   channelType: z.string(),
   status: z.string(),
   createdAt: z.date(),

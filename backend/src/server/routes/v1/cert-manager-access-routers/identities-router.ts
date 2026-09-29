@@ -26,8 +26,8 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     schema: {
       operationId: "listCertManagerIdentities",
       querystring: z.object({
-        offset: z.coerce.number().min(0).default(0).optional(),
-        limit: z.coerce.number().min(1).max(1000).default(20).optional(),
+        offset: z.coerce.number().min(0).optional(),
+        limit: z.coerce.number().min(1).max(1000).optional(),
         identityName: z.string().trim().optional(),
         roles: z
           .string()
@@ -74,8 +74,8 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     schema: {
       operationId: "listAvailableCertManagerIdentities",
       querystring: z.object({
-        offset: z.coerce.number().min(0).default(0).optional(),
-        limit: z.coerce.number().min(1).max(1000).default(20).optional(),
+        offset: z.coerce.number().min(0).optional(),
+        limit: z.coerce.number().min(1).max(1000).optional(),
         identityName: z.string().trim().optional()
       }),
       response: {
@@ -106,7 +106,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getCertManagerIdentity",
-      params: z.object({ identityId: z.string().trim().uuid() }),
+      params: z.object({ identityId: z.string().trim().guid() }),
       response: {
         200: z.object({
           identityMembership: z.object({
@@ -156,7 +156,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "addCertManagerIdentity",
-      params: z.object({ identityId: z.string().trim().uuid() }),
+      params: z.object({ identityId: z.string().trim().guid() }),
       body: z.object({
         role: z.string().trim().optional().default(ProjectMembershipRole.Member),
         roles: z
@@ -228,7 +228,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "updateCertManagerIdentity",
-      params: z.object({ identityId: z.string().trim().uuid() }),
+      params: z.object({ identityId: z.string().trim().guid() }),
       body: RolesUpdateBodySchema,
       response: { 200: z.object({ identityMembership: IdentityProjectMembershipsSchema.omit({ projectId: true }) }) }
     },
@@ -274,7 +274,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "removeCertManagerIdentity",
-      params: z.object({ identityId: z.string().trim().uuid() }),
+      params: z.object({ identityId: z.string().trim().guid() }),
       response: { 200: z.object({ identityMembership: IdentityProjectMembershipsSchema.omit({ projectId: true }) }) }
     },
     handler: async (req) => {

@@ -13,6 +13,13 @@ import {
   UpdateAppConnectionCredentialRotationSchema
 } from "./credential-rotation/app-connection-credential-rotation-schemas";
 
+// Returns none of the credential fields. Handlers pass the full connection and the serializer strips
+// the secrets, so the output is typed as an open record rather than Zod 4's Record<string, never>.
+export const RedactedCredentialsSchema = z.object({}) as unknown as z.ZodType<
+  Record<string, unknown>,
+  Record<string, unknown>
+>;
+
 export const BaseAppConnectionSchema = AppConnectionsSchema.omit({
   encryptedCredentials: true,
   encryptedConfiguration: true,
@@ -70,28 +77,30 @@ export const GenericCreateAppConnectionFieldsSchema = (
         ? z.boolean().optional().default(false).describe(AppConnections.CREATE(app).isPlatformManagedCredentials)
         : z
             .literal(false, {
-              errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+              error: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             })
             .optional()
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
       gatewayId: supportsGateways
-        ? z.string().uuid().nullish().describe("The Gateway ID to use for this connection.")
+        ? z.string().guid().nullish().describe("The Gateway ID to use for this connection.")
         : z
             .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+            .optional()
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
       gatewayPoolId: supportsGateways
-        ? z.string().uuid().nullish().describe("The Gateway Pool ID to use for this connection.")
+        ? z.string().guid().nullish().describe("The Gateway Pool ID to use for this connection.")
         : z
             .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+            .optional()
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
 
       isAutoRotationEnabled: supportsCredentialRotation
         ? z.boolean().optional().describe(AppConnections.CREATE(app).isAutoRotationEnabled)
         : z
             .literal(false, {
-              errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+              error: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             })
             .optional()
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
@@ -101,6 +110,7 @@ export const GenericCreateAppConnectionFieldsSchema = (
         : z
             .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+            .optional()
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`)
     })
     .superRefine((data, ctx) => {
@@ -141,28 +151,30 @@ export const GenericUpdateAppConnectionFieldsSchema = (
         ? z.boolean().optional().describe(AppConnections.UPDATE(app).isPlatformManagedCredentials)
         : z
             .literal(false, {
-              errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+              error: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             })
             .optional()
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
       gatewayId: supportsGateways
-        ? z.string().uuid().nullish().describe("The Gateway ID to use for this connection.")
+        ? z.string().guid().nullish().describe("The Gateway ID to use for this connection.")
         : z
             .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+            .optional()
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
       gatewayPoolId: supportsGateways
-        ? z.string().uuid().nullish().describe("The Gateway Pool ID to use for this connection.")
+        ? z.string().guid().nullish().describe("The Gateway Pool ID to use for this connection.")
         : z
             .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+            .optional()
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
 
       isAutoRotationEnabled: supportsCredentialRotation
         ? z.boolean().optional().describe(AppConnections.UPDATE(app).isAutoRotationEnabled)
         : z
             .literal(false, {
-              errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+              error: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             })
             .optional()
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
@@ -172,6 +184,7 @@ export const GenericUpdateAppConnectionFieldsSchema = (
         : z
             .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+            .optional()
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`)
     })
     .superRefine((data, ctx) => {

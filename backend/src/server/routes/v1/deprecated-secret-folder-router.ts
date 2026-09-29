@@ -40,7 +40,6 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
         path: z
           .string()
           .trim()
-          .default("/")
           .transform(prefixWithSlash) // Transformations get skipped if path is undefined
           .transform(removeTrailingSlash)
           .describe(FOLDERS.CREATE.path)
@@ -49,7 +48,6 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
         directory: z
           .string()
           .trim()
-          .default("/")
           .transform(prefixWithSlash) // Transformations get skipped if directory is undefined
           .transform(removeTrailingSlash)
           .describe(FOLDERS.CREATE.directory)
@@ -133,7 +131,6 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
         path: z
           .string()
           .trim()
-          .default("/")
           .transform(prefixWithSlash) // Transformations get skipped if path is undefined
           .transform(removeTrailingSlash)
           .describe(FOLDERS.UPDATE.path)
@@ -142,7 +139,6 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
         directory: z
           .string()
           .trim()
-          .default("/")
           .transform(prefixWithSlash) // Transformations get skipped if directory is undefined
           .transform(removeTrailingSlash)
           .describe(FOLDERS.UPDATE.directory)
@@ -304,7 +300,6 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
         path: z
           .string()
           .trim()
-          .default("/")
           .transform(prefixWithSlash) // Transformations get skipped if path is undefined
           .transform(removeTrailingSlash)
           .describe(FOLDERS.DELETE.path)
@@ -313,7 +308,6 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
         directory: z
           .string()
           .trim()
-          .default("/")
           .transform(prefixWithSlash) // Transformations get skipped if directory is undefined
           .transform(removeTrailingSlash)
           .describe(FOLDERS.DELETE.directory)

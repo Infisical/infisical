@@ -32,7 +32,7 @@ export const registerHumanitecConnectionRouter = async (server: FastifyZodProvid
     schema: {
       operationId: "listHumanitecOrganizations",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z

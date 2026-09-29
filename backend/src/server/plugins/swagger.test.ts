@@ -2,11 +2,11 @@ import { brotliDecompressSync, gunzipSync } from "node:zlib";
 
 import cors from "@fastify/cors";
 import fastifyEtag from "@fastify/etag";
+import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "@fastify/type-provider-zod";
 import Fastify, { FastifyInstance } from "fastify";
 import { beforeAll, describe, expect, test } from "vitest";
 import { z } from "zod";
 
-import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./fastify-zod";
 import { fastifySwagger } from "./swagger";
 
 const buildServer = async ({ corsOrigin }: { corsOrigin?: string | string[] } = {}) => {
@@ -26,10 +26,10 @@ const buildServer = async ({ corsOrigin }: { corsOrigin?: string | string[] } = 
         hide: false,
         operationId: `getThing${i}`,
         tags: ["Things"],
-        params: z.object({ id: z.string().uuid() }),
+        params: z.object({ id: z.string().guid() }),
         response: {
           200: z.object({
-            id: z.string().uuid(),
+            id: z.string().guid(),
             name: z.string().max(64).describe("The name of the thing")
           })
         }

@@ -70,7 +70,7 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
-        emailDomainId: z.string().uuid().describe("The ID of the email domain to verify")
+        emailDomainId: z.string().guid().describe("The ID of the email domain to verify")
       }),
       response: {
         200: z.object({
@@ -152,7 +152,7 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
-        emailDomainId: z.string().uuid().describe("The ID of the email domain to delete")
+        emailDomainId: z.string().guid().describe("The ID of the email domain to delete")
       }),
       response: {
         200: z.object({

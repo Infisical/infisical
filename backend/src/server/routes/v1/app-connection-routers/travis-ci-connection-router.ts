@@ -31,7 +31,7 @@ export const registerTravisCIConnectionRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "listTravisCIRepositories",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z
@@ -62,7 +62,7 @@ export const registerTravisCIConnectionRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "listTravisCIBranches",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         repositoryId: z.string().min(1, "Repository ID is required")

@@ -55,25 +55,25 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
           projectId: z.string().trim().optional().describe(openApiHidden()),
           name: slugSchema({ min: 1, max: 64, field: "name" }),
           description: z.string().trim().max(256).optional(),
-          caId: z.string().uuid().optional(),
+          caId: z.string().guid().optional(),
           commonName: z.string().trim().min(1).max(256).optional(),
           certificateTtlDays: z.number().int().min(1).max(3650).optional(),
           certificateRenewBeforeDays: z.number().int().min(1).max(30).nullable().optional(),
           keyAlgorithm: SignerKeyAlgorithm.schema.optional(),
-          certificateId: z.string().uuid().optional(),
+          certificateId: z.string().guid().optional(),
           certificate: z
             .object({
               keySource: z.nativeEnum(CertKeySource).optional().default(CertKeySource.Infisical),
-              hsmConnectorId: z.string().uuid().optional()
+              hsmConnectorId: z.string().guid().optional()
             })
             .optional(),
           externalConfiguration: SignerExternalConfigurationSchema.optional(),
-          approvalPolicyId: z.string().uuid().optional(),
+          approvalPolicyId: z.string().guid().optional(),
           members: z
             .array(
               z.object({
                 kind: z.enum(["user", "identity", "group"]),
-                id: z.string().uuid(),
+                id: z.string().guid(),
                 role: z.string().min(1)
               })
             )

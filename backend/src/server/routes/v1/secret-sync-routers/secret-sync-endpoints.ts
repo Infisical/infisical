@@ -118,7 +118,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       tags: [ApiDocsTags.SecretSyncs],
       description: `Get the specified ${destinationName} Sync by ID.`,
       params: z.object({
-        syncId: z.string().uuid().describe(SecretSyncs.GET_BY_ID(destination).syncId)
+        syncId: z.string().guid().describe(SecretSyncs.GET_BY_ID(destination).syncId)
       }),
       response: {
         200: z.object({ secretSync: responseSchema })
@@ -271,7 +271,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       tags: [ApiDocsTags.SecretSyncs],
       description: `Update the specified ${destinationName} Sync.`,
       params: z.object({
-        syncId: z.string().uuid().describe(SecretSyncs.UPDATE(destination).syncId)
+        syncId: z.string().guid().describe(SecretSyncs.UPDATE(destination).syncId)
       }),
       body: updateSchema,
       response: {
@@ -333,7 +333,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       tags: [ApiDocsTags.SecretSyncs],
       description: `Delete the specified ${destinationName} Sync.`,
       params: z.object({
-        syncId: z.string().uuid().describe(SecretSyncs.DELETE(destination).syncId)
+        syncId: z.string().guid().describe(SecretSyncs.DELETE(destination).syncId)
       }),
       querystring: z.object({
         removeSecrets: z
@@ -402,7 +402,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       tags: [ApiDocsTags.SecretSyncs],
       description: `Trigger a sync for the specified ${destinationName} Sync.`,
       params: z.object({
-        syncId: z.string().uuid().describe(SecretSyncs.SYNC_SECRETS(destination).syncId)
+        syncId: z.string().guid().describe(SecretSyncs.SYNC_SECRETS(destination).syncId)
       }),
       response: {
         200: z.object({ secretSync: responseSchema })
@@ -437,7 +437,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       tags: [ApiDocsTags.SecretSyncs],
       description: `Import secrets from the specified ${destinationName} Sync destination.`,
       params: z.object({
-        syncId: z.string().uuid().describe(SecretSyncs.IMPORT_SECRETS(destination).syncId)
+        syncId: z.string().guid().describe(SecretSyncs.IMPORT_SECRETS(destination).syncId)
       }),
       querystring: z.object({
         importBehavior: z
@@ -479,7 +479,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       tags: [ApiDocsTags.SecretSyncs],
       description: `Remove previously synced secrets from the specified ${destinationName} Sync destination.`,
       params: z.object({
-        syncId: z.string().uuid().describe(SecretSyncs.REMOVE_SECRETS(destination).syncId)
+        syncId: z.string().guid().describe(SecretSyncs.REMOVE_SECRETS(destination).syncId)
       }),
       response: {
         200: z.object({ secretSync: responseSchema })
@@ -513,9 +513,9 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       tags: [ApiDocsTags.SecretSyncs],
       body: z.object({
         destinationConfig: z.unknown(),
-        connectionId: z.string().uuid().optional(),
-        syncOptions: z.record(z.unknown()).optional(),
-        excludeSyncId: z.string().uuid().optional(),
+        connectionId: z.string().guid().optional(),
+        syncOptions: z.record(z.string(), z.unknown()).optional(),
+        excludeSyncId: z.string().guid().optional(),
         projectId: z.string()
       }),
       response: {

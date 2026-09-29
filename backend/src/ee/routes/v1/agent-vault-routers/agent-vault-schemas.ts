@@ -189,8 +189,8 @@ export const AgentVaultSubstitutionsUpdateSchema = AgentVaultSubstitutionUpdateS
 // wire on every service route: the serializer emits `result.data`, so anything absent here is dropped,
 // and anything required here but missing from a projection is a 500 rather than a leak.
 export const AgentVaultServiceSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),
-  accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+  id: z.string().guid().describe(AGENT_VAULT.SERVICE.serviceId),
+  accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   name: z.string().describe(AGENT_VAULT.SERVICE.name),
   hostPattern: z.string().describe(AGENT_VAULT.SERVICE.hostPattern),
   allowedMethods: z.nativeEnum(AgentVaultHttpMethod).array().nullable().describe(AGENT_VAULT.SERVICE.allowedMethods),
@@ -198,7 +198,7 @@ export const AgentVaultServiceSchema = z.object({
   credential: AgentVaultCredentialSummarySchema,
   customHeaders: z
     .object({
-      id: z.string().uuid().describe(AGENT_VAULT.SERVICE.customHeaderId),
+      id: z.string().guid().describe(AGENT_VAULT.SERVICE.customHeaderId),
       name: z.string().describe(AGENT_VAULT.SERVICE.customHeaderName),
       prefix: z.string().describe(AGENT_VAULT.SERVICE.customHeaderPrefix)
     })
@@ -206,7 +206,7 @@ export const AgentVaultServiceSchema = z.object({
     .describe(AGENT_VAULT.SERVICE.customHeaders),
   substitutions: z
     .object({
-      id: z.string().uuid().describe(AGENT_VAULT.SERVICE.substitutionId),
+      id: z.string().guid().describe(AGENT_VAULT.SERVICE.substitutionId),
       placeholder: z.string().describe(AGENT_VAULT.SERVICE.placeholder),
       surfaces: z.nativeEnum(AgentVaultSubstitutionSurface).array().describe(AGENT_VAULT.SERVICE.surfaces)
     })
@@ -217,9 +217,9 @@ export const AgentVaultServiceSchema = z.object({
 });
 
 const memberIdsShape = (docs: { userIds: string; machineIdentityIds: string; groupIds: string }) => ({
-  userIds: z.string().uuid().array().default([]).describe(docs.userIds),
-  machineIdentityIds: z.string().uuid().array().default([]).describe(docs.machineIdentityIds),
-  groupIds: z.string().uuid().array().default([]).describe(docs.groupIds)
+  userIds: z.string().guid().array().default([]).describe(docs.userIds),
+  machineIdentityIds: z.string().guid().array().default([]).describe(docs.machineIdentityIds),
+  groupIds: z.string().guid().array().default([]).describe(docs.groupIds)
 });
 
 const namedCount = (body: { userIds: string[]; machineIdentityIds: string[]; groupIds: string[]; emails?: string[] }) =>
@@ -293,7 +293,7 @@ export const AgentVaultMemberRevokeIdsSchema = z
 const actorTypeSchema = <T extends AgentVaultMemberType>(type: T) =>
   z.literal(type).describe(AGENT_VAULT.MEMBER.actorType);
 
-const actorIdSchema = z.string().uuid().describe(AGENT_VAULT.MEMBER.actorId);
+const actorIdSchema = z.string().guid().describe(AGENT_VAULT.MEMBER.actorId);
 
 export const AgentVaultActorRefSchema = z.discriminatedUnion("type", [
   z
@@ -365,7 +365,7 @@ export const AgentVaultProductActorSchema = z.discriminatedUnion("type", [
       id: actorIdSchema,
       name: z.string().describe(AGENT_VAULT.MEMBER.identityName),
       isManagedByAgentVault: z.boolean().describe(AGENT_VAULT.MEMBER.isManagedByAgentVault),
-      orgId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.machineIdentityOrgId)
+      orgId: z.string().guid().nullable().describe(AGENT_VAULT.MEMBER.machineIdentityOrgId)
     })
     .describe(JSON.stringify({ title: "Machine identity" })),
   z
@@ -378,7 +378,7 @@ export const AgentVaultProductActorSchema = z.discriminatedUnion("type", [
 ]);
 
 export const AgentVaultProductMemberSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
+  id: z.string().guid().describe(AGENT_VAULT.MEMBER.memberId),
   // Not the two-value input enum: the generic project membership routes reach these same rows, so one can
   // carry any role slug, and narrowing this would fail the whole list rather than render it.
   role: z.string().describe(AGENT_VAULT.MEMBERSHIP.role),
@@ -388,7 +388,7 @@ export const AgentVaultProductMemberSchema = z.object({
 });
 
 export const AgentVaultProductMemberRefSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
+  id: z.string().guid().describe(AGENT_VAULT.MEMBER.memberId),
   role: z.string().describe(AGENT_VAULT.MEMBERSHIP.role),
   createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
   actor: AgentVaultActorRefSchema
@@ -419,21 +419,21 @@ export const AgentVaultSkippedActorSchema = z.discriminatedUnion("type", [
 ]);
 
 export const AgentVaultRemovedMemberSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
-  accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+  id: z.string().guid().describe(AGENT_VAULT.MEMBER.memberId),
+  accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
   actor: AgentVaultActorRefSchema
 });
 
 export const AgentVaultMemberSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
+  id: z.string().guid().describe(AGENT_VAULT.MEMBER.memberId),
   createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
   actor: AgentVaultActorSchema
 });
 
 export const AgentVaultCreatedMemberSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
-  accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+  id: z.string().guid().describe(AGENT_VAULT.MEMBER.memberId),
+  accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
   actor: AgentVaultActorRefSchema
 });

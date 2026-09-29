@@ -33,7 +33,7 @@ export const SplunkProviderCredentialsSchema = z.object({
       }
     }),
   port: z.number().int().min(1).max(65535).optional(),
-  token: z.string().uuid().trim().min(1)
+  token: z.string().guid().trim().min(1)
 });
 
 const BaseSplunkProviderSchema = BaseProviderSchema.extend({ provider: z.literal(LogProvider.Splunk) });

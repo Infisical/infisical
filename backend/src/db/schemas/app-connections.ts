@@ -10,21 +10,21 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AppConnectionsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   app: z.string(),
   method: z.string(),
   encryptedCredentials: zodBuffer,
   version: z.number().default(1),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  isPlatformManagedCredentials: z.boolean().default(false).nullable().optional(),
-  gatewayId: z.string().uuid().nullable().optional(),
+  isPlatformManagedCredentials: z.boolean().nullable().optional(),
+  gatewayId: z.string().guid().nullable().optional(),
   projectId: z.string().nullable().optional(),
   isAutoRotationEnabled: z.boolean().default(false),
-  gatewayPoolId: z.string().uuid().nullable().optional(),
+  gatewayPoolId: z.string().guid().nullable().optional(),
   encryptedConfiguration: zodBuffer.nullable().optional()
 });
 

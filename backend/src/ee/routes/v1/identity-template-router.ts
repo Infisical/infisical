@@ -271,8 +271,8 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         }
       ],
       querystring: z.object({
-        limit: z.coerce.number().positive().max(100).default(5).optional(),
-        offset: z.coerce.number().min(0).default(0).optional(),
+        limit: z.coerce.number().positive().max(100).optional(),
+        offset: z.coerce.number().min(0).optional(),
         search: z.string().optional()
       }),
       response: {

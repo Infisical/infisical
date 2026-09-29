@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const UserEncryptionKeysSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   clientPublicKey: z.string().nullable().optional(),
   serverPrivateKey: z.string().nullable().optional(),
-  encryptionVersion: z.number().default(2).nullable().optional(),
+  encryptionVersion: z.number().nullable().optional(),
   protectedKey: z.string().nullable().optional(),
   protectedKeyIV: z.string().nullable().optional(),
   protectedKeyTag: z.string().nullable().optional(),
@@ -21,7 +21,7 @@ export const UserEncryptionKeysSchema = z.object({
   tag: z.string().nullable().optional(),
   salt: z.string().nullable().optional(),
   verifier: z.string().nullable().optional(),
-  userId: z.string().uuid(),
+  userId: z.string().guid(),
   hashedPassword: z.string().nullable().optional(),
   serverEncryptedPrivateKey: z.string().nullable().optional(),
   serverEncryptedPrivateKeyIV: z.string().nullable().optional(),

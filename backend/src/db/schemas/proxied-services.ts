@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ProxiedServicesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   hostPattern: z.string(),
   isEnabled: z.boolean().default(true),
-  folderId: z.string().uuid(),
+  folderId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   lastUsedAt: z.date().nullable().optional()

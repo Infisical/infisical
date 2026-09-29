@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ProjectUserMembershipRolesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   role: z.string(),
-  projectMembershipId: z.string().uuid(),
-  customRoleId: z.string().uuid().nullable().optional(),
+  projectMembershipId: z.string().guid(),
+  customRoleId: z.string().guid().nullable().optional(),
   isTemporary: z.boolean().default(false),
   temporaryMode: z.string().nullable().optional(),
   temporaryRange: z.string().nullable().optional(),
