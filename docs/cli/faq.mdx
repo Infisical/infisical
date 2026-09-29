@@ -41,7 +41,19 @@ Your shell saves the commands you run to a history file, so a secret value you p
   <Tab title="Windows">
     If you use WSL, follow the Bash or Zsh steps.
 
-    In PowerShell, command history is handled by the PSReadLine module. PSReadLine 2.2 and later doesn't write commands that contain words such as `secret`, `token`, or `password` to its history file, so `infisical secrets set` is already skipped. PSReadLine 2.2 ships with PowerShell 7.2 and later. Command Prompt keeps history only until you close the window.
+    In PowerShell, the PSReadLine module saves your command history. To check its version, run `(Get-Module PSReadLine).Version`.
+
+    PSReadLine 2.2 and later, which ships with PowerShell 7.2 and later, doesn't save commands that contain words such as `secret`, `token`, or `password`, so `infisical secrets set` is already skipped.
+
+    Older versions, including the one that ships with Windows PowerShell 5.1, save every command. Add this line to your [PowerShell profile](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles) to skip `infisical secrets set`:
+
+    ```powershell
+    Set-PSReadLineOption -AddToHistoryHandler { param($line) $line -notlike '*infisical secrets set*' }
+    ```
+
+    Don't add this line on PSReadLine 2.2 or later, because a custom handler replaces the built-in one that skips commands with sensitive words.
+
+    Command Prompt keeps history only until you close the window.
   </Tab>
 </Tabs>
 
