@@ -437,72 +437,79 @@ export const SecretTableRow = ({
             colSpan={isFormExpanded ? environments.length + 1 : undefined}
             className={twMerge(
               "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover",
-              isFormExpanded && "relative left-auto border-r-0 border-b-0 bg-container-hover"
+              isFormExpanded && "relative left-auto border-r-0 border-b-0 bg-container-hover p-0"
             )}
           >
-            <div className="flex min-w-0 items-center gap-2">
-              <span
-                title={secretKey}
-                className={twMerge(
-                  isFormExpanded ? "break-all whitespace-normal" : "min-w-0 truncate",
-                  singleEnvPendingAction === PendingAction.Delete && "text-danger/75 line-through"
-                )}
-              >
-                {secretKey}
-              </span>
-              {!isFormExpanded &&
-                environments.some(
-                  ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
-                ) && (
-                  <Badge variant="danger">
-                    <BanIcon className="size-3.5" />
-                    Secret share revoked
-                  </Badge>
-                )}
-            </div>
             <div
+              style={isFormExpanded ? { width: Math.max(0, tableWidth - 40) } : undefined}
               className={twMerge(
-                "absolute z-20",
-                "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-                TABLE_ROW_ACTION_BAR_CLASS_NAME,
-                "top-1/2 right-[3px] -translate-y-1/2"
+                isFormExpanded && "sticky left-10 min-h-10 bg-container-hover px-1 py-1.5"
               )}
             >
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger>
-                  <IconButton
-                    aria-label="Copy secret name"
-                    variant="ghost"
-                    size="xs"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      copyTokenToClipboard();
-                    }}
-                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  >
-                    {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Copy Secret Name</TooltipContent>
-              </Tooltip>
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger>
-                  <IconButton
-                    aria-label="Edit secret name"
-                    variant="ghost"
-                    size="xs"
-                    onClick={(e) => {
-                      setIsEditSecretNameOpen(true);
-                      e.stopPropagation();
-                    }}
-                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Edit Secret Name</TooltipContent>
-              </Tooltip>
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  title={secretKey}
+                  className={twMerge(
+                    isFormExpanded ? "break-all whitespace-normal" : "min-w-0 truncate",
+                    singleEnvPendingAction === PendingAction.Delete && "text-danger/75 line-through"
+                  )}
+                >
+                  {secretKey}
+                </span>
+                {!isFormExpanded &&
+                  environments.some(
+                    ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
+                  ) && (
+                    <Badge variant="danger">
+                      <BanIcon className="size-3.5" />
+                      Secret share revoked
+                    </Badge>
+                  )}
+              </div>
+              <div
+                className={twMerge(
+                  "absolute z-20",
+                  "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+                  TABLE_ROW_ACTION_BAR_CLASS_NAME,
+                  "top-1/2 right-[3px] -translate-y-1/2"
+                )}
+              >
+                <Tooltip disableHoverableContent>
+                  <TooltipTrigger>
+                    <IconButton
+                      aria-label="Copy secret name"
+                      variant="ghost"
+                      size="xs"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        copyTokenToClipboard();
+                      }}
+                      className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                    >
+                      {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Copy Secret Name</TooltipContent>
+                </Tooltip>
+                <Tooltip disableHoverableContent>
+                  <TooltipTrigger>
+                    <IconButton
+                      aria-label="Edit secret name"
+                      variant="ghost"
+                      size="xs"
+                      onClick={(e) => {
+                        setIsEditSecretNameOpen(true);
+                        e.stopPropagation();
+                      }}
+                      className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit Secret Name</TooltipContent>
+                </Tooltip>
+              </div>
             </div>
           </TableCell>
         )}
