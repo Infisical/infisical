@@ -39,6 +39,7 @@ export enum HostCommandVariable {
   CertificateDirectory = "certificateDirectory",
   CertificateFiles = "certificateFiles",
   CommonName = "commonName",
+  ExportPassword = "exportPassword",
   Pkcs12Password = "pkcs12Password"
 }
 

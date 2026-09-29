@@ -268,28 +268,36 @@ describe("getJksChainCertificates", () => {
 });
 
 describe("getJksTruststoreCertificates", () => {
-  test("includes the root from caCertificate when the delivered chain omits it", () => {
+  test("keeps the root of an imported chain that has no Infisical CA", () => {
     const trusted = getJksTruststoreCertificates({
       certificate: leaf.certificate,
-      certificateChain: intermediate.certificate,
-      caCertificate: root.certificate
+      fullCertificateChain: `${intermediate.certificate}\n${root.certificate}`
     });
     expect(trusted.map((c) => der(c).toString("base64"))).toEqual(
       [intermediate, root].map((c) => der(c.certificate).toString("base64"))
     );
   });
 
+  test("adds the CA certificate when the stored chain has no root", () => {
+    const trusted = getJksTruststoreCertificates({
+      certificate: leaf.certificate,
+      fullCertificateChain: intermediate.certificate,
+      caCertificate: root.certificate
+    });
+    expect(trusted).toHaveLength(2);
+  });
+
   test("never trusts the leaf and does not repeat the root", () => {
     const trusted = getJksTruststoreCertificates({
       certificate: leaf.certificate,
-      certificateChain: `${leaf.certificate}\n${intermediate.certificate}\n${root.certificate}`,
+      fullCertificateChain: `${leaf.certificate}\n${intermediate.certificate}\n${root.certificate}`,
       caCertificate: root.certificate
     });
     expect(trusted).toHaveLength(2);
   });
 
   test("is empty when there is nothing to trust", () => {
-    expect(getJksTruststoreCertificates({ certificate: leaf.certificate, certificateChain: "  \n" })).toEqual([]);
+    expect(getJksTruststoreCertificates({ certificate: leaf.certificate, fullCertificateChain: "  \n" })).toEqual([]);
   });
 });
 

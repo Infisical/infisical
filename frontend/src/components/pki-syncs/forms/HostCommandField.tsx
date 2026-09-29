@@ -38,7 +38,9 @@ export const HostCommandField = ({
   const isKeystore = isKeystoreExportFormat(watch("syncOptions.exportFormat"));
 
   const variables = Object.values(HostCommandVariable).filter(
-    (variable) => variable !== HostCommandVariable.Pkcs12Password || isKeystore
+    (variable) =>
+      variable !== HostCommandVariable.Pkcs12Password &&
+      (variable !== HostCommandVariable.ExportPassword || isKeystore)
   );
 
   return (

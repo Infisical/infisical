@@ -58,11 +58,12 @@ export const assertHealthCheckCommandIsTestable = (
     });
   }
 
-  if (commandUsesHostCommandVariable(command, HostCommandVariable.Pkcs12Password)) {
+  const passwordVariables = [HostCommandVariable.ExportPassword, HostCommandVariable.Pkcs12Password].filter(
+    (variable) => commandUsesHostCommandVariable(command, variable)
+  );
+  if (passwordVariables.length > 0) {
     throw new BadRequestError({
-      message: `A test cannot resolve ${formatHostCommandVariables([
-        HostCommandVariable.Pkcs12Password
-      ])} because the export password is only generated when a saved sync delivers a certificate. Run the health check on a saved sync instead.`
+      message: `A test cannot resolve ${formatHostCommandVariables(passwordVariables)} because the export password is only generated when a saved sync delivers a certificate. Run the health check on a saved sync instead.`
     });
   }
 
@@ -83,7 +84,7 @@ const hasTruststoreCertificates = (
     return (
       getJksTruststoreCertificates({
         certificate: certData.cert,
-        certificateChain: certData.certificateChain,
+        fullCertificateChain: certData.fullCertificateChain ?? certData.certificateChain,
         caCertificate: certData.caCertificate
       }).length > 0
     );

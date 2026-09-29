@@ -206,7 +206,7 @@ svc-infisical ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
 Only Application Admins can set either command, so treat that role as access to the target server.
 
 <Warning>
-  The rendered command is visible in the target server's process table while it runs. This only matters if you reference `{{pkcs12Password}}`, and only to accounts that already have a shell on the server the sync writes private keys to.
+  The rendered command is visible in the target server's process table while it runs. This only matters if you reference `{{exportPassword}}`, and only to accounts that already have a shell on the server the sync writes private keys to.
 </Warning>
 
 ### Health check
@@ -243,7 +243,7 @@ Write a check that answers a question rather than one that changes something. `t
     ```
   </Step>
   <Step title="Test it, then save the sync">
-    **Test check** runs the check against the host straight away, so you can see the result without waiting for a sync. It resolves variables against the certificates linked to the sync, so it works once at least one is selected and tells you if none is. `{{pkcs12Password}}` is the exception: the export password only exists once a saved sync delivers a certificate, so a test always rejects it.
+    **Test check** runs the check against the host straight away, so you can see the result without waiting for a sync. It resolves variables against the certificates linked to the sync, so it works once at least one is selected and tells you if none is. `{{exportPassword}}` is the exception: the export password only exists once a saved sync delivers a certificate, so a test always rejects it.
 
     Save the sync once the check passes. On a real run, a failing check fails the sync without delivering anything, and the reason appears as the sync's last error.
   </Step>

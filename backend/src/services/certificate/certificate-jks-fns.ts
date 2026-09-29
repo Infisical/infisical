@@ -112,12 +112,7 @@ const privateKeyPkcs8Der = (privateKeyPem: string, leafCertificatePem: string): 
     });
   }
 
-  const publicKeyDer = crypto.nativeCrypto.createPublicKey(key).export({ type: "spki", format: "der" });
-  const leafPublicKeyDer = new crypto.nativeCrypto.X509Certificate(leafCertificatePem).publicKey.export({
-    type: "spki",
-    format: "der"
-  });
-  if (!publicKeyDer.equals(leafPublicKeyDer)) {
+  if (!new crypto.nativeCrypto.X509Certificate(leafCertificatePem).checkPrivateKey(key)) {
     throw new BadRequestError({
       message: "The certificate's private key does not match its public key, so it cannot be exported"
     });
@@ -140,17 +135,20 @@ const uniqueCertificates = (pems: string[], exclude: string[] = []): string[] =>
 export const getJksChainCertificates = (certificate: string, certificateChain?: string): string[] =>
   uniqueCertificates(splitPemChain(certificateChain ?? ""), [certificate]);
 
-// The trust anchor comes from caCertificate because the delivered chain may omit the root.
+// Built from the full stored chain because the delivered chain may have had its root removed.
 export const getJksTruststoreCertificates = ({
   certificate,
-  certificateChain,
+  fullCertificateChain,
   caCertificate
 }: {
   certificate: string;
-  certificateChain?: string;
+  fullCertificateChain?: string;
   caCertificate?: string;
 }): string[] =>
-  uniqueCertificates([...splitPemChain(certificateChain ?? ""), ...splitPemChain(caCertificate ?? "")], [certificate]);
+  uniqueCertificates(
+    [...splitPemChain(fullCertificateChain ?? ""), ...splitPemChain(caCertificate ?? "")],
+    [certificate]
+  );
 
 const encodeCertificate = (pem: string) => {
   const der = certificateDer(pem);

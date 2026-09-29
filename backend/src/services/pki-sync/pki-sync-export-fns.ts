@@ -41,6 +41,7 @@ export type TExportCertificateForSyncParams = {
   // Friendly name / alias used inside a PKCS#12 or JKS keystore.
   alias: string;
   includeTruststore?: boolean;
+  fullCertificateChain?: string;
   caCertificate?: string;
   // PEM only: the extension for the certificate and chain files. Defaults to ".pem".
   pemCertificateExtension?: PemCertificateExtension;
@@ -111,6 +112,7 @@ export const exportCertificateForSync = ({
   pemCertificateExtension,
   combineCertificateChain,
   includeTruststore,
+  fullCertificateChain,
   caCertificate
 }: TExportCertificateForSyncParams): Promise<TExportedCertificateFile[]> | TExportedCertificateFile[] => {
   if (format === PkiSyncExportFormat.Pkcs12) {
@@ -138,7 +140,11 @@ export const exportCertificateForSync = ({
       }
     ];
     const trustedCertificates = includeTruststore
-      ? getJksTruststoreCertificates({ certificate, certificateChain, caCertificate })
+      ? getJksTruststoreCertificates({
+          certificate,
+          fullCertificateChain: fullCertificateChain ?? certificateChain,
+          caCertificate
+        })
       : [];
     if (trustedCertificates.length > 0) {
       files.push({

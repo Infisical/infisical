@@ -473,7 +473,7 @@ export const linuxServerPkiSyncFactory = ({
         await removeStaleTempFiles(sftp, config.destinationPath);
 
         for (const [baseName, certData] of Object.entries(certificateMap)) {
-          const { cert, privateKey, certificateChain, caCertificate, certificateId } = certData;
+          const { cert, privateKey, certificateChain, fullCertificateChain, caCertificate, certificateId } = certData;
 
           if (!cert) {
             skippedCertificates.push({ name: baseName, reason: "Missing certificate data" });
@@ -499,6 +499,7 @@ export const linuxServerPkiSyncFactory = ({
               ...exportOptions,
               certificate: cert,
               certificateChain,
+              fullCertificateChain,
               caCertificate,
               privateKey,
               password: exportPassword,

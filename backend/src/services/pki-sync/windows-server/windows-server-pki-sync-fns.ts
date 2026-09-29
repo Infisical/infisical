@@ -351,7 +351,7 @@ export const windowsServerPkiSyncFactory = ({
     // Deliver each certificate over its own gateway operation so one certificate's failure is
     // recorded against that certificate only, rather than failing the whole batch.
     for (const [baseName, certData] of Object.entries(certificateMap)) {
-      const { cert, privateKey, certificateChain, caCertificate, certificateId } = certData;
+      const { cert, privateKey, certificateChain, fullCertificateChain, caCertificate, certificateId } = certData;
 
       if (!cert) {
         skippedCertificates.push({ name: baseName, reason: "Missing certificate data" });
@@ -375,6 +375,7 @@ export const windowsServerPkiSyncFactory = ({
           ...exportOptions,
           certificate: cert,
           certificateChain,
+          fullCertificateChain,
           caCertificate,
           privateKey,
           password: exportPassword,
