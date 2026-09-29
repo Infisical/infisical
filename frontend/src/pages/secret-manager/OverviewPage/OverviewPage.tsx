@@ -2552,7 +2552,19 @@ const OverviewPageContent = () => {
     const next = [...widths];
     const left = Math.max(columnMinWidth, widths[index] + delta);
     next[index] = left;
-    next[index + 1] = Math.max(columnMinWidth, widths[index + 1] - (left - widths[index]));
+    if (left < widths[index]) {
+      const availableWidth = Math.max(
+        (tableRef.current?.clientWidth ?? 40) - 40,
+        widths.length * columnMinWidth
+      );
+      const overflow = Math.max(
+        0,
+        widths.reduce((total, width) => total + width, 0) - availableWidth
+      );
+      next[index + 1] = widths[index + 1] + Math.max(0, widths[index] - left - overflow);
+    } else {
+      next[index + 1] = Math.max(columnMinWidth, widths[index + 1] - (left - widths[index]));
+    }
     setResizedColumns({ key: columnKey, widths: next });
   };
 
