@@ -3526,6 +3526,7 @@ const OverviewPageContent = () => {
                                 toggleSelectedEntry(EntryType.SECRET, key, isShiftKey);
                             }}
                             secretPath={secretPath}
+                            tableWidth={tableWidth}
                             getImportedSecretByKey={getImportedSecretByKey}
                             isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
                             onSecretCreate={handleSecretCreate}

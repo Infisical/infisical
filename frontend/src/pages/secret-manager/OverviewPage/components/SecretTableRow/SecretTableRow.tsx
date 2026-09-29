@@ -67,6 +67,7 @@ import SecretRenameForm from "./SecretRenameForm";
 type Props = {
   secretKey: string;
   secretPath: string;
+  tableWidth: number;
   environments: { name: string; slug: string }[];
   isSelected: boolean;
   onToggleSecretSelect: (key: string, isShiftKey: boolean) => void;
@@ -128,6 +129,7 @@ type ExpandedTableSort = {
 
 export const SecretTableRow = ({
   secretKey,
+  tableWidth,
   environments = [],
   secretPath,
   getSecretByKey,
@@ -603,14 +605,17 @@ export const SecretTableRow = ({
           className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
         >
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div className="border-y border-border">
+            <div
+              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
+              className="sticky left-0 border-y border-border bg-container"
+            >
               <Table
                 className="w-full table-fixed"
                 containerClassName="overflow-hidden rounded-none border-0"
               >
                 <colgroup>
                   <col className="w-10" />
-                  <col className="w-[var(--name-column-width,180px)]" />
+                  <col className="w-60" />
                   <col />
                   <col className="w-32" />
                 </colgroup>
