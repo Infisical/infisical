@@ -367,11 +367,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         count: string;
       }
 
-      let query = db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.id`, projectId);
+      let query = db.replicaNode()(TableName.Certificate).where(`${TableName.Certificate}.projectId`, projectId);
 
       const hasEnrollmentTypeFilter = Boolean(filters.enrollmentTypes);
       if (hasEnrollmentTypeFilter) {
