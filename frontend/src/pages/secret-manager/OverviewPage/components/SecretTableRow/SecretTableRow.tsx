@@ -437,7 +437,7 @@ export const SecretTableRow = ({
             colSpan={isFormExpanded ? environments.length + 1 : undefined}
             className={twMerge(
               "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover",
-              isFormExpanded && "static border-r-0 border-b-0 bg-container-hover"
+              isFormExpanded && "relative left-auto border-r-0 border-b-0 bg-container-hover"
             )}
           >
             <div className="flex min-w-0 items-center gap-2">
