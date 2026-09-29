@@ -1,69 +1,135 @@
 ---
 title: "Project configuration"
-description: "Learn about the `.infisical.json` project configuration file and its customization options."
+description: "Configure how the Infisical CLI interacts with your directory."
 ---
 
-To link your local project on your machine with an Infisical project, we suggest using the infisical init CLI command. This will generate a `.infisical.json` file in the root directory of your project.
+`.infisical.json` links a directory to an [Infisical project](/documentation/platform/project). When you run a command such as [`infisical run`](/cli/reference#run) or [`infisical secrets`](/cli/reference#secrets) in that directory, the CLI reads the project from the file, so you don't have to pass [`--projectId`](/cli/reference#run--flag-projectid).
 
-The `.infisical.json` file specifies various parameters, such as the Infisical project to retrieve secrets from, along with other configuration options. Furthermore, you can define additional properties in the file to further tailor your local development experience.
+The file can also [choose an environment for you](#choose-the-environment-automatically) and [pin the Infisical instance](#set-the-infisical-instance) the project lives on.
 
-## Set default environment
-If you need to change environments while using the CLI, you can do so by including the `--env` flag in your command. 
-However, this can be inconvenient if you typically work in just one environment. 
-To simplify the process, you can establish a default environment, which will be used for every command unless you specify otherwise.
+<Info>
+The `.infisical.json` file doesn't include any sensitive values and is safe to commit to version control.
+</Info>
+
+## Create the file
+
+In the root of your codebase, run:
+
+```bash
+infisical init
+```
+
+Select the project when prompted. The CLI writes `.infisical.json` to the current directory:
 
 ```json .infisical.json
 {
-  "workspaceId": "63ee5410a45f7a1ed39ba118",
-  "defaultEnvironment": "test",
-  "gitBranchToEnvironmentMapping": null
+    "workspaceId": "<project-id>",
+    "defaultEnvironment": "",
+    "gitBranchToEnvironmentMapping": null
 }
 ```
 
-### How it works
-If both `defaultEnvironment` and `gitBranchToEnvironmentMapping` are configured, `gitBranchToEnvironmentMapping` will take precedence over `defaultEnvironment`. 
-However, if `gitBranchToEnvironmentMapping` isn't set and `defaultEnvironment` is, then the `defaultEnvironment` will be used to execute your Infisical CLI commands.
-If you wish to override the `defaultEnvironment`, you can do so by using the `--env` flag explicitly.
+`workspaceId` is the project's ID. The other fields are empty until you set them, as described in the sections that follow. If you run [`infisical init`](/cli/reference#init) again, the CLI replaces the file with a new one that holds only the project ID, so you lose any settings you added.
 
-## Set Infisical environment based on GitHub branch 
-When fetching your secrets from Infisical, you can switch between environments by using the `--env` flag. However, in certain cases, you may prefer the environment to be automatically mapped based on the current GitHub branch you're working on. 
-To achieve this, simply add the `gitBranchToEnvironmentMapping` property to your configuration file, as shown below.
+<Note>
+  If you authenticate as a [machine identity](/documentation/platform/identities/machine-identities), `infisical run`, [`infisical export`](/cli/reference#export), and `infisical secrets` don't read `workspaceId`. Pass the project with `--projectId` or the `INFISICAL_PROJECT_ID` environment variable instead.
+</Note>
+
+## Set the environment
+
+Without an environment setting, commands read secrets from your project's [`dev` environment](/documentation/platform/secrets-mgmt/project#project-environments) unless you pass [`--env`](/cli/reference#run--flag-env). To use a different environment by default, set `defaultEnvironment` to the environment's slug:
 
 ```json .infisical.json
 {
-  "workspaceId": "63ee5410a45f7a1ed39ba118",
-  "gitBranchToEnvironmentMapping": {
-    "branchName": "dev",
-    "anotherBranchName": "staging"
-  }
+    "workspaceId": "<project-id>",
+    "defaultEnvironment": "staging"
 }
 ```
 
-### How it works
-After configuring this property, every time you use the CLI with the specified configuration file, it will automatically verify if there is a corresponding environment mapping for the current GitHub branch you're on.
-If it exists, the CLI will use that environment to retrieve secrets. You can override this behavior by explicitly using the `--env` flag while interacting with the CLI.
-
-## Set the Infisical instance domain
-If you connect to EU Cloud or a self-hosted instance, you can pin the instance URL to your project by adding a `domain` field. Every CLI command run from the project then targets that instance without needing the `--domain` flag or an environment variable.
+To pick the environment from the Git branch you're on, map branch names to environment slugs in `gitBranchToEnvironmentMapping`:
 
 ```json .infisical.json
 {
-  "workspaceId": "63ee5410a45f7a1ed39ba118",
-  "defaultEnvironment": "dev",
-  "domain": "https://eu.infisical.com"
+    "workspaceId": "<project-id>",
+    "defaultEnvironment": "dev",
+    "gitBranchToEnvironmentMapping": {
+        "main": "prod",
+        "staging": "staging"
+    }
 }
 ```
 
-### How it works
-The CLI resolves the domain in the following order, from highest to lowest precedence:
+The CLI matches only the last part of a branch name, after the final `/`. For example, the branch `release/staging` matches the key `staging`. If your current branch has no mapping, or you aren't on a branch (such as when you check out a specific commit), the CLI falls back to `defaultEnvironment`.
 
-1. The `--domain` flag
-2. The `INFISICAL_DOMAIN` environment variable (the legacy `INFISICAL_API_URL` is still honored; when both are set, `INFISICAL_DOMAIN` wins)
-3. The `domain` field in `.infisical.json`
-4. The default (US Cloud, `https://app.infisical.com`)
+The CLI picks the environment in this order:
 
-The value must start with `http://` or `https://`, otherwise it's ignored. Always prefer `https://`. An `http://` domain sends your secrets and credentials over the network in plaintext, so only use it for isolated, private-network setups.
+1. The `--env` flag
+2. The environment mapped to your current Git branch
+3. `defaultEnvironment`
+4. `dev`
+
+## Set the Infisical instance
+
+If your project is on EU Cloud, a dedicated instance, or a self-hosted instance, set `domain` to the instance's address:
+
+```json .infisical.json
+{
+    "workspaceId": "<project-id>",
+    "domain": "https://eu.infisical.com"
+}
+```
+
+`domain` must be a URL that starts with `https://` or `http://`, or the CLI ignores it and prints a warning.
+
+<Note>
+We recommend using `https://`, since over `http://`, the CLI sends secrets and credentials unencrypted.
+</Note>
+
+The CLI picks the instance in this order:
+
+1. The [`--domain`](/cli/reference#global-flags--flag-domain) flag
+2. The `INFISICAL_DOMAIN` environment variable, or the older `INFISICAL_API_URL` if `INFISICAL_DOMAIN` isn't set
+3. `domain` in `.infisical.json`
+4. US Cloud (`https://app.infisical.com`)
+
+If you log in with your own account, [`infisical login`](/cli/reference#login) uses `domain` to choose the instance to log in to. After that, any commands you run will connect to the instance you logged in to, even if `domain` specifies a different one. However, if you authenticate as a machine identity, every command uses `domain`.
 
 <Warning>
-  Because `.infisical.json` is usually committed to your repository, the CLI prints a warning naming the host whenever the domain is read from the file, since all requests and credentials are sent there. Only set `domain` to an instance you trust, and review it when cloning a project you don't control.
+  The CLI sends every request and credential to the instance in `domain`. Because `.infisical.json` is usually committed, anyone who can change the file in your repository can change where the CLI sends them. Each time the CLI uses `domain` from the file, it prints a warning that names the host. Only set `domain` to an instance you trust, and check it when you clone a repository you don't control.
 </Warning>
+
+## Use the file from another directory
+
+The CLI looks for `.infisical.json` in the current directory, then in each parent directory up to the root of the file system. This means that if you have an `.infisical.json` file in the root of your codebase, that configuration applies to every directory under it.
+
+To read the project from a file somewhere else, such as one package's directory in a monorepo, pass the directory to `infisical run` with [`--project-config-dir`](/cli/reference#run--flag-project-config-dir):
+
+```bash
+infisical run --project-config-dir ./services/api -- npm run dev
+```
+
+<Note>
+`--project-config-dir` only sets the project. The environment and instance settings still come from the `.infisical.json` the CLI finds from your current directory.
+</Note>
+
+## Field reference
+
+<ResponseField name="workspaceId" type="string">
+The ID of the project to read secrets from. Not used when you authenticate as a machine identity.
+</ResponseField>
+
+<ResponseField name="defaultEnvironment" type="string">
+The environment slug to use when `--env` isn't passed and no branch mapping matches.
+</ResponseField>
+
+<ResponseField name="gitBranchToEnvironmentMapping" type="object">
+Maps branch names to environment slugs, such as `{ "main": "prod" }`. Keys match only the last part of a branch name, after the final `/`.
+</ResponseField>
+
+<ResponseField name="defaultSecretPath" type="string">
+The folder to read secrets from when [`--path`](/cli/reference#secrets-agent-proxy-run--flag-path) and `INFISICAL_SECRET_PATH` aren't set. Only the [`infisical secrets agent-proxy`](/cli/reference#secrets-agent-proxy) commands read it.
+</ResponseField>
+
+<ResponseField name="domain" type="string">
+The Infisical instance to connect to, such as `https://eu.infisical.com`. Must start with `https://` or `http://`.
+</ResponseField>
