@@ -118,7 +118,7 @@ describe("parseDotEnv", () => {
   it("keeps a hash that is not preceded by whitespace in unquoted values", () => {
     const env = parseDotEnv(
       [
-        "PASSWORD=abc#def",
+        "INLINE=abc#def",
         "URL=https://example.com/#/path",
         "HASH=#leading",
         "SPACED=one two#three # trailing",
@@ -126,7 +126,7 @@ describe("parseDotEnv", () => {
       ].join("\n")
     );
 
-    assert.equal(env.PASSWORD.value, "abc#def");
+    assert.equal(env.INLINE.value, "abc#def");
     assert.equal(env.URL.value, "https://example.com/#/path");
     assert.equal(env.HASH.value, "#leading");
     assert.equal(env.SPACED.value, "one two#three");
