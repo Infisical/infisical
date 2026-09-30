@@ -34,6 +34,7 @@ import {
   isExportFormatBlockedByFips,
   isKeystoreExportFormat,
   JKS_FIPS_UNSUPPORTED_MESSAGE,
+  JKS_TRUSTSTORE_SUFFIX,
   PemCertificateExtension,
   PkiSyncExportFormat,
   splitStaleCertificateFiles
@@ -537,6 +538,7 @@ export const linuxServerPkiSyncFactory = ({
             }
 
             const writtenPaths: string[] = [];
+            const writtenTruststorePaths: string[] = [];
             for (const file of files) {
               const filePath = path.posix.join(config.destinationPath, `${baseName}${file.suffix}`);
               try {
@@ -557,6 +559,7 @@ export const linuxServerPkiSyncFactory = ({
               }
               await applyOwnership(client, options.owner, options.group, filePath);
               writtenPaths.push(filePath);
+              if (file.suffix === JKS_TRUSTSTORE_SUFFIX) writtenTruststorePaths.push(filePath);
               deliveredPaths.add(filePath);
             }
 
@@ -580,7 +583,11 @@ export const linuxServerPkiSyncFactory = ({
                   writtenPaths,
                   deliveredPaths
                 });
-                const { filesToRemove, filesToKeep } = splitStaleCertificateFiles(staleFiles, canRemoveCertificates);
+                const { filesToRemove, filesToKeep, isTruststore } = splitStaleCertificateFiles({
+                  staleFiles,
+                  previousTruststoreFiles: previousMetadata?.truststoreFiles,
+                  canRemoveCertificates
+                });
                 const staleFilesToRetry: string[] = [];
                 for (const staleFile of filesToRemove) {
                   try {
@@ -601,7 +608,11 @@ export const linuxServerPkiSyncFactory = ({
                 }
                 await certificateSyncDAL.updateById(record.id, {
                   externalIdentifier: primaryPath,
-                  syncMetadata: { files: [...writtenPaths, ...filesToKeep, ...staleFilesToRetry], host: targetHost }
+                  syncMetadata: {
+                    files: [...writtenPaths, ...filesToKeep, ...staleFilesToRetry],
+                    truststoreFiles: [...writtenTruststorePaths, ...staleFilesToRetry.filter(isTruststore)],
+                    host: targetHost
+                  }
                 });
               }
             }

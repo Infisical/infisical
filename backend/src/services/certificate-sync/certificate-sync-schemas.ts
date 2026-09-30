@@ -20,6 +20,7 @@ export const BaseSyncMetadataSchema = z.object({}).catchall(z.unknown());
  */
 export const ServerSyncMetadataSchema = z.object({
   files: z.array(z.string()).optional(),
+  truststoreFiles: z.array(z.string()).optional(),
   host: z.string().optional()
 });
 

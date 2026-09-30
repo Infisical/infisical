@@ -259,17 +259,44 @@ describe("isExportFormatBlockedByFips", () => {
 });
 
 describe("splitStaleCertificateFiles", () => {
-  const stale = ["/certs/app.pem", "/certs/app.key", "/certs/app.truststore.jks"];
+  const staleFiles = ["/certs/app.pem", "/certs/app.key", "/certs/app.truststore.jks"];
+  const previousTruststoreFiles = ["/certs/app.truststore.jks"];
 
   test("removes every stale file when certificate removal is allowed", () => {
-    expect(splitStaleCertificateFiles(stale, true)).toEqual({ filesToRemove: stale, filesToKeep: [] });
+    const split = splitStaleCertificateFiles({ staleFiles, previousTruststoreFiles, canRemoveCertificates: true });
+    expect(split.filesToRemove).toEqual(staleFiles);
+    expect(split.filesToKeep).toEqual([]);
   });
 
-  test("only removes a stale truststore when certificate removal is off", () => {
-    expect(splitStaleCertificateFiles(stale, false)).toEqual({
-      filesToRemove: ["/certs/app.truststore.jks"],
-      filesToKeep: ["/certs/app.pem", "/certs/app.key"]
+  test("only removes a recorded truststore when certificate removal is off", () => {
+    const split = splitStaleCertificateFiles({ staleFiles, previousTruststoreFiles, canRemoveCertificates: false });
+    expect(split.filesToRemove).toEqual(["/certs/app.truststore.jks"]);
+    expect(split.filesToKeep).toEqual(["/certs/app.pem", "/certs/app.key"]);
+  });
+
+  test("keeps a keystore whose certificate name ends in .truststore", () => {
+    const split = splitStaleCertificateFiles({
+      staleFiles: ["/certs/api.truststore.jks"],
+      previousTruststoreFiles: [],
+      canRemoveCertificates: false
     });
+    expect(split.filesToRemove).toEqual([]);
+    expect(split.filesToKeep).toEqual(["/certs/api.truststore.jks"]);
+  });
+
+  test("keeps files when no truststores were recorded", () => {
+    const split = splitStaleCertificateFiles({ staleFiles, canRemoveCertificates: false });
+    expect(split.filesToRemove).toEqual([]);
+    expect(split.filesToKeep).toEqual(staleFiles);
+  });
+
+  test("matches recorded truststores without regard to case", () => {
+    const split = splitStaleCertificateFiles({
+      staleFiles: ["C:\\certs\\App.truststore.jks"],
+      previousTruststoreFiles: ["C:\\certs\\app.truststore.jks"],
+      canRemoveCertificates: false
+    });
+    expect(split.filesToRemove).toEqual(["C:\\certs\\App.truststore.jks"]);
   });
 });
 

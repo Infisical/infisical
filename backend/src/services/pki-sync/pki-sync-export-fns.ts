@@ -67,14 +67,26 @@ export const KEYSTORE_PASSWORD_REQUIRED_MESSAGE = "A password is required when t
 export const JKS_KEYSTORE_SUFFIX = ".jks";
 export const JKS_TRUSTSTORE_SUFFIX = ".truststore.jks";
 
-const isTruststoreFile = (filePath: string) => filePath.toLowerCase().endsWith(JKS_TRUSTSTORE_SUFFIX);
-
 // A stale truststore still grants trust, so it is always removed. Other stale files may still be read
-// by a server, so they are only removed when the sync is allowed to remove certificates.
-export const splitStaleCertificateFiles = (staleFiles: string[], canRemoveCertificates: boolean) => ({
-  filesToRemove: canRemoveCertificates ? staleFiles : staleFiles.filter(isTruststoreFile),
-  filesToKeep: canRemoveCertificates ? [] : staleFiles.filter((filePath) => !isTruststoreFile(filePath))
-});
+// by a server, so they are only removed when the sync is allowed to remove certificates. Truststores
+// are known from what the sync recorded writing, since a certificate name can itself end in ".truststore".
+export const splitStaleCertificateFiles = ({
+  staleFiles,
+  previousTruststoreFiles = [],
+  canRemoveCertificates
+}: {
+  staleFiles: string[];
+  previousTruststoreFiles?: string[];
+  canRemoveCertificates: boolean;
+}) => {
+  const truststores = new Set(previousTruststoreFiles.map((filePath) => filePath.toLowerCase()));
+  const isTruststore = (filePath: string) => truststores.has(filePath.toLowerCase());
+  return {
+    filesToRemove: canRemoveCertificates ? staleFiles : staleFiles.filter(isTruststore),
+    filesToKeep: canRemoveCertificates ? [] : staleFiles.filter((filePath) => !isTruststore(filePath)),
+    isTruststore
+  };
+};
 
 const MAX_LISTED_STALE_FILES = 3;
 

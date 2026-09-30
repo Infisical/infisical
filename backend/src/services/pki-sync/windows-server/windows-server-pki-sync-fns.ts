@@ -25,6 +25,7 @@ import {
   isExportFormatBlockedByFips,
   isKeystoreExportFormat,
   JKS_FIPS_UNSUPPORTED_MESSAGE,
+  JKS_TRUSTSTORE_SUFFIX,
   PemCertificateExtension,
   PkiSyncExportFormat,
   splitStaleCertificateFiles
@@ -394,11 +395,13 @@ export const windowsServerPkiSyncFactory = ({
         });
 
         const paths: string[] = [];
+        const truststorePaths: string[] = [];
         const files: Array<{ path: string; contentBase64: string }> = [];
         for (const file of exported) {
           const fullPath = joinWindowsPath(config.destinationPath, `${baseName}${file.suffix}`);
           files.push({ path: fullPath, contentBase64: file.content.toString("base64") });
           paths.push(fullPath);
+          if (file.suffix === JKS_TRUSTSTORE_SUFFIX) truststorePaths.push(fullPath);
         }
 
         // Windows paths are case-insensitive, so compare them folded.
@@ -438,7 +441,11 @@ export const windowsServerPkiSyncFactory = ({
               deliveredPaths,
               caseInsensitive: true
             });
-            const { filesToRemove, filesToKeep } = splitStaleCertificateFiles(staleFiles, canRemoveCertificates);
+            const { filesToRemove, filesToKeep, isTruststore } = splitStaleCertificateFiles({
+              staleFiles,
+              previousTruststoreFiles: previousMetadata?.truststoreFiles,
+              canRemoveCertificates
+            });
             let staleFilesToRetry: string[] = [];
             if (filesToRemove.length > 0) {
               try {
@@ -455,7 +462,11 @@ export const windowsServerPkiSyncFactory = ({
             }
             await certificateSyncDAL.updateById(record.id, {
               externalIdentifier: paths[0],
-              syncMetadata: { files: [...paths, ...filesToKeep, ...staleFilesToRetry], host: target.credentials.host }
+              syncMetadata: {
+                files: [...paths, ...filesToKeep, ...staleFilesToRetry],
+                truststoreFiles: [...truststorePaths, ...staleFilesToRetry.filter(isTruststore)],
+                host: target.credentials.host
+              }
             });
           }
         }
