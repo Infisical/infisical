@@ -1,3 +1,4 @@
+import { TSecretScanningDataSources } from "@app/db/schemas";
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
@@ -34,7 +35,7 @@ export const bitbucketSecretScanningService = (
     const dataSource = (await secretScanningV2DAL.dataSources.findOne({
       id: payload.dataSourceId,
       type: SecretScanningDataSource.Bitbucket
-    })) as TBitbucketDataSource | undefined;
+    })) as (TBitbucketDataSource & Pick<TSecretScanningDataSources, "encryptedCredentials">) | undefined;
 
     if (!dataSource) {
       logger.error(

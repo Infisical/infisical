@@ -1016,7 +1016,7 @@ export const secretScanningV2QueueServiceFactory = ({
             dataSourceType: dataSource.type,
             resourceId: scan.resourceId,
             resourceName: scan.resourceName,
-            resourceType: SECRET_SCANNING_DATA_SOURCE_RESOURCE_TYPE_MAP[dataSource.type],
+            resourceType: SECRET_SCANNING_DATA_SOURCE_RESOURCE_TYPE_MAP[dataSource.type as SecretScanningDataSource],
             scanId: scan.id,
             scanStatus: SecretScanningScanStatus.Failed,
             scanType: scan.type as SecretScanningScanType

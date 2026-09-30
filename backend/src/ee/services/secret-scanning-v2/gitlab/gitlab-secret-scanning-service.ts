@@ -1,3 +1,4 @@
+import { TSecretScanningDataSources } from "@app/db/schemas";
 import { GitLabDataSourceScope } from "@app/ee/services/secret-scanning-v2/gitlab/gitlab-secret-scanning-enums";
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
@@ -31,7 +32,7 @@ export const gitlabSecretScanningService = (
     const dataSource = (await secretScanningV2DAL.dataSources.findOne({
       id: dataSourceId,
       type: SecretScanningDataSource.GitLab
-    })) as TGitLabDataSource | undefined;
+    })) as (TGitLabDataSource & Pick<TSecretScanningDataSources, "encryptedCredentials">) | undefined;
 
     if (!dataSource) {
       logger.error(
