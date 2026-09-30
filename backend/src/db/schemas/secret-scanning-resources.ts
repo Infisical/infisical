@@ -13,8 +13,7 @@ export const SecretScanningResourcesSchema = z.object({
   name: z.string(),
   sourceId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  deletedAt: z.date().nullable().optional()
+  updatedAt: z.date()
 });
 
 export type TSecretScanningResources = z.infer<typeof SecretScanningResourcesSchema>;

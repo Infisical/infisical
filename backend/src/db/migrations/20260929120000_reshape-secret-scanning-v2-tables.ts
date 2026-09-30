@@ -2,8 +2,6 @@ import { Knex } from "knex";
 
 import { TableName } from "../schemas";
 
-const SOURCE_ACTIVE_NAME_UNIQUE = "secret_scanning_data_sources_project_id_name_active_unique";
-const RESOURCE_ACTIVE_EXTERNAL_ID_UNIQUE = "secret_scanning_resources_source_id_external_id_active_unique";
 const SCAN_STARTED_AT_LEGACY_INDEX = "secret_scanning_scans_scanning_started_at_index";
 const SCAN_STARTED_AT_INDEX = "secret_scanning_scans_started_at_index";
 const SCAN_TRIGGERED_BY_INDEX = "secret_scanning_scans_triggered_by_user_id_index";
@@ -18,11 +16,7 @@ export async function up(knex: Knex): Promise<void> {
 
   if (await knex.schema.hasColumn(TableName.SecretScanningDataSource, "connectionId")) {
     await knex.schema.alterTable(TableName.SecretScanningDataSource, (t) => {
-      t.dropUnique(["projectId", "name"]);
-    });
-    await knex.schema.alterTable(TableName.SecretScanningDataSource, (t) => {
       t.renameColumn("connectionId", "appConnectionId");
-      t.timestamp("deletedAt").nullable();
     });
     // Keeps knex's derived name in step with the column, so a later dropForeign(["appConnectionId"]) finds it.
     await renameConstraint(
@@ -34,20 +28,12 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.alterTable(TableName.SecretScanningDataSource, (t) => {
       t.index("appConnectionId");
     });
-    await knex.raw(`CREATE UNIQUE INDEX ?? ON ?? ("projectId", "name") WHERE "deletedAt" IS NULL`, [
-      SOURCE_ACTIVE_NAME_UNIQUE,
-      TableName.SecretScanningDataSource
-    ]);
   }
 
   if (await knex.schema.hasColumn(TableName.SecretScanningResource, "dataSourceId")) {
     await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
-      t.dropUnique(["dataSourceId", "externalId"]);
-    });
-    await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
       t.renameColumn("dataSourceId", "sourceId");
       t.dropColumn("type");
-      t.timestamp("deletedAt").nullable();
     });
     await renameConstraint(
       knex,
@@ -55,10 +41,12 @@ export async function up(knex: Knex): Promise<void> {
       "secret_scanning_resources_datasourceid_foreign",
       "secret_scanning_resources_sourceid_foreign"
     );
-    await knex.raw(`CREATE UNIQUE INDEX ?? ON ?? ("sourceId", "externalId") WHERE "deletedAt" IS NULL`, [
-      RESOURCE_ACTIVE_EXTERNAL_ID_UNIQUE,
-      TableName.SecretScanningResource
-    ]);
+    await renameConstraint(
+      knex,
+      TableName.SecretScanningResource,
+      "secret_scanning_resources_datasourceid_externalid_unique",
+      "secret_scanning_resources_sourceid_externalid_unique"
+    );
   }
 
   if (await knex.schema.hasColumn(TableName.SecretScanningScan, "scanningStartedAt")) {
@@ -253,10 +241,6 @@ export async function down(knex: Knex): Promise<void> {
   }
 
   if (await knex.schema.hasColumn(TableName.SecretScanningResource, "sourceId")) {
-    // Pre-migration code has no notion of a deleted resource and would treat these as live again.
-    await knex(TableName.SecretScanningResource).whereNotNull("deletedAt").delete();
-
-    await knex.raw(`DROP INDEX IF EXISTS ??`, [RESOURCE_ACTIVE_EXTERNAL_ID_UNIQUE]);
     await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
       t.string("type").nullable();
     });
@@ -271,20 +255,21 @@ export async function down(knex: Knex): Promise<void> {
       "secret_scanning_resources_sourceid_foreign",
       "secret_scanning_resources_datasourceid_foreign"
     );
+    await renameConstraint(
+      knex,
+      TableName.SecretScanningResource,
+      "secret_scanning_resources_sourceid_externalid_unique",
+      "secret_scanning_resources_datasourceid_externalid_unique"
+    );
     await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
-      t.dropColumn("deletedAt");
       t.renameColumn("sourceId", "dataSourceId");
     });
     await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
       t.string("type").notNullable().alter();
-      t.unique(["dataSourceId", "externalId"]);
     });
   }
 
   if (await knex.schema.hasColumn(TableName.SecretScanningDataSource, "appConnectionId")) {
-    await knex(TableName.SecretScanningDataSource).whereNotNull("deletedAt").delete();
-
-    await knex.raw(`DROP INDEX IF EXISTS ??`, [SOURCE_ACTIVE_NAME_UNIQUE]);
     await knex.schema.alterTable(TableName.SecretScanningDataSource, (t) => {
       t.dropIndex(["appConnectionId"]);
     });
@@ -295,11 +280,7 @@ export async function down(knex: Knex): Promise<void> {
       "secret_scanning_data_sources_connectionid_foreign"
     );
     await knex.schema.alterTable(TableName.SecretScanningDataSource, (t) => {
-      t.dropColumn("deletedAt");
       t.renameColumn("appConnectionId", "connectionId");
-    });
-    await knex.schema.alterTable(TableName.SecretScanningDataSource, (t) => {
-      t.unique(["projectId", "name"]);
     });
   }
 }

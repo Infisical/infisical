@@ -542,8 +542,7 @@ export const secretScanningV2ServiceFactory = ({
     if (resourceId) {
       const resource = await secretScanningV2DAL.resources.findOne({
         id: resourceId,
-        sourceId: dataSourceId,
-        deletedAt: null
+        sourceId: dataSourceId
       });
       if (!resource) {
         throw new NotFoundError({
@@ -603,8 +602,7 @@ export const secretScanningV2ServiceFactory = ({
       });
 
     const resources = await secretScanningV2DAL.resources.find({
-      sourceId: dataSourceId,
-      deletedAt: null
+      sourceId: dataSourceId
     });
 
     return { resources, projectId: dataSource.projectId };

@@ -137,7 +137,6 @@ export const appConnectionDALFactory = (db: TDbClient) => {
 
     const dataSources = await (tx || db.replicaNode())(TableName.SecretScanningDataSource)
       .where(`${TableName.SecretScanningDataSource}.appConnectionId`, connectionId)
-      .whereNull(`${TableName.SecretScanningDataSource}.deletedAt`)
       .join(TableName.Project, `${TableName.SecretScanningDataSource}.projectId`, `${TableName.Project}.id`)
       .select(
         db.ref("name").withSchema(TableName.SecretScanningDataSource),

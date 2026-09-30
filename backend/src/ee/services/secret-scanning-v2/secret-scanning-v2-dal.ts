@@ -6,9 +6,7 @@ import {
   SecretScanningScansSchema,
   TableName,
   TSecretScanningDataSources,
-  TSecretScanningFindings,
-  TSecretScanningResources,
-  TSecretScanningResourcesInsert
+  TSecretScanningFindings
 } from "@app/db/schemas";
 import {
   SecretScanningFindingStatus,
@@ -46,7 +44,6 @@ const baseSecretScanningDataSourceQuery = ({
       `${TableName.SecretScanningDataSource}.appConnectionId`,
       `${TableName.AppConnection}.id`
     )
-    .whereNull(`${TableName.SecretScanningDataSource}.deletedAt`)
     .select(selectAllTableCols(TableName.SecretScanningDataSource))
     .select(
       // entire connection
@@ -203,8 +200,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     return expandSecretScanningDataSource(dataSource);
   };
 
-  // Soft delete: the source's findings stay in the database for audit, but every read path filters
-  // deleted sources out, and the partial unique index frees the name for reuse.
   const deleteDataSourceById = async (dataSourceId: string, tx?: Knex) => {
     const dataSource = (await baseSecretScanningDataSourceQuery({
       filter: { id: dataSourceId },
@@ -212,7 +207,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       tx
     }).first())!;
 
-    await dataSourceOrm.updateById(dataSourceId, { deletedAt: new Date() }, tx);
+    await dataSourceOrm.deleteById(dataSourceId, tx);
 
     return expandSecretScanningDataSource(dataSource);
   };
@@ -234,11 +229,11 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       // TODO (scott): this query will probably need to be optimized
 
       const dataSources = await baseSecretScanningDataSourceQuery({ filter, db, tx })
-        .leftJoin(TableName.SecretScanningResource, (qb) => {
-          void qb
-            .on(`${TableName.SecretScanningResource}.sourceId`, `${TableName.SecretScanningDataSource}.id`)
-            .andOnNull(`${TableName.SecretScanningResource}.deletedAt`);
-        })
+        .leftJoin(
+          TableName.SecretScanningResource,
+          `${TableName.SecretScanningResource}.sourceId`,
+          `${TableName.SecretScanningDataSource}.id`
+        )
         .leftJoin(
           TableName.SecretScanningScan,
           `${TableName.SecretScanningScan}.resourceId`,
@@ -320,7 +315,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           if (filter)
             void qb.where(buildFindFilter(prependTableNameToFindFilter(TableName.SecretScanningResource, filter)));
         })
-        .whereNull(`${TableName.SecretScanningResource}.deletedAt`)
         .leftJoin(
           TableName.SecretScanningScan,
           `${TableName.SecretScanningScan}.resourceId`,
@@ -407,7 +401,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `${TableName.SecretScanningScan}.resourceId`
         )
         .where(`${TableName.SecretScanningResource}.sourceId`, dataSourceId)
-        .whereNull(`${TableName.SecretScanningResource}.deletedAt`)
         .leftJoin(
           TableName.SecretScanningFinding,
           `${TableName.SecretScanningFinding}.scanId`,
@@ -505,31 +498,11 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `${TableName.SecretScanningScan}.resourceId`
         )
         .where(`${TableName.SecretScanningResource}.sourceId`, dataSourceId)
-        .whereNull(`${TableName.SecretScanningResource}.deletedAt`)
         .select(selectAllTableCols(TableName.SecretScanningScan));
 
       return scans;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find By Data Source ID - Secret Scanning Scan" });
-    }
-  };
-
-  // The unique index on (sourceId, externalId) is partial (active rows only), and an ON CONFLICT
-  // target has to repeat that predicate to match it, which ormify's upsert cannot express.
-  const upsertResources = async (data: TSecretScanningResourcesInsert[], tx?: Knex) => {
-    if (!data.length) return [];
-
-    try {
-      const { sql, bindings } = (tx || db)(TableName.SecretScanningResource).insert(data).toSQL();
-
-      const result = (await (tx || db).raw(
-        `${sql} ON CONFLICT ("sourceId", "externalId") WHERE "deletedAt" IS NULL DO UPDATE SET "name" = EXCLUDED."name" RETURNING *`,
-        bindings
-      )) as { rows: TSecretScanningResources[] };
-
-      return result.rows;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Upsert - Secret Scanning Resource" });
     }
   };
 
@@ -544,9 +517,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         TableName.SecretScanningDataSource,
         `${TableName.SecretScanningDataSource}.id`,
         `${TableName.SecretScanningResource}.sourceId`
-      )
-      .whereNull(`${TableName.SecretScanningResource}.deletedAt`)
-      .whereNull(`${TableName.SecretScanningDataSource}.deletedAt`);
+      );
 
   const selectFindingWithDetails = <T extends Knex.QueryBuilder>(query: T) =>
     query
@@ -644,7 +615,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     },
     resources: {
       ...resourceOrm,
-      upsert: upsertResources,
       findWithDetails: findResourcesWithDetails
     },
     scans: {

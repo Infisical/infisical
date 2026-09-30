@@ -204,6 +204,7 @@ export const secretScanningV2QueueServiceFactory = ({
             ...rawResource,
             sourceId: dataSource.id
           })),
+          ["externalId", "sourceId"],
           tx
         );
 
@@ -602,6 +603,7 @@ export const secretScanningV2QueueServiceFactory = ({
               sourceId: dataSourceId
             }
           ],
+          ["externalId", "sourceId"],
           tx
         );
 

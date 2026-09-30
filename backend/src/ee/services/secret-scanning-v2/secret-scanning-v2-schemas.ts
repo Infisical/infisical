@@ -26,8 +26,7 @@ export const BaseSecretScanningDataSourceSchema = ({
     appConnectionId: true,
     config: true,
     // internal
-    encryptedCredentials: true,
-    deletedAt: true
+    encryptedCredentials: true
   }).extend({
     type: z.literal(type),
     appConnectionId: isConnectionRequired ? z.string().uuid() : z.null(),
@@ -109,9 +108,7 @@ export const BaseSecretScanningFindingSchema = SecretScanningFindingsSchema.omit
   resourceName: z.string()
 });
 
-export const SecretScanningResourceSchema = SecretScanningResourcesSchema.omit({
-  deletedAt: true
-});
+export const SecretScanningResourceSchema = SecretScanningResourcesSchema;
 
 export const SecretScanningScanSchema = SecretScanningScansSchema.omit({
   lastScannedCommit: true,
