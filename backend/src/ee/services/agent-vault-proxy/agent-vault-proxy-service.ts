@@ -397,8 +397,14 @@ export const agentVaultProxyServiceFactory = ({
 
       let { credential } = service;
       if (credential.type === "bearer") credential = { ...credential, value: expand(credential.value) };
+      // A typed username is trimmed on save, and a username can't start or end with a space (RFC 8265), so one a
+      // variable fills in is trimmed too. Every other field keeps its spaces, as it does when typed.
       if (credential.type === "basic") {
-        credential = { ...credential, username: expand(credential.username), password: expand(credential.password) };
+        credential = {
+          ...credential,
+          username: expand(credential.username).trim(),
+          password: expand(credential.password)
+        };
       }
 
       return {

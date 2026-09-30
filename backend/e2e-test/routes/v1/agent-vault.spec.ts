@@ -1024,6 +1024,24 @@ describe("Agent Vault V1 Router", async () => {
       expect((await resolve()).services[0].credential).toMatchObject({ value: "y".repeat(8192 * 3) });
     });
 
+    test("a username a variable fills in is trimmed like a typed one, and the password keeps its spaces", async () => {
+      const bundle = await createAccessBundle("variables-username-trim");
+      await createVariable(bundle.id, { key: "PADDED", value: " padded " });
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "padded",
+        hostPattern: "padded.example.com",
+        credential: { type: "basic", username: "{{PADDED}}", password: "{{PADDED}}" }
+      });
+      expect(created.statusCode).toBe(200);
+
+      const resolve = await resolverFor(bundle, "variables-username-trim");
+      expect((await resolve()).services[0].credential).toEqual({
+        type: "basic",
+        username: "padded",
+        password: " padded "
+      });
+    });
+
     test("a stored id with no variable behind it is sent as stored, and its service keeps its restrictions", async () => {
       const bundle = await createAccessBundle("variables-missing");
       const gone = await createVariable(bundle.id, { key: "GONE", value: "x" });
