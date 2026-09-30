@@ -851,11 +851,22 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         const sortFolderIds = filters?.sortFolderIds ?? folderIds;
         const timestampValue = sortFolderIds.length
           ? db.raw(
-              `MAX(CASE WHEN ?? IN (${sortFolderIds.map(() => "?").join(", ")}) THEN ?? END) OVER (PARTITION BY ??) AS "sortValue"`,
+              `COALESCE(
+                MAX(??) FILTER (WHERE ?? IN (${sortFolderIds.map(() => "?").join(", ")}) AND ?? = ?) OVER (PARTITION BY ??),
+                MAX(??) FILTER (WHERE ?? IN (${sortFolderIds.map(() => "?").join(", ")}) AND ?? = ?) OVER (PARTITION BY ??)
+              ) AS "sortValue"`,
               [
+                `${TableName.SecretV2}.${timestampOrderBy}`,
                 `${TableName.SecretV2}.folderId`,
                 ...sortFolderIds,
+                `${TableName.SecretV2}.type`,
+                SecretType.Shared,
+                `${TableName.SecretV2}.key`,
                 `${TableName.SecretV2}.${timestampOrderBy}`,
+                `${TableName.SecretV2}.folderId`,
+                ...sortFolderIds,
+                `${TableName.SecretV2}.type`,
+                SecretType.Personal,
                 `${TableName.SecretV2}.key`
               ]
             )
