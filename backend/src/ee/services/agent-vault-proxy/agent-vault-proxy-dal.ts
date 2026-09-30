@@ -98,5 +98,14 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByIdWithOrg, findByIdInProject, findForList, recordHeartbeat };
+  const countByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.AgentVaultProxy).where({ projectId }).count("id").first();
+      return parseInt(String(result?.count || "0"), 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count agent vault proxies" });
+    }
+  };
+
+  return { ...orm, findByIdWithOrg, findByIdInProject, findForList, recordHeartbeat, countByProjectId };
 };

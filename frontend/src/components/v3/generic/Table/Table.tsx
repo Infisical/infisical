@@ -4,14 +4,15 @@ import { cn } from "@app/components/v3/utils";
 
 const Table = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"table"> & { containerClassName?: string }
->(({ className, containerClassName, ...props }, ref) => {
+  React.ComponentProps<"table"> & { containerClassName?: string; hasAttachedFooter?: boolean }
+>(({ className, containerClassName, hasAttachedFooter = false, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-slot="table-container"
       className={cn(
         "relative thin-scrollbar w-full min-w-0 overflow-x-auto rounded-md border border-border bg-container",
+        hasAttachedFooter && "rounded-b-none",
         containerClassName
       )}
     >
@@ -26,6 +27,19 @@ const Table = React.forwardRef<
 
 Table.displayName = "Table";
 
+function TableAttachedFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="table-attached-footer"
+      className={cn(
+        "flex min-h-10 items-center justify-center overflow-hidden rounded-b-md border border-t-0 border-border bg-container",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
 function TableHeader({
   className,
   sticky = false,
@@ -36,7 +50,10 @@ function TableHeader({
       data-slot="table-header"
       className={cn(
         "text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent",
-        sticky && "sticky top-0 z-10 bg-container",
+        // collapsed borders are painted by the table and scroll away under a sticky header,
+        // so the header draws its bottom border as an inset shadow that moves with it
+        sticky &&
+          "sticky top-0 z-10 bg-container [&_th]:border-b-0 [&_th]:shadow-[inset_0_-1px_0_var(--color-border)] [&_tr]:border-b-0",
         className
       )}
       {...props}
@@ -199,6 +216,7 @@ function TableCaption({ className, ...props }: React.ComponentProps<"caption">) 
 
 export {
   Table,
+  TableAttachedFooter,
   TableBody,
   TableCaption,
   TableCell,

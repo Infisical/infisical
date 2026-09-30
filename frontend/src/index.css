@@ -166,6 +166,7 @@
   --color-border-secondary: oklch(39.01861% 0.0036123 264.5209);
   --color-border-secondary-bright: oklch(71.76803% 0.0036931 247.8755);
   --color-border-secondary-strong: oklch(48.54248% 0.0083474 268.4732);
+  --color-border-soft: oklch(25.2% 0.006 275);
   --color-border-strong: oklch(32.50117% 0.0092536 268.3806);
   --color-border-subtle: oklch(27.33264% 0.0074958 274.6834);
   --color-foreground-bright: oklch(97.01508% 0 0);
@@ -259,6 +260,7 @@ html[data-theme="light"] {
   --color-border-secondary: var(--color-border);
   --color-border-secondary-bright: var(--color-border);
   --color-border-secondary-strong: var(--color-border);
+  --color-border-soft: oklch(0.925 0.001 286.4);
   --color-border-strong: var(--color-border);
   --color-border-subtle: var(--color-border);
   --color-foreground-bright: var(--color-foreground);

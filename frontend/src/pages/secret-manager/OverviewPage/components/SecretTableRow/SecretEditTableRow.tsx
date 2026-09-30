@@ -39,6 +39,7 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -62,9 +63,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  Field,
-  FieldContent,
-  FieldLabel,
   IconButton,
   InfisicalSecretInput,
   Input,
@@ -351,7 +349,6 @@ export const SecretEditTableRow = ({
   const [isDeleting, setIsDeleting] = useToggle();
   const [isEditing, setIsEditing] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [editConfirmation, setEditConfirmation] = useState("");
   const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
@@ -367,10 +364,6 @@ export const SecretEditTableRow = ({
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
   }, []);
-
-  useEffect(() => {
-    if (!popUp.editSecret.isOpen) setEditConfirmation("");
-  }, [popUp.editSecret.isOpen]);
 
   const originalCommentRef = useRef(comment ?? "");
   const originalTagsRef = useRef(tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? []);
@@ -969,32 +962,44 @@ export const SecretEditTableRow = ({
       control={control}
       name="key"
       render={({ field, fieldState: { error } }) => (
-        <Input
-          autoComplete="off"
-          readOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
-          placeholder={error?.message || "Secret name"}
-          title={field.value ?? secretName}
-          isError={Boolean(error)}
-          {...field}
-          value={field.value ?? ""}
-          className={twMerge(
-            "h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
-            isPendingDelete && "text-danger/75 line-through"
-          )}
-          onChange={(event) => {
-            const value = currentProject?.autoCapitalization
-              ? event.currentTarget.value.toUpperCase()
-              : event.currentTarget.value;
-            field.onChange(value);
-          }}
-          onFocus={() => setIsFieldFocused.on()}
-          onKeyDown={handleEditShortcut}
-          onBlur={(e) => {
-            field.onBlur();
-            if (!isBatchMode && field.onChange) field.onChange(e);
-            setIsFieldFocused.off();
-          }}
-        />
+        <Tooltip
+          delayDuration={1000}
+          skipDelayDuration={0}
+          open={isFieldFocused ? false : undefined}
+        >
+          <TooltipTrigger asChild>
+            <Input
+              autoComplete="off"
+              readOnly={
+                isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue
+              }
+              placeholder={error?.message || "Secret name"}
+              isError={Boolean(error)}
+              {...field}
+              value={field.value ?? ""}
+              className={twMerge(
+                "h-auto w-full truncate rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
+                isPendingDelete && "text-danger/75 line-through"
+              )}
+              onChange={(event) => {
+                const value = currentProject?.autoCapitalization
+                  ? event.currentTarget.value.toUpperCase()
+                  : event.currentTarget.value;
+                field.onChange(value);
+              }}
+              onFocus={() => setIsFieldFocused.on()}
+              onKeyDown={handleEditShortcut}
+              onBlur={(e) => {
+                field.onBlur();
+                if (!isBatchMode && field.onChange) field.onChange(e);
+                setIsFieldFocused.off();
+              }}
+            />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-(--radix-tooltip-content-available-width) break-all whitespace-normal">
+            {field.value ?? secretName}
+          </TooltipContent>
+        </Tooltip>
       )}
     />
   ) : null;
@@ -1945,8 +1950,9 @@ export const SecretEditTableRow = ({
       <AlertDialog
         open={popUp.editSecret.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editSecret", isOpen)}
+        confirmationValue="confirm"
       >
-        <AlertDialogContent className="sm:max-w-4xl!">
+        <AlertDialogContent className="max-w-3xl [&>*]:min-w-0">
           <AlertDialogHeader>
             <AlertDialogMedia>
               <SaveIcon />
@@ -1964,35 +1970,16 @@ export const SecretEditTableRow = ({
               onlyReferences
             />
           )}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (editConfirmation === "confirm") handleEditSecret(popUp?.editSecret?.data);
-            }}
-          >
-            <Field>
-              <FieldLabel>
-                Type <span className="font-bold">confirm</span> to proceed
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  value={editConfirmation}
-                  onChange={(e) => setEditConfirmation(e.target.value)}
-                  placeholder="Type confirm here"
-                  autoComplete="off"
-                />
-              </FieldContent>
-            </Field>
-          </form>
+          <AlertDialogConfirmationField />
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel isDisabled={isEditing}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="project"
               onClick={(e) => {
                 e.preventDefault();
                 handleEditSecret(popUp?.editSecret?.data);
               }}
-              disabled={editConfirmation !== "confirm" || isEditing}
+              isPending={isEditing}
             >
               Save Changes
             </AlertDialogAction>
@@ -2015,7 +2002,9 @@ export const SecretEditTableRow = ({
         >
           {nameInput}
         </TableCell>
-        <TableCell className={twMerge("relative w-full", isOverride && "border-b-border/50")}>
+        <TableCell
+          className={twMerge("relative w-full max-w-0", isOverride && "border-b-border/50")}
+        >
           <div data-table-row-filter-contents className="flex w-full flex-col gap-y-2 !filter-none">
             {valueContent}
           </div>

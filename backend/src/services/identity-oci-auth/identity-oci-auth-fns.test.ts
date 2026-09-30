@@ -1,6 +1,70 @@
+import { AxiosError, AxiosHeaders } from "axios";
 import { describe, expect, it } from "vitest";
 
-import { getOciSignerUserOcid } from "./identity-oci-auth-fns";
+import { getOciErrorForLog, getOciSignerUserOcid } from "./identity-oci-auth-fns";
+
+const ociError = (status: number, data: unknown, headers: Record<string, string> = {}) =>
+  new AxiosError("Request failed", "ERR_BAD_REQUEST", undefined, undefined, {
+    status,
+    statusText: "",
+    data,
+    headers,
+    config: { headers: new AxiosHeaders() }
+  });
+
+describe("getOciErrorForLog", () => {
+  it("keeps status, axios code, OCI error code and opc-request-id", () => {
+    const err = ociError(
+      401,
+      { code: "NotAuthenticated", message: "The required information to complete authentication was not provided." },
+      { "opc-request-id": "D1B2C3/E4F5A6/B7C8D9" }
+    );
+    expect(getOciErrorForLog(err)).toEqual({
+      status: 401,
+      code: "ERR_BAD_REQUEST",
+      ociErrorCode: "NotAuthenticated",
+      ociRequestId: "D1B2C3/E4F5A6/B7C8D9"
+    });
+  });
+
+  it("reads opc-request-id regardless of header-name casing", () => {
+    const err = ociError(401, { code: "NotAuthenticated" }, { "Opc-Request-Id": "D1B2C3/E4F5A6/B7C8D9" });
+    expect(getOciErrorForLog(err).ociRequestId).toBe("D1B2C3/E4F5A6/B7C8D9");
+  });
+
+  it("never returns the OCI message, which can echo client-supplied values", () => {
+    const echoed = "ocid1.user.oc1..aaaaaaaasecretvalue";
+    const logged = JSON.stringify(
+      getOciErrorForLog(ociError(404, { code: "NotAuthorizedOrNotFound", message: echoed }))
+    );
+    expect(logged).not.toContain(echoed);
+    expect(logged).not.toContain("message");
+  });
+
+  it("drops code and request id values that are not plain identifiers", () => {
+    const err = ociError(
+      400,
+      { code: "Bad code with spaces: Authorization=Signature abc" },
+      { "opc-request-id": "x".repeat(200) }
+    );
+    expect(getOciErrorForLog(err)).toEqual({
+      status: 400,
+      code: "ERR_BAD_REQUEST",
+      ociErrorCode: undefined,
+      ociRequestId: undefined
+    });
+  });
+
+  it("handles a non-JSON body and a missing response", () => {
+    expect(getOciErrorForLog(ociError(502, "<html>Bad Gateway</html>")).ociErrorCode).toBeUndefined();
+    expect(getOciErrorForLog(new AxiosError("connect ECONNREFUSED", "ECONNREFUSED"))).toEqual({
+      status: undefined,
+      code: "ECONNREFUSED",
+      ociErrorCode: undefined,
+      ociRequestId: undefined
+    });
+  });
+});
 
 const tenancy = "ocid1.tenancy.oc1..aaaaaaaatenancy";
 const user = "ocid1.user.oc1..aaaaaaaauser";

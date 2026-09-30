@@ -66,6 +66,7 @@ export type SubscriptionPlan = {
   pkiScep: boolean;
   pkiPqc: boolean;
   caCrl: boolean;
+  pkiOcsp: boolean;
   pkiEnterpriseCaIntegrations: boolean;
   pkiExternalIntermediateCa: boolean;
   pkiDiscovery: boolean;
@@ -98,6 +99,7 @@ export type SubscriptionPlan = {
   honeyTokens: boolean;
   honeyTokenLimit: number;
   secretsBrokering: boolean;
+  agentVaultByoS3: boolean;
   pam?: boolean | null;
   certManager?: boolean | null;
   secretsFolderRbac: boolean;

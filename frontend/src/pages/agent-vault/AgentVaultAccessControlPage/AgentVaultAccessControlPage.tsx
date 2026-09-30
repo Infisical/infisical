@@ -24,8 +24,7 @@ export enum AgentVaultAccessControlTab {
   Groups = "groups"
 }
 
-const AgentVaultAccessControlPageContent = () => {
-  const { t } = useTranslation();
+const AgentVaultAccessControlTabs = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
@@ -44,6 +43,42 @@ const AgentVaultAccessControlPageContent = () => {
   };
 
   return (
+    <Tabs value={selectedTab} onValueChange={updateTab}>
+      <TabsList variant="av" aria-label="Agent Vault access control sections">
+        <TabsTrigger value={AgentVaultAccessControlTab.Users}>Users</TabsTrigger>
+        <TabsTrigger value={AgentVaultAccessControlTab.MachineIdentities}>
+          Machine Identities
+        </TabsTrigger>
+        <TabsTrigger value={AgentVaultAccessControlTab.Groups}>Groups</TabsTrigger>
+      </TabsList>
+      <TabsContent value={AgentVaultAccessControlTab.Users}>
+        <MembersTab />
+      </TabsContent>
+      <TabsContent value={AgentVaultAccessControlTab.MachineIdentities}>
+        <IdentitiesTab />
+      </TabsContent>
+      <TabsContent value={AgentVaultAccessControlTab.Groups}>
+        <GroupsTab />
+      </TabsContent>
+    </Tabs>
+  );
+};
+
+// Built at module scope: wrapping inside the render makes a new component type each pass, which
+// remounts the tabs and replays the gate.
+const AgentVaultAccessControlTabsWithPermission = withProjectPermission(
+  AgentVaultAccessControlTabs,
+  {
+    action: ProjectPermissionMemberActions.Read,
+    subject: ProjectPermissionSub.Member,
+    accessRestrictedMode: "dialog"
+  }
+);
+
+export const AgentVaultAccessControlPage = () => {
+  const { t } = useTranslation();
+
+  return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
       <Helmet>
         <title>{t("common.head-title", { title: "Access Control" })}</title>
@@ -54,35 +89,7 @@ const AgentVaultAccessControlPageContent = () => {
         title="Access Control"
         description="Manage access for users, machine identities, and groups."
       />
-      <Tabs value={selectedTab} onValueChange={updateTab}>
-        <TabsList variant="av" aria-label="Agent Vault access control sections">
-          <TabsTrigger value={AgentVaultAccessControlTab.Users}>Users</TabsTrigger>
-          <TabsTrigger value={AgentVaultAccessControlTab.MachineIdentities}>
-            Machine Identities
-          </TabsTrigger>
-          <TabsTrigger value={AgentVaultAccessControlTab.Groups}>Groups</TabsTrigger>
-        </TabsList>
-        <TabsContent value={AgentVaultAccessControlTab.Users}>
-          <MembersTab />
-        </TabsContent>
-        <TabsContent value={AgentVaultAccessControlTab.MachineIdentities}>
-          <IdentitiesTab />
-        </TabsContent>
-        <TabsContent value={AgentVaultAccessControlTab.Groups}>
-          <GroupsTab />
-        </TabsContent>
-      </Tabs>
+      <AgentVaultAccessControlTabsWithPermission />
     </div>
   );
 };
-
-// Built at module scope: wrapping inside the render makes a new component type each pass, which
-// remounts the tabs and replays the gate.
-export const AgentVaultAccessControlPage = withProjectPermission(
-  AgentVaultAccessControlPageContent,
-  {
-    action: ProjectPermissionMemberActions.Read,
-    subject: ProjectPermissionSub.Member,
-    accessRestrictedMode: "dialog"
-  }
-);
