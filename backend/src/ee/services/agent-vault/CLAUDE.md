@@ -200,9 +200,11 @@ path decides what a service can reach, so it stays literal.
   rows, depending on which constraint was created first. The refusal that matters is the check under the
   bundle lock (a 409 naming the services); the deferred key is the backstop and only raises at commit.
 - Every `{{...}}` in a value must be an existing, well-formed key, or the save fails. A malformed one is
-  refused without quoting it, because the text was cut from a secret. Placeholders can't contain double
-  braces. A variable's own value is sent as is and never expanded again, which is also how a service sends a
-  literal `{{`.
+  refused without quoting it, because the text was cut from a secret. Placeholders and header prefixes (the
+  bearer prefix and custom header prefixes) can't contain double braces, which would read as a reference the
+  proxy never fills in. A service saved with braces there before the rule still resolves, but its next save
+  has to drop them; that is intended, not something to grandfather. A variable's own value is sent as is and
+  never expanded again, which is also how a service sends a literal `{{`.
 - **A value takes at most 3 references** (`AGENT_VAULT_MAX_REFERENCES_PER_FIELD`), and a repeat counts each
   time: repeating one short reference is what fills a field in to millions of characters. The field schemas
   refuse a fourth with a 422, and the service sheet checks the same limit before it saves.
