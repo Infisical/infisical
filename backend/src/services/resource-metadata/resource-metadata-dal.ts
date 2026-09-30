@@ -50,7 +50,34 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
     if (folderIds) {
       void query.whereIn(`${TableName.SecretV2}.folderId`, folderIds);
     } else {
-      void query.where(`${TableName.SecretFolder}.isReserved`, false);
+      void query.whereExists((subQuery) => {
+        void subQuery
+          .withRecursive("metadata_folder_ancestors", ["id", "parentId", "envId"], (ancestors) => {
+            void ancestors
+              .select("id", "parentId", "envId")
+              .from(TableName.SecretFolder)
+              .whereRaw("?? = ??", [`${TableName.SecretFolder}.id`, `${TableName.SecretV2}.folderId`])
+              .where((folder) => {
+                void folder.where("isReserved", false).orWhereNull("parentId");
+              })
+              .union((parents) => {
+                void parents
+                  .select("parent.id", "parent.parentId", "parent.envId")
+                  .from({ parent: TableName.SecretFolder })
+                  .join("metadata_folder_ancestors", (join) => {
+                    join
+                      .on("parent.id", "metadata_folder_ancestors.parentId")
+                      .andOn("parent.envId", "metadata_folder_ancestors.envId");
+                  })
+                  .where((parent) => {
+                    void parent.where("parent.isReserved", false).orWhereNull("parent.parentId");
+                  });
+              });
+          })
+          .select(db.raw("1"))
+          .from("metadata_folder_ancestors")
+          .whereNull("parentId");
+      });
     }
 
     if (environments) {
