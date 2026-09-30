@@ -95,8 +95,10 @@ export const HoneyTokenTableRow = ({
   // The overflow menu's content is portaled out of the row, so moving the pointer into it counts
   // as leaving the row and neither hover nor focus-within holds the bar open. Track the menu's own
   // open state and keep the bar mounted while it is in use, the way the secret edit row does.
-  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
-  const shouldMountActionBar = shouldRenderActions || isActionMenuOpen;
+  // An expanded row renders one menu per environment, so this is keyed by environment slug rather
+  // than a single boolean; a shared boolean would open every environment's menu at once.
+  const [openActionMenuEnv, setOpenActionMenuEnv] = useState<string | null>(null);
+  const shouldMountActionBar = shouldRenderActions || openActionMenuEnv !== null;
   const totalCols = environments.length + 2;
 
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
@@ -114,7 +116,7 @@ export const HoneyTokenTableRow = ({
     return !ht || ht.status === HoneyTokenStatus.Revoked;
   });
 
-  const renderActionButtons = (honeyToken: TDashboardHoneyToken) => {
+  const renderActionButtons = (honeyToken: TDashboardHoneyToken, envSlug: string) => {
     const isRevoked = honeyToken.status === HoneyTokenStatus.Revoked;
 
     return (
@@ -157,7 +159,15 @@ export const HoneyTokenTableRow = ({
             <TooltipContent>Revoked honey tokens cannot be edited.</TooltipContent>
           </Tooltip>
         ) : (
-          <DropdownMenu open={isActionMenuOpen} onOpenChange={setIsActionMenuOpen}>
+          <DropdownMenu
+            open={openActionMenuEnv === envSlug}
+            onOpenChange={(isOpen) =>
+              setOpenActionMenuEnv((current) => {
+                if (isOpen) return envSlug;
+                return current === envSlug ? null : current;
+              })
+            }
+          >
             <DropdownMenuTrigger asChild>
               <IconButton
                 variant="ghost"
@@ -322,7 +332,7 @@ export const HoneyTokenTableRow = ({
                 {renderStatusBadge(singleEnvToken)}
               </div>
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                {shouldMountActionBar && renderActionButtons(singleEnvToken)}
+                {shouldMountActionBar && renderActionButtons(singleEnvToken, singleEnvSlug)}
               </div>
             </div>
           ) : (
@@ -442,7 +452,7 @@ export const HoneyTokenTableRow = ({
                                 {renderStatusBadge(honeyToken)}
                               </div>
                               <div className="absolute top-1/2 -right-1.5 z-20 -translate-y-1/2">
-                                {renderActionButtons(honeyToken)}
+                                {renderActionButtons(honeyToken, slug)}
                               </div>
                             </div>
                           </TableCell>
