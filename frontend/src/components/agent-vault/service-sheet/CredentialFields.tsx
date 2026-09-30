@@ -26,15 +26,12 @@ import { cn } from "@app/components/v3/utils";
 import { isVariableReferenceOnly } from "@app/helpers/agentVaultVariables";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
+import { ReferenceHighlights } from "./ReferenceHighlights";
 import { SendsPreview } from "./SendsPreview";
 import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
 import { useServiceVariables } from "./ServiceVariablesContext";
-import {
-  ReferenceHighlights,
-  useVariableAutocomplete,
-  VariableKeyChips,
-  VariableSuggestions
-} from "./VariableReferenceInput";
+import { VariableKeyChips } from "./VariableChips";
+import { useVariableAutocomplete, VariableSuggestions } from "./VariableSuggestions";
 
 type SecretName =
   | "secret"

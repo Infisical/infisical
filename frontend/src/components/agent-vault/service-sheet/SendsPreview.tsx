@@ -5,7 +5,8 @@ import { splitVariableReferences } from "@app/helpers/agentVaultVariables";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
 import { TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
-import { useKnownVariableKeys, VariableChip } from "./VariableReferenceInput";
+import { useKnownVariableKeys } from "./ServiceVariablesContext";
+import { VariableChip } from "./VariableChips";
 
 const MASK = "•".repeat(8);
 

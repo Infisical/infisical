@@ -1,133 +1,17 @@
 import { KeyboardEvent, ReactNode, RefObject, useId, useMemo, useRef, useState } from "react";
 import { LockIcon, PlusIcon } from "lucide-react";
 
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-  Popover,
-  PopoverAnchor,
-  PopoverContent
-} from "@app/components/v3";
+import { Popover, PopoverAnchor, PopoverContent } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import {
   findVariableReferenceAtCaret,
   normalizeVariableKey,
-  splitVariableReferences,
   toVariableReference,
   VARIABLE_KEY_RE
 } from "@app/helpers/agentVaultVariables";
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
 import { useServiceVariables } from "./ServiceVariablesContext";
-
-/** Undefined while the list loads, so nothing is marked unknown before it can be known. */
-export const useKnownVariableKeys = () => {
-  const { variables } = useServiceVariables();
-  return useMemo(
-    () => (variables ? new Set(variables.map((variable) => variable.key)) : undefined),
-    [variables]
-  );
-};
-
-const chipTone = (isKnown: boolean) =>
-  isKnown
-    ? "bg-foreground/10 text-label"
-    : "bg-danger/15 text-danger ring-1 ring-danger/40 ring-inset";
-
-export const VariableChip = ({
-  reference,
-  isKnown,
-  className
-}: {
-  reference: string;
-  isKnown: boolean;
-  className?: string;
-}) => <span className={cn("rounded-[3px] px-1", chipTone(isKnown), className)}>{reference}</span>;
-
-// Only the first key shows, so a value using several keeps the hint under its field to one line.
-export const VariableKeyChips = ({ keys }: { keys: string[] }) => {
-  const [firstKey, ...otherKeys] = keys;
-  if (!firstKey) return null;
-
-  return (
-    <>
-      <VariableChip reference={toVariableReference(firstKey)} isKnown className="font-mono" />
-      {otherKeys.length > 0 && (
-        <HoverCard openDelay={150} closeDelay={100}>
-          <HoverCardTrigger asChild>
-            <button
-              type="button"
-              aria-label={`${otherKeys.length} more: ${otherKeys.join(", ")}`}
-              className={cn(
-                "rounded-[3px] px-1 font-mono outline-hidden focus-visible:ring-2 focus-visible:ring-ring/50",
-                chipTone(true)
-              )}
-            >
-              +{otherKeys.length}
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent
-            align="start"
-            className="flex w-auto max-w-sm flex-col items-start gap-1"
-          >
-            {otherKeys.map((key) => (
-              <VariableChip
-                key={key}
-                reference={toVariableReference(key)}
-                isKnown
-                className="font-mono text-xs break-all"
-              />
-            ))}
-          </HoverCardContent>
-        </HoverCard>
-      )}
-    </>
-  );
-};
-
-/**
- * The value drawn behind a transparent input, with each reference marked. Marks add colour but no
- * padding, so every character sits exactly where the input's own would.
- */
-export const ReferenceHighlights = ({
-  value,
-  overlayRef
-}: {
-  value: string;
-  overlayRef: RefObject<HTMLDivElement>;
-}) => {
-  const knownKeys = useKnownVariableKeys();
-
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center px-2.5">
-      <div
-        ref={overlayRef}
-        className="w-full overflow-hidden text-sm whitespace-pre text-foreground"
-      >
-        {splitVariableReferences(value).map((segment, index) =>
-          segment.type === "text" ? (
-            // eslint-disable-next-line react/no-array-index-key
-            <span key={index}>{segment.text}</span>
-          ) : (
-            <mark
-              // eslint-disable-next-line react/no-array-index-key
-              key={index}
-              className={cn(
-                "rounded-[3px]",
-                chipTone(segment.isValid && (!knownKeys || knownKeys.has(segment.key)))
-              )}
-            >
-              {segment.text}
-            </mark>
-          )
-        )}
-        {/* The caret's width: the input scrolls past it at the end, and plain text has nothing there. */}
-        <span className="inline-block w-0.5" />
-      </div>
-    </div>
-  );
-};
 
 type TOpenReference = { start: number; query: string };
 

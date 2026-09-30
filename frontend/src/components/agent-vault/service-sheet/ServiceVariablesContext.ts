@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo } from "react";
 
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
@@ -28,3 +28,12 @@ export const ServiceVariablesContext = createContext<TServiceVariables>({
 });
 
 export const useServiceVariables = () => useContext(ServiceVariablesContext);
+
+/** Undefined while the list loads, so nothing is marked unknown before it can be known. */
+export const useKnownVariableKeys = () => {
+  const { variables } = useServiceVariables();
+  return useMemo(
+    () => (variables ? new Set(variables.map((variable) => variable.key)) : undefined),
+    [variables]
+  );
+};
