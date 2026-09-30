@@ -255,12 +255,22 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
 
   const build = ({
     user = { id: USER_ID, isAccepted: true, isLocked: false, temporaryLockDateEnd: null as Date | null },
-    memberships = { [ROOT]: true, [SUB]: true } as Record<string, boolean | undefined>
+    memberships = { [ROOT]: true, [SUB]: true } as Record<
+      string,
+      boolean | { isActive: boolean; status: string } | undefined
+    >
   } = {}) => {
     const orgDAL = {
       findOne: vi.fn(async ({ id }: { id: string }) => orgs[id]),
-      findEffectiveOrgMembership: vi.fn(async ({ orgId }: { orgId: string }) =>
-        memberships[orgId] === undefined ? null : { isActive: memberships[orgId] }
+      // Mirrors the DAL: a status filter hides rows in any other status unless acceptAnyStatus is set.
+      findEffectiveOrgMembership: vi.fn(
+        async ({ orgId, status, acceptAnyStatus }: { orgId: string; status?: string; acceptAnyStatus?: boolean }) => {
+          const entry = memberships[orgId];
+          if (entry === undefined) return null;
+          const row = typeof entry === "boolean" ? { isActive: entry, status: "accepted" } : entry;
+          if (!acceptAnyStatus && status && row.status !== status) return null;
+          return row;
+        }
       )
     };
     const service = tokenServiceFactory({
@@ -347,6 +357,43 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
       UnauthorizedError
     );
     expect(err.message).toContain("deleted-org");
+  });
+
+  // selectOrganization issues a sub-org token to a still-Invited root member and only promotes on root selection.
+  test("a sub-org token is accepted while the root membership is still Invited but active", async () => {
+    const { service } = build({ memberships: { [ROOT]: { isActive: true, status: "invited" }, [SUB]: true } });
+    await expect(
+      service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT, subOrganizationId: SUB }))
+    ).resolves.toMatchObject({ orgId: SUB });
+    await expect(
+      service.validateRefreshTokenAccess(refreshToken({ organizationId: ROOT, subOrganizationId: SUB }))
+    ).resolves.toBeUndefined();
+  });
+
+  test("a sub-org token is refused when the Invited root membership is deactivated", async () => {
+    const { service } = build({ memberships: { [ROOT]: { isActive: false, status: "invited" }, [SUB]: true } });
+    await expectRejected(
+      service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT, subOrganizationId: SUB })),
+      ForbiddenRequestError
+    );
+  });
+
+  test("a root-scoped token still requires an Accepted root membership", async () => {
+    const { service } = build({ memberships: { [ROOT]: { isActive: true, status: "invited" } } });
+    await expectRejected(service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT })), ForbiddenRequestError);
+  });
+
+  test("a token for a sub-org that no longer exists is refused with 401, not a 400", async () => {
+    const { service } = build();
+    const err = await expectRejected(
+      service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT, subOrganizationId: "deleted-sub" })),
+      UnauthorizedError
+    );
+    expect(err.message).toContain("deleted-sub");
+    await expectRejected(
+      service.validateRefreshTokenAccess(refreshToken({ organizationId: ROOT, subOrganizationId: "deleted-sub" })),
+      UnauthorizedError
+    );
   });
 
   describe("validateRefreshTokenAccess", () => {

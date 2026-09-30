@@ -4,7 +4,7 @@ import { OrgMembershipStatus, TAuthTokens, TAuthTokenSessions, TUsers } from "@a
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn/array";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -389,12 +389,12 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return { user };
   };
 
-  const assertActiveOrgMembership = async (userId: string, orgId: string) => {
+  const assertActiveOrgMembership = async (userId: string, orgId: string, { acceptAnyStatus = false } = {}) => {
     const orgMembership = await orgDAL.findEffectiveOrgMembership({
       actorType: ActorType.USER,
       actorId: userId,
       orgId,
-      status: OrgMembershipStatus.Accepted
+      ...(acceptAnyStatus ? { acceptAnyStatus } : { status: OrgMembershipStatus.Accepted })
     });
 
     if (!orgMembership) {
@@ -439,12 +439,18 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     }
 
     const subOrganization = await orgDAL.findOne({ id: subOrganizationId });
-    if (!subOrganization) throw new BadRequestError({ message: `Sub organization ${subOrganizationId} not found` });
+    if (!subOrganization) {
+      throw new UnauthorizedError({
+        message: `The sub-organization with ID '${subOrganizationId}' no longer exists. Log in again.`
+      });
+    }
     if (subOrganization.rootOrgId !== organizationId || subOrganization.id === organizationId) {
       throw new ForbiddenRequestError({ message: "Sub-organization does not belong to the token's organization" });
     }
 
-    await assertActiveOrgMembership(userId, organizationId);
+    // Mirrors selectOrganization, which lets a still-Invited root member into a sub-org: selecting a sub-org
+    // never promotes the root membership, so only deactivation is a reason to refuse here.
+    await assertActiveOrgMembership(userId, organizationId, { acceptAnyStatus: true });
     await assertActiveOrgMembership(userId, subOrganization.id);
 
     return {

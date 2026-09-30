@@ -292,6 +292,38 @@ describe("Org scope of user tokens after root membership deactivation", () => {
     expect(refreshRes.payload).toContain("no longer exists");
   });
 
+  // SCIM provisions the root membership as Invited, and selecting a sub-org never promotes it.
+  test("a still-Invited but active root member can use and refresh a sub-org token", async () => {
+    const member = await makeMember();
+    await testDb(TableName.Membership)
+      .where({ id: member.rootMembershipId })
+      .update({ status: OrgMembershipStatus.Invited });
+
+    expect((await readOrgMembers(accessToken(member, subScope(member)), member.subOrgId)).statusCode).toBe(200);
+    expect((await refresh(refreshToken(member, subScope(member)))).statusCode).toBe(200);
+
+    await setMembershipActive(member.rootMembershipId, false);
+    expect((await readOrgMembers(accessToken(member, subScope(member)), member.subOrgId)).statusCode).toBe(403);
+  });
+
+  test("tokens scoped to a deleted sub-org are refused with 401, not a 400", async () => {
+    const member = await makeMember();
+    await testDb(TableName.MembershipRole).where({ membershipId: member.subMembershipId }).del();
+    await testDb(TableName.Membership).where({ id: member.subMembershipId }).del();
+    await testDb(TableName.Organization).where({ id: member.subOrgId }).del();
+
+    const accessRes = await testServer.inject({
+      method: "GET",
+      url: "/api/v1/user",
+      headers: { authorization: `Bearer ${accessToken(member, subScope(member))}` }
+    });
+    expect(accessRes.statusCode).toBe(401);
+
+    const refreshRes = await refresh(refreshToken(member, subScope(member)));
+    expect(refreshRes.statusCode).toBe(401);
+    expect(refreshRes.payload).toContain("no longer exists");
+  });
+
   test("claim shapes no issuer produces are refused", async () => {
     const member = await makeMember();
 
