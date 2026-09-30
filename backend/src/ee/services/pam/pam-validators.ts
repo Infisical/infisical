@@ -44,7 +44,8 @@ export const validateGatewayAttachment = async (
   gwId: string | null | undefined,
   poolId: string | null | undefined,
   ctx: TActorContext,
-  previousGatewayId?: string | null
+  previousGatewayId?: string | null,
+  inheritedFrom?: string
 ) => {
   if (gwId) {
     const gw = await gatewayV2DAL.findOne({ id: gwId, orgId: ctx.actorOrgId });
@@ -65,7 +66,13 @@ export const validateGatewayAttachment = async (
       OrgPermissionSubjects.Gateway
     );
 
-    await assertIndividualGatewayAllowed({ orgDAL, orgId: ctx.actorOrgId, gatewayId: gwId, previousGatewayId });
+    await assertIndividualGatewayAllowed({
+      orgDAL,
+      orgId: ctx.actorOrgId,
+      gatewayId: gwId,
+      previousGatewayId,
+      inheritedFrom
+    });
   }
   if (poolId) {
     await gatewayPoolService.resolveAttachableGatewayFromPool({

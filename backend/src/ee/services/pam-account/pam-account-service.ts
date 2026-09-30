@@ -723,13 +723,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
 
     const effectiveGatewayId = gatewayId ?? template.gatewayId;
-    // The template's gateway was checked against the pool policy when it was set on the template.
     await validateGatewayAttachment(
       deps,
       effectiveGatewayId,
       effectiveGatewayId ? null : (gatewayPoolId ?? template.gatewayPoolId),
       ctx,
-      template.gatewayId
+      undefined,
+      gatewayId ? undefined : `Account template '${template.name}'`
     );
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
@@ -914,14 +914,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       const nextTemplateGatewayPoolId = template ? template.gatewayPoolId : existing.templateGatewayPoolId;
 
       const effectiveGatewayId = nextGatewayId ?? nextTemplateGatewayId;
-      // An inherited template gateway was checked against the pool policy on the template itself.
-      const isInheritedGateway = !nextGatewayId && effectiveGatewayId === nextTemplateGatewayId;
       await validateGatewayAttachment(
         deps,
         effectiveGatewayId,
         effectiveGatewayId ? null : (nextGatewayPoolId ?? nextTemplateGatewayPoolId),
         ctx,
-        isInheritedGateway ? effectiveGatewayId : (existing.gatewayId ?? existing.templateGatewayId)
+        existing.gatewayId ?? existing.templateGatewayId,
+        !nextGatewayId && template ? `Account template '${template.name}'` : undefined
       );
     }
     await validateRecordingConnection(deps, recordingConnectionId, ctx);

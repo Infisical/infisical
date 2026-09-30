@@ -8,16 +8,24 @@ export const assertIndividualGatewayAllowed = async ({
   orgDAL,
   orgId,
   gatewayId,
-  previousGatewayId
+  previousGatewayId,
+  inheritedFrom
 }: {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   orgId: string;
   gatewayId: string | null | undefined;
   previousGatewayId?: string | null;
+  // Names what the gateway was copied from (such as a template), so the error points at what to fix.
+  inheritedFrom?: string;
 }) => {
   if (!gatewayId || gatewayId === previousGatewayId) return;
 
   const org = await orgDAL.findById(orgId);
+  if (org?.requireGatewayPools && inheritedFrom) {
+    throw new BadRequestError({
+      message: `${inheritedFrom} uses an individual gateway, but your organization requires resources to connect through a gateway pool. Update it to use a gateway pool, or ask an organization admin to turn off Require Gateway Pools under Organization Settings > Networking.`
+    });
+  }
   if (org?.requireGatewayPools) {
     throw new BadRequestError({
       message:

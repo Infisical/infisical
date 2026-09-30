@@ -38,6 +38,17 @@ describe("assertIndividualGatewayAllowed", () => {
     ).rejects.toBeInstanceOf(BadRequestError);
   });
 
+  test("names the template when the gateway was copied from one, so the user knows what to fix", async () => {
+    await expect(
+      assertIndividualGatewayAllowed({
+        orgDAL: orgDALWith(true),
+        orgId: "org-1",
+        gatewayId: "gw-1",
+        inheritedFrom: "Auth template 'prod-k8s'"
+      })
+    ).rejects.toThrow("Auth template 'prod-k8s' uses an individual gateway");
+  });
+
   test("does nothing when no individual gateway is being attached", async () => {
     const orgDAL = orgDALWith(true);
     await expect(assertIndividualGatewayAllowed({ orgDAL, orgId: "org-1", gatewayId: null })).resolves.toBeUndefined();

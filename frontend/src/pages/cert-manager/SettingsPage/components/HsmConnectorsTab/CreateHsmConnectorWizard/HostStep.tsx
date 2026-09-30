@@ -45,17 +45,21 @@ export const HostStep = ({ form, options, isLoading }: Props) => {
   const noOptionsMessage = useCallback(
     () => (
       <div className="space-y-1 py-2">
-        <p>No Gateways connected to an HSM yet.</p>
+        <p>
+          {isPoolRequired
+            ? "Your organization requires a gateway pool, but none exist yet."
+            : "No Gateways connected to an HSM yet."}
+        </p>
         <Link
           to="/organizations/$orgId/networking"
           params={{ orgId: orgId ?? "" }}
           className="underline hover:text-foreground"
         >
-          Configure one in Networking
+          {isPoolRequired ? "Create one in Networking" : "Configure one in Networking"}
         </Link>
       </div>
     ),
-    [orgId]
+    [orgId, isPoolRequired]
   );
 
   return (

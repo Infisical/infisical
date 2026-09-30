@@ -63,6 +63,9 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
       label: p.name,
       group: "pool" as const
     }));
+    // With no pool to pick, a list of only disabled gateways would hide the setup guidance, so the
+    // select shows its empty-state message instead.
+    if (isPoolRequired && poolOptions.length === 0) return [];
     return [...gatewayOptions, ...poolOptions];
   }, [gateways, pools, isPoolRequired]);
 

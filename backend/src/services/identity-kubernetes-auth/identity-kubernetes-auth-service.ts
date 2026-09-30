@@ -1018,8 +1018,14 @@ export const identityKubernetesAuthServiceFactory = ({
           OrgPermissionGatewayActions.AttachGateways,
           OrgPermissionSubjects.Gateway
         );
-        await assertIndividualGatewayAllowed({ orgDAL, orgId: identityMembershipOrg.scopeOrgId, gatewayId });
       }
+      // A template's gateway can predate the org's pool requirement, so it is checked here as well.
+      await assertIndividualGatewayAllowed({
+        orgDAL,
+        orgId: identityMembershipOrg.scopeOrgId,
+        gatewayId,
+        inheritedFrom: template ? `Auth template '${template.name}'` : undefined
+      });
 
       if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
         const gatewayExecutor = $createGatewayValidationRequest(gatewayId);
@@ -1413,13 +1419,15 @@ export const identityKubernetesAuthServiceFactory = ({
           OrgPermissionGatewayActions.AttachGateways,
           OrgPermissionSubjects.Gateway
         );
-        await assertIndividualGatewayAllowed({
-          orgDAL,
-          orgId: identityMembershipOrg.scopeOrgId,
-          gatewayId,
-          previousGatewayId: identityKubernetesAuth.gatewayV2Id
-        });
       }
+      // A template's gateway can predate the org's pool requirement, so it is checked here as well.
+      await assertIndividualGatewayAllowed({
+        orgDAL,
+        orgId: identityMembershipOrg.scopeOrgId,
+        gatewayId,
+        previousGatewayId: identityKubernetesAuth.gatewayV2Id,
+        inheritedFrom: template ? `Auth template '${template.name}'` : undefined
+      });
     }
 
     // Handle gateway pool permission check
