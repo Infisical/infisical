@@ -64,7 +64,8 @@ const CONTROL_CHARS_MESSAGE =
 // Double braces wrap a variable reference, and neither a prefix nor a placeholder takes one.
 const hasDoubleBraces = (text: string) => text.includes("{{") || text.includes("}}");
 
-const PREFIX_BRACES_MESSAGE = "A prefix can't contain {{ or }}.";
+const PREFIX_BRACES_MESSAGE =
+  "A prefix can't contain {{ or }}. Put a variable reference in the value instead.";
 
 // Set by the proxy on every request, so naming one here would either be dropped or corrupt the request.
 const RESERVED_HEADER_NAMES = new Set([
@@ -281,7 +282,7 @@ export const buildServiceSchema = (service?: TAgentVaultService | null, variable
         } else if (hasDoubleBraces(substitution.placeholder)) {
           at(
             "placeholder",
-            "A placeholder can't contain {{ or }}. Those wrap a variable reference."
+            "A placeholder can't contain {{ or }}. Double braces are reserved for variable references."
           );
         } else if (seenPlaceholders.has(substitution.placeholder)) {
           at("placeholder", "This placeholder is listed twice.");

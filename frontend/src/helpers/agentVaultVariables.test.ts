@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { findVariableReferenceAtCaret } from "./agentVaultVariables";
+import {
+  findVariableReferenceAtCaret,
+  VARIABLE_KEY_MESSAGE,
+  variableReferenceError
+} from "./agentVaultVariables";
 
 describe("findVariableReferenceAtCaret", () => {
   it("reads the whole key of an unfinished reference when the caret moves back into it", () => {
@@ -32,5 +36,20 @@ describe("findVariableReferenceAtCaret", () => {
   it("finds nothing when the caret is outside a reference", () => {
     expect(findVariableReferenceAtCaret("{{API}} x", "{{API}} x".length)).toBeNull();
     expect(findVariableReferenceAtCaret("plain", 3)).toBeNull();
+  });
+});
+
+describe("variableReferenceError", () => {
+  it.each(["{{1TOKEN}}", "{{_TOKEN}}", "{{ TOKEN }}", "{{API-KEY}}", "{{github_token}}", "{{}}"])(
+    "gives the whole key rule for %s",
+    (text) => {
+      expect(variableReferenceError(text)).toBe(
+        `"${text}" isn't a valid variable reference. ${VARIABLE_KEY_MESSAGE}`
+      );
+    }
+  );
+
+  it("passes a well-formed reference to a key the bundle has", () => {
+    expect(variableReferenceError("Bearer {{GITHUB_TOKEN}}", new Set(["GITHUB_TOKEN"]))).toBeNull();
   });
 });

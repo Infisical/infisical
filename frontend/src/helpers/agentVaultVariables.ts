@@ -5,7 +5,7 @@ export const MAX_REFERENCES_PER_FIELD = 3;
 export const VARIABLE_KEY_RE = /^[A-Z][A-Z0-9_]*$/;
 
 export const VARIABLE_KEY_MESSAGE =
-  "Start with a letter, then use upper case letters, numbers and underscores, like GITHUB_TOKEN.";
+  "A variable key starts with a letter and uses only upper case letters, numbers and underscores, like GITHUB_TOKEN.";
 
 // Every {{...}} counts as a reference, so a malformed one is caught on save instead of being sent to a
 // real host as literal text.
@@ -80,12 +80,12 @@ export const variableReferenceError = (text: string, keys?: ReadonlySet<string>)
   const refs = findVariableReferences(text);
 
   if (refs.length > MAX_REFERENCES_PER_FIELD) {
-    return `Use at most ${MAX_REFERENCES_PER_FIELD} variable references in one value. A repeated reference counts each time.`;
+    return `A value can use at most ${MAX_REFERENCES_PER_FIELD} variable references, and a reference that repeats counts each time. Combine some into one variable to use fewer.`;
   }
 
   const malformed = refs.find((ref) => !VARIABLE_KEY_RE.test(ref));
   if (malformed !== undefined) {
-    return `"${toVariableReference(malformed)}" is not a variable. Keys are upper case, like GITHUB_TOKEN.`;
+    return `"${toVariableReference(malformed)}" isn't a valid variable reference. ${VARIABLE_KEY_MESSAGE}`;
   }
 
   const missing = keys ? refs.find((ref) => !keys.has(ref)) : undefined;
