@@ -1,4 +1,3 @@
-import { TSecretScanningDataSources } from "@app/db/schemas";
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
@@ -7,11 +6,8 @@ import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import {
-  TBitbucketDataSource,
-  TBitbucketDataSourceCredentials,
-  TBitbucketPushEvent
-} from "./bitbucket-secret-scanning-types";
+import { BitbucketDataSourceConfigSchema } from "./bitbucket-secret-scanning-schemas";
+import { TBitbucketDataSourceCredentials, TBitbucketPushEvent } from "./bitbucket-secret-scanning-types";
 
 export const bitbucketSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
@@ -32,10 +28,10 @@ export const bitbucketSecretScanningService = (
       return;
     }
 
-    const dataSource = (await secretScanningV2DAL.dataSources.findOne({
+    const dataSource = await secretScanningV2DAL.dataSources.findOne({
       id: payload.dataSourceId,
       type: SecretScanningDataSource.Bitbucket
-    })) as (TBitbucketDataSource & Pick<TSecretScanningDataSources, "encryptedCredentials">) | undefined;
+    });
 
     if (!dataSource) {
       logger.error(
@@ -44,12 +40,18 @@ export const bitbucketSecretScanningService = (
       return;
     }
 
-    const {
-      isAutoScanEnabled,
-      config: { includeRepos },
-      encryptedCredentials,
-      projectId
-    } = dataSource;
+    const parsedConfig = BitbucketDataSourceConfigSchema.safeParse(dataSource.config);
+
+    if (!parsedConfig.success) {
+      logger.error(
+        parsedConfig.error,
+        `secretScanningV2PushEvent: Bitbucket - Invalid data source config [dataSourceId=${dataSource.id}] [workspaceUuid=${repository.workspace.uuid}]`
+      );
+      return;
+    }
+
+    const { isAutoScanEnabled, encryptedCredentials, projectId } = dataSource;
+    const { includeRepos } = parsedConfig.data;
 
     if (!encryptedCredentials) {
       logger.info(

@@ -231,7 +231,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       const dataSources = await baseSecretScanningDataSourceQuery({ filter, db, tx })
         .leftJoin(
           TableName.SecretScanningResource,
-          `${TableName.SecretScanningResource}.sourceId`,
+          `${TableName.SecretScanningResource}.dataSourceId`,
           `${TableName.SecretScanningDataSource}.id`
         )
         .leftJoin(
@@ -400,7 +400,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `${TableName.SecretScanningResource}.id`,
           `${TableName.SecretScanningScan}.resourceId`
         )
-        .where(`${TableName.SecretScanningResource}.sourceId`, dataSourceId)
+        .where(`${TableName.SecretScanningResource}.dataSourceId`, dataSourceId)
         .leftJoin(
           TableName.SecretScanningFinding,
           `${TableName.SecretScanningFinding}.scanId`,
@@ -478,7 +478,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.SecretScanningScan))
         .select(
           db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName"),
-          db.ref("sourceId").withSchema(TableName.SecretScanningResource).as("dataSourceId")
+          db.ref("dataSourceId").withSchema(TableName.SecretScanningResource)
         )
         .orderBy(`${TableName.SecretScanningScan}.createdAt`, "asc")
         .limit(limit);
@@ -497,7 +497,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `${TableName.SecretScanningResource}.id`,
           `${TableName.SecretScanningScan}.resourceId`
         )
-        .where(`${TableName.SecretScanningResource}.sourceId`, dataSourceId)
+        .where(`${TableName.SecretScanningResource}.dataSourceId`, dataSourceId)
         .select(selectAllTableCols(TableName.SecretScanningScan));
 
       return scans;
@@ -516,7 +516,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       .join(
         TableName.SecretScanningDataSource,
         `${TableName.SecretScanningDataSource}.id`,
-        `${TableName.SecretScanningResource}.sourceId`
+        `${TableName.SecretScanningResource}.dataSourceId`
       );
 
   const selectFindingWithDetails = <T extends Knex.QueryBuilder>(query: T) =>

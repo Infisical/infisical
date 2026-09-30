@@ -202,9 +202,9 @@ export const secretScanningV2QueueServiceFactory = ({
         const resources = await secretScanningV2DAL.resources.upsert(
           filteredRawResources.map((rawResource) => ({
             ...rawResource,
-            sourceId: dataSource.id
+            dataSourceId: dataSource.id
           })),
-          ["externalId", "sourceId"],
+          ["externalId", "dataSourceId"],
           tx
         );
 
@@ -612,10 +612,10 @@ export const secretScanningV2QueueServiceFactory = ({
           [
             {
               ...resourcePayload,
-              sourceId: dataSourceId
+              dataSourceId
             }
           ],
-          ["externalId", "sourceId"],
+          ["externalId", "dataSourceId"],
           tx
         );
 

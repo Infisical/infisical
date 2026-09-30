@@ -160,7 +160,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
       const result = (await (tx || db.replicaNode())(TableName.SecretScanningResource)
         .join(
           TableName.SecretScanningDataSource,
-          `${TableName.SecretScanningResource}.sourceId`,
+          `${TableName.SecretScanningResource}.dataSourceId`,
           `${TableName.SecretScanningDataSource}.id`
         )
         .join(TableName.Project, `${TableName.SecretScanningDataSource}.projectId`, `${TableName.Project}.id`)

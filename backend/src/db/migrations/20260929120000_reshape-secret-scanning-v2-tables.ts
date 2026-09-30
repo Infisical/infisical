@@ -30,23 +30,10 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (await knex.schema.hasColumn(TableName.SecretScanningResource, "dataSourceId")) {
+  if (await knex.schema.hasColumn(TableName.SecretScanningResource, "type")) {
     await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
-      t.renameColumn("dataSourceId", "sourceId");
       t.dropColumn("type");
     });
-    await renameConstraint(
-      knex,
-      TableName.SecretScanningResource,
-      "secret_scanning_resources_datasourceid_foreign",
-      "secret_scanning_resources_sourceid_foreign"
-    );
-    await renameConstraint(
-      knex,
-      TableName.SecretScanningResource,
-      "secret_scanning_resources_datasourceid_externalid_unique",
-      "secret_scanning_resources_sourceid_externalid_unique"
-    );
   }
 
   if (await knex.schema.hasColumn(TableName.SecretScanningScan, "scanningStartedAt")) {
@@ -159,7 +146,7 @@ export async function down(knex: Knex): Promise<void> {
          "resourceName" = r.name,
          "resourceType" = CASE src.type WHEN 'gitlab' THEN 'project' ELSE 'repository' END
        FROM ?? AS r
-       JOIN ?? AS src ON src.id = r."sourceId"
+       JOIN ?? AS src ON src.id = r."dataSourceId"
        WHERE r.id = f."resourceId"`,
       [TableName.SecretScanningFinding, TableName.SecretScanningResource, TableName.SecretScanningDataSource]
     );
@@ -240,30 +227,15 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
-  if (await knex.schema.hasColumn(TableName.SecretScanningResource, "sourceId")) {
+  if (!(await knex.schema.hasColumn(TableName.SecretScanningResource, "type"))) {
     await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
       t.string("type").nullable();
     });
     await knex.raw(
       `UPDATE ?? AS r SET type = CASE src.type WHEN 'gitlab' THEN 'project' ELSE 'repository' END
-       FROM ?? AS src WHERE src.id = r."sourceId"`,
+       FROM ?? AS src WHERE src.id = r."dataSourceId"`,
       [TableName.SecretScanningResource, TableName.SecretScanningDataSource]
     );
-    await renameConstraint(
-      knex,
-      TableName.SecretScanningResource,
-      "secret_scanning_resources_sourceid_foreign",
-      "secret_scanning_resources_datasourceid_foreign"
-    );
-    await renameConstraint(
-      knex,
-      TableName.SecretScanningResource,
-      "secret_scanning_resources_sourceid_externalid_unique",
-      "secret_scanning_resources_datasourceid_externalid_unique"
-    );
-    await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
-      t.renameColumn("sourceId", "dataSourceId");
-    });
     await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
       t.string("type").notNullable().alter();
     });

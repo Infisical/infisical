@@ -540,10 +540,7 @@ export const secretScanningV2ServiceFactory = ({
     let resourceExternalId: string | undefined;
 
     if (resourceId) {
-      const resource = await secretScanningV2DAL.resources.findOne({
-        id: resourceId,
-        sourceId: dataSourceId
-      });
+      const resource = await secretScanningV2DAL.resources.findOne({ id: resourceId, dataSourceId });
       if (!resource) {
         throw new NotFoundError({
           message: `Could not find Secret Scanning Resource with ID "${resourceId}" for Data Source with ID "${dataSourceId}"`
@@ -602,7 +599,7 @@ export const secretScanningV2ServiceFactory = ({
       });
 
     const resources = await secretScanningV2DAL.resources.find({
-      sourceId: dataSourceId
+      dataSourceId
     });
 
     return { resources, projectId: dataSource.projectId };
@@ -689,7 +686,7 @@ export const secretScanningV2ServiceFactory = ({
         message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
       });
 
-    const resources = await secretScanningV2DAL.resources.findWithDetails({ sourceId: dataSourceId });
+    const resources = await secretScanningV2DAL.resources.findWithDetails({ dataSourceId });
 
     return { resources: resources as TSecretScanningResourceWithDetails[], projectId: dataSource.projectId };
   };

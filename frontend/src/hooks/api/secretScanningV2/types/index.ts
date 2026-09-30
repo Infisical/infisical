@@ -91,7 +91,7 @@ export type TGetSecretScanningDataSource = {
 
 export type TSecretScanningResourceWithDetails = {
   id: string;
-  sourceId: string;
+  dataSourceId: string;
   externalId: string;
   name: string;
   createdAt: string;

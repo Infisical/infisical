@@ -1,4 +1,3 @@
-import { TSecretScanningDataSources } from "@app/db/schemas";
 import { GitLabDataSourceScope } from "@app/ee/services/secret-scanning-v2/gitlab/gitlab-secret-scanning-enums";
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
@@ -8,11 +7,8 @@ import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import {
-  TGitLabDataSource,
-  TGitLabDataSourceCredentials,
-  THandleGitLabPushEvent
-} from "./gitlab-secret-scanning-types";
+import { GitLabDataSourceConfigSchema } from "./gitlab-secret-scanning-schemas";
+import { TGitLabDataSourceCredentials, THandleGitLabPushEvent } from "./gitlab-secret-scanning-types";
 
 export const gitlabSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
@@ -29,10 +25,10 @@ export const gitlabSecretScanningService = (
       return;
     }
 
-    const dataSource = (await secretScanningV2DAL.dataSources.findOne({
+    const dataSource = await secretScanningV2DAL.dataSources.findOne({
       id: dataSourceId,
       type: SecretScanningDataSource.GitLab
-    })) as (TGitLabDataSource & Pick<TSecretScanningDataSources, "encryptedCredentials">) | undefined;
+    });
 
     if (!dataSource) {
       logger.error(
@@ -41,7 +37,18 @@ export const gitlabSecretScanningService = (
       return;
     }
 
-    const { isAutoScanEnabled, config, encryptedCredentials, projectId } = dataSource;
+    const parsedConfig = GitLabDataSourceConfigSchema.safeParse(dataSource.config);
+
+    if (!parsedConfig.success) {
+      logger.error(
+        parsedConfig.error,
+        `secretScanningV2PushEvent: GitLab - Invalid data source config [dataSourceId=${dataSource.id}] [projectId=${payload.project.id}]`
+      );
+      return;
+    }
+
+    const { isAutoScanEnabled, encryptedCredentials, projectId } = dataSource;
+    const config = parsedConfig.data;
 
     if (!encryptedCredentials) {
       logger.info(
