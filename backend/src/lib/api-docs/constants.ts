@@ -106,6 +106,9 @@ export enum ApiDocsTags {
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
+  AgentVaultSessionLogs = "Agent Vault Session Logs",
+  AgentVaultSettings = "Agent Vault Settings",
+  AgentVaultAppConnections = "Agent Vault App Connections",
   KmipServers = "KMIP Servers",
   Instance = "Instance"
 }
@@ -4051,7 +4054,6 @@ export const GATEWAYS = {
       "Replacement auth method. Same shape as in create: `aws` with allowlists, `gcp` with GCP allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },
   AUTH_METHOD: {
-    stsEndpoint: "The endpoint URL for the AWS STS API.",
     allowedPrincipalArns:
       "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
@@ -4387,17 +4389,89 @@ export const AGENT_VAULT = {
     sessionToken: "The session an agent is running with. A selector, not a second credential.",
     createdAt: "When the proxy was registered."
   },
+  SESSION_LOGS: {
+    chunkId: "The ID of the chunk.",
+    proxyId: "The ID of the proxy that uploaded the chunk.",
+    proxyName: "The name of the proxy that uploaded the chunk. If the proxy was deleted, the name it had at the time.",
+    startedAt: "The time of the first record in the chunk.",
+    endedAt: "The time of the last record in the chunk.",
+    firstSeq: "The sequence number of the first record in the chunk. Each proxy numbers its own records.",
+    lastSeq: "The sequence number of the last record in the chunk. Each proxy numbers its own records.",
+    recordCount: "The number of records in the chunk.",
+    droppedCount:
+      "The number of requests the proxy couldn't record, for example because too many requests came in at once or session logs were off. They're reported on the next chunk the proxy sends, so they happened before this chunk, but not necessarily right before its first record.",
+    ciphertextBytes: "The size of the encrypted chunk, in bytes.",
+    iv: "The AES-GCM initialization vector for the chunk, as base64.",
+    ciphertextSha256:
+      "The SHA-256 digest of the encrypted chunk, as base64 without padding. If the downloaded chunk has a different digest, the chunk was changed after it was uploaded.",
+    uploadUrl:
+      "The URL to upload the encrypted chunk to with a PUT request. The body must be exactly `ciphertextBytes` bytes.",
+    presignedGetUrl:
+      "The URL to download the chunk from. Null if the chunk is in a bucket session logs no longer use, or if `sessionLogs.storageUnavailable` is set.",
+    expiresInSeconds: "The number of seconds before the URL expires.",
+    chunkCreatedAt:
+      "When the proxy registered the chunk with Infisical. Its upload to the bucket finishes shortly after, so a download in between returns 404.",
+    isRecordable: "False if this session's requests can't be recorded.",
+    sessionKey: "The key that decrypts every chunk in this response, as base64. Null if no chunk can be read.",
+    storageUnavailable: "The reason the chunks can't be downloaded right now. Null if they can.",
+    storageUnavailableReason:
+      "`no-connection` if no AWS connection is set for session logs, or `connection-unusable` if Infisical can't use the AWS connection.",
+    storageUnavailableMessage: "The error Infisical got from the AWS connection. Returned only to Agent Vault admins.",
+    sessionLogs:
+      "Whether session logs are on, the key that decrypts the chunks, and why they can't be downloaded, if they can't.",
+    historyCursor: "The `nextCursor` from the previous response. Leave it out to start from the newest logs.",
+    historyNextCursor: "Pass this as `cursor` to get older logs. Null when there's nothing older.",
+    liveCursor:
+      "Pass this to [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail) to get new logs as they arrive.",
+    tailCursor:
+      "The `liveCursor` from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list), or the `nextCursor` from your last call. Leave it out to start from now.",
+    tailNextCursor: "Pass this as `cursor` on your next call.",
+    tailHasMore: "Whether more logs are ready now. If false, wait a few seconds before calling again.",
+    limit: "How many records to return. Only whole chunks are returned, so a response can have slightly more.",
+    from: "Return only chunks with records at or after this time.",
+    to: "Return only chunks with records at or before this time.",
+    enabled: "Whether session logs are on.",
+    configEnabled: "Whether session logs are on. Turning them off stops recording but keeps what's already recorded.",
+    appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
+    bucket:
+      "The name of the S3 bucket. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",
+    region: "The AWS region of the bucket.",
+    keyPrefix:
+      "The folder in the bucket to store session logs in, such as `logs/agent-vault`. Up to 512 characters: letters, numbers and `! - _ . ' ( ) /`, with no slash at the start or end, no empty folder name, and no folder named `.` or `..`.",
+    corsProbeUrl: "A URL that fails to load in a browser if the bucket's CORS rule doesn't allow Infisical.",
+    connectionError:
+      "The error Infisical got when it tried to use the AWS connection, for example because AWS refused to let it assume the role. Null if there's no error or no connection.",
+    isStorageFull: "Whether your organization has reached its session log storage limit.",
+    hasSessionLogKey: "Whether the proxy already has this session's log key. If true, the key isn't returned again.",
+    proxySessionKey:
+      "The session's log key, as base64, sent once. Null when session logs are off or the proxy already has it."
+  },
+
   SESSION: {
     sessionId: "The ID of the session.",
     accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
+    recentSessionLogCounts:
+      "How many of the session's requests were recorded in its session log, and how many the proxy couldn't record, over the 24 hours before its most recent recorded request.",
+    recentRecordedCount: "The number of requests recorded in the session log.",
+    recentDroppedCount: "The number of requests the proxy couldn't record in the session log.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
-    status: "Filter by session status: active, revoked or expired.",
+    status:
+      "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
     search: "Match sessions by actor name, actor email or access bundle name.",
     limit: "The maximum number of sessions to return.",
-    offset: "How many sessions to skip."
+    offset: "How many sessions to skip.",
+    actorType: "Whether the session belongs to a user or a machine identity.",
+    actorId: "The ID of the user or machine identity the session belongs to, or null if it was deleted.",
+    username: "The username of the user. Once the user is deleted, the email recorded when the session was created.",
+    email: "The email address of the user. Once the user is deleted, the email recorded when the session was created.",
+    firstName:
+      "The first name of the user. Once the user is deleted, the full name recorded when the session was created.",
+    lastName: "The last name of the user, or null once the user is deleted.",
+    identityName:
+      "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created."
   }
 };
 

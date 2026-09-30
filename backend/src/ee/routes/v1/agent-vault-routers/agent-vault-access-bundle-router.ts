@@ -6,7 +6,7 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
 import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
-import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
+import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";

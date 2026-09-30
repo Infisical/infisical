@@ -945,32 +945,44 @@ export const SecretEditTableRow = ({
       control={control}
       name="key"
       render={({ field, fieldState: { error } }) => (
-        <Input
-          autoComplete="off"
-          readOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
-          placeholder={error?.message || "Secret name"}
-          title={field.value ?? secretName}
-          isError={Boolean(error)}
-          {...field}
-          value={field.value ?? ""}
-          className={twMerge(
-            "h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
-            isPendingDelete && "text-danger/75 line-through"
-          )}
-          onChange={(event) => {
-            const value = currentProject?.autoCapitalization
-              ? event.currentTarget.value.toUpperCase()
-              : event.currentTarget.value;
-            field.onChange(value);
-          }}
-          onFocus={() => setIsFieldFocused.on()}
-          onKeyDown={handleEditShortcut}
-          onBlur={(e) => {
-            field.onBlur();
-            if (!isBatchMode && field.onChange) field.onChange(e);
-            setIsFieldFocused.off();
-          }}
-        />
+        <Tooltip
+          delayDuration={1000}
+          skipDelayDuration={0}
+          open={isFieldFocused ? false : undefined}
+        >
+          <TooltipTrigger asChild>
+            <Input
+              autoComplete="off"
+              readOnly={
+                isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue
+              }
+              placeholder={error?.message || "Secret name"}
+              isError={Boolean(error)}
+              {...field}
+              value={field.value ?? ""}
+              className={twMerge(
+                "h-auto w-full truncate rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
+                isPendingDelete && "text-danger/75 line-through"
+              )}
+              onChange={(event) => {
+                const value = currentProject?.autoCapitalization
+                  ? event.currentTarget.value.toUpperCase()
+                  : event.currentTarget.value;
+                field.onChange(value);
+              }}
+              onFocus={() => setIsFieldFocused.on()}
+              onKeyDown={handleEditShortcut}
+              onBlur={(e) => {
+                field.onBlur();
+                if (!isBatchMode && field.onChange) field.onChange(e);
+                setIsFieldFocused.off();
+              }}
+            />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-(--radix-tooltip-content-available-width) break-all whitespace-normal">
+            {field.value ?? secretName}
+          </TooltipContent>
+        </Tooltip>
       )}
     />
   ) : null;

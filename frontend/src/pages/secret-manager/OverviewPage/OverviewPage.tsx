@@ -2744,6 +2744,132 @@ const OverviewPageContent = () => {
   // }, [debouncedHeaderHeight]);
 
   const [tableWidth, setTableWidth] = useState(0);
+  const [storedColumnWidths, setStoredColumnWidths] = useLocalStorageState<
+    Record<string, number[]>
+  >(`overview-column-widths-${projectId}`, {});
+  const columnResize = useRef<{ index: number; startX: number; widths: number[] } | null>(null);
+  const columnKey = `${isSingleEnvView ? "single" : "multi"}:${visibleEnvs.map(({ id }) => id).join(":")}`;
+  const nameMaxWidth = Math.max(isSingleEnvView ? 280 : 240, tableWidth * 0.8);
+  const columnMinWidths = isSingleEnvView ? [280, 368] : Array(visibleEnvs.length + 1).fill(240);
+  const minColumnTotal = columnMinWidths.reduce((total, width) => total + width, 0);
+  const savedWidths = storedColumnWidths?.[columnKey];
+  const columnWidths = (() => {
+    const hasSavedWidths =
+      Array.isArray(savedWidths) &&
+      savedWidths.length === columnMinWidths.length &&
+      savedWidths.every((width) => Number.isFinite(width) && width > 0);
+    const defaultWidth =
+      tableWidth >= 40 + minColumnTotal ? (tableWidth - 40) / columnMinWidths.length : 0;
+    const widths = columnMinWidths.map((minWidth, index) =>
+      Math.min(
+        index === 0 ? nameMaxWidth : Infinity,
+        Math.max(minWidth, hasSavedWidths ? savedWidths[index] : defaultWidth)
+      )
+    );
+    if (tableWidth < 40 + minColumnTotal) return widths;
+
+    widths[widths.length - 1] += Math.max(
+      0,
+      tableWidth - 40 - widths.reduce((total, width) => total + width, 0)
+    );
+    let excess = Math.max(0, widths.reduce((total, width) => total + width, 0) - (tableWidth - 40));
+    for (let index = widths.length - 1; index >= 0 && excess > 0; index -= 1) {
+      const shrink = Math.min(excess, widths[index] - columnMinWidths[index]);
+      widths[index] -= shrink;
+      excess -= shrink;
+    }
+    return widths;
+  })();
+
+  const getCurrentColumnWidths = () =>
+    Array.from(tableRef.current?.querySelectorAll(":scope > table > thead > tr > th") ?? [])
+      .slice(1)
+      .map((header) => header.getBoundingClientRect().width);
+
+  const resizeColumns = (widths: number[], index: number, delta: number) => {
+    const next = [...widths];
+    const availableWidth = (tableRef.current?.clientWidth ?? 40) - 40;
+    const spareWidth = Math.max(
+      0,
+      availableWidth - widths.reduce((total, width) => total + width, 0)
+    );
+    const maxGrowth = widths[index + 1] - columnMinWidths[index + 1] + spareWidth;
+    const left = Math.max(
+      columnMinWidths[index],
+      Math.min(
+        widths[index] + delta,
+        availableWidth >= minColumnTotal ? widths[index] + maxGrowth : Infinity,
+        index === 0 ? nameMaxWidth : Infinity
+      )
+    );
+    next[index] = left;
+    if (left < widths[index]) {
+      const overflow = Math.max(
+        0,
+        widths.reduce((total, width) => total + width, 0) - availableWidth
+      );
+      next[index + 1] = widths[index + 1] + Math.max(0, widths[index] - left - overflow);
+    } else {
+      next[index + 1] = Math.max(
+        columnMinWidths[index + 1],
+        widths[index + 1] - (left - widths[index])
+      );
+    }
+    setStoredColumnWidths((current) => ({ ...current, [columnKey]: next }));
+  };
+
+  const resizeHandle = (index: number) => (
+    <button
+      type="button"
+      aria-label={`Resize ${index === 0 ? "Name" : visibleEnvs[index - 1].name} column`}
+      title="Drag or use arrow keys to resize"
+      className="group absolute top-0 -right-1 z-20 w-2 cursor-col-resize touch-none focus-visible:outline-none"
+      style={{ height: "var(--resize-handle-height, 100%)" }}
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        columnResize.current = {
+          index,
+          startX: event.clientX,
+          widths: getCurrentColumnWidths()
+        };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={(event) => {
+        if (!columnResize.current) return;
+        if (Math.abs(event.clientX - columnResize.current.startX) < 3) return;
+        resizeColumns(
+          columnResize.current.widths,
+          columnResize.current.index,
+          event.clientX - columnResize.current.startX
+        );
+      }}
+      onPointerUp={(event) => {
+        const resize = columnResize.current;
+        columnResize.current = null;
+        if (!resize || Math.abs(event.clientX - resize.startX) >= 3) return;
+        const handle = event.currentTarget;
+        const header = handle.closest("thead");
+        if (!header || event.clientY <= header.getBoundingClientRect().bottom) return;
+
+        handle.style.pointerEvents = "none";
+        const underlying = document.elementFromPoint(event.clientX, event.clientY);
+        handle.style.removeProperty("pointer-events");
+        if (underlying instanceof HTMLElement && !handle.contains(underlying)) underlying.click();
+      }}
+      onPointerCancel={() => {
+        columnResize.current = null;
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        event.preventDefault();
+        resizeColumns(getCurrentColumnWidths(), index, event.key === "ArrowRight" ? 16 : -16);
+      }}
+    >
+      <span className="pointer-events-none absolute top-0 left-0 h-10 w-full group-focus-visible:outline-2 group-focus-visible:outline-ring" />
+    </button>
+  );
 
   const hasPendingCreates =
     mergedSecKeys.length > secKeys.length ||
@@ -2769,10 +2895,12 @@ const OverviewPageContent = () => {
   useEffect(() => {
     const element = tableRef.current;
     if (!element) return;
-    const nameHeader = element.querySelector(":scope > table > thead > tr > th:nth-child(2)");
+    const table = element.querySelector<HTMLTableElement>(":scope > table");
+    const nameHeader = table?.querySelector("thead > tr > th:nth-child(2)");
 
     const handleResize = () => {
       setTableWidth(element.clientWidth);
+      if (table) element.style.setProperty("--resize-handle-height", `${table.offsetHeight}px`);
       if (nameHeader) {
         element.style.setProperty(
           "--name-column-width",
@@ -2783,6 +2911,7 @@ const OverviewPageContent = () => {
 
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(element);
+    if (table) resizeObserver.observe(table);
     if (nameHeader) resizeObserver.observe(nameHeader);
     handleResize();
 
@@ -3150,11 +3279,28 @@ const OverviewPageContent = () => {
               <DragDropProvider onDragEnd={handleSecretImportReorder}>
                 <Table
                   ref={tableRef}
-                  className="border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
+                  className="w-full table-fixed border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
                   containerClassName="overscroll-x-none rounded-t-none"
+                  style={{
+                    minWidth: 40 + minColumnTotal,
+                    width: columnWidths
+                      ? `max(100%, ${40 + columnWidths.reduce((total, width) => total + width, 0)}px)`
+                      : undefined
+                  }}
                 >
-                  <TableHeader>
-                    <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-foreground/5">
+                  <colgroup>
+                    <col className="w-10" />
+                    <col style={{ width: columnWidths?.[0] }} />
+                    {isSingleEnvView ? (
+                      <col style={{ width: columnWidths?.[1] }} />
+                    ) : (
+                      visibleEnvs.map(({ id }, index) => (
+                        <col key={id} style={{ width: columnWidths?.[index + 1] }} />
+                      ))
+                    )}
+                  </colgroup>
+                  <TableHeader className="relative z-20">
+                    <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-container-hover">
                       <TableHead
                         className={twMerge(
                           !isSingleEnvView && "sticky",
@@ -3174,8 +3320,10 @@ const OverviewPageContent = () => {
                       </TableHead>
                       <TableHead
                         className={twMerge(
-                          !isSingleEnvView && "sticky",
-                          "left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container p-0 lg:w-96 lg:max-w-96 lg:min-w-96"
+                          isSingleEnvView
+                            ? "relative min-w-[280px]"
+                            : "sticky left-10 min-w-[240px]",
+                          "z-10 border-r bg-container p-0"
                         )}
                       >
                         <DropdownMenu>
@@ -3185,7 +3333,7 @@ const OverviewPageContent = () => {
                               className="flex h-full w-full cursor-pointer items-center justify-between px-3 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                               aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}`}
                             >
-                              <span className="text-foreground">Name</span>
+                              <span className="text-sm font-medium text-muted">Name</span>
                               <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
                             </button>
                           </DropdownMenuTrigger>
@@ -3213,12 +3361,13 @@ const OverviewPageContent = () => {
                             </DropdownMenuRadioGroup>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        {resizeHandle(0)}
                       </TableHead>
                       {visibleEnvs.length > 1 ? (
                         visibleEnvs?.map(({ name, slug, id }, index) => {
                           return (
                             <TableHead
-                              className="w-max min-w-40 border-r p-0 text-center whitespace-nowrap last:border-r-0"
+                              className="relative min-w-[240px] border-r p-0 text-center whitespace-nowrap last:border-r-0"
                               key={`secret-overview-${name}-${index + 1}`}
                             >
                               <DropdownMenu>
@@ -3227,9 +3376,9 @@ const OverviewPageContent = () => {
                                     type="button"
                                     title={name}
                                     aria-label={`Open ${name} environment menu`}
-                                    className="flex h-full w-full min-w-40 cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                                    className="flex h-full w-full min-w-[240px] cursor-pointer items-center justify-center gap-x-2 px-3 text-sm font-medium text-muted hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                                   >
-                                    <span className="whitespace-nowrap">{name}</span>
+                                    <span className="min-w-0 truncate">{name}</span>
                                     <ChevronDownIcon className="size-3.5 shrink-0" />
                                   </button>
                                 </DropdownMenuTrigger>
@@ -3322,11 +3471,12 @@ const OverviewPageContent = () => {
                                   </ProjectPermissionCan>
                                 </DropdownMenuContent>
                               </DropdownMenu>
+                              {index < visibleEnvs.length - 1 && resizeHandle(index + 1)}
                             </TableHead>
                           );
                         })
                       ) : (
-                        <TableHead className="w-full">
+                        <TableHead className="min-w-[368px] text-sm font-medium text-muted">
                           <div className="flex w-full items-center justify-between gap-2">
                             Value
                             <div className="flex items-center gap-2">
@@ -3665,6 +3815,7 @@ const OverviewPageContent = () => {
                                 toggleSelectedEntry(EntryType.SECRET, key, isShiftKey);
                             }}
                             secretPath={secretPath}
+                            tableWidth={tableWidth}
                             getImportedSecretByKey={getImportedSecretByKey}
                             isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
                             onSecretCreate={handleSecretCreate}
@@ -3674,7 +3825,6 @@ const OverviewPageContent = () => {
                             environments={visibleEnvs}
                             secretKey={key}
                             getSecretByKey={getSecretByKeyWithPending}
-                            tableWidth={tableWidth}
                             importedBy={importedBy}
                             isSingleEnvSecretsVisible={isSingleEnvSecretsVisible}
                             isBatchMode={isBatchModeActive}

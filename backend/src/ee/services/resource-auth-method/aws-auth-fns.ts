@@ -32,7 +32,6 @@ type TVerifyStsCallerInput = {
   iamHttpRequestMethod: string;
   iamRequestBody: string;
   iamRequestHeaders: string;
-  defaultStsEndpoint: string;
   errorContext: Record<string, unknown>;
 };
 
@@ -44,7 +43,6 @@ export const verifyStsAndExtractCaller = async ({
   iamHttpRequestMethod,
   iamRequestBody,
   iamRequestHeaders,
-  defaultStsEndpoint,
   errorContext
 }: TVerifyStsCallerInput) => {
   let headers: TAwsGetCallerIdentityHeaders;
@@ -69,7 +67,7 @@ export const verifyStsAndExtractCaller = async ({
     });
   }
 
-  const url = region ? `https://sts.${region}.amazonaws.com` : defaultStsEndpoint;
+  const url = `https://sts.${region}.amazonaws.com`;
 
   let stsResponse: { data: TGetCallerIdentityResponse };
   try {

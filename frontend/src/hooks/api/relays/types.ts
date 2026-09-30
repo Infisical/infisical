@@ -3,7 +3,6 @@ export type TRelayAuthMethodView =
       method: "aws";
       config: {
         id: string;
-        stsEndpoint: string;
         allowedPrincipalArns: string;
         allowedAccountIds: string;
         createdAt: string;
@@ -45,7 +44,6 @@ export type TCreateRelayDTO = {
   authMethod:
     | {
         method: "aws";
-        stsEndpoint: string;
         allowedPrincipalArns: string;
         allowedAccountIds: string;
       }
@@ -58,7 +56,6 @@ export type TUpdateRelayDTO = {
   authMethod?:
     | {
         method: "aws";
-        stsEndpoint: string;
         allowedPrincipalArns: string;
         allowedAccountIds: string;
       }
