@@ -1574,6 +1574,8 @@ export const AUDIT_LOGS = {
     environment:
       "The environment to filter logs by. If not provided, logs from all environments will be returned. Note that the projectId parameter must also be provided.",
     eventType: "The type of the event to export.",
+    eventClass:
+      "Filter by event class, comma-separated for multiple values (management, authentication, authorization, data-access). Combined with eventType, only event types in both are returned. The secretPath and secretKey filters only apply to secret events.",
     secretPath:
       "The path of the secret to query audit logs for. Note that the projectId parameter must also be provided.",
     secretKey:
@@ -2077,6 +2079,28 @@ export const INTEGRATION = {
     integrationId: "The ID of the integration object to manually sync."
   }
 };
+
+export const AUDIT_LOG_SETTINGS = {
+  eventClass: "The audit log event class: management, authentication, data-access, or authorization.",
+  isEnabled: "Whether events of this class are recorded.",
+  source:
+    'Where the effective value comes from: "project" when the project has its own setting, "organization" when it inherits the organization default.',
+  shouldUseNewPrivilegeSystem:
+    "Whether the organization is on the new privilege system. Permission denials (the authorization class) are only recorded on the new privilege system.",
+  UPDATE_ORG: {
+    eventClasses: "The event classes to update.",
+    isEnabled: "Whether to record events of this class for the organization. Projects can override it."
+  },
+  UPDATE_PROJECT: {
+    projectId: "The ID of the project to update the audit log settings for.",
+    eventClasses: "The event classes to update.",
+    isEnabled:
+      "Whether to record events of this class for the project. true or false overrides the organization default; null removes the override so the project follows the organization."
+  },
+  GET_PROJECT: {
+    projectId: "The ID of the project to get the audit log settings for."
+  }
+} as const;
 
 export const AUDIT_LOG_STREAMS = {
   CREATE: {

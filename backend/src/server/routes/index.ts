@@ -46,6 +46,8 @@ import { clickhouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-l
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
+import { auditLogSettingsDALFactory } from "@app/ee/services/audit-log/audit-log-settings-dal";
+import { auditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { auditLogStreamDALFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-dal";
 import { auditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { auditLogStreamOutboxDALFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-dal";
@@ -564,6 +566,7 @@ import { workflowIntegrationDALFactory } from "@app/services/workflow-integratio
 import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
+import { injectPermissionDeniedAuditLog } from "../plugins/audit-log-permission-denied";
 import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
@@ -718,6 +721,7 @@ export const registerRoutes = async (
 
   const auditLogDAL = auditLogDALFactory(auditLogDb ?? db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
+  const auditLogSettingsDAL = auditLogSettingsDALFactory(db);
   const auditLogStreamOutboxDAL = auditLogStreamOutboxDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
@@ -1185,11 +1189,20 @@ export const registerRoutes = async (
     auditLogStreamOutboxService
   });
 
+  const auditLogSettingsService = auditLogSettingsServiceFactory({
+    auditLogSettingsDAL,
+    orgDAL,
+    projectDAL,
+    permissionService,
+    keyStore
+  });
+
   const auditLogQueue = await auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
     projectDAL,
     licenseService,
+    auditLogSettingsService,
     auditLogStreamOutboxService,
     clickhouseClient: clickhouse,
     keyStore
@@ -1207,6 +1220,8 @@ export const registerRoutes = async (
     clickhouseAuditLogDAL,
     permissionService,
     auditLogQueue,
+    auditLogSettingsService,
+    queueService,
     keyStore,
     smtpService,
     userDAL,
@@ -1536,6 +1551,7 @@ export const registerRoutes = async (
   const certificatePolicyDAL = certificatePolicyDALFactory(db);
 
   const orgService = orgServiceFactory({
+    keyStore,
     userAliasDAL,
     identityMetadataDAL,
     secretDAL,
@@ -4343,6 +4359,7 @@ export const registerRoutes = async (
     ldap: ldapService,
     auditLog: auditLogService,
     auditLogStream: auditLogStreamService,
+    auditLogSettings: auditLogSettingsService,
     certificate: certificateService,
     certificateCleanup: certificateCleanupService,
     certificateInventoryView: certificateInventoryViewService,
@@ -4556,6 +4573,7 @@ export const registerRoutes = async (
   await server.register(injectAgentVaultProjectId);
   await server.register(injectRateLimits);
   await server.register(injectAuditLogInfo);
+  await server.register(injectPermissionDeniedAuditLog);
 
   server.route({
     method: "GET",

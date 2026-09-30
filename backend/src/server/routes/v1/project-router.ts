@@ -14,9 +14,10 @@ import {
   SortDirection
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
+import { AuditLogEventClass } from "@app/ee/services/audit-log/audit-log-event-classes";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
-import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, AUDIT_LOG_SETTINGS, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { JobState } from "@app/queue/queue-service";
@@ -718,6 +719,117 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         message: "Successfully updated project's audit logs retention period",
         project
       };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/audit-log-settings",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getProjectAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Get which audit log event classes the project records",
+      params: z.object({
+        projectId: z.string().trim().describe(AUDIT_LOG_SETTINGS.GET_PROJECT.projectId)
+      }),
+      response: {
+        200: z.object({
+          auditLogSettings: z.object({
+            eventClasses: z
+              .object({
+                eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
+                isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.isEnabled),
+                source: z.enum(["organization", "project"]).describe(AUDIT_LOG_SETTINGS.source)
+              })
+              .array(),
+            shouldUseNewPrivilegeSystem: z.boolean().describe(AUDIT_LOG_SETTINGS.shouldUseNewPrivilegeSystem)
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.getProjectSettings({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId
+      });
+      return { auditLogSettings };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/:projectId/audit-log-settings",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "updateProjectAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Update which audit log event classes the project records",
+      params: z.object({
+        projectId: z.string().trim().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.projectId)
+      }),
+      body: z.object({
+        eventClasses: z
+          .object({
+            eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
+            isEnabled: z.boolean().nullable().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.isEnabled)
+          })
+          .array()
+          .min(1)
+          .max(Object.values(AuditLogEventClass).length)
+          .describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.eventClasses)
+      }),
+      response: {
+        200: z.object({
+          auditLogSettings: z.object({
+            eventClasses: z
+              .object({
+                eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
+                isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.isEnabled),
+                source: z.enum(["organization", "project"]).describe(AUDIT_LOG_SETTINGS.source)
+              })
+              .array(),
+            shouldUseNewPrivilegeSystem: z.boolean().describe(AUDIT_LOG_SETTINGS.shouldUseNewPrivilegeSystem)
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.updateProjectSettings({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        eventClasses: req.body.eventClasses
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "project",
+            projectId: req.params.projectId,
+            eventClasses: req.body.eventClasses
+          }
+        }
+      });
+
+      return { auditLogSettings };
     }
   });
 

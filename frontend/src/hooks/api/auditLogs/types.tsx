@@ -1,3 +1,4 @@
+import { AuditLogEventClass } from "../auditLogSettings/types";
 import { CaStatus } from "../ca";
 import { CrlReason } from "../certificates/enums";
 import { IdentityTrustedIp } from "../identities/types";
@@ -14,6 +15,7 @@ export type AuditLogPostgresStorageStatus = {
 
 export type TGetAuditLogsFilter = {
   eventType?: EventType[];
+  eventClass?: AuditLogEventClass[];
   userAgentType?: UserAgentType;
   eventMetadata?: Record<string, string>;
   actorType?: ActorType;
@@ -1129,6 +1131,7 @@ export type AuditLog = {
   workspace: string;
   ipAddress: string;
   event: Event;
+  eventClass: AuditLogEventClass;
   userAgent: string;
   userAgentType: UserAgentType;
   createdAt: string;

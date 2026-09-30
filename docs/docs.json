@@ -2541,7 +2541,11 @@
                   {
                     "group": "Audit logs",
                     "pages": [
-                      "api-reference/endpoints/audit-logs/export-audit-log"
+                      "api-reference/endpoints/audit-logs/export-audit-log",
+                      "api-reference/endpoints/audit-logs/get-organization-audit-log-settings",
+                      "api-reference/endpoints/audit-logs/update-organization-audit-log-settings",
+                      "api-reference/endpoints/audit-logs/get-project-audit-log-settings",
+                      "api-reference/endpoints/audit-logs/update-project-audit-log-settings"
                     ]
                   },
                   {

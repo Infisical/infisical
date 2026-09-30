@@ -77,11 +77,13 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 import { KmipPermission } from "../kmip/kmip-enum";
 import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
+import type { AuditLogEventClass } from "./audit-log-event-classes";
 
 export type TListProjectAuditLogDTO = {
   filter: {
     userAgentType?: UserAgentType;
     eventType?: EventType[];
+    eventClass?: AuditLogEventClass[];
     offset?: number;
     limit: number;
     endDate: string;
@@ -120,6 +122,18 @@ export type TCreateAuditLogDTO = {
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
+export type TRecordPermissionDeniedDTO = AuditLogInfo & {
+  orgId: string;
+  projectId?: string;
+  metadata: Omit<PermissionDeniedEvent["metadata"], "suppressedRepeats" | "suppressedFrom" | "suppressedUntil">;
+};
+
+export type TAuditLogPermissionDeniedFlushJobData = TRecordPermissionDeniedDTO & {
+  collapseKey: string;
+  windowStart: string;
+  windowEnd: string;
+};
+
 // What `pushToLog` writes to the Redis ingest stream. We pin `id` and `createdAt` at
 // push time so a consumer retry (reprocessing the same batch after a failed insert)
 // re-inserts byte-identical rows instead of regenerating ids and creating duplicates.
@@ -139,12 +153,14 @@ export type TAuditLogStreamEntry = TCreateAuditLogDTO & {
 
 export type TAuditLogServiceFactory = {
   createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
+  recordPermissionDenied: (data: TRecordPermissionDeniedDTO) => Promise<void>;
   listAuditLogs: (arg: TListProjectAuditLogDTO) => Promise<
     {
       event: {
         type: string;
         metadata: unknown;
       };
+      eventClass: AuditLogEventClass;
       actor: {
         type: string;
         metadata: unknown;
@@ -954,7 +970,13 @@ export enum EventType {
   CREATE_ALERT = "create-alert",
   UPDATE_ALERT = "update-alert",
   DELETE_ALERT = "delete-alert",
-  TEST_ALERT_CHANNEL = "test-alert-channel"
+  TEST_ALERT_CHANNEL = "test-alert-channel",
+
+  // Authorization
+  PERMISSION_DENIED = "permission-denied",
+
+  // Audit Log Settings
+  UPDATE_AUDIT_LOG_SETTINGS = "update-audit-log-settings"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -5964,6 +5986,32 @@ interface ViewAuditLogsEvent {
   metadata?: Record<string, unknown>;
 }
 
+interface PermissionDeniedEvent {
+  type: EventType.PERMISSION_DENIED;
+  metadata: {
+    permissionAction?: string;
+    permissionSubject?: string;
+    permissionSubjectDetails?: Record<string, unknown>;
+    errorName: string;
+    message: string;
+    route?: string;
+    method: string;
+    projectId?: string;
+    suppressedRepeats?: number;
+    suppressedFrom?: string;
+    suppressedUntil?: string;
+  };
+}
+
+interface UpdateAuditLogSettingsEvent {
+  type: EventType.UPDATE_AUDIT_LOG_SETTINGS;
+  metadata: {
+    scope: "organization" | "project";
+    projectId?: string;
+    eventClasses: { eventClass: string; isEnabled: boolean | null }[];
+  };
+}
+
 interface ProjectRoleCreateEvent {
   type: EventType.CREATE_PROJECT_ROLE;
   metadata: {
@@ -8308,6 +8356,8 @@ export type Event =
   | GetOrgAuditReportsEvent
   | DeleteOrgAuditReportEvent
   | ViewAuditLogsEvent
+  | PermissionDeniedEvent
+  | UpdateAuditLogSettingsEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent

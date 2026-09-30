@@ -98,6 +98,9 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
   const auditLogStreamOutboxService = {
     enqueueForLogs: vi.fn<(logs: unknown[]) => Promise<void>>(async () => undefined)
   };
+  const auditLogSettingsService = {
+    getEffectiveSettings: vi.fn<(orgId: string) => Promise<Record<string, unknown> | null>>(async () => null)
+  };
   const clickhouseClient = clickhouse
     ? {
         insert: vi.fn<(opts: { table: string; values: Record<string, unknown>[] }) => Promise<unknown>>(
@@ -111,6 +114,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
     queueService: queueService as never,
     projectDAL: projectDAL as never,
     licenseService: licenseService as never,
+    auditLogSettingsService: auditLogSettingsService as never,
     auditLogStreamOutboxService: auditLogStreamOutboxService as never,
     clickhouseClient: clickhouseClient as never,
     keyStore: keyStore as never
@@ -125,6 +129,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
     projectDAL,
     licenseService,
     auditLogStreamOutboxService,
+    auditLogSettingsService,
     clickhouseClient,
     consumer: startHandlers.get(QueueName.AuditLogClickHouseBatch)!
   };
@@ -236,6 +241,105 @@ describe("audit-log-queue pushToLog", () => {
 
     await expect(service.pushToLog(dto({ orgId: "o" }) as never)).resolves.toBeUndefined();
     expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+});
+
+describe("audit-log-queue event class settings", () => {
+  const settings = (overrides: Record<string, unknown> = {}) => ({
+    org: {},
+    projects: {},
+    shouldUseNewPrivilegeSystem: true,
+    ...overrides
+  });
+
+  test("drops a data-access event when the org disabled the class", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings({ org: { "data-access": false } }));
+
+    await service.pushToLog(dto({ event: { type: "get-secrets", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("stores a data-access event when the class is enabled", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings({ org: { "data-access": true } }));
+
+    await service.pushToLog(dto({ event: { type: "get-secrets", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("drops a management event when the org turned the class off", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings({ org: { management: false } }));
+
+    await service.pushToLog(dto({ event: { type: "update-secret", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("records a management event when no scope has a setting", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings());
+
+    await service.pushToLog(dto({ event: { type: "update-secret", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("a project setting overrides the org in both directions", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValue(
+      settings({ org: { "data-access": false }, projects: { "p-on": { "data-access": true } } })
+    );
+
+    await service.pushToLog(dto({ projectId: "p-on", event: { type: "get-secrets", metadata: {} } }) as never);
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValue(
+      settings({ org: {}, projects: { "p-off": { "data-access": false } } })
+    );
+    await service.pushToLog(dto({ projectId: "p-off", event: { type: "get-secrets", metadata: {} } }) as never);
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("an org-scoped event ignores project settings", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(
+      settings({ org: {}, projects: { p1: { "data-access": false } } })
+    );
+
+    await service.pushToLog(dto({ event: { type: "get-secrets", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("drops a permission denial when no scope has turned authorization on", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings());
+
+    await service.pushToLog(dto({ event: { type: "permission-denied", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("records a data-access event when no scope has a setting", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings());
+
+    await service.pushToLog(dto({ event: { type: "get-secrets", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("records the event when the settings lookup returns nothing", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(null);
+
+    await service.pushToLog(dto({ event: { type: "get-secrets", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
   });
 });
 

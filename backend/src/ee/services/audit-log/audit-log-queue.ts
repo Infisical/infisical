@@ -19,6 +19,8 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TAuditLogDALFactory } from "./audit-log-dal";
+import { getAuditLogEventClass } from "./audit-log-event-classes";
+import { isAuditLogEventClassEnabled, TAuditLogSettingsServiceFactory } from "./audit-log-settings-service";
 import { TAuditLogStreamEntry, TCreateAuditLogDTO } from "./audit-log-types";
 
 type TAuditLogQueueServiceFactoryDep = {
@@ -27,6 +29,7 @@ type TAuditLogQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
   clickhouseClient: ClickHouseClient | null;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamCollect" | "streamTrim" | "acquireLock">;
 };
@@ -72,6 +75,7 @@ export const auditLogQueueServiceFactory = async ({
   queueService,
   projectDAL,
   licenseService,
+  auditLogSettingsService,
   auditLogStreamOutboxService,
   clickhouseClient,
   keyStore
@@ -102,6 +106,12 @@ export const auditLogQueueServiceFactory = async ({
 
     const orgId = data.orgId ?? project?.orgId;
     if (!orgId) return null;
+
+    const eventClass = getAuditLogEventClass(data.event.type);
+    const settings = await requestMemoize(requestMemoKeys.auditLogSettings(orgId), () =>
+      auditLogSettingsService.getEffectiveSettings(orgId)
+    );
+    if (!isAuditLogEventClassEnabled(settings, eventClass, projectId)) return null;
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan?.auditLogsRetentionDays) return null;

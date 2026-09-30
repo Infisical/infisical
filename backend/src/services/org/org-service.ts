@@ -33,7 +33,7 @@ import {
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
-import { PgSqlLock } from "@app/keystore/keystore";
+import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
@@ -148,6 +148,7 @@ type TOrgServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  keyStore: Pick<TKeyStoreFactory, "deleteItem">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -187,7 +188,8 @@ export const orgServiceFactory = ({
   certificatePolicyDAL,
   usageMeteringService,
   pamSessionDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  keyStore
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -418,7 +420,7 @@ export const orgServiceFactory = ({
       });
     }
 
-    return orgDAL.transaction(async (tx) => {
+    const upgradedOrg = await orgDAL.transaction(async (tx) => {
       const org = await orgDAL.findById(actorOrgId, tx);
       if (org.shouldUseNewPrivilegeSystem) {
         throw new BadRequestError({
@@ -441,6 +443,12 @@ export const orgServiceFactory = ({
         tx
       );
     });
+
+    // Denials are only recorded on the new privilege system, so bust the cache or the first
+    // denial after the upgrade gets skipped.
+    await keyStore.deleteItem(KeyStorePrefixes.AuditLogOrgSettings(actorOrgId));
+
+    return upgradedOrg;
   };
 
   /*

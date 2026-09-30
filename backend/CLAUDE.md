@@ -993,6 +993,35 @@ directly, so falling through turns a dangling gateway reference into a silent by
 boundary the gateway exists to enforce. And `app_connections.gatewayId` is **not** a v1 column — unlike the
 three above it never grew a `gatewayV2Id`, so that one column carries v2 ids and must stay.
 
+### Audit Log Event Classes and Settings
+
+Every `EventType` belongs to exactly one class in
+`src/ee/services/audit-log/audit-log-event-classes.ts`: `management`, `authentication`,
+`authorization` (only `PERMISSION_DENIED`), or `data-access`. The class is derived from the event
+type at write and read time, so stored rows carry no class column. **A new event type is
+`management` unless you add it to one of the explicit lists**, and `audit-log-event-classes.test.ts`
+fails if a type lands in two lists. Reads, lists, dashboards, insights views, CMEK use operations
+and the dynamic secret lease lifecycle are data access; VIEW_AUDIT_LOGS and privileged session
+lifecycle are management on purpose.
+
+Any class can be turned off per org, and a project row overrides the org in either direction. The rows live in
+`audit_log_settings` (one per scope and class, `projectId` null for the org scope; no row means
+the default in `AUDIT_LOG_EVENT_CLASS_DEFAULTS`: data access on, authorization off) behind `audit-log-settings-service.ts`, which caches the org's whole picture in the
+keystore for 60s (`getEffectiveSettings`, never throws: a lookup failure records everything).
+Enforcement happens in `buildStreamEntry` in `audit-log-queue.ts`, memoized per request so a
+batch of events costs one settings read. Suppressed events are dropped silently and do not
+count on the dropped counter.
+
+`PERMISSION_DENIED` is recorded by the `onError` hook in
+`src/server/plugins/audit-log-permission-denied.ts` for every CASL `ForbiddenError` and
+`PermissionBoundaryError` (not `ForbiddenRequestError`, which verifyAuth and plan gates also throw),
+only for orgs on the new privilege system, and collapsed per actor, project, action, subject, route and
+method for one minute (a constant in the service, not a setting). The first denial in a window is
+written at once and schedules a delayed `AuditLogPermissionDeniedFlush` job; repeats only bump a
+keystore counter, and the job writes one summary event with `suppressedRepeats` and the window
+bounds when the minute ends, so a burst that stops is still accounted for. `recordPermissionDenied`
+on the audit log service never throws to the request.
+
 ### Server Plugins
 
 Key plugins in `src/server/plugins/`:

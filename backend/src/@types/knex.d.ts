@@ -99,6 +99,9 @@ import {
   TApprovalRequestStepsUpdate,
   TApprovalRequestsUpdate,
   TAuditLogs,
+  TAuditLogSettings,
+  TAuditLogSettingsInsert,
+  TAuditLogSettingsUpdate,
   TAuditLogsInsert,
   TAuditLogStreams,
   TAuditLogStreamsInsert,
@@ -1388,6 +1391,11 @@ declare module "knex/types/tables" {
       TAuditLogStreams,
       TAuditLogStreamsInsert,
       TAuditLogStreamsUpdate
+    >;
+    [TableName.AuditLogSettings]: KnexOriginal.CompositeTableType<
+      TAuditLogSettings,
+      TAuditLogSettingsInsert,
+      TAuditLogSettingsUpdate
     >;
     [TableName.AuditReport]: KnexOriginal.CompositeTableType<TAuditReports, TAuditReportsInsert, TAuditReportsUpdate>;
     [TableName.GitAppInstallSession]: KnexOriginal.CompositeTableType<

@@ -65,6 +65,7 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone, onClick }: Props) 
       <TableCell>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <Tag label="event" value={auditLog.event.type} />
+          <Tag label="class" value={auditLog.eventClass} />
           <Tag label="actor" value={auditLog.actor.type} />
           {auditLog.actor.type === ActorType.USER && (
             <>

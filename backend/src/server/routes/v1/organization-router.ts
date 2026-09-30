@@ -10,9 +10,10 @@ import {
   OrgMembershipStatus,
   OrgRolesSchema
 } from "@app/db/schemas";
+import { AuditLogEventClass } from "@app/ee/services/audit-log/audit-log-event-classes";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, KeyStoreTtls } from "@app/keystore/keystore";
-import { ApiDocsTags, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
+import { ApiDocsTags, AUDIT_LOG_SETTINGS, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
@@ -145,6 +146,97 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/audit-log-settings",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getOrganizationAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Get which audit log event classes the organization records",
+      response: {
+        200: z.object({
+          auditLogSettings: z.object({
+            eventClasses: z
+              .object({
+                eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
+                isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.isEnabled)
+              })
+              .array(),
+            shouldUseNewPrivilegeSystem: z.boolean().describe(AUDIT_LOG_SETTINGS.shouldUseNewPrivilegeSystem)
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.getOrgSettings({ actor: req.permission });
+      return { auditLogSettings };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/audit-log-settings",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "updateOrganizationAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Update which audit log event classes the organization records",
+      body: z.object({
+        eventClasses: z
+          .object({
+            eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
+            isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.UPDATE_ORG.isEnabled)
+          })
+          .array()
+          .min(1)
+          .max(Object.values(AuditLogEventClass).length)
+          .describe(AUDIT_LOG_SETTINGS.UPDATE_ORG.eventClasses)
+      }),
+      response: {
+        200: z.object({
+          auditLogSettings: z.object({
+            eventClasses: z
+              .object({
+                eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
+                isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.isEnabled)
+              })
+              .array(),
+            shouldUseNewPrivilegeSystem: z.boolean().describe(AUDIT_LOG_SETTINGS.shouldUseNewPrivilegeSystem)
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.updateOrgSettings({
+        actor: req.permission,
+        eventClasses: req.body.eventClasses
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "organization",
+            eventClasses: req.body.eventClasses
+          }
+        }
+      });
+
+      return { auditLogSettings };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/audit-logs",
     config: {
       rateLimit: readLimit
@@ -171,6 +263,12 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             .optional()
             .transform((val) => (val ? val.split(",") : undefined))
             .pipe(z.nativeEnum(EventType).array().optional()),
+          eventClass: z
+            .string()
+            .optional()
+            .transform((val) => (val ? val.split(",") : undefined))
+            .pipe(z.nativeEnum(AuditLogEventClass).array().optional())
+            .describe(AUDIT_LOGS.EXPORT.eventClass),
           userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
           eventMetadata: z
             .string()
@@ -238,6 +336,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
                   type: z.string(),
                   metadata: z.any()
                 }),
+                eventClass: z.nativeEnum(AuditLogEventClass),
                 actor: z.object({
                   type: z.string(),
                   metadata: z.any()
@@ -258,7 +357,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           startDate: req.query.startDate || getLastMidnightDateISO(),
           auditLogActorId: req.query.actor,
           actorType: req.query.actorType,
-          eventType: req.query.eventType
+          eventType: req.query.eventType,
+          eventClass: req.query.eventClass
         },
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
