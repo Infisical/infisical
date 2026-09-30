@@ -9,7 +9,12 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "./agent-vault-credential-schemas";
 import { AgentVaultSubstitutionSurface } from "./agent-vault-enums";
-import { AGENT_VAULT_MALFORMED_REFERENCE_MESSAGE, hasMalformedVariableReference } from "./agent-vault-variable-fns";
+import {
+  AGENT_VAULT_MALFORMED_REFERENCE_MESSAGE,
+  AGENT_VAULT_TOO_MANY_REFERENCES_MESSAGE,
+  hasMalformedVariableReference,
+  hasTooManyVariableReferences
+} from "./agent-vault-variable-fns";
 
 export const AGENT_VAULT_MAX_CUSTOM_HEADERS = 20;
 export const AGENT_VAULT_MAX_SUBSTITUTIONS = 20;
@@ -49,7 +54,9 @@ const headerPrefixSchema = z
 
 // For every field a variable can be used in, so a mistyped reference fails the save, not the request.
 export const acceptsVariableReferences = (schema: z.ZodString) =>
-  schema.refine((value) => !hasMalformedVariableReference(value), AGENT_VAULT_MALFORMED_REFERENCE_MESSAGE);
+  schema
+    .refine((value) => !hasMalformedVariableReference(value), AGENT_VAULT_MALFORMED_REFERENCE_MESSAGE)
+    .refine((value) => !hasTooManyVariableReferences(value), AGENT_VAULT_TOO_MANY_REFERENCES_MESSAGE);
 
 const secretValueSchema = acceptsVariableReferences(
   z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)

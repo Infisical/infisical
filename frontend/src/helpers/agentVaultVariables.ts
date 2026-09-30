@@ -1,5 +1,6 @@
 export const VARIABLE_KEY_MAX_LENGTH = 64;
 export const VARIABLE_VALUE_MAX_LENGTH = 8192;
+export const MAX_REFERENCES_PER_FIELD = 10;
 
 export const VARIABLE_KEY_RE = /^[A-Z][A-Z0-9_]*$/;
 
@@ -65,6 +66,10 @@ export const findOpenVariableReference = (textBeforeCaret: string) => {
  */
 export const variableReferenceError = (text: string, keys?: ReadonlySet<string>): string | null => {
   const refs = findVariableReferences(text);
+
+  if (refs.length > MAX_REFERENCES_PER_FIELD) {
+    return `Use at most ${MAX_REFERENCES_PER_FIELD} variable references in one value. A repeated reference counts each time.`;
+  }
 
   const malformed = refs.find((ref) => !VARIABLE_KEY_RE.test(ref));
   if (malformed !== undefined) {

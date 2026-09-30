@@ -745,6 +745,8 @@ describe("Agent Vault V1 Router", async () => {
     type TResolved = {
       services: {
         name: string;
+        allowedMethods: string[] | null;
+        allowedPathPrefixes: string[] | null;
         credential: Record<string, string>;
         customHeaders: { name: string; prefix: string; value: string }[];
         substitutions: { placeholder: string; surfaces: string[]; value: string }[];
@@ -947,6 +949,27 @@ describe("Agent Vault V1 Router", async () => {
       expect(resolved.substitutions[0].value).toBe("org-42");
     });
 
+    test("a field its variables would fill past 8,192 characters is sent as stored, and its service keeps its restrictions", async () => {
+      const bundle = await createAccessBundle("variables-oversized");
+      const long = await createVariable(bundle.id, { key: "LONG", value: "x".repeat(8192) });
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "oversized",
+        hostPattern: "api.example.com",
+        allowedMethods: ["GET"],
+        allowedPathPrefixes: ["/v1"],
+        credential: { type: "bearer", value: "{{LONG}}{{LONG}}" },
+        customHeaders: [{ name: "X-Long", value: "{{LONG}}" }]
+      });
+      expect(created.statusCode).toBe(200);
+
+      const resolve = await resolverFor(bundle, "variables-oversized");
+      const [resolved] = (await resolve()).services;
+      expect(resolved.credential).toMatchObject({ type: "bearer", value: `{{${long.id}}}{{${long.id}}}` });
+      expect(resolved.customHeaders[0].value).toBe("x".repeat(8192));
+      expect(resolved.allowedMethods).toEqual(["GET"]);
+      expect(resolved.allowedPathPrefixes).toEqual(["/v1"]);
+    });
+
     test("renaming a variable keeps its services working, and a new value reaches the next resolve", async () => {
       const bundle = await createAccessBundle("variables-rename");
       const variable = await createVariable(bundle.id, { key: "OLD_NAME", value: "first" });
@@ -1046,6 +1069,31 @@ describe("Agent Vault V1 Router", async () => {
       expect(bracedPlaceholder.statusCode).toBe(422);
 
       expect(await testDb("agent_vault_services").where({ accessBundleId: bundle.id })).toHaveLength(0);
+    });
+
+    test("a value takes ten variable references, a repeat counted each time, and an eleventh fails validation", async () => {
+      const bundle = await createAccessBundle("variables-reference-limit");
+      await createVariable(bundle.id, { key: "TOKEN", value: "t" });
+
+      const atLimit = await inject("POST", servicesUrl(bundle.id), {
+        name: "at-limit",
+        hostPattern: "at-limit.example.com",
+        credential: { type: "bearer", value: "{{TOKEN}}".repeat(10) }
+      });
+      expect(atLimit.statusCode).toBe(200);
+
+      const overLimit = await inject("POST", servicesUrl(bundle.id), {
+        name: "over-limit",
+        hostPattern: "over-limit.example.com",
+        credential: { type: "bearer", value: "{{TOKEN}}".repeat(11) }
+      });
+      expect(overLimit.statusCode).toBe(422);
+      expect(overLimit.payload).toContain("at most 10 variable references");
+
+      const services = (await testDb("agent_vault_services").where({ accessBundleId: bundle.id })) as {
+        name: string;
+      }[];
+      expect(services.map((service) => service.name)).toEqual(["at-limit"]);
     });
 
     test("the list carries only values that are not secret, and the value route returns either uncached", async () => {

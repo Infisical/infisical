@@ -57,6 +57,8 @@ To use a variable:
 
 A reference can be the whole value or part of it. For example, if a custom header's value is `org-{{ORG_ID}}`, the proxy sends `org-` followed by the value of `ORG_ID`.
 
+A value can contain up to 10 references. If a value uses the same key more than once, each use counts as a reference, so `{{ORG_ID}}/{{ORG_ID}}` contains two.
+
 The **Sends** preview shows each reference in the headers the proxy attaches. If a reference names a key the bundle doesn't have, Infisical marks the reference in red and won't save the service until you correct the key or add the variable.
 
 Variables don't work in any other field, such as a host pattern, a path, a header name or prefix, or a substitution placeholder.

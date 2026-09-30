@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH,
+  AGENT_VAULT_MAX_REFERENCES_PER_FIELD,
   expandStoredVariableReferences,
   findStoredVariableIds,
   findVariableKeys,
   hasMalformedVariableReference,
+  hasTooManyVariableReferences,
   isVariableKey,
   toStoredVariableReferences
 } from "./agent-vault-variable-fns";
@@ -55,6 +58,19 @@ describe("agent vault variable references", () => {
     it("does not count a lone brace pair as a reference", () => {
       expect(hasMalformedVariableReference("{{ no closing")).toBe(false);
       expect(findVariableKeys("no opening }}")).toEqual([]);
+    });
+  });
+
+  describe("limiting references", () => {
+    it("takes up to the limit, counting a repeated reference each time", () => {
+      expect(hasTooManyVariableReferences("{{A}}".repeat(AGENT_VAULT_MAX_REFERENCES_PER_FIELD))).toBe(false);
+      expect(hasTooManyVariableReferences("{{A}}".repeat(AGENT_VAULT_MAX_REFERENCES_PER_FIELD + 1))).toBe(true);
+    });
+
+    it("counts different keys the same way", () => {
+      const keys = Array.from({ length: AGENT_VAULT_MAX_REFERENCES_PER_FIELD + 1 }, (_, index) => `{{KEY_${index}}}`);
+      expect(hasTooManyVariableReferences(keys.slice(1).join(":"))).toBe(false);
+      expect(hasTooManyVariableReferences(keys.join(":"))).toBe(true);
     });
   });
 
@@ -122,6 +138,25 @@ describe("agent vault variable references", () => {
       const idOfKey = new Map([["GITHUB_TOKEN", GITHUB_ID]]);
       const stored = toStoredVariableReferences("Bearer {{GITHUB_TOKEN}}", idOfKey);
       expect(expandStoredVariableReferences(stored, (id) => values[id])).toBe("Bearer ghp_alpha");
+    });
+
+    it("fills in up to the length cap, counting the text around the references", () => {
+      const value = "v".repeat(AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH - 1);
+      expect(expandStoredVariableReferences(`x{{${GITHUB_ID}}}`, () => value)).toBe(`x${value}`);
+      expect(expandStoredVariableReferences(`xy{{${GITHUB_ID}}}`, () => value)).toBeUndefined();
+    });
+
+    it("gives up on a field that short references would fill to millions of characters", () => {
+      const idOfKey = new Map([["A", GITHUB_ID]]);
+      const stored = toStoredVariableReferences("{{A}}".repeat(1638), idOfKey);
+      expect(expandStoredVariableReferences(stored, () => "v".repeat(8192))).toBeUndefined();
+    });
+
+    it("measures a field by its filled-in length, not its stored one", () => {
+      const idOfKey = new Map([["A", GITHUB_ID]]);
+      const stored = toStoredVariableReferences("{{A}}".repeat(1638), idOfKey);
+      expect(stored.length).toBeGreaterThan(AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH);
+      expect(expandStoredVariableReferences(stored, () => "a")).toBe("a".repeat(1638));
     });
   });
 });

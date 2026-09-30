@@ -195,10 +195,17 @@ path decides what a service can reach, so it stays literal.
   refused without quoting it, because the text was cut from a secret. Placeholders can't contain double
   braces. A variable's own value is sent as is and never expanded again, which is also how a service sends a
   literal `{{`.
+- **A value takes at most 10 references** (`AGENT_VAULT_MAX_REFERENCES_PER_FIELD`), and a repeat counts each
+  time: repeating one short reference is what fills a field in to millions of characters. The field schemas
+  refuse an eleventh with a 422, and the service sheet checks the same limit before it saves.
 - Resolve reads variable values on a replica, then asks the primary for any id the replica lacks, since each
   query can land on a different replica. An id with no variable behind it on either stays as text and is
   logged rather than dropping the service, which would also drop the service's method and path restrictions.
   Values saved before variables existed hold no id tokens, so they pass through untouched.
+- **A field is held to 8,192 characters filled in** (`AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH`), measured
+  before anything is built. The input limits don't hold it there: ten references to 8,192 character values
+  fill one field in to over 80,000 characters, and a service has up to 42 such fields. A field over the cap
+  stays as stored text and is logged, for the same reason as an unresolved id. Saves don't check it.
 - Admin only, reads included: every variable route checks `Edit` on access bundles, which a member lacks,
   and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
   an empty list would claim they use none). Every value is sealed;
