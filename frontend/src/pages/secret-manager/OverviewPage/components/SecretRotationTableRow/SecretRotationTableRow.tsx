@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   ActivityIcon,
@@ -52,9 +52,11 @@ import {
   TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME,
+  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
   TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
+import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 
 type Props = {
   secretRotationName: string;
@@ -71,6 +73,8 @@ type Props = {
   onViewGeneratedCredentials: (secretRotation: TSecretRotationV2) => void;
   onDelete: (secretRotation: TSecretRotationV2) => void;
   onCheckActiveCredentials: (secretRotation: TSecretRotationV2) => Promise<void> | void;
+  activityId: TableRowActivityId;
+  onActivityChange: TableRowActivityChangeHandler;
 };
 
 const shouldShowReconciliationButton = (secretRotation: TSecretRotationV2) =>
@@ -96,7 +100,9 @@ export const SecretRotationTableRow = ({
   onViewGeneratedCredentials,
   onDelete,
   onReconcile,
-  onCheckActiveCredentials
+  onCheckActiveCredentials,
+  activityId,
+  onActivityChange
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const [checkingRotationId, setCheckingRotationId] = useState<string | null>(null);
@@ -121,6 +127,17 @@ export const SecretRotationTableRow = ({
   const singleEnvRotation = isSingleEnvView
     ? getSecretRotationByName(singleEnvSlug, secretRotationName)
     : undefined;
+
+  useEffect(() => {
+    onActivityChange(activityId, isExpanded);
+  }, [activityId, isExpanded, onActivityChange]);
+
+  useEffect(
+    () => () => {
+      onActivityChange(activityId, false);
+    },
+    [activityId, onActivityChange]
+  );
 
   const renderActionButtons = (secretRotation: TSecretRotationV2) => {
     const { environment, folder } = secretRotation;
@@ -323,7 +340,10 @@ export const SecretRotationTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge(
+          "group hover:z-10",
+          (isExpanded || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
+        )}
       >
         <TableCell
           className={twMerge(
@@ -441,20 +461,30 @@ export const SecretRotationTableRow = ({
           })}
       </TableRow>
       {!isSingleEnvView && isExpanded && (
-        <TableRow className="border-0 hover:bg-transparent">
+        <TableRow
+          className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
+        >
           <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
               className="sticky left-0 border-y border-border"
             >
-              <Table containerClassName="rounded-none border-0">
+              <Table
+                className="w-full min-w-[calc(var(--name-column-width,180px)+24rem)] table-fixed"
+                containerClassName="rounded-none border-0"
+              >
+                <colgroup>
+                  <col className="w-10" />
+                  <col className="w-[var(--name-column-width,180px)]" />
+                  <col />
+                </colgroup>
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
                       Environment
                     </TableHead>
-                    <TableHead className="w-full" />
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>

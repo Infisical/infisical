@@ -413,6 +413,7 @@ export const SecretReferenceWizard = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const count = navigableCountRef.current;
+      if (e.key === "Tab" && count === 0) return;
       if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
         e.preventDefault();
         if (count === 0) return;

@@ -7,7 +7,7 @@ icon: "radar"
 
 Infisical Secret Scanning helps teams detect leaked credentials — such as API keys, database passwords, and tokens — across source code and developer systems. It allows organizations to proactively catch exposed secrets before they can be exploited, and respond quickly when incidents occur.
 
-Secret Scanning works across both cloud-connected repositories and local developer environments. It integrates with data sources like [GitHub](/documentation/platform/secret-scanning/github), [GitLab](/documentation/platform/secret-scanning/gitlab), and [Bitbucket](/documentation/platform/secret-scanning/bitbucket) to monitor repositories for exposed secrets in real time, and provides a CLI ([`infisical scan`](/cli/commands/scan)) for scanning local directories, Git history, or CI pipelines before changes are pushed.
+Secret Scanning works across both cloud-connected repositories and local developer environments. It integrates with data sources like [GitHub](/documentation/platform/secret-scanning/github), [GitLab](/documentation/platform/secret-scanning/gitlab), and [Bitbucket](/documentation/platform/secret-scanning/bitbucket) to monitor repositories for exposed secrets in real time, and provides a CLI ([`infisical scan`](/cli/reference#scan)) for scanning local directories, Git history, or CI pipelines before changes are pushed.
 
 Core capabilities include:
 
@@ -15,4 +15,4 @@ Core capabilities include:
 - Detection Engine: Identify potential secrets using pattern matching, entropy analysis, and custom rules tailored to your codebase and workflows.
 - Flexible Scan Modes: Run full scans manually or configure automatic diff scans triggered by new commits. CLI scans support Git history, file directories, or staged changes in CI pipelines.
 - Findings and Lifecycle Management: Track detected secrets with context like file path, commit hash, and scanning rule. Findings can be resolved, ignored, or marked as false positives — with full visibility into scan results over time.
-- Custom Configuration and Noise Reduction: Fine-tune scanning behavior with custom patterns, ignore rules (infisical-scan:ignore, .infisicalignore), entropy thresholds, and excluded paths to reduce false positives.
+- Custom Configuration and Noise Reduction: Fine-tune scanning behavior with custom patterns, ignore rules (betterleaks:allow, .infisicalignore), entropy thresholds, and excluded paths to reduce false positives.

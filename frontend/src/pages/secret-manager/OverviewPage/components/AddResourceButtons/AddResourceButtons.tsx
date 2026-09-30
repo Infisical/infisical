@@ -33,6 +33,11 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionProxiedServiceActions } from "@app/context/ProjectPermissionContext/types";
+import type {
+  SecretsAddResourceAction,
+  SecretsAddResourceMenuLevel,
+  SecretsAddResourceMenuSource
+} from "@app/lib/analytics";
 
 type MenuItemTooltipProps = {
   children: ReactElement<ComponentProps<typeof DropdownMenuItem>>;
@@ -57,6 +62,11 @@ function MenuItemTooltip({ children, content, isDisabled }: MenuItemTooltipProps
 }
 
 export type AddResourceButtonsProps = {
+  onMenuOpen: (
+    source: SecretsAddResourceMenuSource,
+    menuLevel: SecretsAddResourceMenuLevel
+  ) => void;
+  onActionSelect: (action: SecretsAddResourceAction, source: SecretsAddResourceMenuSource) => void;
   onAddSecret: () => void;
   onAddFolder: () => void;
   onAddDyanamicSecret: () => void;
@@ -88,6 +98,8 @@ export type AddResourceButtonsProps = {
 };
 
 export function AddResourceButtons({
+  onMenuOpen,
+  onActionSelect,
   onAddSecret,
   onAddFolder,
   onAddDyanamicSecret,
@@ -117,8 +129,13 @@ export function AddResourceButtons({
   canCreateHoneyTokens,
   canCreateSecretSyncs
 }: AddResourceButtonsProps) {
+  const selectAction = (action: SecretsAddResourceAction, callback: () => void) => () => {
+    onActionSelect(action, variant);
+    callback();
+  };
+
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(isOpen) => isOpen && onMenuOpen(variant, "root")}>
       <DropdownMenuTrigger asChild>
         {variant === "object-type" ? (
           <IconButton
@@ -141,20 +158,29 @@ export function AddResourceButtons({
         <DropdownMenuLabel>Basic</DropdownMenuLabel>
         {variant === "toolbar" && (
           <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
-            <DropdownMenuItem onClick={onAddSecret} isDisabled={!canCreateSecrets}>
+            <DropdownMenuItem
+              onClick={selectAction("secret", onAddSecret)}
+              isDisabled={!canCreateSecrets}
+            >
               <KeyIcon className="text-secret" />
               Add Secret
             </DropdownMenuItem>
           </MenuItemTooltip>
         )}
         <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
-          <DropdownMenuItem onClick={onImportSecrets} isDisabled={!canCreateSecrets}>
+          <DropdownMenuItem
+            onClick={selectAction("upload-secrets", onImportSecrets)}
+            isDisabled={!canCreateSecrets}
+          >
             <UploadIcon className="text-accent" />
             Upload Secrets
           </DropdownMenuItem>
         </MenuItemTooltip>
         <MenuItemTooltip isDisabled={!canCreateFolders} content="Access Restricted">
-          <DropdownMenuItem onClick={onAddFolder} isDisabled={!canCreateFolders}>
+          <DropdownMenuItem
+            onClick={selectAction("folder", onAddFolder)}
+            isDisabled={!canCreateFolders}
+          >
             <FolderIcon className="text-folder" />
             Add Folder
           </DropdownMenuItem>
@@ -162,13 +188,19 @@ export function AddResourceButtons({
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Advanced</DropdownMenuLabel>
         <MenuItemTooltip isDisabled={!isDyanmicSecretAvailable} content="Access Restricted">
-          <DropdownMenuItem onClick={onAddDyanamicSecret} isDisabled={!isDyanmicSecretAvailable}>
+          <DropdownMenuItem
+            onClick={selectAction("dynamic-secret", onAddDyanamicSecret)}
+            isDisabled={!isDyanmicSecretAvailable}
+          >
             <FingerprintIcon className="text-dynamic-secret" />
             Add Dynamic Secret
           </DropdownMenuItem>
         </MenuItemTooltip>
         <MenuItemTooltip isDisabled={!isSecretRotationAvailable} content="Access Restricted">
-          <DropdownMenuItem onClick={onAddSecretRotation} isDisabled={!isSecretRotationAvailable}>
+          <DropdownMenuItem
+            onClick={selectAction("secret-rotation", onAddSecretRotation)}
+            isDisabled={!isSecretRotationAvailable}
+          >
             <RefreshCwIcon className="text-secret-rotation" />
             Add Secret Rotation
           </DropdownMenuItem>
@@ -178,7 +210,7 @@ export function AddResourceButtons({
           content="Access Restricted"
         >
           <DropdownMenuItem
-            onClick={onAddHoneyToken}
+            onClick={selectAction("honey-token", onAddHoneyToken)}
             isDisabled={!isHoneyTokenAvailable || !canCreateHoneyTokens}
           >
             <HexagonIcon className="text-warning" />
@@ -199,7 +231,7 @@ export function AddResourceButtons({
               }
             >
               <DropdownMenuItem
-                onClick={onAddProxiedService}
+                onClick={selectAction("proxied-service", onAddProxiedService)}
                 isDisabled={!isSingleEnvSelected || !isAllowed}
               >
                 <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
@@ -208,7 +240,7 @@ export function AddResourceButtons({
             </MenuItemTooltip>
           )}
         </ProjectPermissionCan>
-        <DropdownMenuSub>
+        <DropdownMenuSub onOpenChange={(isOpen) => isOpen && onMenuOpen(variant, "more")}>
           <DropdownMenuSubTrigger>
             <ListPlusIcon />
             Add More
@@ -223,7 +255,7 @@ export function AddResourceButtons({
               }
             >
               <DropdownMenuItem
-                onSelect={onAddSecretImport}
+                onSelect={selectAction("secret-import", onAddSecretImport)}
                 isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
               >
                 <ImportIcon className="text-import" />
@@ -239,7 +271,7 @@ export function AddResourceButtons({
               }
             >
               <DropdownMenuItem
-                onSelect={onCopySecrets}
+                onSelect={selectAction("copy-secrets", onCopySecrets)}
                 isDisabled={isCopySecretsDisabled || !canCopySecrets}
               >
                 <ClipboardPasteIcon className="text-accent" />
@@ -255,7 +287,7 @@ export function AddResourceButtons({
               }
             >
               <DropdownMenuItem
-                onSelect={onAddSecretSync}
+                onSelect={selectAction("secret-sync", onAddSecretSync)}
                 isDisabled={!canCreateSecretSyncs || !isSingleEnvSelected}
               >
                 <RefreshCwIcon className="text-accent" />
@@ -273,7 +305,7 @@ export function AddResourceButtons({
                 }
               >
                 <DropdownMenuItem
-                  onSelect={onImportFromVault}
+                  onSelect={selectAction("import-from-vault", onImportFromVault)}
                   isDisabled={!canCreateSecrets || !isSingleEnvSelected}
                 >
                   <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
@@ -297,7 +329,7 @@ export function AddResourceButtons({
                 }
               >
                 <DropdownMenuItem
-                  onSelect={onImportFromDoppler}
+                  onSelect={selectAction("import-from-doppler", onImportFromDoppler)}
                   isDisabled={!canCreateSecrets || !isSingleEnvSelected}
                 >
                   <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">

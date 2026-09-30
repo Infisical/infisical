@@ -1454,7 +1454,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           distributions: z.object({
             byEnrollmentMethod: z.array(z.object({ label: z.string(), count: z.number() })),
             byAlgorithm: z.array(z.object({ label: z.string(), count: z.number() })),
-            byCA: z.array(z.object({ id: z.string(), label: z.string(), count: z.number() })),
+            byCA: z.array(z.object({ id: z.string().optional(), label: z.string(), count: z.number() })),
             byStatus: z.array(z.object({ label: z.string(), count: z.number() }))
           }),
           expirationBuckets: z.array(z.object({ bucket: z.string(), count: z.number() })),

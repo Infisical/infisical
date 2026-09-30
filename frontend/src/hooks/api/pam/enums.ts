@@ -7,6 +7,7 @@ export enum PamAccountType {
   MongoDB = "mongodb",
   Redis = "redis",
   Snowflake = "snowflake",
+  ClickHouse = "clickhouse",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",

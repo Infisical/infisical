@@ -65,6 +65,32 @@ export const runModesSchema = zpStr(z.string().optional())
  */
 export const SECRET_SCANNING_SCAN_OVERHEAD = ms("5m");
 
+/**
+ * Ceiling for the `git rev-list` pass that plans a full scan's commit batches. Enumeration is a
+ * traversal with no patch generation, so it is bounded separately from the scan rather than
+ * spending any of the customer-tunable scan budget — but it runs between the clone and the first
+ * progress update, so the stuck-scan budget has to carry it.
+ */
+export const SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT = ms("5m");
+
+/**
+ * Everything a scan can spend between two progress updates that is not the customer's clone and
+ * scan timeouts: enumerating the commits to batch, and the measurement and bookkeeping around them.
+ */
+export const SECRET_SCANNING_FIXED_SCAN_HEADROOM =
+  SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
+
+/**
+ * The longest a healthy scan can go without recording progress: the clone, the commit enumeration
+ * and measurement that follow it, one `infisical scan` invocation, and the bookkeeping around them.
+ * The stuck-scan validation and the full-scan lease TTL both key off it, so they cannot drift apart.
+ */
+export const getSecretScanningScanBudgetMs = (timeouts: {
+  SECRET_SCANNING_CLONE_TIMEOUT: number;
+  SECRET_SCANNING_SCAN_TIMEOUT: number;
+}) =>
+  timeouts.SECRET_SCANNING_CLONE_TIMEOUT + timeouts.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_FIXED_SCAN_HEADROOM;
+
 const zodTimeoutMs = ({
   envVar,
   description,
@@ -125,7 +151,7 @@ export const secretScanningTimeoutsSchema = z.object({
 });
 
 export const getSecretScanningStuckScanTimeout = (data: z.infer<typeof secretScanningTimeoutsSchema>) =>
-  data.SECRET_SCANNING_CLONE_TIMEOUT + data.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
+  getSecretScanningScanBudgetMs(data);
 
 const databaseReadReplicaSchema = z
   .object({
@@ -450,6 +476,14 @@ const envSchema = z
       .describe(
         "CPU thread ceiling for scanning child processes, applied as GOMAXPROCS to the Go scanner and pack.threads to git clone. Both otherwise use every core on the host, so one full scan can saturate the instance. Set to 0 to remove the cap."
       ),
+    SECRET_SCANNING_COMMIT_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(5_000)
+      .describe(
+        "Commits scanned per `infisical scan` invocation during a full scan. Each batch's findings and resume point are persisted before the next one starts, so a worker killed mid-scan resumes rather than restarting. Set to 0 to scan the whole history in a single invocation."
+      ),
     SECRET_SCANNING_MAX_REPO_SIZE_MB: z.coerce
       .number()
       .int()
@@ -598,6 +632,11 @@ const envSchema = z
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
 
+    // Stripe App Connection
+    INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_STRIPE_SECRET_KEY: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL: zpStr(z.string().optional()),
+
     // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
     DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),
@@ -648,7 +687,10 @@ const envSchema = z
     GO_SIDECAR_SPAWN_ENABLED: zodStrBool.default("false"),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
-    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
+    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional()),
+
+    /* Temporary Stripe Whitelisting ----------------------------------------------------------------------------- */
+    WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS: zpStr(z.string().optional())
   })
   .refine(
     (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS) || Boolean(data.REDIS_CLUSTER_HOSTS),
@@ -751,7 +793,10 @@ const envSchema = z
       data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID || data.CLIENT_ID_HEROKU,
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU
+      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU,
+    WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS: data.WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.split(",").map((id) =>
+      id.trim()
+    )
   }));
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
@@ -1103,6 +1148,25 @@ export const overwriteSchema: {
       {
         key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET",
         description: "The Client Secret of your Heroku application."
+      }
+    ]
+  },
+  stripe: {
+    name: "Stripe",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID",
+        description: "The Client ID of your Stripe app."
+      },
+      {
+        key: "INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL",
+        description:
+          "Optional. Overrides the Stripe App Marketplace install link, which is otherwise derived from the Client ID above. Set it to the test-mode or sandbox link from the Stripe dashboard when the secret key below is not a live-mode key."
+      },
+      {
+        key: "INF_APP_CONNECTION_STRIPE_SECRET_KEY",
+        description:
+          "The secret API key of the Stripe account that owns your Stripe app. Infisical authenticates as this account and names the customer's account with Stripe-Context."
       }
     ]
   },

@@ -52,7 +52,8 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = (
     { name: "azure-cli", type: PamAccountType.AzureCli },
     { name: "windows", type: PamAccountType.Windows },
     { name: "windows-ad", type: PamAccountType.WindowsAd },
-    { name: "snowflake", type: PamAccountType.Snowflake }
+    { name: "snowflake", type: PamAccountType.Snowflake },
+    { name: "clickhouse", type: PamAccountType.ClickHouse }
   ] as const
 ).map(({ name, type }) => ({ name, type, settings: defaultTemplateSettings(type) }));
 

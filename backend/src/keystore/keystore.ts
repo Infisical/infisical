@@ -19,6 +19,7 @@ export const PgSqlLock = {
   EmailDomainCreationLock: () => pgAdvisoryLockHashText(`org-email-domain-creation`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
+  CreateOrganization: (userId: string) => pgAdvisoryLockHashText(`create-organization:${userId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
   InstanceRelayConfigInit: () => pgAdvisoryLockHashText("instance-relay-config-init"),
   OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
@@ -39,7 +40,9 @@ export const PgSqlLock = {
     pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
   OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
-  OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
+  OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`),
+  ExternalGroupOrgRoleMappingUpdate: (orgId: string) =>
+    pgAdvisoryLockHashText(`external-group-org-role-mapping-update:${orgId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -68,9 +71,9 @@ export const KeyStorePrefixes = {
   LdapDirectoryMachines: (connectionId: string, search: string, limit: number) =>
     `ldap-directory-machines-${connectionId}-${limit}-${search}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
+  StripeConnectionRefreshLock: (connectionId: string) => `stripe-connection-refresh-mutex-${connectionId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
-  SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
-    `secret-scanning-v2-mutex-${dataSourceId}-${resourceExternalId}` as const,
+  SecretScanningFullScanLease: (resourceId: string) => `secret-scanning-v2-full-scan-lease-${resourceId}` as const,
   IdentityLockoutLock: (lockoutKey: string) => `identity-lockout-lock-${lockoutKey}` as const,
   CaOrderCertificateForSubscriberLock: (subscriberId: string) =>
     `ca-order-certificate-for-subscriber-lock-${subscriberId}` as const,
@@ -87,6 +90,7 @@ export const KeyStorePrefixes = {
   IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
     `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
   IdentityLastLoginDebounce: (identityId: string) => `identity-last-login-debounce:${identityId}` as const,
+  SpiffeKidMissRefresh: (configId: string) => `spiffe-kid-miss-refresh:${configId}` as const,
   ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   // The braces are a Redis Cluster hash tag: only the tagged part picks the slot, so these land on
@@ -215,7 +219,10 @@ export const KeyStorePrefixes = {
 
   // period is a YYYY-MM stamp so the monthly notice can only go out once per org per month
   NativeIntegrationDeprecationNotice: (orgId: string, period: string) =>
-    `native-integration-deprecation-notice:${orgId}:${period}` as const
+    `native-integration-deprecation-notice:${orgId}:${period}` as const,
+
+  LegacyPkiDeprecationNotice: (orgId: string, period: string) =>
+    `legacy-pki-deprecation-notice:${orgId}:${period}` as const
 };
 
 export const KeyStoreTtls = {
@@ -284,6 +291,7 @@ export const KeyStoreTtls = {
   PkiAcmeNonceInSeconds: 300, // 5 minutes
   SecretReplicationSuccessInSeconds: 10,
   NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
+  LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   WorkerHeartbeatInSeconds: 300 // 5 minutes - tolerates several missed 60s beats
 };
 

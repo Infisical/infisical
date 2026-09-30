@@ -138,6 +138,12 @@ live in a process-wide map keyed by the driver's request id rather than on the p
 test compares the login's `sessionInfo` against what was asked for, because Snowflake accepts a warehouse
 or role the credential can't use and silently leaves it unset.
 
+**ClickHouse is brokered over its HTTP interface (8123/8443), never the native protocol on 9000**, so the
+gateway can read the statement as text to block and record it (CLI `packages/pam/handlers/clickhouse/`).
+Only the first megabyte of a request body is inspected, so an account carrying a command-blocking policy
+refuses a body longer than that rather than forward the remainder unread. Databases stand in for schemas, and the explorer grid is read-only for every table
+(`supportsRowEditing`): `is_in_primary_key` is a sorting key, not a unique constraint.
+
 ## Policies & Settings
 
 **Policies** are governance controls on a template (MFA, reason, session duration, command-blocking),
@@ -187,6 +193,13 @@ are reused from `app-connection/shared/sql`, and rotation is brokered through th
 `pam-session/` + `pam-web-access/`. Sessions reference accounts via nullable `accountId` (history survives
 account deletion). Duration is capped at the template max; expiration is enforced by a delayed BullMQ job
 scheduled at session creation.
+
+**Nothing re-checks the actor mid-session**, so every path that takes access away has to close sessions
+itself. `pam-session-access-fns.ts` holds the two: `terminatePamSessionsWithoutLaunchAccess` re-derives
+`LaunchSessions` after a membership or role change, and `terminatePamSessionsForUsers` drops everything a
+user holds when they leave the org (SCIM deactivate/delete, org deactivate/remove). Both run inside the
+caller's transaction and hand back a callback to fire after COMMIT — the row flip rolls back, the gateway
+signal does not.
 
 **An orphaned session (null `accountId`) is scoped to product admin.** Every
 resource-scoped predicate is false once the FK is nulled, so `PamProductRole.Admin` stands in on the

@@ -204,8 +204,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
         paywallKey="project.role"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(open) => handleUpgradePlanPopUpToggle("upgradePlan", open)}
-        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Advanced plan."
       />
     </>
   );

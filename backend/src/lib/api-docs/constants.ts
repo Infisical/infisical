@@ -106,7 +106,8 @@ export enum ApiDocsTags {
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
-  KmipServers = "KMIP Servers"
+  KmipServers = "KMIP Servers",
+  Instance = "Instance"
 }
 
 export const GROUPS = {
@@ -2276,6 +2277,15 @@ export const CERTIFICATES = {
       "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
     removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
   },
+  RENEWAL_PREVIEW: {
+    id: "The ID of the certificate to preview a renewal for.",
+    hasOriginatingRequest:
+      "Whether the certificate has a recorded originating request. When false the preview falls back to the issued certificate, which is the case for imported and discovered certificates.",
+    request:
+      "The values a renewal will request, taken from the request that produced this certificate including any profile defaults it recorded.",
+    issuerModifiedFields:
+      "Fields the issuing authority set differently from the request, each with the requested and issued values. A renewal asks for the requested value again unless it is changed."
+  },
   REVOKE: {
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
     serialNumber:
@@ -2764,7 +2774,9 @@ export const CertificateAuthorities = {
       crlDistributionPointUrls:
         "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
       disableManagedCrlDistributionPointUrl:
-        "When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included."
+        "When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included.",
+      isOcspEnabled:
+        "When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled."
     }
   }
 };
@@ -3648,6 +3660,12 @@ export const SecretRotations = {
       username:
         "The Snowflake user whose RSA key pair will be rotated. If the user does not exist, it is created as a key-pair-only SERVICE user.",
       modulusLength: "The modulus length in bits of the generated RSA key pairs. Defaults to 2048."
+    },
+    STRIPE_API_KEY: {
+      keyName:
+        "The name for each Stripe API key this rotation creates, up to 80 characters. Infisical appends a timestamp so the old and new key can be told apart. Defaults to 'infisical-managed'.",
+      permissions:
+        "The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do."
     }
   },
   SECRETS_MAPPING: {
@@ -3747,6 +3765,9 @@ export const SecretRotations = {
     SNOWFLAKE_USER_KEY_PAIR: {
       privateKey: "The name of the secret that the generated RSA private key (PKCS#8 PEM) will be mapped to.",
       publicKey: "The name of the secret that the generated RSA public key (SPKI PEM) will be mapped to."
+    },
+    STRIPE_API_KEY: {
+      apiKey: "The name of the secret that the rotated Stripe API key will be mapped to."
     }
   }
 };
@@ -4025,6 +4046,7 @@ export const GATEWAYS = {
       "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `gcp` carries the GCP token type and service account/project/zone allowlists; `kubernetes` carries the cluster host and namespace/service account allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
   },
   UPDATE: {
+    name: "New name for the gateway. Renaming does not affect the gateway's ID, so resources referencing it keep working.",
     authMethod:
       "Replacement auth method. Same shape as in create: `aws` with allowlists, `gcp` with GCP allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },
@@ -4329,6 +4351,17 @@ export const AGENT_VAULT = {
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",
     offset: "How many members to skip."
+  },
+  AVAILABLE_MEMBER: {
+    actorTypeFilter: "List only users, only groups or only machine identities.",
+    search: "Match candidates by name, username or email address.",
+    limit: "The maximum number of candidates to return.",
+    offset: "How many candidates to skip."
+  },
+  AVAILABLE_GRANTEE: {
+    search: "Match candidates by name, username or email address.",
+    limit: "The maximum number of candidates to return.",
+    offset: "How many candidates to skip."
   },
   PROXY: {
     proxyId: "The ID of the proxy.",

@@ -511,6 +511,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
             <span className="text-label">Don&apos;t have an account?</span>
             <Link
               to="/signup"
+              search={{ callback_port: callbackPort ? Number(callbackPort) : undefined }}
               className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
             >
               Sign up

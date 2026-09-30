@@ -83,5 +83,6 @@ export enum AppConnection {
   Fireworks = "fireworks",
   NutanixPrismCentral = "nutanix-prism-central",
   Spacelift = "spacelift",
-  Daytona = "daytona"
+  Daytona = "daytona",
+  Stripe = "stripe"
 }

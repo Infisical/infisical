@@ -45,6 +45,8 @@ type TNetScalerPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -495,6 +497,10 @@ export const netScalerPkiSyncFactory = ({
                 fullCertContent = `${cert}\n${certificateChain}`;
               }
 
+              if (certificateId) {
+                await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, targetCertKeyName);
+              }
+
               await uploadFileToNetScaler(session, certFilename, fullCertContent);
               await uploadFileToNetScaler(session, keyFilename, privateKey);
               await createOrUpdateCertKey(session, targetCertKeyName, certFilename, keyFilename);
@@ -568,7 +574,7 @@ export const netScalerPkiSyncFactory = ({
           }
 
           if (canRemoveCertificates) {
-            const certKeysToRemove = new Set<string>();
+            const removalCandidates = new Set<string>();
 
             for (const syncRecord of existingSyncRecords) {
               if (
@@ -576,7 +582,7 @@ export const netScalerPkiSyncFactory = ({
                 !activeExternalIdentifiers.has(syncRecord.externalIdentifier) &&
                 existingCertKeyNames.has(syncRecord.externalIdentifier)
               ) {
-                certKeysToRemove.add(syncRecord.externalIdentifier);
+                removalCandidates.add(syncRecord.externalIdentifier);
               }
             }
 
@@ -585,10 +591,16 @@ export const netScalerPkiSyncFactory = ({
 
               for (const certKeyName of existingCertKeyNames) {
                 if (managedCertNamePattern.test(certKeyName) && !activeExternalIdentifiers.has(certKeyName)) {
-                  certKeysToRemove.add(certKeyName);
+                  removalCandidates.add(certKeyName);
                 }
               }
             }
+
+            const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse([...removalCandidates], {
+              excludePkiSyncId: pkiSync.id,
+              destination: pkiSync.destination
+            });
+            const certKeysToRemove = [...removalCandidates].filter((certKeyName) => !ownedByOtherSync.has(certKeyName));
 
             for (const certKeyName of certKeysToRemove) {
               try {

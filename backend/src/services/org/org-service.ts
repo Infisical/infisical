@@ -13,12 +13,15 @@ import {
   TSamlConfigs
 } from "@app/db/schemas";
 import { bootstrapAgentVaultProject } from "@app/ee/services/agent-vault-project/agent-vault-project-bootstrap";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
+import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import {
   OrgPermissionActions,
   OrgPermissionGroupActions,
@@ -30,12 +33,19 @@ import {
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenRequestError,
+  NotFoundError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -134,6 +144,8 @@ type TOrgServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
@@ -173,7 +185,9 @@ export const orgServiceFactory = ({
   approvalPolicyDAL,
   alertChannelRecipientDAL,
   certificatePolicyDAL,
-  usageMeteringService
+  usageMeteringService,
+  pamSessionDAL,
+  gatewayV2Service
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -681,16 +695,45 @@ export const orgServiceFactory = ({
   const createOrganization = async (
     {
       userId,
-      orgName
+      orgName,
+      blockIfUserHasCreatedOrg
     }: {
       userId?: string;
       orgName: string;
+      // Set by the user-facing create-org endpoint, and only on cloud.
+      blockIfUserHasCreatedOrg?: boolean;
     },
     trx?: Knex
   ) => {
     const createOrg = async (tx: Knex) => {
+      // Serializes concurrent creates so two requests cannot both read a count of zero. Tried rather
+      // than waited on, so the loser answers immediately instead of holding one of the ten pool
+      // connections until the winner commits.
+      if (blockIfUserHasCreatedOrg && userId) {
+        const lock = await tx.raw<{ rows: { lock_acquired: boolean }[] }>(
+          "SELECT pg_try_advisory_xact_lock(?) as lock_acquired",
+          [PgSqlLock.CreateOrganization(userId)]
+        );
+        if (!lock?.rows[0]?.lock_acquired) {
+          throw new ConflictError({
+            message: "Another organization is already being created for your account. Try again in a moment."
+          });
+        }
+
+        const createdOrgs = await orgDAL.countJoinedRootOrgsCreatedByUserId(userId, tx);
+        if (createdOrgs > 0) {
+          throw new ConflictError({
+            message:
+              "You have already created an organization. Ask an administrator of an existing organization to invite you."
+          });
+        }
+      }
+
       // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
-      const org = await orgDAL.create({ name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) }, tx);
+      const org = await orgDAL.create(
+        { name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`), createdByUserId: userId },
+        tx
+      );
       if (userId) {
         const membership = await orgDAL.createMembership(
           {
@@ -800,7 +843,8 @@ export const orgServiceFactory = ({
     const decodedToken = crypto.jwt().verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
     if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
 
-    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
+    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     // if root org null = this is a root org then cancel the subscription.
     if (!org.rootOrgId) {
       await licenseService.cancelOrgSubscription(orgId);
@@ -949,6 +993,8 @@ export const orgServiceFactory = ({
     const updatesToActiveAdmin = role === OrgMembershipRole.Admin && isActive !== false;
     const noRoleOrActivationChange = role === undefined && (isActive === undefined || isActive === true);
 
+    let sendPamCancellations = () => {};
+
     const membership = await orgDAL.transaction(async (tx) => {
       if (!updatesToActiveAdmin && !noRoleOrActivationChange) {
         await assertWillRetainOrgAdmin({
@@ -994,8 +1040,23 @@ export const orgServiceFactory = ({
           );
         }
       }
+
+      if (isActive === false && updatedOrgMembership.actorUserId) {
+        const childOrgs = await orgDAL.find({ rootOrgId: orgId }, { tx });
+        sendPamCancellations = await terminatePamSessionsForUsers({
+          orgIds: [orgId, ...childOrgs.map((el) => el.id)],
+          userIds: [updatedOrgMembership.actorUserId],
+          pamSessionDAL,
+          gatewayV2Service,
+          tx
+        });
+      }
+
       return updatedOrgMembership;
     });
+
+    sendPamCancellations();
+
     return membership;
   };
 
@@ -1300,7 +1361,9 @@ export const orgServiceFactory = ({
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
       approvalPolicyDAL,
-      alertChannelRecipientDAL
+      alertChannelRecipientDAL,
+      pamSessionDAL,
+      gatewayV2Service
     });
 
     // Removing an org member cascades their project + group memberships, changing the identity meters.
@@ -1356,7 +1419,9 @@ export const orgServiceFactory = ({
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
       approvalPolicyDAL,
-      alertChannelRecipientDAL
+      alertChannelRecipientDAL,
+      pamSessionDAL,
+      gatewayV2Service
     });
 
     // Removing org members cascades their project + group memberships, changing the identity meters.

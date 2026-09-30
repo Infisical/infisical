@@ -627,8 +627,8 @@ export const RequestAccessForm = ({
                     currentProject?.environments?.find(({ slug }) => slug === field.value) ?? null
                   }
                   onValueChange={(environmentOption) => {
-                    if (environmentOption.slug === field.value) return;
-                    field.onChange(environmentOption.slug);
+                    if (environmentOption?.slug === field.value) return;
+                    field.onChange(environmentOption?.slug ?? "");
                     // clear alongside the env change so both land in one render
                     form.setValue("secretPath", "", {
                       shouldValidate: form.formState.isSubmitted

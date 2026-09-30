@@ -110,7 +110,7 @@ const TypeSelectInner = ({
 
   return (
     <div
-      className={`flex h-full min-w-16 items-center gap-1 pr-2 pl-1 ${showDivider ? "mr-2 border-r border-border" : "mr-2"}`}
+      className={`flex h-full min-w-16 items-center gap-1 pr-2 pl-1 ${showDivider ? "mr-2 border-r border-border-soft" : "mr-2"}`}
     >
       <NavbarSwitcher open={open} onOpenChange={setOpen}>
         <button

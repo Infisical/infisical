@@ -78,7 +78,7 @@ const DonutChart = ({
         (certKeyAlgorithmToNameMap as Record<string, string>)[label] ?? label.replace(/_/g, " ")
       );
     }
-    if (chartKey === "enrollmentMethod") return label.toUpperCase();
+    if (chartKey === "enrollmentMethod" && label !== "Other") return label.toUpperCase();
     return label;
   };
 
@@ -237,7 +237,7 @@ export const DistributionCharts = ({ stats, onNavigate }: Props) => {
           chartKey={chart.chartKey}
           data={chart.data}
           onSegmentClick={(entry) => {
-            if (chart.chartKey === "enrollmentMethod") {
+            if (chart.chartKey === "enrollmentMethod" && entry.label !== "Other") {
               onNavigate({ filterEnrollmentType: entry.label });
             } else if (chart.chartKey === "algorithm" && entry.label !== "Unknown") {
               onNavigate({ filterKeyAlgorithm: entry.label });

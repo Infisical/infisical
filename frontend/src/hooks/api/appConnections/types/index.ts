@@ -74,6 +74,7 @@ import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
 import { TSpaceliftConnection } from "./spacelift-connection";
 import { TSshConnection } from "./ssh-connection";
+import { TStripeConnection } from "./stripe-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
@@ -157,6 +158,7 @@ export * from "./smb-connection";
 export * from "./snowflake-connection";
 export * from "./spacelift-connection";
 export * from "./ssh-connection";
+export * from "./stripe-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
@@ -254,7 +256,8 @@ export type TAppConnection =
   | TNutanixPrismCentralConnection
   | TPowerDnsConnection
   | TSpaceliftConnection
-  | TDaytonaConnection;
+  | TDaytonaConnection
+  | TStripeConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

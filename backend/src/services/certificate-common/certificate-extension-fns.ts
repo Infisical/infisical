@@ -3,23 +3,27 @@ import * as asn1js from "asn1js";
 import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import { matchesNormalizedPattern } from "../certificate-policy/certificate-policy-fns";
 import {
   CERT_EXTENSION_OID_PATTERN_SOURCE,
   CertExtensionCriticality,
   CUSTOM_EXTENSION_PRESET_OIDS,
+  ISSUER_GENERATED_CERT_EXTENSION_OID_LABELS,
   MAX_CUSTOM_EXTENSION_VALUE_BYTES,
   MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE,
   RESERVED_CERT_EXTENSION_OID_MESSAGES,
   RESERVED_CERT_EXTENSION_OID_PREFIXES
 } from "./certificate-constants";
+import { TCertificateSource, toX509Certificate } from "./certificate-parse-utils";
 
 export type TIssuedCustomExtension = {
   oid: string;
   critical: boolean;
   value: string;
   displayValue?: string;
+  issuerAdded?: boolean;
 };
 
 export type TResolvedCustomExtension = TIssuedCustomExtension;
@@ -140,7 +144,37 @@ const asn1StringPreset = ({
   }
 });
 
+// RFC 7633 TLS Feature, a SEQUENCE OF INTEGER. Without a preset its DER reads back as nothing a
+// request can carry, so a renewal would silently drop must-staple and issue a weaker certificate.
+const TLS_FEATURE_PATTERN = new RE2("^[0-9]{1,5}(,[0-9]{1,5})*$");
+
+const encodeTlsFeature = (value: string): Buffer =>
+  toDerBuffer(
+    new asn1js.Sequence({
+      value: value.split(",").map((entry) => new asn1js.Integer({ value: Number(entry.trim()) }))
+    })
+  );
+
+const describeTlsFeature = (der: Buffer): string | null => {
+  const parsed = parseSingleDerValue(der);
+  if (!(parsed instanceof asn1js.Sequence)) return null;
+
+  const features = parsed.valueBlock.value;
+  if (!features.length || !features.every((entry) => entry instanceof asn1js.Integer)) return null;
+
+  return features.map((entry) => (entry as asn1js.Integer).valueBlock.valueDec).join(",");
+};
+
 export const CUSTOM_EXTENSION_PRESETS_BY_OID: Record<string, TCustomExtensionPreset> = {
+  [CUSTOM_EXTENSION_PRESET_OIDS.TLS_FEATURE]: {
+    critical: false,
+    validateInput: (value) =>
+      TLS_FEATURE_PATTERN.test(value)
+        ? null
+        : "Value must be a comma-separated list of TLS feature numbers, for example 5 for OCSP must-staple",
+    encode: encodeTlsFeature,
+    describe: describeTlsFeature
+  },
   [CUSTOM_EXTENSION_PRESET_OIDS.NTDS_SID]: {
     critical: false,
     validateInput: (value) =>
@@ -190,6 +224,9 @@ export const isReservedExtensionOid = (oid: string): boolean =>
   RESERVED_CERT_EXTENSION_OID_PREFIXES.some((prefix) => oid.startsWith(prefix)) ||
   Object.hasOwn(RESERVED_CERT_EXTENSION_OID_MESSAGES, oid);
 
+export const isIssuerGeneratedExtensionOid = (oid: string): boolean =>
+  Object.hasOwn(ISSUER_GENERATED_CERT_EXTENSION_OID_LABELS, oid);
+
 export const describeReservedExtensionOid = (oid: string): string =>
   RESERVED_CERT_EXTENSION_OID_MESSAGES[oid] ??
   `OID ${oid} is a standard X.509 extension that Infisical manages, so it cannot be used as a custom extension.`;
@@ -231,18 +268,12 @@ export const describeCustomExtensionValue = (oid: string, base64Value: string): 
   }
 };
 
-export const parseCustomExtensionsFromCertificate = (
-  source: Buffer | x509.X509Certificate
-): TIssuedCustomExtension[] => {
+export const parseCustomExtensionsFromCertificate = (source: TCertificateSource): TIssuedCustomExtension[] => {
   let certificate: x509.X509Certificate;
-  if (source instanceof x509.X509Certificate) {
-    certificate = source;
-  } else {
-    try {
-      certificate = new x509.X509Certificate(source);
-    } catch {
-      return [];
-    }
+  try {
+    certificate = toX509Certificate(source);
+  } catch {
+    return [];
   }
 
   return certificate.extensions
@@ -262,19 +293,35 @@ const withDisplayValue = (extensions: TIssuedCustomExtension[]): TIssuedCustomEx
   }));
 
 export const parseIssuedCustomExtensions = (
-  certificateDer: Buffer,
+  certificate: TCertificateSource,
   resolved?: TResolvedCustomExtension[]
 ): TIssuedCustomExtension[] => {
   if (!resolved?.length) return [];
   const resolvedOids = new Set(resolved.map((extension) => extension.oid));
 
   return withDisplayValue(
-    parseCustomExtensionsFromCertificate(certificateDer).filter((extension) => resolvedOids.has(extension.oid))
+    parseCustomExtensionsFromCertificate(certificate).filter((extension) => resolvedOids.has(extension.oid))
   );
 };
 
-export const parseImportedCustomExtensions = (certificateDer: Buffer): TIssuedCustomExtension[] =>
-  withDisplayValue(parseCustomExtensionsFromCertificate(certificateDer));
+export const parseImportedCustomExtensions = (certificate: TCertificateSource): TIssuedCustomExtension[] =>
+  withDisplayValue(parseCustomExtensionsFromCertificate(certificate));
+
+export const parseExternallyIssuedCustomExtensions = (
+  certificate: TCertificateSource,
+  requested?: TResolvedCustomExtension[]
+): TIssuedCustomExtension[] => {
+  const requestedByOid = new Map((requested ?? []).map((extension) => [extension.oid, extension]));
+
+  return withDisplayValue(
+    parseCustomExtensionsFromCertificate(certificate).map((extension) => {
+      const asked = requestedByOid.get(extension.oid);
+      const issuedAsAsked = asked && asked.value === extension.value && asked.critical === extension.critical;
+
+      return issuedAsAsked ? extension : { ...extension, issuerAdded: true };
+    })
+  );
+};
 
 export type TCsrCustomExtensionMismatch = { oid: string; reason: "missing" | "value" | "criticality" };
 
@@ -302,12 +349,12 @@ export const findCsrCustomExtensionMismatch = (
 };
 
 export const findUnsatisfiedCustomExtensionOids = (
-  certificateDer: Buffer,
+  certificate: Buffer,
   resolved?: TResolvedCustomExtension[]
 ): string[] => {
   if (!resolved?.length) return [];
   const issuedByOid = new Map(
-    parseCustomExtensionsFromCertificate(certificateDer).map((extension) => [extension.oid, extension])
+    parseCustomExtensionsFromCertificate(certificate).map((extension) => [extension.oid, extension])
   );
   return resolved
     .filter((extension) => {
@@ -317,22 +364,29 @@ export const findUnsatisfiedCustomExtensionOids = (
     .map((extension) => extension.oid);
 };
 
+export const readStoredCustomExtensions = (stored: unknown): TResolvedCustomExtension[] =>
+  (stored as TResolvedCustomExtension[] | null) ?? [];
+
 export const toRequestCustomExtensions = (stored: unknown): TRequestCustomExtension[] =>
-  ((stored as TResolvedCustomExtension[] | null) ?? []).flatMap((extension) => {
-    const value = describeCustomExtensionValue(extension.oid, extension.value);
-    if (value === null) {
-      throw new BadRequestError({
-        message: `Custom extension '${extension.oid}' on this certificate cannot be read back into a value a new request can carry, so it cannot be reissued. Issue a new certificate, or renew from a certificate signing request that carries the extension.`
-      });
-    }
-    return [
-      {
-        oid: extension.oid,
-        value,
-        critical: extension.critical
+  readStoredCustomExtensions(stored)
+    .filter((extension) => !extension.issuerAdded && !isIssuerGeneratedExtensionOid(extension.oid))
+    .flatMap((extension) => {
+      const value = describeCustomExtensionValue(extension.oid, extension.value);
+      if (value === null) {
+        if (extension.critical) {
+          throw new BadRequestError({
+            message: `Critical custom extension '${extension.oid}' on this certificate cannot be read back into a value a new request can carry, so reissuing it would drop a constraint relying parties must enforce. Issue a new certificate, or renew from a certificate signing request that carries the extension.`
+          });
+        }
+
+        logger?.warn(
+          `Custom extension cannot be read back into a value a request can carry, so it is omitted [oid=${extension.oid}]`
+        );
+        return [];
       }
-    ];
-  });
+
+      return [{ oid: extension.oid, value, critical: extension.critical }];
+    });
 
 export const assertAwsPcaCustomExtensionLimit = (count: number): void => {
   if (count > MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE) {
