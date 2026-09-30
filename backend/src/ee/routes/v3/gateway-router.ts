@@ -56,13 +56,6 @@ const GatewayWithAuthMethodSchema = SanitizedGatewayV2Schema.extend({
 const AwsAuthMethodInputSchema = z
   .object({
     method: z.literal(ResourceAuthMethodType.Aws),
-    stsEndpoint: z
-      .string()
-      .trim()
-      .min(1)
-      .max(255)
-      .default("https://sts.amazonaws.com/")
-      .describe(GATEWAYS.AUTH_METHOD.stsEndpoint),
     allowedPrincipalArns: validatePrincipalArns.describe(GATEWAYS.AUTH_METHOD.allowedPrincipalArns),
     allowedAccountIds: validateAccountIds
       .refine((val) => val.length <= 2048, "Allowed account IDs must be at most 2048 characters")
@@ -163,7 +156,6 @@ const toCreateAuthMethodArg = (input: TSettableAuthMethodInput) => {
     return {
       method: ResourceAuthMethodType.Aws,
       config: {
-        stsEndpoint: input.stsEndpoint,
         allowedPrincipalArns: input.allowedPrincipalArns,
         allowedAccountIds: input.allowedAccountIds
       }
@@ -204,7 +196,6 @@ const toSetAuthMethodArg = (input: TSettableAuthMethodInput) => {
   if (input.method === ResourceAuthMethodType.Aws) {
     return {
       method: ResourceAuthMethodType.Aws,
-      stsEndpoint: input.stsEndpoint,
       allowedPrincipalArns: input.allowedPrincipalArns,
       allowedAccountIds: input.allowedAccountIds
     } as const;
@@ -336,23 +327,33 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       body: z.object({
+        name: slugSchema({ field: "name" }).optional().describe(GATEWAYS.UPDATE.name),
         authMethod: SettableAuthMethodInputSchema.optional().describe(GATEWAYS.UPDATE.authMethod)
       }),
       response: { 200: GatewayWithAuthMethodSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.body.authMethod) {
-        const setInput = toSetAuthMethodArg(req.body.authMethod);
+      // Before the auth method is touched, so the usual rejection leaves nothing applied.
+      if (req.body.name) {
+        await server.services.gatewayV2.assertGatewayNameAvailable({
+          orgPermission: req.permission,
+          gatewayId: req.params.gatewayId,
+          name: req.body.name
+        });
+      }
 
+      // Auth first: it is the half that fails, so a rejection cannot leave behind a rename.
+      if (req.body.authMethod) {
         const result = await server.services.resourceAuthMethod.setMethod({
           resource: { type: "gateway", id: req.params.gatewayId },
-          authMethod: setInput,
+          authMethod: toSetAuthMethodArg(req.body.authMethod),
           actor: req.permission
         });
 
         const updated = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
 
+        // Before the rename, so a failed rename cannot lose the record.
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
@@ -384,7 +385,30 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           });
       }
 
-      const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
+      // Held onto for the response: it comes from the primary, and a lagging replica read
+      // would hand back the old name.
+      let renamed;
+      if (req.body.name) {
+        const result = await server.services.gatewayV2.renameGateway({
+          orgPermission: req.permission,
+          gatewayId: req.params.gatewayId,
+          name: req.body.name
+        });
+        renamed = result.gateway;
+
+        if (result.previousName !== renamed.name) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            orgId: req.permission.orgId,
+            event: {
+              type: EventType.GATEWAY_UPDATE,
+              metadata: { gatewayId: renamed.id, name: renamed.name, previousName: result.previousName }
+            }
+          });
+        }
+      }
+
+      const gateway = renamed ?? (await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId }));
       const view = await server.services.resourceAuthMethod.getByGatewayId({
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission

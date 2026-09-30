@@ -790,6 +790,7 @@ export enum EventType {
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
   AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
+  AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE = "agent-vault-session-log-settings-update",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -905,6 +906,8 @@ export enum EventType {
 
   // Gateway Enrollment Tokens
   GATEWAY_CREATE = "gateway-create",
+  GATEWAY_UPDATE = "gateway-update",
+  GATEWAY_DELETE = "gateway-delete",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   GATEWAY_ENROLL = "gateway-enroll",
   GATEWAY_CONNECT = "gateway-connect",
@@ -2954,6 +2957,7 @@ interface CreateCa {
     dn?: string;
     keySource?: string;
     hsmConnectorId?: string;
+    isOcspEnabled?: boolean;
   };
 }
 
@@ -2980,6 +2984,7 @@ interface UpdateCa {
     name: string;
     dn?: string;
     status: CaStatus;
+    isOcspEnabled?: boolean;
   };
 }
 
@@ -6300,6 +6305,18 @@ interface AgentVaultProxyDeleteEvent {
   };
 }
 
+interface AgentVaultSessionLogSettingsUpdateEvent {
+  type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE;
+  metadata: {
+    enabled: boolean;
+    appConnectionId: string | null;
+    appConnectionName: string | null;
+    bucket: string | null;
+    region: string | null;
+    keyPrefix: string | null;
+  };
+}
+
 interface AgentVaultAccessBundleCreateEvent {
   type: EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE;
   metadata: {
@@ -6586,7 +6603,11 @@ interface PamAccessRequestCreateEvent {
   metadata: {
     requestId: string;
     accountId: string;
+    accountName?: string;
     folderId: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     duration: string;
     accessType: string;
     reason?: string;
@@ -6598,7 +6619,11 @@ interface PamAccessRequestReviewEvent {
   metadata: {
     requestId: string;
     accountId?: string;
+    accountName?: string;
     folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     status: string;
     comment?: string;
   };
@@ -6610,7 +6635,11 @@ interface PamAccessGrantRevokeEvent {
     requestId: string;
     grantId: string;
     accountId?: string;
+    accountName?: string;
     folderId?: string;
+    folderName?: string;
+    granteeName?: string;
+    granteeEmail?: string;
   };
 }
 
@@ -7432,6 +7461,23 @@ interface GatewayCreateEvent {
   };
 }
 
+interface GatewayUpdateEvent {
+  type: EventType.GATEWAY_UPDATE;
+  metadata: {
+    gatewayId: string;
+    name: string;
+    previousName: string;
+  };
+}
+
+interface GatewayDeleteEvent {
+  type: EventType.GATEWAY_DELETE;
+  metadata: {
+    gatewayId: string;
+    name: string;
+  };
+}
+
 interface GatewayEnrollmentTokenCreateEvent {
   type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE;
   metadata: {
@@ -7506,7 +7552,6 @@ interface ResourceAuthMethodConfigMetadata {
   resourceName?: string;
   method: ResourceAuthMethodType;
   methodConfigId: string;
-  stsEndpoint?: string;
   allowedPrincipalArns?: string;
   allowedAccountIds?: string;
   kubernetesHost?: string;
@@ -8324,6 +8369,7 @@ export type Event =
   | AgentVaultProxyUpdateEvent
   | AgentVaultProxyRevokeEvent
   | AgentVaultProxyDeleteEvent
+  | AgentVaultSessionLogSettingsUpdateEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
@@ -8419,6 +8465,8 @@ export type Event =
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent
   | GatewayCreateEvent
+  | GatewayUpdateEvent
+  | GatewayDeleteEvent
   | GatewayEnrollmentTokenCreateEvent
   | GatewayEnrollEvent
   | GatewayConnectEvent

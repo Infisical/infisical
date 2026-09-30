@@ -324,6 +324,27 @@ export async function scanFile(inputPath: string, configPath?: string): Promise<
   }
 }
 
+export const toFindingDetails = (finding: SecretMatch): unknown =>
+  titleCaseToCamelCase({
+    Description: finding.Description,
+    StartLine: finding.StartLine,
+    EndLine: finding.EndLine,
+    StartColumn: finding.StartColumn,
+    EndColumn: finding.EndColumn,
+    File: finding.File,
+    SymlinkFile: finding.SymlinkFile,
+    Commit: finding.Commit,
+    Entropy: finding.Entropy,
+    Author: finding.Author,
+    Email: finding.Email,
+    Date: finding.Date,
+    Message: finding.Message,
+    Tags: finding.Tags,
+    RuleID: finding.RuleID,
+    Fingerprint: finding.Fingerprint,
+    Link: finding.Attributes?.url ?? ""
+  });
+
 export const scanGitRepositoryAndGetFindings = async (
   scanPath: string,
   findingsPath: string,
@@ -335,19 +356,12 @@ export const scanGitRepositoryAndGetFindings = async (
 
   const findingsData = JSON.parse(await readFindingsFile(findingsPath)) as SecretMatch[];
 
-  return findingsData.map(
-    ({
-      // discard match and secret as we don't want to store
-      Match,
-      Secret,
-      ...finding
-    }) => ({
-      details: titleCaseToCamelCase(finding),
-      fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
-      severity: SecretScanningFindingSeverity.High,
-      rule: finding.RuleID
-    })
-  );
+  return findingsData.map((finding) => ({
+    details: toFindingDetails(finding),
+    fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
+    severity: SecretScanningFindingSeverity.High,
+    rule: finding.RuleID
+  }));
 };
 
 export const replaceNonChangesWithNewlines = (patch: string) => {

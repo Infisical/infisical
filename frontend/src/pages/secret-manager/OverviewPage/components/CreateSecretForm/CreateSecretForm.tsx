@@ -204,6 +204,7 @@ export const CreateSecretForm = ({
   const [tagSearches, setTagSearches] = useState<Record<string, string>>({});
 
   const secretKeyInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const generateButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedEnvironments = watch("environments");
 
   const handleFormSubmit = async ({ environments: selectedEnv, secrets }: TFormSchema) => {
@@ -412,6 +413,43 @@ export const CreateSecretForm = ({
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
       <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <Controller
+          control={control}
+          name="environments"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel htmlFor="create-secret-environments">Environments</FieldLabel>
+              <FieldContent>
+                <Combobox
+                  id="create-secret-environments"
+                  multiple
+                  options={environments.filter((environment) =>
+                    permission.can(
+                      ProjectPermissionSecretActions.Create,
+                      subject(ProjectPermissionSub.Secrets, {
+                        environment: environment.slug,
+                        secretPath,
+                        secretName: "*",
+                        secretTags: ["*"]
+                      })
+                    )
+                  )}
+                  value={value}
+                  onValueChange={onChange}
+                  isError={Boolean(error)}
+                  modal
+                  placeholder="Select environments to create secret in..."
+                  searchPlaceholder="Search environments..."
+                  searchAriaLabel="Search environments"
+                  emptyMessage="No environments found."
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.slug}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
         {secretFields.map((secretField, index) => {
           const secretKey = watch(`secrets.${index}.key`);
           const metadata = watch(`secrets.${index}.metadata`) ?? [];
@@ -453,7 +491,6 @@ export const CreateSecretForm = ({
                             onBlur={field.onBlur}
                             placeholder="Type your secret name"
                             onPaste={(event) => handlePaste(event, index)}
-                            autoFocus={index === 0}
                             autoComplete="off"
                             isError={Boolean(error)}
                             className={currentProject?.autoCapitalization ? "uppercase" : undefined}
@@ -519,6 +556,12 @@ export const CreateSecretForm = ({
                         id={`create-secret-${index}-value`}
                         value={field.value ?? ""}
                         onChange={field.onChange}
+                        onKeyDown={(event) => {
+                          if (event.key === "Tab" && !event.shiftKey && !event.defaultPrevented) {
+                            event.preventDefault();
+                            generateButtonRefs.current[index]?.focus();
+                          }
+                        }}
                         placeholder="Enter secret value..."
                       />
                       <FieldError errors={[errors.secrets?.[index]?.value]} />
@@ -526,7 +569,13 @@ export const CreateSecretForm = ({
                     <div className="col-start-2 row-start-1 flex items-center">
                       <PasswordGenerator
                         trigger={
-                          <Button variant="ghost" size="xs">
+                          <Button
+                            ref={(element) => {
+                              generateButtonRefs.current[index] = element;
+                            }}
+                            variant="ghost"
+                            size="xs"
+                          >
                             Generate
                           </Button>
                         }
@@ -836,43 +885,6 @@ export const CreateSecretForm = ({
           <PlusIcon className="size-4" />
           Add More
         </Button>
-        <Controller
-          control={control}
-          name="environments"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field>
-              <FieldLabel htmlFor="create-secret-environments">Environments</FieldLabel>
-              <FieldContent>
-                <Combobox
-                  id="create-secret-environments"
-                  multiple
-                  options={environments.filter((environment) =>
-                    permission.can(
-                      ProjectPermissionSecretActions.Create,
-                      subject(ProjectPermissionSub.Secrets, {
-                        environment: environment.slug,
-                        secretPath,
-                        secretName: "*",
-                        secretTags: ["*"]
-                      })
-                    )
-                  )}
-                  value={value}
-                  onValueChange={onChange}
-                  isError={Boolean(error)}
-                  modal
-                  placeholder="Select environments to create secret in..."
-                  searchPlaceholder="Search environments..."
-                  searchAriaLabel="Search environments"
-                  emptyMessage="No environments found."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.slug}
-                />
-                <FieldError errors={[error]} />
-              </FieldContent>
-            </Field>
-          )}
-        />
       </div>
       <SheetFooter className="justify-between border-t">
         {onUploadSecrets && (
