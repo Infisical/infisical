@@ -120,11 +120,15 @@ export const ServiceIconStack = ({
     // direction moves a chip visually and its paint order follows, so the right edge wins either
     // way. `isolate` confines these depths to the stack.
     <div className={cn("isolate flex items-center -space-x-1.5", className)}>
+      {/* A screen reader never opens the hover tooltips, so it reads the names here. First, since the
+          spacing puts a negative margin on every child but the last, and the last has to stay a chip. */}
+      <span className="sr-only">{icons.map((icon) => icon.label).join(", ")}</span>
       {visible.map((icon, index) => (
         <Tooltip key={icon.label}>
           <TooltipTrigger asChild>
             <ServiceChip
               icon={icon}
+              aria-hidden
               className={cn(stackedChipClassName, "relative")}
               style={{ zIndex: visible.length - index }}
             />
@@ -135,7 +139,10 @@ export const ServiceIconStack = ({
       {hidden.length > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className={cn(chipClassName, stackedChipClassName, "text-[10px] font-medium")}>
+            <div
+              aria-hidden
+              className={cn(chipClassName, stackedChipClassName, "text-[10px] font-medium")}
+            >
               +{hidden.length}
             </div>
           </TooltipTrigger>
