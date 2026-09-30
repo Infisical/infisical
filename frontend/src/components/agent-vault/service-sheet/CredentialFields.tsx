@@ -23,7 +23,7 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { isVariableReferenceOnly, toVariableReference } from "@app/helpers/agentVaultVariables";
+import { isVariableReferenceOnly } from "@app/helpers/agentVaultVariables";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
 import { SendsPreview } from "./SendsPreview";
@@ -32,7 +32,7 @@ import { useServiceVariables } from "./ServiceVariablesContext";
 import {
   ReferenceHighlights,
   useVariableAutocomplete,
-  VariableChip,
+  VariableKeyChips,
   VariableSuggestions
 } from "./VariableReferenceInput";
 
@@ -235,14 +235,7 @@ export const SecretInput = <TName extends SecretName>({
           className="flex flex-wrap items-center gap-1"
         >
           Current value uses
-          {storedKeys?.map((key) => (
-            <VariableChip
-              key={key}
-              reference={toVariableReference(key)}
-              isKnown
-              className="font-mono"
-            />
-          ))}
+          <VariableKeyChips keys={storedKeys ?? []} />
         </FieldDescription>
       )}
     </>
