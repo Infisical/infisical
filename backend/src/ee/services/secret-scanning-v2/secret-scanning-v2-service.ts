@@ -47,6 +47,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -251,11 +252,11 @@ export const secretScanningV2ServiceFactory = ({
     );
 
     let connection: TAppConnection | null = null;
-    if (payload.connectionId) {
+    if (payload.appConnectionId) {
       // validates permission to connect and app is valid for data source
       connection = await appConnectionService.validateAppConnectionUsageById(
         SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[payload.type],
-        { connectionId: payload.connectionId, projectId: payload.projectId },
+        { connectionId: payload.appConnectionId, projectId: payload.projectId },
         actor
       );
     }
@@ -312,10 +313,13 @@ export const secretScanningV2ServiceFactory = ({
 
       if (payload.isAutoScanEnabled) {
         try {
-          await secretScanningV2Queue.queueDataSourceFullScan({
-            ...createdDataSource,
-            connection
-          } as TSecretScanningDataSourceWithConnection);
+          await secretScanningV2Queue.queueDataSourceFullScan(
+            {
+              ...createdDataSource,
+              connection
+            } as TSecretScanningDataSourceWithConnection,
+            { triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined }
+          );
         } catch (error) {
           // Deliberately non-fatal — a scan that can't be queued shouldn't block creating the data source.
           logger.error(
@@ -376,11 +380,11 @@ export const secretScanningV2ServiceFactory = ({
       });
 
     let connection: TAppConnection | null = null;
-    if (dataSource.connectionId) {
+    if (dataSource.appConnectionId) {
       // validates permission to connect and app is valid for data source
       connection = await appConnectionService.validateAppConnectionUsageById(
         SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type],
-        { connectionId: dataSource.connectionId, projectId: dataSource.projectId },
+        { connectionId: dataSource.appConnectionId, projectId: dataSource.projectId },
         actor
       );
     }
@@ -536,7 +540,11 @@ export const secretScanningV2ServiceFactory = ({
     let resourceExternalId: string | undefined;
 
     if (resourceId) {
-      const resource = await secretScanningV2DAL.resources.findOne({ id: resourceId, dataSourceId });
+      const resource = await secretScanningV2DAL.resources.findOne({
+        id: resourceId,
+        sourceId: dataSourceId,
+        deletedAt: null
+      });
       if (!resource) {
         throw new NotFoundError({
           message: `Could not find Secret Scanning Resource with ID "${resourceId}" for Data Source with ID "${dataSourceId}"`
@@ -550,7 +558,7 @@ export const secretScanningV2ServiceFactory = ({
         ...dataSource,
         connection
       } as TSecretScanningDataSourceWithConnection,
-      resourceExternalId
+      { resourceExternalId, triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined }
     );
 
     return dataSource as TSecretScanningDataSource;
@@ -595,7 +603,8 @@ export const secretScanningV2ServiceFactory = ({
       });
 
     const resources = await secretScanningV2DAL.resources.find({
-      dataSourceId
+      sourceId: dataSourceId,
+      deletedAt: null
     });
 
     return { resources, projectId: dataSource.projectId };
@@ -682,7 +691,7 @@ export const secretScanningV2ServiceFactory = ({
         message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
       });
 
-    const resources = await secretScanningV2DAL.resources.findWithDetails({ dataSourceId });
+    const resources = await secretScanningV2DAL.resources.findWithDetails({ sourceId: dataSourceId });
 
     return { resources: resources as TSecretScanningResourceWithDetails[], projectId: dataSource.projectId };
   };
@@ -753,15 +762,9 @@ export const secretScanningV2ServiceFactory = ({
       ProjectPermissionSub.SecretScanningFindings
     );
 
-    const [finding] = await secretScanningV2DAL.findings.find(
-      {
-        projectId,
-        status: SecretScanningFindingStatus.Unresolved
-      },
-      { count: true }
-    );
-
-    return Number(finding?.count ?? 0);
+    return secretScanningV2DAL.findings.countByProjectId(projectId, {
+      status: SecretScanningFindingStatus.Unresolved
+    });
   };
 
   const listSecretScanningFindingsByProjectId = async (projectId: string, actor: OrgServiceActor) => {
@@ -787,15 +790,13 @@ export const secretScanningV2ServiceFactory = ({
       ProjectPermissionSub.SecretScanningFindings
     );
 
-    const findings = await secretScanningV2DAL.findings.find({
-      projectId
-    });
+    const findings = await secretScanningV2DAL.findings.findByProjectId(projectId);
 
     return findings as TSecretScanningFinding[];
   };
 
   const updateSecretScanningFindingById = async (
-    { findingId, remarks, status }: TUpdateSecretScanningFindingDTO,
+    { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -806,7 +807,7 @@ export const secretScanningV2ServiceFactory = ({
           "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
       });
 
-    const finding = await secretScanningV2DAL.findings.findById(findingId);
+    const finding = await secretScanningV2DAL.findings.findByIdWithDetails(findingId);
 
     if (!finding)
       throw new NotFoundError({
@@ -827,9 +828,25 @@ export const secretScanningV2ServiceFactory = ({
       ProjectPermissionSub.SecretScanningFindings
     );
 
-    const updatedFinding = await secretScanningV2DAL.findings.updateById(findingId, {
-      remarks,
-      status
+    const isStatusChange = status !== undefined && status !== finding.status;
+    const now = new Date();
+
+    const updatedFinding = await secretScanningV2DAL.findings.transaction(async (tx) => {
+      await secretScanningV2DAL.findings.updateById(
+        findingId,
+        {
+          triageComment,
+          status,
+          ...(isStatusChange || triageComment !== undefined
+            ? { triagedAt: now, triagedByUserId: actor.type === ActorType.USER ? actor.id : null }
+            : {}),
+          ...(isStatusChange ? { resolvedAt: status === SecretScanningFindingStatus.Resolved ? now : null } : {})
+        },
+        tx
+      );
+
+      // read back in the same transaction: a replica may not have the write yet
+      return secretScanningV2DAL.findings.findByIdWithDetails(findingId, tx);
     });
 
     return { finding: updatedFinding as TSecretScanningFinding, projectId: finding.projectId };

@@ -36,9 +36,11 @@ import {
   SecretScanningDataSource,
   SecretScanningResource,
   SecretScanningScanStatus,
+  SecretScanningScanTrigger,
   SecretScanningScanType
 } from "./secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "./secret-scanning-v2-factory";
+import { SECRET_SCANNING_DATA_SOURCE_RESOURCE_TYPE_MAP } from "./secret-scanning-v2-maps";
 import {
   TFindingsPayload,
   TQueueSecretScanningDataSourceFullScan,
@@ -139,7 +141,7 @@ export const secretScanningV2QueueServiceFactory = ({
       },
       {
         status: SecretScanningScanStatus.Scanning,
-        scanningStartedAt: new Date(),
+        startedAt: new Date(),
         ...(trackProgress ? { progressUpdatedAt: new Date() } : {})
       }
     );
@@ -160,7 +162,8 @@ export const secretScanningV2QueueServiceFactory = ({
       },
       {
         status: SecretScanningScanStatus.Failed,
-        statusMessage
+        statusMessage,
+        completedAt: new Date()
       }
     );
 
@@ -169,7 +172,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
   const queueDataSourceFullScan = async (
     dataSource: TSecretScanningDataSourceWithConnection,
-    resourceExternalId?: string
+    { resourceExternalId, triggeredByUserId }: { resourceExternalId?: string; triggeredByUserId?: string } = {}
   ) => {
     try {
       const { type } = dataSource;
@@ -198,15 +201,14 @@ export const secretScanningV2QueueServiceFactory = ({
         const resources = await secretScanningV2DAL.resources.upsert(
           filteredRawResources.map((rawResource) => ({
             ...rawResource,
-            dataSourceId: dataSource.id
+            sourceId: dataSource.id
           })),
-          ["externalId", "dataSourceId"],
           tx
         );
 
         const inFlightScans = await secretScanningV2DAL.scans.find(
           {
-            type: SecretScanningScanType.FullScan,
+            type: SecretScanningScanType.Historical,
             $in: {
               resourceId: resources.map((resource) => resource.id),
               status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning]
@@ -223,7 +225,9 @@ export const secretScanningV2QueueServiceFactory = ({
         const scans = await secretScanningV2DAL.scans.insertMany(
           resourcesToScan.map((resource) => ({
             resourceId: resource.id,
-            type: SecretScanningScanType.FullScan
+            type: SecretScanningScanType.Historical,
+            trigger: SecretScanningScanTrigger.Manual,
+            triggeredByUserId: triggeredByUserId ?? null
           })),
           tx
         );
@@ -273,7 +277,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
     // Logged before any work so a `ps` on a saturated worker can be tied back to a scan ID.
     logger.info(
-      `secretScanningV2Queue: Full Scan Started ${logDetails} [scanType=${SecretScanningScanType.FullScan}] [tempFolder=${tempFolder}]`
+      `secretScanningV2Queue: Full Scan Started ${logDetails} [scanType=${SecretScanningScanType.Historical}] [tempFolder=${tempFolder}]`
     );
 
     const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
@@ -287,6 +291,8 @@ export const secretScanningV2QueueServiceFactory = ({
     const scan = await secretScanningV2DAL.scans.findById(scanId);
 
     if (!scan) throw new Error(`Scan with ID "${scanId}" not found`);
+
+    const resourceType = SECRET_SCANNING_DATA_SOURCE_RESOURCE_TYPE_MAP[dataSource.type as SecretScanningDataSource];
 
     let holdsLease = false;
 
@@ -305,7 +311,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
       if (!started) {
         logger.warn(
-          `secretScanningV2Queue: Full Scan skipped, scan was already closed out ${logDetails} [scanType=${SecretScanningScanType.FullScan}]`
+          `secretScanningV2Queue: Full Scan skipped, scan was already closed out ${logDetails} [scanType=${SecretScanningScanType.Historical}]`
         );
         return;
       }
@@ -360,16 +366,13 @@ export const secretScanningV2QueueServiceFactory = ({
             await secretScanningV2DAL.findings.upsert(
               batchFindings.map((finding) => ({
                 ...finding,
-                projectId: dataSource.projectId,
-                dataSourceName: dataSource.name,
-                dataSourceType: dataSource.type,
-                resourceName: resource.name,
-                resourceType: resource.type,
+                resourceId,
                 scanId
               })),
-              ["projectId", "fingerprint"],
+              ["resourceId", "fingerprint"],
               tx,
-              ["resourceName", "dataSourceName"]
+              // a no-op merge, so rows already found by an earlier scan are returned with their original scanId
+              ["ruleKey"]
             );
           }
 
@@ -397,7 +400,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
       let stillOwned = true;
 
-      switch (resource.type) {
+      switch (resourceType) {
         case SecretScanningResource.Repository:
         case SecretScanningResource.Project: {
           const repoSizeMb = await assertClonedRepositoryWithinSizeLimit(resource.name, scanPath);
@@ -462,7 +465,8 @@ export const secretScanningV2QueueServiceFactory = ({
             { id: scanId, status: SecretScanningScanStatus.Scanning },
             {
               status: SecretScanningScanStatus.Completed,
-              statusMessage: null
+              statusMessage: null,
+              completedAt: new Date()
             }
           )
         : [];
@@ -506,10 +510,10 @@ export const secretScanningV2QueueServiceFactory = ({
             dataSourceId: dataSource.id,
             dataSourceType: dataSource.type,
             resourceId: resource.id,
-            resourceType: resource.type,
+            resourceType,
             scanId,
             scanStatus: SecretScanningScanStatus.Completed,
-            scanType: SecretScanningScanType.FullScan,
+            scanType: SecretScanningScanType.Historical,
             numberOfSecretsDetected: findingsCount
           }
         }
@@ -549,10 +553,10 @@ export const secretScanningV2QueueServiceFactory = ({
                 dataSourceId: dataSource.id,
                 dataSourceType: dataSource.type,
                 resourceId: resource.id,
-                resourceType: resource.type,
+                resourceType,
                 scanId,
                 scanStatus: SecretScanningScanStatus.Failed,
-                scanType: SecretScanningScanType.FullScan
+                scanType: SecretScanningScanType.Historical
               }
             }
           });
@@ -588,17 +592,17 @@ export const secretScanningV2QueueServiceFactory = ({
           [
             {
               ...resourcePayload,
-              dataSourceId
+              sourceId: dataSourceId
             }
           ],
-          ["externalId", "dataSourceId"],
           tx
         );
 
         const scan = await secretScanningV2DAL.scans.create(
           {
             resourceId: resource.id,
-            type: SecretScanningScanType.DiffScan
+            type: SecretScanningScanType.Realtime,
+            trigger: SecretScanningScanTrigger.Push
           },
           tx
         );
@@ -658,10 +662,12 @@ export const secretScanningV2QueueServiceFactory = ({
       appConnectionDAL
     });
 
+    const resourceType = SECRET_SCANNING_DATA_SOURCE_RESOURCE_TYPE_MAP[dataSource.type as SecretScanningDataSource];
+
     const tempFolder = await createTempFolder();
 
     logger.info(
-      `secretScanningV2Queue: Diff Scan Started ${logDetails} [scanType=${SecretScanningScanType.DiffScan}] [tempFolder=${tempFolder}]`
+      `secretScanningV2Queue: Diff Scan Started ${logDetails} [scanType=${SecretScanningScanType.Realtime}] [tempFolder=${tempFolder}]`
     );
 
     try {
@@ -669,7 +675,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
       if (!started) {
         logger.warn(
-          `secretScanningV2Queue: Diff Scan skipped, scan was already closed out ${logDetails} [scanType=${SecretScanningScanType.DiffScan}]`
+          `secretScanningV2Queue: Diff Scan skipped, scan was already closed out ${logDetails} [scanType=${SecretScanningScanType.Realtime}]`
         );
         return;
       }
@@ -705,16 +711,12 @@ export const secretScanningV2QueueServiceFactory = ({
           findings = await secretScanningV2DAL.findings.upsert(
             findingsPayload.map((finding) => ({
               ...finding,
-              projectId: dataSource.projectId,
-              dataSourceName: dataSource.name,
-              dataSourceType: dataSource.type,
-              resourceName: resource.name,
-              resourceType: resource.type,
+              resourceId,
               scanId
             })),
-            ["projectId", "fingerprint"],
+            ["resourceId", "fingerprint"],
             tx,
-            ["resourceName", "dataSourceName"]
+            ["ruleKey"]
           );
         }
 
@@ -722,7 +724,8 @@ export const secretScanningV2QueueServiceFactory = ({
         const completedScans = await secretScanningV2DAL.scans.update(
           { id: scanId, status: SecretScanningScanStatus.Scanning },
           {
-            status: SecretScanningScanStatus.Completed
+            status: SecretScanningScanStatus.Completed,
+            completedAt: new Date()
           },
           tx
         );
@@ -770,10 +773,10 @@ export const secretScanningV2QueueServiceFactory = ({
             dataSourceId: dataSource.id,
             dataSourceType: dataSource.type,
             resourceId,
-            resourceType: resource.type,
+            resourceType,
             scanId,
             scanStatus: SecretScanningScanStatus.Completed,
-            scanType: SecretScanningScanType.DiffScan,
+            scanType: SecretScanningScanType.Realtime,
             numberOfSecretsDetected: findingsPayload.length
           }
         }
@@ -813,10 +816,10 @@ export const secretScanningV2QueueServiceFactory = ({
                 dataSourceId: dataSource.id,
                 dataSourceType: dataSource.type,
                 resourceId: resource.id,
-                resourceType: resource.type,
+                resourceType,
                 scanId,
                 scanStatus: SecretScanningScanStatus.Failed,
-                scanType: SecretScanningScanType.DiffScan
+                scanType: SecretScanningScanType.Realtime
               }
             }
           });
@@ -929,7 +932,7 @@ export const secretScanningV2QueueServiceFactory = ({
   // so the row it set to `scanning` stays that way forever and the customer sees a scan permanently
   // in progress.
   const failStuckScan = async (scan: Awaited<ReturnType<typeof secretScanningV2DAL.scans.findStuck>>[number]) => {
-    const logDetails = `[scanId=${scan.id}] [resourceId=${scan.resourceId}] [dataSourceId=${scan.dataSourceId}] [scanningStartedAt=${scan.scanningStartedAt?.toISOString()}]`;
+    const logDetails = `[scanId=${scan.id}] [resourceId=${scan.resourceId}] [dataSourceId=${scan.dataSourceId}] [startedAt=${scan.startedAt?.toISOString()}]`;
 
     try {
       // Guarded on the status we read: if the worker did finish between the read and this write, the
@@ -938,7 +941,8 @@ export const secretScanningV2QueueServiceFactory = ({
         { id: scan.id, status: SecretScanningScanStatus.Scanning },
         {
           status: SecretScanningScanStatus.Failed,
-          statusMessage: STUCK_SCAN_STATUS_MESSAGE
+          statusMessage: STUCK_SCAN_STATUS_MESSAGE,
+          completedAt: new Date()
         }
       );
 
@@ -974,7 +978,7 @@ export const secretScanningV2QueueServiceFactory = ({
             dataSourceId: dataSource.id,
             dataSourceType: dataSource.type,
             resourceId: scan.resourceId,
-            resourceType: scan.resourceType,
+            resourceType: SECRET_SCANNING_DATA_SOURCE_RESOURCE_TYPE_MAP[dataSource.type],
             scanId: scan.id,
             scanStatus: SecretScanningScanStatus.Failed,
             scanType: scan.type as SecretScanningScanType

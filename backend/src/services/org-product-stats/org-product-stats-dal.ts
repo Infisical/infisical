@@ -80,6 +80,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.SecretScanningDataSource}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .whereNull(`${TableName.Project}.deleteAfter`)
+        .whereNull(`${TableName.SecretScanningDataSource}.deletedAt`)
         .where(`${TableName.Project}.type`, ProjectType.SecretScanning)
         .count(`${TableName.SecretScanningDataSource}.id as count`)
         .first()) as { count: string } | undefined;
@@ -160,12 +161,14 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
       const result = (await (tx || db.replicaNode())(TableName.SecretScanningResource)
         .join(
           TableName.SecretScanningDataSource,
-          `${TableName.SecretScanningResource}.dataSourceId`,
+          `${TableName.SecretScanningResource}.sourceId`,
           `${TableName.SecretScanningDataSource}.id`
         )
         .join(TableName.Project, `${TableName.SecretScanningDataSource}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .whereNull(`${TableName.Project}.deleteAfter`)
+        .whereNull(`${TableName.SecretScanningDataSource}.deletedAt`)
+        .whereNull(`${TableName.SecretScanningResource}.deletedAt`)
         .where(`${TableName.Project}.type`, ProjectType.SecretScanning)
         .count(`${TableName.SecretScanningResource}.id as count`)
         .first()) as { count: string } | undefined;

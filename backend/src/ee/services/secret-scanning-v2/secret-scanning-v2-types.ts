@@ -103,14 +103,14 @@ export type TCreateSecretScanningDataSourceDTO = Pick<
   TSecretScanningDataSource,
   "description" | "name" | "projectId"
 > & {
-  connectionId?: string;
+  appConnectionId?: string;
   type: SecretScanningDataSource;
   isAutoScanEnabled?: boolean;
   config: Partial<TSecretScanningDataSourceInput["config"]>;
 };
 
 export type TUpdateSecretScanningDataSourceDTO = Partial<
-  Omit<TCreateSecretScanningDataSourceDTO, "projectId" | "connectionId">
+  Omit<TCreateSecretScanningDataSourceDTO, "projectId" | "appConnectionId">
 > & {
   dataSourceId: string;
   type: SecretScanningDataSource;
@@ -168,11 +168,11 @@ export type TCloneRepository = {
 
 export type TSecretScanningFactoryListRawResources<T extends TSecretScanningDataSourceWithConnection> = (
   dataSource: T
-) => Promise<Pick<TSecretScanningResources, "externalId" | "name" | "type">[]>;
+) => Promise<Pick<TSecretScanningResources, "externalId" | "name">[]>;
 
 export type TSecretScanningFactoryGetDiffScanResourcePayload<
   P extends TQueueSecretScanningResourceDiffScan["payload"]
-> = (payload: P) => Pick<TSecretScanningResources, "externalId" | "name" | "type">;
+> = (payload: P) => Pick<TSecretScanningResources, "externalId" | "name">;
 
 export type TSecretScanningFactoryGetFullScanPath<T extends TSecretScanningDataSourceWithConnection> = (parameters: {
   dataSource: T;
@@ -239,12 +239,15 @@ export type TSecretScanningFactory<
   getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<T, P>;
 };
 
-export type TFindingsPayload = Pick<TSecretScanningFindingsInsert, "details" | "fingerprint" | "severity" | "rule">[];
+export type TFindingsPayload = Pick<
+  TSecretScanningFindingsInsert,
+  "details" | "fingerprint" | "severity" | "ruleKey"
+>[];
 export type TGetFindingsPayload = Promise<TFindingsPayload>;
 
 export type TUpdateSecretScanningFindingDTO = {
   status?: SecretScanningFindingStatus;
-  remarks?: string | null;
+  triageComment?: string | null;
   findingId: string;
 };
 

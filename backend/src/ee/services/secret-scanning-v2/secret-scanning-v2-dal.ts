@@ -6,7 +6,9 @@ import {
   SecretScanningScansSchema,
   TableName,
   TSecretScanningDataSources,
-  TSecretScanningFindings
+  TSecretScanningFindings,
+  TSecretScanningResources,
+  TSecretScanningResourcesInsert
 } from "@app/db/schemas";
 import {
   SecretScanningFindingStatus,
@@ -41,9 +43,10 @@ const baseSecretScanningDataSourceQuery = ({
   const query = (tx || db.replicaNode())(TableName.SecretScanningDataSource)
     .join(
       TableName.AppConnection,
-      `${TableName.SecretScanningDataSource}.connectionId`,
+      `${TableName.SecretScanningDataSource}.appConnectionId`,
       `${TableName.AppConnection}.id`
     )
+    .whereNull(`${TableName.SecretScanningDataSource}.deletedAt`)
     .select(selectAllTableCols(TableName.SecretScanningDataSource))
     .select(
       // entire connection
@@ -82,7 +85,7 @@ const expandSecretScanningDataSource = <
   const {
     connectionApp,
     connectionName,
-    connectionId,
+    appConnectionId,
     connectionOrgId,
     connectionIsAutoRotationEnabled,
     connectionEncryptedCredentials,
@@ -100,11 +103,11 @@ const expandSecretScanningDataSource = <
 
   return {
     ...el,
-    connectionId,
-    connection: connectionId
+    appConnectionId,
+    connection: appConnectionId
       ? {
           app: connectionApp,
-          id: connectionId,
+          id: appConnectionId,
           name: connectionName,
           orgId: connectionOrgId,
           encryptedCredentials: connectionEncryptedCredentials,
@@ -200,6 +203,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     return expandSecretScanningDataSource(dataSource);
   };
 
+  // Soft delete: the source's findings stay in the database for audit, but every read path filters
+  // deleted sources out, and the partial unique index frees the name for reuse.
   const deleteDataSourceById = async (dataSourceId: string, tx?: Knex) => {
     const dataSource = (await baseSecretScanningDataSourceQuery({
       filter: { id: dataSourceId },
@@ -207,7 +212,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       tx
     }).first())!;
 
-    await dataSourceOrm.deleteById(dataSourceId, tx);
+    await dataSourceOrm.updateById(dataSourceId, { deletedAt: new Date() }, tx);
 
     return expandSecretScanningDataSource(dataSource);
   };
@@ -229,11 +234,11 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       // TODO (scott): this query will probably need to be optimized
 
       const dataSources = await baseSecretScanningDataSourceQuery({ filter, db, tx })
-        .leftJoin(
-          TableName.SecretScanningResource,
-          `${TableName.SecretScanningResource}.dataSourceId`,
-          `${TableName.SecretScanningDataSource}.id`
-        )
+        .leftJoin(TableName.SecretScanningResource, (qb) => {
+          void qb
+            .on(`${TableName.SecretScanningResource}.sourceId`, `${TableName.SecretScanningDataSource}.id`)
+            .andOnNull(`${TableName.SecretScanningResource}.deletedAt`);
+        })
         .leftJoin(
           TableName.SecretScanningScan,
           `${TableName.SecretScanningScan}.resourceId`,
@@ -315,6 +320,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           if (filter)
             void qb.where(buildFindFilter(prependTableNameToFindFilter(TableName.SecretScanningResource, filter)));
         })
+        .whereNull(`${TableName.SecretScanningResource}.deletedAt`)
         .leftJoin(
           TableName.SecretScanningScan,
           `${TableName.SecretScanningScan}.resourceId`,
@@ -400,7 +406,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `${TableName.SecretScanningResource}.id`,
           `${TableName.SecretScanningScan}.resourceId`
         )
-        .where(`${TableName.SecretScanningResource}.dataSourceId`, dataSourceId)
+        .where(`${TableName.SecretScanningResource}.sourceId`, dataSourceId)
+        .whereNull(`${TableName.SecretScanningResource}.deletedAt`)
         .leftJoin(
           TableName.SecretScanningFinding,
           `${TableName.SecretScanningFinding}.scanId`,
@@ -466,7 +473,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         // time so they're reaped too.
         .whereRaw(`COALESCE(??, ??, ??) < ?`, [
           `${TableName.SecretScanningScan}.progressUpdatedAt`,
-          `${TableName.SecretScanningScan}.scanningStartedAt`,
+          `${TableName.SecretScanningScan}.startedAt`,
           `${TableName.SecretScanningScan}.createdAt`,
           startedBefore
         ])
@@ -478,8 +485,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.SecretScanningScan))
         .select(
           db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName"),
-          db.ref("type").withSchema(TableName.SecretScanningResource).as("resourceType"),
-          db.ref("dataSourceId").withSchema(TableName.SecretScanningResource)
+          db.ref("sourceId").withSchema(TableName.SecretScanningResource).as("dataSourceId")
         )
         .orderBy(`${TableName.SecretScanningScan}.createdAt`, "asc")
         .limit(limit);
@@ -498,13 +504,110 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `${TableName.SecretScanningResource}.id`,
           `${TableName.SecretScanningScan}.resourceId`
         )
-        .where(`${TableName.SecretScanningResource}.dataSourceId`, dataSourceId)
-
+        .where(`${TableName.SecretScanningResource}.sourceId`, dataSourceId)
+        .whereNull(`${TableName.SecretScanningResource}.deletedAt`)
         .select(selectAllTableCols(TableName.SecretScanningScan));
 
       return scans;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find By Data Source ID - Secret Scanning Scan" });
+    }
+  };
+
+  // The unique index on (sourceId, externalId) is partial (active rows only), and an ON CONFLICT
+  // target has to repeat that predicate to match it, which ormify's upsert cannot express.
+  const upsertResources = async (data: TSecretScanningResourcesInsert[], tx?: Knex) => {
+    if (!data.length) return [];
+
+    try {
+      const { sql, bindings } = (tx || db)(TableName.SecretScanningResource).insert(data).toSQL();
+
+      const result = (await (tx || db).raw(
+        `${sql} ON CONFLICT ("sourceId", "externalId") WHERE "deletedAt" IS NULL DO UPDATE SET "name" = EXCLUDED."name" RETURNING *`,
+        bindings
+      )) as { rows: TSecretScanningResources[] };
+
+      return result.rows;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Upsert - Secret Scanning Resource" });
+    }
+  };
+
+  const baseFindingQuery = (tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.SecretScanningFinding)
+      .join(
+        TableName.SecretScanningResource,
+        `${TableName.SecretScanningResource}.id`,
+        `${TableName.SecretScanningFinding}.resourceId`
+      )
+      .join(
+        TableName.SecretScanningDataSource,
+        `${TableName.SecretScanningDataSource}.id`,
+        `${TableName.SecretScanningResource}.sourceId`
+      )
+      .whereNull(`${TableName.SecretScanningResource}.deletedAt`)
+      .whereNull(`${TableName.SecretScanningDataSource}.deletedAt`);
+
+  const selectFindingWithDetails = <T extends Knex.QueryBuilder>(query: T) =>
+    query
+      .select(selectAllTableCols(TableName.SecretScanningFinding))
+      .select(
+        db.ref("projectId").withSchema(TableName.SecretScanningDataSource),
+        db.ref("id").withSchema(TableName.SecretScanningDataSource).as("dataSourceId"),
+        db.ref("name").withSchema(TableName.SecretScanningDataSource).as("dataSourceName"),
+        db.ref("type").withSchema(TableName.SecretScanningDataSource).as("dataSourceType"),
+        db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName")
+      );
+
+  type TSecretScanningFindingWithDetails = TSecretScanningFindings & {
+    projectId: string;
+    dataSourceId: string;
+    dataSourceName: string;
+    dataSourceType: string;
+    resourceName: string;
+  };
+
+  const findFindingsByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const findings = (await selectFindingWithDetails(
+        baseFindingQuery(tx).where(`${TableName.SecretScanningDataSource}.projectId`, projectId)
+      )) as TSecretScanningFindingWithDetails[];
+
+      return findings;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find By Project ID - Secret Scanning Finding" });
+    }
+  };
+
+  const findFindingByIdWithDetails = async (findingId: string, tx?: Knex) => {
+    try {
+      const finding = (await selectFindingWithDetails(
+        baseFindingQuery(tx).where(`${TableName.SecretScanningFinding}.id`, findingId)
+      ).first()) as TSecretScanningFindingWithDetails | undefined;
+
+      return finding;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find By ID - Secret Scanning Finding" });
+    }
+  };
+
+  const countFindingsByProjectId = async (
+    projectId: string,
+    filter: { status?: SecretScanningFindingStatus } = {},
+    tx?: Knex
+  ) => {
+    try {
+      const query = baseFindingQuery(tx).where(`${TableName.SecretScanningDataSource}.projectId`, projectId);
+
+      if (filter.status) void query.where(`${TableName.SecretScanningFinding}.status`, filter.status);
+
+      const result = (await query.count(`${TableName.SecretScanningFinding}.id as count`).first()) as
+        | { count: string }
+        | undefined;
+
+      return Number(result?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count By Project ID - Secret Scanning Finding" });
     }
   };
 
@@ -541,6 +644,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     },
     resources: {
       ...resourceOrm,
+      upsert: upsertResources,
       findWithDetails: findResourcesWithDetails
     },
     scans: {
@@ -552,7 +656,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     findings: {
       ...findingOrm,
       upsert: upsertFindings,
-      countByScanId: countFindingsByScanId
+      countByScanId: countFindingsByScanId,
+      findByProjectId: findFindingsByProjectId,
+      findByIdWithDetails: findFindingByIdWithDetails,
+      countByProjectId: countFindingsByProjectId
     },
     configs: configOrm
   };

@@ -1,12 +1,15 @@
 import { z } from "zod";
 
-import { SecretScanningResourcesSchema, SecretScanningScansSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   SecretScanningDataSource,
   SecretScanningScanStatus
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_DATA_SOURCE_NAME_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
+import {
+  SecretScanningResourceSchema,
+  SecretScanningScanSchema
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
 import {
   TSecretScanningDataSource,
   TSecretScanningDataSourceInput
@@ -34,7 +37,7 @@ export const registerSecretScanningEndpoints = <
   createSchema: z.ZodType<{
     name: string;
     projectId: string;
-    connectionId?: string;
+    appConnectionId?: string;
     config: Partial<I["config"]>;
     description?: string | null;
     isAutoScanEnabled?: boolean;
@@ -444,7 +447,7 @@ export const registerSecretScanningEndpoints = <
         dataSourceId: z.string().uuid().describe(SecretScanningDataSources.LIST_RESOURCES(type).dataSourceId)
       }),
       response: {
-        200: z.object({ resources: SecretScanningResourcesSchema.array() })
+        200: z.object({ resources: SecretScanningResourceSchema.array() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -489,7 +492,7 @@ export const registerSecretScanningEndpoints = <
         dataSourceId: z.string().uuid().describe(SecretScanningDataSources.LIST_SCANS(type).dataSourceId)
       }),
       response: {
-        200: z.object({ scans: SecretScanningScansSchema.array() })
+        200: z.object({ scans: SecretScanningScanSchema.array() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -533,7 +536,7 @@ export const registerSecretScanningEndpoints = <
       }),
       response: {
         200: z.object({
-          resources: SecretScanningResourcesSchema.extend({
+          resources: SecretScanningResourceSchema.extend({
             lastScannedAt: z.date().nullish(),
             lastScanStatus: z.nativeEnum(SecretScanningScanStatus).nullish(),
             lastScanStatusMessage: z.string().nullish(),
@@ -584,7 +587,7 @@ export const registerSecretScanningEndpoints = <
       }),
       response: {
         200: z.object({
-          scans: SecretScanningScansSchema.extend({
+          scans: SecretScanningScanSchema.extend({
             unresolvedFindings: z.number(),
             resolvedFindings: z.number(),
             resourceName: z.string()

@@ -12,8 +12,13 @@ export enum SecretScanningScanStatus {
 }
 
 export enum SecretScanningScanType {
-  FullScan = "full-scan",
-  DiffScan = "diff-scan"
+  Historical = "historical",
+  Realtime = "realtime"
+}
+
+export enum SecretScanningScanTrigger {
+  Manual = "manual",
+  Push = "push"
 }
 
 export enum SecretScanningFindingStatus {
@@ -29,6 +34,12 @@ export enum SecretScanningResource {
 }
 
 export enum SecretScanningFindingSeverity {
+  High = "high",
+  Medium = "medium",
+  Low = "low"
+}
+
+export enum SecretScanningFindingConfidence {
   High = "high",
   Medium = "medium",
   Low = "low"

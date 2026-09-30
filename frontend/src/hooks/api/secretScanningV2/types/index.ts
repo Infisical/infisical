@@ -6,10 +6,11 @@ import { DiscriminativePick } from "@app/types";
 
 import {
   SecretScanningDataSource,
+  SecretScanningFindingConfidence,
   SecretScanningFindingSeverity,
   SecretScanningFindingStatus,
-  SecretScanningResource,
   SecretScanningScanStatus,
+  SecretScanningScanTrigger,
   SecretScanningScanType
 } from "../enums";
 import { TBitbucketDataSource, TBitbucketDataSourceOption } from "./bitbucket-data-source";
@@ -44,11 +45,11 @@ export type TSecretScanningDataSourceResponse = { dataSource: TSecretScanningDat
 
 export type TCreateSecretScanningDataSourceDTO = DiscriminativePick<
   TSecretScanningDataSource,
-  "name" | "config" | "description" | "connectionId" | "type" | "isAutoScanEnabled" | "projectId"
+  "name" | "config" | "description" | "appConnectionId" | "type" | "isAutoScanEnabled" | "projectId"
 >;
 
 export type TUpdateSecretScanningDataSourceDTO = Partial<
-  Omit<TCreateSecretScanningDataSourceDTO, "type" | "connectionId" | "projectId">
+  Omit<TCreateSecretScanningDataSourceDTO, "type" | "appConnectionId" | "projectId">
 > & {
   type: SecretScanningDataSource;
   dataSourceId: string;
@@ -74,7 +75,7 @@ export type TTriggerSecretScanningDataSourceDTO = {
 export type TUpdateSecretScanningFinding = {
   findingId: string;
   status: SecretScanningFindingStatus;
-  remarks?: string | null;
+  triageComment?: string | null;
   // required for query invalidation
   projectId: string;
 };
@@ -90,8 +91,7 @@ export type TGetSecretScanningDataSource = {
 
 export type TSecretScanningResourceWithDetails = {
   id: string;
-  dataSourceId: string;
-  type: SecretScanningResource;
+  sourceId: string;
   externalId: string;
   name: string;
   createdAt: string;
@@ -111,6 +111,10 @@ export type TSecretScanningScanWithDetails = {
   createdAt: string;
   resourceId: string;
   type: SecretScanningScanType;
+  trigger: SecretScanningScanTrigger;
+  triggeredByUserId?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
   status: SecretScanningScanStatus;
   statusMessage?: string | null;
   unresolvedFindings: number;
@@ -137,14 +141,19 @@ export type TGetSecretScanningConfigResponse = {
 
 export type TSecretScanningFinding = {
   id: string;
+  resourceId: string;
+  resourceName: string;
+  dataSourceId: string;
   dataSourceName: string;
   dataSourceType: SecretScanningDataSource;
-  resourceName: string;
-  resourceType: SecretScanningResource;
-  rule: string;
+  ruleKey: string;
   severity: SecretScanningFindingSeverity;
+  confidence?: SecretScanningFindingConfidence | null;
   status: SecretScanningFindingStatus;
-  remarks?: string;
+  triageComment?: string | null;
+  triagedByUserId?: string | null;
+  triagedAt?: string | null;
+  resolvedAt?: string | null;
   fingerprint: string;
   // TODO scott: this will need to be type differentiated once we add other scan types
   details: {
