@@ -945,7 +945,11 @@ export const SecretEditTableRow = ({
       control={control}
       name="key"
       render={({ field, fieldState: { error } }) => (
-        <Tooltip open={isFieldFocused ? false : undefined}>
+        <Tooltip
+          delayDuration={1000}
+          skipDelayDuration={0}
+          open={isFieldFocused ? false : undefined}
+        >
           <TooltipTrigger asChild>
             <Input
               autoComplete="off"

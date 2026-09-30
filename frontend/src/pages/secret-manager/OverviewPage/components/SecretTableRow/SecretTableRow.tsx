@@ -466,16 +466,20 @@ export const SecretTableRow = ({
                 )}
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <span
-                    title={secretKey}
-                    className={twMerge(
-                      isFormExpanded ? "break-all whitespace-normal" : "min-w-0 truncate",
-                      singleEnvPendingAction === PendingAction.Delete &&
-                        "text-danger/75 line-through"
-                    )}
-                  >
-                    {secretKey}
-                  </span>
+                  <Tooltip delayDuration={1000} skipDelayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={twMerge(
+                          isFormExpanded ? "break-all whitespace-normal" : "min-w-0 truncate",
+                          singleEnvPendingAction === PendingAction.Delete &&
+                            "text-danger/75 line-through"
+                        )}
+                      >
+                        {secretKey}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{secretKey}</TooltipContent>
+                  </Tooltip>
                   {!isFormExpanded &&
                     environments.some(
                       ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
