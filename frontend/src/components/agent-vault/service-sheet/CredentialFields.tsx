@@ -36,21 +36,6 @@ import {
   VariableSuggestions
 } from "./VariableReferenceInput";
 
-export const credentialPreview = (
-  form: {
-    credentialType: AgentVaultCredentialType;
-    headerName?: string;
-    headerPrefix?: string;
-  },
-  secret = "••••••••"
-): string | null => {
-  if (form.credentialType === AgentVaultCredentialType.Passthrough) return null;
-  if (form.credentialType === AgentVaultCredentialType.Basic)
-    return `Authorization: Basic ${secret}`;
-  const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
-  return `${form.headerName || "Authorization"}: ${prefix}${secret}`;
-};
-
 type SecretName =
   | "secret"
   | "username"
