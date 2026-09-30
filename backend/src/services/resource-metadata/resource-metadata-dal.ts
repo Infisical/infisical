@@ -32,7 +32,8 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
     orgId: string,
     projectId: string,
     tagSlugs?: string[],
-    folderIds?: string[]
+    folderIds?: string[],
+    environments?: string[]
   ) => {
     const query = knex(TableName.ResourceMetadata)
       .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
@@ -48,6 +49,12 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
 
     if (folderIds) {
       void query.whereIn(`${TableName.SecretV2}.folderId`, folderIds);
+    } else {
+      void query.where(`${TableName.SecretFolder}.isReserved`, false);
+    }
+
+    if (environments) {
+      void query.whereIn(`${TableName.Environment}.slug`, environments);
     }
 
     // optional tag filter: keep only secrets carrying at least one of the requested tag slugs. A
@@ -142,6 +149,7 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
       operator,
       tagSlugs,
       folderIds,
+      environments,
       limit = MAX_SECRET_METADATA_SEARCH_SECRETS
     }: TSearchSecretMetadataDALDTO,
     tx?: Knex
@@ -150,7 +158,14 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
       const knex = tx || db.replicaNode();
 
       // step 1: resolve the bounded set of matching secret ids (scoping + tag filter enforced by the shared builder).
-      const matchedSecretIdsQuery = buildScopedSecretMetadataQuery(knex, orgId, projectId, tagSlugs, folderIds);
+      const matchedSecretIdsQuery = buildScopedSecretMetadataQuery(
+        knex,
+        orgId,
+        projectId,
+        tagSlugs,
+        folderIds,
+        environments
+      );
 
       if (operator === SecretMetadataSearchLogicalOperator.And) {
         // and: every condition must match a row of the secret. Drive the scan from the first condition
@@ -208,6 +223,7 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
       filters,
       tagSlugs,
       folderIds,
+      environments,
       limit = MAX_SECRET_METADATA_SEARCH_SECRETS
     }: TSearchSecretMetadataDALDTO,
     tx?: Knex
@@ -218,7 +234,14 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
 
       // step 1: bounded set of secrets holding at least one encrypted metadata row for a requested key
       // — narrowed by the (orgId, key) partial index, and by the optional tag filter.
-      const matchedSecretRows = await buildScopedSecretMetadataQuery(knex, orgId, projectId, tagSlugs, folderIds)
+      const matchedSecretRows = await buildScopedSecretMetadataQuery(
+        knex,
+        orgId,
+        projectId,
+        tagSlugs,
+        folderIds,
+        environments
+      )
         .whereNotNull(`${TableName.ResourceMetadata}.encryptedValue`)
         .whereIn(`${TableName.ResourceMetadata}.key`, keys)
         .distinct(`${TableName.ResourceMetadata}.secretId`)

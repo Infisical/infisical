@@ -29,6 +29,7 @@ export type TSearchSecretMetadataDALDTO = {
   operator: SecretMetadataSearchLogicalOperator;
   tagSlugs?: string[];
   folderIds?: string[];
+  environments?: string[];
   limit?: number;
 };
 
