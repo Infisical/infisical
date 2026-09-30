@@ -240,7 +240,7 @@ A class follows the operation that was attempted, not its outcome, so a failed l
 
 ### Choose which classes to record
 
-By default, Infisical records every class except `authorization`. An organization admin can turn any class on or off for the whole organization, and a project admin can override that choice for one project in either direction.
+By default, Infisical records every class except `authorization`. Each organization, sub-organization, and project has its own settings, and they don't inherit from each other. The organization settings cover organization-level events such as membership and login changes. A project's settings cover that project's events, so turning a class off for the organization doesn't turn it off for its projects.
 
 <Tabs>
   <Tab title="For an organization">
@@ -265,7 +265,7 @@ By default, Infisical records every class except `authorization`. An organizatio
       </Step>
     </Steps>
 
-    Only project admins can change these toggles. A row labeled **Organization Default** follows the organization setting. A row labeled **Project Override** uses the project's own setting, even if the organization turned the class off. Select **Use Organization Default** to remove an override.
+    Only project admins can change these toggles. A project that has never saved a setting uses the defaults.
   </Tab>
   <Tab title="API">
     Update the organization's classes with [the organization audit log settings endpoint](/api-reference/endpoints/audit-logs/update-organization-audit-log-settings), or one project's classes with [the project audit log settings endpoint](/api-reference/endpoints/audit-logs/update-project-audit-log-settings).
@@ -277,7 +277,6 @@ By default, Infisical records every class except `authorization`. An organizatio
       -d '{"eventClasses": [{"eventClass": "data-access", "isEnabled": false}]}'
     ```
 
-    For a project, `isEnabled` also accepts `null`, which removes the project's override so the project follows the organization again.
   </Tab>
 </Tabs>
 

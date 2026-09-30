@@ -1004,10 +1004,12 @@ fails if a type lands in two lists. Reads, lists, dashboards, insights views, CM
 and the dynamic secret lease lifecycle are data access; VIEW_AUDIT_LOGS and privileged session
 lifecycle are management on purpose.
 
-Any class can be turned off per org, and a project row overrides the org in either direction. The rows live in
-`audit_log_settings` (one per scope and class, `projectId` null for the org scope; no row means
-the default in `AUDIT_LOG_EVENT_CLASS_DEFAULTS`: data access on, authorization off) behind `audit-log-settings-service.ts`, which caches the org's whole picture in the
-keystore for 60s (`getEffectiveSettings`, never throws: a lookup failure records everything).
+Any class can be turned off per scope, and scopes do not inherit: an org (root or sub-org) has its own
+rows for org-level events, each project has its own rows for its events, and a scope without a row uses
+the default in `AUDIT_LOG_EVENT_CLASS_DEFAULTS` (data access on, authorization off). The rows live in
+`audit_log_settings` (one per scope and class, `projectId` null for the org scope) behind
+`audit-log-settings-service.ts`, which caches the org's rows and all of its projects' rows in the
+keystore for 5 minutes (`getEffectiveSettings`, never throws: a lookup failure records everything).
 Enforcement happens in `buildStreamEntry` in `audit-log-queue.ts`, memoized per request so a
 batch of events costs one settings read. Suppressed events are dropped silently and do not
 count on the dropped counter.

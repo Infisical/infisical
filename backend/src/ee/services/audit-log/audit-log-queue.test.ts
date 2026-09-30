@@ -288,18 +288,15 @@ describe("audit-log-queue event class settings", () => {
     expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
   });
 
-  test("a project setting overrides the org in both directions", async () => {
+  test("a project event uses the project's own setting, never the org's", async () => {
     const { service, keyStore, auditLogSettingsService } = await createHarness();
     auditLogSettingsService.getEffectiveSettings.mockResolvedValue(
-      settings({ org: { "data-access": false }, projects: { "p-on": { "data-access": true } } })
+      settings({ org: { "data-access": false }, projects: { "p-off": { "data-access": false } } })
     );
 
-    await service.pushToLog(dto({ projectId: "p-on", event: { type: "get-secrets", metadata: {} } }) as never);
+    await service.pushToLog(dto({ projectId: "p-none", event: { type: "get-secrets", metadata: {} } }) as never);
     expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
 
-    auditLogSettingsService.getEffectiveSettings.mockResolvedValue(
-      settings({ org: {}, projects: { "p-off": { "data-access": false } } })
-    );
     await service.pushToLog(dto({ projectId: "p-off", event: { type: "get-secrets", metadata: {} } }) as never);
     expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
   });

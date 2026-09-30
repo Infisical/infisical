@@ -742,8 +742,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             eventClasses: z
               .object({
                 eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
-                isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.isEnabled),
-                source: z.enum(["organization", "project"]).describe(AUDIT_LOG_SETTINGS.source)
+                isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.isEnabled)
               })
               .array(),
             shouldUseNewPrivilegeSystem: z.boolean().describe(AUDIT_LOG_SETTINGS.shouldUseNewPrivilegeSystem)
@@ -782,7 +781,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         eventClasses: z
           .object({
             eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
-            isEnabled: z.boolean().nullable().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.isEnabled)
+            isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.isEnabled)
           })
           .array()
           .min(1)
@@ -795,8 +794,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             eventClasses: z
               .object({
                 eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
-                isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.isEnabled),
-                source: z.enum(["organization", "project"]).describe(AUDIT_LOG_SETTINGS.source)
+                isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.isEnabled)
               })
               .array(),
             shouldUseNewPrivilegeSystem: z.boolean().describe(AUDIT_LOG_SETTINGS.shouldUseNewPrivilegeSystem)

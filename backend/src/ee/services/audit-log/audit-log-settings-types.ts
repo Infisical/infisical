@@ -7,23 +7,19 @@ export type TAuditLogEventClassSetting = {
   isEnabled: boolean;
 };
 
-export type TProjectAuditLogEventClassSetting = TAuditLogEventClassSetting & {
-  source: "organization" | "project";
-};
-
 export type TGetOrgAuditLogSettingsDTO = {
   actor: OrgServiceActor;
 };
 
 export type TUpdateOrgAuditLogSettingsDTO = {
   actor: OrgServiceActor;
-  eventClasses: { eventClass: AuditLogEventClass; isEnabled: boolean }[];
+  eventClasses: TAuditLogEventClassSetting[];
 };
 
 export type TGetProjectAuditLogSettingsDTO = TProjectPermission;
 
 export type TUpdateProjectAuditLogSettingsDTO = TProjectPermission & {
-  eventClasses: { eventClass: AuditLogEventClass; isEnabled: boolean | null }[];
+  eventClasses: TAuditLogEventClassSetting[];
 };
 
 // A missing key means not set at this scope.

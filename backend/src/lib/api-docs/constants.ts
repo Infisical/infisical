@@ -2083,19 +2083,18 @@ export const INTEGRATION = {
 export const AUDIT_LOG_SETTINGS = {
   eventClass: "The audit log event class: management, authentication, data-access, or authorization.",
   isEnabled: "Whether events of this class are recorded.",
-  source:
-    'Where the effective value comes from: "project" when the project has its own setting, "organization" when it inherits the organization default.',
   shouldUseNewPrivilegeSystem:
     "Whether the organization is on the new privilege system. Permission denials (the authorization class) are only recorded on the new privilege system.",
   UPDATE_ORG: {
     eventClasses: "The event classes to update.",
-    isEnabled: "Whether to record events of this class for the organization. Projects can override it."
+    isEnabled:
+      "Whether to record events of this class for the organization. This only covers organization-level events; each project has its own setting."
   },
   UPDATE_PROJECT: {
     projectId: "The ID of the project to update the audit log settings for.",
     eventClasses: "The event classes to update.",
     isEnabled:
-      "Whether to record events of this class for the project. true or false overrides the organization default; null removes the override so the project follows the organization."
+      "Whether to record events of this class for the project. A project that has never saved a setting uses the default."
   },
   GET_PROJECT: {
     projectId: "The ID of the project to get the audit log settings for."

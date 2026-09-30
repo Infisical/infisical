@@ -6008,7 +6008,7 @@ interface UpdateAuditLogSettingsEvent {
   metadata: {
     scope: "organization" | "project";
     projectId?: string;
-    eventClasses: { eventClass: string; isEnabled: boolean | null }[];
+    eventClasses: { eventClass: string; isEnabled: boolean }[];
   };
 }
 

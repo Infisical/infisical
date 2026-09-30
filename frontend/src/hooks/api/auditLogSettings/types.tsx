@@ -10,25 +10,16 @@ export type TAuditLogEventClassSetting = {
   isEnabled: boolean;
 };
 
-export type TProjectAuditLogEventClassSetting = TAuditLogEventClassSetting & {
-  source: "organization" | "project";
-};
-
-export type TOrgAuditLogSettings = {
+export type TAuditLogSettings = {
   eventClasses: TAuditLogEventClassSetting[];
   shouldUseNewPrivilegeSystem: boolean;
 };
 
-export type TProjectAuditLogSettings = {
-  eventClasses: TProjectAuditLogEventClassSetting[];
-  shouldUseNewPrivilegeSystem: boolean;
-};
-
 export type TUpdateOrgAuditLogSettingsDTO = {
-  eventClasses: { eventClass: AuditLogEventClass; isEnabled: boolean }[];
+  eventClasses: TAuditLogEventClassSetting[];
 };
 
 export type TUpdateProjectAuditLogSettingsDTO = {
   projectId: string;
-  eventClasses: { eventClass: AuditLogEventClass; isEnabled: boolean | null }[];
+  eventClasses: TAuditLogEventClassSetting[];
 };

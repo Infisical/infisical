@@ -4,7 +4,6 @@ import { Link } from "@tanstack/react-router";
 import { AuditLogEventClassRow } from "@app/components/auditLogSettings";
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   Button,
   Card,
   CardDescription,
@@ -20,10 +19,7 @@ import {
   AUDIT_LOG_EVENT_CLASS_DEFAULTS,
   AUDIT_LOG_EVENT_CLASSES
 } from "@app/hooks/api/auditLogSettings/constants";
-import {
-  AuditLogEventClass,
-  TProjectAuditLogEventClassSetting
-} from "@app/hooks/api/auditLogSettings/types";
+import { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 type TForm = Record<AuditLogEventClass, boolean>;
@@ -39,12 +35,9 @@ export const AuditLogEventClassesSection = () => {
   const { data: settings, isPending } = useGetProjectAuditLogSettings(currentProject.id);
   const { mutateAsync: updateSettings, isPending: isSaving } = useUpdateProjectAuditLogSettings();
 
-  const settingFor = (eventClass: AuditLogEventClass): TProjectAuditLogEventClassSetting =>
-    settings?.eventClasses.find((el) => el.eventClass === eventClass) ?? {
-      eventClass,
-      isEnabled: AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass],
-      source: "organization"
-    };
+  const isEnabled = (eventClass: AuditLogEventClass) =>
+    settings?.eventClasses.find((el) => el.eventClass === eventClass)?.isEnabled ??
+    AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass];
 
   const {
     control,
@@ -53,14 +46,13 @@ export const AuditLogEventClassesSection = () => {
     formState: { isDirty, dirtyFields }
   } = useForm<TForm>({
     values: Object.fromEntries(
-      AUDIT_LOG_EVENT_CLASSES.map((eventClass) => [eventClass, settingFor(eventClass).isEnabled])
+      AUDIT_LOG_EVENT_CLASSES.map((eventClass) => [eventClass, isEnabled(eventClass)])
     ) as TForm
   });
 
   const shouldUseNewPrivilegeSystem =
     settings?.shouldUseNewPrivilegeSystem ?? currentOrg.shouldUseNewPrivilegeSystem;
 
-  // Only send touched rows, so untouched ones keep following the org.
   const onSubmit = async (form: TForm) => {
     const eventClasses = AUDIT_LOG_EVENT_CLASSES.filter(
       (eventClass) => dirtyFields[eventClass]
@@ -71,17 +63,6 @@ export const AuditLogEventClassesSection = () => {
     createNotification({ text: "Audit log settings saved", type: "success" });
   };
 
-  const applyOrgDefault = async (eventClass: AuditLogEventClass) => {
-    await updateSettings({
-      projectId: currentProject.id,
-      eventClasses: [{ eventClass, isEnabled: null }]
-    });
-    createNotification({
-      text: "Project now follows the organization default for this class",
-      type: "success"
-    });
-  };
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="mb-6">
       <Card className="gap-0 overflow-hidden p-0">
@@ -90,10 +71,7 @@ export const AuditLogEventClassesSection = () => {
             Audit Log Event Classes
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
           </CardTitle>
-          <CardDescription>
-            Choose which classes of events this project records. Rows without an override follow the
-            organization setting.
-          </CardDescription>
+          <CardDescription>Choose which classes of events this project records.</CardDescription>
         </CardHeader>
         {isPending ? (
           <div className="space-y-4 p-6">
@@ -106,7 +84,6 @@ export const AuditLogEventClassesSection = () => {
             {AUDIT_LOG_EVENT_CLASSES.map((eventClass) => {
               const isAuthorization = eventClass === AuditLogEventClass.Authorization;
               const isLocked = isAuthorization && !shouldUseNewPrivilegeSystem;
-              const hasOverride = settingFor(eventClass).source === "project";
               return (
                 <Controller
                   key={eventClass}
@@ -120,27 +97,6 @@ export const AuditLogEventClassesSection = () => {
                       isDisabled={!isAdmin}
                       lockedReason={isLocked ? REQUIRES_NEW_PRIVILEGE_SYSTEM : undefined}
                       onCheckedChange={field.onChange}
-                      badge={
-                        hasOverride ? (
-                          <Badge variant="project">Project Override</Badge>
-                        ) : (
-                          <Badge variant="neutral">Organization Default</Badge>
-                        )
-                      }
-                      action={
-                        isAdmin && hasOverride && !isLocked ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="xs"
-                            className="h-auto px-1.5 py-0.5 text-2xs font-normal text-muted hover:text-foreground"
-                            isDisabled={isSaving}
-                            onClick={() => applyOrgDefault(eventClass)}
-                          >
-                            Use Organization Default
-                          </Button>
-                        ) : undefined
-                      }
                       warning={
                         eventClass === AuditLogEventClass.DataAccess && !field.value
                           ? "Secret Insights are counted from these events and stay flat while this is off."

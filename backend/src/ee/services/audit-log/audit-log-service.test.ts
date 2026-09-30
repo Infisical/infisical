@@ -60,8 +60,8 @@ const createHarness = ({ windowAcquired = true, storedCount = "0" } = {}) => {
   const auditLogQueue = { pushToLog: vi.fn<(data: TPushedLog) => Promise<void>>(async () => undefined) };
   const auditLogSettingsService = {
     getEffectiveSettings: vi.fn<(orgId: string) => Promise<TEffectiveAuditLogSettings>>(async () => ({
-      org: { [AuditLogEventClass.Authorization]: true },
-      projects: {},
+      org: {},
+      projects: { "project-1": { [AuditLogEventClass.Authorization]: true } },
       shouldUseNewPrivilegeSystem: true
     }))
   };
@@ -138,8 +138,8 @@ describe("recordPermissionDenied", () => {
   test("nothing is recorded when the authorization class is off", async () => {
     const { service, keyStore, auditLogQueue, auditLogSettingsService } = createHarness();
     auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce({
-      org: { [AuditLogEventClass.Authorization]: false },
-      projects: {},
+      org: {},
+      projects: { "project-1": { [AuditLogEventClass.Authorization]: false } },
       shouldUseNewPrivilegeSystem: true
     });
 

@@ -52,7 +52,7 @@ export const AuditLogSettingsTab = withPermission(
       control,
       handleSubmit,
       reset,
-      formState: { isDirty }
+      formState: { isDirty, dirtyFields }
     } = useForm<TForm>({
       values: Object.fromEntries(
         AUDIT_LOG_EVENT_CLASSES.map((eventClass) => [eventClass, isEnabled(eventClass)])
@@ -63,12 +63,12 @@ export const AuditLogSettingsTab = withPermission(
       settings?.shouldUseNewPrivilegeSystem ?? currentOrg.shouldUseNewPrivilegeSystem;
 
     const onSubmit = async (form: TForm) => {
-      await updateSettings({
-        eventClasses: AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({
-          eventClass,
-          isEnabled: form[eventClass]
-        }))
-      });
+      const eventClasses = AUDIT_LOG_EVENT_CLASSES.filter(
+        (eventClass) => dirtyFields[eventClass]
+      ).map((eventClass) => ({ eventClass, isEnabled: form[eventClass] }));
+      if (!eventClasses.length) return;
+
+      await updateSettings({ eventClasses });
       createNotification({ text: "Audit log settings saved", type: "success" });
     };
 
@@ -81,8 +81,8 @@ export const AuditLogSettingsTab = withPermission(
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
             </CardTitle>
             <CardDescription>
-              Choose which classes of events are recorded. Every event type belongs to exactly one
-              class.
+              Choose which classes of organization-level events are recorded. Each project has its
+              own setting for its events.
             </CardDescription>
           </CardHeader>
           {isPending ? (
