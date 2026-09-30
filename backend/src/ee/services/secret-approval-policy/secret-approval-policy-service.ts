@@ -433,6 +433,8 @@ export const secretApprovalPolicyServiceFactory = ({
     }
 
     let approversChanged = false;
+    let approversCountBefore = 0;
+    let approversCountAfter = 0;
 
     const updatedSap = await secretApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await secretApprovalPolicyDAL.updateById(
@@ -454,6 +456,7 @@ export const secretApprovalPolicyServiceFactory = ({
           approver.approverGroupId ? `group:${approver.approverGroupId}` : `user:${approver.approverUserId}`
         )
       );
+      approversCountBefore = existingApproverKeys.size;
 
       await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
 
@@ -514,6 +517,7 @@ export const secretApprovalPolicyServiceFactory = ({
         ...resolvedUserApproverIds.map((id) => `user:${id}`),
         ...(groupApprovers ?? []).map((id) => `group:${id}`)
       ]);
+      approversCountAfter = newApproverKeys.size;
       approversChanged =
         existingApproverKeys.size !== newApproverKeys.size ||
         [...existingApproverKeys].some((key) => !newApproverKeys.has(key));
@@ -572,7 +576,9 @@ export const secretApprovalPolicyServiceFactory = ({
       environments: secretApprovalPolicy.environments,
       environment: secretApprovalPolicy.environments[0],
       projectId: secretApprovalPolicy.projectId,
-      approversChanged
+      approversChanged,
+      approversCountBefore,
+      approversCountAfter
     };
   };
 

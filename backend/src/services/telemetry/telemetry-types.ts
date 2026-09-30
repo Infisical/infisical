@@ -2349,6 +2349,8 @@ export type TSecretApprovalPolicyUpdatedEvent = {
     policyId: string;
     projectId?: string;
     approversChanged: boolean;
+    approversCountBefore: number;
+    approversCountAfter: number;
   };
 };
 
@@ -2358,6 +2360,8 @@ export type TAccessApprovalPolicyUpdatedEvent = {
     policyId: string;
     projectId?: string;
     approversChanged: boolean;
+    approversCountBefore: number;
+    approversCountAfter: number;
   };
 };
 

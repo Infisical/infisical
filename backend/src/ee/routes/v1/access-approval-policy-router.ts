@@ -343,7 +343,12 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           event: PostHogEventTypes.AccessApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
-          properties: { policyId: req.params.policyId, approversChanged: approval.approversChanged }
+          properties: {
+            policyId: req.params.policyId,
+            approversChanged: approval.approversChanged,
+            approversCountBefore: approval.approversCountBefore,
+            approversCountAfter: approval.approversCountAfter
+          }
         })
         .catch(() => {});
     }

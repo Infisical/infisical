@@ -220,6 +220,8 @@ export interface TAccessApprovalPolicyServiceFactory {
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
     approversChanged: boolean;
+    approversCountBefore: number;
+    approversCountAfter: number;
   }>;
   getAccessApprovalPolicyByProjectSlug: ({
     actorId,

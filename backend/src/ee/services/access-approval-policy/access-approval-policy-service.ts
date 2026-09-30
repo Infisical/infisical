@@ -458,6 +458,8 @@ export const accessApprovalPolicyServiceFactory = ({
     }
 
     let approversChanged = false;
+    let approversCountBefore = 0;
+    let approversCountAfter = 0;
 
     const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
     const updatedPolicy = await accessApprovalPolicyDAL.transaction(async (tx) => {
@@ -481,6 +483,7 @@ export const accessApprovalPolicyServiceFactory = ({
           approver.approverGroupId ? `group:${approver.approverGroupId}` : `user:${approver.approverUserId}`
         )
       );
+      approversCountBefore = existingApproverKeys.size;
 
       await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
 
@@ -552,6 +555,7 @@ export const accessApprovalPolicyServiceFactory = ({
         ...approverUserIds.map((approver) => `user:${approver.id}`),
         ...groupApprovers.map((approver) => `group:${approver.id}`)
       ]);
+      approversCountAfter = newApproverKeys.size;
       approversChanged =
         existingApproverKeys.size !== newApproverKeys.size ||
         [...existingApproverKeys].some((key) => !newApproverKeys.has(key));
@@ -603,7 +607,9 @@ export const accessApprovalPolicyServiceFactory = ({
       environments: accessApprovalPolicy.environments,
       environment: accessApprovalPolicy.environments[0],
       projectId: accessApprovalPolicy.projectId,
-      approversChanged
+      approversChanged,
+      approversCountBefore,
+      approversCountAfter
     };
   };
 

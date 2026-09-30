@@ -162,7 +162,12 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           event: PostHogEventTypes.SecretApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
-          properties: { policyId: req.params.sapId, approversChanged: approval.approversChanged }
+          properties: {
+            policyId: req.params.sapId,
+            approversChanged: approval.approversChanged,
+            approversCountBefore: approval.approversCountBefore,
+            approversCountAfter: approval.approversCountAfter
+          }
         })
         .catch(() => {});
 
