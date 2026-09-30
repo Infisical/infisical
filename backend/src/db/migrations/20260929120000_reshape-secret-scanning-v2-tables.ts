@@ -110,7 +110,6 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("triagedByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
       t.timestamp("triagedAt").nullable();
       t.timestamp("resolvedAt").nullable();
-      t.binary("encryptedFinding").nullable();
 
       t.dropColumn("dataSourceName");
       t.dropColumn("dataSourceType");
@@ -180,7 +179,6 @@ export async function down(knex: Knex): Promise<void> {
       t.dropColumn("triagedByUserId");
       t.dropColumn("triagedAt");
       t.dropColumn("resolvedAt");
-      t.dropColumn("encryptedFinding");
 
       t.renameColumn("ruleKey", "rule");
       t.renameColumn("triageComment", "remarks");

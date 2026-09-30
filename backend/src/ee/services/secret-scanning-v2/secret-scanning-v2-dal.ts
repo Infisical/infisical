@@ -519,8 +519,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         `${TableName.SecretScanningResource}.dataSourceId`
       );
 
-  const selectFindingWithDetails = <T extends Knex.QueryBuilder>(query: T) =>
-    query
+  const findingWithDetailsQuery = (tx?: Knex) =>
+    baseFindingQuery(tx)
       .select(selectAllTableCols(TableName.SecretScanningFinding))
       .select(
         db.ref("projectId").withSchema(TableName.SecretScanningDataSource),
@@ -530,19 +530,12 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName")
       );
 
-  type TSecretScanningFindingWithDetails = TSecretScanningFindings & {
-    projectId: string;
-    dataSourceId: string;
-    dataSourceName: string;
-    dataSourceType: string;
-    resourceName: string;
-  };
-
   const findFindingsByProjectId = async (projectId: string, tx?: Knex) => {
     try {
-      const findings = (await selectFindingWithDetails(
-        baseFindingQuery(tx).where(`${TableName.SecretScanningDataSource}.projectId`, projectId)
-      )) as TSecretScanningFindingWithDetails[];
+      const findings = await findingWithDetailsQuery(tx).where(
+        `${TableName.SecretScanningDataSource}.projectId`,
+        projectId
+      );
 
       return findings;
     } catch (error) {
@@ -552,9 +545,9 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
 
   const findFindingByIdWithDetails = async (findingId: string, tx?: Knex) => {
     try {
-      const finding = (await selectFindingWithDetails(
-        baseFindingQuery(tx).where(`${TableName.SecretScanningFinding}.id`, findingId)
-      ).first()) as TSecretScanningFindingWithDetails | undefined;
+      const finding = await findingWithDetailsQuery(tx)
+        .where(`${TableName.SecretScanningFinding}.id`, findingId)
+        .first();
 
       return finding;
     } catch (error) {
