@@ -979,7 +979,9 @@ export const SecretEditTableRow = ({
               }}
             />
           </TooltipTrigger>
-          <TooltipContent>{field.value ?? secretName}</TooltipContent>
+          <TooltipContent className="max-w-(--radix-tooltip-content-available-width) break-all whitespace-normal">
+            {field.value ?? secretName}
+          </TooltipContent>
         </Tooltip>
       )}
     />

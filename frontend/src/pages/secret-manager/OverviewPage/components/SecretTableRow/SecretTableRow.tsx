@@ -478,7 +478,9 @@ export const SecretTableRow = ({
                         {secretKey}
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent>{secretKey}</TooltipContent>
+                    <TooltipContent className="max-w-(--radix-tooltip-content-available-width) break-all whitespace-normal">
+                      {secretKey}
+                    </TooltipContent>
                   </Tooltip>
                   {!isFormExpanded &&
                     environments.some(
