@@ -641,7 +641,7 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
                       <Label htmlFor={`upgrade-cadence-${product.id}`}>
                         {trialAvailable ? "Monthly Billing After Trial" : "Annual Billing"}
                       </Label>
-                      {savingsPercent > 0 && !trialAvailable && (
+                      {savingsPercent > 0 && !trialAvailable && visibleCadence === "annual" && (
                         <Badge variant="success">-{savingsPercent}%</Badge>
                       )}
                     </div>
