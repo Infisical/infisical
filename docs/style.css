@@ -32,6 +32,8 @@
   --ifx-hover-line: rgb(var(--gray-300, 207 207 207));
   --ifx-input-text: rgb(var(--gray-900, 23 23 24));
   --ifx-placeholder: rgb(var(--gray-600, 81 81 81) / 0.7);
+  --ifx-card-bg: var(--ifx-surface);
+  --ifx-card-line: var(--ifx-line);
   --ifx-cat-secrets: var(--ifx-green);
   --ifx-cat-scanning: #8b2fd0;
   --ifx-cat-certificates: #a16207;
@@ -356,10 +358,9 @@
   background-color: #F3F4F6;
 }
 
-#content-area .mt-8 .block{
-  border-width: 1px;
-  background-color: var(--ifx-surface);
-  border-color: var(--ifx-line);
+#content-area div.card {
+  background-color: var(--ifx-card-bg);
+  border-color: var(--ifx-card-line);
 }
 
 #content-area div.my-4{
@@ -810,8 +811,8 @@ a.ifx-steps__label:hover {
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
-  background-color: var(--ifx-surface);
-  outline: 1px solid var(--ifx-line);
+  background-color: var(--ifx-card-bg);
+  outline: 1px solid var(--ifx-card-line);
   text-decoration: none;
   transition: background-color 0.2s, box-shadow 0.2s;
 }
@@ -1134,7 +1135,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
 
 #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
   border-left-color: #dbf530;
-  background-color: #f7f7f6;
+  background-color: var(--ifx-surface-soft);
 }
 
 #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a svg {
@@ -1149,7 +1150,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
 
 .dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
   border-left-color: #dbf530;
-  background-color: #101114;
   color: #f3f3f4;
 }
 
@@ -1258,8 +1258,8 @@ a.ifx-card__title:hover .ifx-card__chevron {
 .dark .ifx-catalog__card.link {
   display: block;
   padding: 1.25rem 1.5rem;
-  border: 1px solid var(--ifx-line);
-  background-color: var(--ifx-surface);
+  border: 1px solid var(--ifx-card-line);
+  background-color: var(--ifx-card-bg);
   font-weight: 400;
   text-decoration: none;
 }
