@@ -2636,6 +2636,8 @@ export const registerRoutes = async (
     permissionService,
     accessApprovalRequestReviewerDAL,
     accessApprovalPolicyDAL,
+    approvalPolicySecretEnvironmentDAL,
+    secretAccessApprovalBridge: secretAccessApprovalBridgeService,
     accessApprovalRequestDAL,
     projectEnvDAL,
     userDAL,

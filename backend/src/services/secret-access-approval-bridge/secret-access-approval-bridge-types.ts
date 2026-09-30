@@ -29,3 +29,16 @@ export type TSecretAccessApprovalBridgeServiceFactoryDep = {
 };
 
 export type TCreateSecretAccessApprovalPolicyDTO = TCreateAccessApprovalPolicy;
+
+export type TCreateSecretAccessApprovalRequestDTO = {
+  policy: { id: string; name: string };
+  projectId: string;
+  envId: string;
+  envSlug: string;
+  secretPath: string;
+  requestedByUserId: string;
+  permissions: unknown;
+  isTemporary: boolean;
+  temporaryRange?: string;
+  note?: string;
+};

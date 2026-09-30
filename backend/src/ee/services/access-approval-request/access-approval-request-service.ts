@@ -16,12 +16,14 @@ import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integr
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TApprovalPolicySecretEnvironmentDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TSecretAccessApprovalBridgeServiceFactory } from "@app/services/secret-access-approval-bridge/secret-access-approval-bridge-service";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -70,6 +72,11 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "getCount"
   >;
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findOne" | "find" | "findLastValidPolicy">;
+  approvalPolicySecretEnvironmentDAL: Pick<
+    TApprovalPolicySecretEnvironmentDALFactory,
+    "findPolicyByEnvIdsAndSecretPath"
+  >;
+  secretAccessApprovalBridge: Pick<TSecretAccessApprovalBridgeServiceFactory, "createAccessApprovalRequest">;
   accessApprovalRequestReviewerDAL: Pick<
     TAccessApprovalRequestReviewerDALFactory,
     "create" | "find" | "findOne" | "transaction" | "delete"
@@ -97,6 +104,8 @@ export const accessApprovalRequestServiceFactory = ({
   accessApprovalRequestReviewerDAL,
   accessApprovalPolicyDAL,
   accessApprovalPolicyApproverDAL,
+  approvalPolicySecretEnvironmentDAL,
+  secretAccessApprovalBridge,
   additionalPrivilegeDAL,
   smtpService,
   userDAL,
@@ -219,6 +228,31 @@ export const accessApprovalRequestServiceFactory = ({
     );
   };
 
+  const $usesGlobalApprovalBridge = async ({
+    envId,
+    secretPath
+  }: {
+    envId: string;
+    secretPath: string;
+  }): Promise<
+    | { usesGlobalBridge: true; globalPolicy: { id: string; name: string } }
+    | {
+        usesGlobalBridge: false;
+        legacyPolicy: Awaited<ReturnType<TAccessApprovalPolicyDALFactory["findLastValidPolicy"]>>;
+      }
+  > => {
+    const [legacyPolicy, globalPolicy] = await Promise.all([
+      accessApprovalPolicyDAL.findLastValidPolicy({ envId, secretPath }),
+      approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdsAndSecretPath({ envIds: [envId], secretPath })
+    ]);
+
+    if (globalPolicy) {
+      return { usesGlobalBridge: true, globalPolicy: { id: globalPolicy.policyId, name: globalPolicy.policyName } };
+    }
+
+    return { usesGlobalBridge: false, legacyPolicy };
+  };
+
   const createAccessApprovalRequest: TAccessApprovalRequestServiceFactory["createAccessApprovalRequest"] = async ({
     isTemporary,
     temporaryRange,
@@ -256,10 +290,24 @@ export const accessApprovalRequestServiceFactory = ({
 
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
-    const policy = await accessApprovalPolicyDAL.findLastValidPolicy({
-      envId: environment.id,
-      secretPath
-    });
+    const approvalBridge = await $usesGlobalApprovalBridge({ envId: environment.id, secretPath });
+
+    if (approvalBridge.usesGlobalBridge) {
+      return secretAccessApprovalBridge.createAccessApprovalRequest({
+        policy: approvalBridge.globalPolicy,
+        projectId: project.id,
+        envId: environment.id,
+        envSlug,
+        secretPath,
+        requestedByUserId: actorId,
+        permissions: requestedPermissions,
+        isTemporary,
+        temporaryRange,
+        note
+      });
+    }
+
+    const policy = routing.legacyPolicy;
     if (!policy) {
       throw new NotFoundError({
         message: `No policy in environment with slug '${environment.slug}' and with secret path '${secretPath}' was found.`

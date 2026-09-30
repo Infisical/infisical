@@ -11,6 +11,7 @@ import { ApprovalPolicyType } from "@app/services/approval-policy/approval-polic
 import { secretAccessApprovalPolicyExists } from "./secret-access-approval-bridge-fns";
 import {
   TCreateSecretAccessApprovalPolicyDTO,
+  TCreateSecretAccessApprovalRequestDTO,
   TSecretAccessApprovalBridgeServiceFactoryDep
 } from "./secret-access-approval-bridge-types";
 
@@ -280,5 +281,11 @@ export const secretAccessApprovalBridgeServiceFactory = ({
     };
   };
 
-  return { createAccessApprovalPolicy };
+  const createAccessApprovalRequest: (dto: TCreateSecretAccessApprovalRequestDTO) => Promise<never> = async () => {
+    throw new BadRequestError({
+      message: "Secret access approval requests are not supported on the global approval system yet"
+    });
+  };
+
+  return { createAccessApprovalPolicy, createAccessApprovalRequest };
 };
