@@ -44,7 +44,9 @@ import {
 } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import {
+  AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH,
   AGENT_VAULT_MAX_VARIABLES,
+  filledInVariableLength,
   findStoredVariableIds,
   findVariableKeys,
   toStoredVariableReferences,
@@ -285,6 +287,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const getProjectCipher = (projectId: string) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
+  type TProjectCipher = Awaited<ReturnType<typeof getProjectCipher>>;
+
+  const sealVariableValue = (encryptor: TProjectCipher["encryptor"], value: string) =>
+    encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
+
+  const openVariableValue = (decryptor: TProjectCipher["decryptor"], encryptedValue: Buffer) =>
+    (JSON.parse(decryptor({ cipherTextBlob: encryptedValue }).toString("utf-8")) as { value: string }).value;
+
   // `null` clears the sealed column, `undefined` leaves it alone. $decryptCredential reads a NULL secret
   // as passthrough, so the two are not interchangeable.
   type TCredentialWrite = { config: TAgentVaultCredentialConfig; secret: Record<string, string> | null | undefined };
@@ -486,6 +496,66 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     return { idOfKey, variableIds: new Set(variables.map((variable) => variable.id)) };
   };
+
+  // What an error calls each part of a sealed credential.
+  const CREDENTIAL_PART_NOUNS: Record<string, string> = { value: "token", username: "username", password: "password" };
+
+  // Resolve sends a field its variables would fill in past the cap as stored text, which reaches the host in place
+  // of the credential, so every write that could build one measures it first. Measured before the lock, so a
+  // service save racing a change to one of its variables can still land a field over the cap, and resolve then
+  // holds it there.
+  const findOverlongText = async <T extends { text: string }>({
+    projectId,
+    accessBundleId,
+    texts,
+    cipher,
+    replacing
+  }: {
+    projectId: string;
+    accessBundleId: string;
+    texts: T[];
+    cipher: TProjectCipher | null;
+    replacing?: { variableId: string; value: string };
+  }): Promise<T | undefined> => {
+    const variableIds = new Set(texts.flatMap(({ text }) => findStoredVariableIds(text)));
+    if (replacing) variableIds.delete(replacing.variableId);
+
+    const lengthOf = new Map<string, number>();
+    if (variableIds.size) {
+      const [variables, { decryptor }] = await Promise.all([
+        agentVaultVariableDAL.findByAccessBundleId(accessBundleId),
+        cipher ?? getProjectCipher(projectId)
+      ]);
+      variables.forEach((variable) => {
+        if (variableIds.has(variable.id)) {
+          lengthOf.set(variable.id, openVariableValue(decryptor, variable.encryptedValue).length);
+        }
+      });
+    }
+    if (replacing) lengthOf.set(replacing.variableId, replacing.value.length);
+
+    return texts.find(
+      ({ text }) =>
+        filledInVariableLength(text, (variableId) => lengthOf.get(variableId)) > AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH
+    );
+  };
+
+  const assertServiceFieldsFitWhenFilledIn = async (params: {
+    projectId: string;
+    accessBundleId: string;
+    texts: TReferencingText[];
+    cipher: TProjectCipher | null;
+  }) => {
+    const overlong = await findOverlongText(params);
+    if (overlong) {
+      throw new BadRequestError({
+        message: `${overlong.label} would be longer than ${AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH} characters once its variables are filled in. Use fewer variables in it, or shorten their values.`
+      });
+    }
+  };
+
+  const storedCredentialTexts = (storedSecret: TCredentialWrite["secret"]): TReferencingText[] =>
+    Object.entries(storedSecret ?? {}).map(([part, text]) => ({ label: `The ${CREDENTIAL_PART_NOUNS[part]}`, text }));
 
   // Only text that arrived with the request is stored. A basic credential's kept half is already stored text,
   // and one saved before variables existed has to keep reaching the host exactly as it was.
@@ -804,7 +874,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     );
     assertCustomHeadersDoNotShadowCredential(config, customHeaders);
 
-    const { encryptor } = await getProjectCipher(rest.projectId);
+    const cipher = await getProjectCipher(rest.projectId);
+    const { encryptor } = cipher;
     const seal = (value: string) => encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
 
     const encryptedCredential = secret
@@ -813,6 +884,22 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     // Stored once, so the sealed text and the references read off it are the same string.
     const storedCustomHeaderValues = (customHeaders ?? []).map((header) => store(header.value));
     const storedSubstitutionValues = (substitutions ?? []).map((substitution) => store(substitution.value));
+    await assertServiceFieldsFitWhenFilledIn({
+      projectId: rest.projectId,
+      accessBundleId: bundle.id,
+      cipher,
+      texts: [
+        ...storedCredentialTexts(secret),
+        ...(customHeaders ?? []).map((header, position) => ({
+          label: `The custom header '${header.name}'`,
+          text: storedCustomHeaderValues[position]
+        })),
+        ...(substitutions ?? []).map((substitution, position) => ({
+          label: `The substitution for '${substitution.placeholder}'`,
+          text: storedSubstitutionValues[position]
+        }))
+      ]
+    });
     const customHeaderRows = (customHeaders ?? []).map((header, position) => ({
       name: header.name,
       prefix: header.prefix ?? "",
@@ -1021,6 +1108,22 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const storedSubstitutionValues = (substitutions ?? []).map((substitution) =>
       substitution.value === undefined ? undefined : store(substitution.value)
     );
+    await assertServiceFieldsFitWhenFilledIn({
+      projectId: rest.projectId,
+      accessBundleId: bundle.id,
+      cipher: storedSecretCipher ?? cipherForTransformations,
+      texts: [
+        ...storedCredentialTexts(writtenSecret),
+        ...(customHeaders ?? []).flatMap((header, index) => {
+          const text = storedCustomHeaderValues[index];
+          return text === undefined ? [] : [{ label: `The custom header '${header.name}'`, text }];
+        }),
+        ...(substitutions ?? []).flatMap((substitution, index) => {
+          const text = storedSubstitutionValues[index];
+          return text === undefined ? [] : [{ label: `The substitution for '${substitution.placeholder}'`, text }];
+        })
+      ]
+    });
 
     const customHeaderWrites: TTransformationWrite<{ name: string; prefix: string }>[] | undefined = customHeaders?.map(
       (header, index) => ({
@@ -1268,14 +1371,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
   };
 
-  type TProjectCipher = Awaited<ReturnType<typeof getProjectCipher>>;
-
-  const sealVariableValue = (encryptor: TProjectCipher["encryptor"], value: string) =>
-    encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
-
-  const openVariableValue = (decryptor: TProjectCipher["decryptor"], encryptedValue: Buffer) =>
-    (JSON.parse(decryptor({ cipherTextBlob: encryptedValue }).toString("utf-8")) as { value: string }).value;
-
   // The secret check sits in the projection, so no caller can put a secret value on the wire by passing one.
   const projectVariable = (variable: TAgentVaultVariables, serviceIds: string[], value: string | null) => ({
     id: variable.id,
@@ -1368,6 +1463,88 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
+  // A new value reaches every field that uses the variable on the next resolve, so each of them is measured with it.
+  const assertValueFitsItsServices = async ({
+    projectId,
+    accessBundleId,
+    variableId,
+    value,
+    cipher
+  }: {
+    projectId: string;
+    accessBundleId: string;
+    variableId: string;
+    value: string;
+    cipher: TProjectCipher;
+  }) => {
+    const references = await agentVaultServiceVariableReferenceDAL.findByVariableIds([variableId]);
+    if (!references.length) return;
+
+    const serviceIds = [...new Set(references.map((reference) => reference.serviceId))];
+    const [services, { customHeaders, substitutions }] = await Promise.all([
+      agentVaultServiceDAL.find({ accessBundleId, $in: { id: serviceIds } }),
+      loadTransformations(serviceIds, undefined, { withVariableReferences: false })
+    ]);
+    const serviceNameOf = new Map(services.map((service) => [service.id, service.name]));
+
+    const usedInCredential = new Set(
+      references
+        .filter(
+          (reference) =>
+            reference.field === AgentVaultVariableReferenceField.CredentialValue ||
+            reference.field === AgentVaultVariableReferenceField.CredentialUsername
+        )
+        .map((reference) => reference.serviceId)
+    );
+    const usedInRow = new Set(
+      references.flatMap((reference) => {
+        const rowId = reference.customHeaderId ?? reference.substitutionId;
+        return rowId ? [rowId] : [];
+      })
+    );
+
+    const open = (sealed: Buffer) =>
+      JSON.parse(cipher.decryptor({ cipherTextBlob: sealed }).toString("utf-8")) as Record<string, string>;
+    const fields = [
+      ...services.flatMap((service) =>
+        usedInCredential.has(service.id) && service.encryptedCredential
+          ? Object.entries(open(service.encryptedCredential)).map(([part, text]) => ({
+              serviceId: service.id,
+              label: `the ${CREDENTIAL_PART_NOUNS[part]}`,
+              text
+            }))
+          : []
+      ),
+      ...customHeaders
+        .filter((row) => usedInRow.has(row.id) && serviceNameOf.has(row.serviceId))
+        .map((row) => ({
+          serviceId: row.serviceId,
+          label: `the custom header '${row.name}'`,
+          text: open(row.encryptedValue).value
+        })),
+      ...substitutions
+        .filter((row) => usedInRow.has(row.id) && serviceNameOf.has(row.serviceId))
+        .map((row) => ({
+          serviceId: row.serviceId,
+          label: `the substitution for '${row.placeholder}'`,
+          text: open(row.encryptedValue).value
+        }))
+    ];
+
+    const overlong = await findOverlongText({
+      projectId,
+      accessBundleId,
+      texts: fields,
+      cipher,
+      replacing: { variableId, value }
+    });
+    if (overlong) {
+      throw new BadRequestError({
+        message: `With this value, ${overlong.label} of the service '${serviceNameOf.get(overlong.serviceId)}' would be longer than ${AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH} characters once its variables are filled in. Use a shorter value, or fewer variables in it.`
+      });
+    }
+  };
+
   const updateVariable = async ({ accessBundleId, variableId, key, value, isSecret, ...rest }: TUpdateVariableDTO) => {
     const bundle = await resolveVariableBundle({ ...rest, accessBundleId });
 
@@ -1377,6 +1554,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const cipher =
       value !== undefined || !(isSecret ?? variable.isSecret) ? await getProjectCipher(rest.projectId) : null;
     const encryptedValue = value === undefined ? undefined : sealVariableValue(cipher!.encryptor, value);
+    if (value !== undefined) {
+      await assertValueFitsItsServices({
+        projectId: rest.projectId,
+        accessBundleId: bundle.id,
+        variableId: variable.id,
+        value,
+        cipher: cipher!
+      });
+    }
 
     const write = () =>
       agentVaultVariableDAL.transaction(async (tx) => {

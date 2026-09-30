@@ -949,9 +949,52 @@ describe("Agent Vault V1 Router", async () => {
       expect(resolved.substitutions[0].value).toBe("org-42");
     });
 
-    test("a field its variables would fill past 8,192 characters is sent as stored, and its service keeps its restrictions", async () => {
+    test("a save its variables would fill past 8,192 characters is refused, from the service and from the variable", async () => {
+      const bundle = await createAccessBundle("variables-overlong");
+      await createVariable(bundle.id, { key: "LONG", value: "x".repeat(8192) });
+      const short = await createVariable(bundle.id, { key: "SHORT", value: "s" });
+
+      const doubled = await inject("POST", servicesUrl(bundle.id), {
+        name: "doubled",
+        hostPattern: "doubled.example.com",
+        credential: { type: "bearer", value: "{{LONG}}{{LONG}}" }
+      });
+      expect(doubled.statusCode).toBe(400);
+      expect(JSON.parse(doubled.payload).message).toContain("The token would be longer than 8192 characters");
+
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "at-cap",
+        hostPattern: "at-cap.example.com",
+        credential: { type: "bearer", value: "{{SHORT}}{{SHORT}}" },
+        customHeaders: [{ name: "X-Long", value: "{{LONG}}" }]
+      });
+      expect(created.statusCode).toBe(200);
+      const { service } = JSON.parse(created.payload) as { service: { id: string; customHeaders: { id: string }[] } };
+
+      const prefixed = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        customHeaders: [{ id: service.customHeaders[0].id, name: "X-Long", value: "x{{LONG}}" }]
+      });
+      expect(prefixed.statusCode).toBe(400);
+      expect(JSON.parse(prefixed.payload).message).toContain("The custom header 'X-Long' would be longer");
+
+      // The token uses SHORT twice, so half the cap is the most SHORT can hold.
+      const grown = await inject("PATCH", `${variablesUrl(bundle.id)}/${short.id}`, { value: "y".repeat(4097) });
+      expect(grown.statusCode).toBe(400);
+      expect(JSON.parse(grown.payload).message).toContain("the token of the service 'at-cap' would be longer");
+
+      const resolve = await resolverFor(bundle, "variables-overlong");
+      expect((await resolve()).services[0].credential).toMatchObject({ value: "ss" });
+
+      const atCap = await inject("PATCH", `${variablesUrl(bundle.id)}/${short.id}`, { value: "y".repeat(4096) });
+      expect(atCap.statusCode).toBe(200);
+      const [resolved] = (await resolve()).services;
+      expect(resolved.credential).toMatchObject({ value: "y".repeat(8192) });
+      expect(resolved.customHeaders[0].value).toBe("x".repeat(8192));
+    });
+
+    test("a field that ends up past 8,192 characters anyway is sent as stored, and its service keeps its restrictions", async () => {
       const bundle = await createAccessBundle("variables-oversized");
-      const long = await createVariable(bundle.id, { key: "LONG", value: "x".repeat(8192) });
+      const long = await createVariable(bundle.id, { key: "LONG", value: "x" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "oversized",
         hostPattern: "api.example.com",
@@ -961,6 +1004,15 @@ describe("Agent Vault V1 Router", async () => {
         customHeaders: [{ name: "X-Long", value: "{{LONG}}" }]
       });
       expect(created.statusCode).toBe(200);
+
+      // Sealed past the value check, the way a change that raced the service save would land.
+      const { encryptor } = await cipherFor(bundle.id);
+      await testDb("agent_vault_variables")
+        .where({ id: long.id })
+        .update({
+          encryptedValue: encryptor({ plainText: Buffer.from(JSON.stringify({ value: "x".repeat(8192) })) })
+            .cipherTextBlob
+        });
 
       const resolve = await resolverFor(bundle, "variables-oversized");
       const [resolved] = (await resolve()).services;

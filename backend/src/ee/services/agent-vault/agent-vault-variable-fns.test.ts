@@ -4,6 +4,7 @@ import {
   AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH,
   AGENT_VAULT_MAX_REFERENCES_PER_FIELD,
   expandStoredVariableReferences,
+  filledInVariableLength,
   findStoredVariableIds,
   findVariableKeys,
   hasMalformedVariableReference,
@@ -100,6 +101,29 @@ describe("agent vault variable references", () => {
 
     it("ignores an upper case uuid, which the database never produces", () => {
       expect(findStoredVariableIds(`{{${GITHUB_ID.toUpperCase()}}}`)).toEqual([]);
+    });
+  });
+
+  describe("measuring filled-in length", () => {
+    const lengths: Record<string, number> = { [GITHUB_ID]: 100, [DATADOG_ID]: 7 };
+
+    it("counts each reference as its value, a repeat included, plus the text around it", () => {
+      expect(filledInVariableLength(`a{{${GITHUB_ID}}}b{{${DATADOG_ID}}}{{${GITHUB_ID}}}`, (id) => lengths[id])).toBe(
+        2 + 100 + 7 + 100
+      );
+    });
+
+    it("counts a stored id with no length behind it, and a key-form reference, as the text they stay as", () => {
+      expect(filledInVariableLength(`{{${GITHUB_ID}}}`, () => undefined)).toBe(`{{${GITHUB_ID}}}`.length);
+      expect(filledInVariableLength("{{GITHUB_TOKEN}}", () => 100)).toBe("{{GITHUB_TOKEN}}".length);
+    });
+
+    it("agrees with the length expanding produces", () => {
+      const values: Record<string, string> = { [GITHUB_ID]: "ghp_alpha", [DATADOG_ID]: "dd_beta" };
+      const stored = `Bearer {{${GITHUB_ID}}}:{{${DATADOG_ID}}}`;
+      expect(filledInVariableLength(stored, (id) => values[id]?.length)).toBe(
+        expandStoredVariableReferences(stored, (id) => values[id])!.length
+      );
     });
   });
 

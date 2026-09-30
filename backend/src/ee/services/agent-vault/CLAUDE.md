@@ -204,8 +204,11 @@ path decides what a service can reach, so it stays literal.
   Values saved before variables existed hold no id tokens, so they pass through untouched.
 - **A field is held to 8,192 characters filled in** (`AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH`), measured
   before anything is built. The input limits don't hold it there: ten references to 8,192 character values
-  fill one field in to over 80,000 characters, and a service has up to 42 such fields. A field over the cap
-  stays as stored text and is logged, for the same reason as an unresolved id. Saves don't check it.
+  fill one field in to over 80,000 characters, and a service has up to 42 such fields. Saves refuse a field
+  that would pass it, since resolve would send its stored text to the host in place of the credential: a
+  service save measures each value it seals, and a value change measures every field that uses the variable.
+  Both measure before the lock, so a service save racing a value change can still land a field over the cap.
+  Resolve sends that field as stored text and logs it, for the same reason as an unresolved id.
 - Admin only, reads included: every variable route checks `Edit` on access bundles, which a member lacks,
   and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
   an empty list would claim they use none). Every value is sealed;

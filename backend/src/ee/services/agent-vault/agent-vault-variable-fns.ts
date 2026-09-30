@@ -56,6 +56,16 @@ export const findStoredVariableIds = (text: string) => [
 ];
 
 /**
+ * How long stored text comes out once its references are filled in, measured without building it. An id with
+ * no length behind it counts as its own token, which is what expanding leaves in its place.
+ */
+export const filledInVariableLength = (text: string, lengthOfId: (variableId: string) => number | undefined) =>
+  Array.from(text.matchAll(REFERENCE_RE)).reduce((length, [token, inner]) => {
+    const valueLength = STORED_REFERENCE_RE.test(inner) ? lengthOfId(inner) : undefined;
+    return valueLength === undefined ? length : length + valueLength - token.length;
+  }, text.length);
+
+/**
  * Anything that is not a known variable id stays as it was stored. A value saved before variables existed
  * can hold literal braces, and it has to keep reaching the host unchanged.
  *
@@ -69,11 +79,11 @@ export const expandStoredVariableReferences = (
 ): string | undefined => {
   const valueOf = (inner: string) => (STORED_REFERENCE_RE.test(inner) ? valueOfId(inner) : undefined);
 
-  const expandedLength = Array.from(text.matchAll(REFERENCE_RE)).reduce((length, [token, inner]) => {
-    const value = valueOf(inner);
-    return value === undefined ? length : length + value.length - token.length;
-  }, text.length);
-  if (expandedLength > AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH) return undefined;
+  if (
+    filledInVariableLength(text, (variableId) => valueOfId(variableId)?.length) > AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH
+  ) {
+    return undefined;
+  }
 
   return text.replace(REFERENCE_RE, (token: string, inner: string) => valueOf(inner) ?? token);
 };
