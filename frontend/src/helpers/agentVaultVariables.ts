@@ -24,9 +24,6 @@ export const toVariableReference = (key: string) => `{{${key}}}`;
 export const findVariableReferences = (text: string) =>
   Array.from(text.matchAll(REFERENCE_RE), (match) => match[1]);
 
-export const findVariableKeys = (text: string) =>
-  Array.from(new Set(findVariableReferences(text).filter((ref) => VARIABLE_KEY_RE.test(ref))));
-
 /** A lone reference holds no secret, so a masked field can show it as text. */
 export const isVariableReferenceOnly = (text: string | undefined) =>
   Boolean(text) && REFERENCE_ONLY_RE.test(text as string);
