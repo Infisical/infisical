@@ -1233,7 +1233,7 @@ export const SecretEditTableRow = ({
             </PopoverContent>
           </Popover>
           <Sheet open={isReminderOpen} onOpenChange={setIsReminderOpen}>
-            <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-lg">
+            <SheetContent className="flex h-full max-h-full flex-col gap-y-0">
               <SheetHeader className="border-b">
                 <SheetTitle>{reminder ? "Edit Reminder" : "Add Reminder"}</SheetTitle>
                 <SheetDescription>

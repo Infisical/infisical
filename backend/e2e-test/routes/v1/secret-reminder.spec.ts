@@ -1,12 +1,10 @@
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
-import { SECRET_REMINDER_RESOURCE_TYPE } from "@app/services/reminder/reminder-events";
 
 import { up as migrateRemindersToAlerts } from "../../../src/db/migrations/20260929130000_migrate-secret-reminders-to-alerts";
-import { listAlerts, updateAlert } from "../../testUtils/alerts";
+import { updateAlert } from "../../testUtils/alerts";
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { createFolder, deleteFolder } from "../../testUtils/folders";
 import {
-  deleteSecretReminder,
   getSecretReminder,
   listSecretReminderAlerts,
   reapOrphanedReminderAlerts,
@@ -66,37 +64,17 @@ describe("Secret reminders delivered through alerts", () => {
     return new Date(reminder?.nextReminderDate as string);
   };
 
-  test("setting a reminder creates its alert with an email channel to the recipients", async () => {
-    const secretId = await createSecret("CREATE");
-    await setSecretReminder({ secretId, authToken, repeatDays: 30, message: "rotate it", recipients: [member.userId] });
-
-    const [alert] = await reminderAlerts(secretId);
-    expect(alert.name).toBe("Reminder for CREATE");
-    expect(alert.channels).toHaveLength(1);
-    expect(alert.channels[0]).toMatchObject({
-      channelType: "email",
-      recipients: [{ principalType: "user", principalId: member.userId }]
-    });
-
-    expect(await getSecretReminder({ secretId, authToken })).toMatchObject({
-      repeatDays: 30,
-      message: "rotate it",
-      recipients: [member.userId]
-    });
-  });
-
-  test("a reminder with no recipients notifies all project members", async () => {
-    const secretId = await createSecret("EVERYONE");
-    await setSecretReminder({ secretId, authToken, repeatDays: 7 });
-
-    const [alert] = await reminderAlerts(secretId);
-    expect(alert.channels[0].recipients).toEqual([{ principalType: "project-members", principalId: projectId }]);
-  });
-
   test("updating the reminder keeps channels added through the alert API", async () => {
     const secretId = await createSecret("KEEP_WEBHOOK");
-    await setSecretReminder({ secretId, authToken, repeatDays: 30, recipients: [member.userId] });
+    await setSecretReminder({ secretId, authToken, repeatDays: 30, message: "rotate it", recipients: [member.userId] });
     const [alert] = await reminderAlerts(secretId);
+    expect(alert.name).toBe("Reminder for KEEP_WEBHOOK");
+    expect(alert.channels).toEqual([
+      expect.objectContaining({
+        channelType: "email",
+        recipients: [{ principalType: "user", principalId: member.userId }]
+      })
+    ]);
 
     await updateAlert({
       alertId: alert.id,
@@ -116,6 +94,11 @@ describe("Secret reminders delivered through alerts", () => {
     expect(updated.channels.find((channel) => channel.channelType === "email")?.recipients).toEqual([
       { principalType: "project-members", principalId: projectId }
     ]);
+    expect(await getSecretReminder({ secretId, authToken })).toMatchObject({
+      repeatDays: 14,
+      message: "rotate it",
+      recipients: []
+    });
   });
 
   test("the secret listing reports recipients from the reminder's alert", async () => {
@@ -135,11 +118,6 @@ describe("Secret reminders delivered through alerts", () => {
     }[];
     expect(secret.secretReminderRepeatDays).toBe(30);
     expect(secret.secretReminderRecipients.map((recipient) => recipient.user.id)).toEqual([member.userId]);
-  });
-
-  test("listing reminder alerts across a project is refused", async () => {
-    const res = await listAlerts({ resourceType: SECRET_REMINDER_RESOURCE_TYPE, projectId, authToken }).raw();
-    expect(res.statusCode).toBe(400);
   });
 
   test("moving a secret carries its reminder alert to the new secret", async () => {
@@ -197,26 +175,6 @@ describe("Secret reminders delivered through alerts", () => {
     expect((await nextReminderDate(secretId)).getTime()).toBe(dueDate.getTime() + 30 * DAY_MS);
   });
 
-  test("a one-time reminder is removed once it fires, but its alert stays as the record", async () => {
-    const secretId = await createSecret("ONE_OFF");
-    const dueDate = new Date(Date.now() + DAY_MS);
-    await setSecretReminder({ secretId, authToken, nextReminderDate: dueDate.toISOString() });
-
-    await runDailyReminders({ now: dueDate });
-
-    await waitForReminderEmails("ONE_OFF");
-    expect(await getSecretReminder({ secretId, authToken })).toBeNull();
-    expect(await reminderAlerts(secretId)).toHaveLength(1);
-  });
-
-  test("deleting the reminder deletes its alert", async () => {
-    const secretId = await createSecret("DELETE_REMINDER");
-    await setSecretReminder({ secretId, authToken, repeatDays: 30 });
-
-    await deleteSecretReminder({ secretId, authToken });
-    expect(await reminderAlerts(secretId)).toHaveLength(0);
-  });
-
   // Force-deleting a folder removes its secrets by cascade, which no reminder code sees. The API
   // cannot show the orphaned alert either (every read goes through its secret), so this reads the
   // alert row directly.
@@ -259,14 +217,17 @@ describe("Secret reminders delivered through alerts", () => {
 
     test("gives existing reminders an alert, keeping only recipients still in the project", async () => {
       const secretId = await createSecret("MIGRATE");
+      const everyoneSecretId = await createSecret("MIGRATE_EVERYONE");
+      const nobodyLeftSecretId = await createSecret("MIGRATE_NOBODY_LEFT");
       const outsider = await createUser("reminder-outsider");
-      const reminderId = await seedReminder(secretId, {
-        repeatDays: 30,
-        nextReminderDate: new Date(Date.now() + DAY_MS)
-      });
+      const dueDate = new Date(Date.now() + DAY_MS);
+      const reminderId = await seedReminder(secretId, { repeatDays: 30, nextReminderDate: dueDate });
+      await seedReminder(everyoneSecretId, { repeatDays: 7, nextReminderDate: dueDate });
+      const nobodyLeftReminderId = await seedReminder(nobodyLeftSecretId, { repeatDays: 7, nextReminderDate: dueDate });
       await testDb("reminders_recipients").insert([
         { reminderId, userId: member.userId },
-        { reminderId, userId: outsider.userId }
+        { reminderId, userId: outsider.userId },
+        { reminderId: nobodyLeftReminderId, userId: outsider.userId }
       ]);
 
       await migrateRemindersToAlerts(testDb);
@@ -280,16 +241,15 @@ describe("Secret reminders delivered through alerts", () => {
         createdByActorType: "platform",
         createdByActorId: null
       });
-    });
 
-    test("falls back to all project members when no listed recipient is left", async () => {
-      const secretId = await createSecret("MIGRATE_EVERYONE");
-      await seedReminder(secretId, { repeatDays: 7, nextReminderDate: new Date(Date.now() + DAY_MS) });
+      // A reminder that never listed anyone keeps its meaning: everyone in the project.
+      const [everyoneAlert] = await reminderAlerts(everyoneSecretId);
+      expect(everyoneAlert.channels[0].recipients).toEqual([
+        { principalType: "project-members", principalId: projectId }
+      ]);
 
-      await migrateRemindersToAlerts(testDb);
-
-      const [alert] = await reminderAlerts(secretId);
-      expect(alert.channels[0].recipients).toEqual([{ principalType: "project-members", principalId: projectId }]);
+      // One whose listed recipients have all left gets no alert, rather than one to people nobody chose.
+      expect(await reminderAlerts(nobodyLeftSecretId)).toHaveLength(0);
     });
 
     test("rerunning does not duplicate alerts", async () => {

@@ -80,13 +80,19 @@ export async function up(knex: Knex): Promise<void> {
 
   const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
   const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex), hsmService, kmsRootConfigDALFactory(knex));
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore: inMemoryKeyStore(), db: knex });
+  const { kmsService } = await getMigrationEncryptionServices({
+    envConfig,
+    keyStore: inMemoryKeyStore(),
+    db: knex,
+    skipHsmLicenseCheck: true
+  });
   const cipherCache = createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
   const orgDAL = orgDALFactory(knex as never);
   const projectDAL = projectDALFactory(knex as never);
 
   let lastId: string | undefined;
   let migrated = 0;
+  let skipped = 0;
 
   for (;;) {
     const cursor = lastId;
@@ -145,7 +151,9 @@ export async function up(knex: Knex): Promise<void> {
     }
 
     // Reminder recipients were never pruned when someone left a project. Keep only principals the alert
-    // module would accept, so the migrated channel can be saved again from the UI.
+    // module would accept, so the migrated channel can be saved again from the UI. A reminder whose
+    // listed recipients have all left gets no alert rather than one to the whole project: nobody chose
+    // that audience, and it would see the secret's key, path and note.
     const recipientsByReminder = new Map<string, TRecipient[]>();
     for (const reminder of pending) {
       const userIds = [
@@ -158,17 +166,21 @@ export async function up(knex: Knex): Promise<void> {
           )
         : { userIds: new Set<string>() };
       const kept = userIds.filter((userId) => inScope.userIds.has(userId));
-      recipientsByReminder.set(
-        reminder.id,
-        kept.length
-          ? kept.map((principalId) => ({ principalType: "user", principalId }))
-          : [{ principalType: "project-members", principalId: reminder.projectId }]
-      );
+      if (userIds.length && !kept.length) {
+        skipped += 1;
+      } else {
+        recipientsByReminder.set(
+          reminder.id,
+          kept.length
+            ? kept.map((principalId) => ({ principalType: "user", principalId }))
+            : [{ principalType: "project-members", principalId: reminder.projectId }]
+        );
+      }
     }
 
     await knex.transaction(async (tx) => {
       await tx.raw(`SET LOCAL statement_timeout = ${BATCH_STATEMENT_TIMEOUT_MS}`);
-      for (const reminder of pending) {
+      for (const reminder of pending.filter(({ id }) => recipientsByReminder.has(id))) {
         const [alert] = (await tx(TableName.Alert)
           .insert({
             name: `Reminder for ${reminder.secretKey}`.slice(0, MAX_ALERT_NAME_LENGTH),
@@ -185,7 +197,7 @@ export async function up(knex: Knex): Promise<void> {
           })
           .returning("id")) as { id: string }[];
 
-        const recipients = recipientsByReminder.get(reminder.id) ?? [];
+        const recipients = recipientsByReminder.get(reminder.id) as TRecipient[];
         for (let i = 0; i < recipients.length; i += MAX_RECIPIENTS_PER_CHANNEL) {
           const channelNumber = i / MAX_RECIPIENTS_PER_CHANNEL + 1;
           const [channel] = (await tx(TableName.AlertChannel)
@@ -212,27 +224,35 @@ export async function up(knex: Knex): Promise<void> {
       }
     });
 
-    migrated += pending.length;
+    migrated += recipientsByReminder.size;
   }
 
-  logger.info(`migrate-secret-reminders-to-alerts: created alerts for ${migrated} reminders`);
+  logger.info(
+    `migrate-secret-reminders-to-alerts: created alerts for ${migrated} reminders, skipped ${skipped} whose recipients have all left their project`
+  );
 }
 
 export async function down(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.Alert))) return;
 
-  const alertIds = knex(TableName.Alert)
-    .where({ resourceType: RESOURCE_TYPE, createdByActorType: "platform" })
-    .whereNull("createdByActorId")
-    .select("id");
+  // Background work also creates platform reminder alerts after the backfill (eg a reminder set through a
+  // secret update), so only the alerts that existed when this migration finished are its own. The record
+  // is named .ts or .mjs depending on how the migrations were run.
+  const record = await knex("infisical_migrations")
+    .where("name", "like", "20260929130000_migrate-secret-reminders-to-alerts.%")
+    .first("migration_time");
+  if (!record) return;
+
+  const backfilledAlerts = () =>
+    knex(TableName.Alert)
+      .where({ resourceType: RESOURCE_TYPE, createdByActorType: "platform" })
+      .whereNull("createdByActorId")
+      .where("createdAt", "<=", record.migration_time);
   const channelIds = (await knex(TableName.AlertChannelMembership)
-    .whereIn("alertId", alertIds)
+    .whereIn("alertId", backfilledAlerts().select("id"))
     .pluck("channelId")) as string[];
 
-  await knex(TableName.Alert)
-    .where({ resourceType: RESOURCE_TYPE, createdByActorType: "platform" })
-    .whereNull("createdByActorId")
-    .delete();
+  await backfilledAlerts().delete();
   for (let i = 0; i < channelIds.length; i += BATCH_SIZE) {
     await knex(TableName.AlertChannel)
       .whereIn("id", channelIds.slice(i, i + BATCH_SIZE))

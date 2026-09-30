@@ -39,12 +39,10 @@ import {
   AlertPrincipalType,
   AlertResourceType,
   channelFormSchema,
-  fetchAlerts,
   TChannelForm,
   toChannelForm,
   toChannelInput,
-  useListAlerts,
-  useUpdateAlert
+  useListAlerts
 } from "@app/hooks/api/alerts";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { useCreateReminder, useDeleteReminder } from "@app/hooks/api/reminders";
@@ -137,19 +135,22 @@ export const SecretReminderForm = ({
 
   const { mutateAsync: createReminder, isPending: isCreating } = useCreateReminder(secretId);
   const { mutateAsync: deleteReminder, isPending: isDeleting } = useDeleteReminder(secretId);
-  const { mutateAsync: updateAlert, isPending: isUpdatingAlert } = useUpdateAlert();
-
-  const alertFilters = {
-    resourceType: AlertResourceType.SecretReminder,
-    projectId,
-    resourceId: secretId
-  };
-  const { data: alerts, isPending: isAlertLoading } = useListAlerts(alertFilters, {
-    enabled: Boolean(reminder)
-  });
-  const alert = alerts?.[0];
 
   const isEditMode = Boolean(reminder);
+
+  const {
+    data: alerts,
+    isPending: isAlertLoading,
+    isError: isAlertError,
+    isSuccess: isAlertLoaded
+  } = useListAlerts(
+    { resourceType: AlertResourceType.SecretReminder, projectId, resourceId: secretId },
+    { enabled: isEditMode }
+  );
+  const alert = alerts?.[0];
+  // Until an existing reminder's channels load, the form holds the default channel,
+  // so saving would replace the real ones.
+  const areChannelsReady = !isEditMode || isAlertLoaded;
 
   const canEditSecret = permission.can(
     ProjectPermissionSecretActions.Edit,
@@ -204,7 +205,7 @@ export const SecretReminderForm = ({
     if (alert) setValue("channels", alert.channels.map(toChannelForm), { shouldDirty: false });
   }, [alert, setValue]);
 
-  const isPending = isCreating || isDeleting || isUpdatingAlert;
+  const isPending = isCreating || isDeleting;
 
   const invalidateQueries = useCallback(() => {
     queryClient.invalidateQueries({
@@ -236,40 +237,14 @@ export const SecretReminderForm = ({
   );
 
   const onSubmit = async (data: TFormSchema) => {
-    // The reminder API saves the schedule and keeps the alert's email recipients in step with the users
-    // it is given. The alert update that follows then sets every channel exactly as the form has them.
-    const emailUserIds = data.channels
-      .filter((channel) => channel.channelType === AlertChannelType.Email)
-      .flatMap((channel) => channel.recipients)
-      .filter((recipient) => recipient.principalType === AlertPrincipalType.User)
-      .map((recipient) => recipient.principalId);
-
     await createReminder({
       repeatDays: data.repeatDays,
       message: data.message,
-      recipients: [...new Set(emailUserIds)],
       secretId,
       nextReminderDate: data.nextReminderDate,
-      fromDate: data.fromDate
+      fromDate: data.fromDate,
+      channels: data.channels.map(toChannelInput)
     });
-
-    const [savedAlert] = await queryClient.fetchQuery({
-      queryKey: alertKeys.list(alertFilters),
-      queryFn: () => fetchAlerts(alertFilters),
-      staleTime: 0
-    });
-    if (savedAlert) {
-      // Saving the schedule can replace email channels, so an id the form still holds may be gone.
-      const savedChannelIds = new Set(savedAlert.channels.map((channel) => channel.id));
-      await updateAlert({
-        alertId: savedAlert.id,
-        channels: data.channels.map((channel) =>
-          toChannelInput(
-            channel.id && !savedChannelIds.has(channel.id) ? { ...channel, id: undefined } : channel
-          )
-        )
-      });
-    }
 
     invalidateQueries();
 
@@ -460,9 +435,15 @@ export const SecretReminderForm = ({
             </FieldContent>
           </Field>
 
-          {reminder && isAlertLoading ? (
+          {isEditMode && isAlertLoading && (
             <p className="text-xs text-muted">Loading channels...</p>
-          ) : (
+          )}
+          {isEditMode && isAlertError && (
+            <p className="text-xs text-danger">
+              Couldn&apos;t load this reminder&apos;s channels. Close and reopen to try again.
+            </p>
+          )}
+          {areChannelsReady && (
             <ChannelsField
               projectId={projectId}
               resourceType={AlertResourceType.SecretReminder}
@@ -500,8 +481,8 @@ export const SecretReminderForm = ({
               variant="project"
               size="xs"
               type="submit"
-              isDisabled={!isDirty || isPending}
-              isPending={isCreating || isUpdatingAlert}
+              isDisabled={!isDirty || isPending || !areChannelsReady}
+              isPending={isCreating}
             >
               {isEditMode ? "Update" : "Create"} Reminder
             </Button>

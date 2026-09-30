@@ -89,6 +89,7 @@ describe("secret reminder alert provider", () => {
       {
         orgId: "org-1",
         projectId: "proj-1",
+        reminderId: "rem-1",
         secretId: "secret-1",
         note: "rotate it",
         repeatDays: 30,

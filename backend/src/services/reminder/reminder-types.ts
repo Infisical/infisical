@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { TAlertChannelInput } from "../alert/alert-channel-service-types";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export type TReminder = {
@@ -25,6 +26,7 @@ export type TCreateReminderDTO = {
     fromDate?: string | null;
     nextReminderDate?: string | null;
     recipients?: string[] | null;
+    channels?: TAlertChannelInput[];
   };
 };
 

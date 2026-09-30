@@ -1,6 +1,6 @@
 import { request } from "./request";
 
-export type TAlertRecord = {
+type TAlertRecord = {
   id: string;
   name: string;
   channels: {
@@ -12,17 +12,13 @@ export type TAlertRecord = {
   }[];
 };
 
-export const listAlerts = (dto: { resourceType: string; projectId: string; resourceId?: string; authToken: string }) =>
+export const listAlerts = (dto: { resourceType: string; projectId: string; resourceId: string; authToken: string }) =>
   request(
     {
       method: "GET",
       url: "/api/v1/alerts",
       headers: { authorization: `Bearer ${dto.authToken}` },
-      query: {
-        resourceType: dto.resourceType,
-        projectId: dto.projectId,
-        ...(dto.resourceId ? { resourceId: dto.resourceId } : {})
-      }
+      query: { resourceType: dto.resourceType, projectId: dto.projectId, resourceId: dto.resourceId }
     },
     (res) => {
       expect(res.statusCode).toBe(200);

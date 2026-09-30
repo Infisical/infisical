@@ -1,5 +1,6 @@
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { logger } from "@app/lib/logger";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -15,6 +16,7 @@ type TAlertRecipientResolverDep = {
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "findAllProjectGroupMembers">;
 };
 
 type TResolvableRecipient = { principalType: string; principalId: string };
@@ -28,7 +30,8 @@ export const alertRecipientResolverFactory = ({
   userGroupMembershipDAL,
   orgDAL,
   projectDAL,
-  projectMembershipDAL
+  projectMembershipDAL,
+  groupProjectDAL
 }: TAlertRecipientResolverDep) => {
   const resolveMany = async (
     rowsByChannel: Map<string, TResolvableRecipient[]>,
@@ -64,8 +67,13 @@ export const alertRecipientResolverFactory = ({
       );
     const projectMemberIds: string[] = [];
     if (wantsProjectMembers && scope.projectId) {
-      const members = await projectMembershipDAL.findAllProjectMembers(scope.projectId);
-      members.forEach((member) => {
+      // Direct members and members through a project group, so "everyone in the project" matches who
+      // the scope check below lets through.
+      const [directMembers, projectGroupMembers] = await Promise.all([
+        projectMembershipDAL.findAllProjectMembers(scope.projectId),
+        groupProjectDAL.findAllProjectGroupMembers(scope.projectId)
+      ]);
+      [...directMembers, ...projectGroupMembers].forEach((member) => {
         projectMemberIds.push(member.user.id);
         allUserIds.add(member.user.id);
       });

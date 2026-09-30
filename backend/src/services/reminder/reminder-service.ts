@@ -80,38 +80,68 @@ export const reminderServiceFactory = ({
     return bySecret;
   };
 
-  // The reminder API only knows user ids, so it owns the alert's email channels and leaves every other
-  // channel (Slack, webhook, PagerDuty) as the user configured it. An empty list keeps the reminder's
-  // original meaning: everyone in the project.
+  // Given `channels`, they are the alert's complete channel list. Otherwise the reminder API only knows
+  // user ids, so it owns the alert's email channels and leaves every other channel (Slack, webhook,
+  // PagerDuty) as the user configured it. An empty list keeps the reminder's original meaning: everyone
+  // in the project.
   const $syncReminderAlert = async ({
     secretId,
     secretKey,
     projectId,
     recipients,
+    channels,
     createdBy
   }: {
     secretId: string;
     secretKey: string;
     projectId: string;
     recipients?: string[] | null;
+    channels?: TAlertChannelInput[];
     createdBy: { actorType: ActorType; actorId: string | null };
   }) => {
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-    // Reminder recipients were never pruned when someone left the project, so drop them rather than fail.
-    const inScope = await alertService.filterRecipientsInScope(
-      { orgId: project.orgId, projectId },
-      [...new Set(recipients ?? [])].map((principalId) => ({ principalType: AlertPrincipalType.USER, principalId }))
-    );
-    const emailRecipients = inScope.length
-      ? inScope
-      : [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: projectId }];
-
     const [existing] = await alertService.findAlertsForResources({
       resourceType: SECRET_REMINDER_RESOURCE_TYPE,
       resourceIds: [secretId]
     });
+
+    if (channels) {
+      if (existing) {
+        await alertService.updateAlertInternal({ alertId: existing.id, name: reminderAlertName(secretKey), channels });
+      } else {
+        await alertService.createAlertInternal({
+          name: reminderAlertName(secretKey),
+          resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+          resourceId: secretId,
+          eventType: SECRET_REMINDER_DUE_EVENT,
+          condition: null,
+          orgId: project.orgId,
+          projectId,
+          channels,
+          createdBy
+        });
+      }
+      return;
+    }
+
+    // Reminder recipients were never pruned when someone left the project, so drop them rather than fail.
+    const requested = [...new Set(recipients ?? [])];
+    const inScope = await alertService.filterRecipientsInScope(
+      { orgId: project.orgId, projectId },
+      requested.map((principalId) => ({ principalType: AlertPrincipalType.USER, principalId }))
+    );
+    // Falling back to the whole project here would send the secret's key, path and note to people nobody
+    // chose, so a list with nobody left in it is refused instead.
+    if (requested.length && !inScope.length) {
+      throw new BadRequestError({
+        message: "None of the selected reminder recipients are members of this project. Choose recipients again."
+      });
+    }
+    const emailRecipients = inScope.length
+      ? inScope
+      : [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: projectId }];
     const existingEmailChannels =
       existing?.channels.filter((channel) => channel.channelType === AlertChannelType.EMAIL) ?? [];
 
@@ -188,6 +218,7 @@ export const reminderServiceFactory = ({
     repeatDays,
     nextReminderDate: nextReminderDateInput,
     recipients,
+    channels,
     projectId,
     fromDate: fromDateInput,
     createdBy
@@ -198,6 +229,7 @@ export const reminderServiceFactory = ({
     repeatDays?: number | null;
     nextReminderDate?: string | null;
     recipients?: string[] | null;
+    channels?: TAlertChannelInput[];
     fromDate?: string | null;
     projectId: string;
     createdBy: { actorType: ActorType; actorId: string | null };
@@ -223,7 +255,7 @@ export const reminderServiceFactory = ({
 
     // The alert goes first, outside any transaction because encrypting channel config can call out to
     // KMS. If the reminder write then fails, an alert with no reminder never fires and is reused next time.
-    await $syncReminderAlert({ secretId, secretKey, projectId, recipients, createdBy });
+    await $syncReminderAlert({ secretId, secretKey, projectId, recipients, channels, createdBy });
 
     const existingReminder = await reminderDAL.findOne({ secretId });
     let reminderId: string;
@@ -346,22 +378,28 @@ export const reminderServiceFactory = ({
       try {
         // Delivery happens in the alert module after commit, so nothing slow runs in this transaction.
         await reminderDAL.transaction(async (tx) => {
+          // The due list was read before this transaction, so a reminder cancelled or rescheduled since
+          // must not fire on its old date or have its new one overwritten.
+          const current = await reminderDAL.findByIdForUpdate(reminder.id, tx);
+          if (!current || current.nextReminderDate.getTime() !== reminder.nextReminderDate.getTime()) return;
+
           await emitSecretReminderDue(
             eventEmitter,
             {
               orgId: reminder.orgId,
               projectId: reminder.projectId,
+              reminderId: reminder.id,
               secretId,
-              note: reminder.message,
-              repeatDays: reminder.repeatDays,
-              occurrenceDate: toUtcDateString(reminder.nextReminderDate)
+              note: current.message,
+              repeatDays: current.repeatDays,
+              occurrenceDate: toUtcDateString(current.nextReminderDate)
             },
             tx
           );
-          if (reminder.repeatDays) {
+          if (current.repeatDays) {
             await reminderDAL.updateById(
               reminder.id,
-              { nextReminderDate: advanceReminderDate(reminder.nextReminderDate, reminder.repeatDays, now) },
+              { nextReminderDate: advanceReminderDate(current.nextReminderDate, current.repeatDays, now) },
               tx
             );
           } else {

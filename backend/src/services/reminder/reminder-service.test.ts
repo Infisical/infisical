@@ -1,3 +1,4 @@
+import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { SECRET_REMINDER_DUE_EVENT, SECRET_REMINDER_RESOURCE_TYPE } from "./reminder-events";
@@ -28,6 +29,8 @@ const reminder = (over: Partial<TDueReminder> = {}): TDueReminder => ({
 
 const buildService = (opts: {
   due?: TDueReminder[];
+  // The row as the dispatch transaction reads it back; defaults to the row as it was found due.
+  current?: (due: TDueReminder) => TDueReminder | undefined;
   emitFails?: (secretId: string) => boolean;
   orphanBatches?: string[][];
 }) => {
@@ -45,6 +48,11 @@ const buildService = (opts: {
       findDueReminders: async (range: { from: Date; to: Date }) => {
         window = range;
         return opts.due ?? [];
+      },
+      findByIdForUpdate: async (id: string) => {
+        const due = (opts.due ?? []).find((row) => row.id === id);
+        if (!due) return undefined;
+        return opts.current ? opts.current(due) : due;
       },
       transaction: async (cb: (tx: unknown) => Promise<unknown>) => {
         const tx = { id: `tx-${log.length}` };
@@ -98,7 +106,7 @@ describe("reminder dispatch", () => {
     expect(emitted).toHaveLength(1);
     expect(emitted[0]).toMatchObject({
       eventType: SECRET_REMINDER_DUE_EVENT,
-      idempotencyKey: `${SECRET_REMINDER_DUE_EVENT}:secret-1:2026-10-10`,
+      idempotencyKey: `${SECRET_REMINDER_DUE_EVENT}:rem-1:2026-10-10`,
       payload: {
         orgId: "org-1",
         projectId: "proj-1",
@@ -144,6 +152,24 @@ describe("reminder dispatch", () => {
 
     expect(emitted.map((event) => event.payload.resourceId)).toEqual(["secret-2"]);
     expect(updates.map((update) => update.id)).toEqual(["rem-2"]);
+  });
+
+  test("skips a reminder cancelled after the due list was read", async () => {
+    const { service, emitted, updates, deletes } = buildService({ due: [reminder()], current: () => undefined });
+    await service.dispatchDueReminders({ now });
+    expect(emitted).toHaveLength(0);
+    expect(updates).toHaveLength(0);
+    expect(deletes).toHaveLength(0);
+  });
+
+  test("leaves a reminder rescheduled after the due list was read on its new date", async () => {
+    const { service, emitted, updates } = buildService({
+      due: [reminder()],
+      current: (due) => ({ ...due, nextReminderDate: new Date("2026-12-01T00:00:00.000Z") })
+    });
+    await service.dispatchDueReminders({ now });
+    expect(emitted).toHaveLength(0);
+    expect(updates).toHaveLength(0);
   });
 
   test("skips a reminder with no secret", async () => {
@@ -204,8 +230,20 @@ const buildWriteService = (opts: { existingAlert?: TStoredAlert; projectUserIds?
     eventEmitter: { emit: async () => {} },
     projectDAL: { findById: async () => ({ id: "proj-1", orgId: "org-1" }) },
     secretV2BridgeDAL: {
-      findOneWithTags: async () => ({ id: "secret-1", key: "DB_PASSWORD", projectId: "proj-1" }),
+      findOneWithTags: async () => ({
+        id: "secret-1",
+        key: "DB_PASSWORD",
+        projectId: "proj-1",
+        folderId: "folder-1",
+        tags: []
+      }),
       invalidateSecretCacheByProjectId: async () => {}
+    },
+    folderDAL: {
+      findSecretPathByFolderIds: async () => [{ id: "folder-1", path: "/", environmentSlug: "dev" }]
+    },
+    permissionService: {
+      getProjectPermission: async () => ({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
     },
     alertService: {
       filterRecipientsInScope: async (_scope: unknown, recipients: { principalType: string; principalId: string }[]) =>
@@ -296,12 +334,41 @@ describe("reminder alert sync", () => {
     ]);
   });
 
-  test("falls back to everyone when every listed recipient has left", async () => {
-    const { service, created } = buildWriteService({ projectUserIds: [] });
-    await service.createReminderInternal(createInput(["user-gone"]));
-    expect((created[0] as { channels: { recipients: unknown }[] }).channels[0].recipients).toEqual([
-      { principalType: "project-members", principalId: "proj-1" }
-    ]);
+  test("refuses a recipient list with nobody left in the project rather than sending to everyone", async () => {
+    const { service, calls } = buildWriteService({ projectUserIds: [] });
+    await expect(service.createReminderInternal(createInput(["user-gone"]))).rejects.toThrow(
+      /None of the selected reminder recipients/
+    );
+    expect(calls).toEqual([]);
+  });
+
+  test("given channels, saves them as the alert's complete channel list", async () => {
+    const channels = [
+      {
+        name: "Email",
+        channelType: "email",
+        recipients: [{ principalType: "group", principalId: "group-1" }]
+      },
+      { name: "Webhook", channelType: "webhook", config: { url: "https://example.com" } }
+    ];
+    const save = (service: ReturnType<typeof buildWriteService>["service"]) =>
+      service.createReminder({
+        actor: "user",
+        actorId: "user-1",
+        actorOrgId: "org-1",
+        actorAuthMethod: null,
+        reminder: { secretId: "secret-1", repeatDays: 30, recipients: ["user-1"], channels }
+      } as never);
+
+    const existing = buildWriteService({
+      existingAlert: { id: "alert-1", name: "Reminder for OLD_NAME", resourceId: "secret-1", channels: [] }
+    });
+    await save(existing.service);
+    expect(existing.updated).toEqual([{ alertId: "alert-1", name: "Reminder for DB_PASSWORD", channels }]);
+
+    const fresh = buildWriteService();
+    await save(fresh.service);
+    expect(fresh.created).toEqual([expect.objectContaining({ resourceId: "secret-1", channels })]);
   });
 
   test("more than 20 recipients are split across email channels", async () => {

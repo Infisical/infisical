@@ -303,6 +303,7 @@ export const secretQueueFactory = ({
       });
     } catch (err) {
       logger.error(err, "Failed to create secret reminder.");
+      if (err instanceof BadRequestError) throw err;
       throw new BadRequestError({
         name: "SecretReminderCreateFailed",
         message: "Failed to create secret reminder."

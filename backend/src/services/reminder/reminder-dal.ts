@@ -61,6 +61,11 @@ export const reminderDALFactory = (db: TDbClient) => {
     return rows.map((row) => row.resourceId);
   };
 
+  const findByIdForUpdate = async (id: string, tx: Knex) => {
+    const reminder = await tx(TableName.Reminder).where({ id }).forUpdate().first();
+    return reminder;
+  };
+
   // Recipients are not stored here: they live on the reminder's alert email channel.
   const findSecretReminder = async (secretId: string, tx?: Knex) => {
     const reminder = await (tx || db.replicaNode())(TableName.Reminder)
@@ -127,6 +132,7 @@ export const reminderDALFactory = (db: TDbClient) => {
   return {
     ...reminderOrm,
     findDueReminders,
+    findByIdForUpdate,
     findOrphanedReminderAlertResourceIds,
     findSecretReminder,
     findSecretReminders,

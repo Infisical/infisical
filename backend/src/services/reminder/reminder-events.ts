@@ -17,6 +17,7 @@ export const SecretReminderDuePayloadSchema = z.object({
 export type TSecretReminderDueInput = {
   orgId: string;
   projectId: string;
+  reminderId: string;
   secretId: string;
   note?: string | null;
   repeatDays?: number | null;
@@ -25,14 +26,15 @@ export type TSecretReminderDueInput = {
 
 export const emitSecretReminderDue = (
   eventEmitter: TEventEmitter,
-  { orgId, projectId, secretId, note, repeatDays, occurrenceDate }: TSecretReminderDueInput,
+  { orgId, projectId, reminderId, secretId, note, repeatDays, occurrenceDate }: TSecretReminderDueInput,
   tx: Knex
 ): Promise<void> =>
   eventEmitter.emit(
     {
       eventType: SECRET_REMINDER_DUE_EVENT,
-      // A cron retry after a partial run must not send the same occurrence twice.
-      idempotencyKey: `${SECRET_REMINDER_DUE_EVENT}:${secretId}:${occurrenceDate}`,
+      // A cron retry after a partial run must not send the same occurrence twice. Keyed on the reminder
+      // rather than the secret, so a reminder deleted and set again for a date that already fired still sends.
+      idempotencyKey: `${SECRET_REMINDER_DUE_EVENT}:${reminderId}:${occurrenceDate}`,
       payload: {
         orgId,
         projectId,

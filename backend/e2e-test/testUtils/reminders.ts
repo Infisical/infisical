@@ -18,7 +18,7 @@ type TReminderRecord = {
   recipients?: string[];
 };
 
-export type TSetSecretReminderBody = {
+type TSetSecretReminderBody = {
   message?: string;
   repeatDays?: number | null;
   nextReminderDate?: string | null;
@@ -54,20 +54,13 @@ export const getSecretReminder = (dto: { secretId: string; authToken: string }) 
     }
   );
 
-export const deleteSecretReminder = (dto: { secretId: string; authToken: string }) =>
-  request(
-    {
-      method: "DELETE",
-      url: `/api/v1/reminders/secrets/${dto.secretId}`,
-      headers: { authorization: `Bearer ${dto.authToken}` }
-    },
-    (res) => {
-      expect(res.statusCode).toBe(200);
-    }
-  );
-
 export const listSecretReminderAlerts = (dto: { projectId: string; secretId: string; authToken: string }) =>
-  listAlerts({ resourceType: SECRET_REMINDER_RESOURCE_TYPE, resourceId: dto.secretId, ...dto });
+  listAlerts({
+    resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+    projectId: dto.projectId,
+    resourceId: dto.secretId,
+    authToken: dto.authToken
+  });
 
 // Runs the daily reminder job as if it fired on `now`, then delivers what it emitted rather than
 // leaving that to the outbox relay's next tick.
