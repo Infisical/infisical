@@ -4,6 +4,7 @@ import { ApprovalRequestsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccessType } from "@app/ee/services/pam/pam-enums";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import {
@@ -35,7 +36,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         .object({
           accountId: z.string().uuid().optional(),
           path: z.string().min(3).optional().describe("Account path in the format 'folderName/accountName'"),
-          reason: z.string().max(500).optional(),
+          reason: auditSafeText(z.string().max(500), { allowMultiline: true }).optional(),
           duration: z.string().min(1),
           accessType: z
             .nativeEnum(PamAccessType)

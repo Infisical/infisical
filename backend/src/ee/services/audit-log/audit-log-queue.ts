@@ -14,6 +14,7 @@ import {
   auditLogEnqueuedCounter,
   auditLogPersistDurationHistogram
 } from "@app/lib/telemetry/metrics";
+import { sanitizeLogPayload, sanitizeLogText } from "@app/lib/validator/log-safe-text";
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -220,14 +221,16 @@ export const auditLogQueueServiceFactory = async ({
       }
 
       const createdAt = new Date(entry.createdAt);
+      // `enriched` feeds both the insert and the stream outbox below, so normalizing free text
+      // here covers persistence and forwarding in one place.
       return {
         id: entry.id,
         actor: entry.actor.type,
-        actorMetadata: normalizeJsonPayload(entry.actor.metadata),
-        ipAddress: normalizeEmptyValue(entry.ipAddress, isClickHouseBatchEnabled),
+        actorMetadata: sanitizeLogPayload(normalizeJsonPayload(entry.actor.metadata)),
+        ipAddress: normalizeEmptyValue(sanitizeLogText(entry.ipAddress), isClickHouseBatchEnabled),
         eventType: entry.event.type,
-        eventMetadata: normalizeJsonPayload(entry.event.metadata),
-        userAgent: normalizeEmptyValue(entry.userAgent, isClickHouseBatchEnabled),
+        eventMetadata: sanitizeLogPayload(normalizeJsonPayload(entry.event.metadata)),
+        userAgent: normalizeEmptyValue(sanitizeLogText(entry.userAgent), isClickHouseBatchEnabled),
         userAgentType: normalizeEmptyValue(entry.userAgentType, isClickHouseBatchEnabled),
         projectId: normalizeEmptyValue(entry.projectId, isClickHouseBatchEnabled),
         orgId: entry.orgId,
@@ -235,7 +238,7 @@ export const auditLogQueueServiceFactory = async ({
         createdAt,
         updatedAt: createdAt,
         // project name is only stored for non-ClickHouse insertion
-        ...(!isClickHouseBatchEnabled ? { projectName: entry.projectName } : {})
+        ...(!isClickHouseBatchEnabled ? { projectName: sanitizeLogText(entry.projectName) } : {})
       };
     };
 

@@ -20,7 +20,7 @@ import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { auditSafeText, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
@@ -887,10 +887,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PamAccounts],
       params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
       body: z.object({
-        reason: z
-          .string()
-          .trim()
-          .max(500)
+        reason: auditSafeText(z.string().trim().max(500), { allowMultiline: true })
           .optional()
           .describe("Why the credentials are being viewed. Required when the template requires a reason."),
         mfaSessionId: z

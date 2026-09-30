@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { TemporaryPermissionMode } from "@app/db/schemas";
 import { ms } from "@app/lib/ms";
+import { containsLogUnsafeCharacters } from "@app/lib/validator/log-safe-text";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 
 interface SlugSchemaInputs {
@@ -41,6 +42,14 @@ export const GenericResourceNameSchema = z
       ])(val),
     "Name can only contain alphanumeric characters, dashes, underscores, and spaces"
   );
+
+// For free-text fields copied into audit events (display names, access reasons). A charset
+// allowlist would reject existing values, so this bounds only the non-printing set; the audit
+// ingest path normalizes the same characters.
+export const auditSafeText = (schema: z.ZodString, { allowMultiline = false } = {}) =>
+  schema.refine((val) => !containsLogUnsafeCharacters(val, { allowMultiline }), {
+    message: "Value cannot contain control, escape, bidirectional or zero-width characters"
+  });
 
 export const BaseSecretNameSchema = z.string().trim().min(1);
 
