@@ -275,24 +275,23 @@ export const secretScanningV2QueueServiceFactory = ({
 
     const logDetails = `[scanId=${scanId}] [resourceId=${resourceId}] [dataSourceId=${dataSourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
+    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
+    const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId) : undefined;
+    const scan = resource ? await secretScanningV2DAL.scans.findById(scanId) : undefined;
+
+    // Deleting a source cascades to its resources and scans, so a job queued before the delete has
+    // nothing left to scan. Completing it rather than throwing keeps retries from holding the worker.
+    if (!dataSource || !resource || !scan) {
+      logger.info(`secretScanningV2Queue: Full Scan aborted, scan no longer exists ${logDetails}`);
+      return;
+    }
+
     const tempFolder = await createTempFolder();
 
     // Logged before any work so a `ps` on a saturated worker can be tied back to a scan ID.
     logger.info(
       `secretScanningV2Queue: Full Scan Started ${logDetails} [scanType=${SecretScanningScanType.Historical}] [tempFolder=${tempFolder}]`
     );
-
-    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
-
-    if (!dataSource) throw new Error(`Data source with ID "${dataSourceId}" not found`);
-
-    const resource = await secretScanningV2DAL.resources.findById(resourceId);
-
-    if (!resource) throw new Error(`Resource with ID "${resourceId}" not found`);
-
-    const scan = await secretScanningV2DAL.scans.findById(scanId);
-
-    if (!scan) throw new Error(`Scan with ID "${scanId}" not found`);
 
     const resourceType = SECRET_SCANNING_DATA_SOURCE_RESOURCE_TYPE_MAP[dataSource.type as SecretScanningDataSource];
 
@@ -531,6 +530,12 @@ export const secretScanningV2QueueServiceFactory = ({
         `secretScanningV2Queue: Full Scan Complete ${logDetails} findings=[${findingsCount}] scannedFindings=[${scannedFindingsCount}] durationMs=[${Date.now() - startedAt}]`
       );
     } catch (error) {
+      // A source deleted mid-scan takes the scan with it, so the next findings write fails its FK.
+      if (!(await secretScanningV2DAL.scans.findById(scanId))) {
+        logger.info(`secretScanningV2Queue: Full Scan aborted, scan was deleted while running ${logDetails}`);
+        return;
+      }
+
       if (retryCount === retryLimit) {
         const errorMessage = parseScanErrorMessage(error);
 
@@ -659,12 +664,12 @@ export const secretScanningV2QueueServiceFactory = ({
     const logDetails = `[dataSourceId=${dataSourceId}] [scanId=${scanId}] [resourceId=${resourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
     const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
+    const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId) : undefined;
 
-    if (!dataSource) throw new Error(`Data source with ID "${dataSourceId}" not found`);
-
-    const resource = await secretScanningV2DAL.resources.findById(resourceId);
-
-    if (!resource) throw new Error(`Resource with ID "${resourceId}" not found`);
+    if (!dataSource || !resource) {
+      logger.info(`secretScanningV2Queue: Diff Scan aborted, scan no longer exists ${logDetails}`);
+      return;
+    }
 
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
       kmsService,
@@ -795,6 +800,11 @@ export const secretScanningV2QueueServiceFactory = ({
         `secretScanningV2Queue: Diff Scan Complete ${logDetails} findings=[${findingsPayload.length}] durationMs=[${Date.now() - startedAt}]`
       );
     } catch (error) {
+      if (!(await secretScanningV2DAL.scans.findById(scanId))) {
+        logger.info(`secretScanningV2Queue: Diff Scan aborted, scan was deleted while running ${logDetails}`);
+        return;
+      }
+
       if (retryCount === retryLimit) {
         const errorMessage = parseScanErrorMessage(error);
 
@@ -851,6 +861,15 @@ export const secretScanningV2QueueServiceFactory = ({
     const appCfg = getConfig();
 
     if (!appCfg.isSmtpConfigured) return;
+
+    // The payload carries a snapshot of the source; one deleted since the scan finished has nothing
+    // left to link to.
+    if (!(await secretScanningV2DAL.dataSources.findById(dataSource.id))) {
+      logger.info(
+        `secretScanningV2Queue: Skipped Status Notification, data source was deleted [dataSourceId=${dataSource.id}] [resourceName=${resourceName}] [status=${payload.status}]`
+      );
+      return;
+    }
 
     try {
       const { projectId } = dataSource;
