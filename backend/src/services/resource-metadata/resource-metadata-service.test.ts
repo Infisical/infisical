@@ -101,15 +101,37 @@ describe("metadata search scope and candidate limits", () => {
     }
   });
 
-  test("defaults to root in all project environments and returns no matches for missing paths", async () => {
+  test.each([undefined, ["dev"]])("searches root scope %s without expanding a folder tree", async (environments) => {
+    const state = setup();
+    await state.service.searchSecretMetadata({ ...dto, environments });
+    expect(state.find).not.toHaveBeenCalled();
+    expect(state.findBySecretPathMultiEnv).not.toHaveBeenCalled();
+    expect(state.findByEnvsDeep).not.toHaveBeenCalled();
+    for (const search of [state.searchSecretMetadata, state.searchSecretMetadataWithEncryptedValues]) {
+      expect(search).toHaveBeenCalledWith(expect.objectContaining({ folderIds: undefined, environments }), state.tx);
+    }
+  });
+
+  test("searches all project environments and returns no matches for a missing non-root path", async () => {
     const state = setup();
     state.findBySecretPathMultiEnv.mockResolvedValue([]);
-    expect(await state.service.searchSecretMetadata(dto)).toEqual({
+    expect(await state.service.searchSecretMetadata({ ...dto, secretPath: "/missing" })).toEqual({
       secrets: [],
       searchLimit: 100
     });
     expect(state.find).toHaveBeenCalledWith({ projectId: "project" }, { tx: state.db });
-    expect(state.findBySecretPathMultiEnv).toHaveBeenCalledWith("project", ["dev", "prod"], "/", state.db);
+    expect(state.findBySecretPathMultiEnv).toHaveBeenCalledWith("project", ["dev", "prod"], "/missing", state.db);
+    expect(state.searchSecretMetadata).not.toHaveBeenCalled();
+    expect(state.searchSecretMetadataWithEncryptedValues).not.toHaveBeenCalled();
+  });
+
+  test("returns no matches when a non-root subtree disappears before expansion", async () => {
+    const state = setup();
+    state.findByEnvsDeep.mockResolvedValue([]);
+    expect(await state.service.searchSecretMetadata({ ...dto, secretPath: "/app" })).toEqual({
+      secrets: [],
+      searchLimit: 100
+    });
     expect(state.searchSecretMetadata).not.toHaveBeenCalled();
     expect(state.searchSecretMetadataWithEncryptedValues).not.toHaveBeenCalled();
   });

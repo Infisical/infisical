@@ -72,24 +72,27 @@ export const resourceMetadataServiceFactory = ({
     });
 
     const searchLimit = MAX_SECRET_METADATA_SEARCH_SECRETS;
-    const environmentSlugs =
-      environments ?? (await projectEnvDAL.find({ projectId }, { tx: db })).map((env) => env.slug);
-    const parents = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, secretPath, db);
-    if (!parents.length) return { secrets: [], searchLimit };
-    const scopedFolders = await folderDAL.findByEnvsDeep({ parentIds: parents.map((folder) => folder.id) }, db);
-    const scopedFolderIds = scopedFolders.map((folder) => folder.id);
-    if (!scopedFolderIds.length) return { secrets: [], searchLimit };
+    let scopedFolderIds: string[] | undefined;
+    if (secretPath !== "/") {
+      const environmentSlugs =
+        environments ?? (await projectEnvDAL.find({ projectId }, { tx: db })).map((env) => env.slug);
+      const parents = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, secretPath, db);
+      if (!parents.length) return { secrets: [], searchLimit };
+      const scopedFolders = await folderDAL.findByEnvsDeep({ parentIds: parents.map((folder) => folder.id) }, db);
+      scopedFolderIds = scopedFolders.map((folder) => folder.id);
+      if (!scopedFolderIds.length) return { secrets: [], searchLimit };
+    }
 
     // run both searches on primary via a transaction so recently written metadata is visible (avoids
     // replica lag). Plaintext values are matched in SQL; encrypted values can't be (non-deterministic
     // ciphertext), so their candidates are fetched by key and matched in-app after decryption below.
     const { plaintextMatched, encryptedCandidates } = await resourceMetadataDAL.transaction(async (tx) => {
       const plaintext = await resourceMetadataDAL.searchSecretMetadata(
-        { orgId: actor.orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds },
+        { orgId: actor.orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds, environments },
         tx
       );
       const encrypted = await resourceMetadataDAL.searchSecretMetadataWithEncryptedValues(
-        { orgId: actor.orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds },
+        { orgId: actor.orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds, environments },
         tx
       );
       return { plaintextMatched: plaintext, encryptedCandidates: encrypted };
