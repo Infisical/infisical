@@ -15,7 +15,7 @@ export const auditLogEventClassToDescriptionMap: Record<AuditLogEventClass, stri
   [AuditLogEventClass.DataAccess]:
     "Reads and lists, plus crypto use operations that hand back or operate on secret material.",
   [AuditLogEventClass.Authorization]:
-    "Permission denials, recording the actor, the action, the subject and the endpoint. Repeats by the same actor within a minute are collapsed into one event."
+    "Permission denials. Repeats by the same actor within a minute are collapsed into one event."
 };
 
 // Mirrors the backend defaults.

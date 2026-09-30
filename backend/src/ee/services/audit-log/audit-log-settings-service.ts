@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, ProjectMembershipRole } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -21,7 +21,6 @@ import {
   TUpdateOrgAuditLogSettingsDTO,
   TUpdateProjectAuditLogSettingsDTO
 } from "./audit-log-settings-types";
-import { EventType } from "./audit-log-types";
 
 type TAuditLogSettingsServiceFactoryDep = {
   auditLogSettingsDAL: TAuditLogSettingsDALFactory;
@@ -46,9 +45,9 @@ export const isAuditLogEventEnabled = (
   eventType: string,
   projectId?: string | null
 ) => {
-  if (eventType === EventType.UPDATE_AUDIT_LOG_SETTINGS) return true;
-  if (!settings) return true;
   const eventClass = getAuditLogEventClass(eventType);
+  if (eventClass === AuditLogEventClass.Management) return true;
+  if (!settings) return true;
   const scope = projectId ? settings.projects[projectId] : settings.org;
   return scope?.[eventClass] ?? AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass];
 };
@@ -59,8 +58,18 @@ const isKnownEventClass = (value: string): value is AuditLogEventClass =>
 const toSettings = (overrides: TAuditLogEventClassOverrides): TAuditLogEventClassSetting[] =>
   ORDERED_EVENT_CLASSES.map((eventClass) => ({
     eventClass,
-    isEnabled: overrides[eventClass] ?? AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass]
+    isEnabled:
+      eventClass === AuditLogEventClass.Management
+        ? true
+        : (overrides[eventClass] ?? AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass])
   }));
+
+const toChanges = (eventClasses: TAuditLogEventClassSetting[]): [AuditLogEventClass, boolean][] => {
+  if (eventClasses.some((el) => el.eventClass === AuditLogEventClass.Management)) {
+    throw new BadRequestError({ message: "Management events are always recorded and cannot be changed" });
+  }
+  return [...new Map(eventClasses.map((el) => [el.eventClass, el.isEnabled])).entries()];
+};
 
 export const auditLogSettingsServiceFactory = ({
   auditLogSettingsDAL,
@@ -174,7 +183,7 @@ export const auditLogSettingsServiceFactory = ({
     const org = await orgDAL.findById(actor.orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });
 
-    const changed = [...new Map(eventClasses.map((el) => [el.eventClass, el.isEnabled])).entries()];
+    const changed = toChanges(eventClasses);
     if (!changed.length) return getOrgSettings({ actor });
 
     const overrides = await writeScopeSettings({ orgId: actor.orgId, projectId: null }, changed);
@@ -234,7 +243,7 @@ export const auditLogSettingsServiceFactory = ({
     const org = await orgDAL.findById(project.orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
 
-    const changed = [...new Map(eventClasses.map((el) => [el.eventClass, el.isEnabled])).entries()];
+    const changed = toChanges(eventClasses);
     if (!changed.length) return getProjectSettings(dto);
 
     const overrides = await writeScopeSettings({ orgId: project.orgId, projectId: dto.projectId }, changed);

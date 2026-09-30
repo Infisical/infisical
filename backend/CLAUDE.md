@@ -1004,7 +1004,7 @@ fails if a type lands in two lists. Reads, lists, dashboards, insights views, CM
 and the dynamic secret lease lifecycle are data access; VIEW_AUDIT_LOGS and privileged session
 lifecycle are management on purpose.
 
-Any class can be turned off per scope, and scopes do not inherit: an org (root or sub-org) has its own
+Every class but management can be turned off per scope, and scopes do not inherit: an org (root or sub-org) has its own
 rows for org-level events, each project has its own rows for its events, and a scope without a row uses
 the default in `AUDIT_LOG_EVENT_CLASS_DEFAULTS` (data access on, authorization off). The rows live in
 `audit_log_settings` (one per scope and class, `projectId` null for the org scope) behind
@@ -1012,8 +1012,10 @@ the default in `AUDIT_LOG_EVENT_CLASS_DEFAULTS` (data access on, authorization o
 keystore for 5 minutes (`getEffectiveSettings`, never throws: a lookup failure records everything).
 Enforcement is `isAuditLogEventEnabled` in the settings service, called from `buildStreamEntry` in
 `audit-log-queue.ts` with the settings memoized per request so a batch of events costs one read.
-Suppressed events are dropped silently and do not count on the dropped counter.
-`UPDATE_AUDIT_LOG_SETTINGS` is exempt inside the helper so turning a class off is always recorded.
+Suppressed events are dropped silently and do not count on the dropped counter. Management is
+always on: the helper returns true for it before looking at any row, `toSettings` reports it as
+enabled, and the update methods reject any request that names it, so the change that turns a
+class off is itself always recorded.
 
 `PERMISSION_DENIED` is recorded by the `onError` hook in
 `src/server/plugins/audit-log-permission-denied.ts` for every CASL `ForbiddenError` and

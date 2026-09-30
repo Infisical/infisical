@@ -49,8 +49,6 @@ export const AuditLogEventClassRow = ({
   className
 }: Props) => {
   const id = `audit-log-event-class-${eventClass}`;
-  let status = isEnabled ? "Recording" : "Not recorded";
-  if (lockedReason && !isEnabled) status = lockedReason;
 
   const toggle = (
     <Toggle
@@ -66,7 +64,7 @@ export const AuditLogEventClassRow = ({
   return (
     <Field orientation="horizontal" className={twMerge("gap-8 px-6 py-6", className)}>
       <FieldContent>
-        <FieldTitle className="text-base">
+        <FieldTitle className="text-base leading-5">
           <label htmlFor={id}>{auditLogEventClassToNameMap[eventClass]}</label>
           {badge}
         </FieldTitle>
@@ -96,7 +94,6 @@ export const AuditLogEventClassRow = ({
         ) : (
           toggle
         )}
-        <span className="max-w-48 text-right text-sm text-muted">{status}</span>
         {action}
       </div>
     </Field>

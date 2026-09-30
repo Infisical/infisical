@@ -25,6 +25,7 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 type TForm = Record<AuditLogEventClass, boolean>;
 
 const REQUIRES_NEW_PRIVILEGE_SYSTEM = "Requires the new privilege system";
+const ALWAYS_RECORDED = "Management events are always recorded";
 
 export const AuditLogEventClassesSection = () => {
   const { currentProject } = useProject();
@@ -55,7 +56,7 @@ export const AuditLogEventClassesSection = () => {
 
   const onSubmit = async (form: TForm) => {
     const eventClasses = AUDIT_LOG_EVENT_CLASSES.filter(
-      (eventClass) => dirtyFields[eventClass]
+      (eventClass) => eventClass !== AuditLogEventClass.Management && dirtyFields[eventClass]
     ).map((eventClass) => ({ eventClass, isEnabled: form[eventClass] }));
     if (!eventClasses.length) return;
 
@@ -82,8 +83,12 @@ export const AuditLogEventClassesSection = () => {
         ) : (
           <div className="divide-y divide-border">
             {AUDIT_LOG_EVENT_CLASSES.map((eventClass) => {
+              const isManagement = eventClass === AuditLogEventClass.Management;
               const isAuthorization = eventClass === AuditLogEventClass.Authorization;
               const isLocked = isAuthorization && !shouldUseNewPrivilegeSystem;
+              let lockedReason: string | undefined;
+              if (isManagement) lockedReason = ALWAYS_RECORDED;
+              else if (isLocked) lockedReason = REQUIRES_NEW_PRIVILEGE_SYSTEM;
               return (
                 <Controller
                   key={eventClass}
@@ -92,10 +97,10 @@ export const AuditLogEventClassesSection = () => {
                   render={({ field }) => (
                     <AuditLogEventClassRow
                       eventClass={eventClass}
-                      isEnabled={isLocked ? false : field.value}
+                      isEnabled={isManagement || (!isLocked && field.value)}
                       variant="project"
                       isDisabled={!isAdmin}
-                      lockedReason={isLocked ? REQUIRES_NEW_PRIVILEGE_SYSTEM : undefined}
+                      lockedReason={lockedReason}
                       onCheckedChange={field.onChange}
                       warning={
                         eventClass === AuditLogEventClass.DataAccess && !field.value

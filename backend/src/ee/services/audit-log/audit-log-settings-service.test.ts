@@ -35,10 +35,10 @@ describe("isAuditLogEventEnabled", () => {
     expect(isAuditLogEventEnabled(settings(), EventType.PERMISSION_DENIED)).toBe(false);
   });
 
-  test("a settings change is recorded even when management is off", () => {
+  test("management is always recorded, even with a row that says otherwise", () => {
     const off = settings({ org: { [AuditLogEventClass.Management]: false } });
+    expect(isAuditLogEventEnabled(off, EventType.UPDATE_SECRET)).toBe(true);
     expect(isAuditLogEventEnabled(off, EventType.UPDATE_AUDIT_LOG_SETTINGS)).toBe(true);
-    expect(isAuditLogEventEnabled(off, EventType.UPDATE_SECRET)).toBe(false);
   });
 
   test("records everything when the lookup failed", () => {
@@ -129,6 +129,21 @@ describe("getEffectiveSettings", () => {
 describe("updateOrgSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  test.each([false, true])("refuses any management entry (isEnabled=%s)", async (isEnabled) => {
+    const { service, auditLogSettingsDAL } = createHarness();
+
+    await expect(
+      service.updateOrgSettings({
+        actor: orgActor,
+        eventClasses: [
+          { eventClass: AuditLogEventClass.DataAccess, isEnabled: false },
+          { eventClass: AuditLogEventClass.Management, isEnabled }
+        ]
+      })
+    ).rejects.toThrow("Management events are always recorded and cannot be changed");
+    expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
   });
 
   test("answers from the rows it wrote and the scope's untouched rows, without re-reading", async () => {

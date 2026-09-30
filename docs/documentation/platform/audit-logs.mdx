@@ -231,7 +231,7 @@ Every event type belongs to exactly one of four classes. The class tells you wha
 
 | Class            | What it covers                                                                                                             | Default |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `management`     | Creates, updates, deletes, membership, roles, policies, background jobs, and the start and end of privileged sessions      | On      |
+| `management`     | Creates, updates, deletes, membership, roles, policies, background jobs, and the start and end of privileged sessions      | Always on |
 | `data-access`    | Reads and lists, plus the crypto operations that return or operate on secret material, such as KMS encrypt and decrypt     | On      |
 | `authentication` | Logins, failed logins, organization selection, machine identity authentication, and Gateway and Relay connections          | On      |
 | `authorization`  | [Permission denials](#permission-denials)                                                                                  | Off     |
@@ -240,7 +240,7 @@ A class follows the operation that was attempted, not its outcome, so a failed l
 
 ### Choose which classes to record
 
-By default, Infisical records every class except `authorization`. Each organization, sub-organization, and project has its own settings, and they don't inherit from each other. The organization settings cover organization-level events such as membership and login changes. A project's settings cover that project's events, so turning a class off for the organization doesn't turn it off for its projects.
+By default, Infisical records every class except `authorization`. The `management` class is always recorded and can't be turned off, so every configuration change stays in the log, including changes to these settings. Each organization, sub-organization, and project has its own settings, and they don't inherit from each other. The organization settings cover organization-level events such as membership and login changes. A project's settings cover that project's events, so turning a class off for the organization doesn't turn it off for its projects.
 
 <Tabs>
   <Tab title="For an organization">

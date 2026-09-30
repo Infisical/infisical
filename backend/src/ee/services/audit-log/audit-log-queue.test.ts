@@ -270,13 +270,13 @@ describe("audit-log-queue event class settings", () => {
     expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
   });
 
-  test("drops a management event when the org turned the class off", async () => {
+  test("records a management event even if a row says the class is off", async () => {
     const { service, keyStore, auditLogSettingsService } = await createHarness();
     auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings({ org: { management: false } }));
 
     await service.pushToLog(dto({ event: { type: "update-secret", metadata: {} } }) as never);
 
-    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
   });
 
   test("records a management event when no scope has a setting", async () => {
@@ -326,15 +326,6 @@ describe("audit-log-queue event class settings", () => {
     auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings());
 
     await service.pushToLog(dto({ event: { type: "get-secrets", metadata: {} } }) as never);
-
-    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
-  });
-
-  test("records a settings change even when the org turned management off", async () => {
-    const { service, keyStore, auditLogSettingsService } = await createHarness();
-    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings({ org: { management: false } }));
-
-    await service.pushToLog(dto({ event: { type: "update-audit-log-settings", metadata: {} } }) as never);
 
     expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
   });
