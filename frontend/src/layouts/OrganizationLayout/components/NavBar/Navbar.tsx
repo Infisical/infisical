@@ -82,17 +82,9 @@ import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/ty
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getOrgScopedProductFromPath } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
-import {
-  adminQueryKeys,
-  projectKeys,
-  subOrganizationsQuery,
-  useGetOrganizations,
-  useLogoutUser
-} from "@app/hooks/api";
-import { appConnectionKeys } from "@app/hooks/api/appConnections";
-import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
+import { subOrganizationsQuery, useGetOrganizations, useLogoutUser } from "@app/hooks/api";
+import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
-import { pamKeys } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
@@ -236,18 +228,13 @@ export const Navbar = () => {
     }
 
     SecurityClient.setToken(token);
-    queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
-    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
-    queryClient.removeQueries({ queryKey: appConnectionKeys.all });
-    // PAM's keys carry no org, so a stale entry would render another org's data until it goes stale.
-    queryClient.removeQueries({ queryKey: pamKeys.all });
-
-    await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
-    await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
+    await queryClient.fetchQuery({
+      queryKey: authKeys.getAuthToken,
+      queryFn: fetchAuthToken,
+      staleTime: 0
+    });
 
     await navigateUserToOrg({ navigate, organizationId, navigateTo });
-    queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
 
     if (onSuccess) {
       await onSuccess();

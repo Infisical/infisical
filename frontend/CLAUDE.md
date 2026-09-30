@@ -62,6 +62,8 @@ When adding new queries, consider whether the default 60s staleTime is appropria
 - For data that must always be fresh (auth configs, lease TTLs): override with `staleTime: 0, gcTime: 0`.
 - For rarely-changing data (server config, user profile): use `staleTime: Infinity` as the context providers do.
 
+Organization switching resets the query cache centrally in `pages/middlewares/inject-org-details.tsx`, after authentication succeeds and before tenant data loads. `hooks/api/organization/cache.ts` tracks the active organization per `QueryClient` and removes all queries except the exact auth-token, user-profile, and server-config keys. Removing queries also cancels pending query results, including queries whose keys omit the organization. Same-organization navigation keeps the cache, and the organization layout remounts on organization changes to reset local UI state. Keep tenant cache cleanup at this boundary rather than adding feature-specific removal lists to individual organization selectors.
+
 ### Product Analytics
 
 Use `@app/lib/analytics` for new frontend product analytics. Define the event and its typed properties in the shared catalog, then capture it through the method matching its scope so required grouping is applied automatically. Do not call the legacy `Telemetry` wrapper directly from new code or define event names as local strings.
