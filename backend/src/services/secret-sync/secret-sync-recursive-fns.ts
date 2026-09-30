@@ -78,7 +78,7 @@ type TCoveringSync = {
   name: string;
   destination: string;
   folder?: { path: string } | null;
-  syncOptions: unknown;
+  syncOptions?: unknown;
   isAutoSyncEnabled: boolean;
 };
 
