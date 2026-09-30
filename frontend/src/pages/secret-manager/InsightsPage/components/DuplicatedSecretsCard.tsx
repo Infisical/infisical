@@ -11,7 +11,6 @@ import {
   LockIcon
 } from "lucide-react";
 
-import { CheckedAtButton } from "@app/components/secrets/CheckedAtButton";
 import {
   Accordion,
   AccordionContent,
@@ -47,8 +46,7 @@ import { useEnableSecretBlindIndex } from "@app/hooks/api/projects";
 import {
   secretInsightsKeys,
   useGetSecretBlindIndexStatus,
-  useGetSecretsDuplication,
-  useRefreshSecretsDuplication
+  useGetSecretsDuplication
 } from "@app/hooks/api/secretInsights";
 
 const overviewRoute =
@@ -62,7 +60,6 @@ export const DuplicatedSecretsCard = () => {
   const [migrationTriggered, setMigrationTriggered] = useState(false);
 
   const enableBlindIndex = useEnableSecretBlindIndex();
-  const refreshDuplicates = useRefreshSecretsDuplication();
 
   const { data, isPending } = useGetSecretsDuplication({ projectId }, { enabled: !!projectId });
 
@@ -134,6 +131,11 @@ export const DuplicatedSecretsCard = () => {
     );
   };
 
+  const remainingMinutes =
+    data?.remainingTtl != null && data.remainingTtl >= 0
+      ? Math.max(1, Math.ceil(data.remainingTtl / 60))
+      : null;
+
   const isMigrationRunning = migrationTriggered && migrationStatus !== "failed";
   const isMigrationFailed = migrationStatus === "failed" && !enableBlindIndex.isPending;
   const showEnableButton = !secretBlindIndexEnabled && !isMigrationRunning && !isMigrationFailed;
@@ -143,12 +145,10 @@ export const DuplicatedSecretsCard = () => {
       <CardHeader>
         <CardTitle>
           Duplicated Secrets
-          {data?.computedAt && (
-            <CheckedAtButton
-              computedAt={data.computedAt}
-              isRefreshing={refreshDuplicates.isPending}
-              onRefresh={() => refreshDuplicates.mutate({ projectId })}
-            />
+          {remainingMinutes != null && (
+            <Badge variant="neutral" className="ml-2 font-normal">
+              Updates in {remainingMinutes} {remainingMinutes === 1 ? "minute" : "minutes"}
+            </Badge>
           )}
         </CardTitle>
         <CardDescription>

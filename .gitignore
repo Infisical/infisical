@@ -82,9 +82,3 @@ __pycache__
 # Local Codex design QA artifacts
 /.design-qa/
 /design-qa.md
-
-# superpowers plan workspaces (ledger, briefs, review packages)
-.superpowers/
-
-# trellis workspace
-.trellis/

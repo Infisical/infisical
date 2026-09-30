@@ -196,7 +196,7 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
             valueAlwaysHidden
             isVisible={isRevealed}
             containerClassName="flex-1"
-            placeholder="Paste a secret value..."
+            placeholder="Paste the full secret value..."
             value={value}
             onChange={(e) => {
               setValue(e.target.value);
@@ -235,7 +235,9 @@ export const SecretValueSearchSheet = ({ orgId, isOpen, onOpenChange }: Props) =
       <SheetHeader>
         <SheetTitle>Search by Secret Value</SheetTitle>
         <SheetDescription>
-          Find every project, environment and path where a secret value is used.
+          Find every project, environment and path where a secret value is used. Only the full value
+          matches, exactly as stored: partial values and values differing in whitespace are not
+          found.
         </SheetDescription>
       </SheetHeader>
       {/* Mounted only while open, so the value and results are dropped the moment it closes. */}

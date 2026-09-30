@@ -1,12 +1,11 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangleIcon, LockIcon } from "lucide-react";
 
-import { CheckedAtButton } from "@app/components/secrets/CheckedAtButton";
 import {
   SecretValueTrackingPrompt,
   useOrgSecretValueTracking
 } from "@app/components/secrets/SecretValueTrackingGate";
 import {
+  Badge,
   Card,
   CardContent,
   CardDescription,
@@ -21,11 +20,7 @@ import {
 } from "@app/components/v3";
 import { OrgPermissionSubjects, useOrganization, useOrgPermission } from "@app/context";
 import { OrgPermissionSecretsManagementInsightsActions } from "@app/context/OrgPermissionContext/types";
-import {
-  secretInsightsKeys,
-  useGetOrgSecretsDuplication,
-  useRefreshOrgSecretsDuplication
-} from "@app/hooks/api/secretInsights";
+import { useGetOrgSecretsDuplication } from "@app/hooks/api/secretInsights";
 
 import { DuplicateGroupList } from "./DuplicateGroupList";
 
@@ -37,7 +32,6 @@ export const DuplicatedSecretsCard = ({ isPlanRestricted }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg.id;
   const { permission } = useOrgPermission();
-  const queryClient = useQueryClient();
 
   const canSearchAllValues = permission.can(
     OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
@@ -45,17 +39,11 @@ export const DuplicatedSecretsCard = ({ isPlanRestricted }: Props) => {
   );
   const canQuery = canSearchAllValues && !isPlanRestricted;
 
-  const tracking = useOrgSecretValueTracking({
-    orgId,
-    enabled: canQuery,
-    onTrackingOn: () =>
-      queryClient.invalidateQueries({ queryKey: secretInsightsKeys.orgSecretsDuplication(orgId) })
-  });
+  const tracking = useOrgSecretValueTracking({ orgId, enabled: canQuery });
 
   const { data, isPending, isError } = useGetOrgSecretsDuplication(orgId, {
     enabled: canQuery && tracking.isTrackingOn
   });
-  const refresh = useRefreshOrgSecretsDuplication();
 
   const renderBody = () => {
     if (isPlanRestricted) {
@@ -129,17 +117,20 @@ export const DuplicatedSecretsCard = ({ isPlanRestricted }: Props) => {
     return <DuplicateGroupList groups={groups} />;
   };
 
+  const remainingMinutes =
+    canQuery && data?.remainingTtl != null && data.remainingTtl >= 0
+      ? Math.max(1, Math.ceil(data.remainingTtl / 60))
+      : null;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>
           Duplicated Secrets
-          {canQuery && data?.computedAt && (
-            <CheckedAtButton
-              computedAt={data.computedAt}
-              isRefreshing={refresh.isPending}
-              onRefresh={() => refresh.mutate({ orgId })}
-            />
+          {remainingMinutes != null && (
+            <Badge variant="neutral" className="ml-2 font-normal">
+              Updates in {remainingMinutes} {remainingMinutes === 1 ? "minute" : "minutes"}
+            </Badge>
           )}
         </CardTitle>
         <CardDescription>

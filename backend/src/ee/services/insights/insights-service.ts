@@ -92,7 +92,7 @@ export type TInsightsServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
   orgDAL: Pick<TOrgDALFactory, "countSecretManagerProjectMembers" | "findById">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countSecretManagerProjectIdentities">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "countLeasesForOrg">;
@@ -497,20 +497,17 @@ export const insightsServiceFactory = ({
     // Org-scoped digests only exist once the backfill has run, so an empty answer before then would
     // read as "no duplicates" when it means "nothing has been indexed".
     if (!org.orgWideSecretValueTrackingEnabled) {
-      return { result: { orgWideSecretValueTrackingEnabled: false as const, groups: [], computedAt: null } };
+      return { result: { orgWideSecretValueTrackingEnabled: false as const, groups: [] } };
     }
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, "org-secrets-duplication");
-    if (dto.refresh) await keyStore.deleteItem(cacheKey);
-
     const result = await withCache({
       keyStore,
       key: cacheKey,
       ttlSeconds: KeyStoreTtls.InsightsDuplicationCacheInSeconds,
       fetcher: async () => {
-        const computedAt = new Date().toISOString();
         const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValuesInOrg(dto.orgId);
-        if (!rawGroups.length) return { orgWideSecretValueTrackingEnabled: true as const, groups: [], computedAt };
+        if (!rawGroups.length) return { orgWideSecretValueTrackingEnabled: true as const, groups: [] };
 
         // One decryptor per project rather than per group: the value is encrypted under the owning
         // project's data key, and resolving that key can reach an external KMS.
@@ -579,14 +576,13 @@ export const insightsServiceFactory = ({
           // window, which is a different problem from three copies inside one project.
           .sort((a, b) => b.projectCount - a.projectCount || b.locationCount - a.locationCount);
 
-        return { orgWideSecretValueTrackingEnabled: true as const, groups, computedAt };
+        return { orgWideSecretValueTrackingEnabled: true as const, groups };
       }
     });
 
     const remainingTTL = await getCacheTtl(keyStore, cacheKey);
 
-    // An entry cached before computedAt existed lacks it until it expires.
-    return { result: { ...result, computedAt: result.computedAt ?? null }, remainingTTL };
+    return { result, remainingTTL };
   };
 
   const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: OrgServiceActor) => {
@@ -600,20 +596,16 @@ export const insightsServiceFactory = ({
       return {
         result: {
           secretBlindIndexEnabled: false,
-          groups: [],
-          computedAt: null
+          groups: []
         }
       };
     }
-
-    if (dto.refresh) await keyStore.deleteItem(cacheKey);
 
     const result = await withCache({
       keyStore,
       key: cacheKey,
       ttlSeconds: KeyStoreTtls.InsightsDuplicationCacheInSeconds,
       fetcher: async () => {
-        const computedAt = new Date().toISOString();
         const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValues(dto.projectId);
 
         const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -649,14 +641,13 @@ export const insightsServiceFactory = ({
           }))
         }));
 
-        return { secretBlindIndexEnabled: true as const, groups, computedAt };
+        return { secretBlindIndexEnabled: true as const, groups };
       }
     });
 
     const remainingTTL = await getCacheTtl(keyStore, cacheKey);
 
-    // An entry cached before computedAt existed lacks it until it expires.
-    return { result: { ...result, computedAt: result.computedAt ?? null }, remainingTTL };
+    return { result, remainingTTL };
   };
 
   const getCounts = async (dto: TGetInsightsCountsDTO, actorDto: OrgServiceActor) => {

@@ -146,6 +146,5 @@ export const buildOrgInsightsGateStubs = () => {
 export const passThroughKeyStore: TInsightsServiceFactoryDep["keyStore"] = {
   getItem: async () => null,
   setItemWithExpiry: async () => "OK",
-  ttl: async () => -2,
-  deleteItem: async () => 1
+  ttl: async () => -2
 };

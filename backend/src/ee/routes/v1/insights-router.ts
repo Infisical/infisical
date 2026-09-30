@@ -508,21 +508,9 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       operationId: "getOrgInsightsSecretsDuplication",
       description: "Get groups of secrets that share a value anywhere in the organization",
       security: [{ bearerAuth: [] }],
-      querystring: z.object({
-        refresh: z
-          .enum(["true", "false"])
-          .default("false")
-          .transform((value) => value === "true")
-          .describe("Recompute now instead of answering from the cached result.")
-      }),
       response: {
         200: z.object({
           orgWideSecretValueTrackingEnabled: z.boolean(),
-          computedAt: z
-            .string()
-            .datetime()
-            .nullable()
-            .describe("When the groups were computed. Null when detection is not enabled."),
           groups: z.array(
             z.object({
               projectCount: z.number(),
@@ -548,8 +536,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        refresh: req.query.refresh
+        actorOrgId: req.permission.orgId
       });
 
       await server.services.auditLog.createAuditLog({
@@ -580,21 +567,9 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         projectId: z.string().trim()
       }),
-      querystring: z.object({
-        refresh: z
-          .enum(["true", "false"])
-          .default("false")
-          .transform((value) => value === "true")
-          .describe("Recompute now instead of answering from the cached result.")
-      }),
       response: {
         200: z.object({
           secretBlindIndexEnabled: z.boolean(),
-          computedAt: z
-            .string()
-            .datetime()
-            .nullable()
-            .describe("When the groups were computed. Null when detection is not enabled."),
           groups: z.array(
             z.object({
               secrets: z.array(
@@ -616,7 +591,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     handler: async (req, reply) => {
       const { projectId } = req.params;
       const { result, remainingTTL } = await server.services.insights.getSecretsDuplication(
-        { projectId, refresh: req.query.refresh },
+        { projectId },
         req.permission
       );
       await server.services.auditLog.createAuditLog({

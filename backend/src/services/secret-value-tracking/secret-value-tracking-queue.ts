@@ -11,8 +11,8 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { createOrgSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { advanceCursor, needsBackfill } from "./secret-value-tracking-fns";
-import { TBackfillCursor, TBackfillScope } from "./secret-value-tracking-types";
+import { needsBackfill } from "./secret-value-tracking-fns";
+import { TBackfillScope } from "./secret-value-tracking-types";
 
 const READ_BATCH_SIZE = 1000;
 // Decrypting a batch and hashing it twice is CPU work on a single-threaded runtime, so the walk
@@ -21,6 +21,11 @@ const READ_BATCH_SIZE = 1000;
 const PAUSE_BETWEEN_BATCHES_MS = 100;
 
 const NO_PROGRESS = { projectsTotal: 0, projectsDone: 0, secretsProcessed: 0 };
+
+type TProjectCipher = Pick<
+  Awaited<ReturnType<TKmsServiceFactory["createCipherPairWithDataKey"]>>,
+  "decryptor" | "generateSecretBlindIndex"
+>;
 
 export type TBackfillState = {
   status: JobState;
@@ -119,138 +124,82 @@ export const secretValueTrackingQueueFactory = ({
         return;
       }
 
-      const { orgId } = projects[0];
-      const projectIds = projects.map((project) => project.id).sort();
+      // One org data key for the whole walk, since every project in the org shares it.
+      const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({
+        orgId: projects[0].orgId,
+        kmsService
+      });
+      const progress = { projectsTotal: projects.length, projectsDone: 0, secretsProcessed: 0 };
 
-      // Every project's folders up front. The walk is one pass over the whole scope, so deferring
-      // them buys nothing, and a complete map is what lets advanceCursor tell a project that has no
-      // folders from one it has simply not been shown.
-      const foldersByProject: Record<string, string[]> = {};
-      for await (const projectId of projectIds) {
+      const $backfillFolder = async (folderId: string, { decryptor, generateSecretBlindIndex }: TProjectCipher) => {
+        let after = { key: "", id: "" };
+        let hasMore = true;
+
+        while (hasMore) {
+          // eslint-disable-next-line no-await-in-loop
+          const rows = await secretV2BridgeDAL.findSecretsInFolderAfter(folderId, after, READ_BATCH_SIZE);
+
+          const pending = rows.filter(needsBackfill);
+          if (pending.length) {
+            // eslint-disable-next-line no-await-in-loop
+            const updates = await Promise.all(
+              pending.map(async (row) => {
+                const value = decryptor({ cipherTextBlob: row.encryptedValue as Buffer });
+                const [secretValueBlindIndex, secretValueOrgBlindIndex] = await Promise.all([
+                  generateSecretBlindIndex(value),
+                  generateOrgLevelBlindIndex(value)
+                ]);
+                return {
+                  id: row.id,
+                  encryptedValue: row.encryptedValue as Buffer,
+                  secretValueBlindIndex,
+                  secretValueOrgBlindIndex
+                };
+              })
+            );
+            // eslint-disable-next-line no-await-in-loop
+            await secretV2BridgeDAL.batchSetBlindIndexes(updates);
+            progress.secretsProcessed += updates.length;
+          }
+
+          hasMore = rows.length === READ_BATCH_SIZE;
+          if (hasMore) after = { key: rows[rows.length - 1].key, id: rows[rows.length - 1].id };
+
+          // Doubles as the heartbeat BullMQ reads to tell a working job from a stalled one.
+          // eslint-disable-next-line no-await-in-loop
+          await job.updateProgress({ ...progress });
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((resolve) => {
+            setTimeout(resolve, PAUSE_BETWEEN_BATCHES_MS);
+          });
+        }
+      };
+
+      for await (const project of projects) {
         // Soft-deleted environments are included: the delete is reversible, so leaving their rows
         // unindexed and then flagging the scope complete breaks the moment one is restored.
-        const folders = await folderDAL.findByProjectId(projectId, undefined, true);
-        foldersByProject[projectId] = folders.map((folder) => folder.id).sort();
-      }
-
-      // One org data key for the whole walk, since every project in the org shares it.
-      const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({ orgId, kmsService });
-      const projectCiphers = new Map<
-        string,
-        {
-          decryptor: (input: { cipherTextBlob: Buffer }) => Buffer;
-          generateBlindIndex: (value: Buffer) => Promise<string>;
-        }
-      >();
-
-      const $cipherOf = async (projectId: string) => {
-        const cached = projectCiphers.get(projectId);
-        if (cached) return cached;
-
-        const { decryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+        const folders = await folderDAL.findByProjectId(project.id, undefined, true);
+        const cipher = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
-          projectId
+          projectId: project.id
         });
-        const pair = { decryptor, generateBlindIndex: generateSecretBlindIndex };
-        projectCiphers.set(projectId, pair);
-        return pair;
-      };
 
-      const markedProjectIds = new Set<string>();
-      const $markProjectComplete = async (projectId: string) => {
-        markedProjectIds.add(projectId);
-        await projectDAL.updateById(projectId, { secretBlindIndexEnabled: true });
-        await keyStore.deleteItems({ pattern: `${KeyStorePrefixes.InsightsCache(projectId, "secrets-duplication")}*` });
-      };
-
-      const $advance = (
-        from: TBackfillCursor | null,
-        lastRow: { key: string; id: string } | null,
-        folderExhausted: boolean
-      ) => advanceCursor({ cursor: from, projectIds, folderIdsByProject: foldersByProject, lastRow, folderExhausted });
-
-      let secretsProcessed = 0;
-      let projectsDone = 0;
-
-      const seeded = $advance(null, null, false);
-      let cursor = seeded.done ? null : seeded.cursor;
-
-      while (cursor) {
-        // eslint-disable-next-line no-await-in-loop
-        const rows = await secretV2BridgeDAL.findSecretsInFolderAfter(
-          cursor.folderId,
-          { key: cursor.key, id: cursor.id },
-          READ_BATCH_SIZE
-        );
-
-        const pending = rows.filter(needsBackfill);
-        if (pending.length) {
-          // eslint-disable-next-line no-await-in-loop
-          const { decryptor, generateBlindIndex } = await $cipherOf(cursor.projectId);
-          // eslint-disable-next-line no-await-in-loop
-          const updates = await Promise.all(
-            pending.map(async (row) => {
-              const value = decryptor({ cipherTextBlob: row.encryptedValue as Buffer });
-              const [secretValueBlindIndex, secretValueOrgBlindIndex] = await Promise.all([
-                generateBlindIndex(value),
-                generateOrgLevelBlindIndex(value)
-              ]);
-              return {
-                id: row.id,
-                encryptedValue: row.encryptedValue as Buffer,
-                secretValueBlindIndex,
-                secretValueOrgBlindIndex
-              };
-            })
-          );
-          // eslint-disable-next-line no-await-in-loop
-          await secretV2BridgeDAL.batchSetBlindIndexes(updates);
-          secretsProcessed += updates.length;
+        for await (const folder of folders) {
+          await $backfillFolder(folder.id, cipher);
         }
 
-        const lastRow = rows.length ? { key: rows[rows.length - 1].key, id: rows[rows.length - 1].id } : null;
-        const next = $advance(cursor, lastRow, rows.length < READ_BATCH_SIZE);
-
-        if (next.done) {
-          // The walk ends inside the project it was working, so that project's own flag is set here
-          // rather than from a completedProjectId the `done` branch never carries.
-          // eslint-disable-next-line no-await-in-loop
-          await $markProjectComplete(cursor.projectId);
-          projectsDone += 1;
-          cursor = null;
-          break;
-        }
-
-        if (next.completedProjectId) {
-          // eslint-disable-next-line no-await-in-loop
-          await $markProjectComplete(next.completedProjectId);
-          projectsDone += 1;
-        }
-        cursor = next.cursor;
-
-        // Doubles as the heartbeat BullMQ reads to tell a working job from a stalled one.
-        // eslint-disable-next-line no-await-in-loop
-        await job.updateProgress({ projectsTotal: projectIds.length, projectsDone, secretsProcessed });
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise((resolve) => {
-          setTimeout(resolve, PAUSE_BETWEEN_BATCHES_MS);
+        await projectDAL.updateById(project.id, { secretBlindIndexEnabled: true });
+        await keyStore.deleteItems({
+          pattern: `${KeyStorePrefixes.InsightsCache(project.id, "secrets-duplication")}*`
         });
-      }
-
-      // The cursor steps over projects with no folders, so they are never finished inside the walk.
-      // They hold nothing to index, and every secret written to them later carries both digests.
-      for await (const projectId of projectIds) {
-        if (!markedProjectIds.has(projectId)) {
-          await $markProjectComplete(projectId);
-          projectsDone += 1;
-        }
+        progress.projectsDone += 1;
+        await job.updateProgress({ ...progress });
       }
 
       if (scope.scope === "org") await orgDAL.updateById(scope.orgId, { orgWideSecretValueTrackingEnabled: true });
 
-      await job.updateProgress({ projectsTotal: projectIds.length, projectsDone, secretsProcessed });
       logger.info(
-        `SecretValueTrackingBackfill: complete [scopeId=${scopeId}] [projectsDone=${projectsDone}] [secretsProcessed=${secretsProcessed}]`
+        `SecretValueTrackingBackfill: complete [scopeId=${scopeId}] [projectsDone=${progress.projectsDone}] [secretsProcessed=${progress.secretsProcessed}]`
       );
     },
     // One walk at a time, so a second scope waits rather than competing for the same connection pool

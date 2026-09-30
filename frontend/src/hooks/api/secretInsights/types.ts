@@ -143,8 +143,7 @@ export type TDuplicatedSecretGroup = {
 export type TGetSecretsDuplicationResponse = {
   secretBlindIndexEnabled: boolean;
   groups: TDuplicatedSecretGroup[];
-  // null when detection is not enabled, so nothing was computed
-  computedAt: string | null;
+  remainingTtl: number;
 };
 
 export type TGetSecretBlindIndexStatusDTO = {
@@ -232,7 +231,7 @@ export type TOrgDuplicatedSecretGroup = {
 export type TGetOrgSecretsDuplicationResponse = {
   orgWideSecretValueTrackingEnabled: boolean;
   groups: TOrgDuplicatedSecretGroup[];
-  computedAt: string | null;
+  remainingTtl: number;
 };
 
 export type TGetOrgSecretValueTrackingStatusResponse = {

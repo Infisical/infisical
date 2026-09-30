@@ -7,7 +7,7 @@ import {
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { JobState } from "@app/queue/queue-service";
 
@@ -47,15 +47,14 @@ export const secretValueTrackingServiceFactory = ({
     const org = await orgDAL.findById(actor.orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });
 
-    // Deliberately not refused when the flag is already set. Several ordinary operations can put an
-    // unindexed row back into a completed org (a rollback to a version predating the digest, an
-    // environment restored after the walk passed it), and without a re-run the only repair is SQL.
-    // The walk skips rows that already carry both digests, so a redundant run costs a read pass.
-    //
-    // A run that is already moving is refused by the queue instead: one job id per scope, and BullMQ
-    // will not add a second job under an id it already holds.
+    if (org.orgWideSecretValueTrackingEnabled) {
+      throw new BadRequestError({ message: "Secret value search is already enabled for this organization" });
+    }
+
     const projects = await projectDAL.find({ orgId: actor.orgId, type: ProjectType.SecretManager });
 
+    // A run that is already moving is refused by the queue: one job id per scope, and BullMQ will not
+    // add a second job under an id it already holds.
     await secretValueTrackingQueue.startBackfill({ scope: "org", orgId: actor.orgId });
 
     return { projectsTotal: projects.length };
@@ -109,6 +108,10 @@ export const secretValueTrackingServiceFactory = ({
 
   const enableForProject = async (dto: TProjectPermission) => {
     const project = await $assertProjectSettingsEdit(dto);
+    if (project.secretBlindIndexEnabled) {
+      throw new BadRequestError({ message: "Secret blind indexing is already enabled for this project" });
+    }
+
     await secretValueTrackingQueue.startBackfill({ scope: "project", projectId: project.id });
   };
 

@@ -254,10 +254,7 @@ export const KeyStoreTtls = {
   EmailDispatchMailboxWindowInSeconds: 86400, // 24 hours
   EmailDispatchAbuseProbeInSeconds: 7200, // 2 hours
   InsightsCacheInSeconds: 300, // 5 minutes
-  // Five minutes, matching every other insight on the page. An hour was far more than the query
-  // costs, and nothing invalidates this key when a secret changes, so a longer window meant the card
-  // could sit on a stale empty answer long after the duplicates it exists to find were created.
-  InsightsDuplicationCacheInSeconds: 300,
+  InsightsDuplicationCacheInSeconds: 300, // 5 minutes
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
   InsightsOrgCacheInSeconds: 900, // 15 minutes
   AdminConfigInSeconds: 60,

@@ -198,14 +198,6 @@ export const useGetInsightsCounts = (
   });
 };
 
-export const fetchSecretsDuplication = async (projectId: string, refresh = false) => {
-  const { data } = await apiRequest.get<TGetSecretsDuplicationResponse>(
-    `/api/v1/insights/${projectId}/secrets/secrets-duplication`,
-    { params: { refresh } }
-  );
-  return data;
-};
-
 export const useGetSecretsDuplication = (
   params: TGetSecretsDuplicationDTO,
   options?: Omit<
@@ -220,7 +212,13 @@ export const useGetSecretsDuplication = (
 ) => {
   return useQuery({
     queryKey: secretInsightsKeys.secretsDuplication(params),
-    queryFn: () => fetchSecretsDuplication(params.projectId),
+    queryFn: async () => {
+      const res = await apiRequest.get<TGetSecretsDuplicationResponse>(
+        `/api/v1/insights/${params.projectId}/secrets/secrets-duplication`
+      );
+      const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
+      return { ...res.data, remainingTtl };
+    },
     staleTime: INSIGHTS_STALE_TIME,
     ...options
   });
@@ -335,18 +333,16 @@ export const useGetOrgSecretsAccessVolume = (orgId: string, options?: { enabled?
   });
 };
 
-export const fetchOrgSecretsDuplication = async (refresh = false) => {
-  const { data } = await apiRequest.get<TGetOrgSecretsDuplicationResponse>(
-    "/api/v1/insights/secrets/secrets-duplication",
-    { params: { refresh } }
-  );
-  return data;
-};
-
 export const useGetOrgSecretsDuplication = (orgId: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: secretInsightsKeys.orgSecretsDuplication(orgId),
-    queryFn: () => fetchOrgSecretsDuplication(),
+    queryFn: async () => {
+      const res = await apiRequest.get<TGetOrgSecretsDuplicationResponse>(
+        "/api/v1/insights/secrets/secrets-duplication"
+      );
+      const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
+      return { ...res.data, remainingTtl };
+    },
     enabled: Boolean(orgId) && (options?.enabled ?? true),
     staleTime: INSIGHTS_STALE_TIME
   });

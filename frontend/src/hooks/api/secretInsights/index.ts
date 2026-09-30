@@ -1,9 +1,4 @@
-export {
-  useEnableOrgSecretValueTracking,
-  useRefreshOrgSecretsDuplication,
-  useRefreshSecretsDuplication,
-  useSearchSecretsByValue
-} from "./mutations";
+export { useEnableOrgSecretValueTracking, useSearchSecretsByValue } from "./mutations";
 export {
   secretInsightsKeys,
   useGetAuthMethodDistribution,

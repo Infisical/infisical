@@ -22,6 +22,7 @@ const makeHarness = ({
   const flaggedProjects: string[] = [];
   const flaggedOrgs: string[] = [];
   const folderReads: string[] = [];
+  const events: string[] = [];
   const progress: { projectsTotal: number; projectsDone: number; secretsProcessed: number }[] = [];
   let rows = [...secrets];
   let handler: (job: {
@@ -50,6 +51,7 @@ const makeHarness = ({
       findById: async (id: string) => ({ id, orgId: ORG_ID }) as never,
       updateById: async (id: string) => {
         flaggedProjects.push(id);
+        events.push(`flagged:${id}`);
         return {} as never;
       }
     } as never,
@@ -62,6 +64,7 @@ const makeHarness = ({
     folderDAL: {
       findByProjectId: async (projectId: string) => {
         folderReads.push(projectId);
+        events.push(`folders:${projectId}`);
         return (foldersByProject[projectId] ?? []).map((id) => ({ id })) as never;
       }
     } as never,
@@ -98,6 +101,7 @@ const makeHarness = ({
     flaggedProjects,
     flaggedOrgs,
     folderReads,
+    events,
     progress,
     rowsNow: () => rows,
     run: () =>
@@ -192,6 +196,21 @@ describe("the backfill job", () => {
 
     expect(harness.flaggedOrgs).toEqual([ORG_ID]);
     expect(harness.progress.at(-1)?.secretsProcessed).toBe(0);
+  });
+
+  test("each project is finished before the next one's folders are loaded", async () => {
+    const harness = makeHarness({
+      projectIds: ["p1", "p2"],
+      foldersByProject: { p1: ["f1"], p2: ["f2"] },
+      secrets: [
+        { id: "s1", key: "A", folderId: "f1", hasOrgDigest: false },
+        { id: "s2", key: "B", folderId: "f2", hasOrgDigest: false }
+      ]
+    });
+
+    await harness.run();
+
+    expect(harness.events).toEqual(["folders:p1", "flagged:p1", "folders:p2", "flagged:p2"]);
   });
 
   test("progress is reported as the walk goes, not only at the end", async () => {

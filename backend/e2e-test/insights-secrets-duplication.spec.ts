@@ -189,7 +189,8 @@ describe("insights secrets duplication", () => {
 
   describe("organization scope", () => {
     test("groups a value across projects and ranks the widest spread first", async () => {
-      const { result } = await insightsService.getOrgSecretsDuplication({ ...orgActor, refresh: true });
+      await clearCaches();
+      const { result } = await insightsService.getOrgSecretsDuplication(orgActor);
 
       expect(result.orgWideSecretValueTrackingEnabled).toBe(true);
       expect(result.groups.map((g) => [g.projectCount, g.locationCount, g.secrets.length])).toEqual([
@@ -206,25 +207,20 @@ describe("insights secrets duplication", () => {
       );
     });
 
-    test("reports when the answer was computed", async () => {
-      const before = Date.now();
-      const { result } = await insightsService.getOrgSecretsDuplication({ ...orgActor, refresh: true });
-
-      expect(result.computedAt).toEqual(expect.any(String));
-      expect(new Date(result.computedAt as string).getTime()).toBeGreaterThanOrEqual(before - 1000);
-    });
-
-    test("answers from the cache until asked to refresh", async () => {
-      await insightsService.getOrgSecretsDuplication({ ...orgActor, refresh: true });
+    test("answers from the cache until it expires", async () => {
+      await clearCaches();
+      await insightsService.getOrgSecretsDuplication(orgActor);
 
       const extra = secret(projects.elsewhere.folderId, "LATE_ARRIVAL", "shared");
       await testDb(TableName.SecretV2).insert(extra);
       try {
         const cached = await insightsService.getOrgSecretsDuplication(orgActor);
         expect(cached.result.groups[0].secrets).toHaveLength(2);
+        expect(cached.remainingTTL).toBeGreaterThan(0);
 
-        const refreshed = await insightsService.getOrgSecretsDuplication({ ...orgActor, refresh: true });
-        expect(refreshed.result.groups[0].secrets).toHaveLength(3);
+        await clearCaches();
+        const recomputed = await insightsService.getOrgSecretsDuplication(orgActor);
+        expect(recomputed.result.groups[0].secrets).toHaveLength(3);
       } finally {
         await testDb(TableName.SecretV2).where("id", extra.id).delete();
       }
@@ -234,9 +230,7 @@ describe("insights secrets duplication", () => {
     test("refuses a viewer who may read insights but not search all secret values", async () => {
       grantedInsightsActions = [OrgPermissionSecretsManagementInsightsActions.Read];
       try {
-        await expect(insightsService.getOrgSecretsDuplication({ ...orgActor, refresh: true })).rejects.toThrow(
-          ForbiddenError
-        );
+        await expect(insightsService.getOrgSecretsDuplication(orgActor)).rejects.toThrow(ForbiddenError);
       } finally {
         grantedInsightsActions = [OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues];
       }
@@ -246,7 +240,7 @@ describe("insights secrets duplication", () => {
       await testDb(TableName.Organization).where("id", ORG_ID).update({ orgWideSecretValueTrackingEnabled: false });
       try {
         const { result } = await insightsService.getOrgSecretsDuplication(orgActor);
-        expect(result).toEqual({ orgWideSecretValueTrackingEnabled: false, groups: [], computedAt: null });
+        expect(result).toEqual({ orgWideSecretValueTrackingEnabled: false, groups: [] });
       } finally {
         await testDb(TableName.Organization).where("id", ORG_ID).update({ orgWideSecretValueTrackingEnabled: true });
       }
@@ -256,16 +250,9 @@ describe("insights secrets duplication", () => {
   describe("project scope", () => {
     const dto = { projectId: projects.here.projectId };
 
-    test("reports when the answer was computed", async () => {
-      const before = Date.now();
-      const { result } = await insightsService.getSecretsDuplication({ ...dto, refresh: true }, projectActor);
-
-      expect(result.computedAt).toEqual(expect.any(String));
-      expect(new Date(result.computedAt as string).getTime()).toBeGreaterThanOrEqual(before - 1000);
-    });
-
-    test("answers from the cache until asked to refresh", async () => {
-      await insightsService.getSecretsDuplication({ ...dto, refresh: true }, projectActor);
+    test("answers from the cache until it expires", async () => {
+      await clearCaches();
+      await insightsService.getSecretsDuplication(dto, projectActor);
 
       const extra = secret(projects.here.folderId, "LATE_LOCAL", "local");
       await testDb(TableName.SecretV2).insert(extra);
@@ -274,9 +261,9 @@ describe("insights secrets duplication", () => {
           r.result.groups.find((g) => g.secrets.some((s) => s.key === "LOCAL_A"))?.secrets.length;
 
         expect(localGroupSize(await insightsService.getSecretsDuplication(dto, projectActor))).toBe(3);
-        expect(
-          localGroupSize(await insightsService.getSecretsDuplication({ ...dto, refresh: true }, projectActor))
-        ).toBe(4);
+
+        await clearCaches();
+        expect(localGroupSize(await insightsService.getSecretsDuplication(dto, projectActor))).toBe(4);
       } finally {
         await testDb(TableName.SecretV2).where("id", extra.id).delete();
       }

@@ -1014,12 +1014,8 @@ export const folderCommitServiceFactory = ({
     }
   };
 
-  /**
-   * Process secret changes when applying folder state differences
-   */
-  // A version row written before the org-scoped digest existed carries none, and a rollback copies a
-  // version's digests onto the live secret. Left alone that puts an unindexed row back into a
-  // project the org has already been told is fully searchable, and nothing would ever fix it.
+  // A rollback recomputes the digests from the restored value instead of copying them from the version
+  // row, so the secret version table (which is very large) never needed a digest migration.
   const $buildBlindIndexRepairer = async (projectId: string, tx?: Knex): Promise<TBlindIndexRepairer> => {
     const project = await projectDAL.findById(projectId, tx);
     if (!project) return (version) => version;
@@ -1031,13 +1027,15 @@ export const folderCommitServiceFactory = ({
 
     return async (version) => {
       if (!version.encryptedValue) return version;
-      if (version.secretValueBlindIndex && version.secretValueOrgBlindIndex) return version;
 
       const value = decryptor({ cipherTextBlob: version.encryptedValue });
       return { ...version, ...(await blindIndexer.generateBlindIndexes(value)) };
     };
   };
 
+  /**
+   * Process secret changes when applying folder state differences
+   */
   const processSecretChanges = async (
     changes: ResourceChange[],
     secretVersions: Record<string, TSecretVersionsV2>,
