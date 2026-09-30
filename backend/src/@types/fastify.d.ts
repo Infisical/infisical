@@ -168,6 +168,7 @@ import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
 import { TResourceMetadataServiceFactory } from "@app/services/resource-metadata/resource-metadata-service";
 import { TRoleServiceFactory } from "@app/services/role/role-service";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
+import { TSecretAccessApprovalBridgeServiceFactory } from "@app/services/secret-access-approval-bridge/secret-access-approval-bridge-service";
 import { TSecretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
@@ -345,6 +346,7 @@ declare module "fastify" {
       identitySpiffeAuth: TIdentitySpiffeAuthServiceFactory;
       identityLdapAuth: TIdentityLdapAuthServiceFactory;
       accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
+      secretAccessApprovalBridge: TSecretAccessApprovalBridgeServiceFactory;
       accessApprovalRequest: TAccessApprovalRequestServiceFactory;
       secretApprovalPolicy: TSecretApprovalPolicyServiceFactory;
       secretApprovalRequest: TSecretApprovalRequestServiceFactory;

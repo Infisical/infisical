@@ -519,3 +519,38 @@ export const approvalPolicyBypassersDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ApprovalPolicyBypassers);
   return orm;
 };
+
+// Approval Policy Secret Environments
+export type TApprovalPolicySecretEnvironmentDALFactory = ReturnType<typeof approvalPolicySecretEnvironmentDALFactory>;
+export const approvalPolicySecretEnvironmentDALFactory = (db: TDbClient) => {
+  const orm = ormify(db, TableName.ApprovalPolicySecretEnvironment);
+
+  const findPolicyByEnvIdsAndSecretPath = async (
+    { envIds, secretPath }: { envIds: string[]; secretPath: string },
+    tx?: Knex
+  ) => {
+    try {
+      const doc = (await (tx || db.replicaNode())(TableName.ApprovalPolicySecretEnvironment)
+        .join(
+          TableName.ApprovalPolicies,
+          `${TableName.ApprovalPolicies}.id`,
+          `${TableName.ApprovalPolicySecretEnvironment}.policyId`
+        )
+        .where(`${TableName.ApprovalPolicies}.type`, ApprovalPolicyType.SecretAccess)
+        .whereIn(`${TableName.ApprovalPolicySecretEnvironment}.envId`, envIds)
+        .where(`${TableName.ApprovalPolicySecretEnvironment}.secretPath`, secretPath)
+        .select(
+          db.ref("id").withSchema(TableName.ApprovalPolicies).as("policyId"),
+          db.ref("name").withSchema(TableName.ApprovalPolicies).as("policyName"),
+          db.ref("envId").withSchema(TableName.ApprovalPolicySecretEnvironment)
+        )
+        .first()) as { policyId: string; policyName: string; envId: string } | undefined;
+
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find approval policy by env ids and secret path" });
+    }
+  };
+
+  return { ...orm, findPolicyByEnvIdsAndSecretPath };
+};

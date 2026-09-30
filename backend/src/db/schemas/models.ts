@@ -321,6 +321,7 @@ export enum TableName {
   ApprovalPolicySteps = "approval_policy_steps",
   ApprovalPolicyStepApprovers = "approval_policy_step_approvers",
   ApprovalPolicyBypassers = "approval_policy_bypassers",
+  ApprovalPolicySecretEnvironment = "approval_policy_secret_environments",
   ApprovalRequests = "approval_requests",
   ApprovalRequestSteps = "approval_request_steps",
   ApprovalRequestStepEligibleApprovers = "approval_request_step_eligible_approvers",

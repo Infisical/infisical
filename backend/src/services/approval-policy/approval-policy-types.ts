@@ -32,20 +32,38 @@ import {
   TPamAccessRequest,
   TPamAccessRequestData
 } from "./pam-access/pam-access-policy-types";
+import {
+  TSecretAccessPolicy,
+  TSecretAccessPolicyConditions,
+  TSecretAccessPolicyConstraints,
+  TSecretAccessPolicyInputs,
+  TSecretAccessRequest,
+  TSecretAccessRequestData
+} from "./secret-access/secret-access-policy-types";
 
-export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy | TCodeSigningPolicy;
-export type TApprovalPolicyInputs = TPamAccessPolicyInputs | TCertRequestPolicyInputs | TCodeSigningPolicyInputs;
+export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy | TCodeSigningPolicy | TSecretAccessPolicy;
+export type TApprovalPolicyInputs =
+  | TPamAccessPolicyInputs
+  | TCertRequestPolicyInputs
+  | TCodeSigningPolicyInputs
+  | TSecretAccessPolicyInputs;
 export type TApprovalPolicyConditions =
   | TPamAccessPolicyConditions
   | TCertRequestPolicyConditions
-  | TCodeSigningPolicyConditions;
+  | TCodeSigningPolicyConditions
+  | TSecretAccessPolicyConditions;
 export type TApprovalPolicyConstraints =
   | TPamAccessPolicyConstraints
   | TCertRequestPolicyConstraints
-  | TCodeSigningPolicyConstraints;
+  | TCodeSigningPolicyConstraints
+  | TSecretAccessPolicyConstraints;
 
-export type TApprovalRequest = TPamAccessRequest | TCertRequestRequest | TCodeSigningRequest;
-export type TApprovalRequestData = TPamAccessRequestData | TCertRequestRequestData | TCodeSigningRequestData;
+export type TApprovalRequest = TPamAccessRequest | TCertRequestRequest | TCodeSigningRequest | TSecretAccessRequest;
+export type TApprovalRequestData =
+  | TPamAccessRequestData
+  | TCertRequestRequestData
+  | TCodeSigningRequestData
+  | TSecretAccessRequestData;
 
 // Bypass-affordance fields the service stamps onto every request response.
 export type TBypassAffordances = {
