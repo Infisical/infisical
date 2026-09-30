@@ -39,9 +39,6 @@ const meta = {
     defaultOpen: {
       control: "boolean"
     },
-    disableHoverableContent: {
-      control: "boolean"
-    },
     open: {
       table: {
         disable: true
