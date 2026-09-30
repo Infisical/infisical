@@ -239,12 +239,14 @@ export const AgentVaultVariableKeySchema = z
   .regex(AGENT_VAULT_VARIABLE_KEY_RE, AGENT_VAULT_VARIABLE_KEY_MESSAGE);
 
 // Braces are allowed and sent as they are. A value is never expanded again, which is also how a service can
-// send a literal {{ it could not take directly.
+// send a literal {{ it could not take directly. Never trimmed, since a password can start or end with a space,
+// but one that is only spaces is refused: listed or revealed, it can't be told from an empty value.
 export const AgentVaultVariableValueSchema = z
   .string()
   .min(1)
   .max(AGENT_VAULT_VARIABLE_VALUE_MAX_LENGTH)
-  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
+  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  .refine((value) => value.trim().length > 0, "A value can't be only spaces.");
 
 export const AgentVaultVariableSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),

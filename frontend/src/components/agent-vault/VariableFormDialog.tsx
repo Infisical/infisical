@@ -66,7 +66,8 @@ const buildSchema = (takenKeys: string[], isValueRequired: boolean) =>
         NO_CONTROL_CHARS_RE,
         "A value can't contain line breaks or other control characters. Check for a stray newline if you pasted it."
       )
-      .refine((value) => !isValueRequired || value.length > 0, "Required"),
+      .refine((value) => !isValueRequired || value.length > 0, "Required")
+      .refine((value) => !value || value.trim().length > 0, "A value can't be only spaces."),
     isSecret: z.boolean()
   });
 

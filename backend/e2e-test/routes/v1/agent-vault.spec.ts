@@ -1232,6 +1232,19 @@ describe("Agent Vault V1 Router", async () => {
       expect(row.encryptedValue.toString("utf-8")).not.toContain("hidden_value");
     });
 
+    test("a value can't be only spaces, and one with spaces around it is kept as typed", async () => {
+      const bundle = await createAccessBundle("variables-blank-value");
+      const blank = await inject("POST", variablesUrl(bundle.id), { key: "BLANK", value: "   " });
+      expect(blank.statusCode).toBe(422);
+      expect(blank.payload).toContain("A value can't be only spaces.");
+
+      const padded = await createVariable(bundle.id, { key: "PADDED", value: " kept ", isSecret: false });
+      expect(JSON.parse((await inject("GET", variablesUrl(bundle.id))).payload).variables).toEqual([
+        expect.objectContaining({ key: "PADDED", value: " kept " })
+      ]);
+      expect((await inject("PATCH", `${variablesUrl(bundle.id)}/${padded.id}`, { value: " " })).statusCode).toBe(422);
+    });
+
     test("a key is unique in its bundle and has to be upper snake case", async () => {
       const bundle = await createAccessBundle("variables-keys");
       await createVariable(bundle.id, { key: "TOKEN", value: "one" });
