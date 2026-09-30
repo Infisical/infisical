@@ -11,6 +11,7 @@ import {
   assertClonedRepositoryWithinSizeLimit,
   parseScanErrorMessage,
   planCommitBatches,
+  repositoryHasCommits,
   scanGitRepositoryAndGetFindings
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -406,6 +407,12 @@ export const secretScanningV2QueueServiceFactory = ({
           const repoSizeMb = await assertClonedRepositoryWithinSizeLimit(resource.name, scanPath);
 
           logger.info(`secretScanningV2Queue: Full Scan Cloned ${logDetails} repoSizeMb=[${repoSizeMb ?? "unknown"}]`);
+
+          // nothing to scan, and both git history commands fail on an unborn HEAD
+          if (!(await repositoryHasCommits(scanPath))) {
+            logger.info(`secretScanningV2Queue: Full Scan found no commits, completing ${logDetails}`);
+            break;
+          }
 
           const { SECRET_SCANNING_COMMIT_BATCH_SIZE: batchSize } = getConfig();
 

@@ -15,6 +15,7 @@ import {
   assertClonedRepositoryWithinSizeLimit,
   parseScanErrorMessage,
   planCommitBatches,
+  repositoryHasCommits,
   SecretScanningSizeLimitError
 } from "./secret-scanning-v2-fns";
 
@@ -188,6 +189,20 @@ describe("planCommitBatches", () => {
       await rm(repoPath, { recursive: true, force: true });
     }
   };
+
+  test("reports an empty repository as having no commits", async () => {
+    await withRepo(async (repoPath) => {
+      expect(await repositoryHasCommits(repoPath)).toBe(false);
+    });
+  });
+
+  test("reports a repository with a commit as having commits", async () => {
+    await withRepo(async (repoPath) => {
+      await commit(repoPath, "a", "2020-01-01T00:00:00Z");
+
+      expect(await repositoryHasCommits(repoPath)).toBe(true);
+    });
+  });
 
   test("resumes past the commits it already scanned", async () => {
     await withRepo(async (repoPath) => {
