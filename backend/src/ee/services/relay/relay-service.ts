@@ -1306,7 +1306,7 @@ export const relayServiceFactory = ({
     name: string;
     host: string;
     authMethod:
-      | { method: "aws"; config: { stsEndpoint: string; allowedPrincipalArns: string; allowedAccountIds: string } }
+      | { method: "aws"; config: { allowedPrincipalArns: string; allowedAccountIds: string } }
       | { method: "token" };
     actor: {
       type: ActorType;
