@@ -329,7 +329,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const approval = await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
+      const { approverChangeMetrics } = await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
         policyId: req.params.policyId,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -345,9 +345,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           organizationId: req.permission.orgId,
           properties: {
             policyId: req.params.policyId,
-            approversChanged: approval.approversChanged,
-            approversCountBefore: approval.approversCountBefore,
-            approversCountAfter: approval.approversCountAfter
+            approversChanged: approverChangeMetrics.approversChanged,
+            approversCountBefore: approverChangeMetrics.approversCountBefore,
+            approversCountAfter: approverChangeMetrics.approversCountAfter
           }
         })
         .catch(() => {});

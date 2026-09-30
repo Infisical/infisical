@@ -54,3 +54,26 @@ export const approvalPolicyMembershipVerifierFactory = ({
 
   return { verifyProjectSubjectsMembership };
 };
+
+export type TApproverChangeMetrics = {
+  approversChanged: boolean;
+  approversCountBefore: number;
+  approversCountAfter: number;
+};
+
+// Shared between access-approval-policy and secret-approval-policy services. Pure diff of two sets of
+// approver keys (e.g. `group:<id>` / `user:<id>`), kept outside the update services so a future caller of
+// those services isn't forced to pay for this computation, and so the returned policy resource stays free
+// of telemetry-only fields.
+export const computeApproverChangeMetrics = (
+  beforeKeys: Set<string>,
+  afterKeys: Set<string>
+): TApproverChangeMetrics => {
+  const approversChanged = beforeKeys.size !== afterKeys.size || [...beforeKeys].some((key) => !afterKeys.has(key));
+
+  return {
+    approversChanged,
+    approversCountBefore: beforeKeys.size,
+    approversCountAfter: afterKeys.size
+  };
+};

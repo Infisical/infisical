@@ -2,6 +2,7 @@ import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod } from "@app/services/auth/auth-type";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { TApproverChangeMetrics } from "./access-approval-policy-fns";
 
 export type TIsApproversValid = {
   userIds: string[];
@@ -197,31 +198,31 @@ export interface TAccessApprovalPolicyServiceFactory {
     environments,
     maxTimePeriod
   }: TUpdateAccessApprovalPolicy) => Promise<{
-    environment: {
-      id: string;
+    approval: {
+      environment: {
+        id: string;
+        name: string;
+        slug: string;
+      };
+      environments: {
+        id: string;
+        name: string;
+        slug: string;
+      }[];
+      projectId: string;
       name: string;
-      slug: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      approvals: number;
+      envId: string;
+      enforcementLevel: string;
+      allowedSelfApprovals: boolean;
+      secretPath?: string | null | undefined;
+      deletedAt?: Date | null | undefined;
+      maxTimePeriod?: string | null;
     };
-    environments: {
-      id: string;
-      name: string;
-      slug: string;
-    }[];
-    projectId: string;
-    name: string;
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
-    approvals: number;
-    envId: string;
-    enforcementLevel: string;
-    allowedSelfApprovals: boolean;
-    secretPath?: string | null | undefined;
-    deletedAt?: Date | null | undefined;
-    maxTimePeriod?: string | null;
-    approversChanged: boolean;
-    approversCountBefore: number;
-    approversCountAfter: number;
+    approverChangeMetrics: TApproverChangeMetrics;
   }>;
   getAccessApprovalPolicyByProjectSlug: ({
     actorId,

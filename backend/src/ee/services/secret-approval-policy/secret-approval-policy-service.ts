@@ -12,7 +12,11 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { approvalPolicyMembershipVerifierFactory } from "../access-approval-policy/access-approval-policy-fns";
+import {
+  approvalPolicyMembershipVerifierFactory,
+  computeApproverChangeMetrics,
+  TApproverChangeMetrics
+} from "../access-approval-policy/access-approval-policy-fns";
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
@@ -432,9 +436,11 @@ export const secretApprovalPolicyServiceFactory = ({
       }
     }
 
-    let approversChanged = false;
-    let approversCountBefore = 0;
-    let approversCountAfter = 0;
+    let approverChangeMetrics: TApproverChangeMetrics = {
+      approversChanged: false,
+      approversCountBefore: 0,
+      approversCountAfter: 0
+    };
 
     const updatedSap = await secretApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await secretApprovalPolicyDAL.updateById(
@@ -456,7 +462,6 @@ export const secretApprovalPolicyServiceFactory = ({
           approver.approverGroupId ? `group:${approver.approverGroupId}` : `user:${approver.approverUserId}`
         )
       );
-      approversCountBefore = existingApproverKeys.size;
 
       await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
 
@@ -517,10 +522,7 @@ export const secretApprovalPolicyServiceFactory = ({
         ...resolvedUserApproverIds.map((id) => `user:${id}`),
         ...(groupApprovers ?? []).map((id) => `group:${id}`)
       ]);
-      approversCountAfter = newApproverKeys.size;
-      approversChanged =
-        existingApproverKeys.size !== newApproverKeys.size ||
-        [...existingApproverKeys].some((key) => !newApproverKeys.has(key));
+      approverChangeMetrics = computeApproverChangeMetrics(existingApproverKeys, newApproverKeys);
 
       if (environments) {
         await secretApprovalPolicyEnvironmentDAL.delete({ policyId: doc.id }, tx);
@@ -572,13 +574,13 @@ export const secretApprovalPolicyServiceFactory = ({
       return doc;
     });
     return {
-      ...updatedSap,
-      environments: secretApprovalPolicy.environments,
-      environment: secretApprovalPolicy.environments[0],
-      projectId: secretApprovalPolicy.projectId,
-      approversChanged,
-      approversCountBefore,
-      approversCountAfter
+      approval: {
+        ...updatedSap,
+        environments: secretApprovalPolicy.environments,
+        environment: secretApprovalPolicy.environments[0],
+        projectId: secretApprovalPolicy.projectId
+      },
+      approverChangeMetrics
     };
   };
 

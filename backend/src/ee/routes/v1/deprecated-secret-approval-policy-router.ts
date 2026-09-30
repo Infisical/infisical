@@ -127,7 +127,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy({
+      const { approval } = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

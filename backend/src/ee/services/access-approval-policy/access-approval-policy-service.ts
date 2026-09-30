@@ -20,7 +20,11 @@ import {
 } from "./access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
 import { TAccessApprovalPolicyEnvironmentDALFactory } from "./access-approval-policy-environment-dal";
-import { approvalPolicyMembershipVerifierFactory } from "./access-approval-policy-fns";
+import {
+  approvalPolicyMembershipVerifierFactory,
+  computeApproverChangeMetrics,
+  TApproverChangeMetrics
+} from "./access-approval-policy-fns";
 import {
   ApproverType,
   BypasserType,
@@ -457,9 +461,11 @@ export const accessApprovalPolicyServiceFactory = ({
       }
     }
 
-    let approversChanged = false;
-    let approversCountBefore = 0;
-    let approversCountAfter = 0;
+    let approverChangeMetrics: TApproverChangeMetrics = {
+      approversChanged: false,
+      approversCountBefore: 0,
+      approversCountAfter: 0
+    };
 
     const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
     const updatedPolicy = await accessApprovalPolicyDAL.transaction(async (tx) => {
@@ -483,7 +489,6 @@ export const accessApprovalPolicyServiceFactory = ({
           approver.approverGroupId ? `group:${approver.approverGroupId}` : `user:${approver.approverUserId}`
         )
       );
-      approversCountBefore = existingApproverKeys.size;
 
       await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
 
@@ -555,10 +560,7 @@ export const accessApprovalPolicyServiceFactory = ({
         ...approverUserIds.map((approver) => `user:${approver.id}`),
         ...groupApprovers.map((approver) => `group:${approver.id}`)
       ]);
-      approversCountAfter = newApproverKeys.size;
-      approversChanged =
-        existingApproverKeys.size !== newApproverKeys.size ||
-        [...existingApproverKeys].some((key) => !newApproverKeys.has(key));
+      approverChangeMetrics = computeApproverChangeMetrics(existingApproverKeys, newApproverKeys);
 
       if (environments) {
         await accessApprovalPolicyEnvironmentDAL.delete({ policyId: doc.id }, tx);
@@ -603,13 +605,13 @@ export const accessApprovalPolicyServiceFactory = ({
     });
 
     return {
-      ...updatedPolicy,
-      environments: accessApprovalPolicy.environments,
-      environment: accessApprovalPolicy.environments[0],
-      projectId: accessApprovalPolicy.projectId,
-      approversChanged,
-      approversCountBefore,
-      approversCountAfter
+      approval: {
+        ...updatedPolicy,
+        environments: accessApprovalPolicy.environments,
+        environment: accessApprovalPolicy.environments[0],
+        projectId: accessApprovalPolicy.projectId
+      },
+      approverChangeMetrics
     };
   };
 

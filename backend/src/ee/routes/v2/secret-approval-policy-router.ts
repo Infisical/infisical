@@ -148,14 +148,16 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.body,
-        secretPolicyId: req.params.sapId
-      });
+      const { approval, approverChangeMetrics } = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy(
+        {
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.body,
+          secretPolicyId: req.params.sapId
+        }
+      );
 
       void server.services.telemetry
         .sendPostHogEvents({
@@ -164,9 +166,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           organizationId: req.permission.orgId,
           properties: {
             policyId: req.params.sapId,
-            approversChanged: approval.approversChanged,
-            approversCountBefore: approval.approversCountBefore,
-            approversCountAfter: approval.approversCountAfter
+            approversChanged: approverChangeMetrics.approversChanged,
+            approversCountBefore: approverChangeMetrics.approversCountBefore,
+            approversCountAfter: approverChangeMetrics.approversCountAfter
           }
         })
         .catch(() => {});
