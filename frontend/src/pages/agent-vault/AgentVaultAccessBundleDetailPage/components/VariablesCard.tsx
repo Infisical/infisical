@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
 import { VariableFormDialog } from "@app/components/agent-vault/VariableFormDialog";
 import {
   Button,
@@ -271,13 +272,10 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
                       )}
                     </TableCell>
                     <TableCell>
-                      {usedBy.length === 0 ? (
-                        <span className="text-sm text-muted">Unused</span>
-                      ) : (
-                        <span className="block truncate text-sm">
-                          {usedBy.map((service) => service.name).join(", ")}
-                        </span>
-                      )}
+                      <ServiceIconStack
+                        services={usedBy}
+                        emptyPlaceholder={<span className="text-sm text-muted">Unused</span>}
+                      />
                     </TableCell>
                     <TableCell variant="action">
                       <DropdownMenu>
