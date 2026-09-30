@@ -20,5 +20,19 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByAccessBundleId };
+  // Reads the primary even without a tx. An update merges its credential against this row before the lock and
+  // compares it with the row under the lock, so a replica still behind the last save would turn the next one
+  // into a conflict with nobody else editing.
+  const findByIdInAccessBundle = async (
+    { id, accessBundleId }: { id: string; accessBundleId: string },
+    tx?: Knex
+  ): Promise<TAgentVaultServices | undefined> => {
+    try {
+      return await (tx || db)(TableName.AgentVaultService).where({ id, accessBundleId }).first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault service" });
+    }
+  };
+
+  return { ...orm, findByAccessBundleId, findByIdInAccessBundle };
 };

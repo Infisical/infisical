@@ -190,7 +190,8 @@ path decides what a service can reach, so it stays literal.
   before variables existed has to keep reaching the host as it was, braces included.
 - A credential update merges against the service read before the lock, so under the lock it re-reads the row
   and returns a 409 if the type changed, or, for a partial basic update, the sealed secret did. Otherwise the
-  half left out is written back stale, and its rows describe text that is no longer sealed.
+  half left out is written back stale, and its rows describe text that is no longer sealed. That first read is
+  on the primary (`findByIdInAccessBundle`): a replica still behind the previous save would 409 the next one.
 - The `variableId` key is `DEFERRABLE INITIALLY DEFERRED`. A bundle delete cascades to its services and its
   variables in one statement, and an immediate check can fire before the service cascade has removed the
   rows, depending on which constraint was created first. The refusal that matters is the check under the

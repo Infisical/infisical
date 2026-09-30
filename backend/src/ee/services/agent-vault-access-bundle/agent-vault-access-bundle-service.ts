@@ -952,7 +952,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    const service = await agentVaultServiceDAL.findOne({ id: serviceId, accessBundleId: bundle.id });
+    const service = await agentVaultServiceDAL.findByIdInAccessBundle({ id: serviceId, accessBundleId: bundle.id });
     if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
 
     if (name && name !== service.name) {
@@ -1089,8 +1089,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           }
         }
 
-        // Both halves read under the lock and on the primary. The service read above the transaction came off
-        // a replica, and stale it would admit the very collision this check exists to stop.
+        // Both halves read under the lock. The service read above the transaction came before it, and stale it
+        // would admit the very collision this check exists to stop.
         if (credential || customHeaders) {
           const effectiveCustomHeaders =
             customHeaders ??
