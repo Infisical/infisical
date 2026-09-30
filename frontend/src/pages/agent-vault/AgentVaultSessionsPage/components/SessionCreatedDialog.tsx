@@ -15,7 +15,7 @@ import {
 import { TAgentVaultMintedSession } from "@app/hooks/api/agentVault/types";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
-import { SessionExpiry } from "./SessionExpiry";
+import { formatSessionExpiry } from "./SessionExpiry";
 
 type Props = {
   session: TAgentVaultMintedSession | null;
@@ -59,7 +59,7 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
 
         <div className="flex flex-col gap-1.5">
           <span className="text-xs text-accent">Expires</span>
-          <SessionExpiry expiresAt={session?.expiresAt ?? null} />
+          <span className="text-sm">{formatSessionExpiry(session?.expiresAt ?? null)}</span>
         </div>
 
         <p className="mt-2 text-xs text-accent">

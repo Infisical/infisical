@@ -1,5 +1,6 @@
 import { ForbiddenError, PureAbility } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
+import { errorCodes, FastifyError } from "fastify";
 import fastifyPlugin from "fastify-plugin";
 import jwt from "jsonwebtoken";
 import { ZodError } from "zod";
@@ -8,6 +9,7 @@ import { AcmeError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
+  ClientClosedRequestError,
   ConflictError,
   CryptographyError,
   DatabaseError,
@@ -50,23 +52,23 @@ enum HttpStatusCodes {
   // eslint-disable-next-line @typescript-eslint/no-shadow
   InternalServerError = 500,
   GatewayTimeout = 504,
-  TooManyRequests = 429
+  TooManyRequests = 429,
+  // Non-standard (nginx convention). The client is gone, so this only reaches logs and metrics.
+  ClientClosedRequest = 499
 }
 
-type TFastifyClientError = Error & { code: string; statusCode: number };
+const BODY_PARSER_ERRORS = [
+  errorCodes.FST_ERR_CTP_EMPTY_JSON_BODY,
+  errorCodes.FST_ERR_CTP_INVALID_JSON_BODY,
+  errorCodes.FST_ERR_CTP_INVALID_MEDIA_TYPE,
+  errorCodes.FST_ERR_CTP_BODY_TOO_LARGE,
+  errorCodes.FST_ERR_CTP_INVALID_CONTENT_LENGTH
+];
 
-// Fastify raises its own request errors (bad Content-Type, invalid JSON, body too large) before any
-// route code runs. They carry the right 4xx status, so reporting them as a 500 hides the real cause.
-const isFastifyClientError = (error: Error): error is TFastifyClientError => {
-  const { code, statusCode } = error as Partial<TFastifyClientError>;
-  return (
-    typeof code === "string" &&
-    code.startsWith("FST_ERR_") &&
-    typeof statusCode === "number" &&
-    statusCode >= 400 &&
-    statusCode < 500
-  );
-};
+const isBodyParserError = (error: Error): error is FastifyError =>
+  BODY_PARSER_ERRORS.some((BodyParserError) => error instanceof BodyParserError);
+
+const API_REFERENCE_DOCS_URL = "https://infisical.com/docs/api-reference";
 
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -83,11 +85,23 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     unit: "{error}"
   });
 
+  // only undefined routes include documentationUrl in the response; a "NotFounDerror" thrown by a handler means the route exists = not included
+  server.setNotFoundHandler((req, res) => {
+    void res.status(HttpStatusCodes.NotFound).send({
+      reqId: req.id,
+      statusCode: HttpStatusCodes.NotFound,
+      message: `Route ${req.method}:${req.url} not found`,
+      error: "Not Found",
+      documentationUrl: API_REFERENCE_DOCS_URL
+    });
+  });
+
   server.setErrorHandler((error: Error, req, res) => {
     // Expected client errors don't need stack traces. Log them without the Error object to
     // avoid stack serialization; keep full-stack logging for unexpected / server errors.
     const isExpectedClientError =
       error instanceof BadRequestError ||
+      error instanceof ClientClosedRequestError ||
       error instanceof NotFoundError ||
       error instanceof ConflictError ||
       error instanceof UnauthorizedError ||
@@ -95,13 +109,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       error instanceof ForbiddenRequestError ||
       error instanceof PermissionBoundaryError ||
       error instanceof ZodError ||
+      isBodyParserError(error) ||
       (error instanceof OauthTokenError && error.statusCode < HttpStatusCodes.InternalServerError) ||
       error instanceof RateLimitError ||
       error instanceof PolicyViolationError ||
       (error instanceof ScimRequestError && error.status < 500) ||
       (error instanceof AcmeError && error.status < 500) ||
-      error instanceof jwt.JsonWebTokenError ||
-      isFastifyClientError(error);
+      error instanceof jwt.JsonWebTokenError;
 
     if (isExpectedClientError) {
       // Log structured fields (NOT the Error instance) so these stay searchable by name/route
@@ -234,6 +248,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message: error.message,
         error: error.name,
         details: error.details
+      });
+    } else if (error instanceof ClientClosedRequestError) {
+      void res.status(HttpStatusCodes.ClientClosedRequest).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.ClientClosedRequest,
+        message: error.message,
+        error: error.name
       });
     } else if (error instanceof ConflictError) {
       void res
@@ -384,8 +405,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         details: error.details
       });
     } else if (
-      (error instanceof SyntaxError ||
-        (isFastifyClientError(error) && error.code === "FST_ERR_CTP_INVALID_JSON_BODY")) &&
+      (error instanceof SyntaxError || error instanceof errorCodes.FST_ERR_CTP_INVALID_JSON_BODY) &&
       req.method === "POST" &&
       (req.url === "/api/v1/cert-manager/certificates" || req.url === "/api/v1/cert-manager/certificates/")
     ) {
@@ -397,20 +417,20 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           "Invalid JSON in request body. If you are sending a Certificate Signing Request (CSR), ensure newlines are escaped as \\n characters, not literal line breaks.",
         error: "BadRequestError"
       });
-    } else if (isFastifyClientError(error)) {
+    } else if (isBodyParserError(error)) {
       let { message } = error;
-      if (error.code === "FST_ERR_CTP_INVALID_MEDIA_TYPE") {
+      if (error instanceof errorCodes.FST_ERR_CTP_INVALID_MEDIA_TYPE) {
         const contentType = req.headers["content-type"];
         message = contentType
           ? `Content-Type '${contentType}' is not supported for this request`
           : "The request has a body but no Content-Type header. Set a Content-Type, such as 'application/json'.";
       }
 
-      void res.status(error.statusCode).send({
+      void res.status(error.statusCode ?? HttpStatusCodes.BadRequest).send({
         reqId: req.id,
-        statusCode: error.statusCode,
+        statusCode: error.statusCode ?? HttpStatusCodes.BadRequest,
         message,
-        error: error.code
+        error: "BodyParserError"
       });
     } else {
       void res.status(HttpStatusCodes.InternalServerError).send({

@@ -11,8 +11,8 @@ import {
   AgentVaultMemberType,
   AgentVaultSubstitutionSurface
 } from "@app/ee/services/agent-vault/agent-vault-enums";
-import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
-import { agentVaultPathPrefixListSchema } from "@app/ee/services/agent-vault/agent-vault-path-prefix";
+import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
+import { agentVaultPathPrefixListSchema } from "@app/ee/services/agent-vault/agent-vault-path-prefix-schemas";
 import {
   addDuplicateCustomHeaderNameIssues,
   addDuplicatePlaceholderIssues,
@@ -307,24 +307,34 @@ export const AgentVaultActorRefSchema = z.discriminatedUnion("type", [
     .describe(JSON.stringify({ title: "Group" }))
 ]);
 
-export const AgentVaultActorSchema = z.discriminatedUnion("type", [
-  z
+const actorSchemas = <Id extends z.ZodTypeAny>(
+  id: Id,
+  docs: Record<"actorType" | "actorId" | "username" | "email" | "firstName" | "lastName" | "identityName", string>
+) => ({
+  user: z
     .object({
-      type: actorTypeSchema(AgentVaultMemberType.User),
-      id: actorIdSchema,
-      username: z.string().describe(AGENT_VAULT.MEMBER.username),
-      email: z.string().nullable().describe(AGENT_VAULT.MEMBER.email),
-      firstName: z.string().nullable().describe(AGENT_VAULT.MEMBER.firstName),
-      lastName: z.string().nullable().describe(AGENT_VAULT.MEMBER.lastName)
+      type: z.literal(AgentVaultMemberType.User).describe(docs.actorType),
+      id: id.describe(docs.actorId),
+      username: z.string().describe(docs.username),
+      email: z.string().nullable().describe(docs.email),
+      firstName: z.string().nullable().describe(docs.firstName),
+      lastName: z.string().nullable().describe(docs.lastName)
     })
     .describe(JSON.stringify({ title: "User" })),
-  z
+  machineIdentity: z
     .object({
-      type: actorTypeSchema(AgentVaultMemberType.MachineIdentity),
-      id: actorIdSchema,
-      name: z.string().describe(AGENT_VAULT.MEMBER.identityName)
+      type: z.literal(AgentVaultMemberType.MachineIdentity).describe(docs.actorType),
+      id: id.describe(docs.actorId),
+      name: z.string().describe(docs.identityName)
     })
-    .describe(JSON.stringify({ title: "Machine identity" })),
+    .describe(JSON.stringify({ title: "Machine identity" }))
+});
+
+const memberActorSchemas = actorSchemas(z.string().uuid(), AGENT_VAULT.MEMBER);
+
+export const AgentVaultActorSchema = z.discriminatedUnion("type", [
+  memberActorSchemas.user,
+  memberActorSchemas.machineIdentity,
   z
     .object({
       type: actorTypeSchema(AgentVaultMemberType.Group),
@@ -332,6 +342,13 @@ export const AgentVaultActorSchema = z.discriminatedUnion("type", [
       name: z.string().describe(AGENT_VAULT.MEMBER.groupName)
     })
     .describe(JSON.stringify({ title: "Group" }))
+]);
+
+const sessionActorSchemas = actorSchemas(z.string().uuid().nullable(), AGENT_VAULT.SESSION);
+
+export const AgentVaultSessionActorSchema = z.discriminatedUnion("type", [
+  sessionActorSchemas.user,
+  sessionActorSchemas.machineIdentity
 ]);
 
 // No .default().optional(): the optional wraps the default and the default never applies.

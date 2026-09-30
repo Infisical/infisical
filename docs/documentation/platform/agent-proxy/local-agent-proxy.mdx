@@ -55,7 +55,7 @@ flowchart LR
 
 ## Requirements
 
-- The [Infisical CLI](/cli/overview) installed, and `infisical login` completed.
+- The [Infisical CLI](/cli/install) installed, and `infisical login` completed.
 - At least one [proxied service](/documentation/platform/agent-proxy/proxied-services) in the folder you point `run` at. Brokering only happens for hosts a service matches; if you have none, everything simply passes through uncredentialed.
 - macOS, or Linux with [bubblewrap](https://github.com/containers/bubblewrap) installed. The sandbox comes from the operating system, so what you install depends on which one you're on:
 
@@ -366,7 +366,7 @@ Brokering still works and the environment is still scrubbed, but the agent is un
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="agent-proxy CLI reference" icon="terminal" href="/cli/commands/agent-proxy">
+  <Card title="agent-proxy CLI reference" icon="terminal" href="/cli/reference#secrets-agent-proxy-run">
     Every flag for `run`, `start`, and `connect`, with examples.
   </Card>
   <Card title="Proxied Services" icon="arrow-right-left" href="/documentation/platform/agent-proxy/proxied-services">

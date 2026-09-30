@@ -790,6 +790,7 @@ export enum EventType {
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
   AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
+  AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE = "agent-vault-session-log-settings-update",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -2956,6 +2957,7 @@ interface CreateCa {
     dn?: string;
     keySource?: string;
     hsmConnectorId?: string;
+    isOcspEnabled?: boolean;
   };
 }
 
@@ -2982,6 +2984,7 @@ interface UpdateCa {
     name: string;
     dn?: string;
     status: CaStatus;
+    isOcspEnabled?: boolean;
   };
 }
 
@@ -6302,6 +6305,18 @@ interface AgentVaultProxyDeleteEvent {
   };
 }
 
+interface AgentVaultSessionLogSettingsUpdateEvent {
+  type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE;
+  metadata: {
+    enabled: boolean;
+    appConnectionId: string | null;
+    appConnectionName: string | null;
+    bucket: string | null;
+    region: string | null;
+    keyPrefix: string | null;
+  };
+}
+
 interface AgentVaultAccessBundleCreateEvent {
   type: EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE;
   metadata: {
@@ -8343,6 +8358,7 @@ export type Event =
   | AgentVaultProxyUpdateEvent
   | AgentVaultProxyRevokeEvent
   | AgentVaultProxyDeleteEvent
+  | AgentVaultSessionLogSettingsUpdateEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent

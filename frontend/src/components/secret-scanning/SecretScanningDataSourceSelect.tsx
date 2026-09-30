@@ -56,10 +56,10 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
               <a
                 target="_blank"
                 className="underline hover:text-label"
-                href="https://infisical.com/slack"
+                href="https://community.infisical.com"
                 rel="noopener noreferrer"
               >
-                let us know on Slack
+                let us know in the community forum
               </a>{" "}
               or{" "}
               <a
