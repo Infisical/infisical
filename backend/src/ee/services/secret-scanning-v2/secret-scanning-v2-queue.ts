@@ -35,13 +35,11 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
 import {
   SecretScanningDataSource,
-  SecretScanningResource,
   SecretScanningScanStatus,
   SecretScanningScanTrigger,
   SecretScanningScanType
 } from "./secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "./secret-scanning-v2-factory";
-import { SECRET_SCANNING_DATA_SOURCE_RESOURCE_TYPE_MAP } from "./secret-scanning-v2-maps";
 import {
   TFindingsPayload,
   TQueueSecretScanningDataSourceFullScan,
@@ -296,8 +294,6 @@ export const secretScanningV2QueueServiceFactory = ({
       `secretScanningV2Queue: Full Scan Started ${logDetails} [scanType=${SecretScanningScanType.Historical}] [tempFolder=${tempFolder}]`
     );
 
-    const resourceType = SECRET_SCANNING_DATA_SOURCE_RESOURCE_TYPE_MAP[dataSource.type as SecretScanningDataSource];
-
     let holdsLease = false;
 
     try {
@@ -404,68 +400,63 @@ export const secretScanningV2QueueServiceFactory = ({
 
       let stillOwned = true;
 
-      switch (resourceType) {
-        case SecretScanningResource.Repository:
-        case SecretScanningResource.Project: {
-          const repoSizeMb = await assertClonedRepositoryWithinSizeLimit(resource.name, scanPath);
+      const scanRepository = async () => {
+        const repoSizeMb = await assertClonedRepositoryWithinSizeLimit(resource.name, scanPath);
 
-          logger.info(`secretScanningV2Queue: Full Scan Cloned ${logDetails} repoSizeMb=[${repoSizeMb ?? "unknown"}]`);
+        logger.info(`secretScanningV2Queue: Full Scan Cloned ${logDetails} repoSizeMb=[${repoSizeMb ?? "unknown"}]`);
 
-          // nothing to scan, and both git history commands fail on an unborn HEAD
-          if (!(await repositoryHasCommits(scanPath))) {
-            logger.info(`secretScanningV2Queue: Full Scan found no commits, completing ${logDetails}`);
-            break;
-          }
+        // nothing to scan, and both git history commands fail on an unborn HEAD
+        if (!(await repositoryHasCommits(scanPath))) {
+          logger.info(`secretScanningV2Queue: Full Scan found no commits, completing ${logDetails}`);
+          return;
+        }
 
-          const { SECRET_SCANNING_COMMIT_BATCH_SIZE: batchSize } = getConfig();
+        const { SECRET_SCANNING_COMMIT_BATCH_SIZE: batchSize } = getConfig();
 
-          if (!batchSize) {
-            const batchFindings = await scanGitRepositoryAndGetFindings(scanPath, findingsPath, configPath);
-            scannedFindingsCount += batchFindings.length;
-            stillOwned = await persistBatch(batchFindings);
-            break;
-          }
+        if (!batchSize) {
+          const batchFindings = await scanGitRepositoryAndGetFindings(scanPath, findingsPath, configPath);
+          scannedFindingsCount += batchFindings.length;
+          stillOwned = await persistBatch(batchFindings);
+          return;
+        }
 
-          const plan = await planCommitBatches({
-            repoPath: scanPath,
-            batchSize,
-            resumeAfterCommit: scan.lastScannedCommit,
-            resumeAfterCommitDigest: scan.lastScannedCommitDigest
-          });
+        const plan = await planCommitBatches({
+          repoPath: scanPath,
+          batchSize,
+          resumeAfterCommit: scan.lastScannedCommit,
+          resumeAfterCommitDigest: scan.lastScannedCommitDigest
+        });
 
-          logger.info(
-            `secretScanningV2Queue: Full Scan Planned ${logDetails} totalCommits=[${plan.totalCommits}] batches=[${plan.batches.length}] batchSize=[${batchSize}] resumed=[${plan.resumed}]`
+        logger.info(
+          `secretScanningV2Queue: Full Scan Planned ${logDetails} totalCommits=[${plan.totalCommits}] batches=[${plan.batches.length}] batchSize=[${batchSize}] resumed=[${plan.resumed}]`
+        );
+
+        for (const [index, batch] of plan.batches.entries()) {
+          // eslint-disable-next-line no-await-in-loop
+          const batchFindings = await scanGitRepositoryAndGetFindings(
+            scanPath,
+            join(tempFolder, `findings-${index}.json`),
+            configPath,
+            batch
           );
 
-          for (const [index, batch] of plan.batches.entries()) {
-            // eslint-disable-next-line no-await-in-loop
-            const batchFindings = await scanGitRepositoryAndGetFindings(
-              scanPath,
-              join(tempFolder, `findings-${index}.json`),
-              configPath,
-              batch
-            );
+          scannedFindingsCount += batchFindings.length;
 
-            scannedFindingsCount += batchFindings.length;
+          // eslint-disable-next-line no-await-in-loop
+          stillOwned = await persistBatch(batchFindings, {
+            lastScannedCommit: batch.lastCommit,
+            lastScannedCommitDigest: batch.prefixDigest
+          });
 
-            // eslint-disable-next-line no-await-in-loop
-            stillOwned = await persistBatch(batchFindings, {
-              lastScannedCommit: batch.lastCommit,
-              lastScannedCommitDigest: batch.prefixDigest
-            });
+          if (!stillOwned) break;
 
-            if (!stillOwned) break;
-
-            logger.info(
-              `secretScanningV2Queue: Full Scan Batch Complete ${logDetails} batch=[${index + 1}/${plan.batches.length}] findings=[${batchFindings.length}] durationMs=[${Date.now() - startedAt}]`
-            );
-          }
-
-          break;
+          logger.info(
+            `secretScanningV2Queue: Full Scan Batch Complete ${logDetails} batch=[${index + 1}/${plan.batches.length}] findings=[${batchFindings.length}] durationMs=[${Date.now() - startedAt}]`
+          );
         }
-        default:
-          throw new Error("Unhandled resource type");
-      }
+      };
+
+      await scanRepository();
 
       // Guarded on the state this run is finishing: if the reaper already gave up on this scan, the
       // row keeps its failure and this update matches nothing. Findings are still written — they
@@ -522,7 +513,6 @@ export const secretScanningV2QueueServiceFactory = ({
             dataSourceType: dataSource.type,
             resourceId: resource.id,
             resourceName: resource.name,
-            resourceType,
             scanId,
             scanStatus: SecretScanningScanStatus.Completed,
             scanType: SecretScanningScanType.Historical,
@@ -573,8 +563,7 @@ export const secretScanningV2QueueServiceFactory = ({
                 dataSourceType: dataSource.type,
                 resourceId: resource.id,
                 resourceName: resource.name,
-                resourceType,
-                scanId,
+                    scanId,
                 scanStatus: SecretScanningScanStatus.Failed,
                 scanType: SecretScanningScanType.Historical
               }
@@ -684,8 +673,6 @@ export const secretScanningV2QueueServiceFactory = ({
       kmsService,
       appConnectionDAL
     });
-
-    const resourceType = SECRET_SCANNING_DATA_SOURCE_RESOURCE_TYPE_MAP[dataSource.type as SecretScanningDataSource];
 
     const tempFolder = await createTempFolder();
 
@@ -798,7 +785,6 @@ export const secretScanningV2QueueServiceFactory = ({
             dataSourceType: dataSource.type,
             resourceId,
             resourceName: resource.name,
-            resourceType,
             scanId,
             scanStatus: SecretScanningScanStatus.Completed,
             scanType: SecretScanningScanType.Realtime,
@@ -848,8 +834,7 @@ export const secretScanningV2QueueServiceFactory = ({
                 dataSourceType: dataSource.type,
                 resourceId: resource.id,
                 resourceName: resource.name,
-                resourceType,
-                scanId,
+                    scanId,
                 scanStatus: SecretScanningScanStatus.Failed,
                 scanType: SecretScanningScanType.Realtime
               }
@@ -1021,7 +1006,6 @@ export const secretScanningV2QueueServiceFactory = ({
             dataSourceType: dataSource.type,
             resourceId: scan.resourceId,
             resourceName: scan.resourceName,
-            resourceType: SECRET_SCANNING_DATA_SOURCE_RESOURCE_TYPE_MAP[dataSource.type as SecretScanningDataSource],
             scanId: scan.id,
             scanStatus: SecretScanningScanStatus.Failed,
             scanType: scan.type as SecretScanningScanType

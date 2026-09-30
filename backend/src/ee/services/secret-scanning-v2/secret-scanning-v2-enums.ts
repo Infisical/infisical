@@ -28,11 +28,6 @@ export enum SecretScanningFindingStatus {
   Ignore = "ignore"
 }
 
-export enum SecretScanningResource {
-  Repository = "repository",
-  Project = "project"
-}
-
 export enum SecretScanningFindingSeverity {
   High = "high",
   Medium = "medium",

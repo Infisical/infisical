@@ -5650,7 +5650,6 @@ interface SecretScanningDataSourceScanEvent {
     scanId: string;
     resourceId: string;
     resourceName: string;
-    resourceType: string;
     dataSourceId: string;
     dataSourceName: string;
     dataSourceType: string;

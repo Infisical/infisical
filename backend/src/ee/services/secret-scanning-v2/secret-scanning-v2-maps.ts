@@ -1,7 +1,4 @@
-import {
-  SecretScanningDataSource,
-  SecretScanningResource
-} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 export const SECRET_SCANNING_DATA_SOURCE_NAME_MAP: Record<SecretScanningDataSource, string> = {
@@ -20,10 +17,4 @@ export const AUTO_SYNC_DESCRIPTION_HELPER: Record<SecretScanningDataSource, { ve
   [SecretScanningDataSource.GitHub]: { verb: "push", noun: "repositories" },
   [SecretScanningDataSource.Bitbucket]: { verb: "push", noun: "repositories" },
   [SecretScanningDataSource.GitLab]: { verb: "push", noun: "projects" }
-};
-
-export const SECRET_SCANNING_DATA_SOURCE_RESOURCE_TYPE_MAP: Record<SecretScanningDataSource, SecretScanningResource> = {
-  [SecretScanningDataSource.GitHub]: SecretScanningResource.Repository,
-  [SecretScanningDataSource.Bitbucket]: SecretScanningResource.Repository,
-  [SecretScanningDataSource.GitLab]: SecretScanningResource.Project
 };
