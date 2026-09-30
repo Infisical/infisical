@@ -35,7 +35,12 @@ import {
   useStartBillingV2Trial
 } from "@app/hooks/api";
 import { waitForMinimumDuration } from "@app/lib/fn/promise";
-import { fmtMoney } from "@app/pages/organization/BillingV2Page/billing-v2-format";
+import {
+  cadenceWord,
+  fmtMoney,
+  isMeteredCadence,
+  unitPrice
+} from "@app/pages/organization/BillingV2Page/billing-v2-format";
 import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
 
 import { buildUpgradeReturnPath, UpgradeIntent, UpgradeReturnTarget } from "./upgrade-intents";
@@ -492,6 +497,57 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
               <span>{postTrialCharge}</span>
             </div>
           </div>
+          {isUpgradeTrial && (
+            <div className="space-y-2 text-sm text-muted">
+              <p className="font-medium text-foreground">{plan.name} Catalog Reference Prices</p>
+              <p>
+                These rates are not your upgrade charge. Your actual charge depends on your
+                subscription and the remaining billing period.
+              </p>
+              {(["monthly", "annual"] as const)
+                .filter((referenceCadence) => planSupportsCadence(plan, referenceCadence))
+                .map((referenceCadence) => (
+                  <div key={referenceCadence}>
+                    <p>{referenceCadence === "annual" ? "Billed Annually" : "Billed Monthly"}</p>
+                    <ul className="mt-1 space-y-1">
+                      {plan.base && unitPrice(plan.base, referenceCadence) > 0 && (
+                        <li>
+                          Base Fee:{" "}
+                          {fmtMoney(
+                            unitPrice(plan.base, referenceCadence) /
+                              (referenceCadence === "annual" ? 12 : 1),
+                            6
+                          )}{" "}
+                          / month
+                        </li>
+                      )}
+                      {plan.dims
+                        .filter((dimension) => unitPrice(dimension, referenceCadence) > 0)
+                        .map((dimension) => {
+                          const perMonth =
+                            referenceCadence === "annual" &&
+                            !isMeteredCadence(dimension, referenceCadence);
+                          return (
+                            <li key={dimension.key}>
+                              {dimension.label}:{" "}
+                              {fmtMoney(
+                                unitPrice(dimension, referenceCadence) / (perMonth ? 12 : 1),
+                                6
+                              )}{" "}
+                              / {dimension.noun} /{" "}
+                              {perMonth ? "month" : cadenceWord(referenceCadence)}
+                              {dimension.included > 0 ? ` · ${dimension.included} included` : ""}
+                            </li>
+                          );
+                        })}
+                    </ul>
+                  </div>
+                ))}
+              {!planSupportsCadence(plan, "annual") && !planSupportsCadence(plan, "monthly") && (
+                <p>Catalog reference prices are unavailable.</p>
+              )}
+            </div>
+          )}
           {!isUpgradeTrial && plan.dims.some((dimension) => dimension.monthly > 0) && (
             <div className="text-sm text-muted">
               <p className="font-medium text-foreground">Monthly Usage Rates</p>
