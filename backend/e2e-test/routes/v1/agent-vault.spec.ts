@@ -1469,6 +1469,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const listed = await member.asIdentity("GET", variablesUrl(bundle.id));
         expect(listed.statusCode).toBe(403);
+        expect(JSON.parse(listed.payload).message).toBe("Only Agent Vault admins can view or change variables");
         expect(listed.payload).not.toContain("admin_only_value");
         expect((await member.asIdentity("GET", `${variablesUrl(bundle.id)}/${variable.id}/value`)).statusCode).toBe(
           403

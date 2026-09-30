@@ -20,7 +20,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -1317,10 +1317,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   // from, and Edit is the action only an admin holds.
   const resolveVariableBundle = async (dto: TGetAccessBundleDTO) => {
     const { bundle, permission } = await resolveReachableBundle(dto);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultAccessBundleActions.Edit,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
+    if (
+      permission.cannot(
+        ProjectPermissionAgentVaultAccessBundleActions.Edit,
+        ProjectPermissionSub.AgentVaultAccessBundles
+      )
+    ) {
+      throw new ForbiddenRequestError({ message: "Only Agent Vault admins can view or change variables" });
+    }
     return bundle;
   };
 
