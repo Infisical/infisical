@@ -4,6 +4,8 @@
 
 :root {
   --ifx-page: rgb(var(--background-light, 255 255 255));
+  /* Mintlify's heading color is Tailwind Typography's --tw-prose-headings, which exists only
+     inside .prose; our pages render outside it, so the value is copied here. */
   --ifx-text: #101828;
   --ifx-text-dim: rgb(var(--gray-900, 23 23 24));
   --ifx-text-soft: rgb(var(--gray-700, 63 63 63));
@@ -14,8 +16,8 @@
   --ifx-line: rgb(var(--gray-200, 223 223 223) / 0.7);
   --ifx-green: #56a600;
   --ifx-accent: rgb(var(--primary-light, 219 245 48));
-  --ifx-accent-ink: #5f7000;
-  --ifx-accent-soft: rgb(var(--primary-light, 219 245 48) / 0.1);
+  --ifx-accent-ink: rgb(var(--primary, 38 39 43));
+  --ifx-accent-soft: rgb(var(--primary, 38 39 43) / 0.05);
   --ifx-card-title: rgb(var(--gray-800, 38 38 38));
   --ifx-card-body: rgb(var(--gray-600, 81 81 81));
   --ifx-card-hover-line: rgb(var(--primary, 38 39 43));
@@ -27,6 +29,7 @@
   --ifx-control-text-hover: rgb(var(--gray-900, 23 23 24));
   --ifx-input-line: rgb(var(--gray-200, 223 223 223));
   --ifx-input-line-focus: rgb(var(--gray-300, 207 207 207));
+  --ifx-hover-line: rgb(var(--gray-300, 207 207 207));
   --ifx-input-text: rgb(var(--gray-900, 23 23 24));
   --ifx-placeholder: rgb(var(--gray-600, 81 81 81) / 0.7);
   --ifx-cat-secrets: var(--ifx-green);
@@ -49,6 +52,7 @@
   --ifx-line: rgb(255 255 255 / 0.1);
   --ifx-green: #9ee067;
   --ifx-accent-ink: rgb(var(--primary-light, 219 245 48));
+  --ifx-accent-soft: rgb(var(--primary-light, 219 245 48) / 0.1);
   --ifx-card-title: #ffffff;
   --ifx-card-body: rgb(var(--gray-400, 159 159 159));
   --ifx-card-hover-line: rgb(var(--primary-light, 219 245 48));
@@ -60,6 +64,7 @@
   --ifx-control-text-hover: rgb(var(--gray-100, 239 239 239));
   --ifx-input-line: rgb(var(--gray-800, 38 38 38));
   --ifx-input-line-focus: rgb(var(--gray-700, 63 63 63));
+  --ifx-hover-line: rgb(var(--gray-700, 63 63 63));
   --ifx-input-text: rgb(var(--gray-100, 239 239 239));
   --ifx-placeholder: rgb(var(--gray-400, 159 159 159) / 0.7);
   --ifx-cat-scanning: #b056f0;
@@ -74,7 +79,7 @@
   max-width: 960px;
   margin: 0 auto;
   padding: 3rem 1.5rem 4rem;
-  --qs-accent: #5f7000;
+  --qs-accent: var(--ifx-accent-ink);
   --qs-row-line: rgb(var(--gray-100, 239 239 239));
   --qs-head-line: rgb(var(--gray-200, 223 223 223));
 }
@@ -268,7 +273,7 @@
 }
 
 .qs-index th {
-  background: var(--ifx-surface-soft);
+  background: transparent;
   color: var(--ifx-text);
   font-size: 0.8125rem;
   font-weight: 600;
@@ -288,7 +293,7 @@
 }
 
 .qs-index td a:hover {
-  border-bottom-width: 2px;
+  box-shadow: 0 1px 0 var(--ifx-accent-ink);
 }
 
 .qs-index td a:focus-visible {
@@ -530,14 +535,14 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   text-decoration: none;
 }
 
+/* Mintlify thickens a link's underline to 2px on hover. On inline text that moves nothing, but
+   these are block-level, so the second pixel is a shadow below the border instead. */
 a.ifx-steps__label {
-  border-bottom: 1px solid #e2e2e2;
-  transition: color 0.2s, border-color 0.2s;
+  border-bottom: 1px solid var(--ifx-accent-ink);
 }
 
 a.ifx-steps__label:hover {
-  color: var(--ifx-green);
-  border-bottom-color: var(--ifx-green);
+  box-shadow: 0 1px 0 var(--ifx-accent-ink);
 }
 
 .ifx-steps__num + .ifx-steps__tabs,
@@ -560,19 +565,19 @@ a.ifx-steps__label:hover {
   border: 0;
   background: none;
   font-size: 0.75rem;
-  color: var(--ifx-muted);
+  color: var(--ifx-text-dim);
   cursor: pointer;
   border-bottom: 1px solid transparent;
-  transition: color 0.2s, border-color 0.2s;
 }
 
 .ifx-steps__tab:hover {
-  color: var(--ifx-text-dim);
+  border-bottom-color: var(--ifx-hover-line);
 }
 
-.ifx-steps__tab--active {
-  color: var(--ifx-text-dim);
-  border-bottom-color: var(--ifx-green);
+.ifx-steps__tab--active,
+.ifx-steps__tab--active:hover {
+  color: var(--ifx-accent-ink);
+  border-bottom-color: currentColor;
 }
 
 .ifx-steps__cmd {
@@ -623,9 +628,6 @@ a.ifx-steps__label:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.dark a.ifx-steps__label {
-  border-bottom-color: #26272b;
-}
 
 .dark .ifx-steps__code {
   color: #adaeb0;
@@ -724,7 +726,6 @@ a.ifx-steps__label:hover {
   gap: 0.625rem;
   padding: 0.625rem 0;
   text-decoration: none;
-  transition: background-color 0.2s, box-shadow 0.2s;
 }
 
 .ifx-card__main + .ifx-stack {
@@ -732,8 +733,7 @@ a.ifx-steps__label:hover {
 }
 
 .ifx-stack__tile:hover {
-  background-color: color-mix(in srgb, #56a600 7%, #ffffff);
-  box-shadow: inset 0 0 0 1px var(--ifx-green);
+  background-color: var(--ifx-hover-fill);
 }
 
 .ifx-stack__logo {
@@ -784,7 +784,7 @@ a.ifx-steps__label:hover {
 }
 
 .ifx-row__item:hover {
-  color: var(--ifx-green);
+  color: var(--ifx-accent-ink);
 }
 
 .ifx-row__arrow {
@@ -943,10 +943,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
 
 .dark .ifx-btn--primary:hover {
   background-color: #ebebeb;
-}
-
-.dark .ifx-stack__tile:hover {
-  background-color: color-mix(in srgb, var(--ifx-green) 10%, #101114);
 }
 
 .ifx-stack__logo--adapt-light {
@@ -1325,15 +1321,14 @@ a.ifx-card__title:hover .ifx-card__chevron {
   padding: 0.125rem 0.25rem;
   font-size: 0.65rem;
   font-weight: 700;
-  line-height: 1.125;
-  background-color: #fef3c7;
-  color: #b45309;
+  line-height: 1.25;
+  background-color: rgb(var(--primary) / 0.1);
+  color: rgb(var(--primary));
 }
 
 .dark .nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
 .dark .mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
-  background-color: rgba(120, 53, 15, 0.35);
-  color: #fcd34d;
+  color: rgb(var(--primary-light));
 }
 
 .mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"] {
@@ -1753,7 +1748,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
   --cli-muted: var(--ifx-muted);
   --cli-line: var(--ifx-line);
   --cli-soft: var(--ifx-surface-soft);
-  --cli-accent: var(--ifx-accent);
   --cli-accent-ink: var(--ifx-accent-ink);
   --cli-accent-soft: var(--ifx-accent-soft);
   --cli-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -1979,7 +1973,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
   0%,
   40% {
     background-color: var(--cli-accent-soft);
-    box-shadow: inset 2px 0 0 var(--cli-accent);
+    box-shadow: inset 2px 0 0 var(--cli-accent-ink);
   }
 
   100% {
