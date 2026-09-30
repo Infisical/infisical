@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ChevronDownIcon,
+  CopyIcon,
   EyeIcon,
   EyeOffIcon,
   LockIcon,
@@ -14,6 +15,7 @@ import { twMerge } from "tailwind-merge";
 
 import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
 import { VariableFormDialog } from "@app/components/agent-vault/VariableFormDialog";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
@@ -41,7 +43,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { toVariableReference } from "@app/helpers/agentVaultVariables";
 import {
@@ -62,6 +67,29 @@ const MASK = "•".repeat(8);
 
 // A revealed value is held against the version it was read from, so an edit hides it again.
 const revealSlot = (variable: TAgentVaultVariable) => `${variable.id}:${variable.updatedAt}`;
+
+// Opens only when the column cuts the key off, measured as it opens.
+const TruncatedKey = ({ value }: { value: string }) => {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Tooltip
+      open={isOpen}
+      onOpenChange={(next) => {
+        const el = ref.current;
+        setIsOpen(next && !!el && el.scrollWidth > el.clientWidth);
+      }}
+    >
+      <TooltipTrigger asChild>
+        <span ref={ref} className="block truncate font-mono text-sm">
+          {value}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs font-mono break-all">{value}</TooltipContent>
+    </Tooltip>
+  );
+};
 
 type Props = {
   accessBundleId: string;
@@ -137,6 +165,24 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
     } finally {
       setRevealingId(null);
+    }
+  };
+
+  // A secret is fetched, and so audited, each time it is copied, and it is never shown. Safari lets a page write
+  // the clipboard only inside the click that asked, so the value being fetched goes in as a pending ClipboardItem.
+  const copyValue = async (variable: TAgentVaultVariable) => {
+    try {
+      if (variable.isSecret) {
+        const fetched = revealValue
+          .mutateAsync({ accessBundleId, variableId: variable.id })
+          .then((value) => new Blob([value], { type: "text/plain" }));
+        await navigator.clipboard.write([new ClipboardItem({ "text/plain": fetched })]);
+      } else {
+        await navigator.clipboard.writeText(variable.value ?? "");
+      }
+      createNotification({ text: `Copied the value of ${variable.key}`, type: "success" });
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
     }
   };
 
@@ -241,7 +287,7 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
                 return (
                   <TableRow key={variable.id}>
                     <TableCell>
-                      <span className="block truncate font-mono text-sm">{variable.key}</span>
+                      <TruncatedKey value={variable.key} />
                     </TableCell>
                     <TableCell>
                       {variable.isSecret ? (
@@ -285,6 +331,10 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
                           </IconButton>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent sideOffset={2} align="end">
+                          <DropdownMenuItem onClick={() => copyValue(variable)}>
+                            <CopyIcon />
+                            Copy Value
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openForm(variable)}>
                             <PencilIcon />
                             Edit

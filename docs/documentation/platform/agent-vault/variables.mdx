@@ -80,9 +80,11 @@ Infisical encrypts every variable's value. **Secret** only controls whether the 
 - A secret value is hidden (select the eye icon next to the value to reveal it)
 - A value that isn't secret appears in the list as plain text
 
+To copy a value, open its actions menu and select **Copy Value**. If the value is secret, Infisical copies it without showing it.
+
 The [endpoint that lists variables](/api-reference/endpoints/agent-vault-variables/list) also returns only the values that aren't secret. To read a secret value from the API, call [the endpoint that gets a variable's value](/api-reference/endpoints/agent-vault-variables/get-value).
 
-Infisical writes an audit event each time someone reveals a value, and each time someone creates, updates, or deletes a variable. The events record the key and what changed, but never the value. To review the events, open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
+Infisical writes an audit event each time someone reveals or copies a secret value, and each time someone creates, updates, or deletes a variable. The events record the key and what changed, but never the value. To review the events, open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
 
 ## Double braces in a value
 
