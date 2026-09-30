@@ -1,4 +1,5 @@
-import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
+import { TGenericPermission } from "@app/lib/types";
+
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
@@ -28,7 +29,7 @@ export type TAgentVaultVariableReferenceSummary = { variableId: string; key: str
   | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
 );
 
-export type TAgentVaultProjectScoped = { projectId: string; ctx: TAgentVaultActorContext };
+export type TAgentVaultProjectScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TListAccessBundlesDTO = TAgentVaultProjectScoped & {
   search?: string;

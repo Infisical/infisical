@@ -78,7 +78,7 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
 
   </Tab>
   <Tab title="Using the CLI">
-    Use the [Infisical CLI](/cli/commands/bootstrap) to bootstrap the instance and extract the token for immediate use in automation:
+    Use the [Infisical CLI](/cli/reference#bootstrap) to bootstrap the instance and extract the token for immediate use in automation:
 
     ```bash
     infisical bootstrap --domain="http://localhost:8080" --email="admin@example.com" --password="your-secure-password" --organization="your-org-name" | jq ".identity.credentials.token"

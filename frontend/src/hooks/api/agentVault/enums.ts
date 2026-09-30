@@ -43,6 +43,13 @@ export enum AgentVaultSessionScope {
   All = "all"
 }
 
+export enum AgentVaultSessionLogDecision {
+  Brokered = "brokered",
+  Passthrough = "passthrough",
+  Blocked = "blocked",
+  Error = "error"
+}
+
 /** Which value of a service uses a variable. A basic credential's password is its credential-value. */
 export enum AgentVaultVariableReferenceField {
   CredentialValue = "credential-value",

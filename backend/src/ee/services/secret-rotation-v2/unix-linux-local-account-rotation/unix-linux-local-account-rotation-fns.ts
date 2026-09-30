@@ -362,7 +362,15 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   TUnixLinuxLocalAccountRotationWithConnection,
   TUnixLinuxLocalAccountRotationGeneratedCredentials,
   TUnixLinuxLocalAccountRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService, gatewayV2Service, gatewayPoolService, passwordValidationContext) => {
+> = (
+  secretRotation,
+  appConnectionDAL,
+  kmsService,
+  gatewayV2Service,
+  gatewayPoolService,
+  _keyStore,
+  passwordValidationContext
+) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const {
     username,

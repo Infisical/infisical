@@ -7,6 +7,7 @@ import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { PgSqlLock } from "@app/keystore/keystore";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -34,6 +35,13 @@ import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-
 import { TAgentVaultVariableDALFactory } from "../agent-vault-access-bundle/agent-vault-variable-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
+import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
+import {
+  getSessionLogEntitlement,
+  isSessionLogIngestEnabled,
+  TSessionLogLicenseService
+} from "../agent-vault-session-log/agent-vault-session-log-fns";
+import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { parseRootCaCertificate } from "./agent-vault-ca-fns";
@@ -52,6 +60,8 @@ import {
 } from "./agent-vault-proxy-types";
 import { TAgentVaultResolveDALFactory } from "./agent-vault-resolve-dal";
 
+export const AGENT_VAULT_MAX_PROXIES_PER_ORG = 10;
+
 // Health is derived from the last heartbeat and the poll interval, never stored.
 const HEARTBEAT_MISSES_BEFORE_UNHEALTHY = 3;
 
@@ -62,10 +72,12 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
+  agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  licenseService: TSessionLogLicenseService;
   resourceAuthMethodService: Pick<
     TResourceAuthMethodServiceFactory,
     "initAtCreate" | "mintToken" | "loginWithToken" | "revokeAccess"
@@ -81,10 +93,12 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultServiceSubstitutionDAL,
   agentVaultVariableDAL,
   agentVaultSessionDAL,
+  agentVaultSessionLogConfigDAL,
   membershipDAL,
   orgDAL,
   permissionService,
   kmsService,
+  licenseService,
   resourceAuthMethodService
 }: TAgentVaultProxyServiceFactoryDep) => {
   const isHealthy = (proxy: Pick<TAgentVaultProxies, "heartbeat" | "pollInterval" | "heartbeatTTL">) => {
@@ -182,6 +196,15 @@ export const agentVaultProxyServiceFactory = ({
 
     const create = () =>
       agentVaultProxyDAL.transaction(async (tx) => {
+        // Serialised per project so two creates at once can't both slip under the cap.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateAgentVaultProxy(projectId)]);
+        if ((await agentVaultProxyDAL.countByProjectId(projectId, tx)) >= AGENT_VAULT_MAX_PROXIES_PER_ORG) {
+          throw new BadRequestError({
+            message: `Agent Vault allows up to ${AGENT_VAULT_MAX_PROXIES_PER_ORG} proxies per organization. Delete one you no longer use to add another.`
+          });
+        }
+
         const created = await agentVaultProxyDAL.create(
           {
             projectId,
@@ -414,7 +437,7 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   /** The only endpoint that decrypts a credential. The proxy's JWT authorizes; the session token is a selector. */
-  const resolveSession = async ({ proxyId, orgId, sessionToken }: TResolveSessionDTO) => {
+  const resolveSession = async ({ proxyId, orgId, sessionToken, hasSessionLogKey }: TResolveSessionDTO) => {
     const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
     if (!session) throw new NotFoundError({ message: "Session not found" });
 
@@ -500,9 +523,22 @@ export const agentVaultProxyServiceFactory = ({
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds)
     ]);
 
+    const sessionLogConfig = await agentVaultSessionLogConfigDAL.findOne({ projectId: session.projectId });
+    const entitlement =
+      isSessionLogIngestEnabled(sessionLogConfig) && Boolean(session.encryptedSessionLogKey)
+        ? await getSessionLogEntitlement(licenseService, proxy.orgId)
+        : "unlicensed";
+    // While the plan can't be confirmed, a proxy that already holds the key keeps recording, and no key goes out.
+    const sessionLogsEnabled = entitlement === "licensed" || (entitlement === "unknown" && hasSessionLogKey);
+    const sessionLogKeyNeeded = entitlement === "licensed" && !hasSessionLogKey;
+
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
+    // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const hasSealedValue =
-      rows.some((row) => row.encryptedCredential) || customHeaderRows.length > 0 || substitutionRows.length > 0;
+      rows.some((row) => row.encryptedCredential) ||
+      customHeaderRows.length > 0 ||
+      substitutionRows.length > 0 ||
+      sessionLogKeyNeeded;
     const decryptor = hasSealedValue
       ? (
           await kmsService.createCipherPairWithDataKey({
@@ -544,6 +580,27 @@ export const agentVaultProxyServiceFactory = ({
       decryptValue: $decryptValue
     });
 
+    // A key that can't be opened turns logs off for this session instead of cutting the agent off from its services.
+    const $sessionLogs = (): { enabled: boolean; sessionKey: string | null } => {
+      if (!sessionLogKeyNeeded || !session.encryptedSessionLogKey) {
+        return { enabled: sessionLogsEnabled, sessionKey: null };
+      }
+      try {
+        const sessionKey = openSessionLogKey({
+          sessionId: session.id,
+          payload: decryptor!({ cipherTextBlob: session.encryptedSessionLogKey })
+        }).toString("base64");
+        return { enabled: sessionLogsEnabled, sessionKey };
+      } catch (error) {
+        logger.error(
+          error,
+          `agentVaultResolve: could not open the session log key, session logs are off for this session [sessionId=${session.id}] [proxyId=${proxyId}]`
+        );
+        return { enabled: false, sessionKey: null };
+      }
+    };
+    const sessionLogs = $sessionLogs();
+
     logger.info(
       `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}]`
     );
@@ -551,7 +608,8 @@ export const agentVaultProxyServiceFactory = ({
     return {
       sessionId: session.id,
       expiresAt: session.expiresAt ?? null,
-      services
+      services,
+      sessionLogs
     };
   };
 

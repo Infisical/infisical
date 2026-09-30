@@ -2,6 +2,7 @@ import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMemberType,
+  AgentVaultSessionLogDecision,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface,
@@ -199,17 +200,23 @@ export type TAgentVaultSessionAccessBundle = {
   position: number;
 };
 
+export type TAgentVaultSessionActor =
+  | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "id"> & {
+      id: string | null;
+    })
+  | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.MachineIdentity }>, "id"> & {
+      id: string | null;
+    });
+
 export type TAgentVaultSession = {
   id: string;
-  userId: string | null;
-  identityId: string | null;
-  actorName: string;
-  actorEmail: string | null;
+  actor: TAgentVaultSessionActor;
   status: AgentVaultSessionStatus;
   expiresAt: string | null;
   revokedAt: string | null;
   createdAt: string;
   accessBundles: TAgentVaultSessionAccessBundle[];
+  recentSessionLogCounts: { recordedCount: number; droppedCount: number };
 };
 
 export type TAgentVaultMintedSession = {
@@ -240,7 +247,7 @@ export type TAgentVaultEnrollment = {
 
 export type TListAgentVaultSessionsDTO = {
   scope?: AgentVaultSessionScope;
-  status?: AgentVaultSessionStatus;
+  statuses?: AgentVaultSessionStatus[];
   limit?: number;
   offset?: number;
   search?: string;
@@ -294,6 +301,138 @@ export type TAgentVaultProxySettingsDTO = {
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
+};
+
+export type TAgentVaultSessionLogSettings = {
+  enabled: boolean;
+  appConnectionId: string | null;
+  bucket: string | null;
+  region: string | null;
+  keyPrefix: string | null;
+};
+
+export type TAgentVaultSessionLogHealth = {
+  isStorageFull: boolean;
+  connectionError: string | null;
+};
+
+export type TAgentVaultSessionLogCorsProbe = {
+  url: string;
+  expiresInSeconds: number;
+} | null;
+
+export type TAgentVaultSessionLogReadAccess =
+  | "readable"
+  | "cors-missing"
+  | "access-denied"
+  | "host-blocked";
+
+export type TAgentVaultSessionLogReadCheck = {
+  status: TAgentVaultSessionLogReadAccess;
+  host: string;
+};
+
+export type TUpdateAgentVaultSessionLogSettingsDTO = {
+  enabled?: boolean;
+  appConnectionId?: string | null;
+  bucket?: string;
+  region?: string;
+  keyPrefix?: string;
+};
+
+export type TAgentVaultSessionLogChunk = {
+  chunkId: string;
+  proxyId: string;
+  proxyName: string;
+  startedAt: string;
+  endedAt: string;
+  firstSeq: number;
+  lastSeq: number;
+  recordCount: number;
+  droppedCount: number;
+  ciphertextBytes: number;
+  iv: string;
+  ciphertextSha256: string;
+  presignedGetUrl: string | null;
+  createdAt: string;
+};
+
+export type TAgentVaultSessionLog = {
+  enabled: boolean;
+  isRecordable: boolean;
+  sessionKey: string | null;
+  storageUnavailable: {
+    reason: "no-connection" | "connection-unusable";
+    message: string | null;
+  } | null;
+};
+
+export type TAgentVaultSessionLogPage = {
+  sessionLogs: TAgentVaultSessionLog;
+  chunks: TAgentVaultSessionLogChunk[];
+};
+
+export type TAgentVaultSessionLogHistoryPage = TAgentVaultSessionLogPage & {
+  nextCursor: string | null;
+  liveCursor: string;
+};
+
+export type TAgentVaultSessionLogTailPage = TAgentVaultSessionLogPage & {
+  nextCursor: string;
+  hasMore: boolean;
+};
+
+export type TAgentVaultSessionLogRecord = {
+  ts: string;
+  seq: number;
+  proxyId: string;
+  method: string;
+  host: string;
+  port: string;
+  path: string;
+  status: number;
+  decision: AgentVaultSessionLogDecision;
+  service: string | null;
+  accessBundle: string | null;
+};
+
+export type TAgentVaultSessionLogGapReason =
+  | "fetch"
+  | "missing"
+  | "refused"
+  | "size"
+  | "altered"
+  | "gcm"
+  | "json"
+  | "mismatch"
+  | "repointed";
+
+export type TAgentVaultSessionLogGap = {
+  chunkId: string;
+  proxyId: string;
+  proxyName: string;
+  startedAt: string;
+  reason: TAgentVaultSessionLogGapReason;
+  recordCount: number;
+};
+
+export type TAgentVaultSessionLogDrop = {
+  chunkId: string;
+  proxyId: string;
+  startedAt: string;
+  droppedCount: number;
+};
+
+export type TAgentVaultDecryptedChunk = {
+  records: TAgentVaultSessionLogRecord[];
+  gap: TAgentVaultSessionLogGap | null;
+  arrivedAt: number | null;
+};
+
+export type TAgentVaultDecryptedSessionLogPage<
+  P extends TAgentVaultSessionLogPage = TAgentVaultSessionLogPage
+> = P & {
+  decrypted: Record<string, TAgentVaultDecryptedChunk>;
 };
 
 export type TAgentVaultVariable = {

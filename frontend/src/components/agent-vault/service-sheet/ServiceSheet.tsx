@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
@@ -20,7 +21,7 @@ import {
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { hostError } from "@app/helpers/agentVaultHostPattern";
-import { AgentVaultTemplate } from "@app/helpers/agentVaultTemplates";
+import { AgentVaultTemplate, findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
   AgentVaultCredentialType,
@@ -72,11 +73,36 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   substitutions: []
 };
 
+// A template placeholder like <your-tenant>.atlassian.net is not a host, so it goes into the draft.
+const formFromTemplate = (picked: AgentVaultTemplate | null, hosts: string[]): TServiceForm => {
+  const hostFields = {
+    hosts: hosts.filter((host) => !hostError(host, [])),
+    hostDraft: hosts.find((host) => Boolean(hostError(host, []))) ?? ""
+  };
+  if (!picked) {
+    return { ...BLANK_SERVICE_FORM, ...hostFields };
+  }
+
+  const cred = picked.credential;
+  return {
+    ...BLANK_SERVICE_FORM,
+    name: picked.key,
+    ...hostFields,
+    credentialType: cred.type,
+    ...(cred.type === AgentVaultCredentialType.Bearer && {
+      headerName: cred.headerName ?? "Authorization",
+      headerPrefix: cred.headerPrefix ?? "Bearer"
+    })
+  };
+};
+
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   accessBundleId: string;
   service?: TAgentVaultService | null;
+  prefillHost?: string;
+  onSaved?: () => void;
 };
 
 const storedVariableKeys = (service?: TAgentVaultService | null) => {
@@ -118,7 +144,14 @@ const storedVariableKeys = (service?: TAgentVaultService | null) => {
 // until after it mounts and takes its height.
 const SECTION_OPEN_MS = 250;
 
-export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: Props) => {
+export const ServiceSheet = ({
+  isOpen,
+  onOpenChange,
+  accessBundleId,
+  service,
+  prefillHost,
+  onSaved
+}: Props) => {
   const isUpdate = Boolean(service);
   const createService = useCreateAgentVaultService();
   const updateService = useUpdateAgentVaultService();
@@ -167,10 +200,15 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
 
+  // A prefilled host has already been matched against the templates, and anything picked on the
+  // template step would replace that host.
+  const hasTemplateStep = !isUpdate && !prefillHost;
   const steps = useMemo(
     () =>
-      isUpdate ? SERVICE_STEPS.filter((meta) => meta.step !== ServiceStep.Template) : SERVICE_STEPS,
-    [isUpdate]
+      hasTemplateStep
+        ? SERVICE_STEPS
+        : SERVICE_STEPS.filter((meta) => meta.step !== ServiceStep.Template),
+    [hasTemplateStep]
   );
   const stepKeys = useMemo(() => steps.map((meta) => meta.step), [steps]);
 
@@ -250,33 +288,35 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
           value: UNCHANGED_SECRET
         }))
       });
+    } else if (prefillHost) {
+      const picked = findTemplateForHostPattern(prefillHost) ?? null;
+      const form = formFromTemplate(picked, [prefillHost]);
+      setTemplate(picked);
+      reset(
+        picked
+          ? form
+          : {
+              ...form,
+              name: slugify(prefillHost.replace(/:\d+$/, ""), { lowercase: true })
+                .slice(0, 64)
+                .replace(/-+$/, "")
+            }
+      );
     } else {
       reset(BLANK_SERVICE_FORM);
     }
-  }, [isOpen, service, isUpdate, reset, setStep]);
+  }, [isOpen, service, isUpdate, prefillHost, reset, setStep]);
 
   const handleTemplatePicked = (picked: AgentVaultTemplate | null) => {
     setTemplate(picked);
-
-    if (picked) {
-      const cred = picked.credential;
-      // A template placeholder like <your-tenant>.atlassian.net is not a host, so it goes into the draft.
-      const parts = picked.hostPattern.split(",").map((host) => host.trim());
-
-      reset({
-        ...BLANK_SERVICE_FORM,
-        name: picked.key,
-        hosts: parts.filter((host) => !hostError(host, [])),
-        hostDraft: parts.find((host) => Boolean(hostError(host, []))) ?? "",
-        credentialType: cred.type,
-        ...(cred.type === AgentVaultCredentialType.Bearer && {
-          headerName: cred.headerName ?? "Authorization",
-          headerPrefix: cred.headerPrefix ?? "Bearer"
-        })
-      });
-    } else {
-      reset(BLANK_SERVICE_FORM);
-    }
+    reset(
+      picked
+        ? formFromTemplate(
+            picked,
+            picked.hostPattern.split(",").map((host) => host.trim())
+          )
+        : BLANK_SERVICE_FORM
+    );
     setStep(1);
   };
 
@@ -368,6 +408,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         type: "success"
       });
 
+      onSaved?.();
       onOpenChange(false);
     } catch (error) {
       const serverResponse = axios.isAxiosError(error)
