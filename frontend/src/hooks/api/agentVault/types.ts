@@ -87,11 +87,7 @@ export type TAgentVaultActor =
 
 export type TAgentVaultActorRef = { type: AgentVaultMemberType; id: string };
 
-export type TAgentVaultMember = {
-  id: string;
-  createdAt: string;
-  actor: TAgentVaultActor;
-};
+export type TAgentVaultMember = TAgentVaultActor & { grantedAt: string };
 
 export type TAgentVaultProductActor =
   | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
@@ -103,20 +99,16 @@ export type TAgentVaultProductActor =
     })
   | Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>;
 
-export type TAgentVaultProductMember = {
-  id: string;
+export type TAgentVaultProductMember = TAgentVaultProductActor & {
   role: string;
   isActive: boolean;
-  createdAt: string;
-  actor: TAgentVaultProductActor;
+  addedAt: string;
 };
 
-export type TAgentVaultProductMemberOf<T extends AgentVaultMemberType> = Omit<
+export type TAgentVaultProductMemberOf<T extends AgentVaultMemberType> = Extract<
   TAgentVaultProductMember,
-  "actor"
-> & {
-  actor: Extract<TAgentVaultProductActor, { type: T }>;
-};
+  { type: T }
+>;
 
 export type TListAgentVaultProxiesDTO = {
   search?: string;
@@ -148,12 +140,7 @@ export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
   role: string;
 };
 
-export type TAgentVaultWrittenMember = {
-  id: string;
-  role: string;
-  createdAt: string;
-  actor: TAgentVaultActorRef;
-};
+export type TAgentVaultWrittenMember = TAgentVaultActorRef & { role: string; addedAt: string };
 
 export type TAgentVaultMemberWriteResult<T> = {
   members: T[];

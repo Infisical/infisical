@@ -19,6 +19,7 @@ import {
   AgentVaultProductMemberRefSchema,
   AgentVaultProductMemberSchema,
   AgentVaultProductRoleSchema,
+  AgentVaultRemovedProductMemberSchema,
   AgentVaultSkippedActorSchema
 } from "./agent-vault-schemas";
 
@@ -123,8 +124,8 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
             event: {
               type: EventType.AGENT_VAULT_MEMBER_ADD,
               metadata: {
-                ...auditActorFields(member.actor),
-                ...auditActorNameFields(member.actor, member.actorName),
+                ...auditActorFields(member),
+                ...auditActorNameFields(member, member.actorName),
                 role: member.role
               }
             }
@@ -135,7 +136,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       members.forEach((member) =>
         emitAgentVaultTelemetry(server.services.telemetry, req, {
           event: PostHogEventTypes.AgentVaultProductMemberAdded,
-          properties: { memberType: member.actor.type, role: member.role }
+          properties: { memberType: member.type, role: member.role }
         })
       );
 
@@ -176,8 +177,8 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         event: {
           type: EventType.AGENT_VAULT_MEMBER_UPDATE,
           metadata: {
-            ...auditActorFields(member.actor),
-            ...auditActorNameFields(member.actor, member.actorName),
+            ...auditActorFields(member),
+            ...auditActorNameFields(member, member.actorName),
             role: member.role
           }
         }
@@ -185,7 +186,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberUpdated,
-        properties: { memberType: member.actor.type, role: member.role }
+        properties: { memberType: member.type, role: member.role }
       });
 
       return { member };
@@ -205,7 +206,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       body: AgentVaultProductMemberIdsSchema,
       response: {
         200: z.object({
-          members: AgentVaultProductMemberRefSchema.omit({ role: true }).array(),
+          members: AgentVaultRemovedProductMemberSchema.array(),
           skipped: AgentVaultSkippedActorSchema.array().describe(AGENT_VAULT.MEMBERSHIP.revokeSkipped)
         })
       }
@@ -227,8 +228,8 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
             event: {
               type: EventType.AGENT_VAULT_MEMBER_REMOVE,
               metadata: {
-                ...auditActorFields(member.actor),
-                ...auditActorNameFields(member.actor, member.actorName)
+                ...auditActorFields(member),
+                ...auditActorNameFields(member, member.actorName)
               }
             }
           })
@@ -238,7 +239,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       members.forEach((member) =>
         emitAgentVaultTelemetry(server.services.telemetry, req, {
           event: PostHogEventTypes.AgentVaultProductMemberRemoved,
-          properties: { memberType: member.actor.type }
+          properties: { memberType: member.type }
         })
       );
 

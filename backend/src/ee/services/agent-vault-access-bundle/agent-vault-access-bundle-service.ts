@@ -118,10 +118,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   const toMember = (row: TMemberships) => ({
-    id: row.id,
+    ...toActorRef(row),
     accessBundleId: row.scopeResourceId!,
-    createdAt: row.createdAt,
-    actor: toActorRef(row)
+    grantedAt: row.createdAt
   });
 
   type TGrantActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";

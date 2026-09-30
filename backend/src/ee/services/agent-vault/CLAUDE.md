@@ -58,6 +58,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - Granting is batch: one POST carries `{ userIds, identityIds, groupIds }`. That lock is what makes
   the dedupe read inside it authoritative, so an actor who already holds the bundle is returned in
   `skipped` rather than erroring; the unique index is only the backstop.
+- Member responses, for bundles and for the product, are the actor itself, flat (`type`, the actor's `id`,
+  its profile) plus what the membership adds (`role`, `addedAt`, `grantedAt`). There is no membership id:
+  every write names a member by its actor, so the id a client reads is the one it sends back.
 - Reachability has one implementation, `findReachableAccessBundleIds` over the platform's
   `findResourceMembershipsForActor`, and mint, member-facing reads and resolve all call it. A group's grants
   count only while the group confers a live role (`liveGroupIdsFrom`). Write no group-expansion SQL here.

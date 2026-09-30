@@ -95,11 +95,9 @@ export type TRevokeAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
 };
 
 // actorName is for the audit body; the response schemas do not select it.
-type TAgentVaultWrittenMember = {
-  id: string;
+type TAgentVaultWrittenMember = TAgentVaultActorRef & {
   role: string;
-  createdAt: Date;
-  actor: TAgentVaultActorRef;
+  addedAt: Date;
   actorName?: string;
 };
 
@@ -523,10 +521,10 @@ export const agentVaultMembershipServiceFactory = ({
         created: toCreate.map((actor) => {
           const membership = membershipByActor.get(actorKey(actor))!;
           return {
-            id: membership.id,
+            type: actor.type,
+            id: actor.id,
             role,
-            createdAt: membership.createdAt,
-            actor: { type: actor.type, id: actor.id },
+            addedAt: membership.createdAt,
             actorName: nameByKey.get(actorKey(actor))
           };
         }),
@@ -571,10 +569,10 @@ export const agentVaultMembershipServiceFactory = ({
 
       return {
         member: {
-          id: membership.id,
+          type: actor.type,
+          id: actor.id,
           role: membershipRole.role,
-          createdAt: membership.createdAt,
-          actor,
+          addedAt: membership.createdAt,
           actorName: nameByKey.get(actorKey(actor))
         }
       };
@@ -650,10 +648,10 @@ export const agentVaultMembershipServiceFactory = ({
         removed: held.map((actor) => {
           const membership = existing.get(actorKey(actor))!;
           return {
-            id: membership.id,
+            type: actor.type,
+            id: actor.id,
             role: "",
-            createdAt: membership.createdAt,
-            actor: { type: actor.type, id: actor.id },
+            addedAt: membership.createdAt,
             actorName: nameByKey.get(actorKey(actor))
           };
         }),
