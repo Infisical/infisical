@@ -30,13 +30,14 @@ describe("metadata candidate SQL scope", () => {
       );
       const statement = query.mock.calls[0][1] as { sql: string; bindings: unknown[] };
       expect(statement.sql).toMatch(/"projectId" = \?.*"isReserved" = \?.*"slug" in \(\?\).*limit \?/);
-      expect(statement.sql).toContain('exists (with recursive "metadata_folder_ancestors"');
-      expect(statement.sql).toContain('"parent"."envId" = "metadata_folder_ancestors"."envId"');
-      expect(statement.sql).toContain('"parent"."isReserved" = ? or "parent"."parentId" is null');
-      expect(statement.sql).toContain('from "metadata_folder_ancestors" where "parentId" is null');
+      expect(statement.sql).toMatch(/^with recursive "metadata_search_folders"/);
+      expect(statement.sql).toContain('"root"."parentId" is null');
+      expect(statement.sql).toContain('"child"."envId" = "metadata_search_folders"."envId"');
+      expect(statement.sql).toContain('"child"."isReserved" = ?');
+      expect(statement.sql).toContain('"folderId" in (select "id" from "metadata_search_folders")');
       expect(statement.sql).toContain(" union ");
       expect(statement.sql).not.toContain("union all");
-      expect(statement.sql).not.toMatch(/"folderId" in \(/);
+      expect(statement.sql).not.toMatch(/"folderId" in \(\?/);
       expect(statement.bindings).toEqual(expect.arrayContaining(["org", "project", false, "dev", 100]));
       await db.destroy();
     }
