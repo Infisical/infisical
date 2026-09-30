@@ -526,7 +526,7 @@ export const approvalPolicySecretEnvironmentDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ApprovalPolicySecretEnvironment);
 
   const findPolicyByEnvIdsAndSecretPath = async (
-    { envIds, secretPath }: { envIds: string[]; secretPath: string },
+    { envIds, secretPath, excludePolicyId }: { envIds: string[]; secretPath: string; excludePolicyId?: string },
     tx?: Knex
   ) => {
     try {
@@ -537,6 +537,9 @@ export const approvalPolicySecretEnvironmentDALFactory = (db: TDbClient) => {
           `${TableName.ApprovalPolicySecretEnvironment}.policyId`
         )
         .where(`${TableName.ApprovalPolicies}.type`, ApprovalPolicyType.SecretAccess)
+        .where((qb) => {
+          if (excludePolicyId) void qb.whereNot(`${TableName.ApprovalPolicies}.id`, excludePolicyId);
+        })
         .whereIn(`${TableName.ApprovalPolicySecretEnvironment}.envId`, envIds)
         .where(`${TableName.ApprovalPolicySecretEnvironment}.secretPath`, secretPath)
         .select(

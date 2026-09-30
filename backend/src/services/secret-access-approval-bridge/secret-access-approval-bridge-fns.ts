@@ -10,15 +10,16 @@ type TSecretAccessApprovalPolicyExistsDep = {
 };
 
 export const secretAccessApprovalPolicyExists = async (
-  { envId, secretPath }: { envId: string; secretPath: string },
+  { envId, secretPath, excludePolicyId }: { envId: string; secretPath: string; excludePolicyId?: string },
   { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }: TSecretAccessApprovalPolicyExistsDep
 ) => {
   const legacyPolicy = await accessApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({ envIds: [envId], secretPath });
-  if (legacyPolicy) return true;
+  if (legacyPolicy && legacyPolicy.id !== excludePolicyId) return true;
 
   const policy = await approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdsAndSecretPath({
     envIds: [envId],
-    secretPath
+    secretPath,
+    excludePolicyId
   });
   return Boolean(policy);
 };

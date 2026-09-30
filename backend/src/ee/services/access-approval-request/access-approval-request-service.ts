@@ -307,7 +307,7 @@ export const accessApprovalRequestServiceFactory = ({
       });
     }
 
-    const policy = routing.legacyPolicy;
+    const policy = approvalBridge.legacyPolicy;
     if (!policy) {
       throw new NotFoundError({
         message: `No policy in environment with slug '${environment.slug}' and with secret path '${secretPath}' was found.`

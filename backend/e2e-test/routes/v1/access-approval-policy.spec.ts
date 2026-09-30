@@ -126,8 +126,6 @@ const cleanupGroup = async (db: Knex, groupId: string) => {
 };
 
 describe("Access approval policy router", async () => {
-  // The update test hard-deletes its own policy rows in a finally, so its id is
-  // already gone by the time this runs — deletePolicy tolerates the 404.
   afterEach(async () => {
     const ids = createdPolicyIds.splice(0);
     await Promise.all(ids.map(deletePolicy));
@@ -182,7 +180,6 @@ describe("Access approval policy router", async () => {
     const group = await seedGroup(db, { slug: "aap-group-update", addToProject: true });
     const nonMemberGroupId = crypto.randomUUID();
 
-    let policyId: string | undefined;
     try {
       const createRes = await createPolicyWithGroupApprover({
         name: "test-access-policy-update",
@@ -190,7 +187,7 @@ describe("Access approval policy router", async () => {
         secretPath: "/group-update"
       });
       expect(createRes.statusCode).toBe(200);
-      policyId = createRes.json().approval.id;
+      const policyId = createRes.json().approval.id;
 
       const updateRes = await testServer.inject({
         method: "PATCH",
@@ -208,11 +205,6 @@ describe("Access approval policy router", async () => {
       expect(updateRes.json().message).toContain("Some groups are not members of the project");
       expect(updateRes.json().message).toContain(nonMemberGroupId);
     } finally {
-      if (policyId) {
-        await db(TableName.AccessApprovalPolicyApprover).where({ policyId }).del();
-        await db(TableName.AccessApprovalPolicyEnvironment).where({ policyId }).del();
-        await db(TableName.AccessApprovalPolicy).where({ id: policyId }).del();
-      }
       await cleanupGroup(db, group.id);
     }
   });
