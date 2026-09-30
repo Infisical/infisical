@@ -1,14 +1,17 @@
 ---
 title: "Monitoring"
-description: "Find problems in a project, and get told when its secrets change."
+description: "Find problems in your projects, trace where a secret value is stored, and get told when secrets change."
 icon: "chart-line"
 ---
 
-Insights look inward at the state of a project. Webhooks and event subscriptions look outward, carrying secret changes to systems of yours that need to react to them.
+Insights and secret value search show the state of your secrets across the organization and within each project. Webhooks and event subscriptions send secret changes to your own systems so they can react to them.
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
   <Card title="Insights" icon="chart-line" href="/documentation/platform/insights">
-    Upcoming rotations, stale secrets, reminders, and who has been reading what.
+    Failed rotations and syncs, stale and duplicated secrets, upcoming reminders, and who has been reading what.
+  </Card>
+  <Card title="Secret value search" icon="search" href="/documentation/platform/secret-value-search">
+    Find every project, environment, and path where a secret value is stored.
   </Card>
   <Card title="Webhooks" icon="bell" href="/documentation/platform/webhooks">
     Call an endpoint of yours whenever a secret changes.

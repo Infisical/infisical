@@ -1,172 +1,260 @@
 ---
 title: "Secret insights"
 sidebarTitle: "Insights"
-description: "Monitor upcoming rotations, reminders, stale secrets, and secret access patterns across your project."
+description: "Failed rotations and syncs, stale and duplicated secrets, upcoming reminders, and who has been reading what."
 ---
 
 <Note>
   Secret Insights is a paid feature.
 
-  On Infisical Cloud it's available on the Pro and Enterprise plans, If you're self-hosting Infisical, contact sales@infisical.com to acquire a license.
+  On Infisical Cloud it's available on the Pro and Enterprise plans. If you're self-hosting Infisical, contact sales@infisical.com to acquire a license.
 </Note>
 
-Secret Insights is an observability dashboard for your Secrets Management project. It surfaces the questions you care about most — *Which secrets are due for rotation? Which reminders are overdue? What hasn't been touched in months? Who's actually reading my secrets?* — and links you straight to the secrets you need to act on.
+Secret Insights are dashboards that show the health of your Secrets Management secrets and how they're being read. Infisical builds them from data it already collects (rotation schedules, reminders, secret modification times, and audit logs), so apart from duplicate detection there's nothing to set up.
 
-The page is read-only. Every metric is computed from data already collected by Infisical (rotation schedules, reminders, secret modification times, access logs), so there's nothing to configure to start using it.
+Insights come at two scopes:
 
-![Secret Insights dashboard](/images/platform/insights/overview.png)
+- Organization-level insights cover every Secrets Management project in the organization, rank projects by their outstanding issues, and find secrets that share a value across projects
+- Project-level insights cover one project in more detail, with upcoming rotations and reminders, stale secrets, and access patterns for that project
 
+Choose a scope at the top of the page to see how its insights work.
 
-## Accessing insights
+<View title="Organization-level">
 
-From a Secrets Manager project, open the **Insights** tab in the project sidebar. The page is divided into four sections:
+## Open organization insights
 
-- **Summary Cards** — three at-a-glance counters for rotations, reminders, and stale secrets.
-- **Audit Reports** — Generate point-in-time compliance exports.
-- **Rotation & Reminder Calendar** — a month-by-month view of every upcoming rotation and reminder.
-- **Secret Access Volume** — read-request trends over the past 7 days, plus the top callers.
-- **Authentication Methods** — how identities are authenticating to read secrets, over the past 30 days.
+In your organization, go to **Secrets Management** > **Insights**.
 
-The page also includes an **Audit Reports** card for generating exportable compliance reports — see [Audit Reports](#audit-reports).
+To view the page, your organization role needs the **Read** permission under **Secrets Management Insights**. The built-in **Admin** role has it. To grant it to another role, see [organization role-based access controls](/documentation/platform/access-controls/role-based-access-controls#organization-level-access-controls).
+
+Organization insights are refreshed every 15 minutes, so a change can take up to 15 minutes to appear.
 
 ## Summary
 
-The three cards along the top of the page give you a quick read on what needs attention. Each card opens a popover with a table you can drill into; selecting a row jumps directly to the matching secret in the **Overview** page with the appropriate filters applied.
+The three cards at the top of the page count:
+
+- **Dynamic Secrets in Use**: [dynamic secret](/documentation/platform/dynamic-secrets/overview) leases currently issued across all projects
+- **Users**: members with access to Secrets Management projects
+- **Machine Identities**: [machine identities](/documentation/platform/identities/machine-identities) with access to Secrets Management projects
+
+## Projects with issues
+
+The **Insights** card lists the organization's Secrets Management projects, ordered by how serious their issues are. Each row shows the project's issues, its number of stale secrets (secrets not modified in more than 90 days), and its total number of secrets.
+
+The issues, from most to least serious, are:
+
+- Failed rotations: [secret rotations](/documentation/platform/secret-rotation/overview) currently in a failed state
+- Failed syncs: [secret syncs](/integrations/secret-syncs/overview) currently in a failed state
+- Orphaned leases: dynamic secret leases that Infisical failed to revoke, so the credential may still exist in the external system
+- Duplicated: secrets that share a value with another secret in the same project
+
+The **Needs Attention** tab shows only projects with at least one of these issues. Stale secrets alone don't put a project on this tab. To see every project, select **All Projects**. To find a project by name or slug, use the search box.
+
+Select a project to open that project's Insights page.
+
+## Duplicated secrets across projects
+
+The **Duplicated Secrets** card groups secrets that share the same value, across every project in the organization. Each group shows how many secrets share the value and how many projects and locations (an environment and path) they're stored in. Groups that span more than one project are marked with the number of projects.
+
+Expand a group to see each secret's project, key, environment, and path. To open a secret's folder, hover over its row and select the arrow icon.
+
+The card needs two things:
+
+- The **Search All Secret Values** permission under **Secrets Management Insights**, because the card shows secrets in projects you might not be a member of (the built-in **Admin** role has it)
+- [Secret value search](/documentation/platform/secret-value-search#enable-secret-value-search) turned on for the organization; if it's off, the card shows an **Enable Secret Value Search** button that turns it on
+
+Viewing the card is recorded in the organization's [audit logs](/documentation/platform/audit-logs) as a **View Org Secrets Duplication Insights** event.
+
+## Secret activity
+
+The remaining cards show how secrets are created and read across all projects:
+
+- **Auth Methods Used to Fetch Secrets**: the share of secret fetches made with each machine identity [authentication method](/documentation/platform/identities/machine-identities#authentication-methods) over the past 7 days
+- **New Secrets Created**: the number of secrets created each week over the past 12 weeks, with a badge that says whether the trend is increasing, decreasing, or steady
+- **Secret Access Volume**: the number of secret read requests each day over the past 7 days, with the busiest day called out
+
+If you self-host Infisical, **Auth Methods Used to Fetch Secrets** and **Secret Access Volume** appear only if your audit logs are stored in [ClickHouse](/documentation/platform/audit-logs-clickhouse-setup).
+
+## Generate an organization report
+
+An organization report is a snapshot of the organization's insights, emailed as CSV attachments (one file per report type). The header of the Insights page shows when the last report was sent.
+
+To generate an organization report:
+
+<Steps>
+  <Step>
+    On the Insights page, select **Generate Report**.
+  </Step>
+  <Step>
+    Under **Reports**, select one or more report types:
+
+    - **Usage Summary**: organization-wide counts of active leases, users, and machine identities
+    - **Needs Attention**: projects ranked by their issues
+    - **Auth Methods (Past 7 Days)**: how often each machine identity authentication method was used to read a secret value
+    - **Static Secret Usage (Past 12 Weeks)**: the number of static secrets created each week
+    - **Secret Access Volume (Past 7 Days)**: the number of secret access events each day
+
+    If you self-host Infisical without ClickHouse audit logs, the auth methods and access volume reports aren't available.
+  </Step>
+  <Step>
+    Optionally, enter comma-separated **Email recipients**. If you leave it blank, the report is sent to your own email.
+  </Step>
+  <Step>
+    Select **Generate Report**.
+  </Step>
+</Steps>
+
+Generating a report requires the **Generate Report** permission under **Secrets Management Insights**. An organization can have one report generating at a time, so **Generate Report** is disabled until the current report finishes.
+
+</View>
+
+<View title="Project-level">
+
+## Open project insights
+
+In a Secrets Management project, select **Insights** in the project sidebar.
+
+To view the page, your project role needs the **Read** permission on **Insights**. To grant it, see [project role-based access controls](/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls).
+
+Project insights are refreshed every 5 minutes, so a change can take up to 5 minutes to appear.
+
+The page header counts the project's secrets, environments, folders, rotations, dynamic secrets, and honey tokens (honey tokens appear only if your plan includes them and you can read them).
+
+## Summary
+
+The three cards at the top of the page show what needs attention. Each card opens a table of the items it counts. Select a row to open that secret in the project's secrets overview, filtered to the matching environment.
 
 ### Upcoming rotations
 
-Counts secret rotations scheduled to run in the **next 7 days**.
+Counts [secret rotations](/documentation/platform/secret-rotation/overview) scheduled to run in the next 7 days.
 
-A status badge on the card calls out failed rotations:
+The card's badge reads **No failed rotations**, or **{N} failed** if one or more rotations are in a failed state. Select **View Rotations** (or **View Failed Rotations**) to see each rotation's name, environment, path, and status. Failed rotations are listed first.
 
-- A green badge reads **No failed rotations** when everything is healthy.
-- A red badge shows **{N} failed** when one or more rotations are in a failed state and need investigation.
-
-Select **View Rotations** (or **View Failed Rotations**) to see the full list. Each row shows the rotation name, environment, secret path, and a relative-time status (`scheduled`, `in 3 days`, `retries in 1h`, or `failed`). Select a row to open that rotation's secret in the Overview page filtered by rotation.
-
-![Secret Insights rotation](/images/platform/insights/rotations.png)
+![Upcoming rotations](/images/platform/insights/rotations.png)
 
 ### Upcoming reminders
 
-Counts secret reminders due in the **next 7 days**.
+Counts secret reminders due in the next 7 days.
 
-A status badge calls out overdue reminders:
+The card's badge reads **No overdue reminders**, or **{N} overdue** if reminders have passed their due date. Select **View Upcoming Reminders** (or **View Overdue Reminders**) to see each reminder's secret, environment, path, and due time. Overdue reminders are listed first.
 
-- A green badge reads **No overdue reminders** when you're caught up.
-- A red badge shows **{N} overdue** when reminders have passed their due date without being acknowledged.
-
-Select **View Upcoming Reminders** (or **View Overdue Reminders**) to see the list. Each row shows the secret key, environment, path, and how soon it's due (or how long it's been overdue). Select a row to jump to that secret in the Overview page.
-
-![Secret Insights reminders](/images/platform/insights/reminders.png)
+![Upcoming reminders](/images/platform/insights/reminders.png)
 
 ### Stale secrets
 
-Counts secrets that **haven't been modified in more than 90 days**.
+Counts secrets that haven't been modified in more than 90 days.
 
-The card shows either **All secrets up to date** when nothing is stale, or **{N} need(s) review** when there are stale secrets to look at. The popover table is paginated 10 rows at a time and shows each secret's key, environment, path, and last-modified time. Select a row to open it in Overview.
+The card's badge reads **All secrets up to date**, or **{N} need(s) review** if there are stale secrets. Select **View Stale Secrets** to see each secret's key, environment, path, and last modified time, 10 at a time.
 
-Stale secrets aren't necessarily a problem — long-lived configuration values are normal. The list is meant as a prompt to review whether anything should be rotated, removed, or refreshed.
+A stale secret isn't necessarily a problem, because some configuration values rarely change. Use the list to decide whether a secret should be rotated, removed, or updated.
 
-![Secret Insights stale secrets](/images/platform/insights/stale.png)
+![Stale secrets](/images/platform/insights/stale.png)
 
-## Audit reports
+## Reports
 
-Audit Reports let you generate point-in-time compliance exports for a Secrets Management project — stale secrets, duplicate values, validation-rule violations, rotation status, upcoming reminders, and secret access history — and deliver them to one or more recipients as CSV attachments (one file per report type) in an email.
-
-Where the rest of the Insights dashboard is a live, read-only view, an Audit Report is a snapshot you can hand to an auditor, attach to a ticket, or archive for SOC 2 / ISO 27001 evidence. You'll find it as the **Audit Reports** card on the Insights page.
+A report is a snapshot of the project's insights that you can give to an auditor, attach to a ticket, or keep as compliance evidence for audits such as SOC 2 or ISO 27001. Infisical emails each report as CSV attachments, one file per report type.
 
 <Warning>
-  Audit reports can contain sensitive metadata — secret keys, paths, access patterns, and recipient emails. They're delivered by email to the addresses you specify; only send reports to recipients you trust, and treat the CSV as confidential.
+  Reports can contain sensitive metadata, such as secret keys, paths, and who accessed which secret. Send reports only to recipients you trust, and treat the CSV files as confidential.
 </Warning>
 
-### Generating a report
+### Generate a report
 
-1. Open the **Insights** tab and find the **Audit Reports** card.
-2. Select **Generate Report**.
-3. In the dialog, select one or more [report types](#report-types).
-4. (Optional) Enter one or more **email recipients**, comma-separated. If you leave this blank, the report is sent to your own email.
-5. Select **Generate Report**.
+To generate a report:
 
-![overview-screen](/images/platform/insights/audit-reports/generate-report.png)
+<Steps>
+  <Step>
+    On the **Reports** card, select **Generate Report**.
+  </Step>
+  <Step>
+    Under **Reports**, select one or more [report types](#report-types).
+  </Step>
+  <Step>
+    Optionally, enter comma-separated **Email recipients**, up to 20. Each recipient must be a member of the organization with the **Read** permission on the project's **Insights**. If you leave it blank, the report is sent to your own email.
+  </Step>
+  <Step>
+    Select **Generate Report**.
+  </Step>
+</Steps>
 
-The request is queued and generated in the background. When it finishes, every recipient receives an email with one CSV file attached per requested report. You can keep working — the report's status updates live in the history table.
+![Generate a report](/images/platform/insights/audit-reports/generate-report.png)
 
-<Note>
-  Report generation is asynchronous. A project can have at most one report generating at once. 
-</Note>
+Infisical generates the report in the background and emails it to every recipient when it's done. A project can have one report generating at a time.
 
-### Report history
-
-The Audit Reports card lists previously requested reports, newest first, paginated (10 per page by default). Each row shows:
-
-- **Reports** — the report type(s) included in that request. Hover to see the full list when multiple are combined.
-- **Recipients** — the email addresses of the recipients who has received the audit report.
-- **Status** — the generation status (see below). Hover a **Failed** or **Partial** badge for details.
-- **Requested** — when the report was requested.
-
-Use the trash icon on a row to delete a report from the history (requires the `Delete` permission).
-
-| Status | Meaning |
-|---|---|
-| **Pending** | Queued, not yet started. |
-| **Generating** | Currently being generated. |
-| **Completed** | Generated and emailed successfully. |
-| **Partial** | Delivered, but at least one report hit the row limit and was truncated. |
-| **Failed** | Generation failed. Hover the badge for the error message. |
-
-![report-history](/images/platform/insights/audit-reports/report-history.png)
+Generating a report requires the **Generate Report** permission on **Insights**.
 
 ### Report types
 
-A single request can include any combination of the following. Each becomes its own labelled section in the CSV.
-
 | Report | What it contains |
 |---|---|
-| **Stale Secrets** | Secrets not updated within the last 90 days, with their last-updated time and age in days. |
-| **Duplicate Secrets** | Secrets that share the same value across environments and paths, grouped together. Requires the project's secret blind-index to be enabled. |
-| **Secret Validation Compliance** | Stored secrets that violate a secret validation rule covering them — for example, a secret created before a rule existed, or one that no longer meets a length/regex/prefix constraint. |
-| **Upcoming Rotations** | Secret rotations scheduled within the next 7 days. |
-| **Failed Rotations** | Secret rotations currently in a failed state. |
-| **Upcoming Reminders** | Secret reminders due within the next 7 days. |
-| **Secret Access Log** | Who accessed secrets over the last 30 days (actor, event type, secret, environment, path, IP, timestamp). |
+| **Stale Secrets** | Secrets not updated in the last 90 days, with when each was last updated and how many days ago |
+| **Duplicate Secrets** | Secrets that share the same value across environments and paths, grouped together (empty unless [duplicate detection](#duplicated-secrets) is on) |
+| **Secret Validation Compliance Violations** | Secrets that break a [secret validation rule](/documentation/platform/secret-validation-rules) that covers them, such as a secret created before the rule existed |
+| **Upcoming Rotations** | Secret rotations scheduled in the next 7 days |
+| **Failed Rotations** | Secret rotations currently in a failed state |
+| **Upcoming Reminders** | Secret reminders due in the next 7 days |
+| **Secret Access Log** | Who accessed secrets over the last 30 days, with the actor, event, secret, environment, path, IP address, and time |
 
-## Rotation & reminder calendar
+Each report type is limited to 100,000 rows.
 
-The calendar panel shows every upcoming rotation and reminder laid out on a month grid, so you can see the cadence of upcoming work at a glance.
+### Report history
 
-![Rotation & Reminder Calendar](/images/platform/insights/calendar.png)
+The **Reports** card lists earlier reports, newest first. Each row shows the report types, the recipients, the status, and when the report was requested.
 
-**Navigation.** Use the chevrons in the panel header to move between months. The current day is highlighted with a colored border.
-
-**Event pills.** Each day cell shows up to two events; when there are more, the second slot is replaced by a **+N more** pill that expands the rest. Pills are color-coded:
-
-| Color | Event Type |
+| Status | Meaning |
 |---|---|
-| Blue, with a refresh icon | Rotation |
-| Orange, with a bell icon | Reminder |
+| **Pending** | Queued, not started yet |
+| **Generating** | Being generated |
+| **Completed** | Generated and emailed |
+| **Partial** | Emailed, but at least one report type reached the row limit and was cut short |
+| **Failed** | Not generated (hover over the badge to see the error) |
 
-**Event details.** Select a pill to view its details, then use the **View in Overview** button to jump to the corresponding secret in the project Overview with filters applied.
+To remove a report from the history, hover over its row and select the trash icon. Deleting a report requires the **Delete Report** permission on **Insights**.
+
+![Report history](/images/platform/insights/audit-reports/report-history.png)
+
+## Duplicated secrets
+
+The **Duplicated Secrets** card groups secrets in the project that share the same value, across environments and paths. Expand a group to see each secret's key, environment, and path. To open a secret's folder, hover over its row and select the arrow icon.
+
+Secrets whose values contain [secret references](/documentation/platform/secret-reference) aren't included.
+
+Duplicate detection is off until you turn it on. To turn it on, select **Enable Detection** on the card. Infisical processes the project's secrets, then shows the results. Turning it on requires permission to edit the project's settings.
+
+If an organization admin has turned on [secret value search](/documentation/platform/secret-value-search), duplicate detection is already on for every project in the organization.
+
+## Rotation and reminder calendar
+
+The **Rotation & Reminder Calendar** card shows every upcoming rotation and reminder on a month grid. Use the arrows in the card header to move between months.
+
+![Rotation and reminder calendar](/images/platform/insights/calendar.png)
+
+Each day shows up to two events. If a day has more, the second slot becomes a **+N more** link that lists the rest. Rotations are blue with a refresh icon and show the rotation's name. Reminders are orange with a bell icon and show the secret's key.
+
+Select an event to see its date, environment, and path. For a rotation, the details also show its interval, status, and secret keys. For a reminder, they show its message and how often it repeats. To open the secret in the project's secrets overview, select **View in Overview**.
 
 ## Secret access volume
 
-This panel shows how many times secrets have been read across the project over the **past 7 days**, plotted as a daily area chart.
+The **Secret Access Volume** card shows how many times secrets in the project were read each day over the past 7 days.
 
-![Secret Access Volume](/images/platform/insights/access.png)
+![Secret access volume](/images/platform/insights/access.png)
 
-Each point represents the total number of read requests on that day, regardless of which secret was read or how it was read (UI, CLI, SDK, API, agent, operator, etc.).
+Reads count whether they come from the dashboard, CLI, SDKs, API, or an agent, and include reading a previous version of a secret, reading rotated credentials, and creating a dynamic secret lease.
 
-Below the chart, the **Top actors** row lists the up-to-five identities that issued the most read requests in the same 7-day window, along with their request counts. Actor entries are formatted as `{type}: {name} ({count})` — for example, `Service: ci-runner (5,234)` or `User: alex@acme.com (812)`.
+Below the chart, **Top actors** lists the five users and identities that made the most reads over the same 7 days, with the number of reads each made.
 
-Use this panel to spot unusual spikes, identify the heaviest consumers of your secrets, and confirm that traffic patterns match what you expect from your services.
+Use the card to spot unusual spikes and to check which workloads read your secrets most.
 
 ## Authentication methods
 
-This panel shows the distribution of authentication methods used to read secrets over the **past 30 days**, plotted as a donut chart with a breakdown table beside it.
+The **Authentication Methods** card shows which authentication methods were used to read secrets over the past 30 days, as a chart with each method's share and number of reads.
 
-![Authentication Methods](/images/platform/insights/auth.png)
+![Authentication methods](/images/platform/insights/auth.png)
 
-Each slice represents an auth method (for example, Universal Auth, Kubernetes Auth, AWS Auth, Token Auth, JWT). The breakdown shows the method name, percentage of total reads, and absolute request count, with a **Total** row at the bottom.
+Methods include user login methods (such as Email, Google, or a SAML provider), machine identity [authentication methods](/documentation/platform/identities/machine-identities#authentication-methods) (such as Universal Auth or Kubernetes), and service tokens.
 
-You may see an **Unknown** bucket. This represents older read requests that were issued before Infisical began recording the auth method on each request. Only newer requests carry this metadata, so the Unknown share will shrink over time as historical data ages out of the 30-day window.
+Reads made before Infisical started recording the authentication method appear as **Unknown**. The **Unknown** share shrinks as those reads fall outside the 30-day window.
 
-Use this panel to understand how your workloads are authenticating, spot identities still using older auth methods you'd like to retire, and verify that auth-method migrations are taking effect.
+Use the card to see how your workloads authenticate, find identities still using a method you want to retire, and check that a move to a new method is taking effect.
+
+</View>
