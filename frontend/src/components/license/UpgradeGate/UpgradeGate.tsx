@@ -411,6 +411,12 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
   const currentPlanName =
     plans.find((candidate) => candidate.tier === currentEntitlement?.planTier)?.name ??
     currentEntitlement?.planTier;
+  let cadenceLabel = "Annual Billing";
+  if (trialAvailable) {
+    cadenceLabel = isUpgradeTrial
+      ? "Existing Billing Continues During Trial"
+      : "Monthly Billing After Trial";
+  }
   let postTrialCharge = "Usage-Based";
   if (isUpgradeTrial) {
     postTrialCharge = "Charged the Difference";
@@ -422,6 +428,9 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
     trialPriceLabel = "0 for 2 Weeks";
   } else if (plan.trialDays > 0) {
     trialPriceLabel = `0 for ${plan.trialDays} Days`;
+  }
+  if (isUpgradeTrial) {
+    trialPriceLabel = `Trial Upgrade: ${trialPriceLabel}`;
   }
   const upgradeLabel = intent.upgradeLabel ?? `Upgrade ${product.name}`;
   const productStyle = { "--product-color": product.color } as CSSProperties;
@@ -471,7 +480,7 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
           </p>
           <div className="divide-y divide-border rounded-lg border border-border bg-card text-sm">
             <div className="flex items-center justify-between p-4">
-              <span>Due Today</span>
+              <span>{isUpgradeTrial ? "Trial Upgrade Charge" : "Due Today"}</span>
               <span>$0</span>
             </div>
             <div className="flex items-center justify-between p-4">
@@ -483,7 +492,7 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
               <span>{postTrialCharge}</span>
             </div>
           </div>
-          {plan.dims.some((dimension) => dimension.monthly > 0) && (
+          {!isUpgradeTrial && plan.dims.some((dimension) => dimension.monthly > 0) && (
             <div className="text-sm text-muted">
               <p className="font-medium text-foreground">Monthly Usage Rates</p>
               <ul className="mt-2 space-y-1">
@@ -491,7 +500,7 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
                   .filter((dimension) => dimension.monthly > 0)
                   .map((dimension) => (
                     <li key={dimension.key}>
-                      {dimension.label}: {fmtMoney(dimension.monthly)} / {dimension.noun} / month
+                      {dimension.label}: {fmtMoney(dimension.monthly, 6)} / {dimension.noun} / month
                       {dimension.included > 0 ? ` · ${dimension.included} included` : ""}
                     </li>
                   ))}
@@ -670,28 +679,27 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
                           setCadence(checked === true ? "annual" : "monthly")
                         }
                       />
-                      <Label htmlFor={`upgrade-cadence-${product.id}`}>
-                        {trialAvailable ? "Monthly Billing After Trial" : "Annual Billing"}
-                      </Label>
+                      <Label htmlFor={`upgrade-cadence-${product.id}`}>{cadenceLabel}</Label>
                       {savingsPercent > 0 && !trialAvailable && visibleCadence === "annual" && (
                         <Badge variant="success">-{savingsPercent}%</Badge>
                       )}
                     </div>
                     <div className="flex items-baseline gap-2 text-sm tabular-nums">
-                      {comparePrice.amount > 0 ? (
-                        <span
-                          className={
-                            trialAvailable
-                              ? "text-muted line-through"
-                              : "font-medium text-foreground"
-                          }
-                        >
-                          {fmtMoney(comparePrice.amount, 2)}
-                          {comparePrice.compactUnit}
-                        </span>
-                      ) : (
-                        <span className="font-medium text-foreground">Usage-based</span>
-                      )}
+                      {!(isUpgradeTrial && trialAvailable) &&
+                        (comparePrice.amount > 0 ? (
+                          <span
+                            className={
+                              trialAvailable
+                                ? "text-muted line-through"
+                                : "font-medium text-foreground"
+                            }
+                          >
+                            {fmtMoney(comparePrice.amount, 6)}
+                            {comparePrice.compactUnit}
+                          </span>
+                        ) : (
+                          <span className="font-medium text-foreground">Usage-based</span>
+                        ))}
                       {trialAvailable && (
                         <span className="font-medium text-foreground">{trialPriceLabel}</span>
                       )}
