@@ -944,16 +944,14 @@ export const approvalPolicyServiceFactory = ({
     );
 
     const cancelled = await approvalPolicyDAL.transaction(async (tx) => {
-      const pending = await approvalRequestDAL.find({ policyId, status: ApprovalRequestStatus.Pending }, { tx });
-
-      await approvalRequestDAL.update(
+      const rows = await approvalRequestDAL.update(
         { policyId, status: ApprovalRequestStatus.Pending },
         { status: ApprovalRequestStatus.Cancelled },
         tx
       );
 
       await approvalPolicyDAL.deleteById(policyId, tx);
-      return pending;
+      return rows;
     });
 
     const resource = resources[policy.type as ApprovalPolicyType];
@@ -1249,7 +1247,10 @@ export const approvalPolicyServiceFactory = ({
     }
 
     if (request.expiresAt && new Date(request.expiresAt) < new Date()) {
-      await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired });
+      await approvalRequestDAL.update(
+        { id: requestId, status: ApprovalRequestStatus.Pending },
+        { status: ApprovalRequestStatus.Expired }
+      );
       throw new BadRequestError({ message: "Request has expired" });
     }
 
@@ -1471,7 +1472,10 @@ export const approvalPolicyServiceFactory = ({
     }
 
     if (request.expiresAt && new Date(request.expiresAt) < new Date()) {
-      await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired });
+      await approvalRequestDAL.update(
+        { id: requestId, status: ApprovalRequestStatus.Pending },
+        { status: ApprovalRequestStatus.Expired }
+      );
       throw new BadRequestError({ message: "Request has expired" });
     }
 
@@ -1683,9 +1687,13 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not the requester of this request" });
     }
 
-    const updatedRequest = await approvalRequestDAL.updateById(requestId, {
-      status: ApprovalRequestStatus.Cancelled
-    });
+    const [updatedRequest] = await approvalRequestDAL.update(
+      { id: requestId, status: ApprovalRequestStatus.Pending },
+      { status: ApprovalRequestStatus.Cancelled }
+    );
+    if (!updatedRequest) {
+      throw new BadRequestError({ message: "Request is not pending" });
+    }
 
     await resources[request.type as ApprovalPolicyType]?.postRejectionRoutine?.(updatedRequest as TApprovalRequest);
 
