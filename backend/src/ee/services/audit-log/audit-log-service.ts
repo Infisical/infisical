@@ -199,9 +199,8 @@ export const auditLogServiceFactory = ({
     return auditLogQueue.pushToLog(el);
   };
 
-  // Runs when a collapse window closes. Pushes straight to the log rather than through
-  // createAuditLog: we're outside a request here, and the payload already carries the actor's
-  // permission metadata from the first event.
+  // Runs outside a request, so it skips createAuditLog. The payload already carries the
+  // actor's permission metadata from the first event.
   const flushCollapsedRepeats = async ({
     collapseKey,
     windowStart,
@@ -228,8 +227,8 @@ export const auditLogServiceFactory = ({
     await flushCollapsedRepeats(job.data);
   });
 
-  // The first event per key is written right away and opens a window; repeats inside it only
-  // bump a counter that the flush job turns into one summary event when the window closes.
+  // First event per key is written and opens a window. Repeats inside it only bump a counter
+  // that the flush job turns into one summary event.
   const createCollapsedAuditLog: TAuditLogServiceFactory["createCollapsedAuditLog"] = async ({
     collapseKeyParts,
     collapseWindowSeconds = DEFAULT_COLLAPSE_WINDOW_SECONDS,

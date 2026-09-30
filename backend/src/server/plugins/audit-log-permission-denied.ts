@@ -7,9 +7,8 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 
 const isPrimitive = (value: unknown) => value === null || ["string", "number", "boolean"].includes(typeof value);
 
-// Only the primitive fields of the CASL subject. The subject() marker is non-enumerable so
-// it drops out, and nested objects are skipped on purpose since the subject can wrap a
-// request body.
+// The subject() marker is non-enumerable so it drops out. Nested objects are skipped on
+// purpose since the subject can wrap a request body.
 const pickSubjectDetails = (subject: unknown) => {
   if (!subject || typeof subject !== "object" || Array.isArray(subject)) return undefined;
   const details: Record<string, unknown> = {};
@@ -27,10 +26,10 @@ const readProjectId = (source: unknown) => {
   return typeof projectId === "string" ? projectId : undefined;
 };
 
-// Every RBAC denial is a thrown CASL ForbiddenError or PermissionBoundaryError, and onError
-// hooks run before the error handler, so this one hook sees all of them. ForbiddenRequestError
-// is left out on purpose: verifyAuth throws it for auth-mode mismatches and it's also used for
-// plan gating and admin-only checks, none of which are permission decisions.
+// Every RBAC denial is a CASL ForbiddenError or PermissionBoundaryError, and onError hooks run
+// before the error handler, so this one hook sees all of them. ForbiddenRequestError is skipped
+// on purpose: it's used for auth-mode mismatches, plan gating and admin-only checks, none of
+// which are permission decisions.
 export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvider) => {
   server.addHook("onError", async (req, _reply, error) => {
     const isCaslDenial = error instanceof ForbiddenError;

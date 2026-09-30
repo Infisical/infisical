@@ -445,7 +445,7 @@ export const orgServiceFactory = ({
     });
 
     // Denials are only recorded on the new privilege system, so bust the cache or the first
-    // denial after the upgrade gets skipped.
+    // denial after the upgrade is skipped.
     await keyStore.deleteItem(KeyStorePrefixes.AuditLogOrgSettings(actorOrgId));
 
     return upgradedOrg;

@@ -17,7 +17,6 @@ export async function up(knex: Knex): Promise<void> {
       t.index(["orgId"]);
     });
 
-    // Two partial indexes: NULLS NOT DISTINCT needs Postgres 15.
     await knex.raw(
       `CREATE UNIQUE INDEX "audit_log_settings_org_scope_unique" ON ??("orgId", "eventClass") WHERE "projectId" IS NULL`,
       [TableName.AuditLogSettings]

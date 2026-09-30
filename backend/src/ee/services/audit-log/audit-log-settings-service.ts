@@ -128,8 +128,7 @@ export const auditLogSettingsServiceFactory = ({
     return settings;
   };
 
-  // Hot path (every event and every denial), so it's cached and never throws. A failed
-  // lookup means record everything, as before.
+  // Hot path, so cached and never throws. On failure we fall back to recording everything.
   const getEffectiveSettings = async (orgId: string): Promise<TEffectiveAuditLogSettings | null> => {
     const cacheKey = KeyStorePrefixes.AuditLogOrgSettings(orgId);
     try {
