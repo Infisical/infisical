@@ -404,6 +404,19 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
   const savingsPercent = Math.max(...plans.map(annualSavingsPercent));
   const trialDurationLabel = plan.trialDays === 14 ? "2-Week" : `${plan.trialDays}-Day`;
   const trialBadgeLabel = plan.trialDays > 0 ? `${trialDurationLabel} Trial` : "Free Trial";
+  const currentEntitlement = overview.data.entitlements[intent.productKey];
+  const isUpgradeTrial =
+    Boolean(currentEntitlement?.entitled && currentEntitlement.planTier) &&
+    currentEntitlement?.planTier !== plan.tier;
+  const currentPlanName =
+    plans.find((candidate) => candidate.tier === currentEntitlement?.planTier)?.name ??
+    currentEntitlement?.planTier;
+  let postTrialCharge = "Usage-Based";
+  if (isUpgradeTrial) {
+    postTrialCharge = "Charged the Difference";
+  } else if (plan.base?.monthly) {
+    postTrialCharge = `${fmtMoney(plan.base.monthly)} / month`;
+  }
   let trialPriceLabel = "0 during trial";
   if (plan.trialDays === 14) {
     trialPriceLabel = "0 for 2 Weeks";
@@ -452,9 +465,9 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
             description={`Confirm your ${plan.name} trial before continuing.`}
           />
           <p className="text-sm text-muted">
-            Your {trialDurationLabel.toLowerCase()} trial is free. A payment method is required. If
-            you do not have one on file, secure card setup must finish before the trial starts.
-            After the trial, billing continues monthly unless you cancel.
+            {isUpgradeTrial
+              ? `Your ${trialDurationLabel.toLowerCase()} trial is free. You'll keep paying for ${currentPlanName} during the trial. After it ends, you'll move to ${plan.name} and be charged the difference. End the trial before then to stay on ${currentPlanName}.`
+              : `Your ${trialDurationLabel.toLowerCase()} trial is free. A payment method is required. If you do not have one on file, secure card setup must finish before the trial starts. After the trial, billing continues monthly based on usage unless you cancel.`}
           </p>
           <div className="divide-y divide-border rounded-lg border border-border bg-card text-sm">
             <div className="flex items-center justify-between p-4">
@@ -462,10 +475,29 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
               <span>$0</span>
             </div>
             <div className="flex items-center justify-between p-4">
-              <span>After Your Trial · Monthly Usage-Based Billing</span>
-              <span>{price > 0 ? `${fmtMoney(price)} / month` : "Usage-Based"}</span>
+              <span>
+                {isUpgradeTrial
+                  ? `After Your Trial · Upgrade to ${plan.name}`
+                  : "After Your Trial · Monthly Usage-Based Billing"}
+              </span>
+              <span>{postTrialCharge}</span>
             </div>
           </div>
+          {plan.dims.some((dimension) => dimension.monthly > 0) && (
+            <div className="text-sm text-muted">
+              <p className="font-medium text-foreground">Monthly Usage Rates</p>
+              <ul className="mt-2 space-y-1">
+                {plan.dims
+                  .filter((dimension) => dimension.monthly > 0)
+                  .map((dimension) => (
+                    <li key={dimension.key}>
+                      {dimension.label}: {fmtMoney(dimension.monthly)} / {dimension.noun} / month
+                      {dimension.included > 0 ? ` · ${dimension.included} included` : ""}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
           <DialogFooter className="sm:justify-between">
             <Button
               variant="outline"
@@ -565,7 +597,7 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
               <div className="flex flex-1 flex-col items-center justify-center px-8 py-12 text-center">
                 <ProductIcon product={product} size={64} />
                 <DialogHeader className="mt-6 items-center text-center">
-                  <p className="text-xs font-medium tracking-wide text-(--product-color-resolved) uppercase">
+                  <p className="text-xs font-medium tracking-wide text-(--product-color-resolved)">
                     {product.name}
                   </p>
                   <DialogTitle className="max-w-xs text-2xl leading-tight">
@@ -596,7 +628,7 @@ export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGran
                 <div>
                   <p
                     id="upgrade-plan-features"
-                    className="text-xs font-medium tracking-wide text-muted uppercase"
+                    className="text-xs font-medium tracking-wide text-muted"
                   >
                     Included with {plan.name}
                   </p>
