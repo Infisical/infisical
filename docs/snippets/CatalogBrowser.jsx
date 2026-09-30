@@ -96,9 +96,9 @@ export const CatalogBrowser = ({
               <h3 className="ifx-catalog__title">{item.name}</h3>
               <div className="ifx-catalog__badges">
                 {badges(item).map((badge) => (
-                  <span key={badge.label} className={`ifx-tag ifx-tag--${badge.tone || "neutral"}`}>
+                  <Badge key={badge.label} color={badge.color || "gray"} size="sm">
                     {badge.label}
-                  </span>
+                  </Badge>
                 ))}
               </div>
               <p className="ifx-catalog__desc">{item.description}</p>

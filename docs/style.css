@@ -1161,64 +1161,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
   color: #f3f3f4;
 }
 
-.ifx-tag {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--tag-bd, transparent);
-  background-color: var(--tag-bg);
-  color: var(--tag-fg);
-  padding: 0.0625rem 0.5rem;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  line-height: 1.125rem;
-  white-space: nowrap;
-}
-
-.ifx-tag--neutral { --tag-bg: rgb(var(--gray-50, 244 244 244)); --tag-fg: var(--ifx-text-soft); --tag-bd: var(--ifx-line); }
-.dark .ifx-tag--neutral { --tag-bg: rgb(255 255 255 / 0.05); --tag-fg: rgb(var(--gray-300, 207 207 207)); --tag-bd: var(--ifx-line); }
-
-.ifx-tag--blue { --tag-bg: #dbeafe; --tag-fg: #1d4ed8; --tag-bd: #bfdbfe; }
-.dark .ifx-tag--blue { --tag-bg: rgba(30,58,138,.35); --tag-fg: #93c5fd; --tag-bd: #1e40af; }
-
-.ifx-tag--cyan { --tag-bg: #cffafe; --tag-fg: #0e7490; --tag-bd: #a5f3fc; }
-.dark .ifx-tag--cyan { --tag-bg: rgba(22,78,99,.35); --tag-fg: #67e8f9; --tag-bd: #155e75; }
-
-.ifx-tag--violet { --tag-bg: #ede9fe; --tag-fg: #6d28d9; --tag-bd: #ddd6fe; }
-.dark .ifx-tag--violet { --tag-bg: rgba(76,29,149,.35); --tag-fg: #c4b5fd; --tag-bd: #5b21b6; }
-
-.ifx-tag--fuchsia { --tag-bg: #fae8ff; --tag-fg: #a21caf; --tag-bd: #f5d0fe; }
-.dark .ifx-tag--fuchsia { --tag-bg: rgba(112,26,117,.35); --tag-fg: #f0abfc; --tag-bd: #86198f; }
-
-.ifx-tag--indigo { --tag-bg: #e0e7ff; --tag-fg: #4338ca; --tag-bd: #c7d2fe; }
-.dark .ifx-tag--indigo { --tag-bg: rgba(49,46,129,.35); --tag-fg: #a5b4fc; --tag-bd: #3730a3; }
-
-.ifx-tag--teal { --tag-bg: #ccfbf1; --tag-fg: #0f766e; --tag-bd: #99f6e4; }
-.dark .ifx-tag--teal { --tag-bg: rgba(19,78,74,.35); --tag-fg: #5eead4; --tag-bd: #115e59; }
-
-.ifx-tag--orange { --tag-bg: #ffedd5; --tag-fg: #c2410c; --tag-bd: #fed7aa; }
-.dark .ifx-tag--orange { --tag-bg: rgba(124,45,18,.35); --tag-fg: #fdba74; --tag-bd: #9a3412; }
-
-.ifx-tag--slate { --tag-bg: #f1f5f9; --tag-fg: #475569; --tag-bd: #e2e8f0; }
-.dark .ifx-tag--slate { --tag-bg: rgba(51,65,85,.35); --tag-fg: #cbd5e1; --tag-bd: #334155; }
-
-.ifx-tag--sky { --tag-bg: #e0f2fe; --tag-fg: #0369a1; --tag-bd: #bae6fd; }
-.dark .ifx-tag--sky { --tag-bg: rgba(12,74,110,.35); --tag-fg: #7dd3fc; --tag-bd: #075985; }
-
-.ifx-tag--emerald { --tag-bg: #d1fae5; --tag-fg: #047857; --tag-bd: #a7f3d0; }
-.dark .ifx-tag--emerald { --tag-bg: rgba(6,78,59,.35); --tag-fg: #6ee7b7; --tag-bd: #065f46; }
-
-.ifx-tag--amber { --tag-bg: #fef3c7; --tag-fg: #b45309; --tag-bd: #fde68a; }
-.dark .ifx-tag--amber { --tag-bg: rgba(120,53,15,.35); --tag-fg: #fcd34d; --tag-bd: #92400e; }
-
-.ifx-tag--rose { --tag-bg: #ffe4e6; --tag-fg: #be123c; --tag-bd: #fecdd3; }
-.dark .ifx-tag--rose { --tag-bg: rgba(136,19,55,.35); --tag-fg: #fda4af; --tag-bd: #9f1239; }
-
-.ifx-tag--lime { --tag-bg: #ecfccb; --tag-fg: #4d7c0f; --tag-bd: #d9f99d; }
-.dark .ifx-tag--lime { --tag-bg: rgba(54,83,20,.35); --tag-fg: #bef264; --tag-bd: #3f6212; }
-
-.ifx-tag--purple { --tag-bg: #f3e8ff; --tag-fg: #7e22ce; --tag-bd: #e9d5ff; }
-.dark .ifx-tag--purple { --tag-bg: rgba(88,28,135,.35); --tag-fg: #d8b4fe; --tag-bd: #6b21a8; }
-
 /* Catalog browser (snippets/CatalogBrowser.jsx). Each control copies the Mintlify component it
    stands in for: the text input, a neutral pill that fills with the brand color when selected,
    and Card. Brand color marks selection only; rest and hover states stay neutral. */

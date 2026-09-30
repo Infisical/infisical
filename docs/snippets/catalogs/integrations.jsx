@@ -1,29 +1,29 @@
 export const integrationTypes = ["All", "Framework", "Infrastructure", "Secret Sync"];
 
-// The tone map lives inside the function: Mintlify evaluates each export in isolation, so a
-// module-scope constant would be undefined here.
+// Colors are Mintlify <Badge> colors. The map lives inside the function: Mintlify evaluates each
+// export in isolation, so a module-scope constant would be undefined here.
 export const integrationBadges = (integration) => {
-  const tagTones = {
+  const tagColors = {
     "Web Frameworks": "blue",
-    "Guides": "cyan",
-    "Build Tools": "violet",
-    "Process Managers": "fuchsia",
-    "Kubernetes": "indigo",
-    "Platforms": "teal",
+    "Guides": "gray",
+    "Build Tools": "purple",
+    "Process Managers": "purple",
+    "Kubernetes": "blue",
+    "Platforms": "green",
     "CI/CD": "orange",
-    "Other": "slate",
-    "Cloud Providers": "sky",
-    "Hosting": "emerald",
-    "DevOps Tools": "violet",
-    "Databases": "amber",
-    "Security": "rose",
-    "Monitoring": "cyan",
-    "Data Analytics": "lime",
-    "Identity & Auth": "purple",
+    "Other": "gray",
+    "Cloud Providers": "blue",
+    "Hosting": "green",
+    "DevOps Tools": "purple",
+    "Databases": "yellow",
+    "Security": "red",
+    "Monitoring": "orange",
+    "Data Analytics": "yellow",
+    "Identity & Auth": "red",
   };
   const badges = [{ label: integration.type }];
   if (integration.tag !== integration.type) {
-    badges.push({ label: integration.tag, tone: tagTones[integration.tag] });
+    badges.push({ label: integration.tag, color: tagColors[integration.tag] });
   }
   return badges;
 };

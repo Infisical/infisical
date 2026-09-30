@@ -1,7 +1,7 @@
 export const secretRotationCategories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS", "AI & LLM"];
 
 export const secretRotationBadges = (rotation) => [
-  { label: rotation.rotationType, tone: rotation.rotationType === "Dual-Phase" ? "emerald" : "orange" },
+  { label: rotation.rotationType, color: rotation.rotationType === "Dual-Phase" ? "green" : "orange" },
   { label: rotation.category },
 ];
 
