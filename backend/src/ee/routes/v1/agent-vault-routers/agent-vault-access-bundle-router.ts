@@ -355,7 +355,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           allowedMethodCount: service.allowedMethods?.length ?? 0,
           allowedPathPrefixCount: service.allowedPathPrefixes?.length ?? 0,
           customHeaderCount: service.customHeaders.length,
-          substitutionCount: service.substitutions.length
+          substitutionCount: service.substitutions.length,
+          variableReferenceCount: service.variableReferences.length
         }
       });
 
@@ -457,7 +458,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           allowedMethodCount: service.allowedMethods?.length ?? 0,
           allowedPathPrefixCount: service.allowedPathPrefixes?.length ?? 0,
           customHeaderCount: service.customHeaders.length,
-          substitutionCount: service.substitutions.length
+          substitutionCount: service.substitutions.length,
+          variableReferenceCount: service.variableReferences.length
         }
       });
 
@@ -582,6 +584,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         }
       });
 
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultVariableCreated,
+        properties: { accessBundleId: req.params.accessBundleId, variableId: variable.id, isSecret: variable.isSecret }
+      });
+
       return { variable };
     }
   });
@@ -641,6 +648,18 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         }
       });
 
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultVariableUpdated,
+        properties: {
+          accessBundleId: req.params.accessBundleId,
+          variableId: variable.id,
+          isSecret: variable.isSecret,
+          keyChanged: previousKey !== variable.key,
+          valueReplaced: req.body.value !== undefined,
+          usedByServiceCount: variable.serviceIds.length
+        }
+      });
+
       return { variable };
     }
   });
@@ -682,6 +701,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             key: variable.key
           }
         }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultVariableDeleted,
+        properties: { accessBundleId: req.params.accessBundleId, variableId: variable.id }
       });
 
       return { variable };
