@@ -11,7 +11,7 @@ import {
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import {
-  findOpenVariableReference,
+  findVariableReferenceAtCaret,
   normalizeVariableKey,
   splitVariableReferences,
   toVariableReference,
@@ -173,7 +173,7 @@ export const useVariableAutocomplete = ({
     const caret = input?.selectionStart ?? null;
     const next =
       input && caret !== null && caret === input.selectionEnd
-        ? findOpenVariableReference(input.value.slice(0, caret))
+        ? findVariableReferenceAtCaret(input.value, caret)
         : null;
 
     if (!next) {
@@ -183,7 +183,7 @@ export const useVariableAutocomplete = ({
     }
     if (next.start === dismissedAt.current) return;
     if (openReference?.start !== next.start || openReference.query !== next.query) {
-      setOpenReference(next);
+      setOpenReference({ start: next.start, query: next.query });
       setActiveIndex(0);
     }
   };
@@ -193,16 +193,19 @@ export const useVariableAutocomplete = ({
     close();
   };
 
-  // Read when a suggestion is chosen, before the list closes. Retyping the key inside a reference that is
-  // already closed replaces it, rather than leaving the old key's tail behind the new one.
+  // Read when a suggestion is chosen, before the list closes. The pick replaces the whole reference the caret is
+  // in, closed or not, so no part of the old key is left behind the new one.
   const surroundings = () => {
     const input = inputRef.current;
     if (!input || !openReference) return null;
-    const caret = input.selectionStart ?? input.value.length;
-    const tail = /^[A-Za-z0-9_]*\}\}/.exec(input.value.slice(caret));
+    const reference = findVariableReferenceAtCaret(
+      input.value,
+      input.selectionStart ?? input.value.length
+    );
+    if (!reference) return null;
     return {
-      before: input.value.slice(0, openReference.start),
-      after: input.value.slice(caret + (tail?.[0].length ?? 0))
+      before: input.value.slice(0, reference.start),
+      after: input.value.slice(reference.end)
     };
   };
 

@@ -16,6 +16,9 @@ const REFERENCE_ONLY_RE = /^\{\{[A-Z][A-Z0-9_]*\}\}$/;
 // An opened reference the caret is still inside, so the suggestions can follow what is typed.
 const OPEN_REFERENCE_RE = /\{\{([A-Za-z0-9_]*)$/;
 
+// The rest of that reference's key after the caret, and its closing braces if it has them.
+const REFERENCE_TAIL_RE = /^([A-Za-z0-9_]*)(\}\})?/;
+
 export const toVariableReference = (key: string) => `{{${key}}}`;
 
 export const findVariableReferences = (text: string) =>
@@ -54,10 +57,19 @@ export const splitVariableReferences = (text: string): TVariableSegment[] => {
   return segments;
 };
 
-/** Where an unfinished reference starts and what has been typed of its key, or null. */
-export const findOpenVariableReference = (textBeforeCaret: string) => {
-  const match = OPEN_REFERENCE_RE.exec(textBeforeCaret);
-  return match ? { start: match.index, query: match[1] } : null;
+/**
+ * The reference the caret is in: its whole key, the part after the caret included, and where it starts and ends,
+ * closing braces and all. Null when the caret isn't in one.
+ */
+export const findVariableReferenceAtCaret = (text: string, caret: number) => {
+  const open = OPEN_REFERENCE_RE.exec(text.slice(0, caret));
+  if (!open) return null;
+  const tail = REFERENCE_TAIL_RE.exec(text.slice(caret));
+  return {
+    start: open.index,
+    query: open[1] + (tail?.[1] ?? ""),
+    end: caret + (tail?.[0].length ?? 0)
+  };
 };
 
 /**
