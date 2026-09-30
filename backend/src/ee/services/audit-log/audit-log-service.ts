@@ -20,9 +20,9 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TClickHouseAuditLogDALFactory } from "./audit-log-clickhouse-dal";
 import { TAuditLogDALFactory, TPamAuditLogScope } from "./audit-log-dal";
-import { AuditLogEventClass, getAuditLogEventClass, getEventTypesForClasses } from "./audit-log-event-classes";
+import { getAuditLogEventClass, getEventTypesForClasses } from "./audit-log-event-classes";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
-import { isAuditLogEventClassEnabled, TAuditLogSettingsServiceFactory } from "./audit-log-settings-service";
+import { isAuditLogEventEnabled, TAuditLogSettingsServiceFactory } from "./audit-log-settings-service";
 import {
   ACTOR_TYPE_TO_METADATA_ID_KEY,
   EventType,
@@ -243,7 +243,7 @@ export const auditLogServiceFactory = ({
       const settings = await auditLogSettingsService.getEffectiveSettings(orgId);
       if (!settings?.shouldUseNewPrivilegeSystem) return;
 
-      if (!isAuditLogEventClassEnabled(settings, AuditLogEventClass.Authorization, projectId)) return;
+      if (!isAuditLogEventEnabled(settings, EventType.PERMISSION_DENIED, projectId)) return;
 
       const actorIdKey = ACTOR_TYPE_TO_METADATA_ID_KEY[auditLogInfo.actor.type];
       const actorId = actorIdKey ? (auditLogInfo.actor.metadata as Record<string, unknown>)[actorIdKey] : undefined;

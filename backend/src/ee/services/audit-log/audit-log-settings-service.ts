@@ -10,7 +10,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
-import { AUDIT_LOG_EVENT_CLASS_DEFAULTS, AuditLogEventClass } from "./audit-log-event-classes";
+import { AUDIT_LOG_EVENT_CLASS_DEFAULTS, AuditLogEventClass, getAuditLogEventClass } from "./audit-log-event-classes";
 import { TAuditLogSettingsDALFactory } from "./audit-log-settings-dal";
 import {
   TAuditLogEventClassOverrides,
@@ -21,6 +21,7 @@ import {
   TUpdateOrgAuditLogSettingsDTO,
   TUpdateProjectAuditLogSettingsDTO
 } from "./audit-log-settings-types";
+import { EventType } from "./audit-log-types";
 
 type TAuditLogSettingsServiceFactoryDep = {
   auditLogSettingsDAL: TAuditLogSettingsDALFactory;
@@ -40,13 +41,14 @@ const ORDERED_EVENT_CLASSES = [
 ] as const;
 
 // Scopes don't inherit. A project without a row gets the default, not its org's value.
-export const isAuditLogEventClassEnabled = (
+export const isAuditLogEventEnabled = (
   settings: TEffectiveAuditLogSettings | null,
-  eventClass: AuditLogEventClass,
+  eventType: string,
   projectId?: string | null
 ) => {
-  // null means the lookup failed. Don't silence the log over it.
+  if (eventType === EventType.UPDATE_AUDIT_LOG_SETTINGS) return true;
   if (!settings) return true;
+  const eventClass = getAuditLogEventClass(eventType);
   const scope = projectId ? settings.projects[projectId] : settings.org;
   return scope?.[eventClass] ?? AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass];
 };

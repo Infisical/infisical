@@ -1010,9 +1010,10 @@ the default in `AUDIT_LOG_EVENT_CLASS_DEFAULTS` (data access on, authorization o
 `audit_log_settings` (one per scope and class, `projectId` null for the org scope) behind
 `audit-log-settings-service.ts`, which caches the org's rows and all of its projects' rows in the
 keystore for 5 minutes (`getEffectiveSettings`, never throws: a lookup failure records everything).
-Enforcement happens in `buildStreamEntry` in `audit-log-queue.ts`, memoized per request so a
-batch of events costs one settings read. Suppressed events are dropped silently and do not
-count on the dropped counter.
+Enforcement is `isAuditLogEventEnabled` in the settings service, called from `buildStreamEntry` in
+`audit-log-queue.ts` with the settings memoized per request so a batch of events costs one read.
+Suppressed events are dropped silently and do not count on the dropped counter.
+`UPDATE_AUDIT_LOG_SETTINGS` is exempt inside the helper so turning a class off is always recorded.
 
 `PERMISSION_DENIED` is recorded by the `onError` hook in
 `src/server/plugins/audit-log-permission-denied.ts` for every CASL `ForbiddenError` and

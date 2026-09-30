@@ -330,6 +330,15 @@ describe("audit-log-queue event class settings", () => {
     expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
   });
 
+  test("records a settings change even when the org turned management off", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings({ org: { management: false } }));
+
+    await service.pushToLog(dto({ event: { type: "update-audit-log-settings", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
   test("records the event when the settings lookup returns nothing", async () => {
     const { service, keyStore, auditLogSettingsService } = await createHarness();
     auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(null);

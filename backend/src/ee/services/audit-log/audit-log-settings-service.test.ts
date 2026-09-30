@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AuditLogEventClass } from "./audit-log-event-classes";
-import { auditLogSettingsServiceFactory, isAuditLogEventClassEnabled } from "./audit-log-settings-service";
+import { auditLogSettingsServiceFactory, isAuditLogEventEnabled } from "./audit-log-settings-service";
 import { TEffectiveAuditLogSettings } from "./audit-log-settings-types";
+import { EventType } from "./audit-log-types";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -15,24 +16,31 @@ const settings = (overrides: Partial<TEffectiveAuditLogSettings> = {}): TEffecti
   ...overrides
 });
 
-describe("isAuditLogEventClassEnabled", () => {
+describe("isAuditLogEventEnabled", () => {
   const eventClass = AuditLogEventClass.DataAccess;
+  const eventType = EventType.GET_SECRETS;
 
   test("a project uses its own row or the default, never the org's row", () => {
-    expect(isAuditLogEventClassEnabled(settings({ org: { [eventClass]: false } }), eventClass, "p1")).toBe(true);
-    expect(isAuditLogEventClassEnabled(settings({ projects: { p1: { [eventClass]: false } } }), eventClass, "p1")).toBe(
+    expect(isAuditLogEventEnabled(settings({ org: { [eventClass]: false } }), eventType, "p1")).toBe(true);
+    expect(isAuditLogEventEnabled(settings({ projects: { p1: { [eventClass]: false } } }), eventType, "p1")).toBe(
       false
     );
   });
 
   test("an org-scoped event uses the org's row or the default", () => {
-    expect(isAuditLogEventClassEnabled(settings(), eventClass)).toBe(true);
-    expect(isAuditLogEventClassEnabled(settings({ org: { [eventClass]: false } }), eventClass)).toBe(false);
-    expect(isAuditLogEventClassEnabled(settings(), AuditLogEventClass.Authorization)).toBe(false);
+    expect(isAuditLogEventEnabled(settings(), eventType)).toBe(true);
+    expect(isAuditLogEventEnabled(settings({ org: { [eventClass]: false } }), eventType)).toBe(false);
+    expect(isAuditLogEventEnabled(settings(), EventType.PERMISSION_DENIED)).toBe(false);
+  });
+
+  test("a settings change is recorded even when management is off", () => {
+    const off = settings({ org: { [AuditLogEventClass.Management]: false } });
+    expect(isAuditLogEventEnabled(off, EventType.UPDATE_AUDIT_LOG_SETTINGS)).toBe(true);
+    expect(isAuditLogEventEnabled(off, EventType.UPDATE_SECRET)).toBe(false);
   });
 
   test("records everything when the lookup failed", () => {
-    expect(isAuditLogEventClassEnabled(null, AuditLogEventClass.Authorization)).toBe(true);
+    expect(isAuditLogEventEnabled(null, EventType.PERMISSION_DENIED)).toBe(true);
   });
 });
 
