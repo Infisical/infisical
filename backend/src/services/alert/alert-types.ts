@@ -160,7 +160,9 @@ type TAlertChannelTestAudit = {
   resourceId?: string | null;
   resourceName?: string | null;
   alertId?: string;
+  alertName?: string | null;
   channelId?: string;
+  channelName?: string | null;
   channelType: string;
   success: boolean;
   deliveredTo?: number;

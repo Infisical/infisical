@@ -202,7 +202,14 @@ describe("alertChannelTestService", () => {
         config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
       });
 
-      expect(result).toEqual({ success: true, deliveredTo: 1, projectId: null, resourceName: null });
+      expect(result).toEqual({
+        success: true,
+        deliveredTo: 1,
+        projectId: null,
+        resourceName: null,
+        alertName: null,
+        channelName: null
+      });
       expect(sent).toHaveLength(1);
       expect(sent[0].config).toEqual({ webhookUrl: "https://hooks.slack.com/services/T/B/x" });
       // A test must never page an on-call rotation at the severity a real firing would carry.
@@ -462,7 +469,9 @@ describe("alertChannelTestService", () => {
         success: true,
         deliveredTo: 1,
         projectId: null,
-        resourceName: null
+        resourceName: null,
+        alertName: null,
+        channelName: null
       });
       await expect(service.testChannel(dto)).rejects.toThrow(/Try again in 60s/);
     } finally {
@@ -493,7 +502,14 @@ describe("alertChannelTestService", () => {
           config: {},
           recipients: [{ principalType: "user" as never, principalId: "user-1" }]
         })
-      ).resolves.toEqual({ success: true, deliveredTo: 1, projectId: null, resourceName: null });
+      ).resolves.toEqual({
+        success: true,
+        deliveredTo: 1,
+        projectId: null,
+        resourceName: null,
+        alertName: null,
+        channelName: null
+      });
     } finally {
       restoreSlack();
       restoreEmail();
@@ -516,7 +532,14 @@ describe("alertChannelTestService", () => {
         config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
       });
 
-      expect(result).toEqual({ success: false, error: "connect ECONNREFUSED", projectId: null, resourceName: null });
+      expect(result).toEqual({
+        success: false,
+        error: "connect ECONNREFUSED",
+        projectId: null,
+        resourceName: null,
+        alertName: null,
+        channelName: null
+      });
     } finally {
       restore();
     }

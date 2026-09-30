@@ -7840,7 +7840,9 @@ interface TestPkiApplicationAlertEvent {
   type: EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL;
   metadata: TPkiApplicationAlertEventMetadata & {
     alertId?: string;
+    alertName?: string | null;
     channelId?: string;
+    channelName?: string | null;
     channelType: string;
     success: boolean;
     deliveredTo?: number;

@@ -150,13 +150,14 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId, resourceName, ...result } = await server.services.alertChannelTest.testChannel({
-        ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
-      });
+      const { projectId, resourceName, alertName, channelName, ...result } =
+        await server.services.alertChannelTest.testChannel({
+          ...req.body,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -168,7 +169,9 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
             resourceId: req.body.resourceId,
             resourceName,
             alertId: req.body.alertId,
+            alertName,
             channelId: req.body.channelId,
+            channelName,
             channelType: req.body.channelType,
             success: result.success,
             deliveredTo: result.deliveredTo,

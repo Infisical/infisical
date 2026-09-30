@@ -216,6 +216,7 @@ export const alertChannelTestServiceFactory = ({
       resourceId: dto.resourceId
     });
 
+    let alertName: string | null = null;
     if (dto.alertId) {
       const alert = await alertDAL.findActiveById(dto.alertId);
       if (
@@ -227,6 +228,7 @@ export const alertChannelTestServiceFactory = ({
       ) {
         throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' was not found in this scope` });
       }
+      alertName = alert.name;
     }
 
     await provider.assertPermission({
@@ -246,7 +248,9 @@ export const alertChannelTestServiceFactory = ({
     return {
       ...result,
       projectId,
-      resourceName: await getAlertResourceName(provider, dto.actorOrgId, dto.resourceId)
+      resourceName: await getAlertResourceName(provider, dto.actorOrgId, dto.resourceId),
+      alertName,
+      channelName: dto.channelId ? ((await alertChannelDAL.findById(dto.channelId))?.name ?? null) : null
     };
   };
 
