@@ -102,7 +102,7 @@ export const alertChannelTestServiceFactory = ({
 
     if (!dto.channelId) {
       assertChannelConfigValid(definition, dto.channelType, incoming);
-      return incoming;
+      return { config: incoming, channelName: null };
     }
 
     const channel = await alertChannelDAL.findById(dto.channelId);
@@ -125,7 +125,7 @@ export const alertChannelTestServiceFactory = ({
 
     const merged = mergeChannelConfigWithStored(dto.channelType, incoming, stored);
     assertChannelConfigValid(definition, dto.channelType, merged);
-    return merged;
+    return { config: merged, channelName: channel.name };
   };
 
   const $resolveRecipients = async (
@@ -156,10 +156,10 @@ export const alertChannelTestServiceFactory = ({
   const $sendTest = async (
     dto: TTestAlertChannelDTO,
     projectId: string | null,
-    provider: IResourceAlertProvider
+    provider: IResourceAlertProvider,
+    config: Record<string, unknown>
   ): Promise<TTestAlertChannelResponse> => {
     const definition = getChannelDefinition(dto.channelType);
-    const config = await $resolveConfig(dto, projectId);
     const recipients = definition.directed ? await $resolveRecipients(dto, getRecipientScope(provider, projectId)) : [];
     if (definition.directed && recipients.length === 0) {
       return { success: false, error: `No ${dto.channelType} recipients could be resolved in this scope` };
@@ -244,14 +244,10 @@ export const alertChannelTestServiceFactory = ({
       await provider.assertChannelTypesAllowed?.({ orgId: dto.actorOrgId, channelTypes: [dto.channelType] });
     }
 
-    const result = await $sendTest(dto, projectId, provider);
-    return {
-      ...result,
-      projectId,
-      resourceName: await getAlertResourceName(provider, dto.actorOrgId, dto.resourceId),
-      alertName,
-      channelName: dto.channelId ? ((await alertChannelDAL.findById(dto.channelId))?.name ?? null) : null
-    };
+    const { config, channelName } = await $resolveConfig(dto, projectId);
+    const resourceName = await getAlertResourceName(provider, dto.actorOrgId, dto.resourceId);
+    const result = await $sendTest(dto, projectId, provider, config);
+    return { ...result, projectId, resourceName, alertName, channelName };
   };
 
   return { testChannel };
