@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { AlertRunStatus } from "@app/services/alert/alert-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
 export type TCertManagerApplicationAlertDALFactory = ReturnType<typeof certManagerApplicationAlertDALFactory>;
@@ -44,11 +45,31 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
       );
 
   const findExpiringCertificates = async (
-    scope: TCertificateScope & { alertBeforeInterval: string; leadInterval: string; asOf: Date },
+    scope: TCertificateScope & {
+      alertBeforeInterval: string;
+      leadInterval: string;
+      asOf: Date;
+      alreadyAlerted?: { alertId: string; channelIds: string[]; since: Date };
+    },
     tx?: Knex
   ): Promise<TApplicationAlertCertificate[]> => {
     try {
-      const certificates = (await $selectCertificates(tx || db.replicaNode(), scope)
+      const reader = tx || db.replicaNode();
+      const query = $selectCertificates(reader, scope);
+      const { alreadyAlerted } = scope;
+      if (alreadyAlerted?.channelIds.length) {
+        const deliveredChannelCount = reader(`${TableName.AlertHistory} as hist`)
+          .join(`${TableName.AlertHistoryTarget} as tgt`, "hist.id", "tgt.alertHistoryId")
+          .where("hist.alertId", alreadyAlerted.alertId)
+          .where("hist.triggeredAt", ">=", alreadyAlerted.since)
+          .where("tgt.status", AlertRunStatus.SUCCESS)
+          .whereIn("tgt.channelId", alreadyAlerted.channelIds)
+          .whereRaw(`"tgt"."targetId" = "${TableName.Certificate}".id::text`)
+          .countDistinct("tgt.channelId");
+        void query.whereRaw("(?) < ?", [deliveredChannelCount, alreadyAlerted.channelIds.length]);
+      }
+
+      const certificates = (await query
         .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
         .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
         .whereRaw(`"${TableName.Certificate}"."notAfter" > ?::timestamptz`, [scope.asOf])

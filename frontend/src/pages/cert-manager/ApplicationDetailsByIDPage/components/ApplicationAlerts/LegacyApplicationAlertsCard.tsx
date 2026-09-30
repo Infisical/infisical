@@ -135,9 +135,7 @@ export const LegacyApplicationAlertsCard = ({ applicationId, canDelete }: Props)
             Legacy Alerting
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="rounded bg-surface-active px-2 py-0.5 text-[10px] tracking-wide text-foreground-secondary uppercase">
-                  Legacy
-                </span>
+                <Badge variant="neutral">Legacy</Badge>
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 Legacy alerts are deprecated. They still send notifications but can no longer be

@@ -101,6 +101,7 @@ export type TFindDueTargetsInput = {
   eventType: string;
   condition: unknown;
   asOf: Date;
+  alreadyAlerted?: { alertId: string; channelIds: string[]; since: Date };
 };
 
 // Lets a provider factory declare which discovery method it guarantees.

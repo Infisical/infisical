@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { TAlertChannels } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
-import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { BadRequestError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -24,7 +23,7 @@ import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
 import { TAlertChannelEmbedded, TChannelRecipientInput } from "./alert-channel-service-types";
 import { AlertChannelType } from "./alert-channel-types";
-import { resolvePrincipalsInScope } from "./alert-principal-scope-fns";
+import { findVerifiedEmailDomains, isOnVerifiedDomain, resolvePrincipalsInScope } from "./alert-principal-scope-fns";
 import { AlertPrincipalType } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
@@ -100,12 +99,8 @@ export const alertChannelServiceFactory = ({
       throw new BadRequestError({ message: `Invalid email recipients: ${malformed.join(", ")}` });
     }
 
-    const verifiedDomains = new Set(
-      (await emailDomainDAL.find({ orgId, status: EmailDomainStatus.Verified }, { tx })).map((domain) =>
-        domain.domain.toLowerCase()
-      )
-    );
-    const unverified = emails.filter((email) => !verifiedDomains.has(email.split("@")[1]));
+    const verifiedDomains = await findVerifiedEmailDomains(emailDomainDAL, orgId, tx);
+    const unverified = emails.filter((email) => !isOnVerifiedDomain(email, verifiedDomains));
     if (unverified.length) {
       throw new BadRequestError({
         message: `Email recipients must use one of your organization's verified domains (Organization Settings > SSO > Email Domains). Not on a verified domain: ${unverified.join(", ")}`

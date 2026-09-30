@@ -156,7 +156,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const result = await server.services.alertChannelTest.testChannel({
+      const { projectId, ...result } = await server.services.alertChannelTest.testChannel({
         ...req.body,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -166,7 +166,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        ...(req.body.projectId ? { projectId: req.body.projectId } : { orgId: req.permission.orgId }),
+        ...(projectId ? { projectId } : { orgId: req.permission.orgId }),
         event: {
           type: EventType.TEST_ALERT_CHANNEL,
           metadata: {

@@ -13,14 +13,13 @@ const buildDAL = () => {
 
   const reader = ((table: string) => {
     const query = builder(table);
-    Object.assign(query, {
+    return Object.assign(query, {
       then: (resolve: (rows: unknown[]) => void) => {
         const { sql, bindings } = query.toSQL();
         queries.push({ sql, bindings });
         resolve([]);
       }
     });
-    return query;
   }) as unknown as Knex;
 
   const db = Object.assign(reader, { replicaNode: () => reader }) as unknown as TDbClient;
@@ -51,6 +50,26 @@ describe("cert manager application alert DAL", () => {
     expect(bindings).toEqual(
       expect.arrayContaining([PROJECT_ID, APPLICATION_ID, "revoked", asOf, "30 days", "1 hour"])
     );
+  });
+
+  test("findExpiringCertificates skips certificates already delivered on every channel before the cap", async () => {
+    const { dal, queries } = buildDAL();
+    const since = new Date("2026-01-01T00:00:00Z");
+
+    await dal.findExpiringCertificates({
+      projectId: PROJECT_ID,
+      applicationId: APPLICATION_ID,
+      alertBeforeInterval: "30 days",
+      leadInterval: "1 day",
+      asOf: new Date("2026-01-02T00:00:00Z"),
+      alreadyAlerted: { alertId: "alert-1", channelIds: ["channel-1", "channel-2"], since }
+    });
+
+    const [{ sql, bindings }] = queries;
+    expect(sql).toContain('count(distinct "tgt"."channelId")');
+    expect(sql).toContain('"tgt"."targetId" = "certificates".id::text');
+    expect(sql.indexOf("count(distinct")).toBeLessThan(sql.indexOf("limit"));
+    expect(bindings).toEqual(expect.arrayContaining(["alert-1", since, "success", "channel-1", "channel-2", 2]));
   });
 
   test("findCertificatesByIds keeps event targets inside the alert's project and application", async () => {

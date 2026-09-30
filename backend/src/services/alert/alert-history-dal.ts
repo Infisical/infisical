@@ -22,6 +22,15 @@ const ALERT_HISTORY_PRUNE_BATCH_SIZE = 5_000;
 const ALERT_HISTORY_PRUNE_MAX_BATCHES = 20;
 const ALERT_HISTORY_PRUNE_TIMEOUT_MS = 30_000;
 
+const DEDUP_DRIFT_BUFFER_MINUTES = 15;
+
+export const getDedupCutoff = (withinHours: number): Date => {
+  const cutoffDate = new Date();
+  cutoffDate.setHours(cutoffDate.getHours() - withinHours);
+  cutoffDate.setMinutes(cutoffDate.getMinutes() - DEDUP_DRIFT_BUFFER_MINUTES);
+  return cutoffDate;
+};
+
 export const alertHistoryDALFactory = (db: TDbClient) => {
   const alertHistoryOrm = ormify(db, TableName.AlertHistory);
 
@@ -64,10 +73,7 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
     try {
       if (targetIds.length === 0) return [];
 
-      const DEDUP_DRIFT_BUFFER_MINUTES = 15;
-      const cutoffDate = new Date();
-      cutoffDate.setHours(cutoffDate.getHours() - withinHours);
-      cutoffDate.setMinutes(cutoffDate.getMinutes() - DEDUP_DRIFT_BUFFER_MINUTES);
+      const cutoffDate = getDedupCutoff(withinHours);
 
       const rows = (await (tx || db)(`${TableName.AlertHistory} as hist`)
         .join(`${TableName.AlertHistoryTarget} as tgt`, "hist.id", "tgt.alertHistoryId")

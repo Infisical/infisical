@@ -16,7 +16,7 @@ import { TAlertChannelDeps, TAlertRecipient } from "./alert-channel-types";
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
-import { TTestAlertChannelDTO, TTestAlertChannelResponse } from "./alert-service-types";
+import { TTestAlertChannelDTO, TTestAlertChannelResponse, TTestAlertChannelResult } from "./alert-service-types";
 import { buildTestAlertPayload } from "./alert-test-payload-fns";
 import { AlertPermissionAction, resolveAlertProjectId, toAlertActor } from "./alert-types";
 
@@ -141,31 +141,8 @@ export const alertChannelTestServiceFactory = ({
     return message.slice(0, MAX_ERROR_LENGTH);
   };
 
-  const testChannel = async (dto: TTestAlertChannelDTO): Promise<TTestAlertChannelResponse> => {
+  const $sendTest = async (dto: TTestAlertChannelDTO, projectId: string | null): Promise<TTestAlertChannelResponse> => {
     const definition = getChannelDefinition(dto.channelType);
-
-    const provider = alertProviderRegistry.get(dto.resourceType);
-    if (!provider) {
-      throw new BadRequestError({
-        message: `No alert provider is registered for resource type '${dto.resourceType}'`
-      });
-    }
-
-    const projectId = await resolveAlertProjectId(provider, {
-      orgId: dto.actorOrgId,
-      projectId: dto.projectId,
-      resourceId: dto.resourceId
-    });
-
-    await provider.assertPermission({
-      action: AlertPermissionAction.Create,
-      orgId: dto.actorOrgId,
-      projectId,
-      resourceId: dto.resourceId,
-      actor: toAlertActor(dto)
-    });
-    await provider.assertResourceInScope({ orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId });
-
     const config = await $resolveConfig(dto, projectId);
     const recipients = definition.directed ? await $resolveRecipients(dto, projectId) : [];
     if (definition.directed && recipients.length === 0) {
@@ -201,6 +178,36 @@ export const alertChannelTestServiceFactory = ({
       );
       return { success: false, error };
     }
+  };
+
+  const testChannel = async (dto: TTestAlertChannelDTO): Promise<TTestAlertChannelResult> => {
+    const provider = alertProviderRegistry.get(dto.resourceType);
+    if (!provider) {
+      throw new BadRequestError({
+        message: `No alert provider is registered for resource type '${dto.resourceType}'`
+      });
+    }
+
+    const projectId = await resolveAlertProjectId(provider, {
+      orgId: dto.actorOrgId,
+      projectId: dto.projectId,
+      resourceId: dto.resourceId
+    });
+
+    await provider.assertPermission({
+      action: AlertPermissionAction.Create,
+      orgId: dto.actorOrgId,
+      projectId,
+      resourceId: dto.resourceId,
+      actor: toAlertActor(dto)
+    });
+    await provider.assertResourceInScope({ orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId });
+
+    if (!dto.channelId) {
+      await provider.assertChannelTypesAllowed?.({ orgId: dto.actorOrgId, channelTypes: [dto.channelType] });
+    }
+
+    return { ...(await $sendTest(dto, projectId)), projectId };
   };
 
   return { testChannel };

@@ -812,4 +812,11 @@ describe("identity credential alert provider", () => {
       provider.assertResourceInScope({ orgId: "org-1", projectId: "proj-1", resourceId: "ident-1" })
     ).resolves.toBeUndefined();
   });
+
+  test("getResourceNames returns the identity's name for audit events", async () => {
+    const provider = buildProvider();
+    const names = await provider.getResourceNames?.({ orgId: "org-1", resourceIds: ["ident-1", "unknown"] });
+    expect(names?.get("ident-1")).toBe("ci-runner");
+    expect(names?.has("unknown")).toBe(false);
+  });
 });

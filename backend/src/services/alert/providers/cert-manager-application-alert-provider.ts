@@ -169,7 +169,8 @@ export const certManagerApplicationAlertProviderFactory = ({
       applicationId: input.resourceId,
       alertBeforeInterval: `${durationToDays(alertBefore)} days`,
       leadInterval: ALERT_SCAN_LEAD_INTERVAL,
-      asOf: input.asOf
+      asOf: input.asOf,
+      alreadyAlerted: input.alreadyAlerted
     });
   };
 

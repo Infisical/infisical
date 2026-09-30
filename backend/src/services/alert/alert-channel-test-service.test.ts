@@ -32,6 +32,7 @@ const actor = {
 const buildProvider = (opts?: {
   assertPermission?: (input: TAlertPermissionInput) => Promise<void>;
   resolvedProjectId?: string;
+  blockedChannelTypes?: string[];
 }) => {
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
@@ -61,6 +62,10 @@ const buildProvider = (opts?: {
       if (opts?.assertPermission) await opts.assertPermission(input);
     },
     assertResourceInScope: async () => {},
+    assertChannelTypesAllowed: async ({ channelTypes }) => {
+      const blocked = channelTypes.find((channelType) => opts?.blockedChannelTypes?.includes(channelType));
+      if (blocked) throw new Error(`plan does not include ${blocked}`);
+    },
     ...(opts?.resolvedProjectId ? { resolveProjectId: async () => opts.resolvedProjectId as string } : {})
   };
 
@@ -156,7 +161,7 @@ describe("alertChannelTestService", () => {
         config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
       });
 
-      expect(result).toEqual({ success: true, deliveredTo: 1 });
+      expect(result).toEqual({ success: true, deliveredTo: 1, projectId: null });
       expect(sent).toHaveLength(1);
       expect(sent[0].config).toEqual({ webhookUrl: "https://hooks.slack.com/services/T/B/x" });
       // A test must never page an on-call rotation at the severity a real firing would carry.
@@ -186,7 +191,7 @@ describe("alertChannelTestService", () => {
       });
       const service = alertChannelTestServiceFactory(deps);
 
-      await service.testChannel({
+      const result = await service.testChannel({
         ...actor,
         resourceType: RESOURCE_TYPE,
         resourceId: "resource-1",
@@ -195,6 +200,26 @@ describe("alertChannelTestService", () => {
       });
 
       expect(permissionInputs[0]?.projectId).toBe("proj-resolved");
+      expect(result.projectId).toBe("proj-resolved");
+    } finally {
+      restore();
+    }
+  });
+
+  test("applies the provider's plan gate to a new channel config", async () => {
+    const restore = stubSend("slack", async () => ({ success: true }));
+    try {
+      const { deps } = buildDeps({ registry: buildProvider({ blockedChannelTypes: ["slack"] }) });
+      const service = alertChannelTestServiceFactory(deps);
+
+      await expect(
+        service.testChannel({
+          ...actor,
+          resourceType: RESOURCE_TYPE,
+          channelType: "slack" as never,
+          config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
+        })
+      ).rejects.toThrow("plan does not include slack");
     } finally {
       restore();
     }
@@ -348,7 +373,7 @@ describe("alertChannelTestService", () => {
         config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
       };
 
-      await expect(service.testChannel(dto)).resolves.toEqual({ success: true, deliveredTo: 1 });
+      await expect(service.testChannel(dto)).resolves.toEqual({ success: true, deliveredTo: 1, projectId: null });
       await expect(service.testChannel(dto)).rejects.toThrow(/Try again in 60s/);
     } finally {
       restore();
@@ -378,7 +403,7 @@ describe("alertChannelTestService", () => {
           config: {},
           recipients: [{ principalType: "user" as never, principalId: "user-1" }]
         })
-      ).resolves.toEqual({ success: true, deliveredTo: 1 });
+      ).resolves.toEqual({ success: true, deliveredTo: 1, projectId: null });
     } finally {
       restoreSlack();
       restoreEmail();
@@ -401,7 +426,7 @@ describe("alertChannelTestService", () => {
         config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
       });
 
-      expect(result).toEqual({ success: false, error: "connect ECONNREFUSED" });
+      expect(result).toEqual({ success: false, error: "connect ECONNREFUSED", projectId: null });
     } finally {
       restore();
     }

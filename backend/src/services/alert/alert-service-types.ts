@@ -54,6 +54,8 @@ export type TTestAlertChannelResponse = {
   error?: string;
 };
 
+export type TTestAlertChannelResult = TTestAlertChannelResponse & { projectId: string | null };
+
 export type TAlertResponse = {
   id: string;
   name: string;

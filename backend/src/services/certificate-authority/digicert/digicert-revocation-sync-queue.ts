@@ -34,12 +34,12 @@ const HANDLER_TIMEOUT_MS = 30 * 60 * 1000;
 type TDigiCertRevocationSyncQueueFactoryDep = {
   cronJob: TCronJobFactory;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findWithAssociatedCa">;
-  certificateDAL: Pick<TCertificateDALFactory, "findActiveDigiCertCertsByOrderIds" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "findActiveDigiCertCertsByOrderIds" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
-  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
 };
 
 export type TDigiCertRevocationSyncQueueFactory = ReturnType<typeof digicertRevocationSyncQueueFactory>;
@@ -63,10 +63,25 @@ export const digicertRevocationSyncQueueFactory = ({
     projectId: string;
     applicationId?: string | null;
   }) => {
-    await certificateDAL.updateById(cert.id, {
-      status: CertStatus.REVOKED,
-      revokedAt: new Date(),
-      revocationReason: revocationReasonToCrlCode(CrlReason.UNSPECIFIED)
+    await certificateDAL.transaction(async (tx) => {
+      await certificateDAL.updateById(
+        cert.id,
+        {
+          status: CertStatus.REVOKED,
+          revokedAt: new Date(),
+          revocationReason: revocationReasonToCrlCode(CrlReason.UNSPECIFIED)
+        },
+        tx
+      );
+      await certificateAlertEventEmitter.emit(
+        {
+          certificateId: cert.id,
+          projectId: cert.projectId,
+          eventType: CertificateAlertEvent.Revocation,
+          applicationId: cert.applicationId ?? null
+        },
+        tx
+      );
     });
 
     await auditLogService.createAuditLog({
@@ -93,13 +108,6 @@ export const digicertRevocationSyncQueueFactory = ({
     } catch {
       logger.debug(`digicert-revocation-sync: failed to queue PKI revocation alert event [certId=${cert.id}]`);
     }
-
-    await certificateAlertEventEmitter.notify({
-      certificateId: cert.id,
-      projectId: cert.projectId,
-      eventType: CertificateAlertEvent.Revocation,
-      applicationId: cert.applicationId ?? null
-    });
   };
 
   const syncRevocationsForCertificateAuthority = async (

@@ -10,7 +10,7 @@ import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-cry
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
 import { AlertChannelType, TAlertChannelDeps, TAlertRecipient, TChannelTargetResult } from "./alert-channel-types";
-import { TAlertHistoryDALFactory } from "./alert-history-dal";
+import { getDedupCutoff, TAlertHistoryDALFactory } from "./alert-history-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { AlertRunStatus, DEFAULT_DEDUP_WINDOW_HOURS, IResourceAlertProvider, TAlertContext } from "./alert-types";
@@ -267,19 +267,24 @@ export const alertEngineFactory = ({
     const channels = await alertChannelDAL.findByAlertId(alert.id, { enabled: true });
     if (channels.length === 0) return AlertDispatchOutcome.NoChannels;
 
+    const window = provider.dedupWindowHours?.(alert.condition) ?? DEFAULT_DEDUP_WINDOW_HOURS;
     const dueTargets = await provider.findDueTargets({
       orgId: alert.orgId,
       projectId: alert.projectId,
       resourceId: alert.resourceId,
       eventType: alert.eventType,
       condition: alert.condition,
-      asOf: opts?.asOf ?? new Date()
+      asOf: opts?.asOf ?? new Date(),
+      alreadyAlerted: {
+        alertId: alert.id,
+        channelIds: channels.map((channel) => channel.id),
+        since: getDedupCutoff(window)
+      }
     });
     if (dueTargets.length === 0) return AlertDispatchOutcome.NoDueTargets;
 
     const targets = dueTargets.map((target) => ({ target, id: provider.targetId(target) }));
 
-    const window = provider.dedupWindowHours?.(alert.condition) ?? DEFAULT_DEDUP_WINDOW_HOURS;
     const recentlyAlerted = await alertHistoryDAL.findRecentlyAlertedTargets(
       alert.id,
       targets.map((target) => target.id),

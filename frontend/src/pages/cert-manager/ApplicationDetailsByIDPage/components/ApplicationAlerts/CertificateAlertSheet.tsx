@@ -146,7 +146,7 @@ const CertificateAlertWizard = ({
             </div>
             <div>
               <div className="text-label">{title}</div>
-              <SheetDescription className="leading-4 text-muted">
+              <SheetDescription>
                 Get notified about certificate events in {applicationName}.
               </SheetDescription>
             </div>

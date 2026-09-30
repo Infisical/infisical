@@ -1,6 +1,8 @@
 import { Knex } from "knex";
 
 import { OrgMembershipStatus } from "@app/db/schemas";
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -15,6 +17,20 @@ export type TPrincipalScopeDALs = {
 export type TPrincipalScope = { orgId: string; projectId?: string | null };
 
 export type TInScopePrincipals = { userIds: Set<string>; groupIds: Set<string> };
+
+export const isOnVerifiedDomain = (email: string, verifiedDomains: Set<string>) =>
+  verifiedDomains.has(email.split("@")[1]?.toLowerCase() ?? "");
+
+export const findVerifiedEmailDomains = async (
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "find">,
+  orgId: string,
+  tx?: Knex
+): Promise<Set<string>> =>
+  new Set(
+    (await emailDomainDAL.find({ orgId, status: EmailDomainStatus.Verified }, { tx })).map((domain) =>
+      domain.domain.toLowerCase()
+    )
+  );
 
 /**
  * Narrows a set of user/group ids down to the ones that are actually in the alert's scope. Shared by
