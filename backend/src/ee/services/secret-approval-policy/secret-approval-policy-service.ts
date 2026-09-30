@@ -432,8 +432,7 @@ export const secretApprovalPolicyServiceFactory = ({
       }
     }
 
-    const existingApproverCount = await secretApprovalPolicyApproverDAL.find({ policyId: secretApprovalPolicy.id });
-    const approversChanged = existingApproverCount.length !== approvers.length;
+    let approversChanged = false;
 
     const updatedSap = await secretApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await secretApprovalPolicyDAL.updateById(
@@ -449,8 +448,16 @@ export const secretApprovalPolicyServiceFactory = ({
         tx
       );
 
+      const existingApprovers = await secretApprovalPolicyApproverDAL.find({ policyId: doc.id }, { tx });
+      const existingApproverKeys = new Set(
+        existingApprovers.map((approver) =>
+          approver.approverGroupId ? `group:${approver.approverGroupId}` : `user:${approver.approverUserId}`
+        )
+      );
+
       await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
 
+      let resolvedUserApproverIds: string[] = [];
       if (approvers) {
         let userApproverIds = userApprovers;
         if (userApproverNames) {
@@ -474,6 +481,8 @@ export const secretApprovalPolicyServiceFactory = ({
 
           userApproverIds = userApproverIds.concat(approverUsers.map((user) => user.id));
         }
+
+        resolvedUserApproverIds = userApproverIds;
 
         await verifyProjectSubjectsMembership({
           userIds: userApproverIds,
@@ -500,6 +509,14 @@ export const secretApprovalPolicyServiceFactory = ({
           tx
         );
       }
+
+      const newApproverKeys = new Set([
+        ...resolvedUserApproverIds.map((id) => `user:${id}`),
+        ...(groupApprovers ?? []).map((id) => `group:${id}`)
+      ]);
+      approversChanged =
+        existingApproverKeys.size !== newApproverKeys.size ||
+        [...existingApproverKeys].some((key) => !newApproverKeys.has(key));
 
       if (environments) {
         await secretApprovalPolicyEnvironmentDAL.delete({ policyId: doc.id }, tx);

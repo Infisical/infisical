@@ -457,7 +457,7 @@ export const accessApprovalPolicyServiceFactory = ({
       }
     }
 
-    const approversChanged = accessApprovalPolicy.approvers.length !== approvers.length;
+    let approversChanged = false;
 
     const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
     const updatedPolicy = await accessApprovalPolicyDAL.transaction(async (tx) => {
@@ -473,6 +473,13 @@ export const accessApprovalPolicyServiceFactory = ({
           requestExpirationTime
         },
         tx
+      );
+
+      const existingApprovers = await accessApprovalPolicyApproverDAL.find({ policyId: doc.id }, { tx });
+      const existingApproverKeys = new Set(
+        existingApprovers.map((approver) =>
+          approver.approverGroupId ? `group:${approver.approverGroupId}` : `user:${approver.approverUserId}`
+        )
       );
 
       await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
@@ -540,6 +547,14 @@ export const accessApprovalPolicyServiceFactory = ({
           tx
         );
       }
+
+      const newApproverKeys = new Set([
+        ...approverUserIds.map((approver) => `user:${approver.id}`),
+        ...groupApprovers.map((approver) => `group:${approver.id}`)
+      ]);
+      approversChanged =
+        existingApproverKeys.size !== newApproverKeys.size ||
+        [...existingApproverKeys].some((key) => !newApproverKeys.has(key));
 
       if (environments) {
         await accessApprovalPolicyEnvironmentDAL.delete({ policyId: doc.id }, tx);
