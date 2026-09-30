@@ -11,18 +11,20 @@ import {
 } from "./alert-channel-config-fns";
 import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
+import { TAlertChannelServiceFactory } from "./alert-channel-service";
 import { TAlertChannelDeps, TAlertRecipient } from "./alert-channel-types";
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { TTestAlertChannelDTO, TTestAlertChannelResponse } from "./alert-service-types";
 import { buildTestAlertPayload } from "./alert-test-payload-fns";
-import { AlertPermissionAction, toAlertActor } from "./alert-types";
+import { AlertPermissionAction, resolveAlertProjectId, toAlertActor } from "./alert-types";
 
 export type TAlertChannelTestServiceFactoryDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findById">;
   alertDAL: Pick<TAlertDALFactory, "findByChannelId">;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
+  alertChannelService: Pick<TAlertChannelServiceFactory, "validateEmailRecipients">;
   alertProviderRegistry: TAlertProviderRegistry;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -39,6 +41,7 @@ export const alertChannelTestServiceFactory = ({
   alertChannelDAL,
   alertDAL,
   alertRecipientResolver,
+  alertChannelService,
   alertProviderRegistry,
   kmsService,
   smtpService,
@@ -124,6 +127,8 @@ export const alertChannelTestServiceFactory = ({
     const rows = dto.recipients ?? [];
     if (rows.length === 0) return [];
 
+    await alertChannelService.validateEmailRecipients(dto.actorOrgId, rows);
+
     const resolved = await alertRecipientResolver.resolveMany(new Map([[TEST_CHANNEL_ID, rows]]), {
       orgId: dto.actorOrgId,
       projectId
@@ -146,7 +151,11 @@ export const alertChannelTestServiceFactory = ({
       });
     }
 
-    const projectId = dto.projectId ?? null;
+    const projectId = await resolveAlertProjectId(provider, {
+      orgId: dto.actorOrgId,
+      projectId: dto.projectId,
+      resourceId: dto.resourceId
+    });
 
     await provider.assertPermission({
       action: AlertPermissionAction.Create,

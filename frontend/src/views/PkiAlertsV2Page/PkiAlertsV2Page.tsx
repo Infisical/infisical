@@ -19,7 +19,6 @@ import {
 import { useDebounce } from "@app/hooks";
 import { useDeletePkiAlertV2, useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
 
-import { CreatePkiAlertV2Modal } from "./components/CreatePkiAlertV2Modal";
 import { PkiAlertV2Row } from "./components/PkiAlertV2Row";
 import { ViewPkiAlertV2Modal } from "./components/ViewPkiAlertV2Modal";
 
@@ -33,9 +32,6 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
 
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; alertId?: string }>({
-    isOpen: false
-  });
   const [viewModal, setViewModal] = useState<{ isOpen: boolean; alertId?: string }>({
     isOpen: false
   });
@@ -107,7 +103,6 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
           key={alert.id}
           alert={alert}
           onView={() => setViewModal({ isOpen: true, alertId: alert.id })}
-          onEdit={() => setAlertModal({ isOpen: true, alertId: alert.id })}
           onDelete={() =>
             setDeleteModal({
               isOpen: true,
@@ -138,7 +133,10 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
               Legacy
             </span>
           </div>
-          <p className="text-xs text-label-secondary">Create new alerts inside an Application.</p>
+          <p className="text-xs text-label-secondary">
+            Legacy alerts can only be viewed or deleted. Create new alerts from the Alerting section
+            of an application&apos;s Settings tab.
+          </p>
         </div>
 
         <div className="mb-4 flex items-center">
@@ -184,12 +182,6 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
           </div>
         )}
       </div>
-
-      <CreatePkiAlertV2Modal
-        isOpen={alertModal.isOpen}
-        onOpenChange={(isOpen) => setAlertModal({ isOpen, alertId: undefined })}
-        alertId={alertModal.alertId}
-      />
 
       <ViewPkiAlertV2Modal
         isOpen={viewModal.isOpen}

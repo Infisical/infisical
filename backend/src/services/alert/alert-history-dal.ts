@@ -102,6 +102,25 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findLatestByAlertIds = async (
+    alertIds: string[]
+  ): Promise<Pick<TAlertHistory, "alertId" | "triggeredAt" | "status">[]> => {
+    if (alertIds.length === 0) return [];
+    try {
+      return (await db
+        .replicaNode()(TableName.AlertHistory)
+        .whereIn("alertId", alertIds)
+        .distinctOn("alertId")
+        .select("alertId", "triggeredAt", "status")
+        .orderBy([{ column: "alertId" }, { column: "triggeredAt", order: "desc" }])) as Pick<
+        TAlertHistory,
+        "alertId" | "triggeredAt" | "status"
+      >[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindLatestByAlertIds" });
+    }
+  };
+
   const deleteExpiredHistory = async ({
     before,
     batchSize = ALERT_HISTORY_PRUNE_BATCH_SIZE,
@@ -146,6 +165,7 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
     createWithTargets,
     findRecentlyAlertedTargets,
     findDeliveredChannelIdsForEvent,
+    findLatestByAlertIds,
     deleteExpiredHistory
   };
 };

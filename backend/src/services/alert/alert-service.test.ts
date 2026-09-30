@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ForbiddenRequestError } from "@app/lib/errors";
+
 import { TAlertChannelInput } from "./alert-channel-service-types";
 import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
 import { alertProviderRegistryFactory } from "./alert-provider-registry";
@@ -24,11 +26,13 @@ const buildService = (opts?: {
   assertPermission?: (input: TAlertPermissionInput) => Promise<void>;
   resourceScopeThrows?: boolean;
   duplicateExists?: boolean;
+  resolvedProjectId?: string;
   // Runs right after a find() has taken its snapshot, to stand in for a concurrent transaction
   // committing between two statements of ours.
   afterFindAlerts?: (alerts: Map<string, Record<string, unknown>>) => void;
 }) => {
   const permissionCalls: TAlertPermissionInput[] = [];
+  const gatedChannelTypeCalls: string[][] = [];
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
     events: [
@@ -54,7 +58,11 @@ const buildService = (opts?: {
     },
     assertResourceInScope: async (input) => {
       if (input.resourceId && opts?.resourceScopeThrows) throw new Error("resource out of scope");
-    }
+    },
+    assertChannelTypesAllowed: async ({ channelTypes }) => {
+      gatedChannelTypeCalls.push(channelTypes);
+    },
+    ...(opts?.resolvedProjectId ? { resolveProjectId: async () => opts.resolvedProjectId as string } : {})
   };
   const registry = alertProviderRegistryFactory();
   registry.register(provider);
@@ -75,6 +83,7 @@ const buildService = (opts?: {
   };
 
   const service = alertServiceFactory({
+    alertHistoryDAL: { findLatestByAlertIds: async () => [] },
     alertDAL: {
       transaction: async (cb: (tx: unknown) => unknown) => cb({}),
       create: async (data: Record<string, unknown>) => {
@@ -210,7 +219,7 @@ const buildService = (opts?: {
     alertProviderRegistry: registry
   } as unknown as TAlertServiceFactoryDep);
 
-  return { service, permissionCalls, alerts, memberships, channels, findFilters };
+  return { service, permissionCalls, gatedChannelTypeCalls, alerts, memberships, channels, findFilters };
 };
 
 const actor = {
@@ -380,6 +389,17 @@ describe("alert service", () => {
     expect(findFilters[0]).toMatchObject({ projectId: null });
   });
 
+  test("create and list resolve the project from the resource when projectId is omitted", async () => {
+    const { service, permissionCalls, findFilters } = buildService({ resolvedProjectId: "proj-resolved" });
+
+    const created = await service.createAlert(validCreate);
+    expect(created.projectId).toBe("proj-resolved");
+
+    await service.listAlerts({ resourceType: RESOURCE_TYPE, resourceId: "resource-1", ...actor });
+    expect(findFilters.at(-1)).toMatchObject({ projectId: "proj-resolved" });
+    expect(permissionCalls.every((call) => call.projectId === "proj-resolved")).toBe(true);
+  });
+
   test("project-scoped list filters to the requested project", async () => {
     const { service, alerts, findFilters } = buildService();
     alerts.set("org-alert", { id: "org-alert", name: "org", projectId: null, ...listBase });
@@ -389,6 +409,33 @@ describe("alert service", () => {
 
     expect(result.map((a) => a.id)).toEqual(["proj-alert"]);
     expect(findFilters[0]).toMatchObject({ projectId: "proj-x" });
+  });
+
+  test("a list without a resource hides alerts on resources the actor cannot read", async () => {
+    const { service, alerts } = buildService({
+      assertPermission: async (input) => {
+        if (input.resourceId === "hidden-resource") throw new ForbiddenRequestError({ message: "forbidden" });
+      }
+    });
+    alerts.set("unbound", { id: "unbound", name: "unbound", projectId: "proj-x", ...listBase });
+    alerts.set("visible", {
+      id: "visible",
+      name: "visible",
+      projectId: "proj-x",
+      ...listBase,
+      resourceId: "visible-resource"
+    });
+    alerts.set("hidden", {
+      id: "hidden",
+      name: "hidden",
+      projectId: "proj-x",
+      ...listBase,
+      resourceId: "hidden-resource"
+    });
+
+    const result = await service.listAlerts({ resourceType: RESOURCE_TYPE, projectId: "proj-x", ...actor });
+
+    expect(result.map((a) => a.id).sort()).toEqual(["unbound", "visible"]);
   });
 
   test("update reconciles channels: keeps the referenced ones, deletes the rest, adds new", async () => {
@@ -412,6 +459,40 @@ describe("alert service", () => {
     ]);
     expect(memberships.get("alert-1")).toContain(keep.id);
     expect(memberships.get("alert-1")).toHaveLength(2);
+  });
+
+  test("update gates every new channel, even when the alert already has one of that type", async () => {
+    const { service, gatedChannelTypeCalls } = buildService();
+    const created = await service.createAlert(validCreate);
+    const existingWebhook = created.channels.find((c) => c.channelType === AlertChannelType.WEBHOOK)!;
+
+    await service.updateAlert({
+      alertId: "alert-1",
+      channels: [
+        { id: existingWebhook.id, name: existingWebhook.name, channelType: AlertChannelType.WEBHOOK },
+        { name: "second-webhook", channelType: AlertChannelType.WEBHOOK, config: { url: "https://example.com/2" } }
+      ],
+      ...actor
+    });
+
+    expect(gatedChannelTypeCalls.at(-1)).toEqual([AlertChannelType.WEBHOOK]);
+  });
+
+  test("update does not gate channels the alert already has", async () => {
+    const { service, gatedChannelTypeCalls } = buildService();
+    const created = await service.createAlert(validCreate);
+
+    await service.updateAlert({
+      alertId: "alert-1",
+      channels: created.channels.map((c) => ({
+        id: c.id,
+        name: c.name,
+        channelType: c.channelType as AlertChannelType
+      })),
+      ...actor
+    });
+
+    expect(gatedChannelTypeCalls.at(-1)).toEqual([]);
   });
 
   test("update rejects a channel id that does not belong to the alert", async () => {

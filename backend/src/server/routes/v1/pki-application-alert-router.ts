@@ -23,8 +23,10 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     config: { rateLimit: readLimit },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "listPkiApplicationAlerts",
-      description: "List alerts for an application.",
+      description:
+        "Deprecated: application alerts are managed with the alerts API (/api/v1/alerts). List legacy alerts for an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       querystring: z.object({
@@ -67,8 +69,10 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "createPkiApplicationAlert",
-      description: "Create an alert on an application.",
+      description:
+        "Deprecated: legacy application alerts can no longer be created. Use the alerts API (/api/v1/alerts) instead.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       body: BasePkiAlertV2Schema,
@@ -124,8 +128,10 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "updatePkiApplicationAlert",
-      description: "Update an alert on an application.",
+      description:
+        "Deprecated: legacy application alerts can no longer be edited. Use the alerts API (/api/v1/alerts) instead.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
         applicationId: z.string().uuid(),
@@ -183,8 +189,10 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "deletePkiApplicationAlert",
-      description: "Delete an alert from an application.",
+      description:
+        "Deprecated: application alerts are managed with the alerts API (/api/v1/alerts). Delete a legacy alert from an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
         applicationId: z.string().uuid(),

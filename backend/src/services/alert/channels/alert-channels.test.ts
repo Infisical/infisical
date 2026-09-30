@@ -166,6 +166,27 @@ describe("buildPagerDutyEvent", () => {
     expect(pd.payload.custom_details.identifier).toBe("4B:3E:2F:A1");
     expect(pd.payload.custom_details.fields.Expires).toBe("2025-11-12");
   });
+
+  test("uses the target's own summary and severity when the provider sets them", () => {
+    const payload = samplePayload();
+    const item = {
+      ...payload.items[1],
+      summary: "Certificate 'web.example.com' expires on November 10, 2025",
+      severity: "info" as const
+    };
+    const pd = buildPagerDutyEvent(payload, item, "a".repeat(32));
+
+    expect(pd.payload.summary).toBe("Certificate 'web.example.com' expires on November 10, 2025");
+    expect(pd.payload.severity).toBe("info");
+  });
+
+  test("falls back to the alert summary and severity for targets without their own", () => {
+    const payload = samplePayload();
+    const pd = buildPagerDutyEvent(payload, payload.items[0], "a".repeat(32));
+
+    expect(pd.payload.summary).toBe("2 certificates expiring within 30d — api.prod.example.com");
+    expect(pd.payload.severity).toBe("warning");
+  });
 });
 
 describe("SlackChannelConfigSchema webhook allowlist", () => {

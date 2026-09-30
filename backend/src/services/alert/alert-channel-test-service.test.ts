@@ -29,7 +29,10 @@ const actor = {
   actorOrgId: ORG_ID
 } as unknown as { actor: never; actorId: string; actorAuthMethod: never; actorOrgId: string };
 
-const buildProvider = (opts?: { assertPermission?: (input: TAlertPermissionInput) => Promise<void> }) => {
+const buildProvider = (opts?: {
+  assertPermission?: (input: TAlertPermissionInput) => Promise<void>;
+  resolvedProjectId?: string;
+}) => {
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
     events: [
@@ -57,7 +60,8 @@ const buildProvider = (opts?: { assertPermission?: (input: TAlertPermissionInput
     assertPermission: async (input) => {
       if (opts?.assertPermission) await opts.assertPermission(input);
     },
-    assertResourceInScope: async () => {}
+    assertResourceInScope: async () => {},
+    ...(opts?.resolvedProjectId ? { resolveProjectId: async () => opts.resolvedProjectId as string } : {})
   };
 
   const registry = alertProviderRegistryFactory();
@@ -107,6 +111,9 @@ const buildDeps = (overrides?: {
       alertRecipientResolver: {
         resolveMany: async (rowsByChannel: Map<string, unknown[]>) =>
           new Map([...rowsByChannel.keys()].map((channelId) => [channelId, overrides?.recipients ?? []]))
+      },
+      alertChannelService: {
+        validateEmailRecipients: async () => {}
       },
       alertProviderRegistry: overrides?.registry ?? buildProvider(),
       kmsService: {
@@ -159,6 +166,35 @@ describe("alertChannelTestService", () => {
       // must always carry at least one item (PagerDuty sends one event per item).
       expect(sent[0].payload.alert.resourceType).not.toBe(RESOURCE_TYPE);
       expect(sent[0].payload.items.length).toBeGreaterThan(0);
+    } finally {
+      restore();
+    }
+  });
+
+  test("resolves the project from the resource when projectId is omitted", async () => {
+    const permissionInputs: TAlertPermissionInput[] = [];
+    const restore = stubSend("slack", async () => ({ success: true }));
+
+    try {
+      const { deps } = buildDeps({
+        registry: buildProvider({
+          resolvedProjectId: "proj-resolved",
+          assertPermission: async (input) => {
+            permissionInputs.push(input);
+          }
+        })
+      });
+      const service = alertChannelTestServiceFactory(deps);
+
+      await service.testChannel({
+        ...actor,
+        resourceType: RESOURCE_TYPE,
+        resourceId: "resource-1",
+        channelType: "slack" as never,
+        config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
+      });
+
+      expect(permissionInputs[0]?.projectId).toBe("proj-resolved");
     } finally {
       restore();
     }

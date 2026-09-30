@@ -1,11 +1,15 @@
+import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AlertChannelType } from "@app/services/alert/alert-channel-types";
 import {
   AlertPrincipalType,
+  AlertRunStatus,
+  AlertTelemetryAction,
   MAX_CHANNELS_PER_ALERT,
   MAX_RECIPIENTS_PER_CHANNEL
 } from "@app/services/alert/alert-types";
@@ -13,7 +17,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 const ChannelRecipientSchema = z.object({
   principalType: z.nativeEnum(AlertPrincipalType),
-  principalId: z.string().min(1)
+  principalId: z.string().trim().min(1).max(255)
 });
 
 const CreateChannelInputSchema = z.object({
@@ -45,6 +49,7 @@ const AlertResponseSchema = z.object({
   enabled: z.boolean(),
   orgId: z.string(),
   projectId: z.string().nullable(),
+  resourceName: z.string().nullable(),
   channels: z.array(
     z.object({
       id: z.string().uuid(),
@@ -55,11 +60,26 @@ const AlertResponseSchema = z.object({
       recipients: z.array(z.object({ principalType: z.string(), principalId: z.string() }))
     })
   ),
+  lastRun: z.object({ timestamp: z.date(), status: z.nativeEnum(AlertRunStatus) }).nullable(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
 
 export const registerAlertRouter = async (server: FastifyZodProvider) => {
+  const $sendAlertTelemetry = async (
+    req: FastifyRequest,
+    action: AlertTelemetryAction,
+    alert: Parameters<typeof server.services.alert.getTelemetryEvent>[1]
+  ) => {
+    const telemetryEvent = server.services.alert.getTelemetryEvent(action, alert);
+    if (!telemetryEvent) return;
+    await server.services.telemetry.sendPostHogEvents({
+      ...telemetryEvent,
+      distinctId: getTelemetryDistinctId(req),
+      organizationId: req.permission.orgId
+    });
+  };
+
   server.route({
     method: "POST",
     url: "/",
@@ -99,10 +119,13 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
             name: alert.name,
             resourceType: alert.resourceType,
             resourceId: alert.resourceId,
+            resourceName: alert.resourceName,
             eventType: alert.eventType
           }
         }
       });
+
+      await $sendAlertTelemetry(req, AlertTelemetryAction.Create, alert);
 
       return { alert };
     }
@@ -250,10 +273,14 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
             alertId: alert.id,
             name: alert.name,
             resourceType: alert.resourceType,
+            resourceId: alert.resourceId,
+            resourceName: alert.resourceName,
             eventType: alert.eventType
           }
         }
       });
+
+      await $sendAlertTelemetry(req, AlertTelemetryAction.Update, alert);
 
       return { alert };
     }
@@ -287,10 +314,14 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
             alertId: alert.id,
             name: alert.name,
             resourceType: alert.resourceType,
+            resourceId: alert.resourceId,
+            resourceName: alert.resourceName,
             eventType: alert.eventType
           }
         }
       });
+
+      await $sendAlertTelemetry(req, AlertTelemetryAction.Delete, alert);
 
       return { alert };
     }

@@ -7775,6 +7775,7 @@ interface CreateAlertEvent {
     name: string;
     resourceType: string;
     resourceId?: string | null;
+    resourceName?: string | null;
     eventType: string;
   };
 }
@@ -7785,6 +7786,8 @@ interface UpdateAlertEvent {
     alertId: string;
     name: string;
     resourceType: string;
+    resourceId?: string | null;
+    resourceName?: string | null;
     eventType: string;
   };
 }
@@ -7795,6 +7798,8 @@ interface DeleteAlertEvent {
     alertId: string;
     name: string;
     resourceType: string;
+    resourceId?: string | null;
+    resourceName?: string | null;
     eventType: string;
   };
 }
