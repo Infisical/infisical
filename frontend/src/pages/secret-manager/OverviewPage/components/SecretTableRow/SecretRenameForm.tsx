@@ -23,6 +23,7 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { applyKeyCapitalization } from "@app/helpers/parseEnvVar";
 import { useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
@@ -162,9 +163,10 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
                   disabled={isOverriden}
                   aria-invalid={Boolean(error)}
                   onChange={(event) => {
-                    const value = currentProject?.autoCapitalization
-                      ? event.currentTarget.value.toUpperCase()
-                      : event.currentTarget.value;
+                    const value = applyKeyCapitalization(
+                      event.currentTarget.value,
+                      currentProject?.autoCapitalization
+                    );
                     field.onChange(value);
                   }}
                 />
