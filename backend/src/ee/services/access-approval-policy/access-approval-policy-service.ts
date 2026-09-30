@@ -457,6 +457,25 @@ export const accessApprovalPolicyServiceFactory = ({
       }
     }
 
+    const existingApproverKeys = new Set(
+      accessApprovalPolicy.approvers.map((approver) => `${approver.type}:${approver.id}`)
+    );
+
+    let resolvedNewApproverUserIds = userApprovers.map((approver) => approver.id);
+    if (userApproverNames.length) {
+      const namedApprovers = await userDAL.find({
+        $in: { username: userApproverNames.map((approver) => approver.username) }
+      });
+      resolvedNewApproverUserIds = resolvedNewApproverUserIds.concat(namedApprovers.map((user) => user.id));
+    }
+    const newApproverKeys = new Set([
+      ...groupApprovers.map((approver) => `group:${approver.id}`),
+      ...resolvedNewApproverUserIds.map((id) => `user:${id}`)
+    ]);
+    const approversChanged =
+      existingApproverKeys.size !== newApproverKeys.size ||
+      [...existingApproverKeys].some((key) => !newApproverKeys.has(key));
+
     const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
     const updatedPolicy = await accessApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await accessApprovalPolicyDAL.updateById(
@@ -585,7 +604,8 @@ export const accessApprovalPolicyServiceFactory = ({
       ...updatedPolicy,
       environments: accessApprovalPolicy.environments,
       environment: accessApprovalPolicy.environments[0],
-      projectId: accessApprovalPolicy.projectId
+      projectId: accessApprovalPolicy.projectId,
+      approversChanged
     };
   };
 

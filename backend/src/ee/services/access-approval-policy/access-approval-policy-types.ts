@@ -219,6 +219,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     secretPath?: string | null | undefined;
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
+    approversChanged: boolean;
   }>;
   getAccessApprovalPolicyByProjectSlug: ({
     actorId,

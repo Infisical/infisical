@@ -329,7 +329,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
+      const approval = await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
         policyId: req.params.policyId,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -343,7 +343,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           event: PostHogEventTypes.AccessApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
-          properties: { policyId: req.params.policyId }
+          properties: { policyId: req.params.policyId, approversChanged: approval.approversChanged }
         })
         .catch(() => {});
     }

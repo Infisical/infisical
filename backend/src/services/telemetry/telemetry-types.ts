@@ -2348,6 +2348,7 @@ export type TSecretApprovalPolicyUpdatedEvent = {
   properties: {
     policyId: string;
     projectId?: string;
+    approversChanged: boolean;
   };
 };
 
@@ -2356,6 +2357,7 @@ export type TAccessApprovalPolicyUpdatedEvent = {
   properties: {
     policyId: string;
     projectId?: string;
+    approversChanged: boolean;
   };
 };
 
