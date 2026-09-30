@@ -37,7 +37,8 @@ import {
 import {
   buildSyncPayload,
   findSecretSyncsCoveringPath,
-  getSyncedFolders
+  getSyncedFolders,
+  toSyncsNewlyCoveringPath
 } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncStatus,
@@ -437,9 +438,8 @@ export const secretSyncServiceFactory = ({
   };
 
   // The syncs that would start sending an item to their destination if it were moved or copied from the
-  // source path to the destination path. A sync that already covers the source is left out, since the
-  // item already reaches it. Any project member gets the list, so the warning still reaches an actor
-  // who cannot read the syncs themselves; only the details of those syncs are withheld.
+  // source path to the destination path. Any project member gets the list, so the warning still reaches
+  // an actor who cannot read the syncs themselves.
   const listSecretSyncsNewlyCoveringPath = async (
     {
       projectId,
@@ -479,32 +479,11 @@ export const secretSyncServiceFactory = ({
       )
     ]);
 
-    const sourceSyncIds = new Set(sourceSyncs.map((sync) => sync.id));
-
-    return destinationSyncs
-      .filter((sync) => !sourceSyncIds.has(sync.id))
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((sync) => {
-        if (permission.cannot(ProjectPermissionSecretSyncActions.Read, getSecretSyncSubject(sync))) {
-          return {
-            id: null,
-            name: null,
-            destination: null,
-            secretPath: null,
-            includeAllSubFolders: null,
-            isAutoSyncEnabled: null
-          };
-        }
-
-        return {
-          id: sync.id,
-          name: sync.name,
-          destination: sync.destination as SecretSync,
-          secretPath: sync.folder?.path ?? null,
-          includeAllSubFolders: Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders),
-          isAutoSyncEnabled: sync.isAutoSyncEnabled
-        };
-      });
+    return toSyncsNewlyCoveringPath({
+      sourceSyncs,
+      destinationSyncs,
+      canRead: (sync) => permission.can(ProjectPermissionSecretSyncActions.Read, getSecretSyncSubject(sync))
+    });
   };
 
   const findSecretSyncById = async ({ destination, syncId }: TFindSecretSyncByIdDTO, actor: OrgServiceActor) => {

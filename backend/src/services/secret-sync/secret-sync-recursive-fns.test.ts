@@ -3,7 +3,8 @@ import {
   findSecretSyncsCoveringPath,
   getAncestorPaths,
   getSyncedFolders,
-  mergeImportedSecrets
+  mergeImportedSecrets,
+  toSyncsNewlyCoveringPath
 } from "./secret-sync-recursive-fns";
 
 const deps = {
@@ -171,6 +172,81 @@ describe("findSecretSyncsCoveringPath", () => {
 
     expect(result).toEqual([]);
     expect(find).not.toHaveBeenCalled();
+  });
+});
+
+describe("toSyncsNewlyCoveringPath", () => {
+  const sync = (id: string, overrides: Record<string, unknown> = {}) => ({
+    id,
+    name: id,
+    destination: "aws-parameter-store",
+    folder: { path: "/apps" },
+    syncOptions: { includeAllSubFolders: true },
+    isAutoSyncEnabled: true,
+    ...overrides
+  });
+
+  const canReadAll = () => true;
+
+  test("leaves out a sync that already covers the source", () => {
+    const result = toSyncsNewlyCoveringPath({
+      sourceSyncs: [sync("shared")],
+      destinationSyncs: [sync("shared"), sync("new")],
+      canRead: canReadAll
+    });
+
+    expect(result.map((entry) => entry.id)).toEqual(["new"]);
+  });
+
+  test("returns nothing when the destination is covered only by the source's syncs", () => {
+    expect(
+      toSyncsNewlyCoveringPath({ sourceSyncs: [sync("a")], destinationSyncs: [sync("a")], canRead: canReadAll })
+    ).toEqual([]);
+  });
+
+  test("orders syncs by name", () => {
+    const result = toSyncsNewlyCoveringPath({
+      sourceSyncs: [],
+      destinationSyncs: [sync("b", { name: "zeta" }), sync("a", { name: "alpha" })],
+      canRead: canReadAll
+    });
+
+    expect(result.map((entry) => entry.name)).toEqual(["alpha", "zeta"]);
+  });
+
+  test("returns the details of a sync the actor can read", () => {
+    const [entry] = toSyncsNewlyCoveringPath({
+      sourceSyncs: [],
+      destinationSyncs: [sync("a", { folder: { path: "/flat" }, syncOptions: {}, isAutoSyncEnabled: false })],
+      canRead: canReadAll
+    });
+
+    expect(entry).toEqual({
+      id: "a",
+      name: "a",
+      destination: "aws-parameter-store",
+      secretPath: "/flat",
+      includeAllSubFolders: false,
+      isAutoSyncEnabled: false
+    });
+  });
+
+  test("withholds every detail of a sync the actor cannot read, but still reports it", () => {
+    const result = toSyncsNewlyCoveringPath({
+      sourceSyncs: [],
+      destinationSyncs: [sync("visible"), sync("hidden")],
+      canRead: (entry) => entry.id !== "hidden"
+    });
+
+    expect(result).toHaveLength(2);
+    expect(result.find((entry) => entry.id === null)).toEqual({
+      id: null,
+      name: null,
+      destination: null,
+      secretPath: null,
+      includeAllSubFolders: null,
+      isAutoSyncEnabled: null
+    });
   });
 });
 

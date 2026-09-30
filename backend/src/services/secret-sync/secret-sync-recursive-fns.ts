@@ -7,6 +7,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
+import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
   createSecretSyncPayload,
@@ -70,6 +71,54 @@ export const findSecretSyncsCoveringPath = async (
       (folder && sync.folderId === folder.id) ||
       Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders)
   );
+};
+
+type TCoveringSync = {
+  id: string;
+  name: string;
+  destination: string;
+  folder?: { path: string } | null;
+  syncOptions: unknown;
+  isAutoSyncEnabled: boolean;
+};
+
+// A sync that already covers the source is left out, since the item already reaches it. A sync the
+// actor cannot read is still reported, so the warning reaches them, but with every detail withheld.
+export const toSyncsNewlyCoveringPath = <T extends TCoveringSync>({
+  sourceSyncs,
+  destinationSyncs,
+  canRead
+}: {
+  sourceSyncs: T[];
+  destinationSyncs: T[];
+  canRead: (sync: T) => boolean;
+}) => {
+  const sourceSyncIds = new Set(sourceSyncs.map((sync) => sync.id));
+
+  return destinationSyncs
+    .filter((sync) => !sourceSyncIds.has(sync.id))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((sync) => {
+      if (!canRead(sync)) {
+        return {
+          id: null,
+          name: null,
+          destination: null,
+          secretPath: null,
+          includeAllSubFolders: null,
+          isAutoSyncEnabled: null
+        };
+      }
+
+      return {
+        id: sync.id,
+        name: sync.name,
+        destination: sync.destination as SecretSync,
+        secretPath: sync.folder?.path ?? null,
+        includeAllSubFolders: Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders),
+        isAutoSyncEnabled: sync.isAutoSyncEnabled
+      };
+    });
 };
 
 export const getSyncedFolders = async ({
