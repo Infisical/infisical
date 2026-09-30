@@ -17,12 +17,13 @@ export const SecretScanningDataSourcesSchema = z.object({
   type: z.string(),
   config: z.unknown(),
   encryptedCredentials: zodBuffer.nullable().optional(),
-  connectionId: z.string().uuid().nullable().optional(),
+  appConnectionId: z.string().uuid().nullable().optional(),
   isAutoScanEnabled: z.boolean().default(true).nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  isDisconnected: z.boolean().default(false)
+  isDisconnected: z.boolean().default(false),
+  deletedAt: z.date().nullable().optional()
 });
 
 export type TSecretScanningDataSources = z.infer<typeof SecretScanningDataSourcesSchema>;
