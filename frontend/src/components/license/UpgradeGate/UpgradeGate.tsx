@@ -1,5 +1,5 @@
 import { CSSProperties, useEffect, useLayoutEffect, useState } from "react";
-import { Check, CircleAlert } from "lucide-react";
+import { ArrowLeft, Check, CircleAlert } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -38,13 +38,14 @@ import { waitForMinimumDuration } from "@app/lib/fn/promise";
 import { fmtMoney } from "@app/pages/organization/BillingV2Page/billing-v2-format";
 import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
 
-import { buildUpgradeReturnPath, UpgradeIntent } from "./upgrade-intents";
+import { buildUpgradeReturnPath, UpgradeIntent, UpgradeReturnTarget } from "./upgrade-intents";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
 const MINIMUM_PLAN_LOADING_DURATION_MS = 800;
 
 type Props = {
   intent: UpgradeIntent;
+  returnTarget?: UpgradeReturnTarget;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onGranted: () => void;
@@ -171,9 +172,10 @@ const ProductUpgradeHeader = ({ product, productName, description }: ProductUpgr
   </DialogHeader>
 );
 
-export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) => {
+export const UpgradeGate = ({ intent, returnTarget, isOpen, onOpenChange, onGranted }: Props) => {
   const [selectedTier, setSelectedTier] = useState(intent.planKey);
   const [cadence, setCadence] = useState<BillingV2Cadence>("annual");
+  const [view, setView] = useState<"plan" | "confirm">("plan");
   const [isMinimumPlanLoading, setIsMinimumPlanLoading] = useState(isOpen);
   const { currentOrg, isSubOrganization } = useOrganization();
   const { permission } = useOrgPermission();
@@ -216,6 +218,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     if (!isOpen) {
       setSelectedTier(intent.planKey);
       setCadence("annual");
+      setView("plan");
     }
   }, [intent.planKey, isOpen]);
 
@@ -223,7 +226,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     return null;
   }
 
-  const returnPath = buildUpgradeReturnPath(intent, window.location);
+  const returnPath = buildUpgradeReturnPath(intent, window.location, returnTarget);
   const openRootBilling = () => {
     const search = new URLSearchParams({
       upgradeProduct: intent.productKey,
@@ -388,26 +391,25 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
   const supportsMonthlyCadence = plans.some((candidate) =>
     planSupportsCadence(candidate, "monthly")
   );
-  const visibleCadence =
-    (cadence === "annual" && supportsAnnualCadence) ||
-    (cadence === "monthly" && supportsMonthlyCadence)
-      ? cadence
-      : supportsAnnualCadence
-        ? "annual"
-        : "monthly";
-  const effectiveCadence = getEffectiveCadence(plan, visibleCadence);
+  let visibleCadence: BillingV2Cadence = cadence;
+  if (trialAvailable) {
+    visibleCadence = "monthly";
+  } else if (!planSupportsCadence(plan, cadence)) {
+    visibleCadence = supportsAnnualCadence ? "annual" : "monthly";
+  }
+  const effectiveCadence = trialAvailable ? "monthly" : getEffectiveCadence(plan, visibleCadence);
   const price = getPlanPrice(plan, "monthly").amount;
   const comparePrice = getPlanPrice(plan, effectiveCadence);
   const features = getPlanFeatures(product, plan);
   const savingsPercent = Math.max(...plans.map(annualSavingsPercent));
   const trialDurationLabel = plan.trialDays === 14 ? "2-Week" : `${plan.trialDays}-Day`;
   const trialBadgeLabel = plan.trialDays > 0 ? `${trialDurationLabel} Trial` : "Free Trial";
-  const trialPriceLabel =
-    plan.trialDays === 14
-      ? "0 for 2 Weeks"
-      : plan.trialDays > 0
-        ? `0 for ${plan.trialDays} Days`
-        : "0 during trial";
+  let trialPriceLabel = "0 during trial";
+  if (plan.trialDays === 14) {
+    trialPriceLabel = "0 for 2 Weeks";
+  } else if (plan.trialDays > 0) {
+    trialPriceLabel = `0 for ${plan.trialDays} Days`;
+  }
   const upgradeLabel = intent.upgradeLabel ?? `Upgrade ${product.name}`;
   const productStyle = { "--product-color": product.color } as CSSProperties;
 
@@ -436,9 +438,55 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
       onOpenChange(false);
       onGranted();
     } catch {
-      return;
+      setView("confirm");
     }
   };
+
+  if (view === "confirm" && trialAvailable && selfServe) {
+    return (
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent showCloseButton={false} className="sm:max-w-2xl">
+          <ProductUpgradeHeader
+            product={product}
+            productName={product.name}
+            description={`Confirm your ${plan.name} trial before continuing.`}
+          />
+          <p className="text-sm text-muted">
+            Your {trialDurationLabel.toLowerCase()} trial is free. A payment method is required. If
+            you do not have one on file, secure card setup must finish before the trial starts.
+            After the trial, billing continues monthly unless you cancel.
+          </p>
+          <div className="divide-y divide-border rounded-lg border border-border bg-card text-sm">
+            <div className="flex items-center justify-between p-4">
+              <span>Due Today</span>
+              <span>$0</span>
+            </div>
+            <div className="flex items-center justify-between p-4">
+              <span>After Your Trial · Monthly Usage-Based Billing</span>
+              <span>{price > 0 ? `${fmtMoney(price)} / month` : "Usage-Based"}</span>
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              variant="outline"
+              isDisabled={startTrial.isPending}
+              onClick={() => setView("plan")}
+            >
+              <ArrowLeft /> Back
+            </Button>
+            <Button
+              variant="org"
+              isPending={startTrial.isPending}
+              isDisabled={startTrial.isPending}
+              onClick={handleStartTrial}
+            >
+              Start Free Trial
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   let primaryAction = (
     <Button variant="org" onClick={openRootBilling}>
@@ -474,12 +522,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
   );
   if (!planMeetsRequirement) {
     productTrialAction = (
-      <Button
-        variant="product"
-        className="w-full justify-center"
-        style={productStyle}
-        isDisabled
-      >
+      <Button variant="product" className="w-full justify-center" style={productStyle} isDisabled>
         Select {requiredPlan?.name ?? intent.planKey} or higher
       </Button>
     );
@@ -500,9 +543,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
         variant="product"
         className="w-full justify-center"
         style={productStyle}
-        isPending={startTrial.isPending}
-        isDisabled={startTrial.isPending}
-        onClick={handleStartTrial}
+        onClick={() => setView("confirm")}
       >
         Start Free {plan.name} Trial
       </Button>
@@ -513,11 +554,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className={
-          hasTrialAvailable
-            ? "gap-0 overflow-x-hidden p-0 sm:max-w-4xl"
-            : "sm:max-w-2xl"
-        }
+        className={hasTrialAvailable ? "gap-0 overflow-x-hidden p-0 sm:max-w-4xl" : "sm:max-w-2xl"}
       >
         {hasTrialAvailable && (
           <div className="grid min-h-[34rem] md:grid-cols-[minmax(16rem,0.9fr)_minmax(0,1.25fr)]">
@@ -542,7 +579,10 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
             </aside>
 
             <div className="flex min-w-0 flex-col gap-5 p-6 pb-0">
-              <Tabs value={plan.tier} onValueChange={setSelectedTier}>
+              <Tabs
+                value={plan.tier}
+                onValueChange={(value) => setSelectedTier(value as UpgradeIntent["planKey"])}
+              >
                 <TabsList className="w-full" aria-label={`${product.name} plans`}>
                   {plans.map((candidate) => (
                     <TabsTrigger key={candidate.tier} value={candidate.tier}>
@@ -592,19 +632,17 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
                         variant="org"
                         isChecked={visibleCadence === "annual"}
                         isDisabled={
-                          startTrial.isPending ||
-                          !supportsAnnualCadence ||
-                          !supportsMonthlyCadence
+                          trialAvailable || !supportsAnnualCadence || !supportsMonthlyCadence
                         }
                         onCheckedChange={(checked) =>
                           setCadence(checked === true ? "annual" : "monthly")
                         }
                       />
-                      <Label htmlFor={`upgrade-cadence-${product.id}`}>Annual Billing</Label>
-                      {savingsPercent > 0 && (
-                        <Badge variant="success" className="min-h-4 px-1 py-0 text-[10px]">
-                          -{savingsPercent}%
-                        </Badge>
+                      <Label htmlFor={`upgrade-cadence-${product.id}`}>
+                        {trialAvailable ? "Monthly Billing After Trial" : "Annual Billing"}
+                      </Label>
+                      {savingsPercent > 0 && !trialAvailable && (
+                        <Badge variant="success">-{savingsPercent}%</Badge>
                       )}
                     </div>
                     <div className="flex items-baseline gap-2 text-sm tabular-nums">

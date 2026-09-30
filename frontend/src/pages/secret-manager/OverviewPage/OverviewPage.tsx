@@ -333,6 +333,7 @@ const SECRET_SORT_OPTIONS = SECRET_NAME_SORT_OPTIONS;
 
 type UpgradeRequest = {
   intent: UpgradeIntent;
+  returnTarget?: { environment?: string; folderPath?: string };
   isEntitled: (subscription: SubscriptionPlan) => boolean;
   onGranted: () => void | Promise<void>;
   failureMessage: string;
@@ -353,6 +354,8 @@ const OverviewPageContent = () => {
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
       upgradeContinuation: el.upgradeContinuation,
+      upgradeEnvironment: el.upgradeEnvironment,
+      upgradeFolderPath: el.upgradeFolderPath,
       checkout: el.checkout,
       honeyTokenId: el.honeyTokenId,
       tags: el.tags,
@@ -981,6 +984,7 @@ const OverviewPageContent = () => {
 
   const [folderAccessTarget, setFolderAccessTarget] = useState<{
     folderPath: string;
+    environmentSlug: string;
   } | null>(null);
   const [isCurrentFolderAccessOpen, setIsCurrentFolderAccessOpen] = useState(false);
 
@@ -1191,6 +1195,8 @@ const OverviewPageContent = () => {
       search: (prev) => ({
         ...prev,
         upgradeContinuation: undefined,
+        upgradeEnvironment: undefined,
+        upgradeFolderPath: undefined,
         checkout: undefined
       }),
       replace: true
@@ -1286,7 +1292,9 @@ const OverviewPageContent = () => {
         intent: PointInTimeRecoveryUpgradeIntent,
         isEntitled: (refreshedSubscription) => refreshedSubscription.pitRecovery,
         onGranted: () => {
-          const env = userAvailableEnvs.find((candidate) => candidate.slug === singleEnvSlug);
+          const env = userAvailableEnvs.find(
+            (candidate) => candidate.slug === routerSearch.upgradeEnvironment
+          );
           if (env) setCommitHistoryEnv({ slug: env.slug, name: env.name });
         },
         failureMessage: "Failed to refresh your subscription. Try opening commit history again."
@@ -1295,7 +1303,14 @@ const OverviewPageContent = () => {
       request = {
         intent: FolderAccessControlsUpgradeIntent,
         isEntitled: (refreshedSubscription) => refreshedSubscription.secretsFolderRbac,
-        onGranted: () => setIsCurrentFolderAccessOpen(true),
+        onGranted: () => {
+          if (routerSearch.upgradeEnvironment && routerSearch.upgradeFolderPath) {
+            setFolderAccessTarget({
+              environmentSlug: routerSearch.upgradeEnvironment,
+              folderPath: routerSearch.upgradeFolderPath
+            });
+          }
+        },
         failureMessage: "Failed to refresh your subscription. Try managing folder access again."
       };
     } else if (continuation === UpgradeContinuation.CreateSecretImport) {
@@ -1310,11 +1325,12 @@ const OverviewPageContent = () => {
       request = {
         intent: SecretAccessInsightsUpgradeIntent,
         isEntitled: (refreshedSubscription) => refreshedSubscription.secretAccessInsights,
-        onGranted: () =>
+        onGranted: () => {
           createNotification({
             type: "success",
             text: "Secret access insights are now available. Open a secret's menu to view access."
-          }),
+          });
+        },
         failureMessage: "Failed to refresh your subscription. Try viewing secret access again."
       };
     } else if (continuation === UpgradeContinuation.CreateEnterpriseSecretSync) {
@@ -1333,7 +1349,8 @@ const OverviewPageContent = () => {
     handlePopUpOpen,
     routerSearch.checkout,
     routerSearch.upgradeContinuation,
-    singleEnvSlug,
+    routerSearch.upgradeEnvironment,
+    routerSearch.upgradeFolderPath,
     userAvailableEnvs
   ]);
 
@@ -1367,6 +1384,7 @@ const OverviewPageContent = () => {
     if (!subscription?.pitRecovery) {
       openUpgradeGate({
         intent: PointInTimeRecoveryUpgradeIntent,
+        returnTarget: { environment: envSlug },
         isEntitled: (refreshedSubscription) => refreshedSubscription.pitRecovery,
         onGranted: openCommitHistory,
         failureMessage: "Failed to refresh your subscription. Try opening commit history again."
@@ -1383,7 +1401,8 @@ const OverviewPageContent = () => {
         const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
         if (!folder) return;
         setFolderAccessTarget({
-          folderPath: childFolderPath(folderName)
+          folderPath: childFolderPath(folderName),
+          environmentSlug: singleEnvSlug
         });
         analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
           source: "folder_row",
@@ -1394,6 +1413,7 @@ const OverviewPageContent = () => {
       if (!subscription?.secretsFolderRbac) {
         openUpgradeGate({
           intent: FolderAccessControlsUpgradeIntent,
+          returnTarget: { environment: singleEnvSlug, folderPath: childFolderPath(folderName) },
           isEntitled: (refreshedSubscription) => refreshedSubscription.secretsFolderRbac,
           onGranted: openFolderAccess,
           failureMessage: "Failed to refresh your subscription. Try managing folder access again."
@@ -1426,6 +1446,7 @@ const OverviewPageContent = () => {
     if (!subscription?.secretsFolderRbac) {
       openUpgradeGate({
         intent: FolderAccessControlsUpgradeIntent,
+        returnTarget: { environment: singleEnvSlug, folderPath: secretPath },
         isEntitled: (refreshedSubscription) => refreshedSubscription.secretsFolderRbac,
         onGranted: openCurrentFolderAccess,
         failureMessage: "Failed to refresh your subscription. Try managing folder access again."
@@ -1434,7 +1455,14 @@ const OverviewPageContent = () => {
     }
 
     openCurrentFolderAccess();
-  }, [openUpgradeGate, orgId, projectId, subscription?.secretsFolderRbac]);
+  }, [
+    openUpgradeGate,
+    orgId,
+    projectId,
+    secretPath,
+    singleEnvSlug,
+    subscription?.secretsFolderRbac
+  ]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
@@ -4087,6 +4115,7 @@ const OverviewPageContent = () => {
       {upgradeRequest && (
         <UpgradeGate
           intent={upgradeRequest.intent}
+          returnTarget={upgradeRequest.returnTarget}
           isOpen
           onOpenChange={(isOpen) => {
             if (!isOpen) setUpgradeRequest(null);
@@ -4307,9 +4336,12 @@ const OverviewPageContent = () => {
             if (!isOpen) setFolderAccessTarget(null);
           }}
           projectId={projectId}
-          environmentSlug={singleEnvSlug}
+          environmentSlug={folderAccessTarget.environmentSlug}
           folderPath={folderAccessTarget.folderPath}
-          environmentName={singleEnvName}
+          environmentName={
+            userAvailableEnvs.find((env) => env.slug === folderAccessTarget.environmentSlug)
+              ?.name ?? folderAccessTarget.environmentSlug
+          }
         />
       )}
       {isCurrentFolderAccessOpen && (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
@@ -93,6 +93,7 @@ export const BillingV2Page = () => {
   const showOrgFilter = rootOrgCount > 1;
 
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
+  const openedUpgradeProduct = useRef(false);
   const [removeProdId, setRemoveProdId] = useState<string | null>(null);
   const deepLinkSearch = new URLSearchParams(window.location.search);
   const upgradeProduct = deepLinkSearch.get("upgradeProduct");
@@ -102,9 +103,15 @@ export const BillingV2Page = () => {
   );
 
   useEffect(() => {
-    if (flow || !upgradeProduct || !catalog.some((product) => product.id === upgradeProduct)) {
+    if (
+      flow ||
+      openedUpgradeProduct.current ||
+      !upgradeProduct ||
+      !catalog.some((product) => product.id === upgradeProduct)
+    ) {
       return;
     }
+    openedUpgradeProduct.current = true;
     setFlow({ type: "sheet", prodId: upgradeProduct });
   }, [catalog, flow, upgradeProduct]);
 
@@ -146,7 +153,20 @@ export const BillingV2Page = () => {
 
   const removeProd = removeProdId ? catalogById(catalog, removeProdId) : undefined;
 
-  const close = () => setFlow(null);
+  const close = () => {
+    setFlow(null);
+    if (openedUpgradeProduct.current) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("upgradeProduct");
+      url.searchParams.delete("upgradeReturnPath");
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${url.pathname}${url.search}${url.hash}`
+      );
+      openedUpgradeProduct.current = false;
+    }
+  };
 
   const redirectToPortal = () => {
     createPortalSession.mutate(

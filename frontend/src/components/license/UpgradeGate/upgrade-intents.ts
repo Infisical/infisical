@@ -42,6 +42,8 @@ export type UpgradeIntent = {
   description: string;
 };
 
+export type UpgradeReturnTarget = { environment?: string; folderPath?: string };
+
 export const DynamicSecretsUpgradeIntent = {
   featureKey: UpgradeFeature.DynamicSecrets,
   productKey: BillingProduct.SecretsManagement,
@@ -141,10 +143,23 @@ export const EnterpriseSecretSyncsUpgradeIntent = {
     "Enterprise Secret Sync destinations are included with Secrets Management Enterprise. Review the plan to continue."
 } satisfies UpgradeIntent;
 
-export const buildUpgradeReturnPath = (intent: UpgradeIntent, location: Location) => {
+export const buildUpgradeReturnPath = (
+  intent: UpgradeIntent,
+  location: Location,
+  target?: UpgradeReturnTarget
+) => {
   const search = new URLSearchParams(location.search);
   search.set("upgradeContinuation", intent.continuation);
-  return `${location.pathname}?${search.toString()}${location.hash}`;
+  if (target?.environment) search.set("upgradeEnvironment", target.environment);
+  if (target?.folderPath) search.set("upgradeFolderPath", target.folderPath);
+  const fullPath = `${location.pathname}?${search.toString()}${location.hash}`;
+  if (fullPath.length <= 2048) return fullPath;
+
+  const continuation = new URLSearchParams({ upgradeContinuation: intent.continuation });
+  if (target?.environment) continuation.set("upgradeEnvironment", target.environment);
+  if (target?.folderPath) continuation.set("upgradeFolderPath", target.folderPath);
+  const minimalPath = `${location.pathname}?${continuation.toString()}`;
+  return minimalPath.length <= 2048 ? minimalPath : location.pathname;
 };
 
 export const getSafeUpgradeReturnPath = (returnPath: string | null, origin: string) => {

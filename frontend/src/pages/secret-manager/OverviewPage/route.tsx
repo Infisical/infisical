@@ -25,6 +25,8 @@ const SecretOverviewPageQuerySchema = z.object({
       "create-enterprise-secret-sync"
     ])
     .optional(),
+  upgradeEnvironment: z.string().optional(),
+  upgradeFolderPath: z.string().optional(),
   checkout: z.enum(["success", "canceled"]).optional(),
   honeyTokenId: z.string().optional(),
   tags: z.string().optional(),
