@@ -1,13 +1,4 @@
-import {
-  Fragment,
-  KeyboardEvent,
-  ReactNode,
-  RefObject,
-  useId,
-  useMemo,
-  useRef,
-  useState
-} from "react";
+import { KeyboardEvent, ReactNode, RefObject, useId, useMemo, useRef, useState } from "react";
 import { LockIcon, PlusIcon } from "lucide-react";
 
 import {
@@ -240,12 +231,16 @@ export const useVariableAutocomplete = ({
     else input.setSelectionRange(caret, caret);
   };
 
+  const optionId = (index: number) => `${listId}-option-${index}`;
+
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (!openReference || !suggestions.length) return;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       const step = event.key === "ArrowDown" ? 1 : -1;
-      setActiveIndex((index) => (index + step + suggestions.length) % suggestions.length);
+      const next = (activeIndex + step + suggestions.length) % suggestions.length;
+      setActiveIndex(next);
+      document.getElementById(optionId(next))?.scrollIntoView({ block: "nearest" });
       return;
     }
     const active = suggestions[Math.min(activeIndex, suggestions.length - 1)];
@@ -255,8 +250,6 @@ export const useVariableAutocomplete = ({
       choose(active);
     }
   };
-
-  const optionId = (index: number) => `${listId}-option-${index}`;
 
   return {
     isOpen: Boolean(openReference),
@@ -287,6 +280,50 @@ export const VariableSuggestions = ({
   const anchorRef = useRef<HTMLDivElement>(null);
   const { isOpen, suggestions, activeIndex, setActiveIndex, listId, optionId, choose, dismiss } =
     autocomplete;
+  const variableSuggestions = suggestions.filter((suggestion) => suggestion.type === "variable");
+  const createSuggestion = suggestions.find((suggestion) => suggestion.type === "create");
+
+  const renderOption = (suggestion: TSuggestion, index: number) => (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events
+    <div
+      key={suggestion.type === "variable" ? suggestion.variable.id : "create"}
+      id={optionId(index)}
+      role="option"
+      tabIndex={-1}
+      aria-selected={index === activeIndex}
+      className={cn(
+        "flex cursor-pointer items-center gap-3 rounded-sm px-2 py-1.5",
+        index === activeIndex && "bg-container-hover"
+      )}
+      onMouseEnter={() => setActiveIndex(index)}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => choose(suggestion)}
+    >
+      {suggestion.type === "variable" ? (
+        <>
+          <span className="flex-1 truncate font-mono text-xs">{suggestion.variable.key}</span>
+          {suggestion.variable.isSecret ? (
+            <LockIcon className="size-3 shrink-0 text-muted" aria-label="Secret" />
+          ) : (
+            <span className="max-w-32 truncate text-xs text-muted">
+              {suggestion.variable.value}
+            </span>
+          )}
+        </>
+      ) : (
+        <>
+          <PlusIcon className="size-3.5 shrink-0 text-muted" />
+          {suggestion.isKeyValid ? (
+            <span className="min-w-0 truncate text-xs">
+              Create <span className="font-mono">{suggestion.key}</span>
+            </span>
+          ) : (
+            <span className="text-xs">Create Variable</span>
+          )}
+        </>
+      )}
+    </div>
+  );
 
   return (
     <Popover
@@ -312,59 +349,23 @@ export const VariableSuggestions = ({
           }}
         >
           {suggestions.length > 0 ? (
-            <ul
-              id={listId}
-              role="listbox"
-              aria-label="Variables"
-              className="max-h-60 overflow-y-auto"
-            >
-              {suggestions.map((suggestion, index) => (
-                <Fragment key={suggestion.type === "variable" ? suggestion.variable.id : "create"}>
-                  {suggestion.type === "create" && index > 0 && (
-                    <li role="presentation" className="-mx-1 my-1 h-px bg-border" />
-                  )}
-                  {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events */}
-                  <li
-                    id={optionId(index)}
-                    role="option"
-                    aria-selected={index === activeIndex}
-                    className={cn(
-                      "flex cursor-pointer items-center gap-3 rounded-sm px-2 py-1.5",
-                      index === activeIndex && "bg-container-hover"
-                    )}
-                    onMouseEnter={() => setActiveIndex(index)}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => choose(suggestion)}
-                  >
-                    {suggestion.type === "variable" ? (
-                      <>
-                        <span className="flex-1 truncate font-mono text-xs">
-                          {suggestion.variable.key}
-                        </span>
-                        {suggestion.variable.isSecret ? (
-                          <LockIcon className="size-3 shrink-0 text-muted" aria-label="Secret" />
-                        ) : (
-                          <span className="max-w-32 truncate text-xs text-muted">
-                            {suggestion.variable.value}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <PlusIcon className="size-3.5 shrink-0 text-muted" />
-                        {suggestion.isKeyValid ? (
-                          <span className="min-w-0 truncate text-xs">
-                            Create <span className="font-mono">{suggestion.key}</span>
-                          </span>
-                        ) : (
-                          <span className="text-xs">Create Variable</span>
-                        )}
-                      </>
-                    )}
-                  </li>
-                </Fragment>
-              ))}
-            </ul>
+            <div id={listId} role="listbox" aria-label="Variables">
+              {variableSuggestions.length > 0 && (
+                <div
+                  className="max-h-60 overflow-y-auto overscroll-contain"
+                  // Rendered outside the sheet, whose scroll lock would otherwise cancel wheel events here.
+                  onWheel={(event) => event.stopPropagation()}
+                >
+                  {variableSuggestions.map(renderOption)}
+                </div>
+              )}
+              {createSuggestion && (
+                <>
+                  {variableSuggestions.length > 0 && <div className="-mx-1 my-1 h-px bg-border" />}
+                  {renderOption(createSuggestion, variableSuggestions.length)}
+                </>
+              )}
+            </div>
           ) : (
             <p className="px-2 py-1.5 text-xs text-muted">
               {variables?.length
