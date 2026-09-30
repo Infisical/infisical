@@ -565,9 +565,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
 
       if (filter.status) void query.where(`${TableName.SecretScanningFinding}.status`, filter.status);
 
-      const result = (await query.count(`${TableName.SecretScanningFinding}.id as count`).first()) as
-        | { count: string }
-        | undefined;
+      const result = await query.count({ count: `${TableName.SecretScanningFinding}.id` }).first();
 
       return Number(result?.count ?? 0);
     } catch (error) {
