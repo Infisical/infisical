@@ -3,11 +3,10 @@ import RE2 from "re2";
 export const AGENT_VAULT_VARIABLE_KEY_MAX_LENGTH = 64;
 export const AGENT_VAULT_VARIABLE_VALUE_MAX_LENGTH = 8192;
 export const AGENT_VAULT_MAX_VARIABLES = 100;
-// Counts every {{...}}, a repeat included: repeating one short reference is what lets a field fill in to
-// millions of characters.
-export const AGENT_VAULT_MAX_REFERENCES_PER_FIELD = 10;
-// No field that takes a variable accepts more than this typed out, and filled in it is held to the same.
-export const AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH = 8192;
+// Counts every {{...}}, a repeat included: repeating one short reference is what would let a field fill in to
+// millions of characters. With the value limit this is the whole bound on a filled-in field, the text as typed
+// plus three values, so no save reads another row to hold a field to it and none can race another past it.
+export const AGENT_VAULT_MAX_REFERENCES_PER_FIELD = 3;
 
 export const AGENT_VAULT_VARIABLE_KEY_RE = new RE2(/^[A-Z][A-Z0-9_]*$/);
 
@@ -56,34 +55,13 @@ export const findStoredVariableIds = (text: string) => [
 ];
 
 /**
- * How long stored text comes out once its references are filled in, measured without building it. An id with
- * no length behind it counts as its own token, which is what expanding leaves in its place.
- */
-export const filledInVariableLength = (text: string, lengthOfId: (variableId: string) => number | undefined) =>
-  Array.from(text.matchAll(REFERENCE_RE)).reduce((length, [token, inner]) => {
-    const valueLength = STORED_REFERENCE_RE.test(inner) ? lengthOfId(inner) : undefined;
-    return valueLength === undefined ? length : length + valueLength - token.length;
-  }, text.length);
-
-/**
  * Anything that is not a known variable id stays as it was stored. A value saved before variables existed
  * can hold literal braces, and it has to keep reaching the host unchanged.
- *
- * Returns undefined, without building the text, when it would come out longer than
- * AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH. The input limits alone don't hold it there: ten references to 8,192
- * character values fill one field in to over 80,000 characters.
  */
 export const expandStoredVariableReferences = (
   text: string,
   valueOfId: (variableId: string) => string | undefined
-): string | undefined => {
+): string => {
   const valueOf = (inner: string) => (STORED_REFERENCE_RE.test(inner) ? valueOfId(inner) : undefined);
-
-  if (
-    filledInVariableLength(text, (variableId) => valueOfId(variableId)?.length) > AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH
-  ) {
-    return undefined;
-  }
-
   return text.replace(REFERENCE_RE, (token: string, inner: string) => valueOf(inner) ?? token);
 };

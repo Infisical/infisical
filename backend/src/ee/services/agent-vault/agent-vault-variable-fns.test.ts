@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH,
   AGENT_VAULT_MAX_REFERENCES_PER_FIELD,
+  AGENT_VAULT_VARIABLE_VALUE_MAX_LENGTH,
   expandStoredVariableReferences,
-  filledInVariableLength,
   findStoredVariableIds,
   findVariableKeys,
   hasMalformedVariableReference,
@@ -104,29 +103,6 @@ describe("agent vault variable references", () => {
     });
   });
 
-  describe("measuring filled-in length", () => {
-    const lengths: Record<string, number> = { [GITHUB_ID]: 100, [DATADOG_ID]: 7 };
-
-    it("counts each reference as its value, a repeat included, plus the text around it", () => {
-      expect(filledInVariableLength(`a{{${GITHUB_ID}}}b{{${DATADOG_ID}}}{{${GITHUB_ID}}}`, (id) => lengths[id])).toBe(
-        2 + 100 + 7 + 100
-      );
-    });
-
-    it("counts a stored id with no length behind it, and a key-form reference, as the text they stay as", () => {
-      expect(filledInVariableLength(`{{${GITHUB_ID}}}`, () => undefined)).toBe(`{{${GITHUB_ID}}}`.length);
-      expect(filledInVariableLength("{{GITHUB_TOKEN}}", () => 100)).toBe("{{GITHUB_TOKEN}}".length);
-    });
-
-    it("agrees with the length expanding produces", () => {
-      const values: Record<string, string> = { [GITHUB_ID]: "ghp_alpha", [DATADOG_ID]: "dd_beta" };
-      const stored = `Bearer {{${GITHUB_ID}}}:{{${DATADOG_ID}}}`;
-      expect(filledInVariableLength(stored, (id) => values[id]?.length)).toBe(
-        expandStoredVariableReferences(stored, (id) => values[id])!.length
-      );
-    });
-  });
-
   describe("expanding", () => {
     const values: Record<string, string> = { [GITHUB_ID]: "ghp_alpha", [DATADOG_ID]: "dd_beta" };
 
@@ -164,23 +140,13 @@ describe("agent vault variable references", () => {
       expect(expandStoredVariableReferences(stored, (id) => values[id])).toBe("Bearer ghp_alpha");
     });
 
-    it("fills in up to the length cap, counting the text around the references", () => {
-      const value = "v".repeat(AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH - 1);
-      expect(expandStoredVariableReferences(`x{{${GITHUB_ID}}}`, () => value)).toBe(`x${value}`);
-      expect(expandStoredVariableReferences(`xy{{${GITHUB_ID}}}`, () => value)).toBeUndefined();
-    });
-
-    it("gives up on a field that short references would fill to millions of characters", () => {
+    it("fills in a field at the reference limit whole, with every value at its longest", () => {
       const idOfKey = new Map([["A", GITHUB_ID]]);
-      const stored = toStoredVariableReferences("{{A}}".repeat(1638), idOfKey);
-      expect(expandStoredVariableReferences(stored, () => "v".repeat(8192))).toBeUndefined();
-    });
-
-    it("measures a field by its filled-in length, not its stored one", () => {
-      const idOfKey = new Map([["A", GITHUB_ID]]);
-      const stored = toStoredVariableReferences("{{A}}".repeat(1638), idOfKey);
-      expect(stored.length).toBeGreaterThan(AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH);
-      expect(expandStoredVariableReferences(stored, () => "a")).toBe("a".repeat(1638));
+      const stored = toStoredVariableReferences(`x${"{{A}}".repeat(AGENT_VAULT_MAX_REFERENCES_PER_FIELD)}`, idOfKey);
+      const value = "v".repeat(AGENT_VAULT_VARIABLE_VALUE_MAX_LENGTH);
+      expect(expandStoredVariableReferences(stored, () => value)).toBe(
+        `x${value.repeat(AGENT_VAULT_MAX_REFERENCES_PER_FIELD)}`
+      );
     });
   });
 });

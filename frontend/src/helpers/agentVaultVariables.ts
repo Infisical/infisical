@@ -1,6 +1,6 @@
 export const VARIABLE_KEY_MAX_LENGTH = 64;
 export const VARIABLE_VALUE_MAX_LENGTH = 8192;
-export const MAX_REFERENCES_PER_FIELD = 10;
+export const MAX_REFERENCES_PER_FIELD = 3;
 
 export const VARIABLE_KEY_RE = /^[A-Z][A-Z0-9_]*$/;
 

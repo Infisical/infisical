@@ -57,9 +57,7 @@ To use a variable:
 
 A reference can be the whole value or part of it. For example, if a custom header's value is `org-{{ORG_ID}}`, the proxy sends `org-` followed by the value of `ORG_ID`.
 
-A value can contain up to 10 references. If a value uses the same key more than once, each use counts as a reference, so `{{ORG_ID}}/{{ORG_ID}}` contains two.
-
-A value can be at most 8,192 characters long after the proxy replaces its references. If a value would be longer, Infisical won't save the service.
+A value can contain up to 3 references. If a value uses the same key more than once, each use counts as a reference, so `{{ORG_ID}}/{{ORG_ID}}` contains two.
 
 The **Sends** preview shows each reference in the headers the proxy attaches. If a reference names a key the bundle doesn't have, Infisical marks the reference in red and won't save the service until you correct the key or add the variable.
 
@@ -72,8 +70,6 @@ When you edit a service later, each value you saved stays hidden, like any other
 To change a variable, open its actions menu in the **Variables** list and select **Edit**. You can change the key, the value, and whether the value is secret. If the variable is secret, leave **Value** blank to keep the current value.
 
 If you rename a variable, every service that uses it keeps working without any changes. If you change a value, running agents get the new value within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval), without a restart.
-
-If the new value would make one of a service's values longer than 8,192 characters, Infisical won't save the change, and the error names the service.
 
 To delete a variable, open its actions menu and select **Delete**. If any service still uses the variable, Infisical lists those services and won't delete the variable until you remove the reference from each one.
 

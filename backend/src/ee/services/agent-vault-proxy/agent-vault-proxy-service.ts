@@ -25,11 +25,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultCredentialType, AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
 import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
-import {
-  AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH,
-  expandStoredVariableReferences,
-  findStoredVariableIds
-} from "../agent-vault/agent-vault-variable-fns";
+import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-access-bundle/agent-vault-variable-dal";
@@ -345,9 +341,8 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   // The ids come out of the decrypted fields rather than the reference rows, so a service saved mid-poll can
-  // never leave the two describing different versions of a field. An id with nothing behind it stays as text,
-  // and so does a field its variables would fill past the length cap: dropping the service instead would also
-  // drop its method and path restrictions.
+  // never leave the two describing different versions of a field. An id with nothing behind it stays as text:
+  // dropping the service instead would also drop its method and path restrictions.
   const $expandVariableReferences = async ({
     sessionId,
     services,
@@ -382,7 +377,6 @@ export const agentVaultProxyServiceFactory = ({
 
     const opened = new Map<string, string>();
     const unresolvedServiceIds = new Set<string>();
-    const oversizedServiceIds = new Set<string>();
 
     const expanded = services.map((service) => {
       const valueOf = (variableId: string) => {
@@ -399,11 +393,7 @@ export const agentVaultProxyServiceFactory = ({
         }
         return value;
       };
-      const expand = (text: string) => {
-        const filledIn = expandStoredVariableReferences(text, valueOf);
-        if (filledIn === undefined) oversizedServiceIds.add(service.id);
-        return filledIn ?? text;
-      };
+      const expand = (text: string) => expandStoredVariableReferences(text, valueOf);
 
       let { credential } = service;
       if (credential.type === "bearer") credential = { ...credential, value: expand(credential.value) };
@@ -427,12 +417,6 @@ export const agentVaultProxyServiceFactory = ({
         `agentVaultResolve: stored variable reference with no variable [sessionId=${sessionId}] [serviceIds=${[...unresolvedServiceIds].join(",")}]`
       );
     }
-    if (oversizedServiceIds.size) {
-      logger.warn(
-        `agentVaultResolve: variables fill a field past ${AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH} characters [sessionId=${sessionId}] [serviceIds=${[...oversizedServiceIds].join(",")}]`
-      );
-    }
-
     return expanded;
   };
 

@@ -199,20 +199,18 @@ path decides what a service can reach, so it stays literal.
   refused without quoting it, because the text was cut from a secret. Placeholders can't contain double
   braces. A variable's own value is sent as is and never expanded again, which is also how a service sends a
   literal `{{`.
-- **A value takes at most 10 references** (`AGENT_VAULT_MAX_REFERENCES_PER_FIELD`), and a repeat counts each
+- **A value takes at most 3 references** (`AGENT_VAULT_MAX_REFERENCES_PER_FIELD`), and a repeat counts each
   time: repeating one short reference is what fills a field in to millions of characters. The field schemas
-  refuse an eleventh with a 422, and the service sheet checks the same limit before it saves.
+  refuse a fourth with a 422, and the service sheet checks the same limit before it saves.
+- **That limit is the only bound on a filled-in field**: what was typed plus three 8,192 character values,
+  about 32K characters, and nothing measures a field filled in. Settled over an exact 8,192 cap, which every
+  service save and value change had to measure against other rows' current values, so two of them measured
+  before the bundle lock and together pushed a field past it. Closing that under the lock would have meant
+  decrypting every field that uses the variable inside the transaction.
 - Resolve reads variable values on a replica, then asks the primary for any id the replica lacks, since each
   query can land on a different replica. An id with no variable behind it on either stays as text and is
   logged rather than dropping the service, which would also drop the service's method and path restrictions.
   Values saved before variables existed hold no id tokens, so they pass through untouched.
-- **A field is held to 8,192 characters filled in** (`AGENT_VAULT_EXPANDED_FIELD_MAX_LENGTH`), measured
-  before anything is built. The input limits don't hold it there: ten references to 8,192 character values
-  fill one field in to over 80,000 characters, and a service has up to 42 such fields. Saves refuse a field
-  that would pass it, since resolve would send its stored text to the host in place of the credential: a
-  service save measures each value it seals, and a value change measures every field that uses the variable.
-  Both measure before the lock, so a service save racing a value change can still land a field over the cap.
-  Resolve sends that field as stored text and logs it, for the same reason as an unresolved id.
 - Admin only, reads included: every variable route checks `Edit` on access bundles, which a member lacks,
   and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
   an empty list would claim they use none). Every value is sealed;

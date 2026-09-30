@@ -1005,75 +1005,44 @@ describe("Agent Vault V1 Router", async () => {
       expect(resolved.substitutions[0].value).toBe("org-42");
     });
 
-    test("a save its variables would fill past 8,192 characters is refused, from the service and from the variable", async () => {
-      const bundle = await createAccessBundle("variables-overlong");
-      await createVariable(bundle.id, { key: "LONG", value: "x".repeat(8192) });
-      const short = await createVariable(bundle.id, { key: "SHORT", value: "s" });
-
-      const doubled = await inject("POST", servicesUrl(bundle.id), {
-        name: "doubled",
-        hostPattern: "doubled.example.com",
-        credential: { type: "bearer", value: "{{LONG}}{{LONG}}" }
-      });
-      expect(doubled.statusCode).toBe(400);
-      expect(JSON.parse(doubled.payload).message).toContain("The token would be longer than 8192 characters");
+    test("a field at the reference limit reaches the host whole with its variables at their longest, from either save", async () => {
+      const bundle = await createAccessBundle("variables-longest");
+      const long = await createVariable(bundle.id, { key: "LONG", value: "x" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
-        name: "at-cap",
-        hostPattern: "at-cap.example.com",
-        credential: { type: "bearer", value: "{{SHORT}}{{SHORT}}" },
-        customHeaders: [{ name: "X-Long", value: "{{LONG}}" }]
+        name: "longest",
+        hostPattern: "longest.example.com",
+        credential: { type: "bearer", value: "{{LONG}}".repeat(3) }
       });
       expect(created.statusCode).toBe(200);
-      const { service } = JSON.parse(created.payload) as { service: { id: string; customHeaders: { id: string }[] } };
 
-      const prefixed = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
-        customHeaders: [{ id: service.customHeaders[0].id, name: "X-Long", value: "x{{LONG}}" }]
-      });
-      expect(prefixed.statusCode).toBe(400);
-      expect(JSON.parse(prefixed.payload).message).toContain("The custom header 'X-Long' would be longer");
+      // Nothing measures a field filled in, so a value change can't be refused on a service's behalf.
+      const grown = await inject("PATCH", `${variablesUrl(bundle.id)}/${long.id}`, { value: "y".repeat(8192) });
+      expect(grown.statusCode).toBe(200);
 
-      // The token uses SHORT twice, so half the cap is the most SHORT can hold.
-      const grown = await inject("PATCH", `${variablesUrl(bundle.id)}/${short.id}`, { value: "y".repeat(4097) });
-      expect(grown.statusCode).toBe(400);
-      expect(JSON.parse(grown.payload).message).toContain("the token of the service 'at-cap' would be longer");
-
-      const resolve = await resolverFor(bundle, "variables-overlong");
-      expect((await resolve()).services[0].credential).toMatchObject({ value: "ss" });
-
-      const atCap = await inject("PATCH", `${variablesUrl(bundle.id)}/${short.id}`, { value: "y".repeat(4096) });
-      expect(atCap.statusCode).toBe(200);
-      const [resolved] = (await resolve()).services;
-      expect(resolved.credential).toMatchObject({ value: "y".repeat(8192) });
-      expect(resolved.customHeaders[0].value).toBe("x".repeat(8192));
+      const resolve = await resolverFor(bundle, "variables-longest");
+      expect((await resolve()).services[0].credential).toMatchObject({ value: "y".repeat(8192 * 3) });
     });
 
-    test("a field that ends up past 8,192 characters anyway is sent as stored, and its service keeps its restrictions", async () => {
-      const bundle = await createAccessBundle("variables-oversized");
-      const long = await createVariable(bundle.id, { key: "LONG", value: "x" });
+    test("a stored id with no variable behind it is sent as stored, and its service keeps its restrictions", async () => {
+      const bundle = await createAccessBundle("variables-missing");
+      const gone = await createVariable(bundle.id, { key: "GONE", value: "x" });
       const created = await inject("POST", servicesUrl(bundle.id), {
-        name: "oversized",
+        name: "missing",
         hostPattern: "api.example.com",
         allowedMethods: ["GET"],
         allowedPathPrefixes: ["/v1"],
-        credential: { type: "bearer", value: "{{LONG}}{{LONG}}" },
-        customHeaders: [{ name: "X-Long", value: "{{LONG}}" }]
+        credential: { type: "bearer", value: "{{GONE}}" }
       });
       expect(created.statusCode).toBe(200);
 
-      // Sealed past the value check, the way a change that raced the service save would land.
-      const { encryptor } = await cipherFor(bundle.id);
-      await testDb("agent_vault_variables")
-        .where({ id: long.id })
-        .update({
-          encryptedValue: encryptor({ plainText: Buffer.from(JSON.stringify({ value: "x".repeat(8192) })) })
-            .cipherTextBlob
-        });
+      // The delete refusal never lets this happen, so the rows go straight from the database.
+      await testDb("agent_vault_service_variable_references").where({ variableId: gone.id }).delete();
+      await testDb("agent_vault_variables").where({ id: gone.id }).delete();
 
-      const resolve = await resolverFor(bundle, "variables-oversized");
+      const resolve = await resolverFor(bundle, "variables-missing");
       const [resolved] = (await resolve()).services;
-      expect(resolved.credential).toMatchObject({ type: "bearer", value: `{{${long.id}}}{{${long.id}}}` });
-      expect(resolved.customHeaders[0].value).toBe("x".repeat(8192));
+      expect(resolved.credential).toMatchObject({ type: "bearer", value: `{{${gone.id}}}` });
       expect(resolved.allowedMethods).toEqual(["GET"]);
       expect(resolved.allowedPathPrefixes).toEqual(["/v1"]);
     });
@@ -1179,24 +1148,24 @@ describe("Agent Vault V1 Router", async () => {
       expect(await testDb("agent_vault_services").where({ accessBundleId: bundle.id })).toHaveLength(0);
     });
 
-    test("a value takes ten variable references, a repeat counted each time, and an eleventh fails validation", async () => {
+    test("a value takes three variable references, a repeat counted each time, and a fourth fails validation", async () => {
       const bundle = await createAccessBundle("variables-reference-limit");
       await createVariable(bundle.id, { key: "TOKEN", value: "t" });
 
       const atLimit = await inject("POST", servicesUrl(bundle.id), {
         name: "at-limit",
         hostPattern: "at-limit.example.com",
-        credential: { type: "bearer", value: "{{TOKEN}}".repeat(10) }
+        credential: { type: "bearer", value: "{{TOKEN}}".repeat(3) }
       });
       expect(atLimit.statusCode).toBe(200);
 
       const overLimit = await inject("POST", servicesUrl(bundle.id), {
         name: "over-limit",
         hostPattern: "over-limit.example.com",
-        credential: { type: "bearer", value: "{{TOKEN}}".repeat(11) }
+        credential: { type: "bearer", value: "{{TOKEN}}".repeat(4) }
       });
       expect(overLimit.statusCode).toBe(422);
-      expect(overLimit.payload).toContain("at most 10 variable references");
+      expect(overLimit.payload).toContain("at most 3 variable references");
 
       const services = (await testDb("agent_vault_services").where({ accessBundleId: bundle.id })) as {
         name: string;
