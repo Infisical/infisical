@@ -15,6 +15,7 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useCreateHsmConnector } from "@app/hooks/api/hsmConnectors";
@@ -45,18 +46,25 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
   const { data: gateways = [], isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
   const { data: pools = [], isPending: isPoolsLoading } = useListGatewayPools();
   const createMutation = useCreateHsmConnector();
+  const { currentOrg } = useOrganization();
+  const isPoolRequired = Boolean(currentOrg?.requireGatewayPools);
 
   const reachedFromOptions: ReachedFromOption[] = useMemo(() => {
     const gatewayOptions: ReachedFromOption[] = gateways
       .filter((g) => g.capabilities?.pkcs11 === true)
-      .map((g) => ({ value: `gateway:${g.id}`, label: g.name, group: "gateway" as const }));
+      .map((g) => ({
+        value: `gateway:${g.id}`,
+        label: g.name,
+        group: "gateway" as const,
+        isDisabled: isPoolRequired
+      }));
     const poolOptions: ReachedFromOption[] = pools.map((p) => ({
       value: `pool:${p.id}`,
       label: p.name,
       group: "pool" as const
     }));
     return [...gatewayOptions, ...poolOptions];
-  }, [gateways, pools]);
+  }, [gateways, pools, isPoolRequired]);
 
   const basicsForm = useForm<BasicsForm>({
     resolver: zodResolver(basicsSchema),

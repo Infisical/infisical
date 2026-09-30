@@ -12,6 +12,7 @@ import {
   FieldLabel,
   FilterableSelect
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 
 import { HostForm } from "./schemas";
 
@@ -19,6 +20,7 @@ export type ReachedFromOption = {
   value: string;
   label: string;
   group: "gateway" | "pool";
+  isDisabled?: boolean;
 };
 
 type Props = {
@@ -27,8 +29,18 @@ type Props = {
   isLoading: boolean;
 };
 
+export const getReachedFromGroupLabel = (
+  group: ReachedFromOption["group"],
+  isPoolRequired: boolean
+) => {
+  if (group === "pool") return "Gateway Pools";
+  return isPoolRequired ? "Gateways (your organization requires a gateway pool)" : "Gateways";
+};
+
 export const HostStep = ({ form, options, isLoading }: Props) => {
   const { orgId } = useParams({ strict: false });
+  const { currentOrg } = useOrganization();
+  const isPoolRequired = Boolean(currentOrg?.requireGatewayPools);
 
   const noOptionsMessage = useCallback(
     () => (
@@ -71,7 +83,7 @@ export const HostStep = ({ form, options, isLoading }: Props) => {
                 getGroupHeaderLabel={
                   options.length > 0
                     ? (group: ReachedFromOption["group"]) =>
-                        group === "gateway" ? "Gateways" : "Gateway Pools"
+                        getReachedFromGroupLabel(group, isPoolRequired)
                     : undefined
                 }
                 placeholder="Select a Gateway or Gateway Pool..."

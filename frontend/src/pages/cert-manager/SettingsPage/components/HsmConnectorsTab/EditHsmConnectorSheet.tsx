@@ -22,10 +22,13 @@ import {
   SheetTitle,
   TextArea
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { THsmConnector, useUpdateHsmConnector } from "@app/hooks/api/hsmConnectors";
 import { slugSchema } from "@app/lib/schemas";
+
+import { getReachedFromGroupLabel } from "./CreateHsmConnectorWizard/HostStep";
 
 const editSchema = z.object({
   name: slugSchema({ min: 1, max: 32, field: "Name" }),
@@ -37,7 +40,12 @@ const editSchema = z.object({
 });
 type EditForm = z.infer<typeof editSchema>;
 
-type ReachedFromOption = { value: string; label: string; group: "gateway" | "pool" };
+type ReachedFromOption = {
+  value: string;
+  label: string;
+  group: "gateway" | "pool";
+  isDisabled?: boolean;
+};
 
 type Props = {
   connector: THsmConnector | null;
@@ -50,6 +58,8 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
 
   const { data: gateways = [] } = useQuery(gatewaysQueryKeys.list());
   const { data: pools = [] } = useListGatewayPools();
+  const { currentOrg } = useOrganization();
+  const isPoolRequired = Boolean(currentOrg?.requireGatewayPools);
 
   const reachedFromOptions: ReachedFromOption[] = useMemo(() => {
     const currentValue = (() => {
@@ -59,7 +69,12 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
     })();
     const gatewayOptions: ReachedFromOption[] = gateways
       .filter((g) => g.capabilities?.pkcs11 === true)
-      .map((g) => ({ value: `gateway:${g.id}`, label: g.name, group: "gateway" as const }));
+      .map((g) => ({
+        value: `gateway:${g.id}`,
+        label: g.name,
+        group: "gateway" as const,
+        isDisabled: isPoolRequired && `gateway:${g.id}` !== currentValue
+      }));
     const poolOptions: ReachedFromOption[] = pools.map((p) => ({
       value: `pool:${p.id}`,
       label: p.name,
@@ -86,7 +101,7 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
       ];
     }
     return options;
-  }, [gateways, pools, connector]);
+  }, [gateways, pools, connector, isPoolRequired]);
 
   const form = useForm<EditForm>({
     resolver: zodResolver(editSchema),
@@ -251,7 +266,7 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
                           getGroupHeaderLabel={
                             reachedFromOptions.length > 0
                               ? (group: ReachedFromOption["group"]) =>
-                                  group === "gateway" ? "Gateways" : "Gateway Pools"
+                                  getReachedFromGroupLabel(group, isPoolRequired)
                               : undefined
                           }
                           placeholder="Select a Gateway..."

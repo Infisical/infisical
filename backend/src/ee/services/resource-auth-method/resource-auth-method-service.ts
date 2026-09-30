@@ -2,12 +2,14 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TGatewayPoolDALFactory } from "../gateway-pool/gateway-pool-dal";
@@ -58,6 +60,7 @@ import {
   ResourceAuthLoginFailureReason,
   ResourceAuthMethodType,
   type ResourceRef,
+  type TKubernetesTokenReviewMode,
   type TSettableAuthMethod
 } from "./resource-auth-method-fns";
 import {
@@ -112,6 +115,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   gatewayProxyRegistry: TGatewayProxyRegistry;
 };
 
@@ -177,6 +181,7 @@ export const resourceAuthMethodServiceFactory = ({
   identityDAL,
   permissionService,
   licenseService,
+  orgDAL,
   gatewayProxyRegistry
 }: TResourceAuthMethodServiceFactoryDep) => {
   // Registry rows carry the resource FK in a per-type column (gatewayId/relayId/kmipServerId).
@@ -306,7 +311,12 @@ export const resourceAuthMethodServiceFactory = ({
   // Machine identity Kubernetes auth gates its gateway selection the same way.
   const $assertCanAttachProxy = async (
     actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">,
-    proxy: { gatewayV2Id?: string | null; gatewayPoolId?: string | null }
+    proxy: {
+      gatewayV2Id?: string | null;
+      gatewayPoolId?: string | null;
+      tokenReviewMode?: TKubernetesTokenReviewMode | null;
+    },
+    previousGatewayV2Id?: string | null
   ) => {
     if (!proxy.gatewayV2Id && !proxy.gatewayPoolId) return;
 
@@ -323,6 +333,16 @@ export const resourceAuthMethodServiceFactory = ({
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
       );
+      // The reviewing gateway attests every login, so it has to be one specific gateway and a pool is
+      // refused for this mode. Exempting it keeps the mode usable under the org's pool requirement.
+      if (proxy.tokenReviewMode !== KubernetesTokenReviewMode.Gateway) {
+        await assertIndividualGatewayAllowed({
+          orgDAL,
+          orgId: actor.orgId,
+          gatewayId: proxy.gatewayV2Id,
+          previousGatewayId: previousGatewayV2Id
+        });
+      }
     }
 
     // Pools carry their own attach permission, so holding it for gateways is not sufficient.
@@ -852,8 +872,9 @@ export const resourceAuthMethodServiceFactory = ({
       let effectiveCa = authMethod.caCertificate;
       let effectiveReviewer = authMethod.tokenReviewerJwt;
       let destinationChanged = false;
+      const stored =
+        !isMethodChange && current ? await resourceKubernetesAuthDAL.findOne({ authMethodId: current.id }) : undefined;
       if (!isMethodChange && current && (effectiveCa === undefined || effectiveReviewer === undefined)) {
-        const stored = await resourceKubernetesAuthDAL.findOne({ authMethodId: current.id });
         const { decryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: actor.orgId
@@ -886,7 +907,7 @@ export const resourceAuthMethodServiceFactory = ({
       }
 
       await $assertProxyNotSelf(resource, authMethod);
-      await $assertCanAttachProxy(actor, authMethod);
+      await $assertCanAttachProxy(actor, authMethod, stored?.gatewayV2Id);
 
       const validation = await $buildKubernetesExecutor(
         {

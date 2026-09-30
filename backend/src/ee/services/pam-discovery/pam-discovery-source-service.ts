@@ -16,6 +16,7 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { PamAccountType, PamPostgresAuthMethod, PamProductRole, PamSshAuthMethod } from "../pam/pam-enums";
 import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
@@ -70,6 +71,7 @@ type TPamDiscoverySourceServiceFactoryDep = {
     TGatewayPoolServiceFactory,
     "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool"
   >;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -375,7 +377,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     }
 
     if (gatewayId !== undefined || gatewayPoolId !== undefined) {
-      await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
+      await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx, source.gatewayId);
     }
 
     const discoveryConfiguration =

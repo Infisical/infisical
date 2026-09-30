@@ -8,6 +8,7 @@ import {
   Button,
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
   FilterableSelect,
@@ -246,7 +247,7 @@ export const NetworkingAuthMethodForm = ({
   currentGatewayId,
   onUpdate
 }: Props) => {
-  const { isSubOrganization } = useOrganization();
+  const { isSubOrganization, currentOrg } = useOrganization();
   const initialMethod: NetworkingAuthMethod = currentMethod.method;
   const initialAws = currentMethod.method === "aws" ? currentMethod.config : undefined;
   const initialGcp = currentMethod.method === "gcp" ? currentMethod.config : undefined;
@@ -321,6 +322,15 @@ export const NetworkingAuthMethodForm = ({
   const gatewayPoolId = watch("gatewayPoolId");
   const isProxied = Boolean(gatewayId || gatewayPoolId);
   const isGatewayReviewer = tokenReviewMode === "gateway";
+  // Under the org's pool requirement the backend only accepts a new individual gateway as the
+  // reviewer, since a pool can't perform the review. The gateway the config already had is kept as-is.
+  const isPoolRequired = Boolean(currentOrg?.requireGatewayPools);
+  const isNewIndividualGateway = Boolean(gatewayId) && gatewayId !== initialKubernetes?.gatewayId;
+  const mustUseGatewayReviewer = isPoolRequired && isNewIndividualGateway;
+  const reviewModeOptions = REVIEW_MODE_OPTIONS.map((option) => ({
+    ...option,
+    isDisabled: option.value === "api" && mustUseGatewayReviewer
+  }));
   const isTokenReviewerJwtConfigured =
     Boolean(initialKubernetes?.hasTokenReviewerJwt) && !watch("resetTokenReviewerJwt");
 
@@ -572,11 +582,26 @@ export const NetworkingAuthMethodForm = ({
                       if (!next.gatewayId && !next.gatewayPoolId) {
                         setValue("tokenReviewMode", "api", { shouldDirty: true });
                       }
+                      if (
+                        isPoolRequired &&
+                        next.gatewayId &&
+                        next.gatewayId !== initialKubernetes?.gatewayId
+                      ) {
+                        setValue("tokenReviewMode", "gateway", { shouldDirty: true });
+                      }
                     }}
                     isDisabled={isDisabled || isSaving}
                     isError={Boolean(error)}
                     excludeGatewayId={currentGatewayId}
+                    allowIndividualGateways
                   />
+                  {isPoolRequired && (
+                    <FieldDescription>
+                      Your organization requires gateway pools. You can still select an individual
+                      gateway here, but only with Gateway as Reviewer, because a pool can&apos;t
+                      perform the review.
+                    </FieldDescription>
+                  )}
                   <FieldError errors={[error]} />
                 </FieldContent>
               </Field>
@@ -604,12 +629,12 @@ export const NetworkingAuthMethodForm = ({
                   </FieldLabel>
                   <FieldContent>
                     <FilterableSelect
-                      value={REVIEW_MODE_OPTIONS.find((option) => option.value === field.value)}
+                      value={reviewModeOptions.find((option) => option.value === field.value)}
                       onChange={(option) => {
                         const next = option as { value: "api" | "gateway" } | null;
                         if (next) field.onChange(next.value);
                       }}
-                      options={REVIEW_MODE_OPTIONS}
+                      options={reviewModeOptions}
                       isDisabled={isDisabled || isSaving}
                       isSearchable={false}
                       isClearable={false}

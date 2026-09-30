@@ -215,13 +215,14 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     ...ctx
   }: TUpdatePamAccountTemplateDTO & TActorContext) => {
     await verifyProductAdmin(projectId, ctx);
-    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
-    await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const existing = await pamAccountTemplateDAL.findById(templateId);
     if (!existing || existing.projectId !== projectId) {
       throw new NotFoundError({ message: `Account template with ID '${templateId}' not found` });
     }
+
+    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx, existing.gatewayId);
+    await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const validatedPolicies = validateTemplatePolicies(existing.type, policies);
     validateTemplateRotationConfig(existing.type, settings);

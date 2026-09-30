@@ -676,6 +676,7 @@ tables:
       - parentOrgId
       - rootOrgId
       - blockDuplicateSecretSyncDestinations
+      - requireGatewayPools
 
   - name: pam_accounts
     source: public.pam_accounts

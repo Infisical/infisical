@@ -112,7 +112,7 @@ type TPamAccountServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
@@ -723,11 +723,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
 
     const effectiveGatewayId = gatewayId ?? template.gatewayId;
+    // The template's gateway was checked against the pool policy when it was set on the template.
     await validateGatewayAttachment(
       deps,
       effectiveGatewayId,
       effectiveGatewayId ? null : (gatewayPoolId ?? template.gatewayPoolId),
-      ctx
+      ctx,
+      template.gatewayId
     );
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
@@ -912,11 +914,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       const nextTemplateGatewayPoolId = template ? template.gatewayPoolId : existing.templateGatewayPoolId;
 
       const effectiveGatewayId = nextGatewayId ?? nextTemplateGatewayId;
+      // An inherited template gateway was checked against the pool policy on the template itself.
+      const isInheritedGateway = !nextGatewayId && effectiveGatewayId === nextTemplateGatewayId;
       await validateGatewayAttachment(
         deps,
         effectiveGatewayId,
         effectiveGatewayId ? null : (nextGatewayPoolId ?? nextTemplateGatewayPoolId),
-        ctx
+        ctx,
+        isInheritedGateway ? effectiveGatewayId : (existing.gatewayId ?? existing.templateGatewayId)
       );
     }
     await validateRecordingConnection(deps, recordingConnectionId, ctx);

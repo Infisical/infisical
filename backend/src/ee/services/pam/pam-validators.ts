@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import {
@@ -16,6 +17,7 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TPamAccountSettingsOverrides } from "../pam-account-template/pam-account-template-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
@@ -29,17 +31,20 @@ export type TPamValidatorDeps = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export const validateGatewayAttachment = async (
   {
     permissionService,
     gatewayV2DAL,
-    gatewayPoolService
-  }: Pick<TPamValidatorDeps, "permissionService" | "gatewayV2DAL" | "gatewayPoolService">,
+    gatewayPoolService,
+    orgDAL
+  }: Pick<TPamValidatorDeps, "permissionService" | "gatewayV2DAL" | "gatewayPoolService" | "orgDAL">,
   gwId: string | null | undefined,
   poolId: string | null | undefined,
-  ctx: TActorContext
+  ctx: TActorContext,
+  previousGatewayId?: string | null
 ) => {
   if (gwId) {
     const gw = await gatewayV2DAL.findOne({ id: gwId, orgId: ctx.actorOrgId });
@@ -59,6 +64,8 @@ export const validateGatewayAttachment = async (
       OrgPermissionGatewayActions.AttachGateways,
       OrgPermissionSubjects.Gateway
     );
+
+    await assertIndividualGatewayAllowed({ orgDAL, orgId: ctx.actorOrgId, gatewayId: gwId, previousGatewayId });
   }
   if (poolId) {
     await gatewayPoolService.resolveAttachableGatewayFromPool({
