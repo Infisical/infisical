@@ -1,3 +1,10 @@
+/* ==========================================================================
+   Global reset and design tokens
+
+   Every custom rule below reads its colors from these tokens. Most alias
+   Mintlify's theme variables, so they follow the colors set in docs.json.
+   ========================================================================== */
+
 * {
   border-radius: 0 !important;
 }
@@ -78,7 +85,756 @@
   --ifx-cat-agent-vault: #a1d434;
 }
 
-/* Quickstarts index page */
+/* ==========================================================================
+   Mintlify overrides
+
+   Restyles of Mintlify's own layout, navigation, and components. These
+   depend on Mintlify's markup, so recheck them after a Mintlify upgrade.
+   ========================================================================== */
+
+.chat-assistant-floating-input {
+  visibility: hidden !important;
+}
+
+#content-container {
+  margin-top: 2rem;
+}
+
+#content-area h1,
+#content-area h2,
+#content-area h3,
+#content-area h4,
+#content-area h5,
+#content-area h6 {
+  font-weight: 600 !important;
+}
+
+#content-area div.my-4{
+  border-width: 1px;
+}
+
+#content-area div.card {
+  background-color: var(--ifx-card-bg);
+  border-color: var(--ifx-card-line);
+}
+
+#header {
+  border-left: 2px solid var(--ifx-accent);
+  padding-left: 16px;
+  padding-right: 16px;
+  background-color: var(--ifx-surface-soft);
+  padding-bottom: 10px;
+  padding-top: 10px;
+}
+
+#page-context-menu button:hover {
+  background-color: #F3F4F6;
+}
+
+.dark #page-context-menu button:hover {
+  background-color: var(--ifx-accent-soft);
+}
+
+.dark #navbar .max-w-8xl {
+  border-bottom-color: #1e1f24;
+  background-color: #08090b;
+}
+
+#topbar-cta-button .group .absolute {
+  background-color: black;
+}
+
+.dark #topbar-cta-button .group,
+.dark #topbar-cta-button .group .absolute,
+.dark #topbar-cta-button .group .flex {
+  background-color: #ffffff !important;
+}
+
+.dark #topbar-cta-button .group .flex,
+.dark #topbar-cta-button .group .flex > * {
+  color: #0e1014 !important;
+}
+
+html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"] {
+  color: #515151;
+  text-shadow: none;
+}
+
+html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"] {
+  color: #9f9f9f;
+}
+
+html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hover {
+  color: #262626;
+}
+
+html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hover {
+  color: #cfcfcf;
+}
+
+html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"] > div {
+  background-color: transparent;
+}
+
+html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hover > div {
+  background-color: #dfdfdf;
+}
+
+html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hover > div {
+  background-color: #3f3f3f;
+}
+
+::selection {
+  background-color: #f7fe62;
+  color: #000000;
+}
+
+.dark ::selection {
+  background-color: #f4f73f;
+  color: #000000;
+}
+
+#sidebar-content .sidebar-title {
+  font-weight: inherit;
+}
+
+/* Section header in the sidebar.
+   Each dropdown item hoists its landing page above every group in docs.json, so
+   it renders as the first <ul class="sidebar-group"> with a single <li> and no
+   collapse <button>. It reads as a section label; when the reader is actually on
+   that page it takes the #header treatment from doc pages, so the yellow rule
+   keeps meaning "you are here". Depends on Mintlify's sidebar markup; recheck
+   after an upgrade. */
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) {
+  margin-bottom: 1rem;
+}
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a {
+  /* transparent rule reserves the 2px so nothing shifts when it becomes active */
+  border-left: 2px solid transparent;
+  padding: 10px 16px !important;
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #101114;
+}
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
+  border-left-color: var(--ifx-accent);
+  background-color: var(--ifx-surface-soft);
+}
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a svg {
+  width: 1.0625rem;
+  height: 1.0625rem;
+  color: #101114;
+}
+
+.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a {
+  color: #f3f3f4;
+}
+
+.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
+  color: #f3f3f4;
+}
+
+.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a svg {
+  color: #f3f3f4;
+}
+
+/* Mintlify honors `tag` only on sidebar groups, so a navbar dropdown item has no
+   way to flag Agent Vault as preview. Both nav items are flex rows, so ::after
+   lands after the label. The mobile item appends a checkmark when it is the
+   current page; `order` keeps that trailing the pill. Depends on Mintlify's
+   navbar markup; recheck after a CLI upgrade. */
+
+.nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
+  content: "PREVIEW";
+  flex: none;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.25;
+  background-color: rgb(var(--primary) / 0.1);
+  color: rgb(var(--primary));
+}
+
+.dark .nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
+.dark .mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
+  color: rgb(var(--primary-light));
+}
+
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"] {
+  justify-content: flex-start;
+}
+
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"] > svg {
+  order: 1;
+  margin-left: auto;
+}
+
+[data-component-part="field-name"] {
+  position: relative;
+}
+
+[data-component-part="field-name"]::after {
+  content: "Click to copy";
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  z-index: 50;
+  transform: translateX(-50%);
+  visibility: hidden;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  background: #18181b;
+  color: #ffffff;
+  font: 500 0.75rem/1 system-ui, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+[data-component-part="field-name"]:hover::after,
+[data-component-part="field-name"]:focus-visible::after {
+  visibility: visible;
+}
+
+[data-component-part="field-name"][data-copy-state="copied"]::after {
+  content: "Copied";
+  visibility: visible;
+}
+
+/* ==========================================================================
+   Shared
+   ========================================================================== */
+
+.ifx-mark {
+  background-color: #f7fe62;
+  color: #000000;
+  padding: 0 0.15em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.dark .ifx-mark {
+  background-color: #f4f73f;
+}
+
+/* ==========================================================================
+   Home page (snippets/home.jsx)
+   ========================================================================== */
+
+.ifx-home {
+  width: 100%;
+  max-width: 70rem;
+  margin-inline: auto;
+  padding: 3rem 1.5rem 6rem;
+}
+
+.ifx-home__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+}
+
+.ifx-home__hero-aside {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ifx-home__hero-aside > .ifx-steps {
+  margin-bottom: 0;
+}
+
+.ifx-steps__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ifx-steps__item {
+  position: relative;
+  padding-left: 44px;
+  padding-bottom: 1.25rem;
+}
+
+.ifx-steps__item::before {
+  content: "";
+  position: absolute;
+  left: 13.5px;
+  top: 34px;
+  bottom: 0;
+  width: 1px;
+  background-color: rgba(229, 229, 229, 0.7);
+}
+
+.ifx-steps__item:last-child {
+  padding-bottom: 0;
+}
+
+.ifx-steps__item:last-child::before {
+  display: none;
+}
+
+.ifx-steps__num {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background-color: #f4f4f4;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ifx-text);
+}
+
+.ifx-steps__label {
+  display: block;
+  width: fit-content;
+  padding-top: 4px;
+  font-size: 0.9375rem;
+  color: var(--ifx-text-dim);
+  text-decoration: none;
+}
+
+/* Mintlify thickens a link's underline to 2px on hover. On inline text that moves nothing, but
+   these are block-level, so the second pixel is a shadow below the border instead. */
+a.ifx-steps__label {
+  border-bottom: 1px solid var(--ifx-accent-ink);
+}
+
+a.ifx-steps__label:hover {
+  box-shadow: 0 1px 0 var(--ifx-accent-ink);
+}
+
+.ifx-steps__num + .ifx-steps__tabs,
+.ifx-steps__num + .ifx-steps__cmd {
+  margin-top: 4px;
+}
+
+.ifx-steps__content {
+  margin-top: 0.75rem;
+}
+
+.ifx-steps__tabs {
+  display: flex;
+  gap: 0.875rem;
+  margin-top: 0.625rem;
+}
+
+.ifx-steps__tab {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.75rem;
+  color: var(--ifx-text-dim);
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+}
+
+.ifx-steps__tab:hover {
+  border-bottom-color: var(--ifx-hover-line);
+}
+
+.ifx-steps__tab--active,
+.ifx-steps__tab--active:hover {
+  color: var(--ifx-accent-ink);
+  border-bottom-color: currentColor;
+}
+
+.ifx-steps__cmd {
+  display: flex;
+  align-items: stretch;
+  margin-top: 0.5rem;
+  background-color: var(--ifx-surface);
+  border: 1px solid var(--ifx-line);
+}
+
+.ifx-steps__code {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4375rem 0.625rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #26272b;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.ifx-steps__copy {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--ifx-line);
+  background: none;
+  color: var(--ifx-muted);
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.ifx-steps__copy:hover {
+  color: var(--ifx-text-dim);
+  background-color: #f4f4f4;
+}
+
+.dark .ifx-steps__item::before {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .ifx-steps__num {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+
+.dark .ifx-steps__code {
+  color: #adaeb0;
+}
+
+.dark .ifx-steps__copy:hover {
+  background-color: #1e1f24;
+}
+
+.ifx-home__title {
+  margin: 1.25rem 0 0;
+  max-width: 46rem;
+  font-size: clamp(2.25rem, 5vw, 3rem);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  color: var(--ifx-text);
+}
+
+.ifx-home__lede {
+  font-family: var(--font-family-headings-custom, inherit);
+  margin: 1.25rem 0 0;
+  max-width: 40rem;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--ifx-text-soft);
+}
+
+.ifx-home__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.ifx-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 1rem;
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.ifx-btn--primary {
+  background-color: #26272b;
+  color: #ffffff;
+}
+
+.ifx-btn--primary:hover {
+  background-color: #000000;
+}
+
+.dark .ifx-btn--primary {
+  background-color: #ffffff;
+  color: #0e1014;
+}
+
+.dark .ifx-btn--primary:hover {
+  background-color: #ebebeb;
+}
+
+.ifx-btn--secondary {
+  border: 1px solid var(--ifx-line);
+  color: var(--ifx-strong);
+}
+
+.ifx-btn--secondary:hover {
+  background-color: var(--ifx-surface-soft);
+}
+
+.ifx-home__section {
+  margin-top: 2rem;
+}
+
+.ifx-home__section-title {
+  margin: 0 0 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ifx-muted);
+}
+
+.ifx-stack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ifx-stack__tile {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0;
+  text-decoration: none;
+}
+
+.ifx-card__main + .ifx-stack {
+  margin-top: 1.5rem;
+}
+
+.ifx-stack__tile:hover {
+  background-color: var(--ifx-hover-fill);
+}
+
+.ifx-stack__logo {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.ifx-stack__logo--adapt-light {
+  filter: invert(1);
+}
+
+.ifx-stack__logo--adapt-mono {
+  filter: brightness(0);
+}
+
+.dark .ifx-stack__logo--adapt-light,
+.dark .ifx-stack__logo--adapt-mono {
+  filter: none;
+}
+
+.dark .ifx-stack__logo--adapt-dark {
+  filter: invert(1);
+}
+
+.ifx-stack__glyph {
+  color: var(--ifx-muted);
+}
+
+.ifx-stack__label {
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 0.875rem;
+  color: var(--ifx-text);
+}
+
+.ifx-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+}
+
+.ifx-card {
+  --ifx-ink: var(--ifx-muted);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  background-color: var(--ifx-card-bg);
+  outline: 1px solid var(--ifx-card-line);
+  text-decoration: none;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.ifx-card--secrets {
+  --ifx-ink: var(--ifx-cat-secrets);
+}
+
+.ifx-card--scanning {
+  --ifx-ink: var(--ifx-cat-scanning);
+}
+
+.ifx-card--certificates {
+  --ifx-ink: var(--ifx-cat-certificates);
+}
+
+.ifx-card--pam {
+  --ifx-ink: var(--ifx-cat-pam);
+}
+
+.ifx-card--kms {
+  --ifx-ink: var(--ifx-cat-kms);
+}
+
+.ifx-card--agent-vault {
+  --ifx-ink: var(--ifx-cat-agent-vault);
+}
+
+.ifx-card__links {
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+  padding-top: 1.25rem;
+}
+
+.ifx-card__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4375rem 0;
+  font-size: 0.875rem;
+  color: var(--ifx-strong);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.ifx-card__link:hover {
+  color: var(--ifx-ink);
+}
+
+.ifx-card__arrow {
+  flex: none;
+  opacity: 0.35;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.ifx-card__link:hover .ifx-card__arrow {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+.ifx-card__main {
+  display: flex;
+  flex-direction: column;
+}
+
+.ifx-card__icon {
+  color: var(--ifx-ink);
+  opacity: 0.75;
+  transition: opacity 0.2s;
+}
+
+a.ifx-card:hover .ifx-card__icon {
+  opacity: 1;
+}
+
+.ifx-card__title {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 1rem;
+  font-family: var(--font-family-headings-custom, inherit);
+  font-weight: var(--font-weight-headings-custom, 400);
+  font-size: 0.9375rem;
+  color: var(--ifx-card-title);
+}
+
+a.ifx-card__title {
+  align-self: flex-start;
+  text-decoration: none;
+}
+
+div.ifx-card a.ifx-card__title::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+div.ifx-card a:not(.ifx-card__title) {
+  position: relative;
+  z-index: 1;
+}
+
+.ifx-card__chevron {
+  flex: none;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+a.ifx-card:hover .ifx-card__chevron,
+a.ifx-card__title:hover .ifx-card__chevron {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.ifx-card__body {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--ifx-card-body);
+}
+
+@media (min-width: 640px) {
+  .ifx-stack {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ifx-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ifx-card--wide {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ifx-home {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+
+  .ifx-home__hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 27rem);
+    column-gap: 5rem;
+    align-items: center;
+    padding: 1.5rem 0;
+  }
+
+  .ifx-home__hero-aside {
+    align-self: stretch;
+  }
+
+  .ifx-stack {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .ifx-card--wide {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    column-gap: 3rem;
+  }
+
+  .ifx-stack__tile {
+    padding: 0.625rem 0.75rem;
+  }
+
+  .ifx-card--wide .ifx-card__main + .ifx-stack {
+    margin-top: 0;
+  }
+
+  .ifx-card--wide .ifx-stack {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: 1fr;
+    height: 100%;
+  }
+}
+
+/* ==========================================================================
+   Quickstarts index (documentation/getting-started/quickstarts.mdx)
+   ========================================================================== */
+
 .qs-index {
   max-width: 960px;
   margin: 0 auto;
@@ -337,718 +1093,13 @@
   }
 }
 
-.chat-assistant-floating-input {
-  visibility: hidden !important;
-}
-
-#header {
-  border-left: 2px solid var(--ifx-accent);
-  padding-left: 16px;
-  padding-right: 16px;
-  background-color: var(--ifx-surface-soft);
-  padding-bottom: 10px;
-  padding-top: 10px;
-}
-
-#page-context-menu button:hover {
-  background-color: #F3F4F6;
-}
-
-#content-area div.card {
-  background-color: var(--ifx-card-bg);
-  border-color: var(--ifx-card-line);
-}
-
-#content-area div.my-4{
-  border-width: 1px;
-}
-
-#content-container {
-  margin-top: 2rem;
-}
-
-#content-area h1,
-#content-area h2,
-#content-area h3,
-#content-area h4,
-#content-area h5,
-#content-area h6 {
-  font-weight: 600 !important;
-}
-
-#topbar-cta-button .group .absolute {
-  background-color: black;
-}
-
-.dark #navbar .max-w-8xl {
-  border-bottom-color: #1e1f24;
-  background-color: #08090b;
-}
-
-.dark #page-context-menu button:hover {
-  background-color: var(--ifx-accent-soft);
-}
-
-.dark #topbar-cta-button .group,
-.dark #topbar-cta-button .group .absolute,
-.dark #topbar-cta-button .group .flex {
-  background-color: #ffffff !important;
-}
-
-.dark #topbar-cta-button .group .flex,
-.dark #topbar-cta-button .group .flex > * {
-  color: #0e1014 !important;
-}
-
-html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"] {
-  color: #515151;
-  text-shadow: none;
-}
-
-html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"] {
-  color: #9f9f9f;
-}
-
-html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hover {
-  color: #262626;
-}
-
-html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hover {
-  color: #cfcfcf;
-}
-
-html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"] > div {
-  background-color: transparent;
-}
-
-html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hover > div {
-  background-color: #dfdfdf;
-}
-
-html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hover > div {
-  background-color: #3f3f3f;
-}
-
-::selection {
-  background-color: #f7fe62;
-  color: #000000;
-}
-
-.dark ::selection {
-  background-color: #f4f73f;
-  color: #000000;
-}
-
-#sidebar-content .sidebar-title {
-  font-weight: inherit;
-}
-
-.ifx-home {
-  width: 100%;
-  max-width: 70rem;
-  margin-inline: auto;
-  padding: 3rem 1.5rem 6rem;
-}
-
-.ifx-home__hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 2.5rem;
-}
-
-@media (min-width: 1024px) {
-  .ifx-home__hero {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 27rem);
-    column-gap: 5rem;
-    align-items: center;
-  }
-}
-
-.ifx-steps__list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ifx-steps__item {
-  position: relative;
-  padding-left: 44px;
-  padding-bottom: 1.25rem;
-}
-
-.ifx-steps__item::before {
-  content: "";
-  position: absolute;
-  left: 13.5px;
-  top: 34px;
-  bottom: 0;
-  width: 1px;
-  background-color: rgba(229, 229, 229, 0.7);
-}
-
-.ifx-steps__item:last-child {
-  padding-bottom: 0;
-}
-
-.ifx-steps__item:last-child::before {
-  display: none;
-}
-
-.ifx-steps__num {
-  position: absolute;
-  left: 0;
-  top: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  background-color: #f4f4f4;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ifx-text);
-}
-
-.ifx-steps__label {
-  display: block;
-  width: fit-content;
-  padding-top: 4px;
-  font-size: 0.9375rem;
-  color: var(--ifx-text-dim);
-  text-decoration: none;
-}
-
-/* Mintlify thickens a link's underline to 2px on hover. On inline text that moves nothing, but
-   these are block-level, so the second pixel is a shadow below the border instead. */
-a.ifx-steps__label {
-  border-bottom: 1px solid var(--ifx-accent-ink);
-}
-
-a.ifx-steps__label:hover {
-  box-shadow: 0 1px 0 var(--ifx-accent-ink);
-}
-
-.ifx-steps__num + .ifx-steps__tabs,
-.ifx-steps__num + .ifx-steps__cmd {
-  margin-top: 4px;
-}
-
-.ifx-steps__content {
-  margin-top: 0.75rem;
-}
-
-.ifx-steps__tabs {
-  display: flex;
-  gap: 0.875rem;
-  margin-top: 0.625rem;
-}
-
-.ifx-steps__tab {
-  padding: 0;
-  border: 0;
-  background: none;
-  font-size: 0.75rem;
-  color: var(--ifx-text-dim);
-  cursor: pointer;
-  border-bottom: 1px solid transparent;
-}
-
-.ifx-steps__tab:hover {
-  border-bottom-color: var(--ifx-hover-line);
-}
-
-.ifx-steps__tab--active,
-.ifx-steps__tab--active:hover {
-  color: var(--ifx-accent-ink);
-  border-bottom-color: currentColor;
-}
-
-.ifx-steps__cmd {
-  display: flex;
-  align-items: stretch;
-  margin-top: 0.5rem;
-  background-color: var(--ifx-surface);
-  border: 1px solid var(--ifx-line);
-}
-
-.ifx-steps__code {
-  flex: 1;
-  min-width: 0;
-  padding: 0.4375rem 0.625rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.75rem;
-  line-height: 1.5;
-  color: #26272b;
-  overflow-x: auto;
-  white-space: pre;
-}
-
-.ifx-steps__copy {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  padding: 0;
-  border: 0;
-  border-left: 1px solid var(--ifx-line);
-  background: none;
-  color: var(--ifx-muted);
-  cursor: pointer;
-  transition: color 0.2s, background-color 0.2s;
-}
-
-.ifx-steps__copy:hover {
-  color: var(--ifx-text-dim);
-  background-color: #f4f4f4;
-}
-
-.dark .ifx-steps__item::before {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.dark .ifx-steps__num {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-
-.dark .ifx-steps__code {
-  color: #adaeb0;
-}
-
-.dark .ifx-steps__copy:hover {
-  background-color: #1e1f24;
-}
-
-.ifx-home__title {
-  margin: 1.25rem 0 0;
-  max-width: 46rem;
-  font-size: clamp(2.25rem, 5vw, 3rem);
-  font-weight: 400;
-  line-height: 1.08;
-  letter-spacing: -0.015em;
-  color: var(--ifx-text);
-}
-
-.ifx-home__lede {
-  font-family: var(--font-family-headings-custom, inherit);
-  margin: 1.25rem 0 0;
-  max-width: 40rem;
-  font-size: 1.0625rem;
-  line-height: 1.6;
-  color: var(--ifx-text-soft);
-}
-
-.ifx-mark {
-  background-color: #f7fe62;
-  color: #000000;
-  padding: 0 0.15em;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-}
-
-.dark .ifx-mark {
-  background-color: #f4f73f;
-}
-
-.ifx-home__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 2rem;
-}
-
-.ifx-btn {
-  display: inline-flex;
-  align-items: center;
-  height: 40px;
-  padding: 0 1rem;
-  font-family: var(--font-family-headings-custom, inherit);
-  font-size: 0.875rem;
-  text-decoration: none;
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
-}
-
-.ifx-btn--primary {
-  background-color: #26272b;
-  color: #ffffff;
-}
-
-.ifx-btn--primary:hover {
-  background-color: #000000;
-}
-
-.ifx-btn--secondary {
-  border: 1px solid var(--ifx-line);
-  color: var(--ifx-strong);
-}
-
-.ifx-btn--secondary:hover {
-  background-color: var(--ifx-surface-soft);
-}
-
-.ifx-home__section {
-  margin-top: 2rem;
-}
-
-.ifx-home__section-title {
-  margin: 0 0 0.875rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--ifx-muted);
-}
-
-.ifx-stack {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.ifx-stack__tile {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.625rem 0;
-  text-decoration: none;
-}
-
-.ifx-card__main + .ifx-stack {
-  margin-top: 1.5rem;
-}
-
-.ifx-stack__tile:hover {
-  background-color: var(--ifx-hover-fill);
-}
-
-.ifx-stack__logo {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
-}
-
-.ifx-stack__glyph {
-  color: var(--ifx-muted);
-}
-
-.ifx-stack__label {
-  font-family: var(--font-family-headings-custom, inherit);
-  font-size: 0.875rem;
-  color: var(--ifx-text);
-}
-
-@media (min-width: 640px) {
-  .ifx-stack {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1024px) {
-  .ifx-stack {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-}
-
-.ifx-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1px;
-}
-
-.ifx-card {
-  --ifx-ink: var(--ifx-muted);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  padding: 1.5rem;
-  background-color: var(--ifx-card-bg);
-  outline: 1px solid var(--ifx-card-line);
-  text-decoration: none;
-  transition: background-color 0.2s, box-shadow 0.2s;
-}
-
-.ifx-card--secrets {
-  --ifx-ink: var(--ifx-cat-secrets);
-}
-
-.ifx-card--scanning {
-  --ifx-ink: var(--ifx-cat-scanning);
-}
-
-.ifx-card--certificates {
-  --ifx-ink: var(--ifx-cat-certificates);
-}
-
-.ifx-card--pam {
-  --ifx-ink: var(--ifx-cat-pam);
-}
-
-.ifx-card--kms {
-  --ifx-ink: var(--ifx-cat-kms);
-}
-
-.ifx-card--agent-vault {
-  --ifx-ink: var(--ifx-cat-agent-vault);
-}
-
-.ifx-card__links {
-  display: flex;
-  flex-direction: column;
-  margin-top: auto;
-  padding-top: 1.25rem;
-}
-
-.ifx-card__link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.4375rem 0;
-  font-size: 0.875rem;
-  color: var(--ifx-strong);
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.ifx-card__link:hover {
-  color: var(--ifx-ink);
-}
-
-.ifx-card__arrow {
-  flex: none;
-  opacity: 0.35;
-  transition: opacity 0.2s, transform 0.2s;
-}
-
-.ifx-card__link:hover .ifx-card__arrow {
-  opacity: 1;
-  transform: translateX(2px);
-}
-
-.ifx-card__main {
-  display: flex;
-  flex-direction: column;
-}
-
-.ifx-card__icon {
-  color: var(--ifx-ink);
-  opacity: 0.75;
-  transition: opacity 0.2s;
-}
-
-a.ifx-card:hover .ifx-card__icon {
-  opacity: 1;
-}
-
-.ifx-card__title {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  margin-top: 1rem;
-  font-family: var(--font-family-headings-custom, inherit);
-  font-weight: var(--font-weight-headings-custom, 400);
-  font-size: 0.9375rem;
-  color: var(--ifx-card-title);
-}
-
-a.ifx-card__title {
-  align-self: flex-start;
-  text-decoration: none;
-}
-
-div.ifx-card a.ifx-card__title::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-}
-
-div.ifx-card a:not(.ifx-card__title) {
-  position: relative;
-  z-index: 1;
-}
-
-.ifx-card__chevron {
-  flex: none;
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: opacity 0.2s, transform 0.2s;
-}
-
-a.ifx-card:hover .ifx-card__chevron,
-a.ifx-card__title:hover .ifx-card__chevron {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.ifx-card__body {
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
-  line-height: 1.6;
-  color: var(--ifx-card-body);
-}
-
-.dark .ifx-btn--primary {
-  background-color: #ffffff;
-  color: #0e1014;
-}
-
-.dark .ifx-btn--primary:hover {
-  background-color: #ebebeb;
-}
-
-.ifx-stack__logo--adapt-light {
-  filter: invert(1);
-}
-
-.ifx-stack__logo--adapt-mono {
-  filter: brightness(0);
-}
-
-.dark .ifx-stack__logo--adapt-light,
-.dark .ifx-stack__logo--adapt-mono {
-  filter: none;
-}
-
-.dark .ifx-stack__logo--adapt-dark {
-  filter: invert(1);
-}
-
-@media (min-width: 640px) {
-  .ifx-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .ifx-card--wide {
-    grid-column: span 2;
-  }
-}
-
-@media (min-width: 1024px) {
-  .ifx-home {
-    padding-left: 2rem;
-    padding-right: 2rem;
-  }
-
-  .ifx-home__hero {
-    padding: 1.5rem 0;
-  }
-
-  .ifx-card--wide {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
-    column-gap: 3rem;
-  }
-
-  .ifx-stack__tile {
-    padding: 0.625rem 0.75rem;
-  }
-
-  .ifx-card--wide .ifx-card__main + .ifx-stack {
-    margin-top: 0;
-  }
-
-  .ifx-card--wide .ifx-stack {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-auto-rows: 1fr;
-    height: 100%;
-  }
-}
-
-.ifx-home__hero-aside {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.ifx-home__hero-aside > .ifx-steps {
-  margin-bottom: 0;
-}
-
-@media (min-width: 1024px) {
-  .ifx-home__hero-aside {
-    align-self: stretch;
-  }
-}
-
-[data-component-part="field-name"] {
-  position: relative;
-}
-
-[data-component-part="field-name"]::after {
-  content: "Click to copy";
-  position: absolute;
-  bottom: calc(100% + 0.5rem);
-  left: 50%;
-  z-index: 50;
-  transform: translateX(-50%);
-  visibility: hidden;
-  padding: 0.375rem 0.5rem;
-  border-radius: 0.375rem;
-  background: #18181b;
-  color: #ffffff;
-  font: 500 0.75rem/1 system-ui, sans-serif;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-[data-component-part="field-name"]:hover::after,
-[data-component-part="field-name"]:focus-visible::after {
-  visibility: visible;
-}
-
-[data-component-part="field-name"][data-copy-state="copied"]::after {
-  content: "Copied";
-  visibility: visible;
-}
-
-/* Section header in the sidebar.
-   Each dropdown item hoists its landing page above every group in docs.json, so
-   it renders as the first <ul class="sidebar-group"> with a single <li> and no
-   collapse <button>. It reads as a section label; when the reader is actually on
-   that page it takes the #header treatment from doc pages, so the yellow rule
-   keeps meaning "you are here". Depends on Mintlify's sidebar markup; recheck
-   after an upgrade. */
-
-#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) {
-  margin-bottom: 1rem;
-}
-
-#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a {
-  /* transparent rule reserves the 2px so nothing shifts when it becomes active */
-  border-left: 2px solid transparent;
-  padding: 10px 16px !important;
-  font-family: var(--font-family-headings-custom, inherit);
-  font-size: 0.9375rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: #101114;
-}
-
-#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
-  border-left-color: var(--ifx-accent);
-  background-color: var(--ifx-surface-soft);
-}
-
-#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a svg {
-  width: 1.0625rem;
-  height: 1.0625rem;
-  color: #101114;
-}
-
-.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a {
-  color: #f3f3f4;
-}
-
-.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
-  color: #f3f3f4;
-}
-
-.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a svg {
-  color: #f3f3f4;
-}
-
-/* Catalog browser (snippets/CatalogBrowser.jsx). Each control copies the Mintlify component it
-   stands in for: the text input, a neutral pill that fills with the brand color when selected,
-   and Card. Brand color marks selection only; rest and hover states stay neutral. */
+/* ==========================================================================
+   Catalog browser (snippets/CatalogBrowser.jsx)
+
+   Each control copies the Mintlify component it stands in for: the text
+   input, a neutral pill that fills with the brand color when selected, and
+   Card. Brand color marks selection only; rest and hover states stay neutral.
+   ========================================================================== */
 
 .ifx-catalog__search {
   position: relative;
@@ -1196,43 +1247,15 @@ a.ifx-card__title:hover .ifx-card__chevron {
   text-align: center;
 }
 
-/* Mintlify honors `tag` only on sidebar groups, so a navbar dropdown item has no
-   way to flag Agent Vault as preview. Both nav items are flex rows, so ::after
-   lands after the label. The mobile item appends a checkmark when it is the
-   current page; `order` keeps that trailing the pill. Depends on Mintlify's
-   navbar markup; recheck after a CLI upgrade. */
+/* ==========================================================================
+   Agent Vault quickstart configurator
+   (snippets/AgentVaultQuickstartConfigurator.jsx)
 
-.nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
-.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
-  content: "PREVIEW";
-  flex: none;
-  border-radius: 0.375rem;
-  padding: 0.125rem 0.25rem;
-  font-size: 0.65rem;
-  font-weight: 700;
-  line-height: 1.25;
-  background-color: rgb(var(--primary) / 0.1);
-  color: rgb(var(--primary));
-}
-
-.dark .nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
-.dark .mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
-  color: rgb(var(--primary-light));
-}
-
-.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"] {
-  justify-content: flex-start;
-}
-
-.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"] > svg {
-  order: 1;
-  margin-left: auto;
-}
-
-/* Agent Vault quickstart configurator (snippets/AgentVaultQuickstartConfigurator.jsx). The
-   container is a Card, the sentence chips are Mintlify's borderless dropdown triggers, the menu
-   is its dropdown panel, the search is its text input, and the tiles are neutral options that
-   take the brand color when chosen. */
+   The container is a Card, the sentence chips are Mintlify's borderless
+   dropdown triggers, the menu is its dropdown panel, the search is its text
+   input, and the tiles are neutral options that take the brand color when
+   chosen.
+   ========================================================================== */
 
 .ifx-avqs {
   margin: 0 0 1.75rem;
@@ -1523,7 +1546,10 @@ a.ifx-card__title:hover .ifx-card__chevron {
   text-decoration-thickness: 2px;
 }
 
-/* CLI reference page (snippets/CLIPage.jsx) */
+/* ==========================================================================
+   CLI reference (snippets/CLIPage.jsx)
+   ========================================================================== */
+
 .cli-ref {
   --cli-top: 64px;
   --cli-page: var(--ifx-page);
