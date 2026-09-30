@@ -7,10 +7,11 @@ import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subs
 import { SubscriptionPlan } from "@app/hooks/api/subscriptions/types";
 
 import { UpgradeGate } from "./UpgradeGate";
-import { UpgradeIntent } from "./upgrade-intents";
+import { UpgradeIntent, UpgradeReturnTarget } from "./upgrade-intents";
 
 type UpgradeRequest = {
   intent: UpgradeIntent;
+  returnTarget?: UpgradeReturnTarget;
   paywallKey: string;
   isEntitled: (subscription: SubscriptionPlan) => boolean;
   onGranted: () => void | Promise<void>;
@@ -67,6 +68,7 @@ export const useUpgradeGate = () => {
   const upgradeGate = request ? (
     <UpgradeGate
       intent={request.intent}
+      returnTarget={request.returnTarget}
       paywallKey={request.paywallKey}
       isOpen
       onOpenChange={(isOpen) => {

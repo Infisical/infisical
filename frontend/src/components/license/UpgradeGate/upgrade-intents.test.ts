@@ -26,6 +26,32 @@ describe("buildUpgradeReturnPath", () => {
   });
 });
 
+describe("bounded upgrade return targets", () => {
+  it("bounds oversized project state before starting a trial", () => {
+    const location = {
+      pathname: "/source",
+      search: `?search=${"a".repeat(2100)}`,
+      hash: ""
+    } as Location;
+
+    expect(buildUpgradeReturnPath(DynamicSecretsUpgradeIntent, location)).toBe(
+      "/source?upgradeContinuation=create-dynamic-secret"
+    );
+  });
+
+  it("preserves the action target when unrelated search state is oversized", () => {
+    expect(
+      buildUpgradeReturnPath(
+        DynamicSecretsUpgradeIntent,
+        { pathname: "/source", search: `?search=${"a".repeat(2100)}`, hash: "" } as Location,
+        { environment: "prod", folderPath: "/service" }
+      )
+    ).toBe(
+      "/source?upgradeContinuation=create-dynamic-secret&upgradeEnvironment=prod&upgradeFolderPath=%2Fservice"
+    );
+  });
+});
+
 describe("Secrets upgrade intents", () => {
   it.each([
     ["overview", "?secretPath=%2Fproduction&environments=prod"],

@@ -1,4 +1,4 @@
-export type { UpgradeIntent } from "./upgrade-intents";
+export type { UpgradeIntent, UpgradeReturnTarget } from "./upgrade-intents";
 export type { CapabilityUpgradeIntent } from "./capability-upgrade-intents";
 export {
   CustomRolesUpgradeIntent,

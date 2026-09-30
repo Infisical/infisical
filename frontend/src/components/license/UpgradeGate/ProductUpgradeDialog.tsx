@@ -26,6 +26,7 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   features: PlanFeature[];
   notice?: ReactNode;
+  billingDetails?: ReactNode;
   footer: ReactNode;
 };
 
@@ -51,6 +52,7 @@ export const ProductUpgradeDialog = ({
   onOpenChange,
   features,
   notice,
+  billingDetails,
   footer
 }: Props) => (
   <UpgradeDialogLayout
@@ -104,6 +106,7 @@ export const ProductUpgradeDialog = ({
               ))}
             </ul>
           )}
+          {billingDetails}
         </section>
       </TabsContent>
     </Tabs>

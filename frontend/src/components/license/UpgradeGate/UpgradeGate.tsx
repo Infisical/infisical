@@ -36,7 +36,12 @@ import {
 } from "@app/hooks/api";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { waitForMinimumDuration } from "@app/lib/fn/promise";
-import { fmtMoney } from "@app/pages/organization/BillingV2Page/billing-v2-format";
+import {
+  cadenceWord,
+  fmtMoney,
+  isMeteredCadence,
+  unitPrice
+} from "@app/pages/organization/BillingV2Page/billing-v2-format";
 import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
 
 import { CapabilityUpgradeGate } from "./CapabilityUpgradeGate";
@@ -46,7 +51,8 @@ import {
   BillingPlan,
   buildUpgradeReturnPath,
   UpgradeFeature,
-  UpgradeIntent
+  UpgradeIntent,
+  UpgradeReturnTarget
 } from "./upgrade-intents";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
@@ -54,6 +60,7 @@ const MINIMUM_PLAN_LOADING_DURATION_MS = 800;
 
 type Props = {
   intent: UpgradeIntent;
+  returnTarget?: UpgradeReturnTarget;
   paywallKey: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -251,7 +258,14 @@ export const UpgradeGate = (props: Props | CapabilityProps) => {
   return <ProductUpgradeGate {...(props as Props)} />;
 };
 
-const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange, onGranted }: Props) => {
+const ProductUpgradeGate = ({
+  intent,
+  returnTarget,
+  paywallKey,
+  isOpen,
+  onOpenChange,
+  onGranted
+}: Props) => {
   const [selectedTier, setSelectedTier] = useState(intent.planKey);
   const [cadence, setCadence] = useState<BillingV2Cadence>("annual");
   const [isMinimumPlanLoading, setIsMinimumPlanLoading] = useState(isOpen);
@@ -328,7 +342,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange, onGrante
     return null;
   }
 
-  const returnPath = buildUpgradeReturnPath(intent, window.location);
+  const returnPath = buildUpgradeReturnPath(intent, window.location, returnTarget);
   const openRootBilling = () => {
     trackUpgradeClick();
     const search = new URLSearchParams({
@@ -511,16 +525,25 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange, onGrante
       : supportsAnnualCadence
         ? "annual"
         : "monthly";
-  const effectiveCadence = getEffectiveCadence(plan, visibleCadence);
+  const effectiveCadence = trialAvailable ? "monthly" : getEffectiveCadence(plan, visibleCadence);
   const comparePrice = getPlanPrice(plan, effectiveCadence);
   const features = getPlanFeatures(product, plan);
   const savingsPercent = Math.max(...plans.map(annualSavingsPercent));
-  const trialPriceLabel =
+  const isUpgradeTrial =
+    Boolean(currentEntitlement?.entitled && currentEntitlement.planTier) &&
+    currentEntitlement?.planTier !== "free" &&
+    currentEntitlement?.planTier !== plan.tier;
+  const currentPlanName =
+    plans.find((candidate) => candidate.tier === currentEntitlement?.planTier)?.name ??
+    currentEntitlement?.planTier;
+  const trialDurationLabel = plan.trialDays === 14 ? "2-Week" : `${plan.trialDays}-Day`;
+  let trialPriceLabel =
     plan.trialDays === 14
       ? "FREE for 2 Weeks"
       : plan.trialDays > 0
         ? `FREE for ${plan.trialDays} Days`
         : "FREE during trial";
+  if (isUpgradeTrial) trialPriceLabel = `Trial Upgrade: ${trialPriceLabel}`;
   const upgradeLabel = intent.upgradeLabel ?? `Upgrade ${product.name}`;
   const productStyle = { "--product-color": product.color } as CSSProperties;
 
@@ -616,7 +639,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange, onGrante
   const footerUnlockLabel =
     !hasPricingRow ? intent.upgradeLabel ?? `Unlock ${product.name}` : undefined;
   const hasPeriodOption =
-    planSupportsCadence(plan, "annual") && planSupportsCadence(plan, "monthly");
+    !trialAvailable && planSupportsCadence(plan, "annual") && planSupportsCadence(plan, "monthly");
   const showUsedTrialNotice =
     selfServe &&
     plan.selfServe &&
@@ -637,6 +660,83 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange, onGrante
       onTierChange={setSelectedTier}
       onOpenChange={onOpenChange}
       features={features}
+      billingDetails={
+        trialAvailable ? (
+          <section aria-label="Trial billing terms" className="space-y-3 text-sm text-muted">
+            <p>
+              {isUpgradeTrial
+                ? `Your ${trialDurationLabel.toLowerCase()} trial upgrade is free. You'll keep paying for ${currentPlanName} during the trial. After it ends, you'll move to ${plan.name} and be charged the difference. End the trial before then to stay on ${currentPlanName}.`
+                : `Your ${trialDurationLabel.toLowerCase()} trial is free. A payment method is required. If you do not have one on file, secure card setup must finish before the trial starts. After the trial, billing continues monthly based on usage unless you cancel.`}
+            </p>
+            {isUpgradeTrial && (
+              <div className="space-y-2 text-sm text-muted">
+                <p className="font-medium text-foreground">{plan.name} Catalog Reference Prices</p>
+                <p>
+                  These rates are not your upgrade charge. Your actual charge depends on your
+                  subscription and the remaining billing period.
+                </p>
+                {(["monthly", "annual"] as const)
+                  .filter((referenceCadence) => planSupportsCadence(plan, referenceCadence))
+                  .map((referenceCadence) => (
+                    <div key={referenceCadence}>
+                      <p>{referenceCadence === "annual" ? "Billed Annually" : "Billed Monthly"}</p>
+                      <ul className="mt-1 space-y-1">
+                        {plan.base && unitPrice(plan.base, referenceCadence) > 0 && (
+                          <li>
+                            Base Fee:{" "}
+                            {fmtMoney(
+                              unitPrice(plan.base, referenceCadence) /
+                                (referenceCadence === "annual" ? 12 : 1),
+                              6
+                            )}{" "}
+                            / month
+                          </li>
+                        )}
+                        {plan.dims
+                          .filter((dimension) => unitPrice(dimension, referenceCadence) > 0)
+                          .map((dimension) => {
+                            const perMonth =
+                              referenceCadence === "annual" &&
+                              !isMeteredCadence(dimension, referenceCadence);
+                            return (
+                              <li key={dimension.key}>
+                                {dimension.label}:{" "}
+                                {fmtMoney(
+                                  unitPrice(dimension, referenceCadence) / (perMonth ? 12 : 1),
+                                  6
+                                )}{" "}
+                                / {dimension.noun} /{" "}
+                                {perMonth ? "month" : cadenceWord(referenceCadence)}
+                                {dimension.included > 0 ? ` · ${dimension.included} included` : ""}
+                              </li>
+                            );
+                          })}
+                      </ul>
+                    </div>
+                  ))}
+                {!planSupportsCadence(plan, "annual") && !planSupportsCadence(plan, "monthly") && (
+                  <p>Catalog reference prices are unavailable.</p>
+                )}
+              </div>
+            )}
+            {!isUpgradeTrial && plan.dims.some((dimension) => dimension.monthly > 0) && (
+              <div className="text-sm text-muted">
+                <p className="font-medium text-foreground">Monthly Usage Rates</p>
+                <ul className="mt-2 space-y-1">
+                  {plan.dims
+                    .filter((dimension) => dimension.monthly > 0)
+                    .map((dimension) => (
+                      <li key={dimension.key}>
+                        {dimension.label}: {fmtMoney(dimension.monthly, 6)} / {dimension.noun} / month
+                        {dimension.included > 0 ? ` · ${dimension.included} included` : ""}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        ) : undefined
+      }
       notice={
         !selfServe ? (
           <Alert variant="info" appearance="borderless">
@@ -678,7 +778,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange, onGrante
                     }
                   />
                   <Label htmlFor={`upgrade-cadence-${product.id}`}>Annual Billing</Label>
-                  {savingsPercent > 0 && (
+                  {visibleCadence === "annual" && savingsPercent > 0 && (
                     <Badge variant="success" className="min-h-4 px-1 py-0 text-[10px]">
                       -{savingsPercent}%
                     </Badge>
@@ -688,18 +788,18 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange, onGrante
               <div
                 className={`flex items-baseline gap-2 text-sm tabular-nums ${hasPeriodOption ? "ml-auto" : ""}`}
               >
-                {comparePrice.amount > 0 ? (
+                {comparePrice.amount > 0 && (!trialAvailable || !isUpgradeTrial) ? (
                   <span
                     className={
                       trialAvailable ? "text-muted line-through" : "text-foreground font-medium"
                     }
                   >
-                    {fmtMoney(comparePrice.amount, 2)}
+                    {fmtMoney(comparePrice.amount, 6)}
                     {comparePrice.compactUnit}
                   </span>
-                ) : (
+                ) : !trialAvailable || !isUpgradeTrial ? (
                   <span className="text-foreground font-medium">Usage-based</span>
-                )}
+                ) : null}
                 {trialAvailable && (
                   <span className="text-foreground font-medium">{trialPriceLabel}</span>
                 )}
