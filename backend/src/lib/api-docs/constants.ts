@@ -1,3 +1,4 @@
+import { AGENT_VAULT_MAX_REFERENCES_PER_FIELD } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   SECRET_ROTATION_CONNECTION_MAP,
@@ -4253,6 +4254,8 @@ export const ENCRYPTION_KEY_ROTATION = {
   }
 };
 
+const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to the access bundle's variables, written as \`{{KEY}}\`. A reference that repeats counts each time.`;
+
 export const AGENT_VAULT = {
   ACCESS_BUNDLE: {
     accessBundleId: "The ID of the access bundle.",
@@ -4274,19 +4277,15 @@ export const AGENT_VAULT = {
       "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
     headerName: "The header the credential is written to. Defaults to `Authorization`.",
     headerPrefix:
-      "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
-    username:
-      "The username half of the basic credential. May be empty if a password is set. Never returned once saved, since some APIs put the whole key here.",
-    updateUsername:
-      "The username half of the basic credential. Omit to keep the stored username; send an empty string to remove it, which requires a password.",
-    updateValue: "The secret. Omit to keep the stored secret.",
-    updatePassword:
-      "The password half of the basic credential. Omit to keep the stored password; send an empty string to remove it, which requires a username.",
+      "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. Can't contain `{{` or `}}`. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
+    username: `The username half of the basic credential. May be empty if a password is set. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved, since some APIs put the whole key here.`,
+    updateUsername: `The username half of the basic credential. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored username; send an empty string to remove it, which requires a password.`,
+    updateValue: `The secret. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored secret.`,
+    updatePassword: `The password half of the basic credential. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored password; send an empty string to remove it, which requires a username.`,
     createdAt: "When the service was added to the access bundle.",
     updatedAt: "When the service was last changed.",
-    value: "The secret. Never returned once saved.",
-    password:
-      "The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. Never returned once saved.",
+    value: `The secret. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    password: `The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
     allowedMethods:
       "The HTTP methods this service allows. Null allows every method. Anything else is refused by the proxy with a 403.",
     allowedPathPrefixes:
@@ -4295,22 +4294,23 @@ export const AGENT_VAULT = {
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's `id` to change it in place and keep its stored value. Without an `id`, a header is matched by name.",
     customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
     customHeaderName: "The name of the header, which must not be the credential's own header.",
-    customHeaderPrefix: "Written before the header value, separated by one space. Leave empty to send the value alone.",
+    customHeaderPrefix:
+      "Written before the header value, separated by one space. Leave empty to send the value alone. Can't contain `{{` or `}}`.",
     updateCustomHeaderPrefix:
-      "Written before the header value, separated by one space. Unlike the value, an omitted prefix is cleared rather than kept, since the stored prefix is returned and can be resent.",
-    customHeaderValue: "The header value. Never returned once saved.",
-    updateCustomHeaderValue: "The header value. Omit to keep the value already stored for this header.",
+      "Written before the header value, separated by one space. Can't contain `{{` or `}}`. Unlike the value, an omitted prefix is cleared rather than kept, since the stored prefix is returned and can be resent.",
+    customHeaderValue: `The header value. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    updateCustomHeaderValue: `The header value. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored for this header.`,
     substitutions:
       "Placeholders the proxy swaps for a real secret before forwarding. Send the full list. A substitution you leave out is deleted. Send a substitution's `id` to change it in place and keep its stored value. Without an `id`, it is matched by its placeholder.",
     substitutionId:
       "The ID of the substitution. Send it to change that substitution in place. Omit it to match by placeholder.",
     placeholder:
-      "The fake value your agent already sends. The proxy replaces it with the real secret. Matched as a plain string, so a distinctive placeholder is worth choosing.",
+      "The fake value your agent already sends. The proxy replaces it with the real secret. Matched as a plain string, so a distinctive placeholder is worth choosing. Can't contain `{{` or `}}`.",
     surfaces: "Where in the request to look for the placeholder: path, query, header or body.",
-    substitutionValue: "The real value the placeholder is replaced with. Never returned once saved.",
-    updateSubstitutionValue: "The real value the placeholder is replaced with. Omit to keep the value already stored.",
+    substitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    updateSubstitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored.`,
     variableReferences:
-      "The variables this service's credential, custom header values and substitution values use. Left out for an Agent Vault member, since only admins can see variables.",
+      "The variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see variables.",
     referenceField:
       "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
     referenceCustomHeaderId: "The custom header whose value uses the variable.",
@@ -4318,9 +4318,9 @@ export const AGENT_VAULT = {
   },
   VARIABLE: {
     variableId: "The ID of the variable.",
-    key: "The name services use to refer to the variable, as {{KEY}}. Starts with a letter and uses only upper case letters, numbers and underscores.",
-    value: "The value the proxy puts in place of each {{KEY}}.",
-    updateValue: "The value the proxy puts in place of each {{KEY}}. Omit to keep the stored value.",
+    key: "The name services use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
+    value: "The value the proxy puts in place of each `{{KEY}}`.",
+    updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
     isSecret: "Whether the value is hidden once saved. A secret value is only returned by the value endpoint.",
     listedValue:
       "The value, for a variable that is not secret. Null for a secret one: read it from the value endpoint.",
