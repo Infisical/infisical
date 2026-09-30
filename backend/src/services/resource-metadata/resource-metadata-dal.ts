@@ -50,34 +50,33 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
     if (folderIds) {
       void query.whereIn(`${TableName.SecretV2}.folderId`, folderIds);
     } else {
-      void query.whereExists((subQuery) => {
-        void subQuery
-          .withRecursive("metadata_folder_ancestors", ["id", "parentId", "envId"], (ancestors) => {
-            void ancestors
-              .select("id", "parentId", "envId")
-              .from(TableName.SecretFolder)
-              .whereRaw("?? = ??", [`${TableName.SecretFolder}.id`, `${TableName.SecretV2}.folderId`])
-              .where((folder) => {
-                void folder.where("isReserved", false).orWhereNull("parentId");
-              })
-              .union((parents) => {
-                void parents
-                  .select("parent.id", "parent.parentId", "parent.envId")
-                  .from({ parent: TableName.SecretFolder })
-                  .join("metadata_folder_ancestors", (join) => {
-                    join
-                      .on("parent.id", "metadata_folder_ancestors.parentId")
-                      .andOn("parent.envId", "metadata_folder_ancestors.envId");
-                  })
-                  .where((parent) => {
-                    void parent.where("parent.isReserved", false).orWhereNull("parent.parentId");
-                  });
-              });
-          })
-          .select(db.raw("1"))
-          .from("metadata_folder_ancestors")
-          .whereNull("parentId");
-      });
+      void query
+        .withRecursive("metadata_search_folders", ["id", "envId"], (folders) => {
+          void folders
+            .select("root.id", "root.envId")
+            .from({ root: TableName.SecretFolder })
+            .join({ scope_env: TableName.Environment }, "scope_env.id", "root.envId")
+            .whereNull("root.parentId")
+            .where("scope_env.projectId", projectId)
+            .whereNull("scope_env.deleteAfter")
+            .modify((roots) => {
+              if (environments) void roots.whereIn("scope_env.slug", environments);
+            })
+            .union((children) => {
+              void children
+                .select("child.id", "child.envId")
+                .from({ child: TableName.SecretFolder })
+                .join("metadata_search_folders", (join) => {
+                  join
+                    .on("child.parentId", "metadata_search_folders.id")
+                    .andOn("child.envId", "metadata_search_folders.envId");
+                })
+                .where("child.isReserved", false);
+            });
+        })
+        .whereIn(`${TableName.SecretV2}.folderId`, (subQuery) => {
+          void subQuery.select("id").from("metadata_search_folders");
+        });
     }
 
     if (environments) {
