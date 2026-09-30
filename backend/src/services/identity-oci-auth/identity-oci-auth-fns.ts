@@ -1,7 +1,24 @@
+import { AxiosError, AxiosHeaders, RawAxiosHeaders } from "axios";
 import RE2 from "re2";
 
 const SIGNATURE_SCHEME = "signature ";
 const SIGNATURE_PARAM_REGEX = new RE2('^([A-Za-z]+)\\s*=\\s*"([^"]*)"$');
+const LOGGABLE_IDENTIFIER_REGEX = new RE2("^[A-Za-z0-9._:/-]{1,128}$");
+
+const toLoggableIdentifier = (value: unknown) =>
+  typeof value === "string" && LOGGABLE_IDENTIFIER_REGEX.test(value) ? value : undefined;
+
+export const getOciErrorForLog = (err: AxiosError) => {
+  const data = err.response?.data as { code?: unknown } | undefined;
+  return {
+    status: err.response?.status,
+    code: err.code,
+    ociErrorCode: toLoggableIdentifier(data?.code),
+    ociRequestId: err.response
+      ? toLoggableIdentifier(AxiosHeaders.from(err.response.headers as RawAxiosHeaders).get("opc-request-id"))
+      : undefined
+  };
+};
 
 const parseOciSignatureParams = (authorizationHeader: string): Map<string, string> | null => {
   const header = authorizationHeader.trim();

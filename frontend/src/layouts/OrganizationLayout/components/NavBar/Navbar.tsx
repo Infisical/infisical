@@ -14,11 +14,11 @@ import {
   Info,
   LogOut,
   Mail,
+  MessagesSquare,
   Monitor,
   Moon,
   Plus,
   Settings,
-  Slack,
   Sun,
   TriangleAlertIcon,
   User,
@@ -142,7 +142,7 @@ Thank you,
 };
 
 export const INFISICAL_SUPPORT_OPTIONS = [
-  [Slack, "Support Forum", () => "https://infisical.com/slack"],
+  [MessagesSquare, "Support Forum", () => "https://community.infisical.com"],
   [
     Book,
     "Read Docs",
@@ -362,7 +362,7 @@ export const Navbar = () => {
   return (
     <div
       className={twMerge(
-        "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent in-data-[theme=light]:bg-none",
+        "z-10 flex min-h-12 items-center border-b border-border-soft bg-gradient-to-br to-transparent in-data-[theme=light]:bg-none",
         isServerAdminPanel && "from-admin/5",
         !isServerAdminPanel && isPamScope && "from-product-pam/5",
         !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
@@ -380,7 +380,7 @@ export const Navbar = () => {
                 <Link
                   to="/organizations/$orgId/projects"
                   params={{ orgId: currentOrg.id }}
-                  className="flex h-full items-center gap-x-1 border-r border-border pr-4 pl-2 text-muted transition-colors hover:text-foreground"
+                  className="flex h-full items-center gap-x-1 border-r border-border-soft pr-4 pl-2 text-muted transition-colors hover:text-foreground"
                 >
                   <ChevronLeft className="size-4" />
                   <OrgIcon className="size-3.5" />
@@ -400,7 +400,7 @@ export const Navbar = () => {
           <>
             <div
               className={twMerge(
-                "flex h-full min-w-0 items-center overflow-hidden border-border pr-2 pl-4 transition-all duration-300 ease-in-out",
+                "flex h-full min-w-0 items-center overflow-hidden border-border-soft pr-2 pl-4 transition-all duration-300 ease-in-out",
                 isProjectScope ? "mr-2 w-[72px] border-r" : "mr-4 w-96 max-w-96"
               )}
             >
@@ -805,9 +805,9 @@ export const Navbar = () => {
               </a>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <a href="https://infisical.com/slack" target="_blank" rel="noopener noreferrer">
-                <Slack />
-                Join Slack Community
+              <a href="https://community.infisical.com" target="_blank" rel="noopener noreferrer">
+                <MessagesSquare />
+                Join Community
                 <ExternalLink className="ml-auto size-3.5 opacity-50" />
               </a>
             </DropdownMenuItem>

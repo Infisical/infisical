@@ -85,7 +85,7 @@ export const QuickAddSecretRow = ({
 
       setValueEditorStyle({
         left,
-        width: Math.max(tableContainer.clientWidth - left, 0)
+        width: Math.max(tableContainer.clientWidth - left, 240)
       });
     };
 

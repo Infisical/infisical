@@ -1,5 +1,5 @@
 # Build stage
-ARG INFISICAL_CLI_VERSION=0.43.129
+ARG INFISICAL_CLI_VERSION=0.43.136
 
 FROM node:22.23.2-trixie-slim AS build
 

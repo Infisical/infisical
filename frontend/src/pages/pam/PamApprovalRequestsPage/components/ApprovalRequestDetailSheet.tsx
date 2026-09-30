@@ -81,7 +81,7 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
 
   const handleRevoke = async () => {
     if (!request) return;
-    await revokeMutation.mutateAsync({ requestId: request.id });
+    await revokeMutation.mutateAsync({ grantId: request.grantId! });
     createNotification({ text: "Access revoked", type: "success" });
     setIsRevokeConfirmOpen(false);
     onOpenChange(false);
