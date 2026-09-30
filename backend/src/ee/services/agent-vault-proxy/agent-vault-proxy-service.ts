@@ -355,8 +355,8 @@ export const agentVaultProxyServiceFactory = ({
     decryptValue: (encryptedValue: Buffer) => string;
   }): Promise<TResolvedService[]> => {
     const sealedTextsOf = ({ credential, customHeaders, substitutions }: TResolvedService) => [
-      ...(credential.type === "bearer" ? [credential.value] : []),
-      ...(credential.type === "basic" ? [credential.username, credential.password] : []),
+      ...(credential.type === AgentVaultCredentialType.Bearer ? [credential.value] : []),
+      ...(credential.type === AgentVaultCredentialType.Basic ? [credential.username, credential.password] : []),
       ...customHeaders.map((header) => header.value),
       ...substitutions.map((substitution) => substitution.value)
     ];
@@ -396,10 +396,12 @@ export const agentVaultProxyServiceFactory = ({
       const expand = (text: string) => expandStoredVariableReferences(text, valueOf);
 
       let { credential } = service;
-      if (credential.type === "bearer") credential = { ...credential, value: expand(credential.value) };
+      if (credential.type === AgentVaultCredentialType.Bearer) {
+        credential = { ...credential, value: expand(credential.value) };
+      }
       // A typed username is trimmed on save, and a username can't start or end with a space (RFC 8265), so one a
       // variable fills in is trimmed too. Every other field keeps its spaces, as it does when typed.
-      if (credential.type === "basic") {
+      if (credential.type === AgentVaultCredentialType.Basic) {
         credential = {
           ...credential,
           username: expand(credential.username).trim(),
