@@ -397,7 +397,7 @@
 }
 
 .dark #page-context-menu button:hover {
-  background-color: #1b1d0d;
+  background-color: var(--ifx-accent-soft);
 }
 
 .dark #topbar-cta-button .group,
@@ -1136,7 +1136,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
-  border-left-color: #dbf530;
+  border-left-color: var(--ifx-accent);
   background-color: var(--ifx-surface-soft);
 }
 
@@ -1151,7 +1151,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 .dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
-  border-left-color: #dbf530;
   color: #f3f3f4;
 }
 
@@ -1978,7 +1977,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 .cli-example__copy:hover {
-  color: #dbf530;
+  color: rgb(var(--primary-light));
 }
 
 .cli-code {
@@ -2007,7 +2006,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 .cli-code__bin {
-  color: #dbf530;
+  color: rgb(var(--primary-light));
 }
 
 .cli-code__flag {
@@ -2043,8 +2042,8 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 .dark #sidebar-content li > a.cli-nav-active {
-  background-color: rgb(219 245 48 / 0.1);
-  color: #dbf530;
+  background-color: var(--ifx-accent-soft);
+  color: rgb(var(--primary-light));
 }
 
 html[data-cli-nav] #sidebar-content li > a[aria-current="page"] {
