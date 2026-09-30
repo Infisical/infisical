@@ -40,7 +40,9 @@ export const PgSqlLock = {
     pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
   OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
-  OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
+  OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`),
+  ExternalGroupOrgRoleMappingUpdate: (orgId: string) =>
+    pgAdvisoryLockHashText(`external-group-org-role-mapping-update:${orgId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
