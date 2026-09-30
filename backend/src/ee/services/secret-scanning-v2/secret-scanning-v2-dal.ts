@@ -602,7 +602,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  const primaryNode = () => db.primaryNode();
+
   return {
+    primaryNode,
     dataSources: {
       ...dataSourceOrm,
       find: findDataSource,

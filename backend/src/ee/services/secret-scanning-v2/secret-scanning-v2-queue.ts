@@ -275,9 +275,12 @@ export const secretScanningV2QueueServiceFactory = ({
 
     const logDetails = `[scanId=${scanId}] [resourceId=${resourceId}] [dataSourceId=${dataSourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
-    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
-    const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId) : undefined;
-    const scan = resource ? await secretScanningV2DAL.scans.findById(scanId) : undefined;
+    // Read from the primary: a lagging replica would report a just-queued scan as missing, and a job
+    // that returns here leaves its scan `queued`, which the stuck-scan reaper never picks up.
+    const primary = secretScanningV2DAL.primaryNode();
+    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, primary);
+    const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId, primary) : undefined;
+    const scan = resource ? await secretScanningV2DAL.scans.findById(scanId, primary) : undefined;
 
     // Deleting a source cascades to its resources and scans, so a job queued before the delete has
     // nothing left to scan. Completing it rather than throwing keeps retries from holding the worker.
@@ -533,7 +536,7 @@ export const secretScanningV2QueueServiceFactory = ({
       );
     } catch (error) {
       // A source deleted mid-scan takes the scan with it, so the next findings write fails its FK.
-      if (!(await secretScanningV2DAL.scans.findById(scanId))) {
+      if (!(await secretScanningV2DAL.scans.findById(scanId, secretScanningV2DAL.primaryNode()))) {
         logger.info(`secretScanningV2Queue: Full Scan aborted, scan was deleted while running ${logDetails}`);
         return;
       }
@@ -667,8 +670,10 @@ export const secretScanningV2QueueServiceFactory = ({
 
     const logDetails = `[dataSourceId=${dataSourceId}] [scanId=${scanId}] [resourceId=${resourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
-    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
-    const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId) : undefined;
+    // Primary for the same reason as the full scan: a lagging replica would drop a just-queued scan.
+    const primary = secretScanningV2DAL.primaryNode();
+    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, primary);
+    const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId, primary) : undefined;
 
     if (!dataSource || !resource) {
       logger.info(`secretScanningV2Queue: Diff Scan aborted, scan no longer exists ${logDetails}`);
@@ -806,7 +811,7 @@ export const secretScanningV2QueueServiceFactory = ({
         `secretScanningV2Queue: Diff Scan Complete ${logDetails} findings=[${findingsPayload.length}] durationMs=[${Date.now() - startedAt}]`
       );
     } catch (error) {
-      if (!(await secretScanningV2DAL.scans.findById(scanId))) {
+      if (!(await secretScanningV2DAL.scans.findById(scanId, secretScanningV2DAL.primaryNode()))) {
         logger.info(`secretScanningV2Queue: Diff Scan aborted, scan was deleted while running ${logDetails}`);
         return;
       }
@@ -872,7 +877,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
     // The payload carries a snapshot of the source; one deleted since the scan finished has nothing
     // left to link to.
-    if (!(await secretScanningV2DAL.dataSources.findById(dataSource.id))) {
+    if (!(await secretScanningV2DAL.dataSources.findById(dataSource.id, secretScanningV2DAL.primaryNode()))) {
       logger.info(
         `secretScanningV2Queue: Skipped Status Notification, data source was deleted [dataSourceId=${dataSource.id}] [resourceName=${resourceName}] [status=${payload.status}]`
       );
