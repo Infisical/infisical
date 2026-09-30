@@ -19,11 +19,15 @@ import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-s
 import { PkiSyncError } from "../pki-sync-errors";
 import {
   buildFileCollisionMessage,
+  buildStaleFileWarning,
   exportCertificateForSync,
   getStaleCertificateFiles,
+  isExportFormatBlockedByFips,
   isKeystoreExportFormat,
+  JKS_FIPS_UNSUPPORTED_MESSAGE,
   PemCertificateExtension,
-  PkiSyncExportFormat
+  PkiSyncExportFormat,
+  splitStaleCertificateFiles
 } from "../pki-sync-export-fns";
 import {
   buildHealthCheckCommandFailureMessage,
@@ -323,8 +327,13 @@ export const windowsServerPkiSyncFactory = ({
     const canRemoveCertificates = options.canRemoveCertificates ?? false;
     const exportPassword = pkiSync.syncCredentials?.exportPassword;
 
+    if (isExportFormatBlockedByFips(format)) {
+      throw new PkiSyncError({ shouldRetry: false, message: JKS_FIPS_UNSUPPORTED_MESSAGE });
+    }
+
     const failedUploads: Array<{ name: string; error: string }> = [];
     const failedRemovals: Array<{ name: string; error: string }> = [];
+    const staleFileFailures: Array<{ path: string; error: string }> = [];
     const skippedCertificates: Array<{ name: string; reason: string }> = [];
     // Paths confirmed on the host this run. Keeps the removal pass from deleting a file a renewal
     // just rewrote under the same name, and tells the post-sync command what landed.
@@ -429,22 +438,24 @@ export const windowsServerPkiSyncFactory = ({
               deliveredPaths,
               caseInsensitive: true
             });
+            const { filesToRemove, filesToKeep } = splitStaleCertificateFiles(staleFiles, canRemoveCertificates);
             let staleFilesToRetry: string[] = [];
-            if (staleFiles.length > 0) {
+            if (filesToRemove.length > 0) {
               try {
                 await executeWinRMGatewayOperation(
-                  { ...target, endpoint: WinRmRpcEndpoint.RemoveFiles, params: { paths: staleFiles } },
+                  { ...target, endpoint: WinRmRpcEndpoint.RemoveFiles, params: { paths: filesToRemove } },
                   gatewayDeps
                 );
               } catch (removeErr) {
                 // Keep tracking them so a later run can retry the delete.
-                staleFilesToRetry = staleFiles;
-                failedRemovals.push({ name: baseName, error: describeFailure(removeErr) });
+                staleFilesToRetry = filesToRemove;
+                const error = describeFailure(removeErr);
+                filesToRemove.forEach((staleFile) => staleFileFailures.push({ path: staleFile, error }));
               }
             }
             await certificateSyncDAL.updateById(record.id, {
               externalIdentifier: paths[0],
-              syncMetadata: { files: [...paths, ...staleFilesToRetry], host: target.credentials.host }
+              syncMetadata: { files: [...paths, ...filesToKeep, ...staleFilesToRetry], host: target.credentials.host }
             });
           }
         }
@@ -496,6 +507,7 @@ export const windowsServerPkiSyncFactory = ({
       skipped: skippedCertificates.length,
       healthCheck,
       postSyncCommand,
+      warningMessage: buildStaleFileWarning(staleFileFailures),
       details: {
         failedUploads: failedUploads.length > 0 ? failedUploads : undefined,
         failedRemovals: failedRemovals.length > 0 ? failedRemovals : undefined,

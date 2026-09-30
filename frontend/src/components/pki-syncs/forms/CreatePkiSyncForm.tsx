@@ -45,7 +45,11 @@ import {
 
 import { KEYSTORE_PASSWORD_REQUIRED_MESSAGE } from "./schemas/base-pki-sync-schema";
 import { KEMP_DEFAULT_CA_NAME_SCHEMA } from "./schemas/kemp-loadmaster-pki-sync-destination-schema";
-import { PkiSyncFormSchema, TPkiSyncForm } from "./schemas/pki-sync-schema";
+import {
+  PkiSyncFormSchema,
+  removeUnusedKeystoreOptions,
+  TPkiSyncForm
+} from "./schemas/pki-sync-schema";
 import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
@@ -260,7 +264,7 @@ export const CreatePkiSyncForm = ({
   const onSubmit = async ({ connection, destinationConfig, ...formData }: TPkiSyncForm) => {
     try {
       const pkiSync = await createPkiSync.mutateAsync({
-        ...formData,
+        ...removeUnusedKeystoreOptions(formData),
         connectionId: connection.id,
         projectId: currentProject.id,
         applicationId,

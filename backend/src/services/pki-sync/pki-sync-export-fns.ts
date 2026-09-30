@@ -1,3 +1,4 @@
+import { crypto } from "@app/lib/crypto/cryptography";
 import { generatePkcs12FromCertificate } from "@app/services/certificate/certificate-fns";
 import {
   generateJksFromCertificate,
@@ -14,12 +15,21 @@ export enum PkiSyncExportFormat {
 export const isKeystoreExportFormat = (format: unknown): boolean =>
   format === PkiSyncExportFormat.Pkcs12 || format === PkiSyncExportFormat.Jks;
 
-export const stripUnusedKeystoreOptions = (syncOptions: Record<string, unknown>): Record<string, unknown> => {
-  const stripped = { ...syncOptions };
-  if (!isKeystoreExportFormat(stripped.exportFormat)) delete stripped.keystoreAlias;
-  if (stripped.exportFormat !== PkiSyncExportFormat.Jks) delete stripped.includeTruststore;
-  return stripped;
+export const getUnusedKeystoreOptionMessage = (syncOptions: Record<string, unknown>): string | undefined => {
+  if (!isKeystoreExportFormat(syncOptions.exportFormat) && syncOptions.keystoreAlias !== undefined) {
+    return "keystoreAlias only applies when exportFormat is pkcs12 or jks. Remove it or change the export format.";
+  }
+  if (syncOptions.exportFormat !== PkiSyncExportFormat.Jks && syncOptions.includeTruststore === true) {
+    return "includeTruststore only applies when exportFormat is jks. Remove it or change the export format.";
+  }
+  return undefined;
 };
+
+export const JKS_FIPS_UNSUPPORTED_MESSAGE =
+  "Java KeyStore (JKS) export is not supported in FIPS mode of operation. Use PEM instead.";
+
+export const isExportFormatBlockedByFips = (format: unknown): boolean =>
+  format === PkiSyncExportFormat.Jks && crypto.isFipsModeEnabled();
 
 // Files this sync wrote for a certificate last time but no longer writes, such as a truststore
 // after it is turned off. Paths another certificate wrote this run are left alone, and nothing is
@@ -56,6 +66,27 @@ export const KEYSTORE_PASSWORD_REQUIRED_MESSAGE = "A password is required when t
 
 export const JKS_KEYSTORE_SUFFIX = ".jks";
 export const JKS_TRUSTSTORE_SUFFIX = ".truststore.jks";
+
+const isTruststoreFile = (filePath: string) => filePath.toLowerCase().endsWith(JKS_TRUSTSTORE_SUFFIX);
+
+// A stale truststore still grants trust, so it is always removed. Other stale files may still be read
+// by a server, so they are only removed when the sync is allowed to remove certificates.
+export const splitStaleCertificateFiles = (staleFiles: string[], canRemoveCertificates: boolean) => ({
+  filesToRemove: canRemoveCertificates ? staleFiles : staleFiles.filter(isTruststoreFile),
+  filesToKeep: canRemoveCertificates ? [] : staleFiles.filter((filePath) => !isTruststoreFile(filePath))
+});
+
+const MAX_LISTED_STALE_FILES = 3;
+
+export const buildStaleFileWarning = (failures: Array<{ path: string; error: string }>): string | undefined => {
+  if (failures.length === 0) return undefined;
+  const listed = failures
+    .slice(0, MAX_LISTED_STALE_FILES)
+    .map(({ path, error }) => `"${path}" (${error})`)
+    .join(", ");
+  const more = failures.length > MAX_LISTED_STALE_FILES ? ` and ${failures.length - MAX_LISTED_STALE_FILES} more` : "";
+  return `Could not remove ${failures.length} file(s) this sync no longer writes: ${listed}${more}. Removal will be retried on the next sync.`;
+};
 
 export enum PemCertificateExtension {
   Pem = "pem",

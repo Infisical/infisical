@@ -20,7 +20,11 @@ import {
   AzureKeyVaultPkiSyncDestinationSchema,
   UpdateAzureKeyVaultPkiSyncDestinationSchema
 } from "./azure-key-vault-pki-sync-destination-schema";
-import { ExportPasswordSchema, KEYSTORE_PASSWORD_REQUIRED_MESSAGE } from "./base-pki-sync-schema";
+import {
+  ExportPasswordSchema,
+  KEYSTORE_PASSWORD_REQUIRED_MESSAGE,
+  KeystoreAliasSchema
+} from "./base-pki-sync-schema";
 import {
   ChefPkiSyncDestinationSchema,
   UpdateChefPkiSyncDestinationSchema
@@ -139,6 +143,44 @@ const refineExportPassword = (
   }
 };
 
+// The alias is kept while switching formats, so it is only validated when a keystore format uses it.
+const refineKeystoreAlias = (
+  data: { destination: PkiSync; syncOptions?: unknown },
+  ctx: z.RefinementCtx
+) => {
+  const { exportFormat, keystoreAlias } = (data.syncOptions ?? {}) as {
+    exportFormat?: PkiSyncExportFormat;
+    keystoreAlias?: string;
+  };
+  if (
+    !isServerDestination(data.destination) ||
+    !keystoreAlias ||
+    !isKeystoreExportFormat(exportFormat)
+  )
+    return;
+  const result = KeystoreAliasSchema.safeParse(keystoreAlias);
+  if (!result.success) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["syncOptions", "keystoreAlias"],
+      message: result.error.issues[0]?.message ?? "Invalid keystore alias"
+    });
+  }
+};
+
+// Drops keystore options the chosen format does not use, since the API rejects them.
+export const removeUnusedKeystoreOptions = <T extends { syncOptions?: unknown }>(data: T): T => {
+  if (!data.syncOptions) return data;
+  const syncOptions = { ...(data.syncOptions as Record<string, unknown>) };
+  const alias =
+    typeof syncOptions.keystoreAlias === "string" ? syncOptions.keystoreAlias.trim() : "";
+  const exportFormat = syncOptions.exportFormat as PkiSyncExportFormat | undefined;
+  if (!isKeystoreExportFormat(exportFormat) || !alias) delete syncOptions.keystoreAlias;
+  else syncOptions.keystoreAlias = alias;
+  if (exportFormat !== PkiSyncExportFormat.Jks) delete syncOptions.includeTruststore;
+  return { ...data, syncOptions };
+};
+
 export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
   if (
     data.destination === PkiSync.GcpCertificateManager &&
@@ -165,11 +207,13 @@ export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
   }
 
   refineExportPassword(data, ctx);
+  refineKeystoreAlias(data, ctx);
   refineTargetHost(data, ctx);
 });
 
 export const UpdatePkiSyncFormSchema = UpdatePkiSyncUnionSchema.superRefine((data, ctx) => {
   refineExportPassword(data, ctx);
+  refineKeystoreAlias(data, ctx);
   refineTargetHost(data, ctx);
 });
 

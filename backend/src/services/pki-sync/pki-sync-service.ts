@@ -38,10 +38,12 @@ import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import {
   EXPORT_PASSWORD_BLANK_MESSAGE,
+  getUnusedKeystoreOptionMessage,
   isBlankExportPassword,
+  isExportFormatBlockedByFips,
   isKeystoreExportFormat,
-  KEYSTORE_PASSWORD_REQUIRED_MESSAGE,
-  stripUnusedKeystoreOptions
+  JKS_FIPS_UNSUPPORTED_MESSAGE,
+  KEYSTORE_PASSWORD_REQUIRED_MESSAGE
 } from "./pki-sync-export-fns";
 import { hasAnyPkiSyncFilter, PKI_SYNC_FILTER_KINDS, PKI_SYNC_PREVIEW_PAGE_SIZE } from "./pki-sync-filter-fns";
 import {
@@ -605,6 +607,14 @@ export const pkiSyncServiceFactory = ({
     }
   };
 
+  const $assertExportOptionsAllowed = (syncOptions: Record<string, unknown>) => {
+    const unusedOptionMessage = getUnusedKeystoreOptionMessage(syncOptions);
+    if (unusedOptionMessage) throw new BadRequestError({ message: unusedOptionMessage });
+    if (isExportFormatBlockedByFips(syncOptions.exportFormat)) {
+      throw new BadRequestError({ message: JKS_FIPS_UNSUPPORTED_MESSAGE });
+    }
+  };
+
   const $withFilterLock = <T>(syncId: string, run: () => Promise<T>): Promise<T> =>
     withPkiSyncFilterLock(keyStore, syncId, run);
 
@@ -690,14 +700,13 @@ export const pkiSyncServiceFactory = ({
     });
 
     const providerCapabilities = getPkiSyncProviderCapabilities(destination);
-    const resolvedSyncOptions = stripUnusedKeystoreOptions(
-      normalizeNewHealthCheckCommand(
-        normalizeNewPostSyncCommand({
-          ...providerCapabilities,
-          ...syncOptions
-        })
-      )
+    const resolvedSyncOptions = normalizeNewHealthCheckCommand(
+      normalizeNewPostSyncCommand({
+        ...providerCapabilities,
+        ...syncOptions
+      })
     );
+    $assertExportOptionsAllowed(resolvedSyncOptions);
 
     await $assertHostCommandWrite({
       destination,
@@ -930,12 +939,11 @@ export const pkiSyncServiceFactory = ({
         });
       }
 
-      resolvedSyncOptions = stripUnusedKeystoreOptions(
-        applyHealthCheckCommandUpdate(
-          applyPostSyncCommandUpdate({ ...providerCapabilities, ...syncOptions }, storedSyncOptions?.postSyncCommand),
-          storedSyncOptions?.healthCheckCommand
-        )
+      resolvedSyncOptions = applyHealthCheckCommandUpdate(
+        applyPostSyncCommandUpdate({ ...providerCapabilities, ...syncOptions }, storedSyncOptions?.postSyncCommand),
+        storedSyncOptions?.healthCheckCommand
       );
+      $assertExportOptionsAllowed(resolvedSyncOptions);
     }
 
     if (isConnectionChanging || isDestinationConfigChanging) {

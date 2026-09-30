@@ -420,6 +420,7 @@ export const pkiSyncQueueFactory = ({
                 ? `${certSyncFailureCount} certificate(s) failed to sync to the destination`
                 : null,
               syncResult.partialFailureMessage ?? null,
+              syncResult.warningMessage ?? null,
               postSyncCommandResult?.status === PkiSyncStatus.Failed
                 ? buildPostSyncCommandFailureMessage(postSyncCommandResult)
                 : null

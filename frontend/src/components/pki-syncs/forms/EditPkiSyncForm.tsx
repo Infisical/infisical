@@ -38,7 +38,11 @@ import {
 } from "@app/hooks/api/pkiSyncs";
 import { TPkiSyncFilterPreview } from "@app/hooks/api/pkiSyncs/types";
 
-import { TUpdatePkiSyncForm, UpdatePkiSyncFormSchema } from "./schemas/pki-sync-schema";
+import {
+  removeUnusedKeystoreOptions,
+  TUpdatePkiSyncForm,
+  UpdatePkiSyncFormSchema
+} from "./schemas/pki-sync-schema";
 import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
@@ -249,7 +253,7 @@ export const EditPkiSyncForm = ({
     try {
       const updatedPkiSync = await updatePkiSync.mutateAsync({
         syncId: pkiSync.id,
-        ...formData,
+        ...removeUnusedKeystoreOptions(formData),
         ...(hasNewExportPassword ? {} : { credentials: undefined }),
         connectionId: connection.id,
         projectId: pkiSync.projectId,

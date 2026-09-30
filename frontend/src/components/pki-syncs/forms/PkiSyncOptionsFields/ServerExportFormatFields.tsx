@@ -2,6 +2,9 @@ import { Controller, useFormContext } from "react-hook-form";
 import { Info } from "lucide-react";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Field,
   FieldContent,
   FieldDescription,
@@ -19,6 +22,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useServerConfig } from "@app/context";
 import {
   isKeystoreExportFormat,
   PemCertificateExtension,
@@ -34,8 +38,10 @@ type Props = {
 
 export const ServerExportFormatFields = ({ isUpdate }: Props) => {
   const { control, watch } = useFormContext<TPkiSyncForm>();
+  const { config } = useServerConfig();
   const exportFormat = watch("syncOptions.exportFormat");
   const isKeystore = isKeystoreExportFormat(exportFormat);
+  const isJksBlockedByFips = Boolean(config.fipsEnabled);
 
   const keystoreLabel = exportFormat === PkiSyncExportFormat.Jks ? "JKS" : "PKCS#12";
   const keystoreFile = exportFormat === PkiSyncExportFormat.Jks ? ".jks keystore" : ".pfx bundle";
@@ -68,14 +74,35 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper">
-                {Object.values(PkiSyncExportFormat).map((format) => (
-                  <SelectItem key={format} value={format}>
-                    {PKI_SYNC_EXPORT_FORMAT_LABELS[format]}
-                  </SelectItem>
-                ))}
+                {Object.values(PkiSyncExportFormat).map((format) => {
+                  const isDisabled = format === PkiSyncExportFormat.Jks && isJksBlockedByFips;
+                  return (
+                    <SelectItem
+                      key={format}
+                      value={format}
+                      disabled={isDisabled}
+                      description={isDisabled ? "Not available in FIPS mode" : undefined}
+                    >
+                      {PKI_SYNC_EXPORT_FORMAT_LABELS[format]}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             <FieldError errors={[error]} />
+            {value === PkiSyncExportFormat.Jks && isJksBlockedByFips && (
+              <Alert variant="warning">
+                <Info />
+                <AlertTitle className="line-clamp-none">
+                  JKS isn&apos;t available in FIPS mode
+                </AlertTitle>
+                <AlertDescription>
+                  The JKS format can only protect private keys with cryptography that is not
+                  FIPS-approved, so this sync will not deliver certificates. Switch the export
+                  format to PEM.
+                </AlertDescription>
+              </Alert>
+            )}
           </Field>
         )}
       />

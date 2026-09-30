@@ -3,7 +3,7 @@ import { BanIcon, RefreshCwIcon } from "lucide-react";
 
 import { PkiSyncStatusBadge } from "@app/components/pki-syncs";
 import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
-import { getPkiSyncFailureMessage } from "@app/helpers/pkiSyncs";
+import { getPkiSyncFailureMessage, getPkiSyncWarningMessage } from "@app/helpers/pkiSyncs";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 import { SyncErrorDetail } from "./SyncErrorDetail";
@@ -16,6 +16,7 @@ export const PkiSyncDetailsSection = ({ pkiSync }: Props) => {
   const { syncStatus, lastSyncMessage, lastSyncedAt, isAutoSyncEnabled } = pkiSync;
 
   const failureMessage = getPkiSyncFailureMessage(syncStatus, lastSyncMessage);
+  const warningMessage = getPkiSyncWarningMessage(syncStatus, lastSyncMessage);
 
   return (
     <>
@@ -50,6 +51,9 @@ export const PkiSyncDetailsSection = ({ pkiSync }: Props) => {
         </Detail>
       )}
       {failureMessage && <SyncErrorDetail label="Last Sync Error" message={failureMessage} />}
+      {warningMessage && (
+        <SyncErrorDetail label="Last Sync Warning" message={warningMessage} variant="warning" />
+      )}
     </>
   );
 };

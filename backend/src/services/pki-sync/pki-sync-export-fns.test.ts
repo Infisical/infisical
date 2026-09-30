@@ -1,12 +1,17 @@
 import forge from "node-forge";
 
+import { crypto } from "@app/lib/crypto/cryptography";
+
 import {
+  buildStaleFileWarning,
   exportCertificateForSync,
   getExportedCertificateFileSuffixes,
   getStaleCertificateFiles,
+  getUnusedKeystoreOptionMessage,
+  isExportFormatBlockedByFips,
   PemCertificateExtension,
   PkiSyncExportFormat,
-  stripUnusedKeystoreOptions,
+  splitStaleCertificateFiles,
   TExportedCertificateFile
 } from "./pki-sync-export-fns";
 
@@ -208,22 +213,75 @@ describe("getExportedCertificateFileSuffixes matches the real export", () => {
   });
 });
 
-describe("stripUnusedKeystoreOptions", () => {
-  test("drops keystore-only options a format does not use", () => {
-    const base = { keystoreAlias: "tomcat", includeTruststore: true, certificateNameSchema: "{{commonName}}" };
-    expect(stripUnusedKeystoreOptions({ ...base, exportFormat: PkiSyncExportFormat.Pem })).toEqual({
-      exportFormat: PkiSyncExportFormat.Pem,
-      certificateNameSchema: "{{commonName}}"
+describe("getUnusedKeystoreOptionMessage", () => {
+  test("rejects keystore-only options a format does not use", () => {
+    expect(
+      getUnusedKeystoreOptionMessage({ exportFormat: PkiSyncExportFormat.Pem, keystoreAlias: "tomcat" })
+    ).toContain("keystoreAlias");
+    expect(
+      getUnusedKeystoreOptionMessage({ exportFormat: PkiSyncExportFormat.Pkcs12, includeTruststore: true })
+    ).toContain("includeTruststore");
+  });
+
+  test("accepts options that match the format", () => {
+    expect(
+      getUnusedKeystoreOptionMessage({
+        exportFormat: PkiSyncExportFormat.Jks,
+        keystoreAlias: "tomcat",
+        includeTruststore: true
+      })
+    ).toBeUndefined();
+    expect(
+      getUnusedKeystoreOptionMessage({ exportFormat: PkiSyncExportFormat.Pkcs12, keystoreAlias: "tomcat" })
+    ).toBeUndefined();
+    expect(
+      getUnusedKeystoreOptionMessage({ exportFormat: PkiSyncExportFormat.Pem, includeTruststore: false })
+    ).toBeUndefined();
+  });
+});
+
+describe("isExportFormatBlockedByFips", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("blocks only JKS when FIPS mode is on", () => {
+    vi.spyOn(crypto, "isFipsModeEnabled").mockReturnValue(true);
+    expect(isExportFormatBlockedByFips(PkiSyncExportFormat.Jks)).toBe(true);
+    expect(isExportFormatBlockedByFips(PkiSyncExportFormat.Pkcs12)).toBe(false);
+    expect(isExportFormatBlockedByFips(PkiSyncExportFormat.Pem)).toBe(false);
+  });
+
+  test("allows JKS when FIPS mode is off", () => {
+    vi.spyOn(crypto, "isFipsModeEnabled").mockReturnValue(false);
+    expect(isExportFormatBlockedByFips(PkiSyncExportFormat.Jks)).toBe(false);
+  });
+});
+
+describe("splitStaleCertificateFiles", () => {
+  const stale = ["/certs/app.pem", "/certs/app.key", "/certs/app.truststore.jks"];
+
+  test("removes every stale file when certificate removal is allowed", () => {
+    expect(splitStaleCertificateFiles(stale, true)).toEqual({ filesToRemove: stale, filesToKeep: [] });
+  });
+
+  test("only removes a stale truststore when certificate removal is off", () => {
+    expect(splitStaleCertificateFiles(stale, false)).toEqual({
+      filesToRemove: ["/certs/app.truststore.jks"],
+      filesToKeep: ["/certs/app.pem", "/certs/app.key"]
     });
-    expect(stripUnusedKeystoreOptions({ ...base, exportFormat: PkiSyncExportFormat.Pkcs12 })).toEqual({
-      exportFormat: PkiSyncExportFormat.Pkcs12,
-      keystoreAlias: "tomcat",
-      certificateNameSchema: "{{commonName}}"
-    });
-    expect(stripUnusedKeystoreOptions({ ...base, exportFormat: PkiSyncExportFormat.Jks })).toEqual({
-      ...base,
-      exportFormat: PkiSyncExportFormat.Jks
-    });
+  });
+});
+
+describe("buildStaleFileWarning", () => {
+  test("returns nothing when every removal succeeded", () => {
+    expect(buildStaleFileWarning([])).toBeUndefined();
+  });
+
+  test("names the files that could not be removed", () => {
+    const warning = buildStaleFileWarning([{ path: "/certs/app.truststore.jks", error: "Permission denied" }]);
+    expect(warning).toContain("/certs/app.truststore.jks");
+    expect(warning).toContain("Permission denied");
   });
 });
 

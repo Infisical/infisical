@@ -10,7 +10,6 @@ import {
 import {
   BasePkiSyncSchema,
   HostCommandSchema,
-  KeystoreAliasSchema,
   PkiSyncConnectionSchema,
   PkiSyncTargetHostSchema,
   PkiSyncTargetPortSchema
@@ -31,7 +30,7 @@ const WindowsServerSyncOptionsSchema = z.object({
     .nativeEnum(PemCertificateExtension)
     .default(PemCertificateExtension.Pem),
   combineCertificateChain: z.boolean().default(false),
-  keystoreAlias: KeystoreAliasSchema,
+  keystoreAlias: z.string().optional(),
   includeTruststore: z.boolean().optional(),
   fileAccessRules: z
     .array(

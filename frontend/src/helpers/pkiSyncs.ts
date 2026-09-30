@@ -233,3 +233,9 @@ export const getPkiSyncFailureMessage = (
     return message;
   }
 };
+
+// A sync that succeeded can still carry a message, such as files it could not clean up.
+export const getPkiSyncWarningMessage = (
+  status: PkiSyncStatus | null | undefined,
+  message: string | null | undefined
+): string | null => (status === PkiSyncStatus.Succeeded && message ? message : null);

@@ -28,11 +28,15 @@ import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-s
 import { PkiSyncError } from "../pki-sync-errors";
 import {
   buildFileCollisionMessage,
+  buildStaleFileWarning,
   exportCertificateForSync,
   getStaleCertificateFiles,
+  isExportFormatBlockedByFips,
   isKeystoreExportFormat,
+  JKS_FIPS_UNSUPPORTED_MESSAGE,
   PemCertificateExtension,
-  PkiSyncExportFormat
+  PkiSyncExportFormat,
+  splitStaleCertificateFiles
 } from "../pki-sync-export-fns";
 import {
   buildHealthCheckCommandFailureMessage,
@@ -445,8 +449,13 @@ export const linuxServerPkiSyncFactory = ({
     const certificateMode = parseFileMode(options.fileMode, CERTIFICATE_FILE_MODE);
     const exportPassword = pkiSync.syncCredentials?.exportPassword;
 
+    if (isExportFormatBlockedByFips(format)) {
+      throw new PkiSyncError({ shouldRetry: false, message: JKS_FIPS_UNSUPPORTED_MESSAGE });
+    }
+
     const failedUploads: Array<{ name: string; error: string }> = [];
     const failedRemovals: Array<{ name: string; error: string }> = [];
+    const staleFileFailures: Array<{ path: string; error: string }> = [];
     const skippedCertificates: Array<{ name: string; reason: string }> = [];
     // Paths confirmed on the host this run. Keeps the removal pass from deleting a file a renewal
     // just rewrote under the same name, and tells the post-sync command what landed.
@@ -571,19 +580,20 @@ export const linuxServerPkiSyncFactory = ({
                   writtenPaths,
                   deliveredPaths
                 });
+                const { filesToRemove, filesToKeep } = splitStaleCertificateFiles(staleFiles, canRemoveCertificates);
                 const staleFilesToRetry: string[] = [];
-                for (const staleFile of staleFiles) {
+                for (const staleFile of filesToRemove) {
                   try {
                     await unlinkOrThrow(sftp, staleFile);
                   } catch (removeErr) {
                     staleFilesToRetry.push(staleFile);
-                    failedRemovals.push({
-                      name: staleFile,
+                    staleFileFailures.push({
+                      path: staleFile,
                       error: (removeErr as Error)?.message ?? "Unknown error"
                     });
                   }
                 }
-                const removedCount = staleFiles.length - staleFilesToRetry.length;
+                const removedCount = filesToRemove.length - staleFilesToRetry.length;
                 if (removedCount > 0) {
                   logger.info(
                     `Linux Server PKI sync [syncId=${pkiSync.id}]: removed ${removedCount} file(s) "${baseName}" no longer uses`
@@ -591,7 +601,7 @@ export const linuxServerPkiSyncFactory = ({
                 }
                 await certificateSyncDAL.updateById(record.id, {
                   externalIdentifier: primaryPath,
-                  syncMetadata: { files: [...writtenPaths, ...staleFilesToRetry], host: targetHost }
+                  syncMetadata: { files: [...writtenPaths, ...filesToKeep, ...staleFilesToRetry], host: targetHost }
                 });
               }
             }
@@ -650,6 +660,7 @@ export const linuxServerPkiSyncFactory = ({
       skipped: skippedCertificates.length,
       healthCheck,
       postSyncCommand,
+      warningMessage: buildStaleFileWarning(staleFileFailures),
       details: {
         failedUploads: failedUploads.length > 0 ? failedUploads : undefined,
         failedRemovals: failedRemovals.length > 0 ? failedRemovals : undefined,
