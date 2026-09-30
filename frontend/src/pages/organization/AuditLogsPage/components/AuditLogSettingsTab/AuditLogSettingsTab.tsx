@@ -141,7 +141,7 @@ export const AuditLogSettingsTab = withPermission(
             </div>
           )}
           {canEdit && (
-            <CardFooter className="min-h-8 justify-end gap-2 border-t border-neutral/15 bg-neutral/5 p-4">
+            <CardFooter className="min-h-8 justify-end gap-2 border-t p-4">
               <Button
                 type="button"
                 variant="ghost"
