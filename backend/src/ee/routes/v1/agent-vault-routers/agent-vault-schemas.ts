@@ -23,6 +23,7 @@ import {
   AgentVaultCustomHeaderInputSchema,
   AgentVaultCustomHeaderUpdateSchema,
   agentVaultHeaderNameSchema,
+  agentVaultHeaderPrefixSchema,
   AgentVaultSubstitutionInputSchema,
   AgentVaultSubstitutionUpdateSchema
 } from "@app/ee/services/agent-vault/agent-vault-transformation-schemas";
@@ -63,13 +64,7 @@ export const AgentVaultCredentialInputSchema = z
       .object({
         type: z.literal(AgentVaultCredentialType.Bearer),
         headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
-        headerPrefix: z
-          .string()
-          .trim()
-          .max(64)
-          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-          .optional()
-          .describe(AGENT_VAULT.SERVICE.headerPrefix),
+        headerPrefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.headerPrefix),
         value: acceptsVariableReferences(
           z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
         ).describe(AGENT_VAULT.SERVICE.value)
@@ -99,13 +94,7 @@ export const AgentVaultCredentialUpdateSchema = z
       .object({
         type: z.literal(AgentVaultCredentialType.Bearer),
         headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
-        headerPrefix: z
-          .string()
-          .trim()
-          .max(64)
-          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-          .optional()
-          .describe(AGENT_VAULT.SERVICE.headerPrefix),
+        headerPrefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.headerPrefix),
         value: acceptsVariableReferences(
           z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
         )

@@ -1163,6 +1163,21 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(bracedPlaceholder.statusCode).toBe(422);
 
+      // A prefix is sent as typed, so braces in one would reach the host as a reference nobody fills in.
+      const bracedBearerPrefix = await inject("POST", servicesUrl(bundle.id), {
+        name: "braced-bearer",
+        hostPattern: "braced-bearer.example.com",
+        credential: { type: "bearer", headerPrefix: "{{ORG}}", value: "x" }
+      });
+      expect(bracedBearerPrefix.statusCode).toBe(422);
+      const bracedHeaderPrefix = await inject("POST", servicesUrl(bundle.id), {
+        name: "braced-header",
+        hostPattern: "braced-header.example.com",
+        credential: { type: "passthrough" },
+        customHeaders: [{ name: "X-Org", prefix: "org-{{ORG}}", value: "x" }]
+      });
+      expect(bracedHeaderPrefix.statusCode).toBe(422);
+
       expect(await testDb("agent_vault_services").where({ accessBundleId: bundle.id })).toHaveLength(0);
     });
 

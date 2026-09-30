@@ -61,6 +61,11 @@ const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
 const CONTROL_CHARS_MESSAGE =
   "This can't contain line breaks or other control characters. Check for a stray newline if you pasted it.";
 
+// Double braces wrap a variable reference, and neither a prefix nor a placeholder takes one.
+const hasDoubleBraces = (text: string) => text.includes("{{") || text.includes("}}");
+
+const PREFIX_BRACES_MESSAGE = "A prefix can't contain {{ or }}.";
+
 // Set by the proxy on every request, so naming one here would either be dropped or corrupt the request.
 const RESERVED_HEADER_NAMES = new Set([
   "host",
@@ -210,6 +215,18 @@ export const buildServiceSchema = (service?: TAgentVaultService | null, variable
         });
       }
 
+      if (
+        data.credentialType === AgentVaultCredentialType.Bearer &&
+        data.headerPrefix &&
+        hasDoubleBraces(data.headerPrefix)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["headerPrefix"],
+          message: PREFIX_BRACES_MESSAGE
+        });
+      }
+
       const seenHeaders = new Set<string>();
       data.customHeaders.forEach((header, index) => {
         const at = (field: string, message: string) =>
@@ -243,6 +260,8 @@ export const buildServiceSchema = (service?: TAgentVaultService | null, variable
 
         if (header.prefix && !NO_CONTROL_CHARS_RE.test(header.prefix)) {
           at("prefix", CONTROL_CHARS_MESSAGE);
+        } else if (header.prefix && hasDoubleBraces(header.prefix)) {
+          at("prefix", PREFIX_BRACES_MESSAGE);
         }
       });
 
@@ -259,10 +278,7 @@ export const buildServiceSchema = (service?: TAgentVaultService | null, variable
           at("placeholder", "Required");
         } else if (!NO_CONTROL_CHARS_RE.test(substitution.placeholder)) {
           at("placeholder", CONTROL_CHARS_MESSAGE);
-        } else if (
-          substitution.placeholder.includes("{{") ||
-          substitution.placeholder.includes("}}")
-        ) {
+        } else if (hasDoubleBraces(substitution.placeholder)) {
           at(
             "placeholder",
             "A placeholder can't contain {{ or }}. Those wrap a variable reference."

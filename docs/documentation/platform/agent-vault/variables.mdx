@@ -61,7 +61,7 @@ A value can contain up to 3 references. If a value uses the same key more than o
 
 The **Sends** preview shows each reference in the headers the proxy attaches. If a reference names a key the bundle doesn't have, Infisical marks the reference in red and won't save the service until you correct the key or add the variable.
 
-Variables don't work in any other field, such as a host pattern, a path, a header name or prefix, or a substitution placeholder.
+Variables don't work in any other field, such as a host pattern, a path, a header name or prefix, or a substitution placeholder. If a header prefix or a substitution placeholder contains `{{` or `}}`, Infisical won't save the service.
 
 When you edit a service later, each value you saved stays hidden, like any other stored credential. If a value uses variables, Infisical lists the variables under the field. To change a value, enter the whole value again, including any references you want to keep.
 
