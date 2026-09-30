@@ -563,7 +563,9 @@ export const appConnectionServiceFactory = ({
         PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES.includes(project.type as ProjectType) &&
         !isAppConnectionAllowedInProject(app, project.type as ProjectType)
       ) {
-        const supported = listAppConnectionOptions(project.type as ProjectType).map((option) => option.name);
+        const supported = listAppConnectionOptions(actor.orgId, project.type as ProjectType).map(
+          (option) => option.name
+        );
         throw new BadRequestError({
           message: `${APP_CONNECTION_NAME_MAP[app]} Connections can't be used in this project. It supports: ${supported.join(", ")}.`
         });

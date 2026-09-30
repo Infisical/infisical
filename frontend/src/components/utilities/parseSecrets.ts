@@ -1,7 +1,8 @@
 import { isMap, isNode, isScalar, isSeq, parseDocument } from "yaml";
 
+// Unquoted values end at a "#" preceded by whitespace, so "a#b" keeps its hash.
 const LINE =
-  /(?:^|^)\s*(?:export\s+)?([\w.:-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/gm;
+  /(?:^|^)\s*(?:export\s+)?([\w.:-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|\S(?:\S|\s+(?=[^\s#]))*)?\s*(?:#.*)?(?:$|$)/gm;
 
 const decodeSource = (src: ArrayBuffer | string) =>
   typeof src === "string" ? src : new TextDecoder("utf-8").decode(src);

@@ -133,6 +133,10 @@ const assertCanManageApiKeys = async (accountId: string) => {
 };
 
 export const validateStripeConnectionCredentials = async (config: TStripeConnectionConfig) => {
+  if (!getConfig().WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.includes(config.orgId)) {
+    throw new BadRequestError({ message: `Your organization does not support Stripe app connections yet.` });
+  }
+
   const credentials = await exchangeStripeOAuthCode(config.credentials.code);
 
   await assertCanManageApiKeys(credentials.accountId);

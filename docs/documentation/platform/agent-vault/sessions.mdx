@@ -42,7 +42,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
     infisical agent-vault run --access-bundle <bundle-name> --proxy <proxy-address> -- <agent-command>
     ```
 
-    Set the duration with [`--ttl`](/cli/commands/agent-vault#ttl), which takes a value like `30m`, `8h`, `7d`, or `never`.
+    Set the duration with [`--ttl`](/cli/reference#agent-vault-run--flag-ttl), which takes a value like `30m`, `8h`, `7d`, or `never`.
 
     The CLI creates the session as your user by default, or as a machine identity when you pass `--client-id` and `--client-secret` (or their environment variables). It revokes the session when the agent exits unless you pass `--keep-session`.
 

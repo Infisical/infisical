@@ -1,0 +1,137 @@
+---
+title: "Scan code locally with the CLI"
+sidebarTitle: "Scan locally with the CLI"
+description: "Scan a repository, a directory, or your uncommitted changes for leaked secrets with infisical scan."
+---
+
+The [Infisical CLI](/cli/overview) includes a secret scanner, `infisical scan`, that finds leaked secrets in a Git repository's history, in a directory, or in changes you haven't committed yet. It uses the same rules and configuration format as scans of [connected repositories](/documentation/platform/secret-scanning/usage), but it runs on your machine or in a CI job and doesn't need an Infisical login. Its findings stay local: the CLI prints them, or writes them to a report file if you ask for one.
+
+## Prerequisites
+
+- The [Infisical CLI](/cli/install) installed
+- Git installed, if you're scanning a Git repository
+
+## Scan a repository or a directory
+
+To scan the full history of the Git repository you're in, run:
+
+```bash
+infisical scan --verbose
+```
+
+The scan reads every commit on every branch. To scan a range of commits instead, pass [Git log](https://git-scm.com/docs/git-log) options with `--log-opts`, such as `--log-opts="--all commitA..commitB"`. To scan the current files without reading Git history, add `--no-git` and point `--source` at a directory or a file:
+
+```bash
+infisical scan --no-git --source ./config --verbose
+```
+
+If the scan finds a secret, the command exits with code `1`, which fails a CI job. To write the findings to a file, add `--report-path`, and pick a format with `--report-format`: `json` (the default), `csv`, `sarif`, or `junit`. The [`infisical scan` reference](/cli/reference#scan) lists every flag.
+
+## Scan changes before you commit
+
+`infisical scan git-changes` scans only the changes in your working tree, so you can catch a secret before it's in a commit. Add `--staged` to scan what your next commit will contain:
+
+```bash
+infisical scan git-changes --staged --verbose
+```
+
+### Install the pre-commit hook
+
+To run that scan before every commit, run this command in your repository:
+
+```bash
+infisical scan install --pre-commit-hook
+```
+
+The CLI adds the hook to `.git/hooks/pre-commit`, and Git then blocks any commit the scan finds a secret in. To turn the hook off in a repository, run `git config hooks.infisical-scan false`.
+
+### Use a Git hook manager
+
+If a hook manager such as [Husky](https://typicode.github.io/husky/) runs your Git hooks, don't use `infisical scan install`. Hook managers point Git's `core.hooksPath` setting at their own folder, and the install command offers to change that setting back to `.git/hooks`, which stops the hook manager's hooks from running. Instead, add the scan to the hook manager's pre-commit script, such as `.husky/pre-commit`:
+
+```bash
+infisical scan git-changes --staged --verbose
+```
+
+## Ignore findings you've already reviewed
+
+A scan can flag a value you've decided is safe to commit, such as a test credential. You can ignore one line, ignore specific findings, or ignore every finding that already exists in the repository.
+
+### Ignore one line
+
+To ignore a secret on one line of code, add a `betterleaks:allow` comment at the end of the line:
+
+```js example.js
+const testKey = "8dyfuiRyq=vVc3RRr_edRk-fK__JItpZ"; // betterleaks:allow
+```
+
+The scanner also accepts `gitleaks:allow`, so existing `gitleaks:allow` comments keep working.
+
+### Ignore specific findings
+
+Each finding has a fingerprint, which you can find in the `Fingerprint` field of a JSON report. To ignore findings, list their fingerprints in a `.infisicalignore` file, one per line, in the directory you scan (the `--source` directory, which is the current directory by default):
+
+```text .infisicalignore
+bea0ff6e05a4de73a5db625d4ae181a015b50855:frontend/components/utilities/attemptLogin.js:stripe-access-token:147
+backend/src/json/integrations.json:generic-api-key:5
+```
+
+A fingerprint from a Git scan has the form `<commit>:<file>:<rule>:<line>`, and ignores the finding in that commit only. To ignore a finding in every commit, leave out the commit and write `<file>:<rule>:<line>`, which is also the form that scans without Git history report.
+
+### Ignore every existing finding with a baseline
+
+If you start scanning a repository that already has a long history, you can record every current finding in a baseline and have later scans report only new ones. First, write a JSON report of the current findings:
+
+```bash
+infisical scan --report-path baseline.json
+```
+
+Then pass that report to later scans with `--baseline-path`:
+
+```bash
+infisical scan --baseline-path baseline.json --report-path findings.json
+```
+
+`findings.json` then contains only the findings that aren't in `baseline.json`. The baseline must be a report in the default `json` format. `infisical scan git-changes` doesn't use a baseline.
+
+## Customize the scan rules
+
+By default, the scanner uses its built-in rules, which cover the credential formats of hundreds of services. To add your own rules or skip paths, create a configuration file named `.infisical-scan.toml` in the directory you scan. To use a file with a different name or location, pass it with `--config` or set `INFISICAL_SCAN_CONFIG`.
+
+A configuration file replaces the built-in rules unless it extends them. Set `useDefault = true` in the `[extend]` table to keep the built-in rules and add yours to them:
+
+```toml .infisical-scan.toml
+title = "Scan configuration for this repository"
+
+[extend]
+useDefault = true
+disabledRules = ["generic-api-key"]
+
+[[rules]]
+id = "internal-api-token"
+description = "Internal API token"
+regex = '''itk_[a-z0-9]{32}'''
+keywords = ["itk_"]
+
+[[allowlists]]
+description = "Test fixtures"
+paths = ['''(^|/)testdata/''']
+```
+
+- `[extend]`: `useDefault = true` keeps the built-in rules, `path` extends another configuration file instead (relative to the directory you run the CLI in), and `disabledRules` turns off built-in rules by ID
+- `[[rules]]`: a detection rule with a unique `id`, a [Go regular expression](https://pkg.go.dev/regexp/syntax) in `regex`, and `keywords` that a line must contain before the regular expression runs on it
+- `entropy` and `secretGroup` in a rule: the minimum randomness a match needs, and the regular expression group that holds the secret
+- `[[allowlists]]`: matches to skip, by file `paths`, `regexes`, `stopwords` found in the secret, or `commits`
+
+If a rule in your file has the same `id` as a built-in rule, the fields you set replace the built-in rule's fields. The built-in rules are in [the CLI's default configuration](https://github.com/Infisical/cli/blob/main/detect/config/betterleaks.toml), which is also a reference for every field a rule can use.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Usage" icon="radar" href="/documentation/platform/secret-scanning/usage">
+    Scan connected GitHub, GitLab, and Bitbucket repositories from Infisical.
+  </Card>
+  <Card title="infisical scan" icon="terminal" href="/cli/reference#scan">
+    See every flag of the scan commands.
+  </Card>
+</CardGroup>

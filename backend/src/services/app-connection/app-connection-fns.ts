@@ -15,6 +15,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
@@ -378,7 +379,7 @@ export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?
 // Add a product only once nothing creates other connection types in it through the API.
 export const PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES = [ProjectType.AgentVault];
 
-export const listAppConnectionOptions = (projectType?: ProjectType) => {
+export const listAppConnectionOptions = (orgId: string, projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
     getGitHubConnectionListItem(),
@@ -467,7 +468,15 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDaytonaConnectionListItem(),
     getStripeConnectionListItem()
   ]
-    .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
+    .filter((option) => {
+      if (option.app === AppConnection.Stripe) {
+        if (!getConfig().WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.includes(orgId)) {
+          return false;
+        }
+      }
+
+      return isAppConnectionAllowedInProject(option.app, projectType);
+    })
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
