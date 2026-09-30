@@ -437,6 +437,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration",
   [EventType.IMPORT_VAULT_SECRETS]: "Import Vault secrets",
   [EventType.GATEWAY_CREATE]: "Create gateway",
+  [EventType.GATEWAY_UPDATE]: "Update gateway",
+  [EventType.GATEWAY_DELETE]: "Delete gateway",
   [EventType.GATEWAY_ENROLL]: "Enroll gateway (legacy)",
   [EventType.GATEWAY_CONNECT]: "Gateway connect",
   [EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE]: "Generate gateway enrollment token",
@@ -479,7 +481,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_PROXY_ENROLL]: "Enroll proxy",
   [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
   [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",
-  [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy"
+  [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy",
+  [EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE]: "Update session log settings"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -552,6 +555,7 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.AGENT_VAULT_PROXY_ENROLL,
     EventType.AGENT_VAULT_PROXY_UPDATE,
     EventType.AGENT_VAULT_PROXY_REVOKE,
-    EventType.AGENT_VAULT_PROXY_DELETE
+    EventType.AGENT_VAULT_PROXY_DELETE,
+    EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE
   ]
 };

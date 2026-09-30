@@ -6,6 +6,8 @@ import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 
+import { MAX_IDENTITY_ACCESS_TOKEN_TTL_SECONDS } from "./identity-access-token-types";
+
 export type TIdentityAccessTokenDALFactory = ReturnType<typeof identityAccessTokenDALFactory>;
 
 export const identityAccessTokenDALFactory = (db: TDbClient) => {
@@ -34,7 +36,6 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     const BATCH_SIZE = 5000;
     const MAX_RETRY_ON_FAILURE = 3;
     const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
-    const MAX_TTL = 315_360_000; // Maximum TTL value in seconds (10 years)
 
     // Get the current timestamp from the database at the start of the operation
     // This ensures all queries use the same "now" value for consistency
@@ -77,12 +78,12 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             + make_interval(
                 secs => LEAST(
                   "${TableName.IdentityAccessToken}"."accessTokenTTL",      -- Token's specified TTL
-                  ?                                                         -- Capped by MAX_TTL (parameterized value)
+                  ?                                                         -- Capped by MAX_IDENTITY_ACCESS_TOKEN_TTL_SECONDS
                 )
               )
             < ?::timestamptz AT TIME ZONE 'UTC'                             -- Check if the calculated time is before now (cast to UTC timestamp for comparison)
             `,
-          [MAX_TTL, nowTimestamp]
+          [MAX_IDENTITY_ACCESS_TOKEN_TTL_SECONDS, nowTimestamp]
         )
         .select("id");
 

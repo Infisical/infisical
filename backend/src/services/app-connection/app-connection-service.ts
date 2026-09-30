@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, OrganizationActionScope, TAppConnections } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
@@ -34,7 +34,9 @@ import {
   encryptAppConnectionCredentials,
   enterpriseAppCheck,
   getAppConnectionMethodName,
+  isAppConnectionAllowedInProject,
   listAppConnectionOptions,
+  PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES,
   TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
@@ -55,6 +57,7 @@ import {
   TAppConnection,
   TAppConnectionConfig,
   TAppConnectionRaw,
+  TAppConnectionScope,
   TCreateAppConnectionDTO,
   TGetAppConnectionByNameDTO,
   TUpdateAppConnectionDTO,
@@ -181,6 +184,7 @@ import { snowflakeConnectionService } from "./snowflake/snowflake-connection-ser
 import { ValidateSpaceliftConnectionCredentialsSchema } from "./spacelift";
 import { spaceliftConnectionService } from "./spacelift/spacelift-connection-service";
 import { ValidateSshConnectionCredentialsSchema } from "./ssh";
+import { ValidateStripeConnectionCredentialsSchema } from "./stripe";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
 import { supabaseConnectionService } from "./supabase/supabase-connection-service";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
@@ -217,7 +221,10 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne" | "upsertConnectionLink">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem" | "getItem" | "setItemWithExpiry">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "setItemWithExpiryNX" | "deleteItem" | "getItem" | "setItemWithExpiry" | "acquireLock"
+  >;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -307,7 +314,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema,
   [AppConnection.PowerDns]: ValidatePowerDnsConnectionCredentialsSchema,
   [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
-  [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema
+  [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema,
+  [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -388,10 +396,17 @@ export const appConnectionServiceFactory = ({
     );
   };
 
-  const findAppConnectionById = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
+  const findAppConnectionById = async (
+    app: AppConnection,
+    connectionId: string,
+    actor: OrgServiceActor,
+    scope?: TAppConnectionScope
+  ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    // Checked before any permission or app check, so a connection outside the scope reads exactly like a missing one.
+    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.projectId) {
       const { permission } = await permissionService.getProjectPermission({
@@ -543,6 +558,18 @@ export const appConnectionServiceFactory = ({
         ProjectPermissionAppConnectionActions.Create,
         ProjectPermissionSub.AppConnections
       );
+
+      if (
+        PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES.includes(project.type as ProjectType) &&
+        !isAppConnectionAllowedInProject(app, project.type as ProjectType)
+      ) {
+        const supported = listAppConnectionOptions(actor.orgId, project.type as ProjectType).map(
+          (option) => option.name
+        );
+        throw new BadRequestError({
+          message: `${APP_CONNECTION_NAME_MAP[app]} Connections can't be used in this project. It supports: ${supported.join(", ")}.`
+        });
+      }
     } else {
       ForbiddenError.from(orgPermission).throwUnlessCan(
         OrgPermissionAppConnectionActions.Create,
@@ -722,6 +749,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const updateAppConnection = async (
+    app: AppConnection,
     {
       connectionId,
       credentials,
@@ -732,7 +760,8 @@ export const appConnectionServiceFactory = ({
       rotation,
       ...params
     }: TUpdateAppConnectionDTO,
-    actor: OrgServiceActor
+    actor: OrgServiceActor,
+    scope?: TAppConnectionScope
   ) => {
     if (gatewayId && gatewayPoolId) {
       throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
@@ -740,7 +769,8 @@ export const appConnectionServiceFactory = ({
 
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     await enterpriseAppCheck(
       licenseService,
@@ -778,6 +808,9 @@ export const appConnectionServiceFactory = ({
         subject(OrgPermissionSubjects.AppConnections, { connectionId })
       );
     }
+
+    if (appConnection.app !== app)
+      throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
 
     if (gatewayId !== undefined && gatewayId !== appConnection.gatewayId) {
       ForbiddenError.from(orgPermission).throwUnlessCan(
@@ -832,7 +865,7 @@ export const appConnectionServiceFactory = ({
 
     let updatedCredentials: undefined | TAppConnection["credentials"];
 
-    const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
+    const { method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
     let validationGatewayIdForUpdate: string | null | undefined = effectiveGatewayIdForUpdate;
 
     if (credentials) {
@@ -908,6 +941,28 @@ export const appConnectionServiceFactory = ({
 
       if (!updatedCredentials)
         throw new BadRequestError({ message: "Unable to validate connection - check credentials" });
+
+      // A Stripe connection is bound to the account its API keys live in. Letting a reconnect point
+      // it at a different account would strand every key a rotation already generated: Stripe answers
+      // a delete for an unknown key with a 404, which rotation reads as already retired, so the keys
+      // in the original account stay live with no way to revoke them through Infisical.
+      if (app === AppConnection.Stripe) {
+        const existingCredentials = await decryptAppConnectionCredentials({
+          orgId: appConnection.orgId,
+          projectId: appConnection.projectId,
+          encryptedCredentials: appConnection.encryptedCredentials,
+          kmsService
+        });
+
+        const existingAccountId = (existingCredentials as { accountId?: string }).accountId;
+        const updatedAccountId = (updatedCredentials as { accountId?: string }).accountId;
+
+        if (existingAccountId && updatedAccountId !== existingAccountId) {
+          throw new BadRequestError({
+            message: `This connection is bound to Stripe account ${existingAccountId}, but the app was authorized on account ${updatedAccountId}. Reconnect using the same account, or create a new connection for ${updatedAccountId}.`
+          });
+        }
+      }
     }
 
     try {
@@ -1070,10 +1125,16 @@ export const appConnectionServiceFactory = ({
     }
   };
 
-  const deleteAppConnection = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
+  const deleteAppConnection = async (
+    app: AppConnection,
+    connectionId: string,
+    actor: OrgServiceActor,
+    scope?: TAppConnectionScope
+  ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.projectId) {
       const { permission } = await permissionService.getProjectPermission({
@@ -1300,11 +1361,13 @@ export const appConnectionServiceFactory = ({
 
   const triggerCredentialRotation = async (
     { app, connectionId }: { app: AppConnection; connectionId: string },
-    actor: OrgServiceActor
+    actor: OrgServiceActor,
+    scope?: TAppConnectionScope
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });

@@ -1,0 +1,288 @@
+---
+title: "Terraform"
+description: "Manage Infisical Gateways as code with the Infisical Terraform provider"
+---
+
+The Infisical Terraform provider creates the gateway record and sets its authentication method, through the `infisical_gateway` resource. The gateway process runs on your own machine, and you install it with the CLI or the Helm chart pointed at the ID that resource produces.
+
+Managing the record in Terraform means the same configuration that creates the EC2 instance or the GKE node pool also creates the gateway it enrolls as. Nothing has to be copied by hand from the Infisical UI into your infrastructure code.
+
+This page covers the Terraform equivalent of the steps in [Gateway deployment](/documentation/platform/gateways/gateway-deployment), using the same authentication methods and the same CLI flags. Read that page first if you haven't deployed a gateway before.
+
+## Prerequisites
+
+- Terraform 1.0 or later
+- An Infisical [machine identity](/documentation/platform/identities/machine-identities) with permission to create gateways in your organization
+- A relay, if you're using relay mode. See [Relay deployment](/documentation/platform/gateways/relay-deployment/overview).
+
+## Configure the provider
+
+```terraform
+terraform {
+  required_providers {
+    infisical = {
+      source = "infisical/infisical"
+    }
+  }
+}
+
+provider "infisical" {
+  host = "https://app.infisical.com" # Only required when self-hosting Infisical
+
+  auth = {
+    universal = {
+      client_id     = var.infisical_client_id
+      client_secret = var.infisical_client_secret
+    }
+  }
+}
+```
+
+## Create a gateway
+
+Set exactly one authentication block on the resource. AWS, GCP, and Kubernetes authentication re-authenticate on every start and put no secret in Terraform state, so use one of those wherever the platform can vouch for the host. Use token authentication for the rest, such as a server in your own data center.
+
+Every method takes an allowlist, and only a machine matching it can enroll as the gateway. [Gateway deployment](/documentation/platform/gateways/gateway-deployment) describes what each field is checked against.
+
+<Tabs>
+<Tab title="AWS">
+The host authenticates by signing an STS request with whatever AWS credentials it can resolve, such as an instance role.
+
+```terraform
+resource "infisical_gateway" "prod" {
+  name = "prod-us-east"
+
+  aws_auth = {
+    allowed_account_ids    = ["123456789012"]
+    allowed_principal_arns = ["arn:aws:iam::123456789012:role/infisical-gateway"]
+  }
+}
+```
+
+At least one of `allowed_account_ids` or `allowed_principal_arns` is required. An account ID on its own trusts every principal in that account, so prefer the ARN where you can.
+
+Pass the gateway's name and ID to the instance that runs it:
+
+```terraform
+resource "aws_instance" "gateway" {
+  ami                  = data.aws_ami.ubuntu.id
+  instance_type        = "t3.small"
+  subnet_id            = var.subnet_id
+  iam_instance_profile = aws_iam_instance_profile.gateway.name
+
+  user_data = <<-EOT
+    #!/bin/bash
+    set -e
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
+    apt-get update && apt-get install -y infisical
+
+    infisical gateway systemd install ${infisical_gateway.prod.name} \
+      --enroll-method=aws \
+      --gateway-id=${infisical_gateway.prod.id} \
+      --domain=https://app.infisical.com
+    systemctl start ${infisical_gateway.prod.name}
+  EOT
+}
+```
+
+The role behind `aws_iam_instance_profile.gateway` has to match the allowlist above.
+</Tab>
+
+<Tab title="GCP">
+The host authenticates with an identity token from the GCP metadata server, which covers Compute Engine VMs and GKE workload identity. The token carries the gateway's ID as its audience, so a token minted for one gateway can't authenticate as another.
+
+```terraform
+resource "infisical_gateway" "prod" {
+  name = "prod-gce"
+
+  gcp_auth = {
+    type                     = "gce"
+    allowed_service_accounts = ["infisical-gateway@my-project.iam.gserviceaccount.com"]
+    allowed_projects         = ["my-project"]
+  }
+}
+```
+
+Set `type` to `iam` instead for a host outside Compute Engine, where the service account signs a token through the IAM Credentials API.
+
+At least one of `allowed_service_accounts` or `allowed_projects` is required. `allowed_zones` only narrows those two, because any GCP customer can place an instance in a given zone.
+
+<Warning>
+  `allowed_projects` and `allowed_zones` are matched against Compute Engine instance details carried inside the token, and only a Compute Engine VM's token carries them. On GKE, restrict by service account.
+</Warning>
+
+Pass the gateway's name and ID to the instance that runs it:
+
+```terraform
+resource "google_compute_instance" "gateway" {
+  name         = "infisical-gateway"
+  machine_type = "e2-small"
+  zone         = "us-central1-a"
+
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+    }
+  }
+
+  network_interface {
+    subnetwork = var.subnetwork
+  }
+
+  service_account {
+    email  = google_service_account.gateway.email
+    scopes = ["cloud-platform"]
+  }
+
+  metadata_startup_script = <<-EOT
+    #!/bin/bash
+    set -e
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
+    apt-get update && apt-get install -y infisical
+
+    infisical gateway systemd install ${infisical_gateway.prod.name} \
+      --enroll-method=gcp \
+      --gateway-id=${infisical_gateway.prod.id} \
+      --domain=https://app.infisical.com
+    systemctl start ${infisical_gateway.prod.name}
+  EOT
+}
+```
+
+The email in `google_service_account.gateway` has to be in `allowed_service_accounts`.
+</Tab>
+
+<Tab title="Kubernetes">
+The pod authenticates with its own projected service account token, and Infisical verifies that token against your cluster's TokenReview API.
+
+```terraform
+resource "infisical_gateway" "cluster" {
+  name = "gke-prod"
+
+  kubernetes_auth = {
+    kubernetes_host               = "https://my-cluster.example.com:6443"
+    ca_certificate                = var.cluster_ca_certificate
+    allowed_namespaces            = ["infisical-gateway"]
+    allowed_service_account_names = ["infisical-gateway"]
+  }
+}
+
+resource "helm_release" "gateway" {
+  name             = "infisical-gateway"
+  repository       = "https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/"
+  chart            = "infisical-gateway"
+  namespace        = "infisical-gateway"
+  create_namespace = true
+
+  values = [yamlencode({
+    gateway = {
+      name   = infisical_gateway.cluster.name
+      domain = "https://app.infisical.com"
+      enrollment = {
+        method     = "kubernetes"
+        kubernetes = { gatewayId = infisical_gateway.cluster.id }
+      }
+    }
+  })]
+}
+```
+
+The release namespace and service account name have to match the allowlists, which with the configuration above means both are `infisical-gateway`.
+
+Leave `token_reviewer_jwt` unset to let the gateway's own service account review its token. The chart grants that service account the `system:auth-delegator` ClusterRole by default.
+
+For a cluster whose API server Infisical can't reach, set `token_review_mode = "gateway"`, omit `kubernetes_host`, and point `reviewer_gateway_id` at a gateway already connected in that cluster. A gateway can't review its own token, so enroll the first gateway in a private cluster with token, AWS, or GCP authentication.
+</Tab>
+
+<Tab title="Token">
+A single-use enrollment token bootstraps the gateway. Write `token_auth` as an empty object, since it takes no arguments, and mint the token with a second resource.
+
+```terraform
+resource "infisical_gateway" "datacenter" {
+  name = "datacenter-01"
+
+  token_auth = {}
+}
+
+resource "infisical_gateway_enrollment_token" "datacenter" {
+  gateway_id = infisical_gateway.datacenter.id
+
+  keepers = {
+    ami_id        = data.aws_ami.ubuntu.id
+    instance_type = var.instance_type
+    subnet_id     = var.subnet_id
+  }
+}
+
+resource "aws_instance" "gateway" {
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = var.instance_type
+  subnet_id     = var.subnet_id
+
+  user_data = <<-EOT
+    #!/bin/bash
+    set -e
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
+    apt-get update && apt-get install -y infisical
+
+    infisical gateway systemd install ${infisical_gateway.datacenter.name} \
+      --enroll-method=token \
+      --token=${infisical_gateway_enrollment_token.datacenter.token} \
+      --domain=https://app.infisical.com
+    systemctl start ${infisical_gateway.datacenter.name}
+  EOT
+}
+```
+
+`keepers` controls when a new token is issued, and getting that list right is the part that needs care. See [Enrollment tokens](#enrollment-tokens) below.
+
+<Warning>
+  Instance user data is readable by anything running on the instance. For production, write the token to AWS Secrets Manager or SSM Parameter Store and fetch it in the startup script.
+</Warning>
+</Tab>
+</Tabs>
+
+## Enrollment tokens
+
+An enrollment token is single-use and expires after an hour. The gateway consumes the token the first time it enrolls, and holds credentials of its own from then on.
+
+Terraform can't tell whether a token has already been used, so `infisical_gateway_enrollment_token` never mints a new one on its own. `keepers` is how you say when it should. List the inputs that force the machine consuming the token to be rebuilt, and a change to any of them mints a fresh token before the replacement machine boots.
+
+In the example above, those inputs are the AMI, the instance type, and the subnet, because changing any of them replaces the EC2 instance. You can't reference the instance itself, since the instance depends on the token, so list what the instance is built from instead.
+
+<Warning>
+  Nothing validates the keeper list. An input you leave out means the rebuilt machine boots with a token that's already been used. The machine stays offline, and Terraform reports no drift, because none of the values it tracks changed.
+</Warning>
+
+<Warning>
+  The token is stored in Terraform state in plaintext. Use a backend that encrypts state, and restrict who can read it. Gateways using AWS, GCP, or Kubernetes authentication put nothing in state.
+</Warning>
+
+## Manage an existing gateway
+
+You can import a gateway created in the UI. Copy its ID from the gateway's detail page:
+
+```bash
+terraform import infisical_gateway.prod <gateway-id>
+```
+
+Infisical never returns `token_reviewer_jwt`, so it's empty on an imported Kubernetes gateway. Add it back to your configuration if you set one. Gateways bound to a machine identity predate authentication methods and can't be imported.
+
+Changing `name` renames the gateway in place. It keeps its ID, and app connections, dynamic secrets, and rotations that use it keep working.
+
+<Note>
+  On the host, the config file and the systemd unit are named after the gateway as it was at install time, and a rename in Infisical doesn't change either. Re-run the install command on the host if you want the names to match.
+</Note>
+
+Destroying the resource deletes the gateway. Anything routing through it loses its network path, and the deletion is refused while another gateway uses it as a Kubernetes token reviewer.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Gateway deployment" icon="server" href="/documentation/platform/gateways/gateway-deployment">
+    Connection modes, host requirements, and troubleshooting.
+  </Card>
+  <Card title="Gateway pools" icon="layer-group" href="/documentation/platform/gateways/gateway-pools">
+    Group gateways for redundancy and failover.
+  </Card>
+</CardGroup>

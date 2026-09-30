@@ -138,7 +138,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
   const confirmRevoke = async () => {
     if (!requestToRevoke) return;
-    await revokeMutation.mutateAsync({ requestId: requestToRevoke.id });
+    await revokeMutation.mutateAsync({ grantId: requestToRevoke.grantId! });
     createNotification({ text: "Access revoked", type: "success" });
     setRequestToRevoke(null);
   };

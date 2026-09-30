@@ -39,6 +39,7 @@ import { recordIdentityLastLoginDebounced } from "../membership-identity/members
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityAliCloudAuthDALFactory } from "./identity-alicloud-auth-dal";
+import { getAliCloudErrorForLog } from "./identity-alicloud-auth-fns";
 import {
   TAliCloudGetUserResponse,
   TAttachAliCloudAuthDTO,
@@ -118,7 +119,10 @@ export const identityAliCloudAuthServiceFactory = ({
       }
 
       const { data } = await request.get<TAliCloudGetUserResponse>(requestUrl.toString()).catch((err: AxiosError) => {
-        logger.error(err.response, "AliCloudIdentityLogin: Failed to authenticate with Alibaba Cloud");
+        logger.error(
+          getAliCloudErrorForLog(err),
+          `AliCloudIdentityLogin: Failed to authenticate with Alibaba Cloud [identityId=${identity.id}] [status=${err.response?.status}]`
+        );
         throw err;
       });
 

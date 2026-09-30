@@ -86,7 +86,11 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         hasNoOrg = false;
       }
       if (hasNoOrg) {
-        throw redirect({ to: "/organizations/onboarding", replace: true });
+        throw redirect({
+          to: "/organizations/onboarding",
+          search: { callback_port: search.callback_port },
+          replace: true
+        });
       }
 
       // Consume the one-shot param so refresh/back-nav can't re-fire the conversion event
@@ -183,7 +187,8 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
               callbackPort: search.callback_port
             })
           );
-          throw redirect({ to: "/cli-redirect" });
+          setAuthToken(result.token);
+          throw redirect({ to: "/cli-redirect", search: { org_id: targetOrgId } });
         }
 
         setAuthToken(result.token);

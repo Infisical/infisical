@@ -7,7 +7,7 @@ description: "Learn what is secret scanning and why it matters for building secu
 
 Monitor and detect exposed secrets across your data sources, including code repositories, with Infisical Secret Scanning.
 
-For additional security, we recommend using our [CLI Secret Scanner](/cli/scanning-overview#automatically-scan-changes-before-you-commit) to check for exposed secrets before pushing your code changes.
+For additional security, we recommend using our [CLI Secret Scanner](/documentation/platform/secret-scanning/scan-locally#install-the-pre-commit-hook) to check for exposed secrets before pushing your code changes.
 
 <Note>
   Secret Scanning is a paid feature. If you're using Infisical Cloud, then it is
@@ -213,20 +213,20 @@ For detailed configuration options, expand the example configuration below.
 
 If you're intentionally committing a test secret that the secret scanner might flag, you can instruct Infisical to overlook that secret with the methods listed below.
 
-### infisical-scan:ignore
+### `betterleaks:allow`
 
-To ignore a secret contained in line of code, simply add `infisical-scan:ignore ` at the end of the line as comment in the given programming.
+To ignore a secret contained in line of code, simply add `betterleaks:allow` at the end of the line as comment in the given programming.
 
 ```js example.js
 function helloWorld() {
-  console.log("8dyfuiRyq=vVc3RRr_edRk-fK__JItpZ"); // infisical-scan:ignore
+  console.log("8dyfuiRyq=vVc3RRr_edRk-fK__JItpZ"); // betterleaks:allow
 }
 ```
 
 ### .infisicalignore
 
 An alternative method to exclude specific findings involves creating a .infisicalignore file at your repository's root.
-You can then add the fingerprints of the findings you wish to exclude. The [Infisical scan](/cli/scanning-overview) report provides a unique Fingerprint for each secret found.
+You can then add the fingerprints of the findings you wish to exclude. The [Infisical scan](/documentation/platform/secret-scanning/scan-locally) report provides a unique Fingerprint for each secret found.
 By incorporating these Fingerprints into the .infisicalignore file, Infisical will skip the corresponding secret findings in subsequent scans.
 
 ```.ignore .infisicalignore

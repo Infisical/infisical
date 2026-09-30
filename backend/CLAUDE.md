@@ -630,6 +630,8 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
 
 **Only `general-workers` pods start the manager's timers**, so only they execute a scheduled handler; every pod still calls `register`. The separate `cronJobs` array in `src/server/routes/index.ts` is deliberately **not** gated: those refresh the process's own caches (license, rate limits, env overrides), not fleet work.
 
+**Per-process refreshes use `startLocalRefresh` (`src/lib/cron/local-refresh.ts`), never the cron manager and never a raw `new CronJob`.** The cron manager runs a job once per fleet, which would leave every other pod's in-memory state stale; a wall-clock cron pattern makes every pod fire in the same second. The helper starts each process at a random offset within one interval (random per process on purpose, unlike the manager's deterministic hash), skips a tick while the previous run is in flight, logs and swallows errors, and unrefs its timers. Its `stop()` handle is what goes in `cronJobs`. It records `infisical.local_refresh.*` on the `InfisicalCore` meter, labelled by `name` as `job.name`, so a new refresh needs no metric code; keep `name` a fixed string. A failing refresh keeps retrying on every tick rather than giving up after N failures, because stopping would freeze the pod's state at whatever it last loaded. The `consecutive_failures` gauge (reset on success) is the alerting signal.
+
 **Why this exists instead of BullMQ repeatables**: cron runs are coordinated across pods via a slot-election scheme (5 participant slots backed by Redis SET NX/PX) plus per-run redlocks, so each fire executes exactly once across the fleet without the orphaned-scheduler / duplicate-execution failure modes the BullMQ `JobScheduler` had. The manager also handles crash recovery via lease TTLs, hang recovery via per-handler timeouts, and bounded exponential backoff that won't overlap with the next scheduled fire.
 
 **Registering a cron job**:
@@ -848,8 +850,20 @@ Custom error classes in `src/lib/errors/index.ts`:
 - `InternalServerError` (500)
 - `RateLimitError`
 - `ScimRequestError` — SCIM-specific formatting with schemas and status
+- `ClientClosedRequestError` (499, nginx convention) — the client disconnected before the response was written; see below
 
 Global error handler in `src/server/plugins/error-handler.ts` maps these to HTTP status codes and records OpenTelemetry error metrics.
+
+#### Stopping work after a client disconnect
+
+Node keeps running a handler after its client has gone, and a disconnected client usually retries, so a CPU-heavy request that outlives its caller does the full cost again on another pod. Routes whose work can run long after the database reads finish (fan-out over folders, references, or imports) should stop when the connection closes. `GET /api/v3/secrets/raw` and `GET /api/v4/secrets` are examples.
+
+- **Route:** pass `abortSignal: getClientDisconnectSignal(reply)` (`src/server/lib/client-disconnect.ts`) into the service. It aborts only when the socket closes before the response was written, so a normal completion never trips it.
+- **Service:** call `throwIfClientDisconnected(abortSignal)` at fan-out points only: before each unit of work that triggers more reads (each reference, each import level, a shared folder load). Don't add one after every `await`; a check that saves a single query for a client that has already left is noise. Checks are cooperative, so an in-flight query or synchronous block still finishes, and a long synchronous block delays noticing the disconnect. Keep the per-item work linear.
+- **`Promise.allSettled` fan-outs:** they swallow the rejection, so scan the results with `throwIfAnySettledClientClosed(results)` instead of rechecking the signal. A disconnect mid-fan-out means the result is partial and must not be cached or returned as reference errors; a result that completed before the client left should still be cached so the retry is a hit.
+- **Catch blocks** that turn failures into an empty result (a folder that failed to load, a skipped cross-project read) must rethrow `ClientClosedRequestError` first, or the partial state gets cached.
+
+The 499 never reaches the caller. It exists for logs (warn, no stack) and the `error.type="client_closed"` label on `infisical.core.http.error.count`. This is disconnect handling, not a request deadline: a slow client that stays connected is still bounded only by Fastify's 100s socket `connectionTimeout` in `src/server/app.ts`.
 
 ### Logging
 
@@ -869,6 +883,87 @@ logger.error({ sessionId, err }, "Failed to get connection details");
 **Never log an outbound URL verbatim — a URL is often itself a credential.** Incoming-webhook providers put the bearer secret in the path (`https://hooks.slack.com/services/T…/B…/<secret>`, Discord, Teams, Telegram) and many APIs accept a token as a query param, so a raw URL in a log line ships a working credential to the log sink. Pass it through `sanitizeUrlForLog` from `@app/lib/logger` first (`src/lib/logger/sanitize-url.ts`): it keeps only the origin, strips userinfo and the fragment, redacts the entire path, and redacts every query value. Token formats can't be recognised reliably, so the path is redacted by default for every host rather than sniffed with heuristics. The global axios response interceptor (`src/lib/config/request.ts`) and `safeRequest`'s dispatch log already do this.
 
 Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
+
+### Certificate revocation: CRL and OCSP
+
+Internal CAs publish revocation two ways, both unauthenticated public endpoints under
+`/api/v1/cert-manager`. CRL is `ee/services/certificate-authority-crl`; OCSP
+([RFC 6960](https://www.rfc-editor.org/rfc/rfc6960)) is `ee/services/certificate-authority-ocsp`, opt-in
+per CA via `internal_certificate_authorities.isOcspEnabled` and gated on the `pkiOcsp` plan flag.
+
+The responder answers a status question for one certificate, so the things that bite are freshness and
+what an anonymous caller can cost us.
+
+- **Serials have two forms and the database knows one.** `certificates.serialNumber` is 40 lowercase hex
+  as issued, and `createSerialNumber` clears the top bit, so ~1 in 8 begins with `0`. A CertID carries a
+  DER INTEGER that may also carry a sign byte. `parseOcspRequest` keeps `rawSerialNumber` and the
+  zero-stripped `serialNumber`, and `$resolveStatuses` queries both. Querying one silently answers
+  `unknown` for every certificate whose serial starts with a zero byte, revoked ones included.
+- **Every read on the revocation path goes to a primary, in Redis and in Postgres.** `keyStore.getItem`
+  and `ormify().find` both default to a replica, and so does `findByIdWithAssociatedCa`. Under lag any of
+  them re-caches a pre-revocation `good` for the full validity window, or answers for a CA whose OCSP was
+  just switched off. Use `getItemPrimary` and pass a `primaryNode()` as the `tx`.
+- **Invalidation is a Postgres counter, not a Redis write.** `internal_certificate_authorities.ocspGeneration`
+  is bumped in the *same transaction* as the certificate status write in `revokeCert`, which is the only
+  place a certificate becomes revoked. Each cached entry records the generation it was signed under and a
+  read rejects a mismatch, so nothing has to delete a key and a Redis outage cannot leave a revoked
+  certificate reading `good`. The responder already reads the CA row from the primary every request, so
+  comparing it is free. A new path that revokes a certificate must bump it too. Deleting a certificate does
+  not, and neither does the expiry cleanup: deletion is not revocation, so a cached `good` for a certificate
+  nobody revoked is still true, and bumping would flush every live certificate's cached response on that CA
+  for nothing. Only single-certID responses are cached; multi-certID requests are answered but never cached.
+  Do not reintroduce a best-effort invalidation call after the commit: that is exactly the shape that failed
+  review, because a failure there is unrecoverable and silent.
+- **Concurrent misses coalesce into one signing.** `inFlightResponses` keys on the cache key plus the
+  generation. The generation is what stops a request arriving after a revoke from joining a flight
+  that began before it. Nonced requests are exempt for free, because their cache key is `null`.
+- **A nonce is an OCTET STRING, and an extnValue that is not one is rejected.** The response always
+  re-encodes the nonce wrapped, so accepting a raw inner value would sign an echo that can never match what
+  the client sent. `parseOcspRequest` returns `null`, which the service answers as `malformedRequest`.
+- **Never take the hash OID out of a CertID without checking `OCSP_HASH_NAME_BY_OID` first.** An OID is an
+  unbounded dotted-decimal string and it keys the per-CA issuer-hash memo, so an unvalidated one is
+  unbounded attacker-controlled heap.
+- **Signing is capped three ways and sheds with `tryLater`**: globally (4), per CA (2), and in aggregate
+  across every CA (`OCSP_SIGNING_MAX_TOTAL_IN_FLIGHT`, checked before a per-CA limiter is created or
+  entered). The global cap matches libuv's default threadpool of 4, where `crypto.subtle.sign` runs, so
+  OCSP never needs more than the pool that password hashing, KMS decrypts and DNS lookups share. The
+  per-CA tier stops one tenant's traffic shedding everyone else's, but on its own it multiplies how many
+  requests are parked at once, because a caller choosing to spray across many valid CA ids gets a fresh
+  queue per id. The aggregate cap is what bounds that, and it is deliberately far above any single CA's
+  own limit so the fairness the per-CA tier buys is preserved. Both are per process, so the rate limiter is the outer
+  bound, and it is only registered under `isProductionMode && isCloud`.
+- **Do not log per request on this path.** The endpoint is unauthenticated and the rate limiter is only
+  registered under `isProductionMode && isCloud`, so on self-hosted an anonymous caller sets the log
+  volume. Malformed and unauthorized results are counted by `ocsp.result` and logged nowhere; the
+  saturation warning is interval-guarded because shedding is by definition high volume.
+- **Protocol shape, not REST.** HTTP 200 with the error in the DER body, and a wildcard GET path carrying
+  url-encoded base64. Required by RFC 6960 appendix A.1. Both routes also carry an `errorHandler`, because
+  a body over `bodyLimit` or a missing `Content-Type` never reaches the handler and would otherwise return
+  a JSON 500 an OCSP client cannot parse.
+- **The responder never consults the plan.** Entitlement gates enabling OCSP, never answering, per
+  `CODE_QUALITY.md`. Note the managed CRL URL beside it *does* re-check at issuance; that asymmetry is
+  deliberate on the OCSP side and should not be "fixed" by copying the CRL pattern.
+- **The response metric keeps those two states on separate dimensions.** `ocsp.status` is the envelope
+  and `ocsp.cert_status` is the per-certificate answer, which only exists inside a `successful` envelope
+  and is `none` otherwise. Flattening them onto one label made `unknown` and `unauthorized` look like
+  siblings when they come from different enumerations. Both names, plus `ocsp.cache`, have to be in
+  `INFISICAL_CORE_METER_ATTRIBUTES`: an attribute missing from that allowlist is dropped by the SDK View
+  with no error, so `ocsp-metric-attributes.test.ts` pins them.
+- **The two "I can't answer" states are different, and RFC 6960 picks between them.** `unauthorized`
+  (2.3, unsigned) is "not capable of responding authoritatively": no such CA, no active CA certificate,
+  issuer hashes that belong to someone else, and OCSP switched off for that CA. `unknown` (2.2, signed,
+  inside a successful response) is "I serve this issuer but have no record of this certificate", which is
+  a serial this CA never issued. Do not answer a disabled CA with `unknown`: we hold a record for those
+  certificates, so it is a false assertion signed with the CA key, and it would make the off switch still
+  cost a signature per request. `unknown` responses carry a short validity window, since their serial is
+  caller-chosen.
+
+**`signTbs` must DER-encode ECDSA itself.** WebCrypto returns raw `r||s`; X.509 and OCSP need the DER
+`ECDSA-Sig-Value` SEQUENCE. The certificate, CSR and CRL generators convert internally, so nothing above
+them ever had to. Without it every ECDSA CA's OCSP responses fail verification in openssl, Go and Windows,
+and nothing on our side errors. `TCaSigner` (`services/certificate-authority/ca-signer.ts`) gained
+`signTbs` for this and abstracts over software, HSM and PQC CAs. PQC needs no special case beyond taking
+the signature OID from `pqcNameToOid`.
 
 ### Enterprise (EE) Features
 

@@ -1,50 +1,43 @@
 ---
-title: 'Install'
-description: "Infisical's CLI is one of the best ways to manage environments and secrets. Install it here"
+title: "Infisical CLI"
 sidebarTitle: "CLI"
+description: "Install and set up the Infisical CLI."
 icon: "terminal"
 ---
 
-import InstallCli from "/snippets/cli/install-cli.mdx";
+The Infisical CLI allows you to interact with the Infisical platform from your terminal.
 
 <Warning>
-  **Action required for Linux users.** The Infisical CLI Linux package repository moved from Cloudsmith to `artifacts-cli.infisical.com`. The Cloudsmith repository stopped serving on **September 16, 2026**. Machines still pointed at the old URL will fail to install or update. See the [migration guide](/cli/cloudsmith-migration) for step-by-step instructions.
+  If you installed the CLI on Linux from the Cloudsmith package repository, [move to `artifacts-cli.infisical.com`](/cli/cloudsmith-migration). Cloudsmith stopped serving the CLI on September 16, 2026, so machines still pointed at it can't install or upgrade the CLI.
 </Warning>
 
-The Infisical CLI is a powerful command line tool that can be used to retrieve, modify, export and inject secrets into any process or application as environment variables.
-You can use it across various environments, whether it's local development, CI/CD, staging, or production.
+## Get started
 
-## Installation
+Install the CLI, log in, and connect it to a project:
 
-Install the CLI with the package manager for your operating system.
+<CardGroup cols={2}>
+  <Card title="Install" icon="download" href="/cli/install">
+    Install the CLI on macOS, Windows, or Linux
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/cli/usage">
+    Log in and find the CLI guide for each product
+  </Card>
+  <Card title="Upgrade" icon="refresh-cw" href="/cli/upgrade">
+    Upgrade the CLI to the latest version
+  </Card>
+  <Card title="Project configuration" icon="file-cog" href="/cli/project-config">
+    Link a directory to an Infisical project with `.infisical.json`
+  </Card>
+</CardGroup>
 
-<InstallCli />
+<Card title="FAQ" icon="circle-question-mark" href="/cli/faq">
+  Answers to common problems, such as keyring errors
+</Card>
 
-<Tip>
-  When you install the CLI in a production environment, pin it to a specific version so that the version stays the same across reinstalls. [View versions](https://github.com/Infisical/cli/releases)
-</Tip>
+## Command reference
 
-## Update the CLI
+Look up a command's arguments, flags, and examples:
 
-<CodeGroup>
-
-```bash macOS
-brew update && brew upgrade infisical
-```
-
-```bash Windows (Scoop)
-scoop update infisical
-```
-
-```bash npm
-npm update -g @infisical/cli
-```
-
-</CodeGroup>
-
-On Linux, update the CLI with the package manager you installed it with.
-
-## Quick usage guide
-<Card color="#00A300" href="./usage">
-  Now that you have the CLI installed on your system, follow this guide to make the best use of it
+<Card title="Command reference" icon="square-terminal" href="/cli/reference">
+  Every CLI command and the global flags they share
 </Card>
