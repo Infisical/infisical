@@ -78,6 +78,7 @@ export const resourceMetadataServiceFactory = ({
     if (!parents.length) return { secrets: [], searchLimit };
     const scopedFolders = await folderDAL.findByEnvsDeep({ parentIds: parents.map((folder) => folder.id) }, db);
     const scopedFolderIds = scopedFolders.map((folder) => folder.id);
+    if (!scopedFolderIds.length) return { secrets: [], searchLimit };
 
     // run both searches on primary via a transaction so recently written metadata is visible (avoids
     // replica lag). Plaintext values are matched in SQL; encrypted values can't be (non-deterministic

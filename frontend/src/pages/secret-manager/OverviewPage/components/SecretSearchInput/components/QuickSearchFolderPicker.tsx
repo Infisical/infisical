@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { CheckIcon, FolderIcon } from "lucide-react";
 
 import { Combobox, InputGroup, InputGroupAddon } from "@app/components/v3";
-import { useListProjectEnvironmentFolders } from "@app/hooks/api/secretFolders/queries";
+import { useListProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/queries";
 
 type Props = {
   projectId: string;
@@ -12,7 +12,10 @@ type Props = {
 };
 
 export const QuickSearchFolderPicker = ({ projectId, environment, value, onChange }: Props) => {
-  const { data, isPending, isError } = useListProjectEnvironmentFolders(projectId, environment);
+  const { data, isPending, isError } = useListProjectEnvironmentsFolders(projectId, {
+    environment,
+    enabled: Boolean(projectId && environment)
+  });
   const options = useMemo(
     () =>
       [...new Set((data?.[environment ?? ""]?.folders ?? []).map(({ path }) => path))]

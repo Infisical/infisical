@@ -47,30 +47,24 @@ const fetchProjectFolders = async (projectId: string, environment: string, path 
 
 export const useListProjectEnvironmentsFolders = (
   projectId: string,
-  options?: Omit<
+  {
+    environment,
+    ...options
+  }: Omit<
     UseQueryOptions<
       TProjectEnvironmentsFolders,
       unknown,
       TProjectEnvironmentsFolders,
-      ReturnType<typeof folderQueryKeys.getProjectEnvironmentsFolders>
+      | ReturnType<typeof folderQueryKeys.getProjectEnvironmentsFolders>
+      | ReturnType<typeof folderQueryKeys.getProjectEnvironmentFolders>
     >,
     "queryKey" | "queryFn"
-  >
+  > & { environment?: string } = {}
 ) =>
   useQuery({
-    queryKey: folderQueryKeys.getProjectEnvironmentsFolders(projectId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<TProjectEnvironmentsFolders>(
-        `/api/v1/projects/${projectId}/environment-folder-tree`
-      );
-      return data;
-    },
-    ...options
-  });
-
-export const useListProjectEnvironmentFolders = (projectId: string, environment?: string) =>
-  useQuery({
-    queryKey: folderQueryKeys.getProjectEnvironmentFolders(projectId, environment ?? ""),
+    queryKey: environment
+      ? folderQueryKeys.getProjectEnvironmentFolders(projectId, environment)
+      : folderQueryKeys.getProjectEnvironmentsFolders(projectId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TProjectEnvironmentsFolders>(
         `/api/v1/projects/${projectId}/environment-folder-tree`,
@@ -78,7 +72,7 @@ export const useListProjectEnvironmentFolders = (projectId: string, environment?
       );
       return data;
     },
-    enabled: Boolean(projectId && environment)
+    ...options
   });
 
 export const useGetProjectFolders = ({
