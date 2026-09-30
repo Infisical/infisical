@@ -184,35 +184,6 @@ export const SecretTableRow = ({
     [measureElement]
   );
 
-  // A logical secret row spans one <tr> plus, when present, its override or expanded
-  // sibling <tr>; re-measure the whole group on every render so the virtualizer tracks
-  // the override/expanded toggles.
-  //
-  // Re-measuring on render is not enough on its own. The virtualizer only observes the single
-  // node handed to measureElement, which is the main <tr>, so growth in a sibling is invisible
-  // to it: a value editor in an already-dirty expanded row gains lines without this component
-  // re-rendering, since isDirty has already flipped, and the cached height stays behind by
-  // exactly the growth, shifting every row below. Observe the whole group instead, re-attaching
-  // each render because the group's shape changes as the override and expanded rows come and go.
-  useLayoutEffect(() => {
-    const node = rowRef.current;
-    if (!node) return undefined;
-
-    measureElement(node);
-
-    const rowGroupObserver = new ResizeObserver(() => {
-      if (rowRef.current) measureElement(rowRef.current);
-    });
-    const index = node.getAttribute("data-index");
-    let sibling: Element | null = node;
-    while (sibling instanceof HTMLElement && sibling.getAttribute("data-index") === index) {
-      rowGroupObserver.observe(sibling);
-      sibling = sibling.nextElementSibling;
-    }
-
-    // eslint-disable-next-line consistent-return
-    return () => rowGroupObserver.disconnect();
-  });
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
   const [isSingleEnvBaseActive, setIsSingleEnvBaseActive] = useState(false);
   const [isSingleEnvOverrideActive, setIsSingleEnvOverrideActive] = useState(false);
@@ -262,6 +233,43 @@ export const SecretTableRow = ({
     ? creatingOverrideEnvs.has(singleEnvSlug)
     : false;
   const singleEnvShowOverride = singleEnvHasOverride || singleEnvIsCreatingOverride;
+
+  // A logical secret row spans one <tr> plus, when present, its override or expanded sibling <tr>.
+  // The virtualizer only observes the single node handed to measureElement, which is the main
+  // <tr>, so growth in a sibling is invisible to it: a value editor in an already-dirty expanded
+  // row gains lines without this component re-rendering, since isDirty has already flipped, and
+  // the cached height would stay behind by exactly the growth, shifting every row below.
+  //
+  // So observe the whole group. The observer stays attached across renders and is rebuilt only
+  // when the group's shape actually changes, which is when this row is recycled to another index
+  // or when the override or expanded sibling comes or goes; re-running it per render would add
+  // observer teardown and a fresh round of initial resize callbacks to every scroll frame, which
+  // is the cost this PR exists to remove. Re-measuring on those shape changes is enough on its
+  // own, because any later size change reaches us through the observer.
+  useLayoutEffect(() => {
+    const node = rowRef.current;
+    if (!node) return undefined;
+
+    measureElement(node);
+
+    const rowGroupObserver = new ResizeObserver(() => {
+      if (rowRef.current) measureElement(rowRef.current);
+    });
+    const index = node.getAttribute("data-index");
+    let sibling: Element | null = node;
+    while (sibling instanceof HTMLElement && sibling.getAttribute("data-index") === index) {
+      rowGroupObserver.observe(sibling);
+      sibling = sibling.nextElementSibling;
+    }
+
+    // eslint-disable-next-line consistent-return
+    return () => rowGroupObserver.disconnect();
+  }, [
+    measureElement,
+    virtualIndex,
+    isSingleEnvView && singleEnvShowOverride,
+    !isSingleEnvView && isExpanded
+  ]);
 
   const handleSecretRename = async (newName: string) => {
     if (!isSingleEnvView || !singleEnvSecret) return;
