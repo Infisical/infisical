@@ -1022,12 +1022,18 @@ inserts the new set, so there is no merge with what was stored before.
 `PERMISSION_DENIED` is recorded by the `onError` hook in
 `src/server/plugins/audit-log-permission-denied.ts` for every CASL `ForbiddenError` and
 `PermissionBoundaryError` (not `ForbiddenRequestError`, which verifyAuth and plan gates also throw),
-only for orgs on the new privilege system, and collapsed per actor, project, action, subject, route and
-method for one minute (a constant in the service, not a setting). The first denial in a window is
-written at once and schedules a delayed `AuditLogPermissionDeniedFlush` job; repeats only bump a
-keystore counter, and the job writes one summary event with `suppressedRepeats` and the window
-bounds when the minute ends, so a burst that stops is still accounted for. `recordPermissionDenied`
-on the audit log service never throws to the request.
+only for orgs on the new privilege system whose plan has audit log retention, and collapsed per
+actor, project, action, subject, route and method for one minute. `recordPermissionDenied` on the
+audit log service never throws to the request.
+
+The collapse itself is generic. `createCollapsedAuditLog` on the audit log service takes any
+`TCreateAuditLogDTO` plus `collapseKeyParts` (the event type is always part of the key) and an
+optional `collapseWindowSeconds` (default 60). The first event per key is written at once and
+schedules a delayed `AuditLogCollapsedFlush` job; repeats inside the window only bump a keystore
+counter, and the job writes one summary event with `suppressedRepeats`, `suppressedFrom` and
+`suppressedUntil` in its metadata when the window closes, so a burst that stops is still accounted
+for. To collapse another event, call it instead of `createAuditLog` and add
+`TAuditLogCollapseSummary` to that event's metadata type so the summary fields are typed.
 
 ### Server Plugins
 

@@ -122,16 +122,31 @@ export type TCreateAuditLogDTO = {
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
-export type TRecordPermissionDeniedDTO = AuditLogInfo & {
-  orgId: string;
-  projectId?: string;
-  metadata: Omit<PermissionDeniedEvent["metadata"], "suppressedRepeats" | "suppressedFrom" | "suppressedUntil">;
+// Added to the event metadata by the summary event a collapse window writes when it closes.
+// An event passed to createCollapsedAuditLog should include this in its metadata type.
+export type TAuditLogCollapseSummary = {
+  suppressedRepeats?: number;
+  suppressedFrom?: string;
+  suppressedUntil?: string;
 };
 
-export type TAuditLogPermissionDeniedFlushJobData = TRecordPermissionDeniedDTO & {
+export type TCreateCollapsedAuditLogDTO = TCreateAuditLogDTO & {
+  // Together with the event type, identifies a repeat: events with the same parts inside the
+  // window collapse into the first one plus a summary.
+  collapseKeyParts: unknown[];
+  collapseWindowSeconds?: number;
+};
+
+export type TAuditLogCollapsedFlushJobData = TCreateAuditLogDTO & {
   collapseKey: string;
   windowStart: string;
   windowEnd: string;
+};
+
+export type TRecordPermissionDeniedDTO = AuditLogInfo & {
+  orgId: string;
+  projectId?: string;
+  metadata: Omit<PermissionDeniedEvent["metadata"], keyof TAuditLogCollapseSummary>;
 };
 
 // What `pushToLog` writes to the Redis ingest stream. We pin `id` and `createdAt` at
@@ -153,6 +168,7 @@ export type TAuditLogStreamEntry = TCreateAuditLogDTO & {
 
 export type TAuditLogServiceFactory = {
   createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
+  createCollapsedAuditLog: (data: TCreateCollapsedAuditLogDTO) => Promise<void>;
   recordPermissionDenied: (data: TRecordPermissionDeniedDTO) => Promise<void>;
   listAuditLogs: (arg: TListProjectAuditLogDTO) => Promise<
     {
@@ -5988,7 +6004,7 @@ interface ViewAuditLogsEvent {
 
 interface PermissionDeniedEvent {
   type: EventType.PERMISSION_DENIED;
-  metadata: {
+  metadata: TAuditLogCollapseSummary & {
     permissionAction?: string;
     permissionSubject?: string;
     permissionSubjectDetails?: Record<string, unknown>;
@@ -5997,9 +6013,6 @@ interface PermissionDeniedEvent {
     route?: string;
     method: string;
     projectId?: string;
-    suppressedRepeats?: number;
-    suppressedFrom?: string;
-    suppressedUntil?: string;
   };
 }
 

@@ -15,6 +15,7 @@ import { NotificationType } from "@app/services/notification/notification-types"
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../permission/project-permission";
@@ -25,15 +26,16 @@ import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
 import { isAuditLogEventEnabled, TAuditLogSettingsServiceFactory } from "./audit-log-settings-service";
 import {
   ACTOR_TYPE_TO_METADATA_ID_KEY,
+  Event,
   EventType,
-  TAuditLogPermissionDeniedFlushJobData,
+  TAuditLogCollapsedFlushJobData,
+  TAuditLogCollapseSummary,
   TAuditLogServiceFactory
 } from "./audit-log-types";
 
 const AUDIT_LOG_ROW_WARNING_THRESHOLD = 350_000_000;
 const AUDIT_LOG_ALERT_ROW_INCREMENT = 10_000_000;
-const PERMISSION_DENIED_COLLAPSE_WINDOW_SECONDS = 60;
-const PERMISSION_DENIED_COUNT_TTL_SECONDS = PERMISSION_DENIED_COLLAPSE_WINDOW_SECONDS * 10;
+const DEFAULT_COLLAPSE_WINDOW_SECONDS = 60;
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
@@ -41,6 +43,7 @@ type TAuditLogServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   auditLogQueue: TAuditLogQueueServiceFactory;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -63,6 +66,7 @@ export const auditLogServiceFactory = ({
   clickhouseAuditLogDAL,
   auditLogQueue,
   auditLogSettingsService,
+  licenseService,
   permissionService,
   queueService,
   keyStore,
@@ -197,39 +201,76 @@ export const auditLogServiceFactory = ({
 
   // Runs when a collapse window closes. Pushes straight to the log rather than through
   // createAuditLog: we're outside a request here, and the payload already carries the actor's
-  // permission metadata from the first denial.
-  const flushPermissionDeniedRepeats = async ({
+  // permission metadata from the first event.
+  const flushCollapsedRepeats = async ({
     collapseKey,
     windowStart,
     windowEnd,
-    orgId,
-    projectId,
-    metadata,
-    ...auditLogInfo
-  }: TAuditLogPermissionDeniedFlushJobData) => {
-    const countKey = KeyStorePrefixes.AuditLogPermissionDeniedCount(collapseKey);
+    ...auditLog
+  }: TAuditLogCollapsedFlushJobData) => {
+    const countKey = KeyStorePrefixes.AuditLogCollapseCount(collapseKey);
     const suppressedRepeats = Number(await keyStore.getItem(countKey)) || 0;
     if (!suppressedRepeats) return;
     await keyStore.deleteItem(countKey);
 
+    const summary: TAuditLogCollapseSummary = {
+      suppressedRepeats,
+      suppressedFrom: windowStart,
+      suppressedUntil: windowEnd
+    };
     await auditLogQueue.pushToLog({
-      ...auditLogInfo,
-      orgId,
-      projectId,
-      event: {
-        type: EventType.PERMISSION_DENIED,
-        metadata: { ...metadata, suppressedRepeats, suppressedFrom: windowStart, suppressedUntil: windowEnd }
-      }
+      ...auditLog,
+      event: { ...auditLog.event, metadata: { ...auditLog.event.metadata, ...summary } } as Event
     });
   };
 
-  queueService.start(QueueName.AuditLogPermissionDeniedFlush, async (job) => {
-    await flushPermissionDeniedRepeats(job.data);
+  queueService.start(QueueName.AuditLogCollapsedFlush, async (job) => {
+    await flushCollapsedRepeats(job.data);
   });
 
-  // Called from the onError hook, so it must never throw or slow the response. The first denial
-  // per key is written right away and opens a one minute window; repeats just bump a counter
-  // that the flush job turns into a summary event.
+  // The first event per key is written right away and opens a window; repeats inside it only
+  // bump a counter that the flush job turns into one summary event when the window closes.
+  const createCollapsedAuditLog: TAuditLogServiceFactory["createCollapsedAuditLog"] = async ({
+    collapseKeyParts,
+    collapseWindowSeconds = DEFAULT_COLLAPSE_WINDOW_SECONDS,
+    ...data
+  }) => {
+    const appCfg = getConfig();
+    if (appCfg.DISABLE_AUDIT_LOG_GENERATION) return;
+
+    const collapseKey = generateCacheKeyFromData([data.event.type, ...collapseKeyParts]);
+    const acquired = await keyStore.setItemWithExpiryNX(
+      KeyStorePrefixes.AuditLogCollapseWindow(collapseKey),
+      collapseWindowSeconds,
+      "1"
+    );
+    if (!acquired) {
+      await keyStore.incrementByWithExpiry(
+        KeyStorePrefixes.AuditLogCollapseCount(collapseKey),
+        1,
+        collapseWindowSeconds * 10
+      );
+      return;
+    }
+
+    await createAuditLog(data);
+
+    const windowStart = new Date();
+    const windowEnd = new Date(windowStart.getTime() + collapseWindowSeconds * 1000);
+    await queueService.queue(
+      QueueName.AuditLogCollapsedFlush,
+      QueueJobs.AuditLogCollapsedFlush,
+      { ...data, collapseKey, windowStart: windowStart.toISOString(), windowEnd: windowEnd.toISOString() },
+      {
+        jobId: `audit-log-collapse-${collapseKey}-${windowStart.getTime()}`,
+        delay: collapseWindowSeconds * 1000,
+        removeOnComplete: true,
+        removeOnFail: true
+      }
+    );
+  };
+
+  // Called from the onError hook, so it must never throw or slow the response.
   const recordPermissionDenied: TAuditLogServiceFactory["recordPermissionDenied"] = async ({
     orgId,
     projectId,
@@ -245,60 +286,26 @@ export const auditLogServiceFactory = ({
 
       if (!isAuditLogEventEnabled(settings, EventType.PERMISSION_DENIED, projectId)) return;
 
+      const plan = await licenseService.getPlan(orgId);
+      if (!plan?.auditLogsRetentionDays) return;
+
       const actorIdKey = ACTOR_TYPE_TO_METADATA_ID_KEY[auditLogInfo.actor.type];
       const actorId = actorIdKey ? (auditLogInfo.actor.metadata as Record<string, unknown>)[actorIdKey] : undefined;
-      const collapseKey = generateCacheKeyFromData([
-        orgId,
-        projectId ?? null,
-        actorId ?? null,
-        metadata.permissionAction ?? null,
-        metadata.permissionSubject ?? null,
-        metadata.route ?? null,
-        metadata.method
-      ]);
-
-      const acquired = await keyStore.setItemWithExpiryNX(
-        KeyStorePrefixes.AuditLogPermissionDeniedWindow(collapseKey),
-        PERMISSION_DENIED_COLLAPSE_WINDOW_SECONDS,
-        "1"
-      );
-      if (!acquired) {
-        await keyStore.incrementByWithExpiry(
-          KeyStorePrefixes.AuditLogPermissionDeniedCount(collapseKey),
-          1,
-          PERMISSION_DENIED_COUNT_TTL_SECONDS
-        );
-        return;
-      }
-
-      await createAuditLog({
+      await createCollapsedAuditLog({
         ...auditLogInfo,
         orgId,
         projectId,
-        event: { type: EventType.PERMISSION_DENIED, metadata }
-      });
-
-      const windowStart = new Date();
-      const windowEnd = new Date(windowStart.getTime() + PERMISSION_DENIED_COLLAPSE_WINDOW_SECONDS * 1000);
-      await queueService.queue(
-        QueueName.AuditLogPermissionDeniedFlush,
-        QueueJobs.AuditLogPermissionDeniedFlush,
-        {
-          ...auditLogInfo,
+        event: { type: EventType.PERMISSION_DENIED, metadata },
+        collapseKeyParts: [
           orgId,
-          projectId,
-          metadata,
-          collapseKey,
-          windowStart: windowStart.toISOString(),
-          windowEnd: windowEnd.toISOString()
-        },
-        {
-          jobId: `permission-denied-${collapseKey}-${windowStart.getTime()}`,
-          delay: PERMISSION_DENIED_COLLAPSE_WINDOW_SECONDS * 1000,
-          removeOnComplete: true,
-          removeOnFail: true
-        }
-      );
+          projectId ?? null,
+          actorId ?? null,
+          metadata.permissionAction ?? null,
+          metadata.permissionSubject ?? null,
+          metadata.route ?? null,
+          metadata.method
+        ]
+      });
     } catch (error) {
       logger.warn(error, `audit-log: failed to record permission denial [orgId=${orgId}] [route=${metadata.route}]`);
     }
@@ -420,6 +427,7 @@ export const auditLogServiceFactory = ({
 
   return {
     createAuditLog,
+    createCollapsedAuditLog,
     recordPermissionDenied,
     listAuditLogs,
     getAuditLogPostgresStorageStatus,

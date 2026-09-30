@@ -200,8 +200,8 @@ export const KeyStorePrefixes = {
   LicenseCloudPlanFallback: (orgId: string) => `infisical-cloud-plan-fallback-${orgId}` as const,
   LicenseCloudPlanLastKnown: (orgId: string) => `infisical-cloud-plan-last-known-${orgId}` as const,
   AuditLogOrgSettings: (orgId: string) => `audit-log-settings-${orgId}` as const,
-  AuditLogPermissionDeniedWindow: (key: string) => `audit-log-permission-denied-window-${key}` as const,
-  AuditLogPermissionDeniedCount: (key: string) => `audit-log-permission-denied-count-${key}` as const,
+  AuditLogCollapseWindow: (key: string) => `audit-log-collapse-window-${key}` as const,
+  AuditLogCollapseCount: (key: string) => `audit-log-collapse-count-${key}` as const,
   // Set after a billing mutation to flag the org's plan cache for stale-while-revalidate reads.
   LicenseCachePassThrough: (orgId: string) => `license-cache-passthrough-${orgId}` as const,
   // Single-flight guard so only one background revalidation runs per org per lock window.

@@ -38,7 +38,7 @@ const denial = (overrides: Partial<TRecordPermissionDeniedDTO> = {}): TRecordPer
   ...overrides
 });
 
-const createHarness = ({ windowAcquired = true, storedCount = "0" } = {}) => {
+const createHarness = ({ windowAcquired = true, storedCount = "0", retentionDays = 30 } = {}) => {
   const startHandlers = new Map<string, (job: { data: unknown }) => Promise<void>>();
   const queueService = {
     start: vi.fn((name: string, fn: (job: { data: unknown }) => Promise<void>) => {
@@ -58,6 +58,7 @@ const createHarness = ({ windowAcquired = true, storedCount = "0" } = {}) => {
     deleteItem: vi.fn<(key: string) => Promise<number>>(async () => 1)
   };
   const auditLogQueue = { pushToLog: vi.fn<(data: TPushedLog) => Promise<void>>(async () => undefined) };
+  const licenseService = { getPlan: vi.fn(async () => ({ auditLogsRetentionDays: retentionDays })) };
   const auditLogSettingsService = {
     getEffectiveSettings: vi.fn<(orgId: string) => Promise<TEffectiveAuditLogSettings>>(async () => ({
       org: {},
@@ -71,6 +72,7 @@ const createHarness = ({ windowAcquired = true, storedCount = "0" } = {}) => {
     permissionService: {} as never,
     auditLogQueue: auditLogQueue as never,
     auditLogSettingsService: auditLogSettingsService as never,
+    licenseService: licenseService as never,
     queueService: queueService as never,
     keyStore: keyStore as never,
     smtpService: {} as never,
@@ -78,7 +80,7 @@ const createHarness = ({ windowAcquired = true, storedCount = "0" } = {}) => {
     notificationService: {} as never
   });
 
-  const flush = startHandlers.get(QueueName.AuditLogPermissionDeniedFlush);
+  const flush = startHandlers.get(QueueName.AuditLogCollapsedFlush);
   if (!flush) throw new Error("flush worker was not registered");
 
   return { service, queueService, keyStore, auditLogQueue, auditLogSettingsService, flush };
@@ -105,8 +107,8 @@ describe("recordPermissionDenied", () => {
 
     expect(queueService.queue).toHaveBeenCalledTimes(1);
     const [queueName, jobName, payload, opts] = queueService.queue.mock.calls[0];
-    expect(queueName).toBe(QueueName.AuditLogPermissionDeniedFlush);
-    expect(jobName).toBe(QueueJobs.AuditLogPermissionDeniedFlush);
+    expect(queueName).toBe(QueueName.AuditLogCollapsedFlush);
+    expect(jobName).toBe(QueueJobs.AuditLogCollapsedFlush);
     expect(opts.delay).toBe(60_000);
     expect(opts.jobId).toContain(payload.collapseKey);
     expect(payload.orgId).toBe("org-1");
@@ -149,6 +151,16 @@ describe("recordPermissionDenied", () => {
     expect(auditLogQueue.pushToLog).not.toHaveBeenCalled();
   });
 
+  test("nothing is recorded when the plan has no audit log retention", async () => {
+    const { service, keyStore, queueService, auditLogQueue } = createHarness({ retentionDays: 0 });
+
+    await service.recordPermissionDenied(denial());
+
+    expect(keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
+    expect(queueService.queue).not.toHaveBeenCalled();
+    expect(auditLogQueue.pushToLog).not.toHaveBeenCalled();
+  });
+
   test("a keystore failure is swallowed", async () => {
     const { service, keyStore, auditLogQueue } = createHarness();
     keyStore.setItemWithExpiryNX.mockRejectedValueOnce(new Error("redis down"));
@@ -158,13 +170,48 @@ describe("recordPermissionDenied", () => {
   });
 });
 
-describe("permission denied flush job", () => {
+describe("createCollapsedAuditLog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  const { metadata, ...auditLogInfo } = denial();
+  const collapsed = (type: EventType) => ({
+    ...auditLogInfo,
+    event: { type, metadata } as never,
+    collapseKeyParts: ["org-1", "identity-1"]
+  });
+
+  test("the event type is part of the collapse key", async () => {
+    const { service, keyStore } = createHarness();
+
+    await service.createCollapsedAuditLog(collapsed(EventType.PERMISSION_DENIED));
+    await service.createCollapsedAuditLog(collapsed(EventType.GET_SECRETS));
+
+    const [firstKey] = keyStore.setItemWithExpiryNX.mock.calls[0];
+    const [secondKey] = keyStore.setItemWithExpiryNX.mock.calls[1];
+    expect(firstKey).not.toBe(secondKey);
+  });
+
+  test("a custom window sets the key ttl and the job delay", async () => {
+    const { service, keyStore, queueService } = createHarness();
+
+    await service.createCollapsedAuditLog({ ...collapsed(EventType.GET_SECRETS), collapseWindowSeconds: 300 });
+
+    expect(keyStore.setItemWithExpiryNX.mock.calls[0][1]).toBe(300);
+    expect(queueService.queue.mock.calls[0][3].delay).toBe(300_000);
+  });
+});
+
+describe("collapsed audit log flush job", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const { metadata, ...auditLogInfo } = denial();
   const jobData = {
-    ...denial(),
+    ...auditLogInfo,
+    event: { type: EventType.PERMISSION_DENIED, metadata } as never,
     collapseKey: "abc",
     windowStart: "2026-09-30T10:00:00.000Z",
     windowEnd: "2026-09-30T10:01:00.000Z"

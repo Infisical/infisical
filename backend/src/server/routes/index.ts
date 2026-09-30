@@ -1221,6 +1221,7 @@ export const registerRoutes = async (
     permissionService,
     auditLogQueue,
     auditLogSettingsService,
+    licenseService,
     queueService,
     keyStore,
     smtpService,
