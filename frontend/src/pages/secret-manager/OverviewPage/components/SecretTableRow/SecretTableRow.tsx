@@ -134,6 +134,15 @@ type ExpandedTableSort = {
   direction: Exclude<TableSortDirection, "none">;
 };
 
+// Every editor in a row reports into one shared Set keyed by this id, and environment slugs are
+// arbitrary user input, so a `${slug}-override` suffix is not injective: environments named
+// "staging" and "staging-override" both yield "staging-override", and whichever editor cleans up
+// first would delete the other's marker, letting the virtualizer unmount a row whose edit is still
+// unsaved. JSON.stringify escapes the separators and quotes it emits, so two ids collide only when
+// their kind and slug are equal.
+const editorUnsavedChangeId = (kind: "base" | "override", envSlug: string) =>
+  JSON.stringify([kind, envSlug]);
+
 export const SecretTableRow = ({
   secretKey,
   tableWidth,
@@ -176,9 +185,32 @@ export const SecretTableRow = ({
 
   // A logical secret row spans one <tr> plus, when present, its override or expanded
   // sibling <tr>; re-measure the whole group on every render so the virtualizer tracks
-  // the override/expanded toggles and the value input growing as the user types.
+  // the override/expanded toggles.
+  //
+  // Re-measuring on render is not enough on its own. The virtualizer only observes the single
+  // node handed to measureElement, which is the main <tr>, so growth in a sibling is invisible
+  // to it: a value editor in an already-dirty expanded row gains lines without this component
+  // re-rendering, since isDirty has already flipped, and the cached height stays behind by
+  // exactly the growth, shifting every row below. Observe the whole group instead, re-attaching
+  // each render because the group's shape changes as the override and expanded rows come and go.
   useLayoutEffect(() => {
-    if (rowRef.current) measureElement(rowRef.current);
+    const node = rowRef.current;
+    if (!node) return undefined;
+
+    measureElement(node);
+
+    const rowGroupObserver = new ResizeObserver(() => {
+      if (rowRef.current) measureElement(rowRef.current);
+    });
+    const index = node.getAttribute("data-index");
+    let sibling: Element | null = node;
+    while (sibling instanceof HTMLElement && sibling.getAttribute("data-index") === index) {
+      rowGroupObserver.observe(sibling);
+      sibling = sibling.nextElementSibling;
+    }
+
+    // eslint-disable-next-line consistent-return
+    return () => rowGroupObserver.disconnect();
   });
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
   const [isSingleEnvBaseActive, setIsSingleEnvBaseActive] = useState(false);
@@ -421,7 +453,7 @@ export const SecretTableRow = ({
         {isSingleEnvView ? (
           <SecretEditTableRow
             isSingleEnvView
-            unsavedChangeId={singleEnvSlug}
+            unsavedChangeId={editorUnsavedChangeId("base", singleEnvSlug)}
             onUnsavedChange={handleEditorUnsavedChange}
             isBatchMode={isBatchMode}
             onBatchRevert={onBatchRevert}
@@ -655,7 +687,7 @@ export const SecretTableRow = ({
           <TableCell className="max-w-0">
             <SecretOverrideRow
               isSingleEnvView
-              unsavedChangeId={`${singleEnvSlug}-override`}
+              unsavedChangeId={editorUnsavedChangeId("override", singleEnvSlug)}
               onUnsavedChange={handleEditorUnsavedChange}
               secretName={secretKey}
               environment={singleEnvSlug}
@@ -833,7 +865,7 @@ export const SecretTableRow = ({
                             className={twMerge("max-w-0", hasOverride && "border-b-border/50")}
                           >
                             <SecretEditTableRow
-                              unsavedChangeId={slug}
+                              unsavedChangeId={editorUnsavedChangeId("base", slug)}
                               onUnsavedChange={handleEditorUnsavedChange}
                               secretPath={secretPath}
                               isVisible={isSecretVisible}
@@ -892,7 +924,7 @@ export const SecretTableRow = ({
                             />
                             <TableCell colSpan={2} className="max-w-0">
                               <SecretOverrideRow
-                                unsavedChangeId={`${slug}-override`}
+                                unsavedChangeId={editorUnsavedChangeId("override", slug)}
                                 onUnsavedChange={handleEditorUnsavedChange}
                                 secretName={secretKey}
                                 environment={slug}
