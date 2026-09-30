@@ -20,6 +20,7 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -40,6 +41,7 @@ import {
   PamAccountAccessibilityIssue,
   resolveSelectedHost
 } from "../pam-account/pam-account-schemas";
+import { assertUserStillActiveInOrg } from "../pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { reportPamSessionEnded } from "../pam-session/pam-session-fns";
 import { SESSION_HANDLERS } from "./pam-session-handlers";
@@ -73,7 +75,9 @@ type TPamWebAccessServiceFactoryDep = {
     | "endExpiredWebSessions"
     | "isSessionTerminated"
     | "updateById"
+    | "transaction"
   >;
+  membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "runWithPoolFailover">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -82,7 +86,7 @@ type TPamWebAccessServiceFactoryDep = {
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
@@ -120,6 +124,7 @@ export const pamWebAccessServiceFactory = ({
   userDAL,
   mfaSessionService,
   orgDAL,
+  membershipDAL,
   telemetryService
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
@@ -508,23 +513,30 @@ export const pamWebAccessServiceFactory = ({
       const sessionDurationMs = sessionDurationCapMs;
       const expiresAt = new Date(Date.now() + sessionDurationMs);
 
-      session = await pamSessionDAL.create({
-        status: PamSessionStatus.Starting,
-        accessMethod: PamAccessMethod.Web,
-        expiresAt,
-        accountName,
-        accountType: account.accountType,
-        actorEmail,
-        actorIp,
-        actorName,
-        actorUserAgent,
-        projectId,
-        accountId: account.id,
-        userId,
-        gatewayId: effectiveGatewayId,
-        reason: accessReason?.trim() || null,
-        folderName: account.folderName,
-        selectedHost: targetHost
+      session = await pamSessionDAL.transaction(async (tx) => {
+        await assertUserStillActiveInOrg({ orgId, userId, membershipDAL, orgDAL, tx });
+
+        return pamSessionDAL.create(
+          {
+            status: PamSessionStatus.Starting,
+            accessMethod: PamAccessMethod.Web,
+            expiresAt,
+            accountName,
+            accountType: account.accountType,
+            actorEmail,
+            actorIp,
+            actorName,
+            actorUserAgent,
+            projectId,
+            accountId: account.id,
+            userId,
+            gatewayId: effectiveGatewayId,
+            reason: accessReason?.trim() || null,
+            folderName: account.folderName,
+            selectedHost: targetHost
+          },
+          tx
+        );
       });
 
       const createdSession = session;

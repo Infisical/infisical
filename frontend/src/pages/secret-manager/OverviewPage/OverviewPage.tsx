@@ -2560,13 +2560,22 @@ const OverviewPageContent = () => {
   useEffect(() => {
     const element = tableRef.current;
     if (!element) return;
+    const nameHeader = element.querySelector(":scope > table > thead > tr > th:nth-child(2)");
 
     const handleResize = () => {
       setTableWidth(element.clientWidth);
+      if (nameHeader) {
+        element.style.setProperty(
+          "--name-column-width",
+          `${nameHeader.getBoundingClientRect().width}px`
+        );
+      }
     };
 
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(element);
+    if (nameHeader) resizeObserver.observe(nameHeader);
+    handleResize();
 
     // eslint-disable-next-line consistent-return
     return () => {
@@ -3559,7 +3568,13 @@ const OverviewPageContent = () => {
         open={popUp.addSecretsInAllEnvs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
       >
-        <SheetContent className="flex h-full min-h-0 flex-col gap-y-0 overflow-hidden sm:max-w-lg">
+        <SheetContent
+          className="flex h-full min-h-0 flex-col gap-y-0 overflow-hidden sm:max-w-lg"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            document.getElementById("create-secret-0-key")?.focus();
+          }}
+        >
           <SheetHeader className="border-b">
             <SheetTitle>Create Secret</SheetTitle>
           </SheetHeader>
@@ -4011,6 +4026,7 @@ const OverviewPageContent = () => {
         environments={userAvailableEnvs}
         visibleEnvs={visibleEnvs}
         projectId={projectId}
+        projectName={currentProject.name}
         projectSlug={projectSlug}
         sourceSecretPath={secretPath}
         secrets={{}}

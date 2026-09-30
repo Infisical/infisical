@@ -5,13 +5,15 @@ import {
   SecretScanningResourcesSchema,
   SecretScanningScansSchema,
   TableName,
-  TSecretScanningDataSources
+  TSecretScanningDataSources,
+  TSecretScanningFindings
 } from "@app/db/schemas";
 import {
   SecretScanningFindingStatus,
   SecretScanningScanStatus
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { DatabaseError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import {
   buildFindFilter,
   ormify,
@@ -127,6 +129,26 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   const scanOrm = ormify(db, TableName.SecretScanningScan);
   const findingOrm = ormify(db, TableName.SecretScanningFinding);
   const configOrm = ormify(db, TableName.SecretScanningConfig);
+
+  // Postgres has a hard limit of how many itens can be upserted, so to prevent
+  // issues in very large repositories with lots of findings, we should batch
+  // the inserts to prevent the worker from exiting and failing the scan.
+  const FINDINGS_UPSERT_CHUNK_SIZE = 1000;
+
+  const upsertFindings: typeof findingOrm.upsert = async (data, onConflictField, tx, mergeColumns) => {
+    const upsertInChunks = async (trx: Knex) => {
+      const upserted: TSecretScanningFindings[] = [];
+      for (const chunk of chunkArray(data, FINDINGS_UPSERT_CHUNK_SIZE)) {
+        // eslint-disable-next-line no-await-in-loop
+        upserted.push(...(await findingOrm.upsert(chunk, onConflictField, trx, mergeColumns)));
+      }
+      return upserted;
+    };
+
+    if (data.length <= FINDINGS_UPSERT_CHUNK_SIZE) return findingOrm.upsert(data, onConflictField, tx, mergeColumns);
+
+    return tx ? upsertInChunks(tx) : db.transaction(upsertInChunks);
+  };
 
   const findDataSource = async (filter: Parameters<(typeof dataSourceOrm)["find"]>[0], tx?: Knex) => {
     try {
@@ -529,6 +551,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     },
     findings: {
       ...findingOrm,
+      upsert: upsertFindings,
       countByScanId: countFindingsByScanId
     },
     configs: configOrm

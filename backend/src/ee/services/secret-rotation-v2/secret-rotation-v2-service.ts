@@ -117,6 +117,7 @@ import { openRouterApiKeyRotationFactory } from "./open-router-api-key/open-rout
 import { openAIServiceAccountRotationFactory } from "./openai-service-account/openai-service-account-rotation-fns";
 import { redisCredentialsRotationFactory } from "./redis-credentials/redis-credentials-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
+import { stripeApiKeyRotationFactory } from "./stripe-api-key/stripe-api-key-rotation-fns";
 import { supabaseApiKeyRotationFactory } from "./supabase-api-key/supabase-api-key-rotation-fns";
 import { unixLinuxLocalAccountRotationFactory } from "./unix-linux-local-account-rotation/unix-linux-local-account-rotation-fns";
 import { UnixLinuxLocalAccountRotationMethod } from "./unix-linux-local-account-rotation/unix-linux-local-account-rotation-schemas";
@@ -169,7 +170,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   queueService: Pick<TQueueServiceFactory, "queue">;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById" | "transaction">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -217,7 +218,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.FireworksApiKey]: fireworksApiKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.SnowflakeUserKeyPair]: snowflakeUserKeyPairRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.CloudflareApiToken]: cloudflareApiTokenRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.CloudflareR2AccessKey]: cloudflareR2AccessKeyRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.CloudflareR2AccessKey]: cloudflareR2AccessKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.StripeApiKey]: stripeApiKeyRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -620,6 +622,7 @@ export const secretRotationV2ServiceFactory = ({
       kmsService,
       gatewayV2Service,
       gatewayPoolService,
+      keyStore,
       passwordValidationContext
     );
 
@@ -998,6 +1001,7 @@ export const secretRotationV2ServiceFactory = ({
         kmsService,
         gatewayV2Service,
         gatewayPoolService,
+        keyStore,
         passwordValidationContext
       );
 
@@ -1339,6 +1343,7 @@ export const secretRotationV2ServiceFactory = ({
         kmsService,
         gatewayV2Service,
         gatewayPoolService,
+        keyStore,
         passwordValidationContext
       );
 
@@ -1666,7 +1671,8 @@ export const secretRotationV2ServiceFactory = ({
       appConnectionDAL,
       kmsService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      keyStore
     );
 
     if (!rotationFactory.checkActiveCredentials)
@@ -2066,6 +2072,7 @@ export const secretRotationV2ServiceFactory = ({
       kmsService,
       gatewayV2Service,
       gatewayPoolService,
+      keyStore,
       passwordValidationContext
     );
 

@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 import {
+  buildAuthorityInfoAccessExtension,
   buildCrlDistributionPointUrls,
+  buildOcspResponderUrl,
   createDistinguishedName,
   extractDnParts,
   signatureAlgorithmToAlgCfg
@@ -313,5 +315,42 @@ describe("extractDnParts", () => {
     expect(parts.organization).toBe("Acme");
     expect(parts.ou).toBe("Eng");
     expect(parts.domainComponents).toEqual(["corp", "com"]);
+  });
+});
+
+describe("buildOcspResponderUrl", () => {
+  it("should build the managed responder URL from the site URL and CA id", () => {
+    expect(buildOcspResponderUrl("https://app.infisical.com", "ca-123")).toBe(
+      "https://app.infisical.com/api/v1/cert-manager/ocsp/ca-123"
+    );
+  });
+});
+
+describe("buildAuthorityInfoAccessExtension", () => {
+  const caIssuerUrl = "https://app.infisical.com/api/v1/cert-manager/ca/internal/ca-123/certificates/c-1/der";
+  const ocspResponderUrl = "https://app.infisical.com/api/v1/cert-manager/ocsp/ca-123";
+
+  it("should emit only caIssuers when no responder URL is given", () => {
+    const parsed = new x509.AuthorityInfoAccessExtension(buildAuthorityInfoAccessExtension({ caIssuerUrl }).rawData);
+
+    expect(parsed.caIssuers?.map((name) => name.value)).toEqual([caIssuerUrl]);
+    expect(parsed.ocsp ?? []).toHaveLength(0);
+  });
+
+  it("should emit both accessMethods when a responder URL is given", () => {
+    const parsed = new x509.AuthorityInfoAccessExtension(
+      buildAuthorityInfoAccessExtension({ caIssuerUrl, ocspResponderUrl }).rawData
+    );
+
+    expect(parsed.caIssuers?.map((name) => name.value)).toEqual([caIssuerUrl]);
+    expect(parsed.ocsp?.map((name) => name.value)).toEqual([ocspResponderUrl]);
+  });
+
+  it("should treat a null responder URL the same as omitting it", () => {
+    const parsed = new x509.AuthorityInfoAccessExtension(
+      buildAuthorityInfoAccessExtension({ caIssuerUrl, ocspResponderUrl: null }).rawData
+    );
+
+    expect(parsed.ocsp ?? []).toHaveLength(0);
   });
 });

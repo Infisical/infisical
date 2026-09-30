@@ -337,6 +337,7 @@ export const insightsServiceFactory = ({
           "jumpcloud-saml": "JumpCloud SAML",
           "google-saml": "Google SAML",
           "keycloak-saml": "Keycloak SAML",
+          "auth0-saml": "Auth0 SAML",
           ldap: "LDAP",
           oidc: "OIDC"
         };
