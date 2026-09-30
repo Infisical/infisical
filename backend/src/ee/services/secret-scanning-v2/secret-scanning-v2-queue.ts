@@ -563,7 +563,7 @@ export const secretScanningV2QueueServiceFactory = ({
                 dataSourceType: dataSource.type,
                 resourceId: resource.id,
                 resourceName: resource.name,
-                    scanId,
+                scanId,
                 scanStatus: SecretScanningScanStatus.Failed,
                 scanType: SecretScanningScanType.Historical
               }
@@ -834,7 +834,7 @@ export const secretScanningV2QueueServiceFactory = ({
                 dataSourceType: dataSource.type,
                 resourceId: resource.id,
                 resourceName: resource.name,
-                    scanId,
+                scanId,
                 scanStatus: SecretScanningScanStatus.Failed,
                 scanType: SecretScanningScanType.Realtime
               }
