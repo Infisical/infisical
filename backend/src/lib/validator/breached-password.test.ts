@@ -1,0 +1,93 @@
+import nodeCrypto from "node:crypto";
+
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import { isPasswordBreached } from "./breached-password";
+
+const mocks = vi.hoisted(() => ({
+  config: { DISABLE_BREACHED_PASSWORD_CHECK: false },
+  get: vi.fn(),
+  warn: vi.fn()
+}));
+
+vi.mock("@app/lib/crypto/cryptography", async () => ({
+  crypto: { nativeCrypto: await import("node:crypto") }
+}));
+vi.mock("../config/env", () => ({ getConfig: () => mocks.config }));
+vi.mock("../config/request", () => ({ request: { get: mocks.get } }));
+vi.mock("../logger", () => ({ logger: { warn: mocks.warn, info: vi.fn(), error: vi.fn() } }));
+
+const PASSWORD = "Correct-Horse-Battery-7!";
+const HASH = nodeCrypto.createHash("sha1").update(PASSWORD, "utf8").digest("hex").toUpperCase();
+const PREFIX = HASH.slice(0, 5);
+const SUFFIX = HASH.slice(5);
+
+const rangeBody = (lines: string[]) => ({ data: lines.join("\r\n") });
+
+describe("isPasswordBreached", () => {
+  beforeEach(() => {
+    mocks.config.DISABLE_BREACHED_PASSWORD_CHECK = false;
+    mocks.get.mockReset();
+    mocks.warn.mockReset();
+  });
+
+  test("sends only the five-character hash prefix, never the password or full hash", async () => {
+    mocks.get.mockResolvedValue(rangeBody([]));
+
+    await isPasswordBreached(PASSWORD);
+
+    const [url] = mocks.get.mock.calls[0] as [string];
+    expect(url).toBe(`https://api.pwnedpasswords.com/range/${PREFIX}`);
+    expect(url).not.toContain(SUFFIX);
+    expect(url).not.toContain(PASSWORD);
+  });
+
+  test("asks for padding, bounds the wait, and turns off the shared client's retries", async () => {
+    mocks.get.mockResolvedValue(rangeBody([]));
+
+    await isPasswordBreached(PASSWORD);
+
+    const [, options] = mocks.get.mock.calls[0] as [string, Record<string, unknown>];
+    expect(options.headers).toEqual({ "Add-Padding": "true" });
+    expect(options.timeout).toBe(3000);
+    expect(options["axios-retry"]).toEqual({ retries: 0 });
+  });
+
+  test("reports a breach when the suffix appears with a count", async () => {
+    mocks.get.mockResolvedValue(rangeBody(["0018A45C4D1DEF81644B54AB7F969B88D65:1", `${SUFFIX}:42`]));
+
+    expect(await isPasswordBreached(PASSWORD)).toBe(true);
+  });
+
+  test("matches a lowercase response", async () => {
+    mocks.get.mockResolvedValue(rangeBody([`${SUFFIX.toLowerCase()}:3`]));
+
+    expect(await isPasswordBreached(PASSWORD)).toBe(true);
+  });
+
+  test("ignores a padding record, which carries the suffix with a zero count", async () => {
+    mocks.get.mockResolvedValue(rangeBody([`${SUFFIX}:0`]));
+
+    expect(await isPasswordBreached(PASSWORD)).toBe(false);
+  });
+
+  test("reports no breach when the suffix is absent", async () => {
+    mocks.get.mockResolvedValue(rangeBody(["0018A45C4D1DEF81644B54AB7F969B88D65:1"]));
+
+    expect(await isPasswordBreached(PASSWORD)).toBe(false);
+  });
+
+  test("fails open and logs when the lookup errors", async () => {
+    mocks.get.mockRejectedValue(new Error("connect ETIMEDOUT"));
+
+    expect(await isPasswordBreached(PASSWORD)).toBe(false);
+    expect(mocks.warn).toHaveBeenCalledTimes(1);
+  });
+
+  test("makes no request when the check is disabled", async () => {
+    mocks.config.DISABLE_BREACHED_PASSWORD_CHECK = true;
+
+    expect(await isPasswordBreached(PASSWORD)).toBe(false);
+    expect(mocks.get).not.toHaveBeenCalled();
+  });
+});

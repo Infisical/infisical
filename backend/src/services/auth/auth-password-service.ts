@@ -4,6 +4,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { isPasswordBreached } from "@app/lib/validator/breached-password";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -39,6 +40,13 @@ export const authPaswordServiceFactory = ({
     recoveryTokenExpiresAt
   }: TResetPasswordV2DTO) => {
     const cfg = getConfig();
+
+    // Ahead of the recovery token claim, so a rejected password can be retried with the same link.
+    if (await isPasswordBreached(newPassword)) {
+      throw new BadRequestError({
+        message: "This password has appeared in a known data breach. Choose a different password."
+      });
+    }
 
     if (type === ResetPasswordV2Type.Recovery) {
       if (!recoveryTokenJti || !recoveryTokenExpiresAt) {
@@ -127,6 +135,13 @@ export const authPaswordServiceFactory = ({
   };
 
   const setupPassword = async ({ password, token }: TSetupPasswordViaBackupKeyDTO, actor: OrgServiceActor) => {
+    // Ahead of token validation, which consumes the token.
+    if (await isPasswordBreached(password)) {
+      throw new BadRequestError({
+        message: "This password has appeared in a known data breach. Choose a different password."
+      });
+    }
+
     try {
       await tokenService.validateTokenForUser({
         type: TokenType.TOKEN_EMAIL_PASSWORD_SETUP,
