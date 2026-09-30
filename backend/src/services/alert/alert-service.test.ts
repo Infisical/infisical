@@ -511,10 +511,10 @@ describe("alert service", () => {
       ...actor
     });
 
-    expect(gatedChannelTypeCalls.at(-1)).toEqual([AlertChannelType.WEBHOOK]);
+    expect(gatedChannelTypeCalls.at(-1)).toEqual([AlertChannelType.WEBHOOK, AlertChannelType.WEBHOOK]);
   });
 
-  test("update does not gate channels the alert already has", async () => {
+  test("update gates existing channels that stay enabled, so a downgraded plan can't keep editing them", async () => {
     const { service, gatedChannelTypeCalls } = buildService();
     const created = await service.createAlert(validCreate);
 
@@ -528,7 +528,31 @@ describe("alert service", () => {
       ...actor
     });
 
+    expect([...(gatedChannelTypeCalls.at(-1) ?? [])].sort()).toEqual(created.channels.map((c) => c.channelType).sort());
+  });
+
+  test("update does not gate channels being disabled or removed", async () => {
+    const { service, gatedChannelTypeCalls } = buildService();
+    const created = await service.createAlert(validCreate);
+    const email = created.channels.find((c) => c.channelType === AlertChannelType.EMAIL)!;
+    const webhook = created.channels.find((c) => c.channelType === AlertChannelType.WEBHOOK)!;
+
+    await service.updateAlert({
+      alertId: "alert-1",
+      channels: [
+        { id: email.id, name: email.name, channelType: AlertChannelType.EMAIL, enabled: false },
+        { id: webhook.id, name: webhook.name, channelType: AlertChannelType.WEBHOOK, enabled: false }
+      ],
+      ...actor
+    });
     expect(gatedChannelTypeCalls.at(-1)).toEqual([]);
+
+    await service.updateAlert({
+      alertId: "alert-1",
+      channels: [{ id: email.id, name: email.name, channelType: AlertChannelType.EMAIL, enabled: true }],
+      ...actor
+    });
+    expect(gatedChannelTypeCalls.at(-1)).toEqual([AlertChannelType.EMAIL]);
   });
 
   test("update rejects a channel id that does not belong to the alert", async () => {

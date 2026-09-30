@@ -193,7 +193,7 @@ export const assertCertificateAlertChannelTypesAllowed = async (
   const plan = await licenseService.getPlan(orgId);
   if (!plan.pkiEnterpriseAlerting) {
     throw new BadRequestError({
-      message: `Failed to add a ${gatedType} channel due to plan restriction. Upgrade plan to alert on channels other than email.`
+      message: `Failed to save a ${gatedType} channel due to plan restriction. Upgrade plan to alert on channels other than email, or disable or remove the ${gatedType} channel.`
     });
   }
 };
