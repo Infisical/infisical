@@ -6,6 +6,44 @@ import { FocusEvent, useEffect, useMemo, useRef, useState } from "react";
  */
 const ACTION_BAR_TRANSITION_MS = 300;
 
+/**
+ * The action bars' own styles are written so that a device without a hovering pointer never
+ * depends on hover: every rule that hides them, `opacity-0`, `pointer-events-none`, the buttons'
+ * `w-0`, sits behind `[@media(hover:hover)]`, leaving the bar visible by default everywhere else.
+ * Mounting on `mouseenter` would throw that away, because viewing or scrolling a table on a phone
+ * fires neither hover nor focus, and the controls would simply not exist. So where there is no
+ * hovering pointer the bar is mounted unconditionally and the CSS decides, exactly as before.
+ */
+const HOVER_POINTER_QUERY = "(hover: hover)";
+
+const getHoverPointerQuery = () =>
+  typeof window === "undefined" || typeof window.matchMedia !== "function"
+    ? null
+    : window.matchMedia(HOVER_POINTER_QUERY);
+
+const useHasHoverPointer = () => {
+  // Assume a hovering pointer when the query is unavailable: that is the gated behaviour, which
+  // degrades to "reachable by pointer and keyboard" rather than to "reachable by nothing".
+  const [hasHoverPointer, setHasHoverPointer] = useState(
+    () => getHoverPointerQuery()?.matches ?? true
+  );
+
+  useEffect(() => {
+    const query = getHoverPointerQuery();
+    if (!query) return undefined;
+
+    // Re-read on mount as well as on change: a device can gain or lose a pointer, and the first
+    // render may have run before the query was available.
+    setHasHoverPointer(query.matches);
+
+    const onChange = (event: MediaQueryListEvent) => setHasHoverPointer(event.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+
+  return hasHoverPointer;
+};
+
 type TRowHoverActions = {
   /**
    * Render the row's hover action bar. False while the row is idle, which keeps the bar's nodes out
@@ -57,15 +95,38 @@ export const useRowHoverActions = ({
   const [shouldRenderActions, setShouldRenderActions] = useState(false);
   const [isGroupEnabled, setIsGroupEnabled] = useState(false);
   const hasRenderedActionsRef = useRef(false);
+  // "Ever mounted" gates the fade-out timer; "still mounted" gates the one-frame withhold below.
+  const isActionBarMountedRef = useRef(false);
+  const hasHoverPointer = useHasHoverPointer();
 
   // Focus is tracked separately from hover so that moving the pointer off a row does not yank a
   // focused button out from under the keyboard.
   const isRowActive = isHovered || isFocusWithin;
 
   useEffect(() => {
+    // Without a hovering pointer the bar is always mounted and always carries `group`, which is
+    // the DOM the CSS was written against; nothing below applies.
+    if (!hasHoverPointer) {
+      hasRenderedActionsRef.current = true;
+      isActionBarMountedRef.current = true;
+      setShouldRenderActions(true);
+      setIsGroupEnabled(true);
+      return undefined;
+    }
+
     if (isRowActive) {
       hasRenderedActionsRef.current = true;
+      const wasAlreadyMounted = isActionBarMountedRef.current;
+      isActionBarMountedRef.current = true;
       setShouldRenderActions(true);
+
+      // The withhold exists so a freshly inserted bar has a hidden state to interpolate from. A
+      // bar that never unmounted already has one, so re-entering during its fade-out restores
+      // `group` at once instead of letting it keep fading for two more frames.
+      if (wasAlreadyMounted) {
+        setIsGroupEnabled(true);
+        return undefined;
+      }
 
       // Two frames: the first paints the bar in its hidden state, the second flips the group on.
       let innerFrame = 0;
@@ -83,9 +144,12 @@ export const useRowHoverActions = ({
 
     if (!hasRenderedActionsRef.current) return undefined;
 
-    const timeout = setTimeout(() => setShouldRenderActions(false), ACTION_BAR_TRANSITION_MS);
+    const timeout = setTimeout(() => {
+      isActionBarMountedRef.current = false;
+      setShouldRenderActions(false);
+    }, ACTION_BAR_TRANSITION_MS);
     return () => clearTimeout(timeout);
-  }, [isRowActive]);
+  }, [isRowActive, hasHoverPointer]);
 
   const rowHoverProps = useMemo(
     () => ({

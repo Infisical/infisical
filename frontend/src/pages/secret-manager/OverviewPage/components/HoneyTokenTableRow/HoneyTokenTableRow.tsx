@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { subject } from "@casl/ability";
 import {
   BanIcon,
@@ -91,6 +92,11 @@ export const HoneyTokenTableRow = ({
   const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
     needsRowTabStop: isSingleEnvView
   });
+  // The overflow menu's content is portaled out of the row, so moving the pointer into it counts
+  // as leaving the row and neither hover nor focus-within holds the bar open. Track the menu's own
+  // open state and keep the bar mounted while it is in use, the way the secret edit row does.
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const shouldMountActionBar = shouldRenderActions || isActionMenuOpen;
   const totalCols = environments.length + 2;
 
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
@@ -151,7 +157,7 @@ export const HoneyTokenTableRow = ({
             <TooltipContent>Revoked honey tokens cannot be edited.</TooltipContent>
           </Tooltip>
         ) : (
-          <DropdownMenu>
+          <DropdownMenu open={isActionMenuOpen} onOpenChange={setIsActionMenuOpen}>
             <DropdownMenuTrigger asChild>
               <IconButton
                 variant="ghost"
@@ -316,7 +322,7 @@ export const HoneyTokenTableRow = ({
                 {renderStatusBadge(singleEnvToken)}
               </div>
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                {shouldRenderActions && renderActionButtons(singleEnvToken)}
+                {shouldMountActionBar && renderActionButtons(singleEnvToken)}
               </div>
             </div>
           ) : (

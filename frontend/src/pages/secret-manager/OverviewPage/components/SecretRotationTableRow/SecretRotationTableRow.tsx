@@ -432,7 +432,10 @@ export const SecretRotationTableRow = ({
                     <SecretRotationV2StatusBadge secretRotation={singleEnvRotation} />
                   </div>
                   <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                    {shouldRenderActions && renderActionButtons(singleEnvRotation)}
+                    {/* A credential check in flight keeps the bar mounted, so its spinner does
+                        not vanish when focus or the pointer moves to another row. */}
+                    {(shouldRenderActions || Boolean(checkingRotationId)) &&
+                      renderActionButtons(singleEnvRotation)}
                   </div>
                 </>
               )}
