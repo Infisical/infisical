@@ -162,7 +162,7 @@ export const GitHubSecretScanningFactory = () => {
   const getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<
     TGitHubDataSourceWithConnection,
     TQueueGitHubResourceDiffScan["payload"]
-  > = async ({ dataSource, payload, resourceName }) => {
+  > = async ({ dataSource, payload, resourceName, configPath }) => {
     const appCfg = getConfig();
     const {
       connection: {
@@ -198,7 +198,10 @@ export const GitHubSecretScanningFactory = () => {
       for (const file of commitData.data.files) {
         if ((file.status === "added" || file.status === "modified") && file.patch) {
           // eslint-disable-next-line
-          const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(`\n${file.patch}`));
+          const findings = await scanContentAndGetFindings(
+            replaceNonChangesWithNewlines(`\n${file.patch}`),
+            configPath
+          );
 
           const adjustedFindings = findings.map((finding) => {
             const startLine = convertPatchLineToFileLineNumber(file.patch!, finding.StartLine);

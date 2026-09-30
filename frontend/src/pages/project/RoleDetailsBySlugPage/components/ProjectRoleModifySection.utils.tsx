@@ -52,6 +52,7 @@ import {
   ProjectPermissionSecretEventActions,
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
@@ -204,6 +205,11 @@ const SecretScanningDataSourcePolicyActionSchema = z.object({
 const SecretScanningFindingPolicyActionSchema = z.object({
   [ProjectPermissionSecretScanningFindingActions.Read]: z.boolean().optional(),
   [ProjectPermissionSecretScanningFindingActions.Update]: z.boolean().optional()
+});
+
+const SecretScanningConfigPolicyActionSchema = z.object({
+  [ProjectPermissionSecretScanningConfigActions.Read]: z.boolean().optional(),
+  [ProjectPermissionSecretScanningConfigActions.Update]: z.boolean().optional()
 });
 
 const AppConnectionPolicyActionSchema = z.object({
@@ -482,7 +488,7 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     [ProjectPermissionMemberActions.Create]: [],
     [ProjectPermissionMemberActions.Edit]: [],
     [ProjectPermissionMemberActions.Delete]: [],
-    [ProjectPermissionMemberActions.AssumePrivileges]: [],
+    [ProjectPermissionMemberActions.AssumePrivileges]: ["userEmail"],
     [ProjectPermissionMemberActions.GrantPrivileges]: [
       "userEmail",
       "assignableRole",
@@ -831,6 +837,8 @@ export const projectRoleFormSchema = z.object({
         SecretScanningDataSourcePolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretScanningFindings]:
         SecretScanningFindingPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretScanningConfigs]:
+        SecretScanningConfigPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretEventSubscriptions]: SecretEventsPolicyActionSchema.extend({
         conditions: ConditionSchema
       })
@@ -1786,6 +1794,20 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRead) formVal[subject]![0][ProjectPermissionSecretScanningFindingActions.Read] = true;
       if (canUpdate)
         formVal[subject]![0][ProjectPermissionSecretScanningFindingActions.Update] = true;
+
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.SecretScanningConfigs) {
+      const canRead = action.includes(ProjectPermissionSecretScanningConfigActions.Read);
+      const canUpdate = action.includes(ProjectPermissionSecretScanningConfigActions.Update);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead) formVal[subject]![0][ProjectPermissionSecretScanningConfigActions.Read] = true;
+      if (canUpdate)
+        formVal[subject]![0][ProjectPermissionSecretScanningConfigActions.Update] = true;
 
       return;
     }
@@ -3230,6 +3252,22 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.SecretScanningConfigs]: {
+    title: "Secret Scanning Config",
+    description: "Configure secret scanning rules and settings",
+    actions: [
+      {
+        label: "Read Config",
+        value: ProjectPermissionSecretScanningConfigActions.Read,
+        description: "View secret scanning configuration"
+      },
+      {
+        label: "Update Config",
+        value: ProjectPermissionSecretScanningConfigActions.Update,
+        description: "Modify scanning rules and settings"
+      }
+    ]
+  },
   [ProjectPermissionSub.SecretEventSubscriptions]: {
     title: "Secret Event Subscriptions",
     description: "Subscribe to secret lifecycle events",
@@ -3458,7 +3496,8 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
 
 const SecretScanningSubject = (enabled = false) => ({
   [ProjectPermissionSub.SecretScanningDataSources]: enabled,
-  [ProjectPermissionSub.SecretScanningFindings]: enabled
+  [ProjectPermissionSub.SecretScanningFindings]: enabled,
+  [ProjectPermissionSub.SecretScanningConfigs]: enabled
 });
 
 const AgentVaultPermissionSubjects = (enabled = false) => ({
@@ -3730,6 +3769,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.SecretScanningFindings,
           actions: [ProjectPermissionSecretScanningFindingActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.SecretScanningConfigs,
+          actions: [ProjectPermissionSecretScanningConfigActions.Read]
         }
       ]
     },
@@ -3746,10 +3789,19 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.SecretScanningFindings,
           actions: Object.values(ProjectPermissionSecretScanningFindingActions)
+        },
+        {
+          subject: ProjectPermissionSub.SecretScanningConfigs,
+          actions: [ProjectPermissionSecretScanningConfigActions.Read]
         }
       ]
     },
-    projectManagerTemplate()
+    projectManagerTemplate([
+      {
+        subject: ProjectPermissionSub.SecretScanningConfigs,
+        actions: Object.values(ProjectPermissionSecretScanningConfigActions)
+      }
+    ])
   ],
   [ProjectType.SecretManager]: [
     {

@@ -866,7 +866,8 @@ const getProjectPageItems = ({
         item("settings", "Settings", SettingsIcon, "settings", () =>
           navigate({
             to: "/organizations/$orgId/projects/secret-scanning/$projectId/settings",
-            params: { orgId: project.orgId, projectId: project.id }
+            params: { orgId: project.orgId, projectId: project.id },
+            search: { selectedTab: "general" }
           })
         )
       ]);

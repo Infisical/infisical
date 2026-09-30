@@ -11,6 +11,7 @@ import {
   Lock,
   MapPin,
   Plug,
+  ScanSearch,
   Search,
   Shield,
   Tag,
@@ -114,5 +115,17 @@ export const CERT_INTEGRATIONS_SUBMENU: Submenu = {
   items: [
     { label: "App Connections", icon: Cable, tab: "app-connections" },
     { label: "Certificate Syncs", icon: ArrowLeftRight, tab: "pki-syncs" }
+  ]
+};
+
+// --- Secret scanning submenus ---
+
+export const SECRET_SCANNING_SETTINGS_SUBMENU: Submenu = {
+  title: "Settings",
+  pathSuffix: "settings",
+  defaultTab: "general",
+  items: [
+    { label: "General", icon: Cog, tab: "general" },
+    { label: "Scanning Settings", icon: ScanSearch, tab: "scanning-settings" }
   ]
 };

@@ -399,3 +399,4 @@ I
 (?i)prefilled
 (?i)unscoped
 (?i)rsync
+(?i)zsh

@@ -1,12 +1,39 @@
 /* eslint-disable react/no-danger */
-import { forwardRef, TextareaHTMLAttributes, useEffect, useState } from "react";
+import { forwardRef, ReactNode, TextareaHTMLAttributes, useEffect, useMemo, useState } from "react";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useToggle } from "@app/hooks";
 
+import { IconButton } from "../../generic/IconButton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
 import { cn } from "../../utils";
+import { getInvisibleCharacterSummary, splitSuspiciousCharacters } from "./invisibleCharacters";
 
 const REGEX = /(\${([@a-zA-Z0-9-_. ]+)})/g;
+
+const markInvisibleChars = (text: string, chunkKey: number) => {
+  const nodes: ReactNode[] = [];
+  let offset = 0;
+
+  splitSuspiciousCharacters(text).forEach(({ text: part, isSuspicious }) => {
+    if (isSuspicious) {
+      nodes.push(
+        <span
+          key={`secret-value-invisible-${chunkKey}-${offset}`}
+          className="rounded-xs bg-warning/25 outline outline-1 outline-warning/70"
+        >
+          {part}
+        </span>
+      );
+    } else {
+      nodes.push(part);
+    }
+    offset += part.length;
+  });
+
+  return nodes;
+};
 
 const syntaxHighlight = (
   content?: string | null,
@@ -81,7 +108,7 @@ const syntaxHighlight = (
                     }
                   }}
                 >
-                  {segment}
+                  {markInvisibleChars(segment, i)}
                 </span>
                 {segmentIndex < parts.length - 1 && (
                   <span className="ph-no-capture pointer-events-none text-secret/80">.</span>
@@ -97,7 +124,7 @@ const syntaxHighlight = (
       skipNext = false;
       return [];
     }
-    return el;
+    return markInvisibleChars(el, i);
   });
 
   // akhilmhdh: Dont remove this br. I am still clueless how this works but weirdly enough
@@ -188,6 +215,12 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const shouldShowMask =
       !isErrorLoadingValue && (isLoadingValue || (Boolean(value) && !shouldRevealValue));
 
+    const invisibleChars = useMemo(
+      () =>
+        value && !isLoadingValue && !isErrorLoadingValue ? getInvisibleCharacterSummary(value) : [],
+      [value, isLoadingValue, isErrorLoadingValue]
+    );
+
     return (
       <div
         data-slot="secret-input"
@@ -197,12 +230,16 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
           "no-scrollbar w-full overflow-auto bg-transparent text-foreground",
           variant === "default" &&
             "flex min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+          variant === "plain" && invisibleChars.length > 0 && "flex",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}
       >
         <div
-          className={cn("relative w-full overflow-hidden", variant === "default" && "px-2.5 py-1")}
+          className={cn(
+            "relative w-full min-w-0 overflow-hidden",
+            variant === "default" && "px-2.5 py-1"
+          )}
         >
           <div
             aria-hidden
@@ -266,6 +303,34 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
           />
         </div>
+        {invisibleChars.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                aria-label="Value contains invisible characters"
+                variant="ghost"
+                size="xs"
+                className={cn(
+                  "border-transparent bg-transparent text-warning hover:bg-transparent hover:text-warning data-[state=open]:bg-transparent",
+                  "sticky top-0 self-start",
+                  variant === "default" && "mt-1 mr-2.5"
+                )}
+              >
+                <TriangleAlertIcon />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-72">
+              <p>This value contains invisible characters that can break it when used:</p>
+              <ul className="mt-1 list-disc pl-4">
+                {invisibleChars.map(({ codePoint, label, count }) => (
+                  <li key={codePoint}>
+                    {count}x {label} ({codePoint})
+                  </li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     );
   }
