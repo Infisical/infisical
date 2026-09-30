@@ -34,7 +34,11 @@ import {
   preSaveTransformDestinationConfig,
   preSaveTransformSyncOptions
 } from "@app/services/secret-sync/secret-sync-fns";
-import { buildSyncPayload, getSyncedFolders } from "@app/services/secret-sync/secret-sync-recursive-fns";
+import {
+  buildSyncPayload,
+  findSecretSyncsCoveringPath,
+  getSyncedFolders
+} from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncStatus,
   TCheckDuplicateDestinationDTO,
@@ -45,6 +49,7 @@ import {
   TFindSecretSyncByNameDTO,
   TListSecretSyncsByFolderId,
   TListSecretSyncsByProjectId,
+  TListSecretSyncsNewlyCoveringPathDTO,
   TSecretSync,
   TTriggerSecretSyncImportSecretsByIdDTO,
   TTriggerSecretSyncRemoveSecretsByIdDTO,
@@ -429,6 +434,77 @@ export const secretSyncServiceFactory = ({
     return secretSyncs.filter((sync) =>
       permission.can(ProjectPermissionSecretSyncActions.Read, getSecretSyncSubject(sync))
     ) as TSecretSync[];
+  };
+
+  // The syncs that would start sending an item to their destination if it were moved or copied from the
+  // source path to the destination path. A sync that already covers the source is left out, since the
+  // item already reaches it. Any project member gets the list, so the warning still reaches an actor
+  // who cannot read the syncs themselves; only the details of those syncs are withheld.
+  const listSecretSyncsNewlyCoveringPath = async (
+    {
+      projectId,
+      sourceEnvironment,
+      sourceSecretPath,
+      destinationEnvironment,
+      destinationSecretPath
+    }: TListSecretSyncsNewlyCoveringPathDTO,
+    actor: OrgServiceActor
+  ) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    const [sourceEnv, destinationEnv] = await Promise.all([
+      projectEnvDAL.findOne({ projectId, slug: sourceEnvironment }),
+      projectEnvDAL.findOne({ projectId, slug: destinationEnvironment })
+    ]);
+
+    if (!sourceEnv) throw new NotFoundError({ message: `Could not find environment with slug "${sourceEnvironment}"` });
+    if (!destinationEnv)
+      throw new NotFoundError({ message: `Could not find environment with slug "${destinationEnvironment}"` });
+
+    const [sourceSyncs, destinationSyncs] = await Promise.all([
+      findSecretSyncsCoveringPath(
+        { projectId, environment: sourceEnv, secretPath: sourceSecretPath },
+        { folderDAL, secretSyncDAL }
+      ),
+      findSecretSyncsCoveringPath(
+        { projectId, environment: destinationEnv, secretPath: destinationSecretPath },
+        { folderDAL, secretSyncDAL }
+      )
+    ]);
+
+    const sourceSyncIds = new Set(sourceSyncs.map((sync) => sync.id));
+
+    return destinationSyncs
+      .filter((sync) => !sourceSyncIds.has(sync.id))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((sync) => {
+        if (permission.cannot(ProjectPermissionSecretSyncActions.Read, getSecretSyncSubject(sync))) {
+          return {
+            id: null,
+            name: null,
+            destination: null,
+            secretPath: null,
+            includeAllSubFolders: null,
+            isAutoSyncEnabled: null
+          };
+        }
+
+        return {
+          id: sync.id,
+          name: sync.name,
+          destination: sync.destination as SecretSync,
+          secretPath: sync.folder?.path ?? null,
+          includeAllSubFolders: Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders),
+          isAutoSyncEnabled: sync.isAutoSyncEnabled
+        };
+      });
   };
 
   const findSecretSyncById = async ({ destination, syncId }: TFindSecretSyncByIdDTO, actor: OrgServiceActor) => {
@@ -1237,6 +1313,7 @@ export const secretSyncServiceFactory = ({
     triggerSecretSyncImportSecretsById,
     triggerSecretSyncRemoveSecretsById,
     checkDuplicateDestination,
-    findRecursiveConflicts
+    findRecursiveConflicts,
+    listSecretSyncsNewlyCoveringPath
   };
 };

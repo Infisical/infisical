@@ -6,6 +6,7 @@ import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-gran
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
+import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
   createSecretSyncPayload,
@@ -32,6 +33,43 @@ export const getAncestorPaths = (path: string): string[] => {
   const segments = path.split("/").filter(Boolean);
 
   return segments.map((_, index) => (index === 0 ? "/" : `/${segments.slice(0, index).join("/")}`));
+};
+
+// A sync on the path itself always covers it, whether or not it includes subfolders. A sync on an
+// ancestor folder only covers it when it includes them. The path need not exist yet: a folder being
+// moved has no folder at its landing path, and only the recursive syncs above it can cover it there.
+export const findSecretSyncsCoveringPath = async (
+  {
+    projectId,
+    environment,
+    secretPath
+  }: { projectId: string; environment: { id: string; slug: string }; secretPath: string },
+  {
+    folderDAL,
+    secretSyncDAL
+  }: {
+    folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findByManySecretPath">;
+    secretSyncDAL: Pick<TSecretSyncDALFactory, "find">;
+  }
+) => {
+  const folder = await folderDAL.findBySecretPath(projectId, environment.slug, secretPath);
+
+  const ancestorFolders = (
+    await folderDAL.findByManySecretPath(
+      getAncestorPaths(secretPath).map((path) => ({ envId: environment.id, secretPath: path }))
+    )
+  ).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+  const folderIds = [...ancestorFolders.map((entry) => entry.id), ...(folder ? [folder.id] : [])];
+  if (!folderIds.length) return [];
+
+  const candidateSyncs = await secretSyncDAL.find({ $in: { folderId: folderIds } });
+
+  return candidateSyncs.filter(
+    (sync) =>
+      (folder && sync.folderId === folder.id) ||
+      Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders)
+  );
 };
 
 export const getSyncedFolders = async ({

@@ -1,5 +1,6 @@
 import {
   buildSyncPayload,
+  findSecretSyncsCoveringPath,
   getAncestorPaths,
   getSyncedFolders,
   mergeImportedSecrets
@@ -95,6 +96,81 @@ describe("getAncestorPaths", () => {
 
   test("returns the root for a single-segment path", () => {
     expect(getAncestorPaths("/backend")).toEqual(["/"]);
+  });
+});
+
+describe("findSecretSyncsCoveringPath", () => {
+  const folderIdByPath: Record<string, string> = {
+    "/": "root",
+    "/apps": "apps",
+    "/apps/payments": "payments"
+  };
+
+  const syncs = [
+    { id: "root-flat", folderId: "root", syncOptions: { includeAllSubFolders: false } },
+    { id: "apps-recursive", folderId: "apps", syncOptions: { includeAllSubFolders: true } },
+    { id: "payments-flat", folderId: "payments", syncOptions: {} }
+  ];
+
+  const toFolder = (path: string) => (folderIdByPath[path] ? { id: folderIdByPath[path], path } : undefined);
+
+  const coveringDeps = {
+    folderDAL: {
+      findBySecretPath: async (_projectId: string, _environment: string, path: string) => toFolder(path),
+      findByManySecretPath: async (queries: { secretPath: string }[]) =>
+        queries.map(({ secretPath }) => toFolder(secretPath))
+    },
+    secretSyncDAL: {
+      find: vi.fn(async ({ $in }: { $in: { folderId: string[] } }) =>
+        syncs.filter((sync) => $in.folderId.includes(sync.folderId))
+      )
+    }
+  } as unknown as Parameters<typeof findSecretSyncsCoveringPath>[1];
+
+  const coveringIds = async (secretPath: string) =>
+    (
+      await findSecretSyncsCoveringPath(
+        { projectId: "proj-1", environment: { id: "env-1", slug: "dev" }, secretPath },
+        coveringDeps
+      )
+    )
+      .map((sync) => sync.id)
+      .sort();
+
+  test("matches a sync on the path itself whether or not it includes subfolders", async () => {
+    expect(await coveringIds("/apps/payments")).toEqual(["apps-recursive", "payments-flat"]);
+  });
+
+  test("matches a sync on an ancestor only when it includes subfolders", async () => {
+    expect(await coveringIds("/apps")).toEqual(["apps-recursive"]);
+  });
+
+  test("matches ancestors of a path that does not exist yet", async () => {
+    // A folder being moved lands at a path that has no folder until the move runs.
+    expect(await coveringIds("/apps/payments/new")).toEqual(["apps-recursive"]);
+  });
+
+  test("matches the root sync for the root path", async () => {
+    expect(await coveringIds("/")).toEqual(["root-flat"]);
+  });
+
+  test("returns nothing without querying syncs when no folder on the path exists", async () => {
+    const find = vi.mocked(coveringDeps.secretSyncDAL.find);
+    find.mockClear();
+
+    const result = await findSecretSyncsCoveringPath(
+      { projectId: "proj-1", environment: { id: "env-2", slug: "prod" }, secretPath: "/missing" },
+      {
+        ...coveringDeps,
+        folderDAL: {
+          findBySecretPath: async () => undefined,
+          findByManySecretPath: async (queries: unknown[]) => queries.map(() => undefined)
+        } as unknown as Parameters<typeof findSecretSyncsCoveringPath>[1]["folderDAL"]
+      }
+    );
+
+    expect(result).toEqual([]);
+    expect(find).not.toHaveBeenCalled();
   });
 });
 

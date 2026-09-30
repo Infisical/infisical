@@ -506,6 +506,14 @@ export type TFindRecursiveSyncConflictsDTO = {
   keySchema?: string;
 };
 
+export type TListSecretSyncsNewlyCoveringPathDTO = {
+  projectId: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+};
+
 export enum SecretSyncStatus {
   Pending = "pending",
   Running = "running",

@@ -23,6 +23,9 @@ import {
   TGetDashboardProjectSecretsQuickSearchDTO,
   TGetSecretMetadataDTO,
   TGetSecretValueDTO,
+  TMoveWarningsCheck,
+  TMoveWarningSecretSync,
+  TMoveWarningsResponse,
   TSearchSecretsByMetadataDTO,
   TSearchSecretsByMetadataResponse,
   TSecretMetadataPage
@@ -114,7 +117,9 @@ export const dashboardKeys = {
       folderId,
       destinationEnvironment,
       destinationPath
-    ] as const
+    ] as const,
+  getMoveWarnings: (check: TMoveWarningsCheck) =>
+    [...dashboardKeys.all(), "move-warnings", check] as const
 };
 
 export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?: AbortSignal) => {
@@ -771,5 +776,53 @@ export const useGetFoldersMoveDestinationEligibility = (checks: TFolderMoveDesti
       const isDestinationBlocked = hasError || blockedDestinations.length > 0;
 
       return { isChecking, isDestinationBlocked, blockedDestinations, hasError };
+    }
+  });
+
+export type TVisibleMoveWarningSecretSync = TMoveWarningSecretSync & {
+  id: string;
+  name: string;
+  destination: NonNullable<TMoveWarningSecretSync["destination"]>;
+};
+
+// fans out one check per (source, destination) pair, since a copy or multi-environment move writes to
+// several destinations. syncs the actor cannot read come back without an id, so they cannot be deduped
+// across checks and are only reported as present.
+export const useGetMoveWarnings = (checks: TMoveWarningsCheck[]) =>
+  useQueries({
+    queries: checks.map((check) => ({
+      queryKey: dashboardKeys.getMoveWarnings(check),
+      queryFn: async () => {
+        const { data } = await apiRequest.get<TMoveWarningsResponse>(
+          "/api/v1/dashboard/move-warnings",
+          { params: check }
+        );
+        return data;
+      },
+      enabled: Boolean(check.projectId && check.sourceEnvironment && check.destinationEnvironment)
+    })),
+    combine: (results) => {
+      const seen = new Set<string>();
+      const secretSyncs: TVisibleMoveWarningSecretSync[] = [];
+      let hasHiddenSecretSyncs = false;
+
+      results.forEach(({ data }) => {
+        data?.secretSyncs.forEach((sync) => {
+          if (!sync.id || !sync.name || !sync.destination) {
+            hasHiddenSecretSyncs = true;
+            return;
+          }
+          if (seen.has(sync.id)) return;
+          seen.add(sync.id);
+          secretSyncs.push(sync as TVisibleMoveWarningSecretSync);
+        });
+      });
+
+      return {
+        isChecking: results.some((result) => result.isLoading),
+        hasError: results.some((result) => result.isError),
+        secretSyncs,
+        hasHiddenSecretSyncs
+      };
     }
   });
