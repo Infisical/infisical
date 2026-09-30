@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TGenericPermission } from "@app/lib/types";
 import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
@@ -58,6 +59,33 @@ export const resolveAlertProjectId = async (
   return provider.resolveProjectId({ orgId, resourceId });
 };
 
+type TAlertRecipientPolicy = {
+  atOrgScope?: boolean;
+  allowEmailAddresses?: boolean;
+};
+
+export type TAlertRecipientScope = {
+  projectId: string | null;
+  allowEmailAddresses: boolean;
+};
+
+export const getRecipientScope = (
+  provider: Pick<IResourceAlertProvider, "recipientPolicy">,
+  projectId?: string | null
+): TAlertRecipientScope => ({
+  projectId: provider.recipientPolicy?.atOrgScope ? null : (projectId ?? null),
+  allowEmailAddresses: Boolean(provider.recipientPolicy?.allowEmailAddresses)
+});
+
+export const getAlertResourceName = async (
+  provider: Pick<IResourceAlertProvider, "getResourceNames">,
+  orgId: string,
+  resourceId?: string | null
+): Promise<string | null> => {
+  if (!resourceId || !provider.getResourceNames) return null;
+  return (await provider.getResourceNames({ orgId, resourceIds: [resourceId] })).get(resourceId) ?? null;
+};
+
 export const DEFAULT_DEDUP_WINDOW_HOURS = 24;
 
 // Providers scan this many days ahead of `alertBefore` so alerts fire at LEAST `alertBefore` before
@@ -84,7 +112,7 @@ export type TAlertContext = {
   condition: unknown;
 };
 
-export type TFindTargetsByIdsInput = {
+export type TFindEventTargetsInput = {
   orgId: string;
   projectId?: string | null;
   resourceId?: string | null;
@@ -94,7 +122,7 @@ export type TFindTargetsByIdsInput = {
   payload: Record<string, unknown>;
 };
 
-export type TFindDueTargetsInput = {
+export type TFindScheduledTargetsInput = {
   orgId: string;
   projectId?: string | null;
   resourceId?: string | null;
@@ -106,10 +134,72 @@ export type TFindDueTargetsInput = {
 
 // Lets a provider factory declare which discovery method it guarantees.
 export type IScheduledAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
-  Required<Pick<IResourceAlertProvider<TTarget>, "findDueTargets">>;
+  Required<Pick<IResourceAlertProvider<TTarget>, "findScheduledTargets">>;
 
 export type IEventAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
-  Required<Pick<IResourceAlertProvider<TTarget>, "findTargetsByIds">>;
+  Required<Pick<IResourceAlertProvider<TTarget>, "findEventTargets">>;
+
+export enum AlertAuditAction {
+  Create = "create",
+  Update = "update",
+  Delete = "delete",
+  TestChannel = "test-channel"
+}
+
+type TAlertAuditAlert = {
+  id: string;
+  name: string;
+  resourceType: string;
+  resourceId: string | null;
+  resourceName?: string | null;
+  eventType: string;
+};
+
+type TAlertChannelTestAudit = {
+  resourceType: string;
+  resourceId?: string | null;
+  resourceName?: string | null;
+  alertId?: string;
+  channelId?: string;
+  channelType: string;
+  success: boolean;
+  deliveredTo?: number;
+  error?: string;
+};
+
+export type TAlertAuditInput =
+  | { action: AlertAuditAction.Create | AlertAuditAction.Update | AlertAuditAction.Delete; alert: TAlertAuditAlert }
+  | { action: AlertAuditAction.TestChannel; test: TAlertChannelTestAudit };
+
+export const buildGenericAlertAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
+  if (input.action === AlertAuditAction.TestChannel) {
+    const { test } = input;
+    return {
+      type: EventType.TEST_ALERT_CHANNEL,
+      metadata: {
+        channelId: test.channelId,
+        channelType: test.channelType,
+        resourceType: test.resourceType,
+        resourceId: test.resourceId,
+        success: test.success,
+        deliveredTo: test.deliveredTo,
+        error: test.error
+      }
+    };
+  }
+  const { alert } = input;
+  const metadata = {
+    alertId: alert.id,
+    name: alert.name,
+    resourceType: alert.resourceType,
+    eventType: alert.eventType
+  };
+  if (input.action === AlertAuditAction.Create) {
+    return { type: EventType.CREATE_ALERT, metadata: { ...metadata, resourceId: alert.resourceId } };
+  }
+  if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_ALERT, metadata };
+  return { type: EventType.DELETE_ALERT, metadata };
+};
 
 export enum AlertTelemetryAction {
   Create = "create",
@@ -143,13 +233,13 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // keeps the head of this list and defers the tail, so urgency ordering ensures the targets closest
   // to expiry are never the ones dropped.
   // Required for any Scheduled event; the registry enforces that at boot.
-  findDueTargets?(input: TFindDueTargetsInput): Promise<TTarget[]>;
+  findScheduledTargets?(input: TFindScheduledTargetsInput): Promise<TTarget[]>;
 
   // Loads the targets an event named. A missing row was deleted between emit and dispatch, so drop it,
   // don't throw. Must read the primary: the target usually commits in the same tx as the event, and an
   // empty result is terminal.
   // Required for any Event-triggered event; the registry enforces that at boot.
-  findTargetsByIds?(input: TFindTargetsByIdsInput): Promise<TTarget[]>;
+  findEventTargets?(input: TFindEventTargetsInput): Promise<TTarget[]>;
 
   // Deep link to the alert's resource, honouring its scope (org- vs project-scoped). Resolved once
   // per run by the engine and passed into buildPayload, so it may perform async lookups.
@@ -171,6 +261,14 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   assertPermission(input: TAlertPermissionInput): Promise<void>;
 
   assertChannelTypesAllowed?(input: { orgId: string; channelTypes: string[] }): Promise<void>;
+
+  recipientPolicy?: TAlertRecipientPolicy;
+
+  includeLastRun?: boolean;
+
+  getWebhookSource?: (input: { alertId: string; resourceId?: string | null }) => string | undefined;
+
+  getAuditEvent?(input: TAlertAuditInput): TAuditEvent;
 
   getResourceNames?(input: { orgId: string; resourceIds: string[] }): Promise<Map<string, string>>;
 

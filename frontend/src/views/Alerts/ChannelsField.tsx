@@ -18,7 +18,7 @@ type Props = {
   resourceId?: string | null;
 };
 
-export const buildNewChannel = (channelType: AlertChannelType, name: string): TChannelForm => ({
+const buildNewChannel = (channelType: AlertChannelType, name: string): TChannelForm => ({
   channelType,
   name,
   enabled: true,
@@ -29,13 +29,14 @@ export const buildNewChannel = (channelType: AlertChannelType, name: string): TC
   integrationKey: ""
 });
 
-export const getNextChannelName = (takenNames: Set<string>, channelType: AlertChannelType) => {
+export const buildNextChannel = (existing: { name: string }[], channelType: AlertChannelType) => {
+  const takenNames = new Set(existing.map((channel) => channel.name));
   const baseName = ALERT_CHANNEL_TYPE_LABELS[channelType];
   let name = baseName;
   for (let suffix = 2; takenNames.has(name); suffix += 1) {
     name = `${baseName} ${suffix}`;
   }
-  return name;
+  return buildNewChannel(channelType, name);
 };
 
 export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) => {
@@ -50,8 +51,7 @@ export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) =>
   // The name input was dropped from the design; new channels are named after their type,
   // suffixed to stay unique so multiples remain distinguishable (e.g. in Terraform).
   const appendChannel = (channelType: AlertChannelType) => {
-    const takenNames = new Set((getValues("channels") ?? []).map((channel) => channel.name));
-    append(buildNewChannel(channelType, getNextChannelName(takenNames, channelType)));
+    append(buildNextChannel(getValues("channels") ?? [], channelType));
   };
 
   return (

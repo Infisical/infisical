@@ -52,7 +52,7 @@ export const formatAlertBefore = (alertBefore?: string | null, fallback = "-"): 
 
 export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-export type TProjectMemberEmails = {
+export type TMemberEmails = {
   emailByUserId: Map<string, string>;
   memberIdByEmail: Map<string, string>;
   isAvailable: boolean;
@@ -60,7 +60,7 @@ export type TProjectMemberEmails = {
 
 export const toRecipientEmails = (
   recipients: TAlertChannelRecipient[],
-  { emailByUserId }: Pick<TProjectMemberEmails, "emailByUserId">
+  { emailByUserId }: Pick<TMemberEmails, "emailByUserId">
 ) =>
   recipients.flatMap((recipient) => {
     if (recipient.principalType === AlertPrincipalType.User) {
@@ -140,7 +140,7 @@ export const emptyCertificateAlertForm = (
 
 export const toCertificateAlertForm = (
   alert: TAlert,
-  { emailByUserId, isAvailable }: Pick<TProjectMemberEmails, "emailByUserId" | "isAvailable">
+  { emailByUserId, isAvailable }: Pick<TMemberEmails, "emailByUserId" | "isAvailable">
 ): TCertificateAlertForm => ({
   eventType: alert.eventType as CertificateAlertEventType,
   name: alert.name,

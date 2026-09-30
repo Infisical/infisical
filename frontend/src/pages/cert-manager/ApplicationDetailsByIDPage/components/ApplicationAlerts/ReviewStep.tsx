@@ -13,11 +13,11 @@ import {
 import {
   CERTIFICATE_ALERT_EVENT_LABELS,
   TCertificateAlertForm,
-  toRecipientEmails,
-  TProjectMemberEmails
+  TMemberEmails,
+  toRecipientEmails
 } from "./types";
 
-type Props = { form: UseFormReturn<TCertificateAlertForm>; members: TProjectMemberEmails };
+type Props = { form: UseFormReturn<TCertificateAlertForm>; members: TMemberEmails };
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
   <div className="flex flex-col gap-4">
@@ -37,7 +37,7 @@ const EnabledBadge = ({ enabled }: { enabled: boolean }) => (
   <Badge variant={enabled ? "success" : "neutral"}>{enabled ? "Enabled" : "Disabled"}</Badge>
 );
 
-const describeChannel = (channel: TChannelForm, members: TProjectMemberEmails): string => {
+const describeChannel = (channel: TChannelForm, members: TMemberEmails): string => {
   switch (channel.channelType) {
     case AlertChannelType.Email: {
       const groupCount = channel.recipients.filter(

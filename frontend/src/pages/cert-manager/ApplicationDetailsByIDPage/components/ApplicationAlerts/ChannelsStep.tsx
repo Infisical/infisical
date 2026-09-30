@@ -24,8 +24,8 @@ import {
   MAX_CHANNELS,
   normalizeEmail,
   TCertificateAlertForm,
-  toRecipientEmails,
-  TProjectMemberEmails
+  TMemberEmails,
+  toRecipientEmails
 } from "./types";
 
 type TChannelField = FieldArrayWithId<TCertificateAlertForm, "channels">;
@@ -54,6 +54,8 @@ export const CertificateAlertAddChannelMenu = ({
         isDisabled={channelCount >= MAX_CHANNELS}
         lockedChannelTypes={isEnterpriseAllowed ? [] : ENTERPRISE_CHANNEL_TYPES}
         onLockedSelect={() => setIsUpgradeOpen(true)}
+        label="Add Channel"
+        contentClassName="min-w-56"
       />
       <UpgradePlanModal
         isOpen={isUpgradeOpen}
@@ -71,7 +73,7 @@ const EmailRecipientsField = ({
   onChange,
   isError,
   members
-}: TChannelRecipientsRenderProps & { members: TProjectMemberEmails }) => {
+}: TChannelRecipientsRenderProps & { members: TMemberEmails }) => {
   const emails = toRecipientEmails(value, members);
   const groups = value.filter((recipient) => recipient.principalType === AlertPrincipalType.Group);
   const unlistedUsers = value.filter(
@@ -111,6 +113,7 @@ const EmailRecipientsField = ({
           isValid: (inputValue) => isValidEmail(normalizeEmail(inputValue)),
           isDuplicate: (inputValue, email) => normalizeEmail(inputValue) === email,
           formatLabel: (inputValue) => `Add "${normalizeEmail(inputValue)}"`,
+          emptyLabel: "Add email",
           onCreate: (inputValue) => {
             const email = normalizeEmail(inputValue);
             if (!emails.includes(email)) setEmails([...emails, email]);
@@ -118,8 +121,7 @@ const EmailRecipientsField = ({
         }}
       />
       <FieldDescription>
-        Pick Certificate Manager members or type any email address. Other addresses must use one of
-        your organization&apos;s verified email domains.
+        Pick organization members or type an email address on a verified email domain.
         {unlistedUsers.length > 0 && ` Also sent to ${unlistedUsers.length} member(s).`}
         {groups.length > 0 && ` Also sent to ${groups.length} group(s).`}
       </FieldDescription>
@@ -133,6 +135,7 @@ export const ChannelsStep = ({
   onRemove,
   projectId,
   applicationId,
+  alertId,
   members
 }: {
   form: UseFormReturn<TCertificateAlertForm>;
@@ -140,7 +143,8 @@ export const ChannelsStep = ({
   onRemove: (index: number) => void;
   projectId: string;
   applicationId: string;
-  members: TProjectMemberEmails;
+  alertId?: string;
+  members: TMemberEmails;
 }) => {
   const channelsError = form.formState.errors.channels?.root ?? form.formState.errors.channels;
 
@@ -169,6 +173,7 @@ export const ChannelsStep = ({
           projectId={projectId}
           resourceType={CertificateAlertResourceType.Application}
           resourceId={applicationId}
+          alertId={alertId}
           canRemove
           onRemove={() => onRemove(index)}
           renderRecipients={(props) => <EmailRecipientsField {...props} members={members} />}

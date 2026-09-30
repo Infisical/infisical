@@ -16,22 +16,31 @@ const TEST_ITEMS = [
 
 export const buildTestAlertPayload = ({
   orgId,
-  projectId
+  projectId,
+  alertId = crypto.randomUUID(),
+  resourceId,
+  getWebhookSource
 }: {
   orgId: string;
   projectId?: string | null;
+  alertId?: string;
+  resourceId?: string | null;
+  getWebhookSource?: (input: { alertId: string; resourceId?: string | null }) => string | undefined;
 }): TAlertPayload => {
   const appCfg = getConfig();
+  const webhookSource = getWebhookSource?.({ alertId, resourceId });
 
   return {
     alert: {
-      id: crypto.randomUUID(),
+      id: alertId,
       name: TEST_ALERT_NAME,
       orgId,
       ...(projectId ? { projectId } : {}),
       resourceType: "alert.channel.test",
+      ...(webhookSource && resourceId ? { resourceId } : {}),
       viewUrl: appCfg.SITE_URL ?? ""
     },
+    ...(webhookSource ? { webhookSource } : {}),
     eventKey: "alert.channel.test",
     eventLabel: "Test",
     webhookType: "com.infisical.alert.channel.test",

@@ -16,7 +16,13 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
-import { useGetWorkspaceUsers } from "@app/hooks/api";
+import {
+  OrgPermissionMemberActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission
+} from "@app/context";
+import { useGetOrgUsers } from "@app/hooks/api";
 import {
   AlertChannelType,
   CertificateAlertEventType,
@@ -26,7 +32,7 @@ import {
   useCreateAlert,
   useUpdateAlert
 } from "@app/hooks/api/alerts";
-import { buildNewChannel, getNextChannelName } from "@app/views/Alerts";
+import { buildNextChannel, canReceiveAlerts } from "@app/views/Alerts";
 
 import { CertificateAlertAddChannelMenu, ChannelsStep } from "./ChannelsStep";
 import { DetailsStep } from "./DetailsStep";
@@ -37,9 +43,9 @@ import {
   STEP_FIELDS,
   STEPS,
   TCertificateAlertForm,
+  TMemberEmails,
   toCertificateAlertForm,
-  toCondition,
-  TProjectMemberEmails
+  toCondition
 } from "./types";
 
 type Props = {
@@ -53,7 +59,7 @@ type Props = {
   usedEventTypes: CertificateAlertEventType[];
 };
 
-type WizardProps = Omit<Props, "isOpen"> & { members: TProjectMemberEmails };
+type WizardProps = Omit<Props, "isOpen"> & { members: TMemberEmails };
 
 const CertificateAlertWizard = ({
   onOpenChange,
@@ -117,8 +123,7 @@ const CertificateAlertWizard = ({
   };
 
   const addChannel = (channelType: AlertChannelType) => {
-    const takenNames = new Set(form.getValues("channels").map((channel) => channel.name));
-    append(buildNewChannel(channelType, getNextChannelName(takenNames, channelType)));
+    append(buildNextChannel(form.getValues("channels"), channelType));
   };
 
   const goNext = async () => {
@@ -200,6 +205,7 @@ const CertificateAlertWizard = ({
               onRemove={remove}
               projectId={projectId}
               applicationId={applicationId}
+              alertId={alert?.id}
               members={members}
             />
           )}
@@ -240,18 +246,20 @@ const CertificateAlertWizard = ({
 };
 
 export const CertificateAlertSheet = ({ isOpen, onOpenChange, ...props }: Props) => {
-  const { data: projectUsers, isPending: isUsersPending } = useGetWorkspaceUsers(
-    props.projectId,
-    true,
-    undefined,
-    { enabled: isOpen }
+  const { currentOrg } = useOrganization();
+  const { permission: orgPermission } = useOrgPermission();
+  const canReadOrgMembers = orgPermission.can(
+    OrgPermissionMemberActions.Read,
+    OrgPermissionSubjects.Member
   );
+  const { data: orgUsers, isLoading: isUsersPending } = useGetOrgUsers(currentOrg.id, {
+    enabled: isOpen && canReadOrgMembers
+  });
 
-  const members = useMemo((): TProjectMemberEmails => {
+  const members = useMemo((): TMemberEmails => {
     const byUserId = new Map<string, string>();
     const byEmail = new Map<string, string>();
-    (projectUsers ?? []).forEach(({ user }) => {
-      if (!user.isOrgMembershipActive || user.isOrgMembershipPending) return;
+    (orgUsers ?? []).filter(canReceiveAlerts).forEach(({ user }) => {
       const email = (user.email || user.username || "").toLowerCase();
       if (!email) return;
       byUserId.set(user.id, email);
@@ -260,9 +268,9 @@ export const CertificateAlertSheet = ({ isOpen, onOpenChange, ...props }: Props)
     return {
       emailByUserId: byUserId,
       memberIdByEmail: byEmail,
-      isAvailable: Boolean(projectUsers)
+      isAvailable: Boolean(orgUsers)
     };
-  }, [projectUsers]);
+  }, [orgUsers]);
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>

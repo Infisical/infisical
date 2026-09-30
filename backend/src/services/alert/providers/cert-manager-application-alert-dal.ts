@@ -14,8 +14,12 @@ export type TApplicationAlertCertificate = {
   commonName: string;
   altNames: string | null;
   profileName: string | null;
+  status: string;
+  notBefore: Date;
   notAfter: Date;
+  revokedAt: Date | null;
   revocationReason: number | null;
+  applicationId: string | null;
   applicationName: string | null;
 };
 
@@ -38,8 +42,12 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
         `${TableName.Certificate}.serialNumber`,
         `${TableName.Certificate}.commonName`,
         `${TableName.Certificate}.altNames`,
+        `${TableName.Certificate}.status`,
+        `${TableName.Certificate}.notBefore`,
         `${TableName.Certificate}.notAfter`,
+        `${TableName.Certificate}.revokedAt`,
         `${TableName.Certificate}.revocationReason`,
+        `${TableName.Certificate}.applicationId`,
         "profile.slug as profileName",
         `${TableName.PkiApplication}.name as applicationName`
       );

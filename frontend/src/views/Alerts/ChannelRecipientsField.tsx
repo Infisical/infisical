@@ -112,7 +112,7 @@ const RecipientSelect = ({
   );
 };
 
-const canReceiveAlerts = (membership: { isActive: boolean; status: string }) =>
+export const canReceiveAlerts = (membership: { isActive: boolean; status: string }) =>
   membership.isActive && membership.status !== "invited";
 
 const OrgRecipientSelect = ({ orgId, ...props }: SelectProps & { orgId: string }) => {

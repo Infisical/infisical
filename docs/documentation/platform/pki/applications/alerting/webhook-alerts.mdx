@@ -39,7 +39,7 @@ Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type
 
 ## Webhook payload format
 
-`data.items` lists the certificates the alert fired for. Each item has the certificate's ID, its common name as `title`, its serial number as `identifier`, a one-line `summary`, a `severity`, and a list of display `fields`. An expiration request can include several certificates, and `data.alert.condition` holds the alert's lead time as you entered it, such as `30d` or `2w`. Issuance, renewal, and revocation requests include the one certificate the event was about.
+`data.items` lists the certificates the alert fired for. Each item has the certificate's ID, a `title` (its common name, or its first SAN or serial number when it has none), a one-line `summary`, a `severity`, and a list of display `fields`. To act on a certificate in code, read `resource` instead of `fields`: it holds the certificate's typed values, with ISO 8601 dates and the raw revocation reason code. An expiration request can include several certificates, and `data.alert.condition` holds the alert's lead time as you entered it, such as `30d` or `2w`. Issuance, renewal, and revocation requests include the one certificate the event was about.
 
 <Note>
   Only alerts created in an application send this payload. Alerts created before certificate alerts moved to applications keep sending the older `com.infisical.pki.certificate.*` event types with a `data.certificates` list. If one endpoint receives both, check the `type` field to tell them apart.
@@ -51,7 +51,7 @@ Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type
     {
       "specversion": "1.0",
       "type": "com.infisical.cert-manager.application.certificate.expiry",
-      "source": "/projects/<project-id>/alerts/<alert-id>",
+      "source": "/applications/<application-id>/alerts/<alert-id>",
       "id": "<unique-event-id>",
       "time": "2026-09-24T00:00:09.664Z",
       "datacontenttype": "application/json",
@@ -61,20 +61,35 @@ Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type
           "id": "<alert-id>",
           "name": "tls-expiry-alert",
           "resourceType": "cert-manager.application",
+          "resourceId": "<application-id>",
           "condition": "30d"
         },
         "items": [
           {
             "id": "<certificate-id>",
             "title": "api.example.com",
-            "identifier": "105d3b4c28132774ab17e350c0e8229ba1bef40d",
             "summary": "Certificate 'api.example.com' in application 'payments-api' expires on October 4, 2026 at 11:59 PM UTC",
             "severity": "error",
             "fields": [
+              { "label": "Serial Number", "value": "105d3b4c28132774ab17e350c0e8229ba1bef40d" },
               { "label": "SANs", "value": "api.example.com, www.api.example.com" },
               { "label": "Profile", "value": "tls-server" },
               { "label": "Expires", "value": "October 4, 2026 at 11:59 PM UTC" }
-            ]
+            ],
+            "resource": {
+              "id": "<certificate-id>",
+              "serialNumber": "105d3b4c28132774ab17e350c0e8229ba1bef40d",
+              "commonName": "api.example.com",
+              "altNames": ["api.example.com", "www.api.example.com"],
+              "status": "active",
+              "notBefore": "2026-07-06T23:59:00.000Z",
+              "notAfter": "2026-10-04T23:59:00.000Z",
+              "revokedAt": null,
+              "revocationReason": null,
+              "profileName": "tls-server",
+              "applicationId": "<application-id>",
+              "applicationName": "payments-api"
+            }
           }
         ],
         "metadata": {
@@ -92,7 +107,7 @@ Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type
     {
       "specversion": "1.0",
       "type": "com.infisical.cert-manager.application.certificate.revocation",
-      "source": "/projects/<project-id>/alerts/<alert-id>",
+      "source": "/applications/<application-id>/alerts/<alert-id>",
       "id": "<unique-event-id>",
       "time": "2026-09-24T14:22:00.000Z",
       "datacontenttype": "application/json",
@@ -101,20 +116,35 @@ Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type
         "alert": {
           "id": "<alert-id>",
           "name": "prod-revocation-notify",
-          "resourceType": "cert-manager.application"
+          "resourceType": "cert-manager.application",
+          "resourceId": "<application-id>"
         },
         "items": [
           {
             "id": "<certificate-id>",
             "title": "api.example.com",
-            "identifier": "105d3b4c28132774ab17e350c0e8229ba1bef40d",
             "summary": "Certificate 'api.example.com' was revoked in application 'payments-api'",
             "severity": "warning",
             "fields": [
+              { "label": "Serial Number", "value": "105d3b4c28132774ab17e350c0e8229ba1bef40d" },
               { "label": "Profile", "value": "tls-server" },
               { "label": "Expires", "value": "October 4, 2026 at 11:59 PM UTC" },
               { "label": "Revocation Reason", "value": "Key Compromise" }
-            ]
+            ],
+            "resource": {
+              "id": "<certificate-id>",
+              "serialNumber": "105d3b4c28132774ab17e350c0e8229ba1bef40d",
+              "commonName": "api.example.com",
+              "altNames": [],
+              "status": "revoked",
+              "notBefore": "2026-07-06T23:59:00.000Z",
+              "notAfter": "2026-10-04T23:59:00.000Z",
+              "revokedAt": "2026-09-24T14:21:58.000Z",
+              "revocationReason": 1,
+              "profileName": "tls-server",
+              "applicationId": "<application-id>",
+              "applicationName": "payments-api"
+            }
           }
         ],
         "metadata": {
@@ -129,7 +159,7 @@ Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type
 
 ## Webhook signature verification
 
-If you set a signing secret, Infisical adds an `x-infisical-signature` header to each request:
+If you set a signing secret, each request carries an `x-infisical-signature` header:
 
 ```
 x-infisical-signature: t=<timestamp>,v1=<signature>

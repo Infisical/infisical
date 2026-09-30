@@ -17,23 +17,27 @@ type Props = {
   isDisabled?: boolean;
   lockedChannelTypes?: AlertChannelType[];
   onLockedSelect?: () => void;
+  label?: string;
+  contentClassName?: string;
 };
 
 export const AddChannelMenu = ({
   onAdd,
   isDisabled,
   lockedChannelTypes = [],
-  onLockedSelect
+  onLockedSelect,
+  label = "Add channel",
+  contentClassName = "w-[var(--radix-dropdown-menu-trigger-width)]"
 }: Props) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button type="button" variant="outline" size="sm" isDisabled={isDisabled}>
         <PlusIcon className="size-4" />
-        Add Channel
+        {label}
         <ChevronDownIcon className="size-4" />
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end" sideOffset={4} className="min-w-56">
+    <DropdownMenuContent align="end" sideOffset={4} className={contentClassName}>
       {Object.values(AlertChannelType).map((channelType) => {
         const Icon = getChannelIcon(channelType);
         const isLocked = lockedChannelTypes.includes(channelType);

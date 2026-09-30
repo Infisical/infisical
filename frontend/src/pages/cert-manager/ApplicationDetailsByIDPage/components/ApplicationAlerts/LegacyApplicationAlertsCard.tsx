@@ -180,6 +180,7 @@ export const LegacyApplicationAlertsCard = ({ applicationId, canDelete }: Props)
         isOpen={Boolean(deleteAlert)}
         confirmKey="delete"
         title={`Delete Legacy Alert "${deleteAlert?.name ?? ""}"?`}
+        description="It stops sending notifications, and legacy alerts can't be recreated. Create a new alert to keep getting them."
         onOpenChange={(isOpen) => !isOpen && setDeleteAlert(undefined)}
         onConfirm={handleDeleteAlert}
       />
