@@ -170,19 +170,32 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
 
   // A secret is fetched, and so audited, each time it is copied, and it is never shown. Safari lets a page write
   // the clipboard only inside the click that asked, so the value being fetched goes in as a pending ClipboardItem.
+  // Older Firefox has no ClipboardItem, but still lets a page write text shortly after a click.
   const copyValue = async (variable: TAgentVaultVariable) => {
+    let request: Promise<string> | undefined;
     try {
       if (variable.isSecret) {
-        const fetched = revealValue
-          .mutateAsync({ accessBundleId, variableId: variable.id })
-          .then((value) => new Blob([value], { type: "text/plain" }));
-        await navigator.clipboard.write([new ClipboardItem({ "text/plain": fetched })]);
+        request = revealValue.mutateAsync({ accessBundleId, variableId: variable.id });
+        if (typeof ClipboardItem === "undefined") {
+          await navigator.clipboard.writeText(await request);
+        } else {
+          const fetched = request.then((value) => new Blob([value], { type: "text/plain" }));
+          await navigator.clipboard.write([new ClipboardItem({ "text/plain": fetched })]);
+        }
       } else {
         await navigator.clipboard.writeText(variable.value ?? "");
       }
       createNotification({ text: `Copied the value of ${variable.key}`, type: "success" });
     } catch {
-      // A failed request returns a 4xx that the global request handler surfaces as a toast
+      // A failed request returns a 4xx that the global request handler surfaces as a toast, so only a write the
+      // browser refused needs one here
+      const isRequestError = await request?.then(() => false).catch(() => true);
+      if (!isRequestError) {
+        createNotification({
+          text: "Could not copy the value. Your browser blocked clipboard access.",
+          type: "error"
+        });
+      }
     }
   };
 
