@@ -10,7 +10,13 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
-import { AUDIT_LOG_EVENT_CLASS_DEFAULTS, AuditLogEventClass, getAuditLogEventClass } from "./audit-log-event-classes";
+import {
+  AUDIT_LOG_EVENT_CLASS_DEFAULTS,
+  AuditLogEventClass,
+  CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES,
+  getAuditLogEventClass,
+  TConfigurableAuditLogEventClass
+} from "./audit-log-event-classes";
 import { TAuditLogSettingsDALFactory } from "./audit-log-settings-dal";
 import {
   TAuditLogEventClassOverrides,
@@ -64,11 +70,30 @@ const toSettings = (overrides: TAuditLogEventClassOverrides): TAuditLogEventClas
         : (overrides[eventClass] ?? AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass])
   }));
 
-const toChanges = (eventClasses: TAuditLogEventClassSetting[]): [AuditLogEventClass, boolean][] => {
+// An update replaces the scope's settings, so the request must name every configurable class once.
+const toFullOverrides = (
+  eventClasses: TAuditLogEventClassSetting[]
+): Record<TConfigurableAuditLogEventClass, boolean> => {
   if (eventClasses.some((el) => el.eventClass === AuditLogEventClass.Management)) {
     throw new BadRequestError({ message: "Management events are always recorded and cannot be changed" });
   }
-  return [...new Map(eventClasses.map((el) => [el.eventClass, el.isEnabled])).entries()];
+  const seen = new Set<AuditLogEventClass>();
+  eventClasses.forEach((el) => {
+    if (seen.has(el.eventClass)) {
+      throw new BadRequestError({ message: `Event class '${el.eventClass}' appears more than once` });
+    }
+    seen.add(el.eventClass);
+  });
+  const missing = CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.filter((eventClass) => !seen.has(eventClass));
+  if (missing.length) {
+    throw new BadRequestError({
+      message: `Every event class except management must be included. Missing: ${missing.join(", ")}`
+    });
+  }
+  return Object.fromEntries(eventClasses.map((el) => [el.eventClass, el.isEnabled])) as Record<
+    TConfigurableAuditLogEventClass,
+    boolean
+  >;
 };
 
 export const auditLogSettingsServiceFactory = ({
@@ -128,25 +153,20 @@ export const auditLogSettingsServiceFactory = ({
 
   const writeScopeSettings = async (
     scope: { orgId: string; projectId: string | null },
-    changed: [AuditLogEventClass, boolean][]
-  ): Promise<TAuditLogEventClassOverrides> => {
-    const changedClasses = changed.map(([eventClass]) => eventClass);
-    const rows = await auditLogSettingsDAL.transaction(async (tx) => {
-      const existing = await auditLogSettingsDAL.find(scope, { tx });
-      await auditLogSettingsDAL.delete({ ...scope, $in: { eventClass: changedClasses } }, tx);
-      const inserted = await auditLogSettingsDAL.insertMany(
-        changed.map(([eventClass, isEnabled]) => ({ ...scope, eventClass, isEnabled })),
+    overrides: Record<TConfigurableAuditLogEventClass, boolean>
+  ) => {
+    await auditLogSettingsDAL.transaction(async (tx) => {
+      await auditLogSettingsDAL.delete(scope, tx);
+      await auditLogSettingsDAL.insertMany(
+        CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({
+          ...scope,
+          eventClass,
+          isEnabled: overrides[eventClass]
+        })),
         tx
       );
-      return [...existing.filter((row) => !changedClasses.includes(row.eventClass as AuditLogEventClass)), ...inserted];
     });
     await invalidateCache(scope.orgId);
-
-    const overrides: TAuditLogEventClassOverrides = {};
-    rows.forEach((row) => {
-      if (isKnownEventClass(row.eventClass)) overrides[row.eventClass] = row.isEnabled;
-    });
-    return overrides;
   };
 
   const getOrgSettings = async ({ actor }: TGetOrgAuditLogSettingsDTO) => {
@@ -183,10 +203,8 @@ export const auditLogSettingsServiceFactory = ({
     const org = await orgDAL.findById(actor.orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });
 
-    const changed = toChanges(eventClasses);
-    if (!changed.length) return getOrgSettings({ actor });
-
-    const overrides = await writeScopeSettings({ orgId: actor.orgId, projectId: null }, changed);
+    const overrides = toFullOverrides(eventClasses);
+    await writeScopeSettings({ orgId: actor.orgId, projectId: null }, overrides);
     return {
       eventClasses: toSettings(overrides),
       shouldUseNewPrivilegeSystem: Boolean(org.shouldUseNewPrivilegeSystem)
@@ -243,10 +261,8 @@ export const auditLogSettingsServiceFactory = ({
     const org = await orgDAL.findById(project.orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
 
-    const changed = toChanges(eventClasses);
-    if (!changed.length) return getProjectSettings(dto);
-
-    const overrides = await writeScopeSettings({ orgId: project.orgId, projectId: dto.projectId }, changed);
+    const overrides = toFullOverrides(eventClasses);
+    await writeScopeSettings({ orgId: project.orgId, projectId: dto.projectId }, overrides);
     return {
       eventClasses: toSettings(overrides),
       shouldUseNewPrivilegeSystem: Boolean(org.shouldUseNewPrivilegeSystem)

@@ -64,9 +64,6 @@ const createHarness = ({ rows = [] as TRow[] } = {}) => {
   const auditLogSettingsDAL = {
     findByOrgIds: vi.fn(async (orgIds: string[]) => rows.filter((row) => orgIds.includes(row.orgId))),
     transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
-    find: vi.fn(async (filter: { orgId: string; projectId: string | null }) =>
-      rows.filter((row) => row.orgId === filter.orgId && row.projectId === filter.projectId)
-    ),
     delete: vi.fn(async () => []),
     insertMany: vi.fn(async (data: TRow[]) => data)
   };
@@ -146,27 +143,60 @@ describe("updateOrgSettings", () => {
     expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
   });
 
-  test("answers from the rows it wrote and the scope's untouched rows, without re-reading", async () => {
+  test("refuses a request that leaves a class out", async () => {
+    const { service, auditLogSettingsDAL } = createHarness();
+
+    await expect(
+      service.updateOrgSettings({
+        actor: orgActor,
+        eventClasses: [{ eventClass: AuditLogEventClass.DataAccess, isEnabled: false }]
+      })
+    ).rejects.toThrow("Every event class except management must be included. Missing: authentication, authorization");
+    expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("refuses a request that names a class twice", async () => {
+    const { service, auditLogSettingsDAL } = createHarness();
+
+    await expect(
+      service.updateOrgSettings({
+        actor: orgActor,
+        eventClasses: [
+          { eventClass: AuditLogEventClass.DataAccess, isEnabled: false },
+          { eventClass: AuditLogEventClass.DataAccess, isEnabled: true },
+          { eventClass: AuditLogEventClass.Authentication, isEnabled: true },
+          { eventClass: AuditLogEventClass.Authorization, isEnabled: false }
+        ]
+      })
+    ).rejects.toThrow("Event class 'data-access' appears more than once");
+    expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("replaces the scope's rows and answers from the request, without re-reading", async () => {
     const { service, auditLogSettingsDAL, keyStore } = createHarness({
       rows: [
         { orgId: "org-1", projectId: null, eventClass: "authentication", isEnabled: false },
-        { orgId: "org-1", projectId: null, eventClass: "data-access", isEnabled: true },
         { orgId: "org-1", projectId: "p1", eventClass: "data-access", isEnabled: false }
       ]
     });
 
     const result = await service.updateOrgSettings({
       actor: orgActor,
-      eventClasses: [{ eventClass: AuditLogEventClass.DataAccess, isEnabled: false }]
+      eventClasses: [
+        { eventClass: AuditLogEventClass.Authorization, isEnabled: true },
+        { eventClass: AuditLogEventClass.DataAccess, isEnabled: false },
+        { eventClass: AuditLogEventClass.Authentication, isEnabled: true }
+      ]
     });
 
     expect(auditLogSettingsDAL.findByOrgIds).not.toHaveBeenCalled();
-    expect(auditLogSettingsDAL.delete).toHaveBeenCalledWith(
-      { orgId: "org-1", projectId: null, $in: { eventClass: ["data-access"] } },
-      expect.anything()
-    );
+    expect(auditLogSettingsDAL.delete).toHaveBeenCalledWith({ orgId: "org-1", projectId: null }, expect.anything());
     expect(auditLogSettingsDAL.insertMany).toHaveBeenCalledWith(
-      [{ orgId: "org-1", projectId: null, eventClass: "data-access", isEnabled: false }],
+      [
+        { orgId: "org-1", projectId: null, eventClass: "data-access", isEnabled: false },
+        { orgId: "org-1", projectId: null, eventClass: "authentication", isEnabled: true },
+        { orgId: "org-1", projectId: null, eventClass: "authorization", isEnabled: true }
+      ],
       expect.anything()
     );
     expect(keyStore.deleteItem).toHaveBeenCalledTimes(1);
@@ -175,8 +205,8 @@ describe("updateOrgSettings", () => {
       eventClasses: [
         { eventClass: AuditLogEventClass.Management, isEnabled: true },
         { eventClass: AuditLogEventClass.DataAccess, isEnabled: false },
-        { eventClass: AuditLogEventClass.Authentication, isEnabled: false },
-        { eventClass: AuditLogEventClass.Authorization, isEnabled: false }
+        { eventClass: AuditLogEventClass.Authentication, isEnabled: true },
+        { eventClass: AuditLogEventClass.Authorization, isEnabled: true }
       ]
     });
   });

@@ -14,6 +14,14 @@ export const AUDIT_LOG_EVENT_CLASS_DEFAULTS: Record<AuditLogEventClass, boolean>
   [AuditLogEventClass.Authorization]: false
 };
 
+export const CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES = [
+  AuditLogEventClass.DataAccess,
+  AuditLogEventClass.Authentication,
+  AuditLogEventClass.Authorization
+] as const;
+
+export type TConfigurableAuditLogEventClass = (typeof CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES)[number];
+
 export const AUTHENTICATION_EVENT_TYPES: readonly EventType[] = [
   EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,
   EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH_FAILED,

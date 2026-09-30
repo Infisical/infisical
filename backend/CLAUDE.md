@@ -1015,7 +1015,9 @@ Enforcement is `isAuditLogEventEnabled` in the settings service, called from `bu
 Suppressed events are dropped silently and do not count on the dropped counter. Management is
 always on: the helper returns true for it before looking at any row, `toSettings` reports it as
 enabled, and the update methods reject any request that names it, so the change that turns a
-class off is itself always recorded.
+class off is itself always recorded. An update is a full replacement: `PUT` must name every class in
+`CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES` exactly once, and the service deletes the scope's rows and
+inserts the new set, so there is no merge with what was stored before.
 
 `PERMISSION_DENIED` is recorded by the `onError` hook in
 `src/server/plugins/audit-log-permission-denied.ts` for every CASL `ForbiddenError` and

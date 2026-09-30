@@ -33,3 +33,10 @@ export const AUDIT_LOG_EVENT_CLASSES = [
   AuditLogEventClass.Authentication,
   AuditLogEventClass.Authorization
 ] as const;
+
+// Every class an update must name; the request replaces the scope's settings.
+export const CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES = [
+  AuditLogEventClass.DataAccess,
+  AuditLogEventClass.Authentication,
+  AuditLogEventClass.Authorization
+] as const;

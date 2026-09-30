@@ -17,7 +17,8 @@ import { useOrganization, useProject, useProjectPermission } from "@app/context"
 import { useGetProjectAuditLogSettings, useUpdateProjectAuditLogSettings } from "@app/hooks/api";
 import {
   AUDIT_LOG_EVENT_CLASS_DEFAULTS,
-  AUDIT_LOG_EVENT_CLASSES
+  AUDIT_LOG_EVENT_CLASSES,
+  CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES
 } from "@app/hooks/api/auditLogSettings/constants";
 import { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -44,7 +45,7 @@ export const AuditLogEventClassesSection = () => {
     control,
     handleSubmit,
     reset,
-    formState: { isDirty, dirtyFields }
+    formState: { isDirty }
   } = useForm<TForm>({
     values: Object.fromEntries(
       AUDIT_LOG_EVENT_CLASSES.map((eventClass) => [eventClass, isEnabled(eventClass)])
@@ -55,10 +56,10 @@ export const AuditLogEventClassesSection = () => {
     settings?.shouldUseNewPrivilegeSystem ?? currentOrg.shouldUseNewPrivilegeSystem;
 
   const onSubmit = async (form: TForm) => {
-    const eventClasses = AUDIT_LOG_EVENT_CLASSES.filter(
-      (eventClass) => eventClass !== AuditLogEventClass.Management && dirtyFields[eventClass]
-    ).map((eventClass) => ({ eventClass, isEnabled: form[eventClass] }));
-    if (!eventClasses.length) return;
+    const eventClasses = CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({
+      eventClass,
+      isEnabled: form[eventClass]
+    }));
 
     await updateSettings({ projectId: currentProject.id, eventClasses });
     createNotification({ text: "Audit log settings saved", type: "success" });

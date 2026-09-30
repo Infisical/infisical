@@ -268,13 +268,19 @@ By default, Infisical records every class except `authorization`. The `managemen
     Only project admins can change these toggles. A project that has never saved a setting uses the defaults.
   </Tab>
   <Tab title="API">
-    Update the organization's classes with [the organization audit log settings endpoint](/api-reference/endpoints/audit-logs/update-organization-audit-log-settings), or one project's classes with [the project audit log settings endpoint](/api-reference/endpoints/audit-logs/update-project-audit-log-settings).
+    Update the organization's classes with [the organization audit log settings endpoint](/api-reference/endpoints/audit-logs/update-organization-audit-log-settings), or one project's classes with [the project audit log settings endpoint](/api-reference/endpoints/audit-logs/update-project-audit-log-settings). The request replaces the current settings, so include every class except `management`.
 
     ```bash
     curl -X PUT "https://app.infisical.com/api/v1/organization/audit-log-settings" \
       -H "Authorization: Bearer <your-access-token>" \
       -H "Content-Type: application/json" \
-      -d '{"eventClasses": [{"eventClass": "data-access", "isEnabled": false}]}'
+      -d '{
+        "eventClasses": [
+          {"eventClass": "data-access", "isEnabled": false},
+          {"eventClass": "authentication", "isEnabled": true},
+          {"eventClass": "authorization", "isEnabled": false}
+        ]
+      }'
     ```
 
   </Tab>
