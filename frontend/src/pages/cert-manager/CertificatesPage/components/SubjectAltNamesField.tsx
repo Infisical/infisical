@@ -2,6 +2,10 @@ import { Control, Controller } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
 
 import {
+  CertificateIssuanceLimitsUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
+import {
   Button,
   Field,
   FieldError,
@@ -50,12 +54,14 @@ export const SubjectAltNamesField = ({
 }: SubjectAltNamesFieldProps) => {
   const sanTypeLabels = getSanTypeLabels();
   const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const { maxSansPerCertificate, maxWildcardCertificates } = subscription;
   // 0 means the plan has no wildcard support at all, which the backend refuses before it counts
   // anything, so it is the one cap this form can mirror exactly.
   const areWildcardsUnavailable = maxWildcardCertificates === 0;
 
   return (
+    <>
     <Controller
       control={control}
       name={namePrefix}
@@ -108,8 +114,29 @@ export const SubjectAltNamesField = ({
                       <Input
                         value={san.value}
                         onChange={(e) => {
+                            const nextSanValue = e.target.value;
+                            if (
+                              areWildcardsUnavailable &&
+                              nextSanValue.includes("*") &&
+                              !san.value?.includes("*")
+                            ) {
+                              openUpgradeGate({
+                                intent: CertificateIssuanceLimitsUpgradeIntent,
+                                paywallKey: "cert-manager.certificate-wildcards",
+                                isEntitled: (refreshedSubscription) =>
+                                  refreshedSubscription.maxWildcardCertificates !== 0,
+                                onGranted: () => {
+                                  const newValue = [...currentValues];
+                                  newValue[index] = { ...san, value: nextSanValue };
+                                  onChange(newValue);
+                                },
+                                failureMessage:
+                                  "Failed to refresh your subscription. Try adding a wildcard name again."
+                              });
+                              return;
+                            }
                           const newValue = [...currentValues];
-                          newValue[index] = { ...san, value: e.target.value };
+                            newValue[index] = { ...san, value: nextSanValue };
                           onChange(newValue);
                         }}
                         placeholder={getSanPlaceholder(san.type)}
@@ -138,12 +165,25 @@ export const SubjectAltNamesField = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                isDisabled={isAtSanLimit}
                 onClick={() => {
                   const defaultType =
                     allowedSanTypes.length > 0
                       ? allowedSanTypes[0]
                       : CertSubjectAlternativeNameType.DNS_NAME;
+                    if (isAtSanLimit) {
+                      openUpgradeGate({
+                        intent: CertificateIssuanceLimitsUpgradeIntent,
+                        paywallKey: "cert-manager.certificate-san-limit",
+                        isEntitled: (refreshedSubscription) =>
+                          refreshedSubscription.maxSansPerCertificate === null ||
+                          currentValues.length < refreshedSubscription.maxSansPerCertificate,
+                        onGranted: () =>
+                          onChange([...currentValues, { type: defaultType, value: "" }]),
+                        failureMessage:
+                          "Failed to refresh your subscription. Try adding a subject alternative name again."
+                      });
+                      return;
+                    }
                   onChange([...currentValues, { type: defaultType, value: "" }]);
                 }}
               >
@@ -163,5 +203,7 @@ export const SubjectAltNamesField = ({
         );
       }}
     />
+      {upgradeGate}
+    </>
   );
 };

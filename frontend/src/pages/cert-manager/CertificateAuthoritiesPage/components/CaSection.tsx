@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateAuthoritiesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
@@ -48,20 +51,22 @@ export const CaSection = () => {
     "caCert",
     "installCaCert",
     "deleteCa",
-    "caStatus", // enable / disable
-    "upgradePlan"
+    "caStatus" // enable / disable
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const { data: caQuota } = useGetCaQuota();
   // An internal CA counts against both caps, so whichever runs out first blocks it. The message names
   // that one, since "1 of 1 internal CAs" and "1 of 1 CAs" call for different upgrades.
   const exhausted = [
     {
+      key: "maxCas" as const,
       one: "certificate authority",
       many: "certificate authorities",
       ...caQuota?.certificateAuthorities
     },
     {
+      key: "maxInternalCas" as const,
       one: "internal certificate authority",
       many: "internal certificate authorities",
       ...caQuota?.internalCertificateAuthorities
@@ -72,8 +77,16 @@ export const CaSection = () => {
     if (exhausted) {
       // The allowance is shared across the organization and any sub-organizations, while this table
       // shows one project, so the count is named rather than left to look like a mismatch.
-      handlePopUpOpen("upgradePlan", {
-        text: `Your plan includes ${exhausted.limit} ${exhausted.limit === 1 ? exhausted.one : exhausted.many}. Your organization is using ${exhausted.used}. Upgrade to add more.`
+      openUpgradeGate({
+        intent: CertificateAuthoritiesUpgradeIntent,
+        paywallKey: "cert-manager.ca",
+        isEntitled: (refreshedSubscription) => {
+          const refreshedLimit = refreshedSubscription[exhausted.key];
+          return refreshedLimit === null || (exhausted.used ?? 0) < refreshedLimit;
+        },
+        onGranted: () => setIsCreateWizardOpen(true),
+        failureMessage:
+          "Failed to refresh your subscription. Try creating an internal certificate authority again."
       });
       return;
     }
@@ -147,12 +160,7 @@ export const CaSection = () => {
         <CaTable handlePopUpOpen={handlePopUpOpen} />
       </CardContent>
       <CreateCaWizard isOpen={isCreateWizardOpen} onOpenChange={setIsCreateWizardOpen} />
-      <UpgradePlanModal
-        paywallKey="cert-manager.ca"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { text: string })?.text}
-      />
+      {upgradeGate}
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal

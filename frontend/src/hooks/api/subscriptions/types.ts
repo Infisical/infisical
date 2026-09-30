@@ -101,6 +101,8 @@ export type SubscriptionPlan = {
   secretsBrokering: boolean;
   agentVaultByoS3: boolean;
   pam?: boolean | null;
+  enterprisePamAccount?: boolean | null;
+  maxPamAccounts?: number | null;
   certManager?: boolean | null;
   secretsFolderRbac: boolean;
   crossProjectSecretSharing: boolean;

@@ -5,7 +5,9 @@ import { z } from "zod";
 import { SettingsPage } from "./SettingsPage";
 
 const SettingsPageQueryParams = z.object({
-  selectedTab: z.string().catch("tab-project-general")
+  selectedTab: z.string().catch("tab-project-general"),
+  upgradeContinuation: z.enum(["create-environment"]).optional(),
+  checkout: z.enum(["success", "canceled"]).optional()
 });
 
 export const Route = createFileRoute(

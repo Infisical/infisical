@@ -7,6 +7,10 @@ import {
   ShieldCheckIcon
 } from "lucide-react";
 
+import {
+  ExternalCertificateAuthoritiesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { Modal, ModalContent } from "@app/components/v2";
 import { Badge, Button } from "@app/components/v3";
 import { useSubscription } from "@app/context";
@@ -118,28 +122,27 @@ const RadioCard = ({
   <button
     type="button"
     onClick={onClick}
-    disabled={isLocked}
-    className={`flex items-center gap-4 rounded-md border px-4 py-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+    className={`flex items-center gap-4 rounded-md border px-4 py-4 text-left transition-colors ${
       isSelected
         ? "border-project/50 bg-project/5"
-        : "border-border-control bg-surface-hover enabled:hover:bg-surface-active"
+        : "border-border-control bg-surface-hover hover:bg-surface-active"
     } ${className ?? ""}`}
   >
     {icon}
     <div className="flex-1">
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-foreground">{name}</span>
+        <span className="text-foreground text-sm font-medium">{name}</span>
         {badge && <Badge variant="neutral">{badge}</Badge>}
         {isLocked && <Badge variant="info">Enterprise</Badge>}
       </div>
-      <p className="mt-0.5 text-xs text-muted">{description}</p>
+      <p className="text-muted mt-0.5 text-xs">{description}</p>
     </div>
     <div
       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-        isSelected ? "border-none bg-project/30" : "border-border-strong"
+        isSelected ? "bg-project/30 border-none" : "border-border-strong"
       }`}
     >
-      {isSelected && <div className="h-2 w-2 rounded-full bg-label" />}
+      {isSelected && <div className="bg-label h-2 w-2 rounded-full" />}
     </div>
   </button>
 );
@@ -149,6 +152,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
   const caId = popupData?.caId ?? "";
 
   const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   // Signing an intermediate outside Infisical: Manual is the CSR/import flow, Automated connects a
   // third-party provider. Infisical CA stays available on every plan.
@@ -181,6 +185,25 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
 
     setStep(Step.Form);
+  };
+
+  const handleSelectMethod = (method: SigningMethod) => {
+    if (!lockedMethods[method]) {
+      setSelectedMethod(method);
+      return;
+    }
+
+    openUpgradeGate({
+      intent: ExternalCertificateAuthoritiesUpgradeIntent,
+      paywallKey: "cert-manager.intermediate-ca-signing",
+      isEntitled: (refreshedSubscription) =>
+        method === SigningMethod.Manual
+          ? refreshedSubscription.pkiExternalIntermediateCa
+          : refreshedSubscription.pkiEnterpriseCaIntegrations,
+      onGranted: () => setSelectedMethod(method),
+      failureMessage:
+        "Failed to refresh your subscription. Try selecting this signing method again."
+    });
   };
 
   const handleIntegrationContinue = () => {
@@ -218,10 +241,10 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             key={option.value}
             isSelected={selectedMethod === option.value}
             isLocked={lockedMethods[option.value]}
-            onClick={() => setSelectedMethod(option.value)}
+            onClick={() => handleSelectMethod(option.value)}
             icon={
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active">
-                <option.icon className="h-5 w-5 text-label" />
+              <div className="bg-surface-active flex h-10 w-10 shrink-0 items-center justify-center rounded-md">
+                <option.icon className="text-label h-5 w-5" />
               </div>
             }
             name={option.name}
@@ -260,7 +283,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <img
                   src={integration.image}
                   alt={`${integration.name} logo`}
-                  className="h-8 w-8 rounded-md bg-surface-recessed object-contain p-1"
+                  className="bg-surface-recessed h-8 w-8 rounded-md object-contain p-1"
                 />
               ) : undefined
             }
@@ -303,30 +326,30 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             <img
               src={displayImage}
               alt={`${displayName} logo`}
-              className="mt-0.5 h-8 w-8 shrink-0 rounded-md bg-surface-recessed object-contain p-1"
+              className="bg-surface-recessed mt-0.5 h-8 w-8 shrink-0 rounded-md object-contain p-1"
             />
           ) : (
             DisplayIcon && (
-              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-recessed">
-                <DisplayIcon className="h-4 w-4 text-label" />
+              <div className="bg-surface-recessed mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
+                <DisplayIcon className="text-label h-4 w-4" />
               </div>
             )
           )}
           <div className="flex-1">
             <div className="flex items-center">
-              <span className="flex-1 text-sm font-medium text-foreground">{displayName}</span>
+              <span className="text-foreground flex-1 text-sm font-medium">{displayName}</span>
               <button
                 type="button"
-                className="shrink-0 text-xs text-muted underline underline-offset-2 hover:text-label"
+                className="text-muted hover:text-label shrink-0 text-xs underline underline-offset-2"
                 onClick={resetState}
               >
                 Change method
               </button>
             </div>
-            <p className="mt-0.5 text-xs text-muted">{displayDesc}</p>
+            <p className="text-muted mt-0.5 text-xs">{displayDesc}</p>
           </div>
         </div>
-        <hr className="-mx-6 mb-4 border-border-control" />
+        <hr className="border-border-control -mx-6 mb-4" />
         {renderForm()}
       </>
     );
@@ -338,7 +361,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
         <div>
           <button
             type="button"
-            className="mb-2 flex items-center gap-1 text-xs text-muted hover:text-label"
+            className="text-muted hover:text-label mb-2 flex items-center gap-1 text-xs"
             onClick={goBackToMethodSelection}
           >
             <ArrowLeftIcon className="h-3 w-3" />
@@ -364,6 +387,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
   const needsOverflowVisible = step === Step.Form && selectedMethod === SigningMethod.Automated;
 
   return (
+    <>
     <Modal
       isOpen={popUp?.installCaCert?.isOpen}
       onOpenChange={(isOpen) => {
@@ -382,5 +406,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
         {step === Step.Form && renderFormStep()}
       </ModalContent>
     </Modal>
+      {upgradeGate}
+    </>
   );
 };

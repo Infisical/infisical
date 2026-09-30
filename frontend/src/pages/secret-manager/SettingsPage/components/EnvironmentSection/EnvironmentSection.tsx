@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { addDays, format } from "date-fns";
 import { PlusIcon, TriangleAlertIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  EnvironmentLimitUpgradeIntent,
+  hasEnvironmentCapacity,
+  UpgradeContinuation,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner, ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -25,6 +31,7 @@ import {
   CardHeader,
   CardTitle
 } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -33,6 +40,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useDeleteWsEnvironment, useRestoreEnvironment } from "@app/hooks/api";
+import { SubscriptionPlan } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddEnvironmentModal } from "./AddEnvironmentModal";
@@ -43,6 +51,12 @@ export const EnvironmentSection = () => {
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const { openUpgradeGate, upgradeGate, resumeUpgradeGate } = useUpgradeGate();
+  const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.SettingsPage.path });
+  const { upgradeContinuation, checkout } = useSearch({
+    from: ROUTE_PATHS.SecretManager.SettingsPage.id
+  });
+  const hasHandledUpgradeReturn = useRef(false);
 
   const deleteWsEnvironment = useDeleteWsEnvironment();
   const restoreEnvironment = useRestoreEnvironment();
@@ -54,19 +68,72 @@ export const EnvironmentSection = () => {
   const isRestorePending = restoreEnvironment.isPending || isRestoreSubmitting;
   const isExternalMutationPending = isDeletePending || isRestorePending;
 
-  const isMoreEnvironmentsAllowed =
-    subscription?.environmentLimit && currentProject?.environments
-      ? currentProject.environments.length < subscription.environmentLimit
-      : true;
+  const isMoreEnvironmentsAllowed = hasEnvironmentCapacity(
+    subscription?.environmentLimit,
+    currentProject?.environments?.length ?? 0
+  );
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "createEnv",
     "updateEnv",
     "deleteEnv",
     "restoreEnv",
-    "hardDeleteEnv",
-    "upgradePlan"
+    "hardDeleteEnv"
   ] as const);
+
+  const clearUpgradeContinuation = useCallback(() => {
+    navigate({
+      search: (previous) => ({
+        ...previous,
+        upgradeContinuation: undefined,
+        checkout: undefined
+      }),
+      replace: true
+    });
+  }, [navigate]);
+
+  const getEnvironmentUpgradeRequest = useCallback(
+    () => ({
+      intent: EnvironmentLimitUpgradeIntent,
+      paywallKey: "secret-manager.environment",
+      isEntitled: (refreshedSubscription: SubscriptionPlan) =>
+        hasEnvironmentCapacity(
+          refreshedSubscription.environmentLimit,
+          currentProject.environments.length
+        ),
+      onGranted: () => {
+        clearUpgradeContinuation();
+        if (permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Environments)) {
+          handlePopUpOpen("createEnv");
+        }
+      },
+      failureMessage: "Failed to refresh your subscription. Try creating an environment again."
+    }),
+    [clearUpgradeContinuation, currentProject.environments.length, handlePopUpOpen, permission]
+  );
+
+  useEffect(() => {
+    if (upgradeContinuation !== UpgradeContinuation.CreateEnvironment) {
+      hasHandledUpgradeReturn.current = false;
+      return;
+    }
+    if (hasHandledUpgradeReturn.current) return;
+    hasHandledUpgradeReturn.current = true;
+
+    if (checkout === "canceled") {
+      createNotification({ type: "info", text: "Trial setup was canceled." });
+      clearUpgradeContinuation();
+      return;
+    }
+
+    resumeUpgradeGate(getEnvironmentUpgradeRequest());
+  }, [
+    checkout,
+    clearUpgradeContinuation,
+    getEnvironmentUpgradeRequest,
+    resumeUpgradeGate,
+    upgradeContinuation
+  ]);
 
   const deleteEnvData = popUp?.deleteEnv?.data as
     | { name: string; slug: string; id: string }
@@ -175,7 +242,7 @@ export const EnvironmentSection = () => {
                   if (isMoreEnvironmentsAllowed) {
                     handlePopUpOpen("createEnv");
                   } else {
-                    handlePopUpOpen("upgradePlan");
+                    openUpgradeGate(getEnvironmentUpgradeRequest());
                   }
                 }}
                 isDisabled={!isAllowed || isExternalMutationPending || isTableMutationPending}
@@ -338,12 +405,7 @@ export const EnvironmentSection = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <UpgradePlanModal
-        paywallKey="secret-manager.environment"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You have reached the maximum number of environments allowed on the free plan. Upgrade to Infisical Pro plan to add more environments."
-      />
+      {upgradeGate}
     </Card>
   );
 };

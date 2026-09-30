@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Outlet } from "@tanstack/react-router";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { PamUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { useProjectPermission, useSubscription } from "@app/context";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
@@ -11,22 +11,25 @@ export const PamLayout = () => {
   const { subscription } = useSubscription();
 
   const isPamGated = subscription?.pam === false;
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(isPamGated);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   useEffect(() => {
-    if (isPamGated) setIsUpgradeModalOpen(true);
-  }, [isPamGated]);
+    if (!isPamGated) return;
+
+    openUpgradeGate({
+      intent: PamUpgradeIntent,
+      paywallKey: "pam.product-access",
+      isEntitled: (refreshedSubscription) => Boolean(refreshedSubscription.pam),
+      onGranted: () => undefined,
+      failureMessage: "Failed to refresh your subscription. Reload PAM to continue."
+    });
+  }, [isPamGated, openUpgradeGate]);
 
   return (
     <>
       {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
       <Outlet />
-      <UpgradePlanModal
-        paywallKey="pam.product-access"
-        isOpen={isUpgradeModalOpen}
-        onOpenChange={setIsUpgradeModalOpen}
-        text="PAM is not available on your current plan. Upgrade to continue using it."
-      />
+      {upgradeGate}
     </>
   );
 };

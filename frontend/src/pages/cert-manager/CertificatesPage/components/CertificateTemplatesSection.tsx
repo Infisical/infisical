@@ -5,7 +5,10 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateEnrollmentUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton } from "@app/components/v2";
@@ -29,9 +32,9 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "certificateTemplate",
     "deleteCertificateTemplate",
-    "enrollmentOptions",
-    "upgradePlan"
+    "enrollmentOptions"
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const { currentProject } = useProject();
   const { mutateAsync: deleteCertTemplate } = useDeleteCertTemplate();
@@ -55,9 +58,9 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
   };
 
   return (
-    <div className="mt-4 rounded-lg border border-border-control bg-surface-base p-4">
-      <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
-        <h3 className="text-lg font-medium text-foreground">Certificate Templates</h3>
+    <div className="border-border-control bg-surface-base mt-4 rounded-lg border p-4">
+      <div className="border-border-emphasis flex items-center justify-between border-b pb-4">
+        <h3 className="text-foreground text-lg font-medium">Certificate Templates</h3>
         <ProjectPermissionCan
           I={ProjectPermissionPkiTemplateActions.Create}
           a={ProjectPermissionSub.CertificateTemplates}
@@ -76,7 +79,19 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
         </ProjectPermissionCan>
       </div>
       <div className="py-4">
-        <CertificateTemplatesTable handlePopUpOpen={handlePopUpOpen} caId={caId} />
+        <CertificateTemplatesTable
+          handlePopUpOpen={handlePopUpOpen}
+          caId={caId}
+          onEnrollmentUpgrade={(certificateTemplateId) =>
+            openUpgradeGate({
+              intent: CertificateEnrollmentUpgradeIntent,
+              paywallKey: "cert-manager.certificate-templates",
+              isEntitled: (refreshedSubscription) => refreshedSubscription.pkiEst,
+              onGranted: () => handlePopUpOpen("enrollmentOptions", { id: certificateTemplateId }),
+              failureMessage: "Failed to refresh your subscription. Try managing enrollment again."
+            })
+          }
+        />
       </div>
       <CertificateTemplateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} caId={caId} />
       <CertificateTemplateEnrollmentModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
@@ -93,13 +108,7 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
           )
         }
       />
-      <UpgradePlanModal
-        paywallKey="cert-manager.certificate-templates"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-        text="Your current plan does not include access to managing template enrollment options for EST. To unlock this feature, please upgrade to Infisical Enterprise plan."
-      />
+      {upgradeGate}
     </div>
   );
 };

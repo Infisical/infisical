@@ -37,7 +37,9 @@ import {
 import {
   DynamicSecretsUpgradeIntent,
   EnterpriseSecretSyncsUpgradeIntent,
+  EnvironmentLimitUpgradeIntent,
   FolderAccessControlsUpgradeIntent,
+  hasEnvironmentCapacity,
   HoneyTokensUpgradeIntent,
   PointInTimeRecoveryUpgradeIntent,
   SecretAccessInsightsUpgradeIntent,
@@ -48,7 +50,6 @@ import {
   UpgradeGate,
   UpgradeIntent
 } from "@app/components/license/UpgradeGate";
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -500,9 +501,10 @@ const OverviewPageContent = () => {
   }, []);
 
   const userAvailableEnvs = currentProject?.environments || [];
-  const isMoreEnvironmentsAllowed = subscription?.environmentLimit
-    ? userAvailableEnvs.length < subscription.environmentLimit
-    : true;
+  const isMoreEnvironmentsAllowed = hasEnvironmentCapacity(
+    subscription?.environmentLimit,
+    userAvailableEnvs.length
+  );
   const [storedEnvIds, setStoredEnvIds] = useLocalStorageState<string[]>(
     `overview-selected-envs-${projectId}`,
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
@@ -1161,7 +1163,6 @@ const OverviewPageContent = () => {
     "rotateSecretRotation",
     "viewSecretRotationGeneratedCredentials",
     "deleteSecretRotation",
-    "upgradePlan",
     "reconcileSecretRotation",
     "importSecrets",
     "editDynamicSecret",
@@ -1241,6 +1242,21 @@ const OverviewPageContent = () => {
     setUpgradeRequest(request);
   }, []);
 
+  const getEnvironmentUpgradeRequest = useCallback(
+    (): UpgradeRequest => ({
+      intent: EnvironmentLimitUpgradeIntent,
+      isEntitled: (refreshedSubscription) =>
+        hasEnvironmentCapacity(refreshedSubscription.environmentLimit, userAvailableEnvs.length),
+      onGranted: () => {
+        if (permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Environments)) {
+          handlePopUpOpen("createEnvironment");
+        }
+      },
+      failureMessage: "Failed to refresh your subscription. Try creating an environment again."
+    }),
+    [handlePopUpOpen, permission, userAvailableEnvs.length]
+  );
+
   useEffect(() => {
     const continuation = routerSearch.upgradeContinuation;
     if (!continuation) return;
@@ -1253,7 +1269,9 @@ const OverviewPageContent = () => {
 
     let request: UpgradeRequest | null = null;
 
-    if (continuation === UpgradeContinuation.CreateDynamicSecret) {
+    if (continuation === UpgradeContinuation.CreateEnvironment) {
+      request = getEnvironmentUpgradeRequest();
+    } else if (continuation === UpgradeContinuation.CreateDynamicSecret) {
       request = {
         intent: DynamicSecretsUpgradeIntent,
         isEntitled: (refreshedSubscription) => refreshedSubscription.dynamicSecret,
@@ -1330,6 +1348,7 @@ const OverviewPageContent = () => {
   }, [
     clearUpgradeContinuation,
     completeUpgradeRequest,
+    getEnvironmentUpgradeRequest,
     handlePopUpOpen,
     routerSearch.checkout,
     routerSearch.upgradeContinuation,
@@ -3107,11 +3126,7 @@ const OverviewPageContent = () => {
               <EnvironmentSelect
                 selectedEnvs={filteredEnvs}
                 setSelectedEnvs={setFilteredEnvs}
-                onUpgradePlan={() =>
-                  handlePopUpOpen("upgradePlan", {
-                    text: "Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade your plan."
-                  })
-                }
+                onUpgradePlan={() => openUpgradeGate(getEnvironmentUpgradeRequest())}
                 isDisabled={
                   isBatchModeActive &&
                   (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
@@ -3263,9 +3278,7 @@ const OverviewPageContent = () => {
                 if (isMoreEnvironmentsAllowed) {
                   handlePopUpOpen("createEnvironment");
                 } else {
-                  handlePopUpOpen("upgradePlan", {
-                    text: "Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
-                  });
+                  openUpgradeGate(getEnvironmentUpgradeRequest());
                 }
               }}
             />
@@ -4225,18 +4238,10 @@ const OverviewPageContent = () => {
           })
         }
       />
-      {subscription && (
-        <UpgradePlanModal
-          paywallKey="secret-manager.overview"
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-          text={popUp.upgradePlan.data?.text}
-        />
-      )}
       {upgradeRequest && (
         <UpgradeGate
           intent={upgradeRequest.intent}
+          paywallKey="secret-manager.overview"
           isOpen
           onOpenChange={(isOpen) => {
             if (!isOpen) setUpgradeRequest(null);

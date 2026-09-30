@@ -3,7 +3,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, PlusIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateDiscoveryUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { HoverCard, HoverCardContent, HoverCardTrigger, Tag } from "@app/components/v2";
 import {
@@ -74,15 +77,18 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "createJob",
     "editJob",
-    "deleteJob",
-    "upgradePlan"
+    "deleteJob"
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const handleCreateJob = () => {
     if (!subscription.pkiDiscovery) {
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Certificate discovery is available on Infisical's Enterprise plan."
+      openUpgradeGate({
+        intent: CertificateDiscoveryUpgradeIntent,
+        paywallKey: "cert-manager.discovery-jobs",
+        isEntitled: (refreshedSubscription) => refreshedSubscription.pkiDiscovery,
+        onGranted: () => handlePopUpOpen("createJob"),
+        failureMessage: "Failed to refresh your subscription. Try adding a discovery job again."
       });
       return;
     }
@@ -155,7 +161,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
             <HoverCardTrigger>
               <Tag>+{remainingPorts.length}</Tag>
             </HoverCardTrigger>
-            <HoverCardContent className="border border-border-cool bg-surface-raised p-3">
+            <HoverCardContent className="border-border-cool bg-surface-raised border p-3">
               <div className="flex flex-wrap gap-1">
                 {remainingPorts.map((port) => (
                   <Tag key={port}>{port}</Tag>
@@ -363,12 +369,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
         discoveryName={(popUp.deleteJob.data as TPkiDiscovery)?.name || ""}
       />
 
-      <UpgradePlanModal
-        paywallKey="cert-manager.discovery-jobs"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { text: string })?.text}
-      />
+      {upgradeGate}
     </Card>
   );
 };

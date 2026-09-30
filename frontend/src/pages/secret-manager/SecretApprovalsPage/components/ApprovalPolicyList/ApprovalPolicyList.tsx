@@ -8,7 +8,10 @@ import {
   SearchIcon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  SecretApprovalPoliciesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import {
   AccessRestrictedNotice,
   Alert,
@@ -148,12 +151,12 @@ const useApprovalPolicies = (permission: TProjectPermission, currentProject?: Pr
 export const ApprovalPolicyList = ({ projectId }: IProps) => {
   const { handlePopUpToggle, handlePopUpOpen, popUp } = usePopUp([
     "policyForm",
-    "deletePolicy",
-    "upgradePlan"
+    "deletePolicy"
   ] as const);
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const canReadPolicies = permission.can(
     ProjectPermissionActions.Read,
@@ -334,7 +337,14 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                   <Button
                     onClick={() => {
                       if (subscription && !subscription?.secretApproval) {
-                        handlePopUpOpen("upgradePlan");
+                        openUpgradeGate({
+                          intent: SecretApprovalPoliciesUpgradeIntent,
+                          paywallKey: "secret-manager.approval-policy-list",
+                          isEntitled: (refreshedSubscription) => refreshedSubscription.secretApproval,
+                          onGranted: () => handlePopUpOpen("policyForm"),
+                          failureMessage:
+                            "Failed to refresh your subscription. Try adding an approval policy again."
+                        });
                         return;
                       }
                       handlePopUpOpen("policyForm");
@@ -594,12 +604,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
           policyId={popUp.deletePolicy.data.id}
         />
       )}
-      <UpgradePlanModal
-        paywallKey="secret-manager.approval-policy-list"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Adding secret approval policies can be unlocked if you upgrade to Infisical Pro plan."
-      />
+      {upgradeGate}
     </>
   );
 };

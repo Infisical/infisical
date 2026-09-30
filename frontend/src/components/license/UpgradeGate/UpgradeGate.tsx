@@ -1,5 +1,6 @@
 import { CSSProperties, useEffect, useLayoutEffect, useState } from "react";
-import { Check, CircleAlert } from "lucide-react";
+import { useRouterState } from "@tanstack/react-router";
+import { CircleAlert } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -13,12 +14,11 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogOverlay,
+  DialogPortal,
   DialogTitle,
   Label,
-  Loader,
-  Tabs,
-  TabsList,
-  TabsTrigger
+  Loader
 } from "@app/components/v3";
 import {
   OrgPermissionBillingActions,
@@ -34,25 +34,34 @@ import {
   useGetBillingV2Overview,
   useStartBillingV2Trial
 } from "@app/hooks/api";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { waitForMinimumDuration } from "@app/lib/fn/promise";
 import { fmtMoney } from "@app/pages/organization/BillingV2Page/billing-v2-format";
 import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
 
-import { buildUpgradeReturnPath, UpgradeIntent } from "./upgrade-intents";
+import { CapabilityUpgradeGate } from "./CapabilityUpgradeGate";
+import { CapabilityUpgradeIntent } from "./capability-upgrade-intents";
+import { focusUpgradeContinuation, PlanFeature, ProductUpgradeDialog } from "./ProductUpgradeDialog";
+import {
+  BillingPlan,
+  buildUpgradeReturnPath,
+  UpgradeFeature,
+  UpgradeIntent
+} from "./upgrade-intents";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
 const MINIMUM_PLAN_LOADING_DURATION_MS = 800;
 
 type Props = {
   intent: UpgradeIntent;
+  paywallKey: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onGranted: () => void;
 };
 
-type PlanFeature = {
-  label: string;
-  value?: string;
+type CapabilityProps = Omit<Props, "intent" | "onGranted"> & {
+  intent: CapabilityUpgradeIntent;
 };
 
 type PlanPrice = {
@@ -60,6 +69,64 @@ type PlanPrice = {
   unit: string;
   compactUnit: string;
   isMonthlyEquivalent: boolean;
+};
+
+const PLAN_FEATURE_DESCRIPTIONS: Record<string, string> = {
+  environments: "Organize secrets across development stages and deployment targets.",
+  integrations: "Connect Infisical with infrastructure, cloud, and developer tools.",
+  "audit log retention": "Keep organization activity history available for longer.",
+  "honey tokens": "Detect unauthorized access with decoy secrets.",
+  "secret versioning": "Track and restore previous versions of secrets.",
+  "point-in-time recovery": "Restore secrets to an earlier state after unwanted changes.",
+  rbac: "Control access with custom roles and granular permissions.",
+  "dynamic secrets": "Issue short-lived credentials on demand.",
+  "temporary access": "Grant time-bound access without permanent permissions.",
+  gateways: "Connect Infisical securely to private infrastructure.",
+  "sso/mfa enforcement": "Require centralized sign-in and stronger authentication.",
+  scim: "Provision and deprovision users from your identity provider.",
+  kmip: "Manage cryptographic keys through KMIP-compatible systems.",
+  "audit log streaming": "Send audit activity to external monitoring systems.",
+  "sub-organizations": "Separate teams or environments under one organization.",
+  "certificate authorities": "Connect or operate certificate authorities from one control plane.",
+  "internal certificate authorities": "Operate Infisical-managed root and intermediate authorities.",
+  certificates: "Issue, renew, and centrally manage certificates.",
+  "wildcard certificates": "Issue certificates that secure multiple subdomains.",
+  "subject alternative names": "Secure additional hostnames and identities on one certificate.",
+  "certificate enrollment": "Enroll workloads and devices through standard certificate protocols.",
+  "certificate syncs": "Deliver certificates automatically to infrastructure and cloud providers.",
+  "certificate discovery": "Find and inventory certificates across your infrastructure.",
+  "code signing": "Protect software releases with centrally managed signing keys.",
+  "approval policies": "Require review before sensitive certificate operations proceed.",
+  "post-quantum cryptography": "Issue certificates with post-quantum key algorithms.",
+  "pam accounts": "Manage privileged accounts and their credentials centrally.",
+  "enterprise pam accounts": "Connect enterprise account types such as Windows and Active Directory.",
+  "slack notifications": "Notify teams when privileged access is requested or changed."
+};
+
+const PAM_FEATURE_DESCRIPTIONS: Record<string, string> = {
+  "privileged accounts": "Manage privileged accounts and their credentials centrally.",
+  "access requests": "Request access to privileged accounts before starting a session.",
+  "approval workflows": "Require approval before privileged access is granted.",
+  "cli-based resource access": "Connect to privileged resources from the Infisical CLI.",
+  "ssh certificate authentication": "Authenticate SSH sessions with short-lived certificates.",
+  "privileged credential rotation": "Rotate privileged credentials without distributing them to users.",
+  "command blocking": "Block restricted commands during privileged sessions.",
+  "automated privileged account discovery": "Find privileged accounts across your infrastructure.",
+  "enterprise resources (windows, rdp)": "Connect to Windows servers and other enterprise resources.",
+  "audit logs": "Track privileged access requests and session activity.",
+  "session recording": "Record privileged sessions for review and investigation.",
+  "session-log masking": "Mask sensitive information in session logs.",
+  "log & session recording retention": "Keep audit logs and session recordings available for review.",
+  "siem audit-log streaming": "Send audit activity to your security monitoring systems.",
+  ldap: "Connect your directory for centralized identity management."
+};
+
+const getPlanFeatureDescription = (label: string, productKey: string) => {
+  const key = label.trim().toLowerCase();
+  return (
+    (productKey === "pam" ? PAM_FEATURE_DESCRIPTIONS[key] : undefined) ??
+    PLAN_FEATURE_DESCRIPTIONS[key]
+  );
 };
 
 const planSupportsCadence = (plan: BillingV2Plan, cadence: BillingV2Cadence) => {
@@ -87,11 +154,12 @@ const getPlanPrice = (plan: BillingV2Plan, cadence: BillingV2Cadence): PlanPrice
     cadence === "annual" ? dimension.meteredAnnual === true : dimension.meteredMonthly === true;
   const isMonthlyEquivalent = cadence === "monthly" || !isMetered;
   const period = isMonthlyEquivalent ? "month" : "year";
+  const noun = dimension.key === "pam_identities" ? "PAM identity" : dimension.noun;
 
   return {
     amount: cadence === "annual" && !isMetered ? dimension.annual / 12 : dimension[cadence],
-    unit: `/ ${dimension.noun} / ${period}`,
-    compactUnit: `/${dimension.noun}/${period === "month" ? "mo" : "yr"}`,
+    unit: `/ ${noun} / ${period}`,
+    compactUnit: `/${noun}/${period === "month" ? "mo" : "yr"}`,
     isMonthlyEquivalent
   };
 };
@@ -128,12 +196,13 @@ const getPlanFeatures = (product: BillingV2CatalogProduct, plan: BillingV2Plan):
       return [];
     }
     if (value === true) {
-      return [{ label: row.label }];
+      return [{ label: row.label, description: getPlanFeatureDescription(row.label, product.id) }];
     }
     return [
       {
         label: row.label,
-        value: typeof value === "number" ? value.toLocaleString("en-US") : String(value)
+        value: typeof value === "number" ? value.toLocaleString("en-US") : String(value),
+        description: getPlanFeatureDescription(row.label, product.id)
       }
     ];
   });
@@ -142,7 +211,10 @@ const getPlanFeatures = (product: BillingV2CatalogProduct, plan: BillingV2Plan):
     return comparedFeatures;
   }
 
-  return (product.includes ?? []).map((label) => ({ label }));
+  return (product.includes ?? []).map((label) => ({
+    label,
+    description: getPlanFeatureDescription(label, product.id)
+  }));
 };
 
 const formatProductName = (productKey: string) =>
@@ -171,7 +243,15 @@ const ProductUpgradeHeader = ({ product, productName, description }: ProductUpgr
   </DialogHeader>
 );
 
-export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) => {
+export const UpgradeGate = (props: Props | CapabilityProps) => {
+  if ("scope" in props.intent) {
+    return <CapabilityUpgradeGate {...props} intent={props.intent} />;
+  }
+
+  return <ProductUpgradeGate {...(props as Props)} />;
+};
+
+const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange, onGranted }: Props) => {
   const [selectedTier, setSelectedTier] = useState(intent.planKey);
   const [cadence, setCadence] = useState<BillingV2Cadence>("annual");
   const [isMinimumPlanLoading, setIsMinimumPlanLoading] = useState(isOpen);
@@ -188,6 +268,31 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
   const startTrial = useStartBillingV2Trial();
   const product = catalog.data?.find((candidate) => candidate.id === intent.productKey);
   const productName = product?.name ?? formatProductName(intent.productKey);
+  const route = useRouterState({
+    select: (state) => state.matches.at(-1)?.routeId ?? "unknown"
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, currentOrg.id, {
+      paywallKey,
+      paywallText: intent.description,
+      route,
+      isEnterpriseFeature: intent.planKey === BillingPlan.Enterprise
+    });
+    // A paywall view is one closed-to-open transition, not a new event when its data resolves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  const trackUpgradeClick = () => {
+    analytics.captureForOrganization(AnalyticsEvent.PaywallUpgradeClicked, currentOrg.id, {
+      paywallKey,
+      paywallText: intent.description,
+      route,
+      isEnterpriseFeature: intent.planKey === BillingPlan.Enterprise
+    });
+  };
 
   useLayoutEffect(() => {
     let isCurrent = true;
@@ -225,6 +330,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
 
   const returnPath = buildUpgradeReturnPath(intent, window.location);
   const openRootBilling = () => {
+    trackUpgradeClick();
     const search = new URLSearchParams({
       upgradeProduct: intent.productKey,
       upgradeReturnPath: returnPath
@@ -235,7 +341,11 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
   if (isSubOrganization) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
-        <DialogContent showCloseButton={false} className="sm:max-w-xl">
+        <DialogContent
+          onOpenAutoFocus={focusUpgradeContinuation}
+          showCloseButton={false}
+          className="sm:max-w-xl"
+        >
           <ProductUpgradeHeader
             product={product}
             productName={productName}
@@ -252,7 +362,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
-            <Button variant="org" onClick={openRootBilling}>
+            <Button data-upgrade-cta variant="org" onClick={openRootBilling}>
               Continue to Root Billing
             </Button>
           </DialogFooter>
@@ -264,7 +374,11 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
   if (!canManageBilling) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
-        <DialogContent showCloseButton={false} className="sm:max-w-xl">
+        <DialogContent
+          onOpenAutoFocus={focusUpgradeContinuation}
+          showCloseButton={false}
+          className="sm:max-w-xl"
+        >
           <ProductUpgradeHeader
             product={product}
             productName={productName}
@@ -281,7 +395,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
-            <Button variant="org" onClick={openRootBilling}>
+            <Button data-upgrade-cta variant="org" onClick={openRootBilling}>
               Continue to Billing
             </Button>
           </DialogFooter>
@@ -292,21 +406,13 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
 
   if (isMinimumPlanLoading || overview.isPending || catalog.isPending) {
     return (
-      <Dialog open onOpenChange={onOpenChange}>
-        <DialogContent showCloseButton={false} className="sm:max-w-3xl">
-          <ProductUpgradeHeader
-            product={product}
-            productName={productName}
-            description={`Loading plan details for ${productName}.`}
-          />
-
-          <div className="flex min-h-72 items-center justify-center p-5">
-            <div className="flex items-center gap-3 text-sm text-muted">
-              <Loader size="sm" label="Loading plan details" />
-              <span aria-hidden="true">Loading plan details</span>
-            </div>
+      <Dialog open>
+        <DialogPortal>
+          <DialogOverlay />
+          <div className="pointer-events-none fixed inset-0 z-[var(--z-index-modal)] flex items-center justify-center">
+            <Loader size="md" label={`Loading plan details for ${productName}`} />
           </div>
-        </DialogContent>
+        </DialogPortal>
       </Dialog>
     );
   }
@@ -314,7 +420,11 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
   if (overview.isError || catalog.isError || !overview.data || !product) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
-        <DialogContent showCloseButton={false} className="sm:max-w-xl">
+        <DialogContent
+          onOpenAutoFocus={focusUpgradeContinuation}
+          showCloseButton={false}
+          className="sm:max-w-xl"
+        >
           <ProductUpgradeHeader
             product={product}
             productName={productName}
@@ -332,6 +442,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
               Close
             </Button>
             <Button
+              data-upgrade-cta
               variant="org"
               onClick={() => {
                 overview.refetch();
@@ -346,9 +457,17 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     );
   }
 
-  const plans = [...product.plans]
+  const paidPlans = [...product.plans]
     .filter((candidate) => !candidate.deprecated)
     .sort((left, right) => (left.displayOrder ?? 0) - (right.displayOrder ?? 0));
+  const currentEntitlement = overview.data.entitlements[product.id];
+  const currentPlanTier =
+    currentEntitlement?.planTier ?? (currentEntitlement?.entitled === true ? undefined : "free");
+  const baselinePlan =
+    currentPlanTier === "free" && !product.baselinePlan?.deprecated
+      ? product.baselinePlan
+      : undefined;
+  const plans = baselinePlan ? [baselinePlan, ...paidPlans] : paidPlans;
   const requiredPlan = plans.find((candidate) => candidate.tier === intent.planKey);
   const plan =
     plans.find((candidate) => candidate.tier === selectedTier) ?? requiredPlan ?? plans[0];
@@ -377,13 +496,10 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
 
   const requiredPlanIndex = plans.findIndex((candidate) => candidate.tier === intent.planKey);
   const planMeetsRequirement = plans.indexOf(plan) >= requiredPlanIndex;
-  const trialAvailable = planMeetsRequirement && plan.selfServe && plan.trialable;
-  const hasTrialAvailable = plans.some((candidate) => {
-    const candidateMeetsRequirement = plans.indexOf(candidate) >= requiredPlanIndex;
-    return candidateMeetsRequirement && candidate.selfServe && candidate.trialable;
-  });
   const selfServe =
     overview.data.mode !== "managed" && overview.data.selfServe && !overview.data.checkoutFrozen;
+  const trialAvailable =
+    planMeetsRequirement && selfServe && plan.selfServe && !plan.salesLed && plan.trialable;
   const supportsAnnualCadence = plans.some((candidate) => planSupportsCadence(candidate, "annual"));
   const supportsMonthlyCadence = plans.some((candidate) =>
     planSupportsCadence(candidate, "monthly")
@@ -396,22 +512,20 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
         ? "annual"
         : "monthly";
   const effectiveCadence = getEffectiveCadence(plan, visibleCadence);
-  const price = getPlanPrice(plan, "monthly").amount;
   const comparePrice = getPlanPrice(plan, effectiveCadence);
   const features = getPlanFeatures(product, plan);
   const savingsPercent = Math.max(...plans.map(annualSavingsPercent));
-  const trialDurationLabel = plan.trialDays === 14 ? "2-Week" : `${plan.trialDays}-Day`;
-  const trialBadgeLabel = plan.trialDays > 0 ? `${trialDurationLabel} Trial` : "Free Trial";
   const trialPriceLabel =
     plan.trialDays === 14
-      ? "0 for 2 Weeks"
+      ? "FREE for 2 Weeks"
       : plan.trialDays > 0
-        ? `0 for ${plan.trialDays} Days`
-        : "0 during trial";
+        ? `FREE for ${plan.trialDays} Days`
+        : "FREE during trial";
   const upgradeLabel = intent.upgradeLabel ?? `Upgrade ${product.name}`;
   const productStyle = { "--product-color": product.color } as CSSProperties;
 
   const handleStartTrial = async () => {
+    trackUpgradeClick();
     try {
       const result = await startTrial.mutateAsync({
         orgId: billingOrgId,
@@ -440,30 +554,9 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     }
   };
 
-  let primaryAction = (
-    <Button variant="org" onClick={openRootBilling}>
-      View Billing Options
-    </Button>
-  );
-  if (!planMeetsRequirement) {
-    primaryAction = (
-      <Button variant="org" isDisabled>
-        Requires {requiredPlan?.name ?? intent.planKey}
-      </Button>
-    );
-  } else if (!selfServe || plan.salesLed) {
-    primaryAction = (
-      <Button
-        variant="org"
-        onClick={() => window.open(CONTACT_SALES_URL, "_blank", "noopener,noreferrer")}
-      >
-        Contact Sales
-      </Button>
-    );
-  }
-
-  let productTrialAction = (
+  let productUpgradeAction = (
     <Button
+      data-upgrade-cta
       variant="product"
       className="w-full justify-center"
       style={productStyle}
@@ -473,8 +566,9 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     </Button>
   );
   if (!planMeetsRequirement) {
-    productTrialAction = (
+    productUpgradeAction = (
       <Button
+        data-upgrade-cta
         variant="product"
         className="w-full justify-center"
         style={productStyle}
@@ -484,19 +578,24 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
       </Button>
     );
   } else if (plan.salesLed || !selfServe) {
-    productTrialAction = (
+    productUpgradeAction = (
       <Button
+        data-upgrade-cta
         variant="product"
         className="w-full justify-center"
         style={productStyle}
-        onClick={() => window.open(CONTACT_SALES_URL, "_blank", "noopener,noreferrer")}
+        onClick={() => {
+          trackUpgradeClick();
+          window.open(CONTACT_SALES_URL, "_blank", "noopener,noreferrer");
+        }}
       >
         Contact Sales
       </Button>
     );
   } else if (trialAvailable) {
-    productTrialAction = (
+    productUpgradeAction = (
       <Button
+        data-upgrade-cta
         variant="product"
         className="w-full justify-center"
         style={productStyle}
@@ -509,191 +608,110 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     );
   }
 
+  const hasUsedTrial = overview.data.trialedProductKeys.includes(product.id);
+  const hasPricingRow = !plan.salesLed || plan.tier === product.baselinePlan?.tier;
+  const hasEntitlementIntent =
+    intent.featureKey !== UpgradeFeature.CertificateManagement &&
+    intent.featureKey !== UpgradeFeature.Pam;
+  const footerUnlockLabel =
+    !hasPricingRow ? intent.upgradeLabel ?? `Unlock ${product.name}` : undefined;
+  const hasPeriodOption =
+    planSupportsCadence(plan, "annual") && planSupportsCadence(plan, "monthly");
+  const showUsedTrialNotice =
+    selfServe &&
+    plan.selfServe &&
+    !plan.salesLed &&
+    planMeetsRequirement &&
+    !trialAvailable &&
+    hasUsedTrial &&
+    !currentEntitlement?.isTrialing;
+
   return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className={
-          hasTrialAvailable
-            ? "gap-0 overflow-x-hidden p-0 sm:max-w-4xl"
-            : "sm:max-w-2xl"
-        }
-      >
-        {hasTrialAvailable && (
-          <div className="grid min-h-[34rem] md:grid-cols-[minmax(16rem,0.9fr)_minmax(0,1.25fr)]">
-            <aside
-              className="product-color flex min-h-52 flex-col border-b border-(--product-color-resolved)/20 bg-(--product-color-resolved)/10 md:min-h-0 md:border-r md:border-b-0"
-              style={productStyle}
-            >
-              <div className="flex flex-1 flex-col items-center justify-center px-8 py-12 text-center">
-                <ProductIcon product={product} size={64} />
-                <DialogHeader className="mt-6 items-center text-center">
-                  <p className="text-xs font-medium tracking-wide text-(--product-color-resolved) uppercase">
-                    {product.name}
-                  </p>
-                  <DialogTitle className="max-w-xs text-2xl leading-tight">
-                    {upgradeLabel}
-                  </DialogTitle>
-                  <DialogDescription className="max-w-xs leading-relaxed">
-                    Available with the {requiredPlan.name} plan and higher.
-                  </DialogDescription>
-                </DialogHeader>
-              </div>
-            </aside>
-
-            <div className="flex min-w-0 flex-col gap-5 p-6 pb-0">
-              <Tabs value={plan.tier} onValueChange={setSelectedTier}>
-                <TabsList className="w-full" aria-label={`${product.name} plans`}>
-                  {plans.map((candidate) => (
-                    <TabsTrigger key={candidate.tier} value={candidate.tier}>
-                      {candidate.name}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-
-              <section aria-labelledby="upgrade-plan-features">
-                <div>
-                  <p
-                    id="upgrade-plan-features"
-                    className="text-xs font-medium tracking-wide text-muted uppercase"
-                  >
-                    Included with {plan.name}
-                  </p>
-                  {plan.feature && <p className="mt-1 text-sm text-muted">{plan.feature}</p>}
-                </div>
-
-                {features.length > 0 && (
-                  <ul className="mt-4 grid gap-x-5 gap-y-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
-                    {features.map((feature) => (
-                      <li
-                        key={feature.label}
-                        className="flex min-w-0 items-start gap-2 text-sm text-accent"
-                      >
-                        <Check className="mt-0.5 size-4 shrink-0 text-success" />
-                        <span className="min-w-0">
-                          <span>{feature.label}</span>
-                          {feature.value && (
-                            <span className="ml-1 text-muted">· {feature.value}</span>
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-
-              <DialogFooter className="mt-auto flex-col items-stretch">
-                {!plan.salesLed && (
-                  <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id={`upgrade-cadence-${product.id}`}
-                        variant="org"
-                        isChecked={visibleCadence === "annual"}
-                        isDisabled={
-                          startTrial.isPending ||
-                          !supportsAnnualCadence ||
-                          !supportsMonthlyCadence
-                        }
-                        onCheckedChange={(checked) =>
-                          setCadence(checked === true ? "annual" : "monthly")
-                        }
-                      />
-                      <Label htmlFor={`upgrade-cadence-${product.id}`}>Annual Billing</Label>
-                      {savingsPercent > 0 && (
-                        <Badge variant="success" className="min-h-4 px-1 py-0 text-[10px]">
-                          -{savingsPercent}%
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-baseline gap-2 text-sm tabular-nums">
-                      {comparePrice.amount > 0 ? (
-                        <span
-                          className={
-                            trialAvailable
-                              ? "text-muted line-through"
-                              : "font-medium text-foreground"
-                          }
-                        >
-                          {fmtMoney(comparePrice.amount, 2)}
-                          {comparePrice.compactUnit}
-                        </span>
-                      ) : (
-                        <span className="font-medium text-foreground">Usage-based</span>
-                      )}
-                      {trialAvailable && (
-                        <span className="font-medium text-foreground">{trialPriceLabel}</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {productTrialAction}
-              </DialogFooter>
+    <ProductUpgradeDialog
+      product={product}
+      upgradeLabel={hasEntitlementIntent ? upgradeLabel : undefined}
+      requiredPlanName={requiredPlan.name}
+      plans={plans}
+      selectedTier={plan.tier}
+      currentPlanTier={currentPlanTier}
+      onTierChange={setSelectedTier}
+      onOpenChange={onOpenChange}
+      features={features}
+      notice={
+        !selfServe ? (
+          <Alert variant="info" appearance="borderless">
+            <CircleAlert />
+            <AlertDescription>
+              Contact your Infisical account manager to update this subscription.
+            </AlertDescription>
+          </Alert>
+        ) : showUsedTrialNotice ? (
+          <Alert variant="info" appearance="borderless">
+            <CircleAlert />
+            <AlertDescription>
+              Free trial for {product.name} has already been used.
+            </AlertDescription>
+          </Alert>
+        ) : undefined
+      }
+      footer={
+        <>
+          {plan.tier === product.baselinePlan?.tier && (
+            <div className="flex items-center justify-center gap-3 px-1 text-sm">
+              <span className="text-muted">Current plan</span>
+              <span className="text-foreground font-medium">FREE</span>
             </div>
-          </div>
-        )}
-        {!hasTrialAvailable && (
-          <>
-            <ProductUpgradeHeader
-              product={product}
-              productName={product.name}
-              description={
-                product.tagline ?? "Review product plans and manage access for your team."
-              }
-            />
-
-            <div className="rounded-lg border border-border bg-card">
-              <div className="flex flex-col gap-4 p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-medium text-foreground">{plan.name}</span>
-                      {trialAvailable && <Badge variant="success">{trialBadgeLabel}</Badge>}
-                    </div>
-                    <p className="mt-1 text-sm text-muted">{plan.feature}</p>
-                  </div>
-                  {price > 0 && (
-                    <div className="text-right">
-                      <span className="text-2xl font-medium text-foreground">
-                        {fmtMoney(price)}
-                      </span>
-                      <span className="text-sm text-muted"> / month</span>
-                    </div>
+          )}
+          {!plan.salesLed && plan.tier !== product.baselinePlan?.tier && (
+            <div
+              className={`flex flex-wrap items-center gap-3 px-1 ${hasPeriodOption ? "justify-between" : "justify-center"}`}
+            >
+              {hasPeriodOption ? (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`upgrade-cadence-${product.id}`}
+                    variant="org"
+                    isChecked={visibleCadence === "annual"}
+                    isDisabled={startTrial.isPending}
+                    onCheckedChange={(checked) =>
+                      setCadence(checked === true ? "annual" : "monthly")
+                    }
+                  />
+                  <Label htmlFor={`upgrade-cadence-${product.id}`}>Annual Billing</Label>
+                  {savingsPercent > 0 && (
+                    <Badge variant="success" className="min-h-4 px-1 py-0 text-[10px]">
+                      -{savingsPercent}%
+                    </Badge>
                   )}
                 </div>
-
-                {product.includes && product.includes.length > 0 && (
-                  <div className="grid gap-x-5 gap-y-2 border-t border-border pt-4 sm:grid-cols-2">
-                    {product.includes.map((feature) => (
-                      <div key={feature} className="flex items-start gap-2 text-sm text-accent">
-                        <Check className="mt-0.5 size-4 shrink-0 text-success" />
-                        <span>{feature}</span>
-                      </div>
-                    ))}
-                  </div>
+              ) : null}
+              <div
+                className={`flex items-baseline gap-2 text-sm tabular-nums ${hasPeriodOption ? "ml-auto" : ""}`}
+              >
+                {comparePrice.amount > 0 ? (
+                  <span
+                    className={
+                      trialAvailable ? "text-muted line-through" : "text-foreground font-medium"
+                    }
+                  >
+                    {fmtMoney(comparePrice.amount, 2)}
+                    {comparePrice.compactUnit}
+                  </span>
+                ) : (
+                  <span className="text-foreground font-medium">Usage-based</span>
+                )}
+                {trialAvailable && (
+                  <span className="text-foreground font-medium">{trialPriceLabel}</span>
                 )}
               </div>
             </div>
-
-            {!selfServe && (
-              <Alert variant="info">
-                <CircleAlert />
-                <AlertDescription>
-                  Contact your Infisical account manager to update this subscription.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Close
-              </Button>
-              {primaryAction}
-            </DialogFooter>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+          )}
+          {footerUnlockLabel && (
+            <p className="text-foreground text-sm font-medium">{footerUnlockLabel}</p>
+          )}
+          {productUpgradeAction}
+        </>
+      }
+    />
   );
 };

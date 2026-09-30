@@ -22,7 +22,8 @@ const SecretOverviewPageQuerySchema = z.object({
       "manage-folder-access",
       "create-secret-import",
       "view-secret-access",
-      "create-enterprise-secret-sync"
+      "create-enterprise-secret-sync",
+      "create-environment"
     ])
     .optional(),
   checkout: z.enum(["success", "canceled"]).optional(),

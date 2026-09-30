@@ -4,6 +4,10 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info, PencilIcon, Plus, ShieldCheck, Trash2 } from "lucide-react";
 
+import {
+  PostQuantumCertificatesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
@@ -311,7 +315,7 @@ const AttributeRulePreview = ({
 
   if (!isValidDomainComponentSequence(trimmed)) {
     return (
-      <p className="mt-2 pl-1 text-2xs text-danger">
+      <p className="text-2xs text-danger mt-2 pl-1">
         Every component must be non-empty, for example corp,example,com.
       </p>
     );
@@ -319,9 +323,9 @@ const AttributeRulePreview = ({
 
   const chain = trimmed.split(",").map((component) => component.trim());
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-1 text-2xs text-muted">
+    <div className="text-2xs text-muted mt-2 flex flex-wrap items-center gap-1.5 pl-1">
       <span>{verb}</span>
-      <span className="font-mono text-label">
+      <span className="text-label font-mono">
         {chain.map((component) => `DC=${component}`).join(",")}
       </span>
       <span>
@@ -344,13 +348,13 @@ const DomainComponentHelp = ({ isDenyRule }: { isDenyRule: boolean }) => (
         by commas.
       </p>
       <dl className="mt-2.5 grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-1">
-        <dt className="whitespace-nowrap text-muted">Value</dt>
+        <dt className="text-muted whitespace-nowrap">Value</dt>
         <dd className="font-mono">corp,example,com</dd>
         <dt className={`whitespace-nowrap ${isDenyRule ? "text-danger" : "text-success"}`}>
           {isDenyRule ? "Rejects" : "Matches"}
         </dt>
         <dd className="font-mono">DC=corp,DC=example,DC=com</dd>
-        <dt className="whitespace-nowrap text-danger">{isDenyRule ? "Also rejects" : "Rejects"}</dt>
+        <dt className="text-danger whitespace-nowrap">{isDenyRule ? "Also rejects" : "Rejects"}</dt>
         <dd className="font-mono">
           {isDenyRule ? "DC=host,DC=corp,DC=example,DC=com" : "DC=com,DC=example,DC=corp"}
         </dd>
@@ -361,7 +365,7 @@ const DomainComponentHelp = ({ isDenyRule }: { isDenyRule: boolean }) => (
           : "A request matches only when its components line up position by position."}
       </p>
       <p className="mt-2">
-        A <span className="font-mono text-accent">*</span> matches a single component:{" "}
+        A <span className="text-accent font-mono">*</span> matches a single component:{" "}
         <span className="font-mono">*,internal,example,com</span>.
       </p>
     </HoverCardContent>
@@ -450,13 +454,13 @@ const SectionToggle = ({
   <div>
     <div className="flex items-start justify-between gap-4">
       <div>
-        <p className="text-sm font-medium text-foreground">{title}</p>
-        <p className="mt-0.5 text-xs text-muted">{description}</p>
+        <p className="text-foreground text-sm font-medium">{title}</p>
+        <p className="text-muted mt-0.5 text-xs">{description}</p>
       </div>
       <Toggle checked={enabled} onCheckedChange={onChange} variant="project" />
     </div>
     {enabled && children && <div className="mt-4">{children}</div>}
-    {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+    {error && <p className="text-danger mt-2 text-xs">{error}</p>}
   </div>
 );
 
@@ -477,6 +481,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
   ) => {
     const { currentProject } = useProject();
     const { subscription } = useSubscription();
+    const { openUpgradeGate, upgradeGate } = useUpgradeGate();
     const createPolicy = useCreateCertificatePolicy();
     const updatePolicy = useUpdateCertificatePolicy();
 
@@ -1125,7 +1130,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         {options.map((usage) => (
           <div key={usage} className="flex items-center justify-between gap-2">
-            <span className="text-sm leading-tight text-balance text-foreground">
+            <span className="text-foreground text-balance text-sm leading-tight">
               {formatter(usage as never)}
             </span>
             <Select
@@ -1164,14 +1169,24 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
                 id={`${fieldName}-${alg}`}
                 variant="project"
                 isChecked={isSelected}
-                isDisabled={isPqcGated}
-                onCheckedChange={(checked) =>
-                  toggleAlgorithm(fieldName, key, selected, alg, Boolean(checked))
-                }
+                onCheckedChange={(checked) => {
+                  if (isPqcGated && checked) {
+                    openUpgradeGate({
+                      intent: PostQuantumCertificatesUpgradeIntent,
+                      paywallKey: "cert-manager.policy-algorithm",
+                      isEntitled: (refreshedSubscription) => refreshedSubscription.pkiPqc,
+                      onGranted: () => toggleAlgorithm(fieldName, key, selected, alg, true),
+                      failureMessage:
+                        "Failed to refresh your subscription. Try selecting this algorithm again."
+                    });
+                    return;
+                  }
+                  toggleAlgorithm(fieldName, key, selected, alg, Boolean(checked));
+                }}
               />
               <label
                 htmlFor={`${fieldName}-${alg}`}
-                className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
+                className="text-foreground flex cursor-pointer items-center gap-2 text-sm"
               >
                 {alg}
                 {isPqcGated && <Badge variant="info">Enterprise</Badge>}
@@ -1191,8 +1206,8 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
       <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
         {banner}
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
-          <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
+          <h2 className="text-foreground text-lg font-semibold">{currentStep.title}</h2>
+          <p className="text-muted mt-1 text-sm">{currentStep.subtitle}</p>
         </div>
 
         {step === 0 && (
@@ -1287,7 +1302,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
             >
               <div className="space-y-4">
                 {watchedAttributes.length === 0 && (
-                  <p className="text-xs text-muted">
+                  <p className="text-muted text-xs">
                     No attributes configured. Certificates issued under this policy cannot include
                     any subject attributes. Turn this off to allow any subject attribute.
                   </p>
@@ -1398,7 +1413,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
             >
               <div className="space-y-3">
                 {watchedSans.length === 0 && (
-                  <p className="text-xs text-muted">
+                  <p className="text-muted text-xs">
                     No SANs configured. Certificates issued under this policy cannot include any
                     subject alternative names. Turn this off to allow any SAN.
                   </p>
@@ -1588,7 +1603,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
               }}
             >
               {watchedCustomExtensions.length === 0 ? (
-                <p className="mb-4 text-sm text-muted">
+                <p className="text-muted mb-4 text-sm">
                   No custom extensions configured. Certificates issued under this policy cannot
                   include any custom extensions. Turn this off to allow any custom extension a
                   profile declares.
@@ -1618,7 +1633,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
                       <TableRow key={`${extension.oid}-${extension.include}-${index}`}>
                         <TableCell>
                           <p>{customExtensionLabelFor(extension.oid, extension.label)}</p>
-                          <p className="font-mono text-xs text-muted">{extension.oid}</p>
+                          <p className="text-muted font-mono text-xs">{extension.oid}</p>
                         </TableCell>
                         <TableCell>{CUSTOM_EXTENSION_INCLUDE_LABELS[extension.include]}</TableCell>
                         <TableCell>
@@ -1827,6 +1842,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
             </SectionToggle>
           </div>
         )}
+        {upgradeGate}
       </div>
     );
   }
@@ -1875,18 +1891,18 @@ export const CreatePolicyModal = ({
       }}
     >
       <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1260px]">
-        <SheetHeader className="border-b border-border">
+        <SheetHeader className="border-border border-b">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-project/10 text-project">
+              <div className="bg-project/10 text-project flex h-10 w-10 items-center justify-center rounded-md">
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-x-2 text-foreground">
+                <div className="text-foreground flex items-center gap-x-2">
                   {isEdit ? "Edit Certificate Policy" : "Create Certificate Policy"}
                   <DocumentationLinkBadge href={PkiDocsUrls.settings.policies} />
                 </div>
-                <p className="text-sm leading-4 text-muted">
+                <p className="text-muted text-sm leading-4">
                   {isEdit
                     ? `Update configuration for ${policy?.name}`
                     : "Define comprehensive certificate policies, validation rules, and constraints"}
@@ -1898,8 +1914,8 @@ export const CreatePolicyModal = ({
 
         <form onSubmit={(e) => e.preventDefault()} className="flex min-h-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1 overflow-hidden">
-            <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
-              <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
+            <aside className="border-border flex w-60 shrink-0 flex-col border-r px-5 py-6">
+              <p className="text-muted mb-5 text-[11px] font-medium uppercase tracking-wider">
                 Setup steps
               </p>
               <Stepper
@@ -1932,26 +1948,26 @@ export const CreatePolicyModal = ({
               onStepChange={setStep}
             />
 
-            <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
+            <aside className="border-border hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l px-6 py-6 lg:flex">
               <div className="mb-auto">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                  <p className="text-muted text-[11px] font-medium uppercase tracking-wider">
                     Step {step + 1} · {currentStep.rightLabel}
                   </p>
                   <DocumentationLinkBadge href={PkiDocsUrls.settings.policies} />
                 </div>
-                <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
+                <p className="text-foreground mt-4 text-sm font-semibold">What this step does</p>
+                <p className="text-muted mt-2 text-sm leading-relaxed">
                   {currentStep.rightDescription}
                 </p>
               </div>
             </aside>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
-            <span className="text-xs text-muted" />
+          <div className="border-border flex shrink-0 items-center justify-between gap-3 border-t px-6 py-4">
+            <span className="text-muted text-xs" />
             <div className="flex items-center gap-3">
-              <span className="text-xs text-muted">
+              <span className="text-muted text-xs">
                 Step {step + 1} of {STEPS.length}
               </span>
               {step > 0 && (

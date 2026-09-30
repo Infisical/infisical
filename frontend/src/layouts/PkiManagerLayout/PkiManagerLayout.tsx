@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateManagementUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { useProjectPermission, useSubscription } from "@app/context";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
@@ -14,11 +17,20 @@ export const PkiManagerLayout = () => {
   const isDashboard = /\/cert-manager\/[^/]+\/overview\/?$/.test(pathname);
 
   const isCertManagerGated = subscription?.certManager === false;
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(isCertManagerGated);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   useEffect(() => {
-    if (isCertManagerGated) setIsUpgradeModalOpen(true);
-  }, [isCertManagerGated]);
+    if (!isCertManagerGated) return;
+
+    openUpgradeGate({
+      intent: CertificateManagementUpgradeIntent,
+      paywallKey: "cert-manager.product-access",
+      isEntitled: (refreshedSubscription) => Boolean(refreshedSubscription.certManager),
+      onGranted: () => undefined,
+      failureMessage:
+        "Failed to refresh your subscription. Reload Certificate Management to continue."
+    });
+  }, [isCertManagerGated, openUpgradeGate]);
 
   return (
     <div className="flex h-full w-full flex-col overflow-x-hidden">
@@ -27,12 +39,7 @@ export const PkiManagerLayout = () => {
       <div className="flex-1 overflow-x-hidden overflow-y-auto p-6 md:p-10">
         <Outlet />
       </div>
-      <UpgradePlanModal
-        paywallKey="cert-manager.product-access"
-        isOpen={isUpgradeModalOpen}
-        onOpenChange={setIsUpgradeModalOpen}
-        text="Certificate Manager is not available on your current plan. Upgrade to continue using it."
-      />
+      {upgradeGate}
     </div>
   );
 };

@@ -17,7 +17,10 @@ import {
   Trash2Icon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateApprovalPoliciesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
@@ -195,7 +198,7 @@ const ApplicationPoliciesTable = ({
               <TableRow key={policy.id}>
                 <TableCell isTruncatable>
                   <div className="flex items-center gap-x-2">
-                    <span className="font-medium text-foreground">{policy.name}</span>
+                    <span className="text-foreground font-medium">{policy.name}</span>
                     {policy.scopeType !== ApprovalPolicyScope.PkiApplication ? (
                       <Badge variant="neutral" className="uppercase">
                         Legacy
@@ -211,7 +214,7 @@ const ApplicationPoliciesTable = ({
                       </Badge>
                     ))}
                     {profileNames.length > 3 ? (
-                      <span className="text-xs text-accent">+{profileNames.length - 3} more</span>
+                      <span className="text-accent text-xs">+{profileNames.length - 3} more</span>
                     ) : null}
                   </div>
                 </TableCell>
@@ -280,11 +283,11 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
     <TableRow>
       <TableCell isTruncatable>
         <div className="flex items-center gap-2">
-          <span className="font-medium text-foreground">{alert.name}</span>
+          <span className="text-foreground font-medium">{alert.name}</span>
           {alert.description ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <InfoIcon className="size-3.5 shrink-0 text-accent" />
+                <InfoIcon className="text-accent size-3.5 shrink-0" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 {alert.description}
@@ -293,7 +296,7 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
           ) : null}
         </div>
       </TableCell>
-      <TableCell className="whitespace-nowrap text-accent">
+      <TableCell className="text-accent whitespace-nowrap">
         {formatEventType(alert.eventType)}
       </TableCell>
       <TableCell className="whitespace-nowrap">
@@ -301,7 +304,7 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
           {alert.enabled ? "Enabled" : "Disabled"}
         </Badge>
       </TableCell>
-      <TableCell className="whitespace-nowrap text-accent">
+      <TableCell className="text-accent whitespace-nowrap">
         {alert.eventType === PkiAlertEventTypeV2.EXPIRATION ? (
           formatAlertBefore(alert.alertBefore)
         ) : (
@@ -317,14 +320,14 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
               </Badge>
             </TooltipTrigger>
             <TooltipContent side="left" className="max-w-sm">
-              <div className="text-xs text-label">
+              <div className="text-label text-xs">
                 {new Date(alert.lastRun.timestamp)
                   .toISOString()
                   .replace("T", " ")
                   .replace("Z", " UTC")}
               </div>
               {alert.lastRun.error ? (
-                <div className="mt-1 max-h-32 thin-scrollbar overflow-y-auto text-xs break-words text-danger">
+                <div className="thin-scrollbar text-danger mt-1 max-h-32 overflow-y-auto break-words text-xs">
                   {alert.lastRun.error}
                 </div>
               ) : null}
@@ -434,16 +437,20 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
 
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "policy",
-    "deletePolicy",
-    "upgradePlan"
+    "deletePolicy"
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   // Creation only; existing policies keep enforcing and their requests can still be approved.
   const handleCreatePolicy = () => {
     if (!subscription.pkiApprovals) {
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Certificate approval policies are available on Infisical's Enterprise plan."
+      openUpgradeGate({
+        intent: CertificateApprovalPoliciesUpgradeIntent,
+        paywallKey: "cert-manager.application-settings",
+        isEntitled: (refreshedSubscription) => refreshedSubscription.pkiApprovals,
+        onGranted: () => handlePopUpOpen("policy"),
+        failureMessage:
+          "Failed to refresh your subscription. Try creating an approval policy again."
       });
       return;
     }
@@ -688,7 +695,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                                 type="button"
                                 onClick={() => openEnrollment(p)}
                                 aria-label={`Configure enrollment for ${p.profileSlug}`}
-                                className="flex cursor-pointer items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
+                                className="text-muted hover:text-foreground flex cursor-pointer items-center gap-1.5 text-sm transition-colors"
                               >
                                 <Settings2Icon className="size-3.5" />
                                 Configure
@@ -704,7 +711,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                             ))}
                           </div>
                         ) : (
-                          <span className="text-xs text-accent">—</span>
+                          <span className="text-accent text-xs">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -875,12 +882,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         handlePopUpToggle={handlePopUpToggle}
         applicationId={application.id}
       />
-      <UpgradePlanModal
-        paywallKey="cert-manager.application-settings"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { text: string })?.text}
-      />
+      {upgradeGate}
       <DeleteActionModal
         isOpen={popUp.deletePolicy.isOpen}
         deleteKey="delete"

@@ -3,6 +3,10 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeftIcon, Loader2Icon, Lock, type LucideIcon, Search } from "lucide-react";
 
+import {
+  ExternalCertificateAuthoritiesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
@@ -192,11 +196,10 @@ const CaTypeCard = ({
     <button
       type="button"
       onClick={onClick}
-      disabled={isLocked}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors enabled:hover:border-border-strong enabled:hover:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-60"
+      className="border-border bg-card hover:border-border-strong hover:bg-surface-hover/50 group flex cursor-pointer flex-col gap-3 rounded-md border p-4 text-left transition-colors"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
+        <div className="bg-surface-hover flex h-9 w-9 items-center justify-center rounded-md">
           {option.image ? (
             <ProviderIcon
               icon={option.image}
@@ -204,20 +207,20 @@ const CaTypeCard = ({
               className="h-6 w-6 object-contain"
             />
           ) : (
-            Icon && <Icon className="h-5 w-5 text-foreground" />
+            Icon && <Icon className="text-foreground h-5 w-5" />
           )}
         </div>
         {isLocked ? (
           <Badge variant="info">Enterprise</Badge>
         ) : (
-          <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
+          <span className="text-muted text-[10px] font-medium uppercase tracking-wider">
             {option.category}
           </span>
         )}
       </div>
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-semibold text-foreground">{option.name}</p>
-        <p className="text-xs leading-relaxed text-muted">{option.description}</p>
+        <p className="text-foreground text-sm font-semibold">{option.name}</p>
+        <p className="text-muted text-xs leading-relaxed">{option.description}</p>
       </div>
     </button>
   );
@@ -226,6 +229,7 @@ const CaTypeCard = ({
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const { data: ca, isLoading: isCaLoading } = useGetCa({
     caId: (popUp?.ca?.data as { caId: string })?.caId || "",
@@ -355,7 +359,20 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     type !== CaType.ACME && !subscription.pkiEnterpriseCaIntegrations;
 
   const handleSelectType = (type: CaType) => {
-    if (isCaTypeLocked(type)) return;
+    if (isCaTypeLocked(type)) {
+      openUpgradeGate({
+        intent: ExternalCertificateAuthoritiesUpgradeIntent,
+        paywallKey: "cert-manager.external-ca-type",
+        isEntitled: (refreshedSubscription) => refreshedSubscription.pkiEnterpriseCaIntegrations,
+        onGranted: () => {
+          reset(getInitialValuesForType(type));
+          setSelectedType(type);
+        },
+        failureMessage:
+          "Failed to refresh your subscription. Try selecting this certificate authority again."
+      });
+      return;
+    }
     reset(getInitialValuesForType(type));
     setSelectedType(type);
   };
@@ -874,6 +891,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   return (
+    <>
     <Sheet
       open={popUp?.ca?.isOpen}
       onOpenChange={(isOpen) => {
@@ -886,13 +904,13 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       }}
     >
       <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-2xl">
-        <SheetHeader className="border-b border-border">
+          <SheetHeader className="border-border border-b">
           {showGrid ? (
             <>
               <SheetTitle>Connect External CA</SheetTitle>
               <SheetDescription>
-                Select the third-party certificate authority to connect to. Infisical issues through
-                it rather than hosting the signing key.
+                  Select the third-party certificate authority to connect to. Infisical issues
+                  through it rather than hosting the signing key.
               </SheetDescription>
             </>
           ) : (
@@ -901,7 +919,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <button
                   type="button"
                   onClick={() => setSelectedType(null)}
-                  className="mb-1 flex w-fit cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-foreground hover:underline"
+                    className="text-muted hover:text-foreground mb-1 flex w-fit cursor-pointer items-center gap-1 text-xs transition-colors hover:underline"
                 >
                   <ArrowLeftIcon className="size-3" />
                   Select Another CA
@@ -945,7 +963,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           </div>
         ) : isEditMode && isCaLoading ? (
           <div className="flex min-h-0 flex-1 items-center justify-center">
-            <Loader2Icon className="size-8 animate-spin text-accent" />
+              <Loader2Icon className="text-accent size-8 animate-spin" />
           </div>
         ) : (
           <form onSubmit={handleSubmit(onFormSubmit)} className="flex min-h-0 flex-1 flex-col">
@@ -1064,7 +1082,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 />
               )}
             </div>
-            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">
+              <div className="border-border flex shrink-0 items-center justify-end gap-3 border-t px-6 py-4">
               <Button
                 type="button"
                 variant="outline"
@@ -1085,5 +1103,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         )}
       </SheetContent>
     </Sheet>
+      {upgradeGate}
+    </>
   );
 };

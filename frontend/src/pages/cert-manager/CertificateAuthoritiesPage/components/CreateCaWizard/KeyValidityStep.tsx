@@ -1,6 +1,10 @@
 import { Controller, UseFormReturn } from "react-hook-form";
 
 import {
+  PostQuantumCertificatesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
+import {
   Badge,
   Field,
   FieldContent,
@@ -37,6 +41,7 @@ type Props = {
 
 export const KeyValidityStep = ({ form, hsmConnectorOptions, isHsmConnectorsLoading }: Props) => {
   const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const isHsmLicensed = Boolean(subscription?.hsm);
   const { permission } = useProjectPermission();
   const canAttachHsm = permission.can(
@@ -151,7 +156,23 @@ export const KeyValidityStep = ({ form, hsmConnectorOptions, isHsmConnectorsLoad
                 Key algorithm <span className="text-danger">*</span>
               </FieldLabel>
               <FieldContent>
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select
+                  value={field.value}
+                  onValueChange={(value) => {
+                    if (isPqcAlgorithm(value) && !subscription.pkiPqc) {
+                      openUpgradeGate({
+                        intent: PostQuantumCertificatesUpgradeIntent,
+                        paywallKey: "cert-manager.ca-key-algorithm",
+                        isEntitled: (refreshedSubscription) => refreshedSubscription.pkiPqc,
+                        onGranted: () => field.onChange(value),
+                        failureMessage:
+                          "Failed to refresh your subscription. Try selecting this algorithm again."
+                      });
+                      return;
+                    }
+                    field.onChange(value);
+                  }}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -159,7 +180,7 @@ export const KeyValidityStep = ({ form, hsmConnectorOptions, isHsmConnectorsLoad
                     {options.map(({ label, value }) => {
                       const pqcLocked = isPqcAlgorithm(value) && !subscription?.pkiPqc;
                       return (
-                        <SelectItem key={value} value={value} disabled={pqcLocked}>
+                        <SelectItem key={value} value={value}>
                           <div className="flex items-center gap-2">
                             {label}
                             {pqcLocked && <Badge variant="info">Enterprise</Badge>}
@@ -227,6 +248,7 @@ export const KeyValidityStep = ({ form, hsmConnectorOptions, isHsmConnectorsLoad
           />
         </>
       )}
+      {upgradeGate}
     </FieldGroup>
   );
 };

@@ -28,7 +28,8 @@ export type BillingV2Deprecation = {
   daysLeft: number | null;
 };
 
-// A single purchasable (or sales-led) plan of a product. The free tier is implicit and never listed.
+// A single product plan. Purchasable and sales-led plans are listed in product.plans; an optional
+// free plan is exposed separately as product.baselinePlan for comparison only.
 export type BillingV2Plan = {
   tier: string;
   name: string;
@@ -62,6 +63,7 @@ export type BillingV2CatalogProduct = {
   deprecation?: BillingV2Deprecation;
   // Sort key across products; the product list renders in this order.
   displayOrder?: number;
+  baselinePlan?: BillingV2Plan;
   plans: BillingV2Plan[];
   includes?: string[];
   compare?: BillingV2CompareRow[];

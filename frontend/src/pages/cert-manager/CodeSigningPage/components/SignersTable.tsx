@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { AlertTriangleIcon, PlusIcon, SearchIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CodeSigningUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -47,7 +47,6 @@ import {
   useListSigners
 } from "@app/hooks/api/signers";
 import { useDebounce } from "@app/hooks/useDebounce";
-import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 
@@ -60,11 +59,17 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const handleCreateSigner = () => {
     if (!subscription.pkiCodeSigning) {
-      handlePopUpOpen("upgradePlan");
+      openUpgradeGate({
+        intent: CodeSigningUpgradeIntent,
+        paywallKey: "cert-manager.signers",
+        isEntitled: (refreshedSubscription) => refreshedSubscription.pkiCodeSigning,
+        onGranted: onCreateSigner,
+        failureMessage: "Failed to refresh your subscription. Try creating a signer again."
+      });
       return;
     }
     onCreateSigner();
@@ -138,7 +143,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                 signers.map((signer) => (
                   <TableRow
                     key={signer.id}
-                    className="cursor-pointer hover:bg-surface-hover"
+                    className="hover:bg-surface-hover cursor-pointer"
                     onClick={() =>
                       navigate({
                         to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
@@ -163,7 +168,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                               </Badge>
                               {signer.status === SignerStatus.Pending && (
                                 <AlertTriangleIcon
-                                  className="size-3.5 shrink-0 text-warning"
+                                  className="text-warning size-3.5 shrink-0"
                                   aria-hidden
                                 />
                               )}
@@ -175,7 +180,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                             className="max-w-[320px] text-pretty break-words"
                           >
                             {signer.status === SignerStatus.Pending && (
-                              <span className="mb-0.5 block text-[10px] tracking-wide text-muted uppercase">
+                              <span className="text-muted mb-0.5 block text-[10px] uppercase tracking-wide">
                                 Last attempt failed, retrying
                               </span>
                             )}
@@ -227,12 +232,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
           />
         )}
       </CardContent>
-      <UpgradePlanModal
-        paywallKey="cert-manager.signers"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Code signing is available on Infisical's Enterprise plan."
-      />
+      {upgradeGate}
     </Card>
   );
 };

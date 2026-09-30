@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BillingPlan,
+  BillingProduct,
   buildUpgradeReturnPath,
+  CrossProjectSecretSharingUpgradeIntent,
   DynamicSecretsUpgradeIntent,
-  getSafeUpgradeReturnPath
+  EnvironmentLimitUpgradeIntent,
+  getSafeUpgradeReturnPath,
+  SecretAccessRequestsUpgradeIntent,
+  SecretApprovalPoliciesUpgradeIntent
 } from "./upgrade-intents";
 
 describe("buildUpgradeReturnPath", () => {
@@ -17,6 +23,42 @@ describe("buildUpgradeReturnPath", () => {
     expect(buildUpgradeReturnPath(DynamicSecretsUpgradeIntent, location)).toBe(
       "/organizations/org-1/projects/secret-management/project-1/overview?secretPath=%2Fproduction&environments=prod&upgradeContinuation=create-dynamic-secret#secrets"
     );
+  });
+});
+
+describe("Secrets upgrade intents", () => {
+  it.each([
+    ["overview", "?secretPath=%2Fproduction&environments=prod"],
+    ["settings", "?selectedTab=tab-secret-environments"]
+  ])("keeps environment creation on its source %s surface", (surface, search) => {
+    expect(
+      buildUpgradeReturnPath(EnvironmentLimitUpgradeIntent, {
+        pathname: `/organizations/org-1/projects/secret-management/project-1/${surface}`,
+        search,
+        hash: "#environments"
+      } as Location)
+    ).toBe(
+      `/organizations/org-1/projects/secret-management/project-1/${surface}${search}&upgradeContinuation=create-environment#environments`
+    );
+  });
+
+  it.each([
+    [SecretApprovalPoliciesUpgradeIntent, "create-secret-approval-policy"],
+    [SecretAccessRequestsUpgradeIntent, "request-secret-access"],
+    [CrossProjectSecretSharingUpgradeIntent, "share-secrets-across-projects"],
+    [EnvironmentLimitUpgradeIntent, "create-environment"]
+  ] as const)("routes $0.featureKey to the Secrets Pro product", (intent, continuation) => {
+    expect(intent.productKey).toBe(BillingProduct.SecretsManagement);
+    expect(intent.planKey).toBe(BillingPlan.Pro);
+    expect(intent.continuation).toBe(continuation);
+    expect(intent.upgradeLabel).toMatch(/^Unlock /);
+    expect(
+      buildUpgradeReturnPath(intent, {
+        pathname: "/source",
+        search: "?tab=policies",
+        hash: ""
+      } as Location)
+    ).toBe(`/source?tab=policies&upgradeContinuation=${continuation}`);
   });
 });
 

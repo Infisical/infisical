@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { InstanceHsmUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
@@ -157,12 +157,11 @@ export const EncryptionPageForm = () => {
           </form>
         </CardContent>
       </Card>
-      <UpgradePlanModal
+      <UpgradeGate
+        intent={InstanceHsmUpgradeIntent}
         paywallKey="admin.encryption-page"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan?.data?.text}
-        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />
     </>
   );

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CertificateSyncsUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { CreatePkiSyncModal } from "@app/components/pki-syncs";
 import {
   Button,
@@ -21,7 +21,6 @@ import {
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
-import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiSyncsTable } from "../../IntegrationsListPage/components/PkiSyncsTab/PkiSyncTable";
 import { PkiDocsUrls } from "../../pki-docs-urls";
@@ -31,12 +30,18 @@ type Props = { applicationId: string; applicationName: string; projectId: string
 export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId }: Props) => {
   const [isAddSyncOpen, setIsAddSyncOpen] = useState(false);
   const { subscription } = useSubscription();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   // Every sync destination is enterprise, so refuse here rather than after the destination picker.
   const handleAddSync = () => {
     if (!subscription.pkiSyncs) {
-      handlePopUpOpen("upgradePlan");
+      openUpgradeGate({
+        intent: CertificateSyncsUpgradeIntent,
+        paywallKey: "cert-manager.application-syncs",
+        isEntitled: (refreshedSubscription) => refreshedSubscription.pkiSyncs,
+        onGranted: () => setIsAddSyncOpen(true),
+        failureMessage: "Failed to refresh your subscription. Try adding a Certificate Sync again."
+      });
       return;
     }
     setIsAddSyncOpen(true);
@@ -88,12 +93,7 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
         onOpenChange={setIsAddSyncOpen}
         applicationId={applicationId}
       />
-      <UpgradePlanModal
-        paywallKey="cert-manager.application-syncs"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Certificate Syncs are available on Infisical's Enterprise plan."
-      />
+      {upgradeGate}
     </Card>
   );
 };

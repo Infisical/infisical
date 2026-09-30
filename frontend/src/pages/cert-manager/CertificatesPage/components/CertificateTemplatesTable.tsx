@@ -29,9 +29,10 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   caId: string;
+  onEnrollmentUpgrade: (certificateTemplateId: string) => void;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
-      ["certificateTemplate", "deleteCertificateTemplate", "enrollmentOptions", "upgradePlan"]
+      ["certificateTemplate", "deleteCertificateTemplate", "enrollmentOptions"]
     >,
     data?: {
       id?: string;
@@ -41,7 +42,11 @@ type Props = {
   ) => void;
 };
 
-export const CertificateTemplatesTable = ({ handlePopUpOpen, caId }: Props) => {
+export const CertificateTemplatesTable = ({
+  handlePopUpOpen,
+  caId,
+  onEnrollmentUpgrade
+}: Props) => {
   const { subscription } = useSubscription();
 
   const { data, isPending } = useGetCaCertTemplates(caId);
@@ -91,9 +96,7 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen, caId }: Props) => {
                               <DropdownMenuItem
                                 onClick={() => {
                                   if (!subscription?.pkiEst) {
-                                    handlePopUpOpen("upgradePlan", {
-                                      isEnterpriseFeature: true
-                                    });
+                                    onEnrollmentUpgrade(certificateTemplate.id);
                                     return;
                                   }
 
