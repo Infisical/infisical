@@ -17,9 +17,9 @@ export type TApprovalRequestDALFactory = ReturnType<typeof approvalRequestDALFac
 export const approvalRequestDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ApprovalRequests);
 
-  const findStepsByRequestId = async (requestId: string) => {
+  const findStepsByRequestId = async (requestId: string, tx?: Knex) => {
     try {
-      const dbInstance = db.replicaNode();
+      const dbInstance = tx || db.replicaNode();
       const steps = await dbInstance(TableName.ApprovalRequestSteps).where({ requestId }).orderBy("stepNumber", "asc");
 
       if (!steps.length) {
