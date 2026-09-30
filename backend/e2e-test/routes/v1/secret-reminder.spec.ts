@@ -18,6 +18,8 @@ import { addUserMembership, createUser } from "../../testUtils/users";
 
 const ENVIRONMENT = "dev";
 const DAY_MS = 24 * 60 * 60 * 1000;
+// Above pollUntil's own 20s, so a slow CI runner fails on what it was waiting for, not on vitest's 5s default.
+const EMAIL_DELIVERY_TIMEOUT_MS = 30_000;
 
 const startOfUtcDay = (date: Date) => {
   const day = new Date(date);
@@ -158,22 +160,32 @@ describe("Secret reminders delivered through alerts", () => {
     expect((await reminderAlerts(moved.id)).map((alert) => alert.id)).toEqual([before.id]);
   });
 
-  test("the daily job emails a due reminder and moves its schedule forward", async () => {
-    const secretId = await createSecret("DISPATCH");
-    await setSecretReminder({ secretId, authToken, repeatDays: 30, message: "rotate it", recipients: [member.userId] });
-    const dueDate = await nextReminderDate(secretId);
+  test(
+    "the daily job emails a due reminder and moves its schedule forward",
+    async () => {
+      const secretId = await createSecret("DISPATCH");
+      await setSecretReminder({
+        secretId,
+        authToken,
+        repeatDays: 30,
+        message: "rotate it",
+        recipients: [member.userId]
+      });
+      const dueDate = await nextReminderDate(secretId);
 
-    await runDailyReminders({ now: new Date() });
-    expect(reminderEmailsFor("DISPATCH")).toHaveLength(0);
+      await runDailyReminders({ now: new Date() });
+      expect(reminderEmailsFor("DISPATCH")).toHaveLength(0);
 
-    await runDailyReminders({ now: dueDate });
+      await runDailyReminders({ now: dueDate });
 
-    const [email] = await waitForReminderEmails("DISPATCH");
-    expect(email.recipients).toEqual([member.username]);
-    expect(JSON.stringify(email.substitutions)).toContain("rotate it");
+      const [email] = await waitForReminderEmails("DISPATCH");
+      expect(email.recipients).toEqual([member.username]);
+      expect(JSON.stringify(email.substitutions)).toContain("rotate it");
 
-    expect((await nextReminderDate(secretId)).getTime()).toBe(dueDate.getTime() + 30 * DAY_MS);
-  });
+      expect((await nextReminderDate(secretId)).getTime()).toBe(dueDate.getTime() + 30 * DAY_MS);
+    },
+    EMAIL_DELIVERY_TIMEOUT_MS
+  );
 
   // Force-deleting a folder removes its secrets by cascade, which no reminder code sees. The API
   // cannot show the orphaned alert either (every read goes through its secret), so this reads the
