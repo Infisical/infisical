@@ -21,7 +21,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
-import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
+import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -559,6 +559,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const VARIABLE_DELETED_DURING_SAVE_MESSAGE =
     "A variable this service uses was deleted while it was being saved. Check its variable references and save again.";
 
+  // Every other foreign key a save can trip names a row the save wrote itself or, on update, the service, which
+  // a delete removes without taking the bundle lock. So only this one means a variable went away.
+  const VARIABLE_REFERENCE_VARIABLE_FOREIGN_KEY = "agent_vault_service_variable_references_variableid_foreign";
+
   const CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE =
     "This service's credential was changed by another save while this one was in progress. Reload the service and save again.";
 
@@ -907,7 +911,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       if (isUniqueViolation(err)) {
         throw new BadRequestError({ message: `A service named '${name}' already exists in this access bundle` });
       }
-      if (hasPostgresErrorCode(err, DatabaseErrorCode.ForeignKeyViolation)) {
+      if (
+        hasPostgresConstraintViolation(
+          err,
+          DatabaseErrorCode.ForeignKeyViolation,
+          VARIABLE_REFERENCE_VARIABLE_FOREIGN_KEY
+        )
+      ) {
         throw new BadRequestError({ message: VARIABLE_DELETED_DURING_SAVE_MESSAGE });
       }
       throw err;
@@ -1240,8 +1250,17 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       if (isUniqueViolation(err)) {
         throw new BadRequestError({ message: `A service named '${name}' already exists in this access bundle` });
       }
-      if (hasPostgresErrorCode(err, DatabaseErrorCode.ForeignKeyViolation)) {
+      if (
+        hasPostgresConstraintViolation(
+          err,
+          DatabaseErrorCode.ForeignKeyViolation,
+          VARIABLE_REFERENCE_VARIABLE_FOREIGN_KEY
+        )
+      ) {
         throw new BadRequestError({ message: VARIABLE_DELETED_DURING_SAVE_MESSAGE });
+      }
+      if (hasPostgresErrorCode(err, DatabaseErrorCode.ForeignKeyViolation)) {
+        throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
       }
       throw err;
     }

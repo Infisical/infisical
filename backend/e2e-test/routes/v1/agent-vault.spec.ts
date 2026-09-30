@@ -1370,6 +1370,40 @@ describe("Agent Vault V1 Router", async () => {
       expect(resolved?.credential).toEqual({ type: "basic", username: "second-user", password: "the-pass" });
     });
 
+    test("an update whose service is deleted while it waits is a 404, not a deleted variable", async () => {
+      const bundle = await createAccessBundle("variables-deleted-service");
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "doomed",
+        hostPattern: "doomed.example.com",
+        credential: { type: "passthrough" }
+      });
+      expect(created.statusCode).toBe(200);
+      const { service } = JSON.parse(created.payload) as { service: { id: string } };
+      const url = `${servicesUrl(bundle.id)}/${service.id}`;
+
+      // The update reads the service, then waits on the bundle lock, which a delete doesn't take.
+      const trx = await testDb.transaction();
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("agent_vault_access_bundles").where({ id: bundle.id }).forUpdate().first();
+
+        const pending = inject("PATCH", url, {
+          substitutions: [{ placeholder: "__ORG__", surfaces: ["header"], value: "org-42" }]
+        });
+        await waitUntilBlockedBy(rows[0].pid);
+
+        expect((await inject("DELETE", url)).statusCode).toBe(200);
+        await trx.commit();
+
+        const refused = await pending;
+        expect(refused.statusCode).toBe(404);
+        expect(JSON.parse(refused.payload).message).toBe(`Service with ID '${service.id}' not found`);
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        throw err;
+      }
+    });
+
     test("deleting a bundle takes its variables and every reference to them", async () => {
       const bundle = await createAccessBundle("variables-bundle-delete");
       const variable = await createVariable(bundle.id, { key: "TOKEN", value: "t" });
