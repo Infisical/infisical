@@ -169,6 +169,9 @@ path decides what a service can reach, so it stays literal.
 - **Sealed text names a variable by id, `{{<uuid>}}`, never by key.** The key form exists only at the API
   boundary: a service write maps keys to ids before it seals (`toStoredVariableReferences`), reading the
   primary, since a variable created a moment earlier may not be on a replica yet. So a rename is one row.
+- The variable list and its Used By rows read the primary too. The service sheet refetches the list the moment
+  it creates a variable, and a replica that has not caught up would drop the new key and fail the reference
+  to it.
 - `agent_vault_service_variable_references` holds a row per field per variable. It drives Used By, the delete
   refusal, and the keys the service sheet lists under a stored value. **Resolve does not read it**: it pulls
   the ids out of the decrypted fields, so a service saved mid-poll can never leave the two describing

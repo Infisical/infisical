@@ -20,9 +20,7 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Reads the primary even without a tx. An update merges its credential against this row before the lock and
-  // compares it with the row under the lock, so a replica still behind the last save would turn the next one
-  // into a conflict with nobody else editing.
+  // Reads the primary even without a tx, so the row is never older than the last committed save.
   const findByIdInAccessBundle = async (
     { id, accessBundleId }: { id: string; accessBundleId: string },
     tx?: Knex

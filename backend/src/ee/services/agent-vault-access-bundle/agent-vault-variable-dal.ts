@@ -12,8 +12,7 @@ export type TAgentVaultVariableValueRow = Pick<TAgentVaultVariables, "id" | "acc
 export const agentVaultVariableDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultVariable);
 
-  // Reads the primary even without a tx. The service sheet refetches this list the moment it creates a
-  // variable, and a replica that has not caught up would drop the new key and fail the reference to it.
+  // Reads the primary even without a tx, so a variable created a moment ago is always listed.
   const findByAccessBundleId = async (accessBundleId: string, tx?: Knex): Promise<TAgentVaultVariables[]> => {
     try {
       return (await (tx || db)(TableName.AgentVaultVariable)
@@ -25,8 +24,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Reads the primary even without a tx. A service write maps keys to ids before it seals, outside its
-  // transaction, and a variable created a moment earlier may not have reached a replica yet.
+  // Reads the primary even without a tx, so a key created a moment ago is always found.
   const findKeysByAccessBundleId = async (
     accessBundleId: string,
     tx?: Knex

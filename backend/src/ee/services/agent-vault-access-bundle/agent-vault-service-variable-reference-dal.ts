@@ -35,8 +35,7 @@ export const agentVaultServiceVariableReferenceDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Reads the primary even without a tx, like the variable list it counts usage for, so a service saved a
-  // moment ago shows as using its variables.
+  // Reads the primary even without a tx, so a service saved a moment ago shows as using its variables.
   const findByVariableIds = async (
     variableIds: string[],
     tx?: Knex
