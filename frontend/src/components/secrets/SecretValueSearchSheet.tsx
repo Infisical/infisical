@@ -189,11 +189,13 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
     <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 pb-6">
       <form className="flex gap-2" onSubmit={handleSubmit}>
         <div className="flex flex-1 items-center gap-2">
-          {/* SecretInput rather than a password field: it is a masked textarea, so password
-              managers do not offer to save what is pasted into it. */}
+          {/* SecretInput rather than a password field: a masked textarea keeps the line breaks
+              in a pasted multi-line value (eg a PEM key), and password managers do not offer to
+              save what is pasted into it. */}
           <SecretInput
             autoFocus
             valueAlwaysHidden
+            maskEachCharacter
             isVisible={isRevealed}
             containerClassName="flex-1"
             placeholder="Paste the full secret value..."
