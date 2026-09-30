@@ -2540,6 +2540,7 @@ const OverviewPageContent = () => {
   >(`overview-column-widths-${projectId}`, {});
   const columnResize = useRef<{ index: number; startX: number; widths: number[] } | null>(null);
   const columnKey = `${isSingleEnvView ? "single" : "multi"}:${visibleEnvs.map(({ id }) => id).join(":")}`;
+  const nameMaxWidth = Math.max(isSingleEnvView ? 280 : 240, tableWidth * 0.8);
   const columnMinWidths = isSingleEnvView ? [280, 368] : Array(visibleEnvs.length + 1).fill(240);
   const minColumnTotal = columnMinWidths.reduce((total, width) => total + width, 0);
   const savedWidths = storedColumnWidths?.[columnKey];
@@ -2551,10 +2552,17 @@ const OverviewPageContent = () => {
     const defaultWidth =
       tableWidth >= 40 + minColumnTotal ? (tableWidth - 40) / columnMinWidths.length : 0;
     const widths = columnMinWidths.map((minWidth, index) =>
-      Math.max(minWidth, hasSavedWidths ? savedWidths[index] : defaultWidth)
+      Math.min(
+        index === 0 ? nameMaxWidth : Infinity,
+        Math.max(minWidth, hasSavedWidths ? savedWidths[index] : defaultWidth)
+      )
     );
     if (tableWidth < 40 + minColumnTotal) return widths;
 
+    widths[widths.length - 1] += Math.max(
+      0,
+      tableWidth - 40 - widths.reduce((total, width) => total + width, 0)
+    );
     let excess = Math.max(0, widths.reduce((total, width) => total + width, 0) - (tableWidth - 40));
     for (let index = widths.length - 1; index >= 0 && excess > 0; index -= 1) {
       const shrink = Math.min(excess, widths[index] - columnMinWidths[index]);
@@ -2581,7 +2589,8 @@ const OverviewPageContent = () => {
       columnMinWidths[index],
       Math.min(
         widths[index] + delta,
-        availableWidth >= minColumnTotal ? widths[index] + maxGrowth : Infinity
+        availableWidth >= minColumnTotal ? widths[index] + maxGrowth : Infinity,
+        index === 0 ? nameMaxWidth : Infinity
       )
     );
     next[index] = left;
