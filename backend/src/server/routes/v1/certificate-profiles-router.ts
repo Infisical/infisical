@@ -6,7 +6,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { openApiHidden } from "@app/server/lib/schemas";
+import { commaSeparatedUuidsSchema, openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -335,6 +335,7 @@ export const registerCertificateProfilesRouter = async (
         issuerType: z.nativeEnum(IssuerType).optional(),
         caId: z.string().uuid().optional(),
         applicationId: z.string().uuid().optional(),
+        profileIds: commaSeparatedUuidsSchema(),
         projectId: z.string().uuid().optional().describe(openApiHidden())
       }),
       response: {

@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { UseFormReturn, useWatch } from "react-hook-form";
 
+import { FilterValueBadges } from "@app/components/certificate-filters";
 import { Badge } from "@app/components/v3";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
@@ -10,14 +11,23 @@ import {
   TChannelForm
 } from "@app/hooks/api/alerts";
 
+import { toRecipientEmails } from "./certificate-alert-fns";
+import { TCertificateAlertForm } from "./certificate-alert-schema";
 import {
   CERTIFICATE_ALERT_EVENT_LABELS,
-  TCertificateAlertForm,
-  toRecipientEmails,
+  CERTIFICATE_FILTER_DEFINITIONS,
+  CertificateAlertScopeKind,
+  NO_FILTERS_DESCRIPTION,
+  TCertificateAlertScope,
   TProjectMemberEmails
 } from "./types";
+import { useCertificateFilterNames } from "./useCertificateFilterNames";
 
-type Props = { form: UseFormReturn<TCertificateAlertForm>; members: TProjectMemberEmails };
+type Props = {
+  form: UseFormReturn<TCertificateAlertForm>;
+  scope: TCertificateAlertScope;
+  members: TProjectMemberEmails;
+};
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
   <div className="flex flex-col gap-4">
@@ -27,9 +37,9 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
 );
 
 const Detail = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div className="flex flex-col gap-1">
+  <div className="flex min-w-0 flex-col gap-1">
     <span className="text-xs text-muted">{label}</span>
-    <span className="text-sm text-foreground">{children}</span>
+    <div className="text-sm break-words text-foreground">{children}</div>
   </div>
 );
 
@@ -59,7 +69,39 @@ const describeChannel = (channel: TChannelForm, members: TProjectMemberEmails): 
   }
 };
 
-export const ReviewStep = ({ form, members }: Props) => {
+const FilterDetails = ({
+  applicationIds,
+  profileIds
+}: {
+  applicationIds: string[];
+  profileIds: string[];
+}) => {
+  const { getApplicationName, getProfileName } = useCertificateFilterNames({
+    applicationIds,
+    profileIds
+  });
+
+  return (
+    <>
+      <Detail label={CERTIFICATE_FILTER_DEFINITIONS.applicationIds.label}>
+        {applicationIds.length ? (
+          <FilterValueBadges values={applicationIds.map(getApplicationName)} />
+        ) : (
+          CERTIFICATE_FILTER_DEFINITIONS.applicationIds.allLabel
+        )}
+      </Detail>
+      <Detail label={CERTIFICATE_FILTER_DEFINITIONS.profileIds.label}>
+        {profileIds.length ? (
+          <FilterValueBadges values={profileIds.map(getProfileName)} />
+        ) : (
+          CERTIFICATE_FILTER_DEFINITIONS.profileIds.allLabel
+        )}
+      </Detail>
+    </>
+  );
+};
+
+export const ReviewStep = ({ form, scope, members }: Props) => {
   const values = useWatch({ control: form.control }) as TCertificateAlertForm;
   const isExpiry = values.eventType === CertificateAlertEventType.Expiry;
 
@@ -81,6 +123,21 @@ export const ReviewStep = ({ form, members }: Props) => {
           {values.description && <Detail label="Description">{values.description}</Detail>}
         </div>
       </Section>
+
+      {scope.kind === CertificateAlertScopeKind.CertificateManager && (
+        <Section title="Certificate Filters">
+          {values.applicationIds?.length || values.profileIds?.length ? (
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+              <FilterDetails
+                applicationIds={values.applicationIds ?? []}
+                profileIds={values.profileIds ?? []}
+              />
+            </div>
+          ) : (
+            <span className="text-sm text-muted">{NO_FILTERS_DESCRIPTION}</span>
+          )}
+        </Section>
+      )}
 
       <Section title="Notification Channels">
         <div className="flex flex-col gap-3">

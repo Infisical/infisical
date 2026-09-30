@@ -134,8 +134,8 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
             </span>
           </div>
           <p className="text-xs text-label-secondary">
-            Legacy alerts can only be viewed or deleted. Create new alerts from the Alerting section
-            of an application&apos;s Settings tab.
+            Legacy alerts can only be viewed or deleted. Create new alerts in an application&apos;s
+            Settings tab, or under Settings &gt; Alerts for all of Certificate Manager.
           </p>
         </div>
 

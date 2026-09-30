@@ -102,7 +102,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     schema: {
       deprecated: true,
       operationId: "listPkiAlerts",
-      description: "Deprecated: application alerts are managed with the alerts API (/api/v1/alerts). List PKI alerts.",
+      description: "Deprecated: certificate alerts are managed with the alerts API (/api/v1/alerts). List PKI alerts.",
       tags: [ApiDocsTags.PkiAlerting],
       querystring: z.object({
         projectId: z.string().uuid().optional().describe(openApiHidden()),
@@ -177,7 +177,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       deprecated: true,
       operationId: "getPkiAlert",
       description:
-        "Deprecated: application alerts are managed with the alerts API (/api/v1/alerts). Get a PKI alert by ID.",
+        "Deprecated: certificate alerts are managed with the alerts API (/api/v1/alerts). Get a PKI alert by ID.",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
         alertId: z.string().uuid().describe("Alert ID")
@@ -320,7 +320,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       deprecated: true,
       operationId: "deletePkiAlert",
       description:
-        "Deprecated: application alerts are managed with the alerts API (/api/v1/alerts). Delete a PKI alert.",
+        "Deprecated: certificate alerts are managed with the alerts API (/api/v1/alerts). Delete a PKI alert.",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
         alertId: z.string().uuid().describe("Alert ID")

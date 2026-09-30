@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   BellIcon,
   CircleStopIcon,
@@ -45,16 +45,99 @@ import {
 import {
   AlertRunStatus,
   CertificateAlertEventType,
-  CertificateAlertResourceType,
+  MAX_CERTIFICATE_ALERT_FILTER_IDS,
   TAlert,
   useDeleteAlert,
   useListAlerts,
   useUpdateAlert
 } from "@app/hooks/api/alerts";
 
-import { PkiDocsUrls } from "../../../pki-docs-urls";
+import { PkiDocsUrls } from "../../pki-docs-urls";
+import {
+  fromAlertEventType,
+  getAlertResourceId,
+  getAlertResourceType
+} from "./certificate-alert-fns";
+import { formatAlertBefore } from "./certificate-alert-schema";
 import { CertificateAlertSheet } from "./CertificateAlertSheet";
-import { CERTIFICATE_ALERT_EVENT_LABELS, formatAlertBefore } from "./types";
+import {
+  CERTIFICATE_ALERT_EVENT_LABELS,
+  CERTIFICATE_FILTER_DEFINITIONS,
+  CertificateAlertScopeKind,
+  TCertificateAlertScope
+} from "./types";
+import { useCertificateFilterNames } from "./useCertificateFilterNames";
+
+type TFilterNames = ReturnType<typeof useCertificateFilterNames>;
+
+const SCOPE_CARD_CONFIG: Record<
+  CertificateAlertScopeKind,
+  { description: string; emptyDescription: string; docsUrl: string; hasFiltersColumn: boolean }
+> = {
+  [CertificateAlertScopeKind.Application]: {
+    description: "Get notified about certificate events.",
+    emptyDescription:
+      "No alerts configured. Create one to get notified about certificate events for this application.",
+    docsUrl: PkiDocsUrls.applications.alerting.overview,
+    hasFiltersColumn: false
+  },
+  [CertificateAlertScopeKind.CertificateManager]: {
+    description:
+      "Get notified about certificate events anywhere in Certificate Manager, inside or outside an application.",
+    emptyDescription:
+      "No alerts configured. Create one to get notified about certificate events across Certificate Manager.",
+    docsUrl: PkiDocsUrls.settings.alerts,
+    hasFiltersColumn: true
+  }
+};
+
+const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
+
+const AlertFiltersSummary = ({
+  alert,
+  filterNames
+}: {
+  alert: TAlert;
+  filterNames: TFilterNames;
+}) => {
+  const applicationIds = alert.condition?.applicationIds ?? [];
+  const profileIds = alert.condition?.profileIds ?? [];
+
+  if (!applicationIds.length && !profileIds.length) {
+    return <span className="text-muted">All certificates</span>;
+  }
+
+  const summary = [
+    applicationIds.length ? pluralize(applicationIds.length, "application") : null,
+    profileIds.length ? pluralize(profileIds.length, "certificate profile") : null
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="cursor-default text-accent">{summary}</span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="flex max-w-sm flex-col gap-1">
+        {applicationIds.length > 0 && (
+          <span>
+            <span className="text-muted">
+              {CERTIFICATE_FILTER_DEFINITIONS.applicationIds.label}:{" "}
+            </span>
+            {applicationIds.map(filterNames.getApplicationName).join(", ")}
+          </span>
+        )}
+        {profileIds.length > 0 && (
+          <span>
+            <span className="text-muted">{CERTIFICATE_FILTER_DEFINITIONS.profileIds.label}: </span>
+            {profileIds.map(filterNames.getProfileName).join(", ")}
+          </span>
+        )}
+      </TooltipContent>
+    </Tooltip>
+  );
+};
 
 const LAST_RUN_BADGES: Record<
   AlertRunStatus,
@@ -72,9 +155,21 @@ type AlertRowProps = {
   onDelete: () => void;
   canEdit: boolean;
   canDelete: boolean;
+  scope: TCertificateAlertScope;
+  filterNames: TFilterNames;
 };
 
-const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: AlertRowProps) => {
+const AlertRow = ({
+  alert,
+  onView,
+  onEdit,
+  onDelete,
+  canEdit,
+  canDelete,
+  scope,
+  filterNames
+}: AlertRowProps) => {
+  const eventType = fromAlertEventType(scope, alert.eventType);
   const { mutate: updateAlert } = useUpdateAlert();
 
   const handleToggleAlert = () =>
@@ -107,14 +202,18 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
         </div>
       </TableCell>
       <TableCell className="whitespace-nowrap text-accent">
-        {CERTIFICATE_ALERT_EVENT_LABELS[alert.eventType as CertificateAlertEventType] ??
-          alert.eventType}
+        {eventType ? CERTIFICATE_ALERT_EVENT_LABELS[eventType] : alert.eventType}
       </TableCell>
       <TableCell className="whitespace-nowrap">
         <Badge variant={alert.enabled ? "success" : "neutral"}>
           {alert.enabled ? "Enabled" : "Disabled"}
         </Badge>
       </TableCell>
+      {SCOPE_CARD_CONFIG[scope.kind].hasFiltersColumn && (
+        <TableCell className="whitespace-nowrap">
+          <AlertFiltersSummary alert={alert} filterNames={filterNames} />
+        </TableCell>
+      )}
       <TableCell className="whitespace-nowrap text-accent">
         {alert.condition?.alertBefore ? (
           formatAlertBefore(alert.condition.alertBefore)
@@ -178,26 +277,59 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
 
 type Props = {
   projectId: string;
-  applicationId: string;
-  applicationName: string;
+  scope: TCertificateAlertScope;
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
 };
 
-export const ApplicationAlertsCard = ({
+export const CertificateAlertsCard = ({
   projectId,
-  applicationId,
-  applicationName,
+  scope,
   canCreate,
   canEdit,
   canDelete
 }: Props) => {
+  const config = SCOPE_CARD_CONFIG[scope.kind];
+  const columns = [
+    { label: "Name", className: "w-1/3" },
+    { label: "Alert Type", className: "whitespace-nowrap" },
+    { label: "Status", className: "whitespace-nowrap" },
+    ...(config.hasFiltersColumn ? [{ label: "Filters", className: "whitespace-nowrap" }] : []),
+    { label: "Alert Before", className: "whitespace-nowrap" },
+    { label: "Last Run", className: "whitespace-nowrap" },
+    { label: "Actions", className: "w-5 text-right" }
+  ];
+  const resourceId = getAlertResourceId(scope);
   const { data: alerts = [], isLoading: isAlertsLoading } = useListAlerts({
-    resourceType: CertificateAlertResourceType.Application,
+    resourceType: getAlertResourceType(scope),
     projectId,
-    resourceId: applicationId
+    ...(resourceId ? { resourceId } : {})
   });
+  const filterIds = useMemo(() => {
+    const applicationIds = new Set<string>();
+    const profileIds = new Set<string>();
+    if (config.hasFiltersColumn) {
+      alerts.forEach((alert) => {
+        alert.condition?.applicationIds?.forEach((id) => applicationIds.add(id));
+        alert.condition?.profileIds?.forEach((id) => profileIds.add(id));
+      });
+    }
+    return {
+      applicationIds: [...applicationIds].slice(0, MAX_CERTIFICATE_ALERT_FILTER_IDS),
+      profileIds: [...profileIds].slice(0, MAX_CERTIFICATE_ALERT_FILTER_IDS)
+    };
+  }, [alerts, config.hasFiltersColumn]);
+  const filterNames = useCertificateFilterNames(filterIds);
+  const usedEventTypes =
+    scope.kind === CertificateAlertScopeKind.Application
+      ? alerts
+          .map((alert) => fromAlertEventType(scope, alert.eventType))
+          .filter((eventType): eventType is CertificateAlertEventType => Boolean(eventType))
+      : [];
+  const hasAllEventTypes = Object.values(CertificateAlertEventType).every((eventType) =>
+    usedEventTypes.includes(eventType)
+  );
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     alertId?: string;
@@ -212,11 +344,6 @@ export const ApplicationAlertsCard = ({
   }>({ isOpen: false });
   const { mutateAsync: deleteAlert } = useDeleteAlert();
 
-  const usedEventTypes = alerts.map((a) => a.eventType as CertificateAlertEventType);
-  const hasAllEventTypes = Object.values(CertificateAlertEventType).every((event) =>
-    usedEventTypes.includes(event)
-  );
-
   const handleDeleteAlert = async () => {
     if (!deleteAlertModal.alertId) return;
     await deleteAlert({ alertId: deleteAlertModal.alertId });
@@ -229,10 +356,10 @@ export const ApplicationAlertsCard = ({
       <Card>
         <CardHeader>
           <CardTitle>
-            Alerting
-            <DocumentationLinkBadge href={PkiDocsUrls.applications.alerting.overview} />
+            Alerts
+            <DocumentationLinkBadge href={config.docsUrl} />
           </CardTitle>
-          <CardDescription>Get notified about certificate events.</CardDescription>
+          <CardDescription>{config.description}</CardDescription>
           <CardAction>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -267,29 +394,25 @@ export const ApplicationAlertsCard = ({
               <EmptyMedia variant="icon">
                 <BellIcon />
               </EmptyMedia>
-              <EmptyDescription>
-                No alerts configured. Create one to get notified about certificate events for this
-                application.
-              </EmptyDescription>
+              <EmptyDescription>{config.emptyDescription}</EmptyDescription>
             </Empty>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-1/3">Name</TableHead>
-                  <TableHead className="whitespace-nowrap">Alert Type</TableHead>
-                  <TableHead className="whitespace-nowrap">Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Alert Before</TableHead>
-                  <TableHead className="whitespace-nowrap">Last Run</TableHead>
-                  <TableHead className="w-5 text-right">Actions</TableHead>
+                  {columns.map((column) => (
+                    <TableHead key={column.label} className={column.className}>
+                      {column.label}
+                    </TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isAlertsLoading &&
                   Array.from({ length: 3 }, (_, idx) => (
                     <TableRow key={`alert-skeleton-${idx + 1}`}>
-                      {Array.from({ length: 6 }, (__, cellIdx) => (
-                        <TableCell key={`alert-skeleton-cell-${cellIdx + 1}`}>
+                      {columns.map((column) => (
+                        <TableCell key={column.label}>
                           <Skeleton className="h-4 w-24" />
                         </TableCell>
                       ))}
@@ -309,6 +432,8 @@ export const ApplicationAlertsCard = ({
                       }
                       canEdit={canEdit}
                       canDelete={canDelete}
+                      scope={scope}
+                      filterNames={filterNames}
                     />
                   ))}
               </TableBody>
@@ -320,8 +445,7 @@ export const ApplicationAlertsCard = ({
         isOpen={alertModal.isOpen}
         onOpenChange={(isOpen) => setAlertModal({ isOpen, alertId: undefined })}
         projectId={projectId}
-        applicationId={applicationId}
-        applicationName={applicationName}
+        scope={scope}
         alert={alerts.find((a) => a.id === alertModal.alertId)}
         isReadOnly={alertModal.isReadOnly}
         usedEventTypes={usedEventTypes}

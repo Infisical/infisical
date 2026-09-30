@@ -31,10 +31,9 @@ import {
   useDeletePkiAlertV2,
   useGetPkiAlertsV2
 } from "@app/hooks/api/pkiAlertsV2";
+import { formatAlertBefore } from "@app/pages/cert-manager/components/CertificateAlerts/certificate-alert-schema";
 import { ViewPkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/ViewPkiAlertV2Modal";
 import { formatEventType } from "@app/views/PkiAlertsV2Page/utils/pki-alert-formatters";
-
-import { formatAlertBefore } from "./types";
 
 type LegacyAlertRowProps = {
   alert: TPkiAlertV2;

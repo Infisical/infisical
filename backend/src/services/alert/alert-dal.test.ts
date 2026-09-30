@@ -125,6 +125,21 @@ describe("alert dal", () => {
     expect(calls.where).toContainEqual([`${TableName.Alert}.enabled`, true]);
   });
 
+  test("findEnabledForEvent matches only resource-less alerts for a scope-wide event", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findEnabledForEvent({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceType: "cert-manager.certificate",
+      resourceId: null,
+      eventType: "cert-manager.certificate.issuance"
+    });
+
+    expect(calls.whereNull).toContainEqual(`${TableName.Alert}.resourceId`);
+    expect(calls.where).not.toContainEqual([`${TableName.Alert}.resourceId`, null]);
+  });
+
   // An empty result is terminal for the event, so it can't come from a replica that hasn't seen the
   // alert commit yet.
   test("findEnabledForEvent reads the primary while the scheduled and list lookups keep the replica", async () => {

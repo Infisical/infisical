@@ -54,7 +54,7 @@ export const resolveAlertProjectId = async (
   provider: IResourceAlertProvider,
   { orgId, projectId, resourceId }: { orgId: string; projectId?: string | null; resourceId?: string | null }
 ): Promise<string | null> => {
-  if (projectId || !resourceId || !provider.resolveProjectId) return projectId ?? null;
+  if (projectId || !provider.resolveProjectId) return projectId ?? null;
   return provider.resolveProjectId({ orgId, resourceId });
 };
 
@@ -94,6 +94,12 @@ export type TFindTargetsByIdsInput = {
   payload: Record<string, unknown>;
 };
 
+export type TAlreadyAlertedFilter = {
+  alertId: string;
+  channelIds: string[];
+  since: Date;
+};
+
 export type TFindDueTargetsInput = {
   orgId: string;
   projectId?: string | null;
@@ -101,7 +107,7 @@ export type TFindDueTargetsInput = {
   eventType: string;
   condition: unknown;
   asOf: Date;
-  alreadyAlerted?: { alertId: string; channelIds: string[]; since: Date };
+  alreadyAlerted?: TAlreadyAlertedFilter;
 };
 
 // Lets a provider factory declare which discovery method it guarantees.
@@ -170,11 +176,21 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // existing permissions (e.g. PKI reuses the `pki-alerts` subject, project- or application-scoped).
   assertPermission(input: TAlertPermissionInput): Promise<void>;
 
+  allowsMultipleAlertsPerEvent?: boolean;
+
+  supportsScopeWideAlerts?: boolean;
+
+  assertConditionInScope?(input: {
+    projectId?: string | null;
+    condition: unknown;
+    previousCondition?: unknown;
+  }): Promise<void>;
+
   assertChannelTypesAllowed?(input: { orgId: string; channelTypes: string[] }): Promise<void>;
 
   getResourceNames?(input: { orgId: string; resourceIds: string[] }): Promise<Map<string, string>>;
 
-  resolveProjectId?(input: { orgId: string; resourceId: string }): Promise<string>;
+  resolveProjectId?(input: { orgId: string; resourceId?: string | null }): Promise<string>;
 
   getTelemetryEvent?(input: TAlertTelemetryInput): TAlertTelemetryEvent | undefined;
 

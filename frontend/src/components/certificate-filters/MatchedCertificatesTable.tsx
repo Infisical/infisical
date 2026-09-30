@@ -34,7 +34,7 @@ type Props = {
   emptyDescription: string;
 };
 
-export const PkiSyncMatchedCertificatesTable = ({
+export const MatchedCertificatesTable = ({
   rows,
   isLoading,
   emptyTitle,

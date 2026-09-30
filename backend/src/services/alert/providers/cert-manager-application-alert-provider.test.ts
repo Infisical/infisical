@@ -1,15 +1,15 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
 import { AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
-import { TApplicationAlertCertificate } from "./cert-manager-application-alert-dal";
 import {
   certManagerApplicationAlertProviderFactory,
   TCertManagerApplicationAlertProviderDep
 } from "./cert-manager-application-alert-provider";
+import { TAlertCertificate } from "./cert-manager-certificate-alert-dal";
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ SITE_URL: "https://app.infisical.com" })
@@ -22,7 +22,7 @@ const REVOCATION_EVENT = "cert-manager.application.certificate.revocation";
 
 const futureDate = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-const sampleCertificate = (overrides: Partial<TApplicationAlertCertificate> = {}): TApplicationAlertCertificate => ({
+const sampleCertificate = (overrides: Partial<TAlertCertificate> = {}): TAlertCertificate => ({
   id: "cert-1",
   serialNumber: "105d3b4c",
   commonName: "api.example.com",
@@ -48,7 +48,7 @@ const alertContext = (overrides: Partial<TAlertContext> = {}): TAlertContext => 
 
 const buildProvider = (opts?: {
   application?: { id: string; name: string; projectId: string; orgId: string };
-  certificates?: TApplicationAlertCertificate[];
+  certificates?: TAlertCertificate[];
   onFindExpiring?: (args: Record<string, unknown>) => void;
   onFindByIds?: (args: Record<string, unknown>) => void;
   onFindNames?: (ids: string[], orgId: string) => void;
@@ -87,9 +87,12 @@ const buildProvider = (opts?: {
     getPlan: async () => ({ pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false })
   };
   const provider = certManagerApplicationAlertProviderFactory({
-    certManagerApplicationAlertDAL: dal,
+    certManagerCertificateAlertDAL: dal,
     permissionService,
-    licenseService
+    licenseService,
+    certManagerProjectResolver: {
+      getActiveProjectId: async (orgId: string) => (orgId === "org-1" ? "proj-1" : null)
+    }
   } as unknown as TCertManagerApplicationAlertProviderDep);
   return { provider, permissionService };
 };
@@ -288,6 +291,14 @@ describe("cert manager application alert provider", () => {
     ).rejects.toThrow("Application with ID '7b0a6b54-3c1e-4f3a-9d5e-2f1b8c4d6e90' not found");
   });
 
+  test("resolveProjectId falls back to the org's Certificate Manager project without an application", async () => {
+    const { provider } = buildProvider();
+    await expect(provider.resolveProjectId?.({ orgId: "org-1" })).resolves.toBe("proj-1");
+    await expect(provider.resolveProjectId?.({ orgId: "org-2" })).rejects.toThrow(
+      "This organization has no Certificate Manager project"
+    );
+  });
+
   test("rejects a malformed application ID with a bad request before any lookup", async () => {
     const { provider, permissionService } = buildProvider();
     const expected = "Invalid application ID 'not-a-uuid': must be a UUID";
@@ -361,6 +372,7 @@ describe("cert manager application alert provider", () => {
         orgId: "org-1",
         projectId: "proj-1",
         applicationId: "7b0a6b54-3c1e-4f3a-9d5e-2f1b8c4d6e90",
+        alertScope: PkiAlertScope.Application,
         alertType: "expiration"
       }
     });

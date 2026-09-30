@@ -2,6 +2,7 @@ import { ReactNode, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { FilterIcon } from "lucide-react";
 
+import { MatchedCertificatesTable } from "@app/components/certificate-filters";
 import { buildPkiSyncFilterSummary } from "@app/components/pki-syncs/PkiSyncFilterBadges";
 import {
   Badge,
@@ -24,7 +25,6 @@ import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { buildOrderNameMap, getPkiSyncCertificateCap, hasAnyFilter } from "./pki-sync-filter-fns";
-import { PkiSyncMatchedCertificatesTable } from "./PkiSyncMatchedCertificatesTable";
 
 const MATCHED_PAGE_SIZE = 20;
 
@@ -135,7 +135,7 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
               <p className="mb-2 text-xs text-muted">
                 {matchedCount} certificate{matchedCount === 1 ? "" : "s"} will be synced.
               </p>
-              <PkiSyncMatchedCertificatesTable
+              <MatchedCertificatesTable
                 rows={matchedRows}
                 isLoading={isPreviewPending}
                 emptyTitle="No certificates match"

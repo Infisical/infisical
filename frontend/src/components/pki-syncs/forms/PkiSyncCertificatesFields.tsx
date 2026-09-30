@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { FilterIcon, RefreshCwIcon, TrashIcon, TriangleAlertIcon } from "lucide-react";
+import { FilterIcon, TrashIcon } from "lucide-react";
 
+import {
+  MatchedCertificatesPreview,
+  TMatchedCertificateRow,
+  useCertificateFilterPreview
+} from "@app/components/certificate-filters";
 import {
   Alert,
   AlertDescription,
@@ -11,11 +16,7 @@ import {
   Empty,
   EmptyDescription,
   EmptyMedia,
-  IconButton,
-  Pagination,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  IconButton
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
@@ -37,10 +38,6 @@ import {
 } from "./pki-sync-filter-fns";
 import { PkiSyncCertificateAddMenu } from "./PkiSyncCertificateAddMenu";
 import { PkiSyncFilterFields } from "./PkiSyncFilterFields";
-import {
-  PkiSyncMatchedCertificatesTable,
-  TMatchedCertificateRow
-} from "./PkiSyncMatchedCertificatesTable";
 
 const MATCHED_PAGE_SIZE = 20;
 
@@ -54,7 +51,6 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
   const { currentProject } = useProject();
 
   const filters = watch("filters") as TPkiSyncFilters | null | undefined;
-  const filtersKey = JSON.stringify(filters ?? null);
 
   const { syncOption } = usePkiSyncOption(watch("destination") as PkiSync);
   const certificateCap = getPkiSyncCertificateCap({
@@ -69,11 +65,9 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
   ].filter((kind): kind is string => Boolean(kind));
 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [previewFilters, setPreviewFilters] = useState<TPkiSyncFilters | null>(filters ?? null);
-  const [page, setPage] = useState(1);
-  const previewKey = JSON.stringify(previewFilters ?? null);
+  const { previewFilters, page, setPage, isStale, reloadPreview } =
+    useCertificateFilterPreview<TPkiSyncFilters | null>(filters ?? null);
 
-  const isStale = filtersKey !== previewKey;
   const isUnfinished = hasUnfinishedFilter(filters);
 
   const {
@@ -89,12 +83,6 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
     limit: MATCHED_PAGE_SIZE,
     enabled: Boolean(applicationId) && hasAnyFilter(previewFilters)
   });
-
-  const reloadPreview = () => {
-    setPage(1);
-    if (isStale) setPreviewFilters(filters ?? null);
-    else refetchPreview().catch(() => {});
-  };
 
   const [pickedOrderNames, setPickedOrderNames] = useState<[string, string][]>([]);
 
@@ -227,20 +215,6 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
     );
   }
 
-  const reloadButton = (
-    <Button
-      type="button"
-      size="xs"
-      variant={isStale ? "warning" : "outline"}
-      isDisabled={isPreviewing || isUnfinished}
-      onClick={reloadPreview}
-    >
-      <RefreshCwIcon className="size-3" />
-      Reload Preview
-      {isStale && <TriangleAlertIcon className="size-3" />}
-    </Button>
-  );
-
   return (
     <div className="flex flex-col">
       <div>
@@ -290,52 +264,26 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
       </div>
 
       {hasAnyFilter(filters) && (
-        <>
-          <div className="mt-8 flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-foreground">Matched Certificates</p>
-              <p className="mt-0.5 text-xs text-muted">
-                {preview
-                  ? `${matchedCount} certificate${matchedCount === 1 ? " matches" : "s match"} these filters.`
-                  : "Loading the certificates these filters match."}
-              </p>
-            </div>
-            {isStale ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>{reloadButton}</span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isUnfinished
-                    ? "A filter is unfinished. Complete it, then reload the preview."
-                    : "Filters changed. Reload the preview to see what they match now."}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              reloadButton
-            )}
-          </div>
-
-          <div className="mt-3">
-            <PkiSyncMatchedCertificatesTable
-              rows={matchedRows}
-              isLoading={isPreviewing}
-              emptyTitle="No certificates match"
-              emptyDescription="Nothing in this application matches these filters yet."
-            />
-            {matchedCount > MATCHED_PAGE_SIZE && (
-              <Pagination
-                className="mt-2"
-                count={matchedCount}
-                page={page}
-                perPage={MATCHED_PAGE_SIZE}
-                onChangePage={setPage}
-                onChangePerPage={() => {}}
-                perPageList={[MATCHED_PAGE_SIZE]}
-              />
-            )}
-          </div>
-        </>
+        <div className="mt-8">
+          <MatchedCertificatesPreview
+            summary={
+              preview
+                ? `${matchedCount} certificate${matchedCount === 1 ? " matches" : "s match"} these filters.`
+                : "Loading the certificates these filters match."
+            }
+            rows={matchedRows}
+            totalCount={matchedCount}
+            isLoading={isPreviewing}
+            isStale={isStale}
+            isUnfinished={isUnfinished}
+            onReload={() => reloadPreview(refetchPreview)}
+            page={page}
+            pageSize={MATCHED_PAGE_SIZE}
+            onPageChange={setPage}
+            emptyTitle="No certificates match"
+            emptyDescription="Nothing in this application matches these filters yet."
+          />
+        </div>
       )}
 
       {certificatePicker}

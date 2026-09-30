@@ -74,8 +74,9 @@ import {
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
 import { CreateProfileModal } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/CreateProfileModal";
 
+import { CertificateAlertsCard } from "../../components/CertificateAlerts/CertificateAlertsCard";
+import { CertificateAlertScopeKind } from "../../components/CertificateAlerts/types";
 import { PkiDocsUrls } from "../../pki-docs-urls";
-import { ApplicationAlertsCard } from "./ApplicationAlerts/ApplicationAlertsCard";
 import { LegacyApplicationAlertsCard } from "./ApplicationAlerts/LegacyApplicationAlertsCard";
 import {
   ConfigureEnrollmentModal,
@@ -618,10 +619,13 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         </CardContent>
       </Card>
 
-      <ApplicationAlertsCard
+      <CertificateAlertsCard
         projectId={application.projectId}
-        applicationId={application.id}
-        applicationName={application.name}
+        scope={{
+          kind: CertificateAlertScopeKind.Application,
+          applicationId: application.id,
+          applicationName: application.name
+        }}
         canCreate={canCreateAlerts}
         canEdit={canEditAlerts}
         canDelete={canDeleteAlerts}

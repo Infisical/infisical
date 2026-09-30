@@ -3,12 +3,12 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { AlertRunStatus } from "@app/services/alert/alert-types";
+import { AlertRunStatus, TAlreadyAlertedFilter } from "@app/services/alert/alert-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
-export type TCertManagerApplicationAlertDALFactory = ReturnType<typeof certManagerApplicationAlertDALFactory>;
+export type TCertManagerCertificateAlertDALFactory = ReturnType<typeof certManagerCertificateAlertDALFactory>;
 
-export type TApplicationAlertCertificate = {
+export type TAlertCertificate = {
   id: string;
   serialNumber: string;
   commonName: string;
@@ -21,38 +21,54 @@ export type TApplicationAlertCertificate = {
 
 type TCertificateScope = {
   projectId: string;
-  applicationId: string;
+  applicationId?: string | null;
+  applicationIds?: string[];
+  profileIds?: string[];
 };
 
 const MAX_EXPIRING_CERTIFICATES_PER_RUN = 1000;
 
-export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
-  const $selectCertificates = (reader: Knex, { projectId, applicationId }: TCertificateScope) =>
-    reader(TableName.Certificate)
-      .leftJoin(`${TableName.PkiCertificateProfile} as profile`, `${TableName.Certificate}.profileId`, "profile.id")
-      .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
-      .where(`${TableName.Certificate}.projectId`, projectId)
-      .where(`${TableName.Certificate}.applicationId`, applicationId)
-      .select(
-        `${TableName.Certificate}.id`,
-        `${TableName.Certificate}.serialNumber`,
-        `${TableName.Certificate}.commonName`,
-        `${TableName.Certificate}.altNames`,
-        `${TableName.Certificate}.notAfter`,
-        `${TableName.Certificate}.revocationReason`,
-        "profile.slug as profileName",
-        `${TableName.PkiApplication}.name as applicationName`
-      );
+const applyCertificateScope = <TQuery extends Knex.QueryBuilder>(
+  query: TQuery,
+  { projectId, applicationId, applicationIds, profileIds }: TCertificateScope
+): TQuery => {
+  void query.where(`${TableName.Certificate}.projectId`, projectId);
+  if (applicationId) void query.where(`${TableName.Certificate}.applicationId`, applicationId);
+  if (applicationIds?.length) void query.whereIn(`${TableName.Certificate}.applicationId`, applicationIds);
+  if (profileIds?.length) void query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
+  return query;
+};
+
+export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
+  const $selectCertificates = (reader: Knex, scope: TCertificateScope) => {
+    const query = applyCertificateScope(
+      reader(TableName.Certificate)
+        .leftJoin(`${TableName.PkiCertificateProfile} as profile`, `${TableName.Certificate}.profileId`, "profile.id")
+        .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`),
+      scope
+    );
+
+    return query.select(
+      `${TableName.Certificate}.id`,
+      `${TableName.Certificate}.serialNumber`,
+      `${TableName.Certificate}.commonName`,
+      `${TableName.Certificate}.altNames`,
+      `${TableName.Certificate}.notAfter`,
+      `${TableName.Certificate}.revocationReason`,
+      "profile.slug as profileName",
+      `${TableName.PkiApplication}.name as applicationName`
+    );
+  };
 
   const findExpiringCertificates = async (
     scope: TCertificateScope & {
       alertBeforeInterval: string;
       leadInterval: string;
       asOf: Date;
-      alreadyAlerted?: { alertId: string; channelIds: string[]; since: Date };
+      alreadyAlerted?: TAlreadyAlertedFilter;
     },
     tx?: Knex
-  ): Promise<TApplicationAlertCertificate[]> => {
+  ): Promise<TAlertCertificate[]> => {
     try {
       const reader = tx || db.replicaNode();
       const query = $selectCertificates(reader, scope);
@@ -79,7 +95,7 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
           scope.leadInterval
         ])
         .orderBy(`${TableName.Certificate}.notAfter`, "asc")
-        .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN)) as TApplicationAlertCertificate[];
+        .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN)) as TAlertCertificate[];
 
       return certificates;
     } catch (error) {
@@ -90,12 +106,12 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
   const findCertificatesByIds = async (
     scope: TCertificateScope & { certificateIds: string[] },
     tx?: Knex
-  ): Promise<TApplicationAlertCertificate[]> => {
+  ): Promise<TAlertCertificate[]> => {
     try {
       const certificates = (await $selectCertificates(tx || db, scope).whereIn(
         `${TableName.Certificate}.id`,
         scope.certificateIds
-      )) as TApplicationAlertCertificate[];
+      )) as TAlertCertificate[];
 
       return certificates;
     } catch (error) {
@@ -148,10 +164,34 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findProjectApplicationIds = async (projectId: string, applicationIds: string[], tx?: Knex) => {
+    try {
+      return (await (tx || db)(TableName.PkiApplication)
+        .where({ projectId })
+        .whereIn("id", applicationIds)
+        .pluck("id")) as string[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindProjectApplicationIds" });
+    }
+  };
+
+  const findProjectProfileIds = async (projectId: string, profileIds: string[], tx?: Knex) => {
+    try {
+      return (await (tx || db)(TableName.PkiCertificateProfile)
+        .where({ projectId })
+        .whereIn("id", profileIds)
+        .pluck("id")) as string[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindProjectProfileIds" });
+    }
+  };
+
   return {
     findExpiringCertificates,
     findCertificatesByIds,
     findApplicationById,
-    findApplicationNamesByIds
+    findApplicationNamesByIds,
+    findProjectApplicationIds,
+    findProjectProfileIds
   };
 };

@@ -1,13 +1,6 @@
 import { useFormContext } from "react-hook-form";
-import { PlusIcon } from "lucide-react";
 
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v3";
+import { AddCertificateFilterMenu } from "@app/components/certificate-filters";
 import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
@@ -60,26 +53,16 @@ export const PkiSyncCertificateAddMenu = ({ applicationId, onOpenPicker }: Props
     setValue("filters", { ...filters, [kind]: next }, { shouldDirty: true });
   };
 
-  if (!supportsFilters || addableFilterKinds.length === 0) return null;
+  if (!supportsFilters) return null;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
-          <PlusIcon className="size-3.5" />
-          Add Filter
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        {addableFilterKinds.map((kind) => (
-          <DropdownMenuItem key={kind} onClick={() => addFilter(kind)}>
-            <div className="flex flex-col">
-              <span>{FILTER_LABELS[kind]}</span>
-              <span className="text-xs text-muted">{FILTER_HINTS[kind]}</span>
-            </div>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <AddCertificateFilterMenu
+      options={addableFilterKinds.map((kind) => ({
+        kind,
+        label: FILTER_LABELS[kind],
+        hint: FILTER_HINTS[kind]
+      }))}
+      onAdd={addFilter}
+    />
   );
 };

@@ -137,9 +137,9 @@ export const alertServiceFactory = ({
     return event;
   };
 
-  const $validateCondition = (event: TAlertEventDefinition, condition: unknown) => {
+  const $parseCondition = (event: TAlertEventDefinition, condition: unknown): unknown => {
     try {
-      event.conditionSchema.parse(condition);
+      return event.conditionSchema.parse(condition);
     } catch (err) {
       const message = err instanceof z.ZodError ? err.issues.map((i) => i.message).join(", ") : "Invalid condition";
       throw new BadRequestError({ message: `Invalid alert condition: ${message}` });
@@ -192,14 +192,13 @@ export const alertServiceFactory = ({
   });
 
   const createAlert = async (dto: TCreateAlertDTO): Promise<TAlertResponse> => {
-    if (!dto.resourceId) {
+    const provider = $getProvider(dto.resourceType);
+    if (!dto.resourceId && !provider.supportsScopeWideAlerts) {
       throw new BadRequestError({
-        message:
-          "Alerts must be bound to a specific resource. Organization wide and project wide alerts are not supported yet."
+        message: `Alerts for resource type '${dto.resourceType}' must be bound to a specific resource. Pass resourceId.`
       });
     }
 
-    const provider = $getProvider(dto.resourceType);
     const projectId = await resolveAlertProjectId(provider, {
       orgId: dto.actorOrgId,
       projectId: dto.projectId,
@@ -207,7 +206,7 @@ export const alertServiceFactory = ({
     });
 
     const event = $getEvent(provider, dto.eventType);
-    $validateCondition(event, dto.condition);
+    const condition = $parseCondition(event, dto.condition);
 
     await $assertAlertPermission(
       provider,
@@ -222,19 +221,23 @@ export const alertServiceFactory = ({
       resourceId: dto.resourceId
     });
 
-    const duplicate = await alertDAL.findScopedDuplicate({
-      orgId: dto.actorOrgId,
-      projectId,
-      resourceType: dto.resourceType,
-      resourceId: dto.resourceId,
-      eventType: dto.eventType
-    });
-    if (duplicate) {
-      throw new BadRequestError({
-        message: dto.resourceId
-          ? "An alert for this resource and event already exists"
-          : "An alert for this event already exists in this scope"
+    await provider.assertConditionInScope?.({ projectId, condition });
+
+    if (!provider.allowsMultipleAlertsPerEvent) {
+      const duplicate = await alertDAL.findScopedDuplicate({
+        orgId: dto.actorOrgId,
+        projectId,
+        resourceType: dto.resourceType,
+        resourceId: dto.resourceId,
+        eventType: dto.eventType
       });
+      if (duplicate) {
+        throw new BadRequestError({
+          message: dto.resourceId
+            ? "An alert for this resource and event already exists"
+            : "An alert for this event already exists in this scope"
+        });
+      }
     }
 
     if (!dto.channels || dto.channels.length === 0) {
@@ -258,7 +261,7 @@ export const alertServiceFactory = ({
           resourceId: dto.resourceId,
           eventType: dto.eventType,
           triggerType: event.triggerType,
-          condition: dto.condition != null ? JSON.stringify(dto.condition) : null,
+          condition: condition != null ? JSON.stringify(condition) : null,
           enabled: dto.enabled ?? true,
           orgId: dto.actorOrgId,
           projectId,
@@ -454,7 +457,15 @@ export const alertServiceFactory = ({
       dto
     );
 
-    if (dto.condition !== undefined) $validateCondition($getEvent(provider, alert.eventType), dto.condition);
+    let condition: unknown;
+    if (dto.condition !== undefined) {
+      condition = $parseCondition($getEvent(provider, alert.eventType), dto.condition);
+      await provider.assertConditionInScope?.({
+        projectId: alert.projectId,
+        condition,
+        previousCondition: alert.condition
+      });
+    }
     if (dto.channels !== undefined && dto.channels.length === 0) {
       throw new BadRequestError({ message: "At least one channel is required" });
     }
@@ -478,9 +489,7 @@ export const alertServiceFactory = ({
       const patch = {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
         ...(dto.description !== undefined ? { description: dto.description } : {}),
-        ...(dto.condition !== undefined
-          ? { condition: dto.condition != null ? JSON.stringify(dto.condition) : null }
-          : {}),
+        ...(dto.condition !== undefined ? { condition: condition != null ? JSON.stringify(condition) : null } : {}),
         ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {})
       };
 
