@@ -128,10 +128,10 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
         <a
           target="_blank"
           rel="noopener noreferrer"
-          href="https://infisical.com/slack"
+          href="https://community.infisical.com"
           className="underline underline-offset-2 hover:text-foreground"
         >
-          Let us know on Slack
+          Let us know in the community forum
         </a>{" "}
         or{" "}
         <a

@@ -6,15 +6,24 @@ import { format } from "date-fns";
 import {
   BanIcon,
   BotIcon,
+  CircleAlertIcon,
+  FilterIcon,
   IdCardIcon,
+  LogsIcon,
   MoreHorizontalIcon,
   PackageIcon,
   PlusIcon,
   SearchIcon,
+  TriangleAlertIcon,
   UserIcon
 } from "lucide-react";
 
+import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
+import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
 import {
+  Alert,
+  AlertAction,
+  AlertDescription,
   Button,
   Card,
   CardAction,
@@ -24,8 +33,10 @@ import {
   CardTitle,
   DocumentationLinkBadge,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -38,11 +49,6 @@ import {
   OverflowBadgeList,
   PageHeader,
   Pagination,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   Table,
   TableBody,
@@ -50,11 +56,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission } from "@app/context";
+import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
+import {
+  areAgentVaultSessionLogsOn,
+  isAgentVaultSessionLogPlanLapsed
+} from "@app/helpers/agentVaultSessionLogs";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -62,23 +75,35 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
+  AgentVaultMemberType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
+  useGetAgentVaultSession,
+  useGetAgentVaultSessionLogHealth,
+  useGetAgentVaultSessionLogSettings,
   useListAgentVaultAccessBundles,
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultMintedSession, TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
+import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogReadAccessAlert";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
+import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
-import { SessionStatusBadge } from "./components/SessionStatusBadge";
+import { SessionLogLossIndicator } from "./components/SessionLogLossIndicator";
+import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
-const ALL_STATUSES = "all";
+const STATUS_OPTIONS = [
+  AgentVaultSessionStatus.Active,
+  AgentVaultSessionStatus.Revoked,
+  AgentVaultSessionStatus.Expired
+];
 
 export const AgentVaultSessionsPage = () => {
   const { t } = useTranslation();
@@ -88,10 +113,17 @@ export const AgentVaultSessionsPage = () => {
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
-  const [statusFilter, setStatusFilter] = useState<AgentVaultSessionStatus | typeof ALL_STATUSES>(
-    ALL_STATUSES
-  );
-  const [scope, setScope] = useState(AgentVaultSessionScope.Mine);
+  const [statuses, setStatuses] = useState<AgentVaultSessionStatus[]>([]);
+  const [scope, setScope] = useState(() => {
+    const stored = getUserTablePreference(
+      "agentVaultSessionsTable",
+      PreferenceKey.SessionScope,
+      AgentVaultSessionScope.All
+    );
+    return Object.values(AgentVaultSessionScope).includes(stored)
+      ? stored
+      : AgentVaultSessionScope.All;
+  });
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(() =>
     getUserTablePreference("agentVaultSessionsTable", PreferenceKey.PerPage, 20)
@@ -99,24 +131,38 @@ export const AgentVaultSessionsPage = () => {
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
+  const { sessionId: openSessionId, openSheet } = useAgentVaultSheetState();
 
   const { data, isPending } = useListAgentVaultSessions({
     scope: isAdmin ? scope : AgentVaultSessionScope.Mine,
-    status: statusFilter === ALL_STATUSES ? undefined : statusFilter,
+    statuses,
     search: debouncedSearch.trim() || undefined,
     limit: perPage,
     offset: (page - 1) * perPage
   });
   const { data: accessBundles } = useListAgentVaultAccessBundles({ limit: 1 });
+  const { data: sessionLogSettings } = useGetAgentVaultSessionLogSettings(isAdmin);
+  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
+  const { subscription } = useSubscription();
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  const isSessionLogPlanLapsed = Boolean(
+    sessionLogSettings && isAgentVaultSessionLogPlanLapsed(sessionLogSettings, subscription)
+  );
 
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
+
+  const loadedOpenSession = sessions.find((session) => session.id === openSessionId);
+  const { data: fetchedOpenSession, isPending: isFetchingOpenSession } =
+    useGetAgentVaultSession(openSessionId);
+  const openSession = fetchedOpenSession ?? loadedOpenSession;
+  const isOpenSessionPending = Boolean(openSessionId) && !openSession && isFetchingOpenSession;
 
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
   // The debounced term, not the typed one: the rows on screen were fetched with this, so keying the copy
   // off the live input would caption a stale result set.
-  const isFiltered = Boolean(debouncedSearch.trim()) || statusFilter !== ALL_STATUSES;
+  const isFiltered = Boolean(debouncedSearch.trim()) || statuses.length > 0;
   const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
 
   let emptyTitle: string;
@@ -146,6 +192,81 @@ export const AgentVaultSessionsPage = () => {
         description="Create sessions that let your agents reach the services in an access bundle."
       />
 
+      {sessionLogHealth?.isStorageFull &&
+        sessionLogSettings &&
+        areAgentVaultSessionLogsOn(sessionLogSettings) && (
+          <Alert variant="danger">
+            <CircleAlertIcon />
+            <AlertDescription>
+              Session logs have reached their limit for this organization. Contact Infisical
+              support.
+            </AlertDescription>
+          </Alert>
+        )}
+
+      {sessionLogHealth?.connectionError &&
+        sessionLogSettings &&
+        areAgentVaultSessionLogsOn(sessionLogSettings) &&
+        !isSessionLogPlanLapsed && (
+          <Alert variant="danger">
+            <CircleAlertIcon />
+            <AlertDescription>
+              <p>{sessionLogHealth.connectionError}</p>
+              <AlertAction>
+                <Button variant="outline" size="sm" asChild>
+                  <Link
+                    to="/organizations/$orgId/agent-vault/settings"
+                    params={{ orgId: currentOrg.id }}
+                  >
+                    Go to Settings
+                  </Link>
+                </Button>
+              </AlertAction>
+            </AlertDescription>
+          </Alert>
+        )}
+
+      {isSessionLogPlanLapsed && (
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertDescription>
+            <p>Your plan no longer includes session logs, so new requests aren&apos;t recorded.</p>
+            <AlertAction>
+              <Button variant="outline" size="sm" onClick={() => setIsUpgradeOpen(true)}>
+                Upgrade
+              </Button>
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {sessionLogSettings &&
+        Boolean(sessionLogSettings.bucket) &&
+        !isSessionLogPlanLapsed &&
+        !areAgentVaultSessionLogsOn(sessionLogSettings) && (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              <p>
+                Sessions aren&apos;t being logged, so there is no record of what your agents
+                reached.
+              </p>
+              <AlertAction>
+                <Button variant="outline" size="sm" asChild>
+                  <Link
+                    to="/organizations/$orgId/agent-vault/settings"
+                    params={{ orgId: currentOrg.id }}
+                  >
+                    Go to Settings
+                  </Link>
+                </Button>
+              </AlertAction>
+            </AlertDescription>
+          </Alert>
+        )}
+
+      {isAdmin && <SessionLogReadAccessAlert />}
+
       <Card>
         <CardHeader>
           <CardTitle>
@@ -167,55 +288,67 @@ export const AgentVaultSessionsPage = () => {
             </Button>
           </CardAction>
         </CardHeader>
-        <CardContent className="flex items-center gap-4">
-          <div className="flex-1">
-            <InputGroup>
-              <InputGroupAddon>
-                <SearchIcon />
-              </InputGroupAddon>
-              <InputGroupInput
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search by identity, email, or access bundle..."
-              />
-            </InputGroup>
-          </div>
-          <Select
-            value={statusFilter}
-            onValueChange={(value) => {
-              setStatusFilter(value as AgentVaultSessionStatus | typeof ALL_STATUSES);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper">
-              <SelectItem value={ALL_STATUSES}>All Statuses</SelectItem>
-              <SelectItem value={AgentVaultSessionStatus.Active}>Active</SelectItem>
-              <SelectItem value={AgentVaultSessionStatus.Revoked}>Revoked</SelectItem>
-              <SelectItem value={AgentVaultSessionStatus.Expired}>Expired</SelectItem>
-            </SelectContent>
-          </Select>
+        <CardContent className="flex items-center gap-2">
+          <InputGroup className="flex-1">
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Search by identity, email, or access bundle..."
+            />
+          </InputGroup>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton aria-label="Filter sessions" variant={statuses.length ? "av" : "outline"}>
+                <FilterIcon />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Status</DropdownMenuLabel>
+              {STATUS_OPTIONS.map((status) => {
+                const { label, icon: Icon, iconClassName } = SESSION_STATUS_PRESENTATION[status];
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={status}
+                    checked={statuses.includes(status)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setStatuses((prev) =>
+                        prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+                      );
+                      setPage(1);
+                    }}
+                  >
+                    <Icon className={iconClassName} />
+                    {label}
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {isAdmin && (
-            <Select
+            <Tabs
               value={scope}
               onValueChange={(value) => {
                 setScope(value as AgentVaultSessionScope);
                 setPage(1);
+                setUserTablePreference(
+                  "agentVaultSessionsTable",
+                  PreferenceKey.SessionScope,
+                  value
+                );
               }}
             >
-              <SelectTrigger aria-label="Session scope">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                <SelectItem value={AgentVaultSessionScope.All}>All Sessions</SelectItem>
-                <SelectItem value={AgentVaultSessionScope.Mine}>My Sessions</SelectItem>
-              </SelectContent>
-            </Select>
+              <TabsList variant="filled">
+                <TabsTrigger value={AgentVaultSessionScope.All}>All Sessions</TabsTrigger>
+                <TabsTrigger value={AgentVaultSessionScope.Mine}>My Sessions</TabsTrigger>
+              </TabsList>
+            </Tabs>
           )}
         </CardContent>
 
@@ -265,23 +398,27 @@ export const AgentVaultSessionsPage = () => {
                 ))}
               {!isPending &&
                 sessions.map((session) => (
-                  <TableRow key={session.id}>
+                  <TableRow
+                    key={session.id}
+                    onClick={() => openSheet(session.id)}
+                    className="cursor-pointer"
+                  >
                     <TableCell>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="flex w-fit items-center gap-2">
-                            {session.identityId ? (
+                            {session.actor.type === AgentVaultMemberType.MachineIdentity ? (
                               <BotIcon className="size-4 text-muted" />
                             ) : (
                               <UserIcon className="size-4 text-muted" />
                             )}
-                            {session.actorName}
+                            {memberDisplayName(session.actor)}
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {session.identityId
-                            ? `${session.identityId} (machine identity)`
-                            : session.actorEmail}
+                          {session.actor.type === AgentVaultMemberType.MachineIdentity
+                            ? `${session.actor.id ?? "Deleted"} (machine identity)`
+                            : memberSubtitle(session.actor)}
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>
@@ -326,16 +463,47 @@ export const AgentVaultSessionsPage = () => {
                       <SessionStatusBadge status={session.status} />
                     </TableCell>
                     <TableCell variant="action">
-                      {session.status === AgentVaultSessionStatus.Active && (
+                      <div className="flex items-center justify-end gap-1">
+                        <SessionLogLossIndicator counts={session.recentSessionLogCounts} />
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label="View session logs"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openSheet(session.id);
+                              }}
+                            >
+                              <LogsIcon />
+                            </IconButton>
+                          </TooltipTrigger>
+                          <TooltipContent>View Session Logs</TooltipContent>
+                        </Tooltip>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <IconButton variant="ghost" size="xs" aria-label="Open session actions">
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label="Open session actions"
+                              onClick={(event) => event.stopPropagation()}
+                            >
                               <MoreHorizontalIcon />
                             </IconButton>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
+                          <DropdownMenuContent
+                            sideOffset={2}
+                            align="end"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <DropdownMenuItem onClick={() => openSheet(session.id)}>
+                              <LogsIcon />
+                              View Session Logs
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="danger"
+                              isDisabled={session.status !== AgentVaultSessionStatus.Active}
                               onClick={() => setSessionToRevoke(session)}
                             >
                               <BanIcon />
@@ -343,7 +511,7 @@ export const AgentVaultSessionsPage = () => {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -391,6 +559,14 @@ export const AgentVaultSessionsPage = () => {
           if (!isOpen) setSessionToRevoke(null);
         }}
       />
+
+      <SessionDetailSheet
+        session={openSession}
+        isPending={isOpenSessionPending}
+        onRevoke={setSessionToRevoke}
+      />
+
+      <AgentVaultSessionLogUpgradeModal isOpen={isUpgradeOpen} onOpenChange={setIsUpgradeOpen} />
     </div>
   );
 };

@@ -59,6 +59,7 @@ export const getDefaultOnPremFeatures = () => {
     honeyTokens: false,
     honeyTokenLimit: 0,
     secretsBrokering: true,
+    agentVaultByoS3: true,
     secretSyncLimit: null,
     maxPamAccounts: null,
     // PKI / Cert Manager

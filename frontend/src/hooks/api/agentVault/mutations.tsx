@@ -18,12 +18,14 @@ import {
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
   TAgentVaultService,
+  TAgentVaultSessionLogSettings,
   TAgentVaultWrittenMember,
   TCreateAgentVaultAccessBundleDTO,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TUpdateAgentVaultAccessBundleDTO,
-  TUpdateAgentVaultServiceDTO
+  TUpdateAgentVaultServiceDTO,
+  TUpdateAgentVaultSessionLogSettingsDTO
 } from "./types";
 
 export const useCreateAgentVaultAccessBundle = () => {
@@ -357,5 +359,31 @@ export const useRevokeAgentVaultMembers = () => {
       return data;
     },
     onSuccess: () => invalidateMembers(queryClient, currentOrg.id)
+  });
+};
+
+export const useUpdateAgentVaultSessionLogSettings = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: TUpdateAgentVaultSessionLogSettingsDTO) => {
+      const { data } = await apiRequest.patch<{ settings: TAgentVaultSessionLogSettings }>(
+        "/api/v1/agent-vault/settings/session-logs",
+        params
+      );
+      return data.settings;
+    },
+    onSuccess: (settings) => {
+      queryClient.setQueryData(agentVaultKeys.sessionLogSettings(currentOrg.id), settings);
+      // Reset, not invalidate: the cached result may be for the previous bucket.
+      queryClient.resetQueries({
+        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id)
+      });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.sessionLogHealth(currentOrg.id)
+      });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
+    }
   });
 };

@@ -42,3 +42,10 @@ export enum AgentVaultSessionScope {
   Mine = "mine",
   All = "all"
 }
+
+export enum AgentVaultSessionLogDecision {
+  Brokered = "brokered",
+  Passthrough = "passthrough",
+  Blocked = "blocked",
+  Error = "error"
+}

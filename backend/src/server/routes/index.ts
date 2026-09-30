@@ -38,6 +38,9 @@ import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/
 import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { agentVaultSessionLogChunkDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-chunk-dal";
+import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
+import { agentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-service";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { clickhouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
@@ -844,7 +847,8 @@ export const registerRoutes = async (
   });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
-    permissionService
+    permissionService,
+    userDAL
   });
 
   // Offline (air-gapped) licenses are stored in LICENSE_KEY too, but must never reach the license
@@ -1880,6 +1884,8 @@ export const registerRoutes = async (
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
+  const agentVaultSessionLogChunkDAL = agentVaultSessionLogChunkDALFactory(db);
+  const agentVaultSessionLogConfigDAL = agentVaultSessionLogConfigDALFactory(db);
 
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL,
@@ -1900,7 +1906,9 @@ export const registerRoutes = async (
     agentVaultSessionAccessBundleDAL,
     agentVaultAccessBundleDAL,
     membershipDAL,
-    permissionService
+    permissionService,
+    kmsService,
+    agentVaultSessionLogChunkDAL
   });
 
   const agentVaultProjectResolver = agentVaultProjectResolverFactory({
@@ -2009,10 +2017,12 @@ export const registerRoutes = async (
     agentVaultServiceCustomHeaderDAL,
     agentVaultServiceSubstitutionDAL,
     agentVaultSessionDAL,
+    agentVaultSessionLogConfigDAL,
     membershipDAL,
     orgDAL,
     permissionService,
     kmsService,
+    licenseService,
     resourceAuthMethodService
   });
 
@@ -3064,8 +3074,7 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    scepTransactionDAL,
-    agentVaultSessionService
+    scepTransactionDAL
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -3188,7 +3197,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     externalGroupOrgRoleMappingDAL,
-    roleDAL
+    roleDAL,
+    orgDAL
   });
 
   const appConnectionCredentialRotationService = appConnectionCredentialRotationServiceFactory({
@@ -3214,6 +3224,18 @@ export const registerRoutes = async (
     identityUaDAL,
     gitHubAppDAL,
     keyStore
+  });
+
+  const agentVaultSessionLogService = agentVaultSessionLogServiceFactory({
+    agentVaultSessionLogChunkDAL,
+    agentVaultSessionLogConfigDAL,
+    agentVaultSessionDAL,
+    agentVaultProxyDAL,
+    appConnectionDAL,
+    appConnectionService,
+    permissionService,
+    kmsService,
+    licenseService
   });
 
   const hsmConnectorService = hsmConnectorServiceFactory({
@@ -4352,6 +4374,7 @@ export const registerRoutes = async (
     agentVaultAccessBundle: agentVaultAccessBundleService,
     agentVaultProxy: agentVaultProxyService,
     agentVaultSession: agentVaultSessionService,
+    agentVaultSessionLog: agentVaultSessionLogService,
     agentVaultMembership: agentVaultMembershipService,
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,

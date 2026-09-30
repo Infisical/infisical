@@ -19,9 +19,10 @@ never in anything the agent holds.
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles, services, credential encryption, grants
 agent-vault-member/          product membership (list, add, role, remove)
-agent-vault-session/         mint, revoke, list, retention sweep
+agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           login (enrollment), heartbeat, resolve
+agent-vault-session-log/     storage settings, chunk ingest, playback
 ```
 
 Routes: `ee/routes/v1/agent-vault-routers/`, prefix `/api/v1/agent-vault`. CLI: `packages/cmd/agent_vault*.go`
@@ -92,10 +93,13 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   the actor is out and work again if the actor is added back. Settled with the product owner.
 - Session actor columns are `SET NULL` so history survives the actor. Resolve refuses a session with neither
   id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
+  `actorType` is stored at mint because `SET NULL` erases which kind of owner it was. It stays nullable (a pod
+  on the previous release writes none) and `toSessionActor` falls back to the backfill's guess.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
-  actor id reads as revoked in the list, the status filter and the sweep, so they agree with resolve refusing
-  it. Expiry is enforced against the clock on every resolve. `sweepRetiredSessions` exists only for the 30 day hard delete; there is no expiry audit
-  event, matching every other product.
+  actor id reads as revoked in the list and the status filter, so they agree with resolve refusing it. Expiry
+  is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
+- **Sessions are never deleted**, so the Sessions page is a full history and a session's row keeps the key its
+  logs need. Settled with the product owner.
 
 ## Proxies
 
@@ -114,13 +118,13 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 
 ## Host and path grammar
 
-`agent-vault-host-pattern.ts` is the grammar of record. The CLI matcher (`packages/agentvault/match.go`) does
+`agent-vault-host-pattern-fns.ts` is the grammar of record. The CLI matcher (`packages/agentvault/match.go`) does
 the matching at runtime and reimplements the same rules, so a change here needs the same change there.
 
 - Paths are rejected *in a host pattern*; `allowedPathPrefixes` is a separate filter that never decodes.
   A filter is judged by what it *allows*, so the refusals are the load-bearing half. The grammar is an
   allowlist because a prefix is compared against the escaped path: one carrying anything Go's encoder
-  rewrites could never match. `agent-vault-path-prefix.ts` is the grammar of record, `policy.go` the match.
+  rewrites could never match. `agent-vault-path-prefix-schemas.ts` is the grammar of record, `policy.go` the match.
 - Methods and path prefixes are filters on a service that already matched, **not** part of the match key,
   so the same-bundle host conflict rule stays host-only. Two services on one host differing only by method
   is still a hard reject.
@@ -169,6 +173,50 @@ header" is the name in every layer; unqualified "header" means the credential's 
   leaves it alone. `$decryptCredential` reads NULL as passthrough, so a bearer row that lost its secret would
   silently stop attaching a credential.
 
+## Session logs
+
+Metadata only (method, host, path, status, decision), never bodies, headers or the query string. The agent is
+hostile input: nothing it sends may erase or hide its own records, so a refused chunk counts as dropped, never
+lost silently.
+
+- **Bytes go proxy to the customer's bucket to the browser.** Infisical keeps one index row per chunk and never
+  seals or opens one. There is no Postgres payload path; AWS only.
+- **PAM session recording is a separate product.** The overlap with `pam-session-recording` is deliberate; don't
+  share code with it.
+- **Keys.** Mint wraps a per-session log key with the project data key, even while session logs are off, and
+  puts `sha256(sessionId|v1)` in front because the KMS wrap takes no context. Unwrap only through
+  `openSessionLogKey`, so a key copied onto another row is refused. A key that won't open turns logs off for
+  that session on resolve: session logs must never break brokering.
+- **The AAD is `sha256("{sessionId}|{chunkId}|v1")`**, pinned by one vector in the CLI's
+  `session_log_crypto_test.go` and `sessionLogDecrypt.test.ts`. Chunk ids are lowercase UUIDv7s because the
+  browser rebuilds the AAD from Postgres's string. A change here is a change in all three places.
+- **Write order is insert, commit, presign.** Row first so a failed upload is a visible gap, presign after commit
+  so no network call holds the config row lock. The PUT is create-only (`If-None-Match: *`, the proxy reads 412
+  as uploaded) with the length and `x-amz-checksum-sha256` signed, so S3 refuses any other body.
+- **A chunk row records its bucket and full key**, and reads presign only chunks in the current bucket, so
+  switching back makes old history readable. A re-send moves the row only through `moveToDestinationIfCurrent`,
+  whose one UPDATE checks the settings. No row locks.
+- **`chunks.proxyId` has no FK**: the browser checks each record's `proxyId` against it, and `SET NULL` would make
+  a deleted proxy's chunks unreadable.
+- **Chunks are accepted for 24 hours after a session ends**, including when its owner is deleted (read from
+  `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
+- **History (`/logs`) pages on `chunkId`, the tail (`/logs/tail`) on our `createdAt`**, re-reading
+  `AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS` and deduping by chunk id. A late chunk has an old id and a new
+  `createdAt`, so the tail can't page on the id.
+- **The org chunk limit is a lifetime counter** and internal: no env var, not documented, surfaced only as
+  `isStorageFull`. Kept as abuse prevention until usage and plans are decided. At the limit writes are refused,
+  never drop-oldest, which would let flooding evict evidence.
+- **Nothing deletes from the bucket**, so the IAM policy asks for no `s3:DeleteObject`.
+- **Session logs are a paid feature (`agentVaultByoS3`).** Without it, nothing new is recorded, but saved logs
+  stay readable. That breaks the License Checks rule in `CODE_QUALITY.md` on purpose. Turning session logs off
+  and removing their connection stay allowed, or the connection could never be deleted.
+- **`/agent-vault/app-connections/aws/*` are the shared builders in `app-connection-endpoints.ts` called with
+  a `resolveScope`.** The project comes from the server, a connection outside Agent Vault is a 404 before any
+  permission check, and responses leave out `projectId`. `createAppConnection` refuses any app but AWS in this
+  project, the general routes included. The UI uses the general `/app-connections/aws` routes.
+- **The admin role carries the CASL `AppConnections` subject**, the one exception to `hasRole(Admin)`, because
+  the shared connection modals read CASL.
+
 ## The CLI
 
 - Trust is stateless: `agent-vault run` fetches the CA from the proxy on every run; `--ca-fingerprint` is an optional
@@ -192,3 +240,6 @@ header" is the name in every layer; unqualified "header" means the credential's 
 - The service template catalog (`helpers/agentVaultTemplates.ts`) is frontend-only and never persisted; icons
   re-derive from the stored host pattern. The backend must never learn a service name.
 - Docs links live in `pages/agent-vault/agent-vault-docs-urls.ts`; keep them pointing at existing pages.
+- The browser fetches session logs straight from S3, so `frontend/index.html`'s CSP `connect-src` must list
+  every host the SDK presigns: `*.s3.<region>`, the path-style `s3.<region>` used for dotted bucket names, and
+  both `s3-fips` forms. A region added to `AWSRegion` needs its hosts there too.
