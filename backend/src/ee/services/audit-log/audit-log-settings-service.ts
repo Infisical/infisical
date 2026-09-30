@@ -117,6 +117,29 @@ export const auditLogSettingsServiceFactory = ({
     }
   };
 
+  const writeScopeSettings = async (
+    scope: { orgId: string; projectId: string | null },
+    changed: [AuditLogEventClass, boolean][]
+  ): Promise<TAuditLogEventClassOverrides> => {
+    const changedClasses = changed.map(([eventClass]) => eventClass);
+    const rows = await auditLogSettingsDAL.transaction(async (tx) => {
+      const existing = await auditLogSettingsDAL.find(scope, { tx });
+      await auditLogSettingsDAL.delete({ ...scope, $in: { eventClass: changedClasses } }, tx);
+      const inserted = await auditLogSettingsDAL.insertMany(
+        changed.map(([eventClass, isEnabled]) => ({ ...scope, eventClass, isEnabled })),
+        tx
+      );
+      return [...existing.filter((row) => !changedClasses.includes(row.eventClass as AuditLogEventClass)), ...inserted];
+    });
+    await invalidateCache(scope.orgId);
+
+    const overrides: TAuditLogEventClassOverrides = {};
+    rows.forEach((row) => {
+      if (isKnownEventClass(row.eventClass)) overrides[row.eventClass] = row.isEnabled;
+    });
+    return overrides;
+  };
+
   const getOrgSettings = async ({ actor }: TGetOrgAuditLogSettingsDTO) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -148,23 +171,17 @@ export const auditLogSettingsServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
+    const org = await orgDAL.findById(actor.orgId);
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });
+
     const changed = [...new Map(eventClasses.map((el) => [el.eventClass, el.isEnabled])).entries()];
+    if (!changed.length) return getOrgSettings({ actor });
 
-    if (changed.length) {
-      await auditLogSettingsDAL.transaction(async (tx) => {
-        await auditLogSettingsDAL.delete(
-          { orgId: actor.orgId, projectId: null, $in: { eventClass: changed.map(([eventClass]) => eventClass) } },
-          tx
-        );
-        await auditLogSettingsDAL.insertMany(
-          changed.map(([eventClass, isEnabled]) => ({ orgId: actor.orgId, projectId: null, eventClass, isEnabled })),
-          tx
-        );
-      });
-      await invalidateCache(actor.orgId);
-    }
-
-    return getOrgSettings({ actor });
+    const overrides = await writeScopeSettings({ orgId: actor.orgId, projectId: null }, changed);
+    return {
+      eventClasses: toSettings(overrides),
+      shouldUseNewPrivilegeSystem: Boolean(org.shouldUseNewPrivilegeSystem)
+    };
   };
 
   const getProjectSettings = async ({
@@ -214,28 +231,17 @@ export const auditLogSettingsServiceFactory = ({
     const project = await projectDAL.findById(dto.projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${dto.projectId}' not found` });
 
+    const org = await orgDAL.findById(project.orgId);
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
+
     const changed = [...new Map(eventClasses.map((el) => [el.eventClass, el.isEnabled])).entries()];
+    if (!changed.length) return getProjectSettings(dto);
 
-    if (changed.length) {
-      await auditLogSettingsDAL.transaction(async (tx) => {
-        await auditLogSettingsDAL.delete(
-          { projectId: dto.projectId, $in: { eventClass: changed.map(([eventClass]) => eventClass) } },
-          tx
-        );
-        await auditLogSettingsDAL.insertMany(
-          changed.map(([eventClass, isEnabled]) => ({
-            orgId: project.orgId,
-            projectId: dto.projectId,
-            eventClass,
-            isEnabled
-          })),
-          tx
-        );
-      });
-      await invalidateCache(project.orgId);
-    }
-
-    return getProjectSettings(dto);
+    const overrides = await writeScopeSettings({ orgId: project.orgId, projectId: dto.projectId }, changed);
+    return {
+      eventClasses: toSettings(overrides),
+      shouldUseNewPrivilegeSystem: Boolean(org.shouldUseNewPrivilegeSystem)
+    };
   };
 
   return {

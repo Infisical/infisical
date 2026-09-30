@@ -1,5 +1,7 @@
+import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { AuditLogEventClass } from "./audit-log-event-classes";
 import { auditLogSettingsServiceFactory, isAuditLogEventEnabled } from "./audit-log-settings-service";
 import { TEffectiveAuditLogSettings } from "./audit-log-settings-types";
@@ -46,12 +48,27 @@ describe("isAuditLogEventEnabled", () => {
 
 type TRow = { orgId: string; projectId: string | null; eventClass: string; isEnabled: boolean };
 
+const orgActor = {
+  type: "user",
+  id: "user-1",
+  authMethod: null,
+  orgId: "org-1",
+  rootOrgId: "org-1",
+  parentOrgId: "org-1"
+} as never;
+
 const createHarness = ({ rows = [] as TRow[] } = {}) => {
   const orgDAL = {
     findById: vi.fn(async (id: string) => ({ id, shouldUseNewPrivilegeSystem: true }))
   };
   const auditLogSettingsDAL = {
-    findByOrgIds: vi.fn(async (orgIds: string[]) => rows.filter((row) => orgIds.includes(row.orgId)))
+    findByOrgIds: vi.fn(async (orgIds: string[]) => rows.filter((row) => orgIds.includes(row.orgId))),
+    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
+    find: vi.fn(async (filter: { orgId: string; projectId: string | null }) =>
+      rows.filter((row) => row.orgId === filter.orgId && row.projectId === filter.projectId)
+    ),
+    delete: vi.fn(async () => []),
+    insertMany: vi.fn(async (data: TRow[]) => data)
   };
   const keyStore = {
     getItem: vi.fn(async () => null),
@@ -59,11 +76,17 @@ const createHarness = ({ rows = [] as TRow[] } = {}) => {
     deleteItem: vi.fn(async () => 1)
   };
 
+  const permissionService = {
+    getOrgPermission: vi.fn(async () => ({
+      permission: createMongoAbility([{ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Settings }])
+    }))
+  };
+
   const service = auditLogSettingsServiceFactory({
     auditLogSettingsDAL: auditLogSettingsDAL as never,
     orgDAL: orgDAL as never,
     projectDAL: {} as never,
-    permissionService: {} as never,
+    permissionService: permissionService as never,
     keyStore: keyStore as never
   });
 
@@ -100,5 +123,46 @@ describe("getEffectiveSettings", () => {
     await service.getEffectiveSettings("org-1");
 
     expect(keyStore.setItemWithExpiry).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("updateOrgSettings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("answers from the rows it wrote and the scope's untouched rows, without re-reading", async () => {
+    const { service, auditLogSettingsDAL, keyStore } = createHarness({
+      rows: [
+        { orgId: "org-1", projectId: null, eventClass: "authentication", isEnabled: false },
+        { orgId: "org-1", projectId: null, eventClass: "data-access", isEnabled: true },
+        { orgId: "org-1", projectId: "p1", eventClass: "data-access", isEnabled: false }
+      ]
+    });
+
+    const result = await service.updateOrgSettings({
+      actor: orgActor,
+      eventClasses: [{ eventClass: AuditLogEventClass.DataAccess, isEnabled: false }]
+    });
+
+    expect(auditLogSettingsDAL.findByOrgIds).not.toHaveBeenCalled();
+    expect(auditLogSettingsDAL.delete).toHaveBeenCalledWith(
+      { orgId: "org-1", projectId: null, $in: { eventClass: ["data-access"] } },
+      expect.anything()
+    );
+    expect(auditLogSettingsDAL.insertMany).toHaveBeenCalledWith(
+      [{ orgId: "org-1", projectId: null, eventClass: "data-access", isEnabled: false }],
+      expect.anything()
+    );
+    expect(keyStore.deleteItem).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      shouldUseNewPrivilegeSystem: true,
+      eventClasses: [
+        { eventClass: AuditLogEventClass.Management, isEnabled: true },
+        { eventClass: AuditLogEventClass.DataAccess, isEnabled: false },
+        { eventClass: AuditLogEventClass.Authentication, isEnabled: false },
+        { eventClass: AuditLogEventClass.Authorization, isEnabled: false }
+      ]
+    });
   });
 });
