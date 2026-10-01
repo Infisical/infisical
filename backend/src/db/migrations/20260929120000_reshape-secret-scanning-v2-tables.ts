@@ -5,11 +5,18 @@ import { TableName } from "../schemas";
 const SCAN_STARTED_AT_LEGACY_INDEX = "secret_scanning_scans_scanning_started_at_index";
 const SCAN_STARTED_AT_INDEX = "secret_scanning_scans_started_at_index";
 const SCAN_TRIGGERED_BY_INDEX = "secret_scanning_scans_triggered_by_user_id_index";
+const DATA_SOURCE_CONNECTION_ID_INDEX = "secret_scanning_data_sources_connectionid_index";
 const FINDING_TRIAGED_BY_INDEX = "secret_scanning_findings_triaged_by_user_id_index";
 
 export async function up(knex: Knex): Promise<void> {
   // Scan workers write to these tables continuously; fail the deploy fast rather than queue behind them.
   await knex.raw("SET LOCAL lock_timeout = '10s'");
+
+  await knex.raw(`CREATE INDEX IF NOT EXISTS ?? ON ?? (??)`, [
+    DATA_SOURCE_CONNECTION_ID_INDEX,
+    TableName.SecretScanningDataSource,
+    "connectionId"
+  ]);
 
   if (await knex.schema.hasColumn(TableName.SecretScanningResource, "type")) {
     await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
@@ -219,4 +226,6 @@ export async function down(knex: Knex): Promise<void> {
       t.string("type").notNullable().alter();
     });
   }
+
+  await knex.raw(`DROP INDEX IF EXISTS ??`, [DATA_SOURCE_CONNECTION_ID_INDEX]);
 }
