@@ -1,6 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, OrganizationActionScope, ProjectMembershipRole, TAuditLogSettings } from "@app/db/schemas";
+import {
+  ActionProjectType,
+  OrganizationActionScope,
+  OrgMembershipRole,
+  ProjectMembershipRole,
+  TAuditLogSettings
+} from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -127,8 +133,8 @@ export const auditLogSettingsServiceFactory = ({
     return project;
   };
 
-  const assertOrgSettingsPermission = async (actor: OrgServiceActor, action: OrgPermissionActions) => {
-    const { permission } = await permissionService.getOrgPermission({
+  const getOrgPermission = (actor: OrgServiceActor) =>
+    permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor: actor.type,
       actorId: actor.id,
@@ -136,8 +142,6 @@ export const auditLogSettingsServiceFactory = ({
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.Settings);
-  };
 
   const toResponse = (
     overrides: TAuditLogEventClassOverrides,
@@ -208,14 +212,20 @@ export const auditLogSettingsServiceFactory = ({
   };
 
   const getOrgSettings = async ({ actor }: TGetOrgAuditLogSettingsDTO) => {
-    await assertOrgSettingsPermission(actor, OrgPermissionActions.Read);
+    const { permission } = await getOrgPermission(actor);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
     const org = await findOrgOrThrow(actor.orgId);
     const rows = await auditLogSettingsDAL.find({ orgId: org.id, projectId: null });
     return toResponse(toOverrides(rows), org);
   };
 
   const updateOrgSettings = async ({ actor, eventClasses }: TUpdateOrgAuditLogSettingsDTO) => {
-    await assertOrgSettingsPermission(actor, OrgPermissionActions.Edit);
+    const { hasRole } = await getOrgPermission(actor);
+    if (!hasRole(OrgMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({
+        message: "Only organization admins can change which audit log event classes are recorded"
+      });
+    }
     const org = await findOrgOrThrow(actor.orgId);
     const overrides = toFullOverrides(eventClasses);
     assertAuthorizationClassAllowed(org, overrides);

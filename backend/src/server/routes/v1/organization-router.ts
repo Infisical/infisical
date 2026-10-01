@@ -180,7 +180,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "updateOrganizationAuditLogSettings",
       tags: [ApiDocsTags.AuditLogs],
-      description: "Update which audit log event classes the organization records",
+      description:
+        "Update which audit log event classes the organization records. Requires the organization admin role.",
       body: updateAuditLogSettingsBodySchema(AUDIT_LOG_SETTINGS.UPDATE_ORG.isEnabled),
       response: {
         200: AuditLogSettingsResponseSchema

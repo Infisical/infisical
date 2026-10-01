@@ -1,7 +1,10 @@
 import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { ActorType } from "@app/services/auth/auth-type";
+
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { AuditLogEventClass } from "./audit-log-event-classes";
 import { auditLogSettingsServiceFactory, isAuditLogEventEnabled } from "./audit-log-settings-service";
 import { TEffectiveAuditLogSettings } from "./audit-log-settings-types";
@@ -57,7 +60,7 @@ const orgActor = {
   parentOrgId: "org-1"
 } as never;
 
-const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true } = {}) => {
+const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true, isAdmin = true } = {}) => {
   const orgDAL = {
     findById: vi.fn(async (id: string) => ({ id, shouldUseNewPrivilegeSystem }))
   };
@@ -79,14 +82,30 @@ const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true
 
   const permissionService = {
     getOrgPermission: vi.fn(async () => ({
-      permission: createMongoAbility([{ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Settings }])
+      permission: createMongoAbility([
+        { action: [OrgPermissionActions.Read, OrgPermissionActions.Edit], subject: OrgPermissionSubjects.Settings }
+      ]),
+      hasRole: (role: string) => isAdmin && role === "admin"
+    })),
+    getProjectPermission: vi.fn(async () => ({
+      permission: createMongoAbility([
+        {
+          action: [ProjectPermissionActions.Read, ProjectPermissionActions.Edit],
+          subject: ProjectPermissionSub.Settings
+        }
+      ]),
+      hasRole: (role: string) => isAdmin && role === "admin"
     }))
+  };
+
+  const projectDAL = {
+    findById: vi.fn(async (id: string) => ({ id, orgId: "org-1" }))
   };
 
   const service = auditLogSettingsServiceFactory({
     auditLogSettingsDAL: auditLogSettingsDAL as never,
     orgDAL: orgDAL as never,
-    projectDAL: {} as never,
+    projectDAL: projectDAL as never,
     permissionService: permissionService as never,
     keyStore: keyStore as never
   });
@@ -127,9 +146,32 @@ describe("getEffectiveSettings", () => {
   });
 });
 
+const fullEventClasses = [
+  { eventClass: AuditLogEventClass.DataAccess, isEnabled: false },
+  { eventClass: AuditLogEventClass.Authentication, isEnabled: true },
+  { eventClass: AuditLogEventClass.Authorization, isEnabled: false }
+];
+
 describe("updateOrgSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  test("refuses a non-admin even with edit on settings", async () => {
+    const { service, auditLogSettingsDAL } = createHarness({ isAdmin: false });
+
+    await expect(service.updateOrgSettings({ actor: orgActor, eventClasses: fullEventClasses })).rejects.toThrow(
+      "Only organization admins can change which audit log event classes are recorded"
+    );
+    expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("still lets a non-admin with read on settings read them", async () => {
+    const { service } = createHarness({ isAdmin: false });
+
+    const result = await service.getOrgSettings({ actor: orgActor });
+
+    expect(result.eventClasses).toHaveLength(4);
   });
 
   test.each([false, true])("refuses any management entry (isEnabled=%s)", async (isEnabled) => {
@@ -245,5 +287,36 @@ describe("updateOrgSettings", () => {
         { eventClass: AuditLogEventClass.Authorization, isEnabled: true }
       ]
     });
+  });
+});
+
+describe("updateProjectSettings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const projectActor = {
+    actor: ActorType.USER,
+    actorId: "user-1",
+    actorAuthMethod: null,
+    actorOrgId: "org-1",
+    projectId: "p1"
+  };
+
+  test("refuses a non-admin even with edit on settings", async () => {
+    const { service, auditLogSettingsDAL } = createHarness({ isAdmin: false });
+
+    await expect(service.updateProjectSettings({ ...projectActor, eventClasses: fullEventClasses })).rejects.toThrow(
+      "Only project admins can change which audit log event classes are recorded"
+    );
+    expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("lets a project admin save", async () => {
+    const { service, auditLogSettingsDAL } = createHarness();
+
+    await service.updateProjectSettings({ ...projectActor, eventClasses: fullEventClasses });
+
+    expect(auditLogSettingsDAL.delete).toHaveBeenCalledWith({ orgId: "org-1", projectId: "p1" }, expect.anything());
   });
 });

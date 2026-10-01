@@ -5,6 +5,7 @@ import {
   useOrganization,
   useOrgPermission
 } from "@app/context";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import { withPermission } from "@app/hoc";
 import { useScopeVariant } from "@app/hooks";
 import { useGetOrgAuditLogSettings, useUpdateOrgAuditLogSettings } from "@app/hooks/api";
@@ -12,9 +13,9 @@ import { useGetOrgAuditLogSettings, useUpdateOrgAuditLogSettings } from "@app/ho
 export const AuditLogSettingsTab = withPermission(
   () => {
     const { currentOrg } = useOrganization();
-    const { permission } = useOrgPermission();
+    const { hasOrgRole } = useOrgPermission();
     const scopeVariant = useScopeVariant();
-    const canEdit = permission.can(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    const canEdit = hasOrgRole(OrgMembershipRole.Admin);
 
     const { data: settings, isPending } = useGetOrgAuditLogSettings(currentOrg.id);
     const { mutateAsync: updateSettings, isPending: isSaving } = useUpdateOrgAuditLogSettings(

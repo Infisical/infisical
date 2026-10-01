@@ -766,7 +766,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "updateProjectAuditLogSettings",
       tags: [ApiDocsTags.AuditLogs],
-      description: "Update which audit log event classes the project records",
+      description: "Update which audit log event classes the project records. Requires the project admin role.",
       params: z.object({
         projectId: z.string().uuid().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.projectId)
       }),
