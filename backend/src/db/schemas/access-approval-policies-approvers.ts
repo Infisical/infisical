@@ -8,13 +8,13 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AccessApprovalPoliciesApproversSchema = z.object({
-  id: z.string().uuid(),
-  policyId: z.string().uuid(),
+  id: z.string().guid(),
+  policyId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  approverUserId: z.string().uuid().nullable().optional(),
-  approverGroupId: z.string().uuid().nullable().optional(),
-  sequence: z.number().default(1).nullable().optional(),
+  approverUserId: z.string().guid().nullable().optional(),
+  approverGroupId: z.string().guid().nullable().optional(),
+  sequence: z.number().nullable().optional(),
   approvalsRequired: z.number().nullable().optional()
 });
 

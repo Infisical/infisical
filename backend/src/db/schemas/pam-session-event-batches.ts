@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamSessionEventBatchesSchema = z.object({
-  id: z.string().uuid(),
-  sessionId: z.string().uuid(),
+  id: z.string().guid(),
+  sessionId: z.string().guid(),
   startOffset: z.coerce.number(),
   encryptedEventsBlob: zodBuffer,
   createdAt: z.date(),

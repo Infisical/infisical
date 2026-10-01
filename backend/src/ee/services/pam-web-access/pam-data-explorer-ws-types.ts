@@ -23,8 +23,8 @@ export enum DataExplorerServerMessageType {
   ConnectionClosed = "connection-closed"
 }
 
-const CorrelatedBaseSchema = z.object({ id: z.string().uuid() });
-const TabScopedBaseSchema = CorrelatedBaseSchema.extend({ connectionId: z.string().uuid() });
+const CorrelatedBaseSchema = z.object({ id: z.string().guid() });
+const TabScopedBaseSchema = CorrelatedBaseSchema.extend({ connectionId: z.string().guid() });
 
 const ControlSchema = z.object({ type: z.literal(DataExplorerClientMessageType.Control), data: z.string() });
 
@@ -50,7 +50,7 @@ const QueryRequestSchema = TabScopedBaseSchema.extend({
 
 const CancelSchema = z.object({
   type: z.literal(DataExplorerClientMessageType.Cancel),
-  connectionId: z.string().uuid()
+  connectionId: z.string().guid()
 });
 
 const OpenConnectionSchema = CorrelatedBaseSchema.extend({
@@ -59,7 +59,7 @@ const OpenConnectionSchema = CorrelatedBaseSchema.extend({
 
 const CloseConnectionSchema = z.object({
   type: z.literal(DataExplorerClientMessageType.CloseConnection),
-  connectionId: z.string().uuid()
+  connectionId: z.string().guid()
 });
 
 const ActivitySchema = z.object({
@@ -128,7 +128,7 @@ const QueryResultResponseSchema = TabScopedBaseSchema.extend({
 
 const ErrorResponseSchema = CorrelatedBaseSchema.extend({
   type: z.literal(DataExplorerServerMessageType.Error),
-  connectionId: z.string().uuid().optional(),
+  connectionId: z.string().guid().optional(),
   transactionOpen: z.boolean().optional(),
   error: z.string(),
   detail: z.string().optional(),
@@ -137,7 +137,7 @@ const ErrorResponseSchema = CorrelatedBaseSchema.extend({
 
 const ConnectionOpenedResponseSchema = CorrelatedBaseSchema.extend({
   type: z.literal(DataExplorerServerMessageType.ConnectionOpened),
-  connectionId: z.string().uuid(),
+  connectionId: z.string().guid(),
   nativeConnectionId: z.number().nullable()
 });
 
@@ -148,7 +148,7 @@ const ConnectionOpenFailedResponseSchema = CorrelatedBaseSchema.extend({
 
 const ConnectionClosedResponseSchema = z.object({
   type: z.literal(DataExplorerServerMessageType.ConnectionClosed),
-  connectionId: z.string().uuid(),
+  connectionId: z.string().guid(),
   reason: z.string()
 });
 

@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -33,7 +34,7 @@ export const QoveryConnectionSchema = z.discriminatedUnion("method", [
 export const SanitizedQoveryConnectionSchema = z.discriminatedUnion("method", [
   BaseQoveryConnectionSchema.extend({
     method: z.literal(QoveryConnectionMethod.AccessToken),
-    credentials: QoveryConnectionAccessTokenCredentialsSchema.pick({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Qovery]} (Access Token)` }))
 ]);
 

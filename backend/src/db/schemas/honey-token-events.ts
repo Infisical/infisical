@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const HoneyTokenEventsSchema = z.object({
-  id: z.string().uuid(),
-  honeyTokenId: z.string().uuid(),
+  id: z.string().guid(),
+  honeyTokenId: z.string().guid(),
   eventType: z.string(),
   metadata: z.unknown().nullable().optional(),
   createdAt: z.date(),

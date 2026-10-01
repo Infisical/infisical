@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ScimEventsSchema, ScimTokensSchema } from "@app/db/schemas";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -25,7 +26,9 @@ const ScimUserSchema = z.object({
     )
     .optional(),
   displayName: z.string().trim(),
-  active: z.union([z.boolean(), z.string().transform((v) => v.toLowerCase() === "true")])
+  active: bidirectionalTransform(z.union([z.boolean(), z.string()]), (v) =>
+    typeof v === "string" ? v.toLowerCase() === "true" : v
+  )
 });
 
 const ScimGroupSchema = z.object({
@@ -150,8 +153,8 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     schema: {
       querystring: z.object({
         since: z.string().trim().optional(),
-        limit: z.coerce.number().min(1).max(100).default(30).optional(),
-        offset: z.coerce.number().min(0).default(0).optional()
+        limit: z.coerce.number().min(1).max(100).optional(),
+        offset: z.coerce.number().min(0).optional()
       }),
       response: {
         200: z.object({

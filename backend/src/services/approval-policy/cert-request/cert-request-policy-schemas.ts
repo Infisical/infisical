@@ -16,7 +16,7 @@ import {
 
 export const CertRequestPolicyInputsSchema = z.object({
   profileName: z.string(),
-  applicationId: z.string().uuid().optional()
+  applicationId: z.string().guid().optional()
 });
 
 export const CertRequestPolicyConditionsSchema = z
@@ -28,7 +28,7 @@ export const CertRequestPolicyConditionsSchema = z
 export const CertRequestPolicyConstraintsSchema = z.object({});
 
 export const CertRequestPolicyRequestDataSchema = z.object({
-  profileId: z.string().uuid(),
+  profileId: z.string().guid(),
   profileName: z.string(),
   certificateRequest: z.object({
     commonName: z.string().optional(),
@@ -63,7 +63,7 @@ export const CertRequestPolicyRequestDataSchema = z.object({
       .optional(),
     customExtensions: z.array(resolvedCustomExtensionSchema).optional()
   }),
-  certificateRequestId: z.string().uuid()
+  certificateRequestId: z.string().guid()
 });
 
 export const CertRequestPolicySchema = BaseApprovalPolicySchema.extend({

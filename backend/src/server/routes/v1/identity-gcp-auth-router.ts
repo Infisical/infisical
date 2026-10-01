@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, GCP_AUTH } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { withoutDefault } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -251,9 +252,11 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       body: z
         .object({
           type: z.enum(["iam", "gce"]).optional(),
-          allowedServiceAccounts: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedServiceAccounts),
-          allowedProjects: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedProjects),
-          allowedZones: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedZones),
+          allowedServiceAccounts: withoutDefault(validateGcpAuthField)
+            .optional()
+            .describe(GCP_AUTH.UPDATE.allowedServiceAccounts),
+          allowedProjects: withoutDefault(validateGcpAuthField).optional().describe(GCP_AUTH.UPDATE.allowedProjects),
+          allowedZones: withoutDefault(validateGcpAuthField).optional().describe(GCP_AUTH.UPDATE.allowedZones),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()

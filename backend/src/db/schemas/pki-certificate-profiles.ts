@@ -8,22 +8,22 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiCertificateProfilesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
-  caId: z.string().uuid().nullable().optional(),
-  certificatePolicyId: z.string().uuid(),
+  caId: z.string().guid().nullable().optional(),
+  certificatePolicyId: z.string().guid(),
   slug: z.string(),
   description: z.string().nullable().optional(),
   enrollmentType: z.string(),
-  estConfigId: z.string().uuid().nullable().optional(),
-  apiConfigId: z.string().uuid().nullable().optional(),
+  estConfigId: z.string().guid().nullable().optional(),
+  apiConfigId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  acmeConfigId: z.string().uuid().nullable().optional(),
+  acmeConfigId: z.string().guid().nullable().optional(),
   issuerType: z.string().default("ca"),
   externalConfigs: z.string().nullable().optional(),
   defaults: z.unknown().nullable().optional(),
-  scepConfigId: z.string().uuid().nullable().optional()
+  scepConfigId: z.string().guid().nullable().optional()
 });
 
 export type TPkiCertificateProfiles = z.infer<typeof PkiCertificateProfilesSchema>;

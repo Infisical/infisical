@@ -35,7 +35,7 @@ export type THoneyTokenProviderDefinition<T extends HoneyTokenType = HoneyTokenT
   type: T;
   name: string;
   connectionApp: AppConnection;
-  configSchema: z.ZodType<THoneyTokenConfigByType[T], z.ZodTypeDef, unknown>;
+  configSchema: z.ZodType<THoneyTokenConfigByType[T], unknown>;
   credentialsResponseSchema: z.ZodType<{
     type: T;
     credentials: THoneyTokenDisplayCredentialsByType[T];

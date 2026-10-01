@@ -10,13 +10,13 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamDiscoveredAccountsSchema = z.object({
-  id: z.string().uuid(),
-  discoverySourceId: z.string().uuid(),
+  id: z.string().guid(),
+  discoverySourceId: z.string().guid(),
   accountType: z.string(),
   name: z.string(),
   fingerprint: z.string(),
   encryptedDetails: zodBuffer,
-  importedAccountId: z.string().uuid().nullable().optional(),
+  importedAccountId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   isStale: z.boolean().default(false),

@@ -8,15 +8,15 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiAcmeAccountsSchema = z.object({
-  id: z.string().uuid(),
-  profileId: z.string().uuid(),
+  id: z.string().guid(),
+  profileId: z.string().guid(),
   emails: z.string().array(),
   publicKey: z.unknown(),
   publicKeyThumbprint: z.string(),
   alg: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  applicationProfileId: z.string().uuid().nullable().optional()
+  applicationProfileId: z.string().guid().nullable().optional()
 });
 
 export type TPkiAcmeAccounts = z.infer<typeof PkiAcmeAccountsSchema>;

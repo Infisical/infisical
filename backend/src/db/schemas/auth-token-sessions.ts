@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AuthTokenSessionsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   ip: z.string(),
   userAgent: z.string().nullable().optional(),
   refreshVersion: z.number().default(1),
@@ -16,7 +16,7 @@ export const AuthTokenSessionsSchema = z.object({
   lastUsed: z.date(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  userId: z.string().uuid()
+  userId: z.string().guid()
 });
 
 export type TAuthTokenSessions = z.infer<typeof AuthTokenSessionsSchema>;

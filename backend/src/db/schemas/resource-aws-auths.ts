@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ResourceAwsAuthsSchema = z.object({
-  id: z.string().uuid(),
-  authMethodId: z.string().uuid(),
+  id: z.string().guid(),
+  authMethodId: z.string().guid(),
   allowedPrincipalArns: z.string().default(""),
   allowedAccountIds: z.string().default(""),
   createdAt: z.date(),

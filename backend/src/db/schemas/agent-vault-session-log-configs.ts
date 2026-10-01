@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultSessionLogConfigsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   enabled: z.boolean().default(false),
-  appConnectionId: z.string().uuid().nullable().optional(),
+  appConnectionId: z.string().guid().nullable().optional(),
   bucket: z.string().nullable().optional(),
   region: z.string().nullable().optional(),
   keyPrefix: z.string().nullable().optional(),

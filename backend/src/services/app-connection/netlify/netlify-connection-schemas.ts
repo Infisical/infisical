@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -36,7 +37,7 @@ export const NetlifyConnectionSchema = BaseNetlifyConnectionSchema.extend({
 export const SanitizedNetlifyConnectionSchema = z.discriminatedUnion("method", [
   BaseNetlifyConnectionSchema.extend({
     method: NetlifyConnectionMethodSchema,
-    credentials: NetlifyConnectionAccessTokenCredentialsSchema.pick({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Netlify]} (Access Token)` }))
 ]);
 

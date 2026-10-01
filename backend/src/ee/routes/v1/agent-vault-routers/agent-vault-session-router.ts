@@ -27,13 +27,13 @@ import { actorContext } from "./agent-vault-router-fns";
 import { AgentVaultSessionActorSchema } from "./agent-vault-schemas";
 
 const SessionAccessBundleSchema = z.object({
-  id: z.string().uuid().nullable(),
+  id: z.string().guid().nullable(),
   name: z.string(),
   position: z.number()
 });
 
 const SessionSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
+  id: z.string().guid().describe(AGENT_VAULT.SESSION.sessionId),
   actor: AgentVaultSessionActorSchema,
   status: z.nativeEnum(AgentVaultSessionStatus),
   expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
@@ -112,7 +112,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       operationId: "getAgentVaultSession",
       description: "Gets an Agent Vault session.",
       tags: [ApiDocsTags.AgentVaultSessions],
-      params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
+      params: z.object({ sessionId: z.string().guid().describe(AGENT_VAULT.SESSION.sessionId) }),
       response: {
         200: z.object({ session: SessionWithLogCountsSchema })
       }
@@ -172,7 +172,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       response: {
         200: z.object({
           session: z.object({
-            id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
+            id: z.string().guid().describe(AGENT_VAULT.SESSION.sessionId),
             token: z.string().describe(AGENT_VAULT.SESSION.token),
             expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
             createdAt: z.date(),
@@ -239,7 +239,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       operationId: "revokeAgentVaultSession",
       description: "Revoke an Agent Vault session",
       tags: [ApiDocsTags.AgentVaultSessions],
-      params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
+      params: z.object({ sessionId: z.string().guid().describe(AGENT_VAULT.SESSION.sessionId) }),
       response: { 200: z.object({ session: SessionSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),

@@ -40,7 +40,7 @@ export const AllowedEmailDomainsSchema = z
         code: z.ZodIssueCode.too_big,
         maximum: MAX_ALLOWED_EMAIL_DOMAINS_LENGTH,
         inclusive: true,
-        type: "string",
+        origin: "string",
         message: `Email domains must be ${MAX_ALLOWED_EMAIL_DOMAINS_LENGTH} characters or fewer`
       });
     }

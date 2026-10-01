@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const UserNotificationsDefaultSchema = z.object({
-  id: z.string().uuid(),
-  userId: z.string().uuid(),
-  orgId: z.string().uuid().nullable().optional(),
+  id: z.string().guid(),
+  userId: z.string().guid(),
+  orgId: z.string().guid().nullable().optional(),
   type: z.string(),
   title: z.string(),
   body: z.string().nullable().optional(),

@@ -10,9 +10,9 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiSignerCertificateIssuanceJobsSchema = z.object({
-  id: z.string().uuid(),
-  signerId: z.string().uuid(),
-  caId: z.string().uuid(),
+  id: z.string().guid(),
+  signerId: z.string().guid(),
+  caId: z.string().guid(),
   caType: z.string(),
   status: z.string(),
   commonName: z.string(),
@@ -26,11 +26,11 @@ export const PkiSignerCertificateIssuanceJobsSchema = z.object({
   nextPollAt: z.date(),
   lastAttemptAt: z.date().nullable().optional(),
   failureReason: z.string().nullable().optional(),
-  certificateId: z.string().uuid().nullable().optional(),
+  certificateId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   keySource: z.string().default("infisical"),
-  hsmConnectorId: z.string().uuid().nullable().optional(),
+  hsmConnectorId: z.string().guid().nullable().optional(),
   hsmKeyLabel: z.string().nullable().optional(),
   hsmPublicKeySpki: zodBuffer.nullable().optional()
 });

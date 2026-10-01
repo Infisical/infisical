@@ -8,13 +8,13 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const FolderCommitsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   commitId: z.coerce.bigint(),
   actorMetadata: z.unknown(),
   actorType: z.string(),
   message: z.string().nullable().optional(),
-  folderId: z.string().uuid(),
-  envId: z.string().uuid(),
+  folderId: z.string().guid(),
+  envId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

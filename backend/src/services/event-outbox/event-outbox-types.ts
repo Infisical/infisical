@@ -50,7 +50,7 @@ const keySchema = z
 
 export const EventInputSchema = z.object({
   eventType: keySchema,
-  payload: z.record(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
   idempotencyKey: z.string().trim().min(1).max(MAX_OUTBOX_KEY_LENGTH).optional(),
   occurredAt: z.date().optional()
 });

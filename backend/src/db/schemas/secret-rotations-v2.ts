@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretRotationsV2Schema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   type: z.string(),
@@ -19,8 +19,8 @@ export const SecretRotationsV2Schema = z.object({
   encryptedGeneratedCredentials: zodBuffer,
   isAutoRotationEnabled: z.boolean().default(true),
   activeIndex: z.number().default(0),
-  folderId: z.string().uuid(),
-  connectionId: z.string().uuid(),
+  folderId: z.string().guid(),
+  connectionId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   rotationInterval: z.number(),

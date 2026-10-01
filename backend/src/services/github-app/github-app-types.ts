@@ -60,8 +60,8 @@ export type TGitHubAppManifestResponse = {
 };
 
 export const SanitizedGitHubAppSchema = z.object({
-  id: z.string().uuid().nullable(),
-  orgId: z.string().uuid(),
+  id: z.string().guid().nullable(),
+  orgId: z.string().guid(),
   projectId: z.string().nullable(),
   name: z.string(),
   appId: z.string(),

@@ -8,16 +8,16 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const CertificateInventoryViewsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   name: z.string(),
   filters: z.unknown(),
   columns: z.unknown().nullable().optional(),
-  createdByUserId: z.string().uuid().nullable().optional(),
+  createdByUserId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   isShared: z.boolean().default(false),
-  applicationId: z.string().uuid().nullable().optional()
+  applicationId: z.string().guid().nullable().optional()
 });
 
 export type TCertificateInventoryViews = z.infer<typeof CertificateInventoryViewsSchema>;

@@ -9,26 +9,26 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 
 const ApiEnrollmentSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   autoRenew: z.boolean(),
   renewBeforeDays: z.number().int().nullable()
 });
 
 const EstEnrollmentStateSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   disableBootstrapCaValidation: z.boolean(),
   estEndpointUrl: z.string()
 });
 
 const AcmeEnrollmentStateSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   skipDnsOwnershipVerification: z.boolean(),
   skipEabBinding: z.boolean(),
   directoryUrl: z.string()
 });
 
 const ScepEnrollmentStateSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   challengeType: z.nativeEnum(ScepChallengeType),
   includeCaCertInResponse: z.boolean(),
   allowCertBasedRenewal: z.boolean(),
@@ -38,13 +38,13 @@ const ScepEnrollmentStateSchema = z.object({
   challengeEndpointUrl: z.string().nullable(),
   raCertificatePem: z.string(),
   raCertExpiresAt: z.date(),
-  validationConnectionId: z.string().uuid().nullable(),
+  validationConnectionId: z.string().guid().nullable(),
   signRaWithCa: z.boolean()
 });
 
 const EnrollmentStateSchema = z.object({
-  applicationId: z.string().uuid(),
-  profileId: z.string().uuid(),
+  applicationId: z.string().guid(),
+  profileId: z.string().guid(),
   api: ApiEnrollmentSchema.nullable(),
   est: EstEnrollmentStateSchema.nullable(),
   acme: AcmeEnrollmentStateSchema.nullable(),
@@ -66,8 +66,8 @@ export const registerPkiApplicationEnrollmentStateRouter = async (server: Fastif
       description: "Get the enrollment state for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
-        applicationId: z.string().uuid(),
-        profileId: z.string().uuid()
+        applicationId: z.string().guid(),
+        profileId: z.string().guid()
       }),
       response: { 200: EnrollmentStateSchema }
     },

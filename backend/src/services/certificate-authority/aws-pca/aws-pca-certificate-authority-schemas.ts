@@ -11,7 +11,7 @@ import {
 } from "../certificate-authority-schemas";
 
 export const AwsPcaCertificateAuthorityConfigurationSchema = z.object({
-  appConnectionId: z.string().uuid().trim().describe(CertificateAuthorities.CONFIGURATIONS.AWS_PCA.appConnectionId),
+  appConnectionId: z.string().guid().trim().describe(CertificateAuthorities.CONFIGURATIONS.AWS_PCA.appConnectionId),
   certificateAuthorityArn: z
     .string()
     .trim()

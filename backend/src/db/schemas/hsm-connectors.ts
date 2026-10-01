@@ -10,12 +10,12 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const HsmConnectorsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   projectId: z.string(),
-  gatewayId: z.string().uuid().nullable().optional(),
-  gatewayPoolId: z.string().uuid().nullable().optional(),
+  gatewayId: z.string().guid().nullable().optional(),
+  gatewayPoolId: z.string().guid().nullable().optional(),
   encryptedCredentials: zodBuffer,
   createdAt: z.date(),
   updatedAt: z.date()

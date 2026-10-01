@@ -133,7 +133,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         permissions: ProjectPermissionV2Schema.array()
           .describe(PROJECT_ROLE.UPDATE.permissions)
           .optional()
-          .superRefine(checkForInvalidPermissionCombination)
+          .superRefine((permissions) => {
+            checkForInvalidPermissionCombination(permissions);
+          })
       }),
       response: {
         200: z.object({
@@ -354,7 +356,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        roleId: z.string().trim().uuid().describe(PROJECT_ROLE.GET_ROLE_BY_ID.roleId)
+        roleId: z.string().trim().guid().describe(PROJECT_ROLE.GET_ROLE_BY_ID.roleId)
       }),
       response: {
         200: z.object({

@@ -1,6 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { partialWithoutDefaults } from "@app/lib/zod";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   assertKnownHostKeysAreNegotiable,
@@ -130,8 +131,8 @@ export const CreateLinuxServerPkiSyncSchema = z
     credentials: LinuxServerPkiSyncCredentialsSchema.optional(),
     subscriberId: z.string().nullish(),
     connectionId: z.string(),
-    applicationId: z.string().uuid().optional(),
-    certificateIds: z.array(z.string().uuid()).optional(),
+    applicationId: z.string().guid().optional(),
+    certificateIds: z.array(z.string().guid()).optional(),
     filters: PkiSyncFiltersField
   })
   .superRefine((data, ctx) => {
@@ -167,5 +168,5 @@ export const LinuxServerPkiSyncListItemSchema = z.object({
 
 export const LinuxServerPkiSyncHealthCheckTestSchema = BaseHealthCheckTestSchema.extend({
   destinationConfig: LinuxServerPkiSyncConfigSchema,
-  syncOptions: LinuxServerPkiSyncOptionsSchema.partial()
+  syncOptions: partialWithoutDefaults(LinuxServerPkiSyncOptionsSchema)
 });

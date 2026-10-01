@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const GatewaysSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   serialNumber: z.string(),
   keyAlgorithm: z.string(),
@@ -18,8 +18,8 @@ export const GatewaysSchema = z.object({
   expiration: z.date(),
   heartbeat: z.date().nullable().optional(),
   relayAddress: zodBuffer,
-  orgGatewayRootCaId: z.string().uuid(),
-  identityId: z.string().uuid(),
+  orgGatewayRootCaId: z.string().guid(),
+  identityId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

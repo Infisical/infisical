@@ -263,8 +263,8 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        offset: z.coerce.number().min(0).default(0).describe(IDENTITIES.LIST.offset).optional(),
-        limit: z.coerce.number().min(1).max(1000).default(20).describe(IDENTITIES.LIST.limit).optional(),
+        offset: z.coerce.number().min(0).describe(IDENTITIES.LIST.offset).optional(),
+        limit: z.coerce.number().min(1).max(1000).describe(IDENTITIES.LIST.limit).optional(),
         search: z.string().trim().describe(IDENTITIES.LIST.search).optional()
       }),
       response: {

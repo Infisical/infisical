@@ -22,21 +22,7 @@ export const SearchResourceOperatorSchema = z.union([
 
 export type TSearchResourceOperator = z.infer<typeof SearchResourceOperatorSchema>;
 
-export type TSearchResource = {
-  [k: string]: z.ZodOptional<
-    z.ZodUnion<
-      [
-        z.ZodEffects<z.ZodString | z.ZodNumber>,
-        z.ZodObject<{
-          [SearchResourceOperators.$eq]?: z.ZodOptional<z.ZodEffects<z.ZodString | z.ZodNumber>>;
-          [SearchResourceOperators.$neq]?: z.ZodOptional<z.ZodEffects<z.ZodString | z.ZodNumber>>;
-          [SearchResourceOperators.$in]?: z.ZodOptional<z.ZodArray<z.ZodEffects<z.ZodString | z.ZodNumber>>>;
-          [SearchResourceOperators.$contains]?: z.ZodOptional<z.ZodEffects<z.ZodString>>;
-        }>
-      ]
-    >
-  >;
-};
+export type TSearchResource = Record<string, z.ZodOptional>;
 
 export const buildSearchZodSchema = <T extends TSearchResource>(schema: z.ZodObject<T>) => {
   return schema.extend({ $or: schema.array().max(5).optional() }).optional();

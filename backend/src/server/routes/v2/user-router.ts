@@ -109,7 +109,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
                   attestationObject: z.string()
                 })
                 .passthrough(),
-              clientExtensionResults: z.record(z.unknown()).default({}),
+              clientExtensionResults: z.record(z.string(), z.unknown()).default({}),
               type: z.literal("public-key")
             })
             .passthrough(),
@@ -491,14 +491,14 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           user: z.object({
-            id: z.string().uuid(),
+            id: z.string().guid(),
             email: z.string().nullable().optional(),
             authMethods: z.string().array().nullable().optional(),
-            superAdmin: z.boolean().default(false).nullable().optional(),
+            superAdmin: z.boolean().nullable().optional(),
             firstName: z.string().nullable().optional(),
             lastName: z.string().nullable().optional(),
-            isAccepted: z.boolean().default(false).nullable().optional(),
-            isMfaEnabled: z.boolean().default(false).nullable().optional(),
+            isAccepted: z.boolean().nullable().optional(),
+            isMfaEnabled: z.boolean().nullable().optional(),
             mfaMethods: z
               .string()
               .array()
@@ -516,11 +516,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
             updatedAt: z.date(),
             isGhost: z.boolean().default(false),
             username: z.string(),
-            isEmailVerified: z.boolean().default(false).nullable().optional(),
-            consecutiveFailedMfaAttempts: z.number().default(0).nullable().optional(),
-            isLocked: z.boolean().default(false).nullable().optional(),
+            isEmailVerified: z.boolean().nullable().optional(),
+            consecutiveFailedMfaAttempts: z.number().nullable().optional(),
+            isLocked: z.boolean().nullable().optional(),
             temporaryLockDateEnd: z.date().nullable().optional(),
-            consecutiveFailedPasswordAttempts: z.number().default(0).nullable().optional(),
+            consecutiveFailedPasswordAttempts: z.number().nullable().optional(),
             selectedMfaMethod: z.string().nullable().optional(),
             isGitHubVerified: z.boolean().nullable().optional(),
             isGitLabVerified: z.boolean().nullable().optional(),
@@ -539,7 +539,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
       const user = await server.services.user.getMe(req.permission.id);
-      return { user };
+      return { user: { ...user, mfaMethods: null } };
     }
   });
 

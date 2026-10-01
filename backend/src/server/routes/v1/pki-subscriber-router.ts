@@ -86,7 +86,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         caId: z
           .string()
           .trim()
-          .uuid("CA ID must be a valid UUID")
+          .guid("CA ID must be a valid UUID")
           .min(1, "CA ID is required")
           .describe(PKI_SUBSCRIBERS.CREATE.caId),
         name: slugSchema({ min: 1, max: 64, field: "name" }).describe(PKI_SUBSCRIBERS.CREATE.name),
@@ -260,7 +260,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         caId: z
           .string()
           .trim()
-          .uuid("CA ID must be a valid UUID")
+          .guid("CA ID must be a valid UUID")
           .min(1, "CA ID is required")
           .optional()
           .describe(PKI_SUBSCRIBERS.UPDATE.caId),

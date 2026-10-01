@@ -10,10 +10,10 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultSessionsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
-  userId: z.string().uuid().nullable().optional(),
-  identityId: z.string().uuid().nullable().optional(),
+  userId: z.string().guid().nullable().optional(),
+  identityId: z.string().guid().nullable().optional(),
   actorName: z.string(),
   actorEmail: z.string().nullable().optional(),
   tokenHash: z.string(),

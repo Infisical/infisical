@@ -2,6 +2,7 @@ import RE2 from "re2";
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -38,15 +39,18 @@ export const PowerDnsConnectionApiKeyCredentialsSchema = z.object({
     .min(1, "API key required")
     .max(512, "API key cannot exceed 512 characters")
     .describe("The value of the PowerDNS api-key setting."),
-  serverId: z
-    .string()
-    .trim()
-    .max(64, "Server ID cannot exceed 64 characters")
-    .refine((value) => !value || SERVER_ID_FORMAT.test(value), {
-      message: "Server ID may only contain letters, numbers, dots, hyphens and underscores"
-    })
-    .refine((value) => !value.includes(".."), { message: "Server ID cannot contain '..'" })
-    .transform((value) => value || undefined)
+  serverId: bidirectionalTransform(
+    z
+      .string()
+      .trim()
+      .max(64, "Server ID cannot exceed 64 characters")
+      .refine((value) => !value || SERVER_ID_FORMAT.test(value), {
+        message: "Server ID may only contain letters, numbers, dots, hyphens and underscores"
+      })
+      .refine((value) => !value.includes(".."), { message: "Server ID cannot contain '..'" })
+      .optional(),
+    (value) => value || undefined
+  )
     .optional()
     .describe(
       "The PowerDNS API server ID. Leave unset unless you connect through a proxy fronting several servers; the Authoritative Server always reports 'localhost'."
@@ -55,11 +59,10 @@ export const PowerDnsConnectionApiKeyCredentialsSchema = z.object({
     .boolean()
     .optional()
     .describe("Whether to reject PowerDNS TLS certificates that are not trusted. Defaults to true."),
-  sslCertificate: z
-    .string()
-    .trim()
-    .max(8192, "SSL certificate cannot exceed 8192 characters")
-    .transform((value) => value || undefined)
+  sslCertificate: bidirectionalTransform(
+    z.string().trim().max(8192, "SSL certificate cannot exceed 8192 characters").optional(),
+    (value) => value || undefined
+  )
     .optional()
     .describe("A PEM-encoded CA certificate to trust when connecting to PowerDNS over HTTPS.")
 });

@@ -54,14 +54,14 @@ const folderAccessFolderFields = (docs: { environmentSlug: string; secretPath: s
 
 const userFolderAccessParamsSchema = z.object({
   projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.CREATE.projectId),
-  userId: z.string().uuid().describe(FOLDER_ACCESS.CREATE.userId)
+  userId: z.string().guid().describe(FOLDER_ACCESS.CREATE.userId)
 });
 
 const folderAccessCreateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS.CREATE);
 const folderAccessUpdateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS.UPDATE);
 
 const userFolderAccessResponseSchema = SanitizedFolderAccessSchema.extend({
-  userId: z.string().uuid()
+  userId: z.string().guid()
 });
 
 const toSecretFolderAccessAuditMetadata = (
@@ -201,8 +201,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        projectId: z.string().min(1).uuid().trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP_BY_USER_ID.projectId),
-        userId: z.string().min(1).uuid().trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP_BY_USER_ID.userId)
+        projectId: z.string().min(1).guid().trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP_BY_USER_ID.projectId),
+        userId: z.string().min(1).guid().trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP_BY_USER_ID.userId)
       }),
       response: {
         200: z.object({
@@ -958,7 +958,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       ],
       params: z.object({
         projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.LIST_USER_GRANTS.projectId),
-        userId: z.string().uuid().describe(FOLDER_ACCESS.LIST_USER_GRANTS.userId)
+        userId: z.string().guid().describe(FOLDER_ACCESS.LIST_USER_GRANTS.userId)
       }),
       response: {
         200: z.object({

@@ -23,8 +23,8 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
           githubHost: z.string().trim().optional(),
           installState: z.string().trim().min(1),
           projectId: z.string().trim().optional(),
-          gatewayId: z.string().uuid().optional(),
-          gatewayPoolId: z.string().uuid().optional()
+          gatewayId: z.string().guid().optional(),
+          gatewayPoolId: z.string().guid().optional()
         })
         .refine((data) => !(data.gatewayId && data.gatewayPoolId), {
           message: "Cannot specify both a gateway and a gateway pool",
@@ -33,7 +33,7 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           state: z.string(),
-          manifest: z.record(z.unknown()),
+          manifest: z.record(z.string(), z.unknown()),
           githubActionUrl: z.string()
         })
       }
@@ -118,7 +118,7 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({

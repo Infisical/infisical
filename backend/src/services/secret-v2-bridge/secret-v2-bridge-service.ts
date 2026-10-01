@@ -1930,7 +1930,6 @@ export const secretV2BridgeServiceFactory = ({
                         color: z.string().nullable().optional()
                       })
                       .array()
-                      .default([])
                       .optional()
                   }).parse({
                     ...el,

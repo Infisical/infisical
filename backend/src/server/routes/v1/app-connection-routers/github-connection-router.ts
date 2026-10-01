@@ -32,7 +32,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listGitHubRepositories",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -61,7 +61,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listGitHubOrganizations",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -88,7 +88,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listGitHubEnvironments",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         repo: z.string().min(1, "Repository name is required"),

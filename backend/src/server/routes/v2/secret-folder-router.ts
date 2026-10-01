@@ -496,7 +496,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       ],
       body: z.object({
         projectId: z.string().trim(),
-        folderId: z.string().trim().uuid(),
+        folderId: z.string().trim().guid(),
         destinationEnvironment: z.string().trim(),
         destinationPath: z.string().trim().default("/").transform(prefixWithSlash).transform(removeTrailingSlash)
       }),

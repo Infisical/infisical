@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AlertsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   resourceType: z.string(),
@@ -17,9 +17,9 @@ export const AlertsSchema = z.object({
   triggerType: z.string(),
   condition: z.unknown().nullable().optional(),
   enabled: z.boolean().default(true),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   projectId: z.string().nullable().optional(),
-  createdByActorId: z.string().uuid(),
+  createdByActorId: z.string().guid(),
   createdByActorType: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()

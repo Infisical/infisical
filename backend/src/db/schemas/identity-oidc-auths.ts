@@ -10,12 +10,12 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityOidcAuthsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   accessTokenTTL: z.coerce.number().default(7200),
   accessTokenMaxTTL: z.coerce.number().default(7200),
   accessTokenNumUsesLimit: z.coerce.number().default(0),
   accessTokenTrustedIps: z.unknown(),
-  identityId: z.string().uuid(),
+  identityId: z.string().guid(),
   oidcDiscoveryUrl: z.string(),
   encryptedCaCert: z.string().nullable().optional(),
   caCertIV: z.string().nullable().optional(),
@@ -29,7 +29,7 @@ export const IdentityOidcAuthsSchema = z.object({
   encryptedCaCertificate: zodBuffer.nullable().optional(),
   claimMetadataMapping: z.unknown().nullable().optional(),
   accessTokenPeriod: z.coerce.number().default(0),
-  templateId: z.string().uuid().nullable().optional()
+  templateId: z.string().guid().nullable().optional()
 });
 
 export type TIdentityOidcAuths = z.infer<typeof IdentityOidcAuthsSchema>;

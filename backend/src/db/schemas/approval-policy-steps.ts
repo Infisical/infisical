@@ -8,12 +8,12 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ApprovalPolicyStepsSchema = z.object({
-  id: z.string().uuid(),
-  policyId: z.string().uuid(),
+  id: z.string().guid(),
+  policyId: z.string().guid(),
   name: z.string().nullable().optional(),
   stepNumber: z.number(),
   requiredApprovals: z.number(),
-  notifyApprovers: z.boolean().default(false).nullable().optional()
+  notifyApprovers: z.boolean().nullable().optional()
 });
 
 export type TApprovalPolicySteps = z.infer<typeof ApprovalPolicyStepsSchema>;

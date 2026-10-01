@@ -30,7 +30,7 @@ export const registerAzureDnsConnectionRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "listAzureDnsZones",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z

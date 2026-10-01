@@ -91,7 +91,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       response: {
         200: z.object({
           dynamicSecret: SanitizedDynamicSecretSchema.extend({
-            inputs: z.unknown()
+            inputs: z.unknown().optional()
           })
         })
       }
@@ -198,7 +198,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       response: {
         200: z.object({
           dynamicSecret: SanitizedDynamicSecretSchema.extend({
-            inputs: z.unknown()
+            inputs: z.unknown().optional()
           })
         })
       }
@@ -338,7 +338,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       response: {
         200: z.object({
           dynamicSecret: SanitizedDynamicSecretSchema.extend({
-            inputs: z.unknown()
+            inputs: z.unknown().optional()
           })
         })
       }
@@ -493,7 +493,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       operationId: "getSshDynamicSecretCaSetup",
       description: "Get SSH dynamic secret CA setup script for configuring the target server to trust the CA",
       params: z.object({
-        dynamicSecretId: z.string().uuid()
+        dynamicSecretId: z.string().guid()
       }),
       response: {
         200: z.string()
@@ -592,7 +592,7 @@ echo ""
       operationId: "getSshDynamicSecretCaPublicKey",
       description: "Get SSH dynamic secret CA public key",
       params: z.object({
-        dynamicSecretId: z.string().uuid()
+        dynamicSecretId: z.string().guid()
       }),
       response: {
         200: z.object({

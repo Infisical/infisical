@@ -31,7 +31,7 @@ export const registerOnaConnectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       operationId: "listOnaProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z

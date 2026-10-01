@@ -51,7 +51,7 @@ type TSecretReferenceNode = z.infer<typeof SecretReferenceNode> & { children: TS
 
 const SecretReferenceNodeTree: z.ZodType<TSecretReferenceNode> = SecretReferenceNode.extend({
   children: z.lazy(() => SecretReferenceNodeTree.array())
-});
+}).meta({ id: "DeprecatedSecretReferenceNode" });
 
 export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -755,7 +755,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.UPDATE.type),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds),
-        metadata: z.record(z.string()).optional(),
+        metadata: z.record(z.string(), z.string()).optional(),
         secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
         secretReminderNote: z
           .string()
@@ -1240,7 +1240,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         secretCommentCiphertext: z.string().trim().optional(),
         secretCommentIV: z.string().trim().optional(),
         secretCommentTag: z.string().trim().optional(),
-        metadata: z.record(z.string()).optional(),
+        metadata: z.record(z.string(), z.string()).optional(),
         skipMultilineEncoding: z.boolean().optional()
       }),
       params: z.object({
@@ -1434,7 +1434,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         secretKeyIV: z.string().trim().optional(),
         secretKeyTag: z.string().trim().optional(),
         secretKeyCiphertext: z.string().trim().optional(),
-        metadata: z.record(z.string()).optional()
+        metadata: z.record(z.string(), z.string()).optional()
       }),
       response: {
         200: z.union([
@@ -1824,7 +1824,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             secretCommentCiphertext: z.string().trim().optional(),
             secretCommentIV: z.string().trim().optional(),
             secretCommentTag: z.string().trim().optional(),
-            metadata: z.record(z.string()).optional(),
+            metadata: z.record(z.string(), z.string()).optional(),
             skipMultilineEncoding: z.boolean().optional()
           })
           .array()
@@ -2249,7 +2249,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
               .describe(RAW_SECRETS.CREATE.secretValue),
             secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
             skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
-            metadata: z.record(z.string()).optional(),
+            metadata: z.record(z.string(), z.string()).optional(),
             secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
             tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds)
           })

@@ -10,14 +10,14 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityTlsCertAuthsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   accessTokenTTL: z.coerce.number().default(7200),
   accessTokenMaxTTL: z.coerce.number().default(7200),
   accessTokenNumUsesLimit: z.coerce.number().default(0),
   accessTokenTrustedIps: z.unknown(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  identityId: z.string().uuid(),
+  identityId: z.string().guid(),
   allowedCommonNames: z.string().nullable().optional(),
   encryptedCaCertificate: zodBuffer,
   allowedSubjectAltNames: z.string().nullable().optional(),

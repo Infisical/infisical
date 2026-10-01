@@ -8,13 +8,13 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ApprovalRequestStepsSchema = z.object({
-  id: z.string().uuid(),
-  requestId: z.string().uuid(),
+  id: z.string().guid(),
+  requestId: z.string().guid(),
   stepNumber: z.number(),
   name: z.string().nullable().optional(),
   status: z.string(),
   requiredApprovals: z.number(),
-  notifyApprovers: z.boolean().default(false).nullable().optional(),
+  notifyApprovers: z.boolean().nullable().optional(),
   startedAt: z.date().nullable().optional(),
   completedAt: z.date().nullable().optional()
 });

@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretBlindIndexesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   encryptedSaltCipherText: z.string(),
   saltIV: z.string(),
   saltTag: z.string(),

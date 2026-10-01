@@ -10,14 +10,14 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityKubernetesAuthsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   accessTokenTTL: z.coerce.number().default(7200),
   accessTokenMaxTTL: z.coerce.number().default(7200),
   accessTokenNumUsesLimit: z.coerce.number().default(0),
   accessTokenTrustedIps: z.unknown(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  identityId: z.string().uuid(),
+  identityId: z.string().guid(),
   kubernetesHost: z.string().nullable().optional(),
   encryptedCaCert: z.string().nullable().optional(),
   caCertIV: z.string().nullable().optional(),
@@ -30,13 +30,13 @@ export const IdentityKubernetesAuthsSchema = z.object({
   allowedAudience: z.string(),
   encryptedKubernetesTokenReviewerJwt: zodBuffer.nullable().optional(),
   encryptedKubernetesCaCertificate: zodBuffer.nullable().optional(),
-  gatewayId: z.string().uuid().nullable().optional(),
+  gatewayId: z.string().guid().nullable().optional(),
   accessTokenPeriod: z.coerce.number().default(0),
   tokenReviewMode: z.string().default("api"),
-  gatewayV2Id: z.string().uuid().nullable().optional(),
-  gatewayPoolId: z.string().uuid().nullable().optional(),
+  gatewayV2Id: z.string().guid().nullable().optional(),
+  gatewayPoolId: z.string().guid().nullable().optional(),
   verifyTlsCertificate: z.boolean().default(false),
-  templateId: z.string().uuid().nullable().optional(),
+  templateId: z.string().guid().nullable().optional(),
   isTokenReviewerJwtTemplateSourced: z.boolean().default(false)
 });
 

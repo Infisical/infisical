@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const KmipOrgConfigsSchema = z.object({
-  id: z.string().uuid(),
-  orgId: z.string().uuid(),
+  id: z.string().guid(),
+  orgId: z.string().guid(),
   caKeyAlgorithm: z.string(),
   rootCaIssuedAt: z.date(),
   rootCaExpiration: z.date(),

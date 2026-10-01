@@ -68,7 +68,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       description: "Get a PAM account template by ID",
       tags: [ApiDocsTags.PamAccountTemplates],
       params: z.object({
-        templateId: z.string().uuid().describe("The ID of the template")
+        templateId: z.string().guid().describe("The ID of the template")
       }),
       response: {
         200: z.object({
@@ -105,11 +105,11 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         name: slugSchema({ field: "Name" }).describe("Name for the template"),
         description: z.string().trim().max(256).optional().describe("Optional description"),
         type: z.nativeEnum(PamAccountType).describe("The account type this template applies to"),
-        policies: z.record(z.unknown()).optional().describe("Policy values keyed by policy type"),
+        policies: z.record(z.string(), z.unknown()).optional().describe("Policy values keyed by policy type"),
         settings: PamTemplateSettingsInputSchema.optional().describe("Template settings"),
-        gatewayId: z.string().uuid().optional().describe("Default gateway ID for accounts using this template"),
-        gatewayPoolId: z.string().uuid().optional().describe("Default gateway pool ID"),
-        recordingConnectionId: z.string().uuid().optional().describe("Recording storage connection ID")
+        gatewayId: z.string().guid().optional().describe("Default gateway ID for accounts using this template"),
+        gatewayPoolId: z.string().guid().optional().describe("Default gateway pool ID"),
+        recordingConnectionId: z.string().guid().optional().describe("Recording storage connection ID")
       }),
       response: {
         200: z.object({
@@ -168,16 +168,16 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       description: "Update a PAM account template",
       tags: [ApiDocsTags.PamAccountTemplates],
       params: z.object({
-        templateId: z.string().uuid().describe("The ID of the template")
+        templateId: z.string().guid().describe("The ID of the template")
       }),
       body: z.object({
         name: slugSchema({ field: "Name" }).optional().describe("New name"),
         description: z.string().trim().max(256).nullable().optional().describe("New description"),
-        policies: z.record(z.unknown()).optional().describe("Policy values keyed by policy type"),
+        policies: z.record(z.string(), z.unknown()).optional().describe("Policy values keyed by policy type"),
         settings: PamTemplateSettingsInputSchema.optional().describe("Updated settings"),
-        gatewayId: z.string().uuid().nullable().optional().describe("New gateway ID"),
-        gatewayPoolId: z.string().uuid().nullable().optional().describe("New gateway pool ID"),
-        recordingConnectionId: z.string().uuid().nullable().optional().describe("New recording connection ID")
+        gatewayId: z.string().guid().nullable().optional().describe("New gateway ID"),
+        gatewayPoolId: z.string().guid().nullable().optional().describe("New gateway pool ID"),
+        recordingConnectionId: z.string().guid().nullable().optional().describe("New recording connection ID")
       }),
       response: {
         200: z.object({
@@ -236,7 +236,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       description: "Delete a PAM account template",
       tags: [ApiDocsTags.PamAccountTemplates],
       params: z.object({
-        templateId: z.string().uuid().describe("The ID of the template")
+        templateId: z.string().guid().describe("The ID of the template")
       }),
       response: {
         200: z.object({ template: SanitizedTemplateSchema })

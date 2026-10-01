@@ -101,7 +101,7 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
         privilegeId?: string | null | undefined;
         requestedBy?: string | null | undefined;
         temporaryRange?: string | null | undefined;
-        permissions?: unknown;
+        permissions: unknown;
         note?: string | null | undefined;
         privilegeDeletedAt?: Date | null | undefined;
         expiresAt?: Date | null | undefined;
@@ -233,7 +233,7 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
       privilegeId?: string | null | undefined;
       requestedBy?: string | null | undefined;
       temporaryRange?: string | null | undefined;
-      permissions?: unknown;
+      permissions: unknown;
       note?: string | null | undefined;
       privilegeDeletedAt?: Date | null | undefined;
       reviewers: {

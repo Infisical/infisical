@@ -157,7 +157,7 @@ export const createHsmConnectorRouter =
         operationId: "deleteHsmConnector",
         tags: [ApiDocsTags.HsmConnectors],
         params: HsmConnectorIdParamSchema,
-        response: { 200: z.object({ id: z.string().uuid() }) }
+        response: { 200: z.object({ id: z.string().guid() }) }
       },
       onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
       handler: async (req) => {

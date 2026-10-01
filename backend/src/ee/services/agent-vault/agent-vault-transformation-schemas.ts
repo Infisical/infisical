@@ -95,7 +95,7 @@ export const AgentVaultCustomHeaderInputSchema = z.object({
 });
 
 export const AgentVaultCustomHeaderUpdateSchema = z.object({
-  id: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.customHeaderId),
+  id: z.string().guid().optional().describe(AGENT_VAULT.SERVICE.customHeaderId),
   name: agentVaultHeaderNameSchema.describe(AGENT_VAULT.SERVICE.customHeaderName),
   prefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.updateCustomHeaderPrefix),
   value: secretValueSchema.optional().describe(AGENT_VAULT.SERVICE.updateCustomHeaderValue)
@@ -108,7 +108,7 @@ export const AgentVaultSubstitutionInputSchema = z.object({
 });
 
 export const AgentVaultSubstitutionUpdateSchema = z.object({
-  id: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.substitutionId),
+  id: z.string().guid().optional().describe(AGENT_VAULT.SERVICE.substitutionId),
   placeholder: placeholderSchema.describe(AGENT_VAULT.SERVICE.placeholder),
   surfaces: surfacesSchema.describe(AGENT_VAULT.SERVICE.surfaces),
   value: secretValueSchema.optional().describe(AGENT_VAULT.SERVICE.updateSubstitutionValue)

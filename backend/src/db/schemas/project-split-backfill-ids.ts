@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ProjectSplitBackfillIdsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   sourceProjectId: z.string(),
   destinationProjectType: z.string(),
   destinationProjectId: z.string()

@@ -10,10 +10,10 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const HoneyTokenConfigsSchema = z.object({
-  id: z.string().uuid(),
-  orgId: z.string().uuid(),
+  id: z.string().guid(),
+  orgId: z.string().guid(),
   type: z.string(),
-  connectionId: z.string().uuid(),
+  connectionId: z.string().guid(),
   status: z.string().default("VERIFICATION_PENDING"),
   encryptedConfig: zodBuffer.nullable().optional(),
   createdAt: z.date(),

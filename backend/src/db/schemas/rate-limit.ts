@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const RateLimitSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   readRateLimit: z.number().default(600),
   writeRateLimit: z.number().default(200),
   secretsRateLimit: z.number().default(60),

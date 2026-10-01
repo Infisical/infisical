@@ -134,7 +134,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         actorId: z
           .string()
           .trim()
-          .uuid()
+          .guid()
           .optional()
           .describe("Only return commits made by the user or machine identity with this ID."),
         actorType: z.nativeEnum(ActorType).optional().describe("Only return commits made by this type of actor.")
@@ -557,7 +557,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                   secretValue: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
                   secretComment: z.string().trim().optional().default(""),
                   skipMultilineEncoding: z.boolean().optional(),
-                  metadata: z.record(z.string()).optional(),
+                  metadata: z.record(z.string(), z.string()).optional(),
                   secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
                   tagIds: z.string().array().optional()
                 })
@@ -577,7 +577,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                     .boolean()
                     .nullish()
                     .transform((val) => (val === null ? false : val)),
-                  metadata: z.record(z.string()).optional(),
+                  metadata: z.record(z.string(), z.string()).optional(),
                   secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
                   tagIds: z.string().array().optional()
                 })

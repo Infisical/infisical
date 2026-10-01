@@ -21,8 +21,8 @@ export const registerSignerApprovalPolicyRouter = async (server: FastifyZodProvi
       params: SignerIdParamsSchema,
       response: {
         200: z.object({
-          id: z.string().uuid(),
-          signerId: z.string().uuid(),
+          id: z.string().guid(),
+          signerId: z.string().guid(),
           hasSteps: z.boolean(),
           steps: z.array(z.any()),
           constraints: z.object({

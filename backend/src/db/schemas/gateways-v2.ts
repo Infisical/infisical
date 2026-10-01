@@ -10,12 +10,12 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const GatewaysV2Schema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid(),
-  identityId: z.string().uuid().nullable().optional(),
-  relayId: z.string().uuid().nullable().optional(),
+  orgId: z.string().guid(),
+  identityId: z.string().guid().nullable().optional(),
+  relayId: z.string().guid().nullable().optional(),
   name: z.string(),
   heartbeat: z.date().nullable().optional(),
   encryptedPamSessionKey: zodBuffer.nullable().optional(),

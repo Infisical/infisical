@@ -8,13 +8,13 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamDiscoverySourcesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   name: z.string(),
   discoveryType: z.string(),
-  gatewayId: z.string().uuid().nullable().optional(),
-  gatewayPoolId: z.string().uuid().nullable().optional(),
-  credentialAccountId: z.string().uuid(),
+  gatewayId: z.string().guid().nullable().optional(),
+  gatewayPoolId: z.string().guid().nullable().optional(),
+  credentialAccountId: z.string().guid(),
   discoveryConfiguration: z.unknown(),
   schedule: z.string().default("manual"),
   lastRunAt: z.date().nullable().optional(),

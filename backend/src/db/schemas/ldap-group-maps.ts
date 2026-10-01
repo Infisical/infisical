@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const LdapGroupMapsSchema = z.object({
-  id: z.string().uuid(),
-  ldapConfigId: z.string().uuid(),
+  id: z.string().guid(),
+  ldapConfigId: z.string().guid(),
   ldapGroupCN: z.string(),
-  groupId: z.string().uuid()
+  groupId: z.string().guid()
 });
 
 export type TLdapGroupMaps = z.infer<typeof LdapGroupMapsSchema>;

@@ -16,7 +16,7 @@ import { AlertTriggerType, MAX_TARGET_IDS_PER_EVENT } from "./alert-types";
 export const ALERT_EVENT_CONSUMER = "alert";
 
 export const AlertEventPayloadSchema = z.object({
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   projectId: z.string().trim().min(1).max(255).nullish(),
   resourceType: z.string().trim().min(1).max(255),
   resourceId: z.string().trim().min(1).max(255),

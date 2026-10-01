@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AuditLogsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   actor: z.string(),
   actorMetadata: z.unknown(),
   ipAddress: z.string().nullable().optional(),
@@ -19,7 +19,7 @@ export const AuditLogsSchema = z.object({
   expiresAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid().nullable().optional(),
+  orgId: z.string().guid().nullable().optional(),
   projectId: z.string().nullable().optional(),
   projectName: z.string().nullable().optional()
 });

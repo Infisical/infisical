@@ -67,8 +67,8 @@ const withTimeout = async <T>(promise: Promise<T>, ms: number, makeError: () => 
   }
 };
 
-const formatIssues = (issues: { path: (string | number)[]; message: string }[]) =>
-  issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join(", ");
+const formatIssues = (issues: { path: PropertyKey[]; message: string }[]) =>
+  issues.map((issue) => `${issue.path.map(String).join(".")} ${issue.message}`).join(", ");
 
 // Lets commitResults issue one UPDATE per distinct outcome instead of one per row.
 const groupByOutcome = <TItem extends { id: string }>(

@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -26,11 +27,7 @@ const BaseHostSchema = z.object({
     ),
   port: z.number().int().min(1).max(65535).optional(),
   sslRejectUnauthorized: z.boolean().optional(),
-  sslCertificate: z
-    .string()
-    .trim()
-    .transform((value) => value || undefined)
-    .optional()
+  sslCertificate: bidirectionalTransform(z.string().trim().optional(), (value) => value || undefined).optional()
 });
 
 export const NutanixPrismCentralApiKeyCredentialsSchema = BaseHostSchema.extend({

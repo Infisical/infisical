@@ -407,7 +407,7 @@ export const registerSyncPkiEndpoints = ({
         tags: [ApiDocsTags.PkiSyncs],
         description: `Run the configured health check for the specified ${destinationName} PKI Sync without delivering certificates.`,
         params: z.object({
-          pkiSyncId: z.string().uuid()
+          pkiSyncId: z.string().guid()
         }),
         response: {
           200: HealthCheckResponseSchema

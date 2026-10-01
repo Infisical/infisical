@@ -10,11 +10,11 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretValidationRulesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   projectId: z.string(),
-  envId: z.string().uuid().nullable().optional(),
+  envId: z.string().guid().nullable().optional(),
   secretPath: z.string(),
   type: z.string(),
   encryptedInputs: zodBuffer,

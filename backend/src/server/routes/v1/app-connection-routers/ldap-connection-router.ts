@@ -32,7 +32,7 @@ export const registerLdapConnectionRouter = async (server: FastifyZodProvider) =
     schema: {
       operationId: "listLdapDirectoryMachines",
       params: z.object({
-        connectionId: z.string().uuid().describe("The ID of the LDAP Connection to list machines from.")
+        connectionId: z.string().guid().describe("The ID of the LDAP Connection to list machines from.")
       }),
       querystring: z.object({
         search: z

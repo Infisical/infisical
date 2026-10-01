@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretVersionsV2Schema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   version: z.number().default(1),
   type: z.string().default("shared"),
   key: z.string(),
@@ -18,20 +18,20 @@ export const SecretVersionsV2Schema = z.object({
   encryptedComment: zodBuffer.nullable().optional(),
   reminderNote: z.string().nullable().optional(),
   reminderRepeatDays: z.number().nullable().optional(),
-  skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
+  skipMultilineEncoding: z.boolean().nullable().optional(),
   metadata: z.unknown().nullable().optional(),
-  secretId: z.string().uuid(),
-  folderId: z.string().uuid(),
-  userId: z.string().uuid().nullable().optional(),
+  secretId: z.string().guid(),
+  folderId: z.string().guid(),
+  userId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  userActorId: z.string().uuid().nullable().optional(),
-  identityActorId: z.string().uuid().nullable().optional(),
+  userActorId: z.string().guid().nullable().optional(),
+  identityActorId: z.string().guid().nullable().optional(),
   actorType: z.string().nullable().optional(),
-  parentVersionId: z.string().uuid().nullable().optional(),
+  parentVersionId: z.string().guid().nullable().optional(),
   isRedacted: z.boolean().default(false),
   redactedAt: z.date().nullable().optional(),
-  redactedByUserId: z.string().uuid().nullable().optional(),
+  redactedByUserId: z.string().guid().nullable().optional(),
   secretValueBlindIndex: z.string().nullable().optional()
 });
 

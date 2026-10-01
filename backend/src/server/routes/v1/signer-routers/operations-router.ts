@@ -31,7 +31,7 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
           operations: z.array(
             PkiSigningOperationsSchema.extend({
               actorName: z.string().nullable(),
-              actorMembershipId: z.string().uuid().nullable()
+              actorMembershipId: z.string().guid().nullable()
             })
           ),
           totalCount: z.number()
@@ -75,12 +75,12 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
       operationId: "getSigningOperation",
       tags: [ApiDocsTags.PkiSigners],
       description: "Get a signing operation with its full client context",
-      params: z.object({ signerId: z.string().uuid(), operationId: z.string().uuid() }),
+      params: z.object({ signerId: z.string().guid(), operationId: z.string().guid() }),
       response: {
         200: z.object({
           operation: PkiSigningOperationsSchema.extend({
             actorName: z.string().nullable(),
-            actorMembershipId: z.string().uuid().nullable()
+            actorMembershipId: z.string().guid().nullable()
           }),
           signerName: z.string()
         })

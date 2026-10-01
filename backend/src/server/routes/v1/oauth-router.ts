@@ -165,7 +165,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "getOauthClientById",
       params: z.object({
-        clientDbId: z.string().uuid()
+        clientDbId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -189,7 +189,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "updateOauthClient",
       params: z.object({
-        clientDbId: z.string().uuid()
+        clientDbId: z.string().guid()
       }),
       body: z.object({
         name: z.string().trim().min(1).max(64).optional(),
@@ -244,7 +244,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "rotateOauthClientSecret",
       params: z.object({
-        clientDbId: z.string().uuid()
+        clientDbId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -286,7 +286,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "deleteOauthClient",
       params: z.object({
-        clientDbId: z.string().uuid()
+        clientDbId: z.string().guid()
       }),
       response: {
         200: z.object({

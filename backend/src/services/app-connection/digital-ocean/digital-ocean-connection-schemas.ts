@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -36,7 +37,7 @@ export const DigitalOceanConnectionSchema = BaseDigitalOceanConnectionSchema.ext
 export const SanitizedDigitalOceanConnectionSchema = z.discriminatedUnion("method", [
   BaseDigitalOceanConnectionSchema.extend({
     method: DigitalOceanConnectionMethodSchema,
-    credentials: DigitalOceanConnectionAccessTokenCredentialsSchema.pick({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.DigitalOcean]} (Access Token)` }))
 ]);
 

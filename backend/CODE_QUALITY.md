@@ -78,7 +78,7 @@ name: z.string(),
 // Good: reuse the shared helpers in src/server/lib/schemas.ts
 name: GenericResourceNameSchema,
 slug: slugSchema({ max: 32, field: "Environment slug" }),
-projectId: z.string().uuid(),
+projectId: z.string().guid(),
 description: z.string().trim().max(500).optional(),
 port: z.number().int().min(1).max(65535),
 ```
@@ -88,11 +88,23 @@ port: z.number().int().min(1).max(65535),
   name that another rejects.
 - **Bound every string with `.max()`**, matched to the real column width.
 - **`.trim()` anything used as an identifier**, so `"prod "` and `"prod"` are not two rows.
-- **IDs are `.uuid()`; enums are `z.nativeEnum(...)` or `z.enum([...])`**, so the accepted
-  values appear in the generated docs.
+- **IDs are `.guid()`; enums are `z.nativeEnum(...)` or `z.enum([...])`**, so the accepted
+  values appear in the generated docs. (Zod 4's `.uuid()` also enforces the RFC version and
+  variant bits, which rejects IDs the API has always accepted.)
 - **`z.coerce.number().int()`** for querystring numbers, since everything arrives as a string.
-- **Never `.default(x).optional()`.** The `.optional()` wraps the default, so `undefined`
-  stays `undefined` and the default never applies.
+- **Defaults inside `.optional()` or `.partial()` still apply.** Zod 4 fills them in when the
+  key is missing, so a `PATCH` body built with `.partial()` silently resets every defaulted
+  field the caller left out. Use `partialWithoutDefaults` from `@app/lib/zod` for update
+  bodies, `withoutDefault(schema).optional()` when a shared defaulted schema is made optional,
+  and `.prefault(x)` (not `.default(x)`) when the default must go through a transform.
+- **Response schemas never contain a plain `.transform()` or `z.preprocess`.** Responses are
+  serialized with `z.encode`, which throws on one-way transforms. Use `bidirectionalTransform`
+  from `@app/lib/zod`.
+- **A record keyed by an enum is `z.partialRecord`**, unless every key is genuinely required.
+  Zod 4's `z.record(z.enum([...]), ...)` rejects any object missing a key.
+- `route-schema-guards.test.ts` fails the build on each of these Zod 4 traps (and on a
+  `.default()` whose value the field's transform would have changed; use `.prefault()`), and the
+  failure message names the route, the field and the fix.
 
 Zod only validates shape and bounds. Rules that need to read other rows (does this `caId`
 exist, is it in this project, is this state transition legal) belong in the service, and

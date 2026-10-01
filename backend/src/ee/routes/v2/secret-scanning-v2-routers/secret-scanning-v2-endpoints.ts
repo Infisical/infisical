@@ -112,7 +112,7 @@ export const registerSecretScanningEndpoints = <
       tags: [ApiDocsTags.SecretScanning],
       description: `Get the specified ${sourceType} Data Source by ID.`,
       params: z.object({
-        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.GET_BY_ID(type).dataSourceId)
+        dataSourceId: z.string().guid().describe(SecretScanningDataSources.GET_BY_ID(type).dataSourceId)
       }),
       response: {
         200: z.object({ dataSource: responseSchema })
@@ -265,7 +265,7 @@ export const registerSecretScanningEndpoints = <
       tags: [ApiDocsTags.SecretScanning],
       description: `Update the specified ${sourceType} Data Source.`,
       params: z.object({
-        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.UPDATE(type).dataSourceId)
+        dataSourceId: z.string().guid().describe(SecretScanningDataSources.UPDATE(type).dataSourceId)
       }),
       body: updateSchema,
       response: {
@@ -310,7 +310,7 @@ export const registerSecretScanningEndpoints = <
       tags: [ApiDocsTags.SecretScanning],
       description: `Delete the specified ${sourceType} Data Source.`,
       params: z.object({
-        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.DELETE(type).dataSourceId)
+        dataSourceId: z.string().guid().describe(SecretScanningDataSources.DELETE(type).dataSourceId)
       }),
       response: {
         200: z.object({ dataSource: responseSchema })
@@ -353,7 +353,7 @@ export const registerSecretScanningEndpoints = <
       tags: [ApiDocsTags.SecretScanning],
       description: `Trigger a scan for the specified ${sourceType} Data Source.`,
       params: z.object({
-        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.SCAN(type).dataSourceId)
+        dataSourceId: z.string().guid().describe(SecretScanningDataSources.SCAN(type).dataSourceId)
       }),
       response: {
         200: z.object({ dataSource: responseSchema })
@@ -396,8 +396,8 @@ export const registerSecretScanningEndpoints = <
       tags: [ApiDocsTags.SecretScanning],
       description: `Trigger a scan for the specified ${sourceType} Data Source resource.`,
       params: z.object({
-        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.SCAN(type).dataSourceId),
-        resourceId: z.string().uuid().describe(SecretScanningDataSources.SCAN(type).resourceId)
+        dataSourceId: z.string().guid().describe(SecretScanningDataSources.SCAN(type).dataSourceId),
+        resourceId: z.string().guid().describe(SecretScanningDataSources.SCAN(type).resourceId)
       }),
       response: {
         200: z.object({ dataSource: responseSchema })
@@ -441,7 +441,7 @@ export const registerSecretScanningEndpoints = <
       tags: [ApiDocsTags.SecretScanning],
       description: `Get the resources associated with the specified ${sourceType} Data Source by ID.`,
       params: z.object({
-        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.LIST_RESOURCES(type).dataSourceId)
+        dataSourceId: z.string().guid().describe(SecretScanningDataSources.LIST_RESOURCES(type).dataSourceId)
       }),
       response: {
         200: z.object({ resources: SecretScanningResourcesSchema.array() })
@@ -486,7 +486,7 @@ export const registerSecretScanningEndpoints = <
       tags: [ApiDocsTags.SecretScanning],
       description: `Get the scans associated with the specified ${sourceType} Data Source by ID.`,
       params: z.object({
-        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.LIST_SCANS(type).dataSourceId)
+        dataSourceId: z.string().guid().describe(SecretScanningDataSources.LIST_SCANS(type).dataSourceId)
       }),
       response: {
         200: z.object({ scans: SecretScanningScansSchema.array() })
@@ -529,7 +529,7 @@ export const registerSecretScanningEndpoints = <
       operationId: `list${sourceTypeId}DataSourceResourcesDashboard`,
       tags: [ApiDocsTags.SecretScanning],
       params: z.object({
-        dataSourceId: z.string().uuid()
+        dataSourceId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -580,7 +580,7 @@ export const registerSecretScanningEndpoints = <
       operationId: `list${sourceTypeId}DataSourceScansDashboard`,
       tags: [ApiDocsTags.SecretScanning],
       params: z.object({
-        dataSourceId: z.string().uuid()
+        dataSourceId: z.string().guid()
       }),
       response: {
         200: z.object({

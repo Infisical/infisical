@@ -10,11 +10,11 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiAlertChannelsSchema = z.object({
-  id: z.string().uuid(),
-  alertId: z.string().uuid(),
+  id: z.string().guid(),
+  alertId: z.string().guid(),
   channelType: z.string(),
   config: z.unknown().nullable().optional(),
-  enabled: z.boolean().default(true).nullable().optional(),
+  enabled: z.boolean().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   encryptedConfig: zodBuffer.nullable().optional()

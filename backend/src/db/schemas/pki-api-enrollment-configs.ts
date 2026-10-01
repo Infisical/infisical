@@ -8,12 +8,12 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiApiEnrollmentConfigsSchema = z.object({
-  id: z.string().uuid(),
-  autoRenew: z.boolean().default(false).nullable().optional(),
+  id: z.string().guid(),
+  autoRenew: z.boolean().nullable().optional(),
   renewBeforeDays: z.number().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  applicationProfileId: z.string().uuid().nullable().optional()
+  applicationProfileId: z.string().guid().nullable().optional()
 });
 
 export type TPkiApiEnrollmentConfigs = z.infer<typeof PkiApiEnrollmentConfigsSchema>;

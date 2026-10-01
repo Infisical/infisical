@@ -56,14 +56,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       description: "List PAM sessions for a project",
       tags: [ApiDocsTags.PamSessions],
       querystring: z.object({
-        offset: z.coerce.number().min(0).default(0).optional().describe("The offset to start from for pagination"),
-        limit: z.coerce
-          .number()
-          .min(1)
-          .max(100)
-          .default(20)
-          .optional()
-          .describe("The number of records to return for pagination"),
+        offset: z.coerce.number().min(0).optional().describe("The offset to start from for pagination"),
+        limit: z.coerce.number().min(1).max(100).optional().describe("The number of records to return for pagination"),
         search: z
           .string()
           .trim()
@@ -100,7 +94,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       description: "Get a PAM session by ID",
       tags: [ApiDocsTags.PamSessions],
       params: z.object({
-        sessionId: z.string().uuid().describe("The ID of the session")
+        sessionId: z.string().guid().describe("The ID of the session")
       }),
       response: {
         200: z.object({ session: SanitizedSessionSchema })
@@ -130,11 +124,11 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       description: "Get connection credentials for a PAM session",
       tags: [ApiDocsTags.PamSessions],
       params: z.object({
-        sessionId: z.string().uuid().describe("The ID of the session")
+        sessionId: z.string().guid().describe("The ID of the session")
       }),
       response: {
         200: z.object({
-          credentials: z.record(z.unknown()),
+          credentials: z.record(z.string(), z.unknown()),
           recording: z
             .object({
               sessionKey: z.string(),
@@ -201,7 +195,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       description: "End a PAM session",
       tags: [ApiDocsTags.PamSessions],
       params: z.object({
-        sessionId: z.string().uuid().describe("The ID of the session")
+        sessionId: z.string().guid().describe("The ID of the session")
       }),
       response: {
         200: z.object({ message: z.string() })
@@ -245,7 +239,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       description: "Terminate an active PAM session",
       tags: [ApiDocsTags.PamSessions],
       params: z.object({
-        sessionId: z.string().uuid().describe("The ID of the session")
+        sessionId: z.string().guid().describe("The ID of the session")
       }),
       response: {
         200: z.object({ session: SanitizedSessionSchema })
@@ -329,7 +323,10 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         200: z.object({
           sessionId: z.string().describe("The ID of the created session"),
           accountType: z.nativeEnum(PamAccountType).describe("The account type"),
-          metadata: z.record(z.string()).optional().describe("Account-type-specific metadata (e.g., username)"),
+          metadata: z
+            .record(z.string(), z.string())
+            .optional()
+            .describe("Account-type-specific metadata (e.g., username)"),
           gatewayId: z.string().optional().describe("The ID of the gateway the connection details are for"),
           relayHost: z.string().optional().describe("The relay host to connect to"),
           directAddress: z.string().optional().describe("The gateway address for a direct connection"),
@@ -437,7 +434,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
       description: "Create a web access ticket for a PAM account",
       tags: [ApiDocsTags.PamSessions],
       params: z.object({
-        accountId: z.string().uuid().describe("The ID of the account")
+        accountId: z.string().guid().describe("The ID of the account")
       }),
       body: z.object({
         reason: z.string().trim().max(1000).optional().describe("Optional reason for the session"),
@@ -488,7 +485,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
       description: "WebSocket endpoint for web-based access to a PAM account",
       tags: [ApiDocsTags.PamSessions],
       params: z.object({
-        accountId: z.string().uuid().describe("The ID of the account")
+        accountId: z.string().guid().describe("The ID of the account")
       }),
       querystring: z.object({
         ticket: z.string().describe("WebSocket authentication ticket")
@@ -550,14 +547,14 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
 
         const payload = z
           .object({
-            accountId: z.string().uuid(),
-            projectId: z.string().uuid(),
-            orgId: z.string().uuid(),
+            accountId: z.string().guid(),
+            projectId: z.string().guid(),
+            orgId: z.string().guid(),
             accountName: z.string(),
             accountType: z.string(),
             actorEmail: z.string(),
             actorName: z.string(),
-            tokenVersionId: z.string().uuid().optional(),
+            tokenVersionId: z.string().guid().optional(),
             accessVersion: z.number().optional(),
             reason: z.string().nullable().optional(),
             maxSessionDurationMs: z.number().optional(),
@@ -568,7 +565,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
               userAgentType: z.nativeEnum(UserAgentType).optional(),
               actor: z.object({
                 type: z.nativeEnum(ActorType),
-                metadata: z.record(z.unknown())
+                metadata: z.record(z.string(), z.unknown())
               })
             })
           })

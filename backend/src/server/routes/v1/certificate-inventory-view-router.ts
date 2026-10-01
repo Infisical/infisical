@@ -18,9 +18,9 @@ const InventoryViewFiltersSchema = z
     enrollmentTypes: z.array(z.string().max(64)).max(10).optional(),
     keyAlgorithm: z.union([z.string().max(64), z.array(z.string().max(64)).max(10)]).optional(),
     keySizes: z.array(z.number().int().positive()).max(10).optional(),
-    caIds: z.array(z.string().uuid()).max(50).optional(),
-    profileIds: z.array(z.string().uuid()).max(50).optional(),
-    applicationIds: z.array(z.string().uuid()).max(50).optional(),
+    caIds: z.array(z.string().guid()).max(50).optional(),
+    profileIds: z.array(z.string().guid()).max(50).optional(),
+    applicationIds: z.array(z.string().guid()).max(50).optional(),
     source: z.union([z.string().max(64), z.array(z.string().max(64)).max(10)]).optional(),
     metadata: z
       .array(
@@ -65,7 +65,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       description: "List system and custom certificate inventory views for a project.",
       querystring: z.object({
         projectId: z.string().trim().optional().describe(openApiHidden()),
-        applicationId: z.string().uuid().optional()
+        applicationId: z.string().guid().optional()
       }),
       response: {
         200: z.object({
@@ -126,8 +126,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         name: z.string().trim().min(1).max(255),
         filters: InventoryViewFiltersSchema.default({}),
         columns: ColumnsSchema.optional(),
-        isShared: z.boolean().default(false).optional(),
-        applicationId: z.string().uuid().optional()
+        isShared: z.boolean().optional(),
+        applicationId: z.string().guid().optional()
       }),
       response: {
         200: z.object({
@@ -182,7 +182,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       tags: [ApiDocsTags.PkiCertificates],
       description: "Update a custom certificate inventory view.",
       params: z.object({
-        viewId: z.string().uuid()
+        viewId: z.string().guid()
       }),
       body: z.object({
         projectId: z.string().trim().optional().describe(openApiHidden()),
@@ -244,7 +244,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       tags: [ApiDocsTags.PkiCertificates],
       description: "Delete a custom certificate inventory view.",
       params: z.object({
-        viewId: z.string().uuid()
+        viewId: z.string().guid()
       }),
       response: {
         200: z.object({

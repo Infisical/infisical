@@ -10,14 +10,14 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretSharingSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   encryptedValue: z.string().nullable().optional(),
   iv: z.string().nullable().optional(),
   tag: z.string().nullable().optional(),
   hashedHex: z.string().nullable().optional(),
   expiresAt: z.date(),
-  userId: z.string().uuid().nullable().optional(),
-  orgId: z.string().uuid().nullable().optional(),
+  userId: z.string().guid().nullable().optional(),
+  orgId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   expiresAfterViews: z.number().nullable().optional(),
@@ -29,8 +29,8 @@ export const SecretSharingSchema = z.object({
   identifier: z.string().nullable().optional(),
   type: z.string().default("share"),
   authorizedEmails: z.unknown().nullable().optional(),
-  identityId: z.string().uuid().nullable().optional(),
-  allowExternalEmails: z.boolean().default(false).nullable().optional()
+  identityId: z.string().guid().nullable().optional(),
+  allowExternalEmails: z.boolean().nullable().optional()
 });
 
 export type TSecretSharing = z.infer<typeof SecretSharingSchema>;

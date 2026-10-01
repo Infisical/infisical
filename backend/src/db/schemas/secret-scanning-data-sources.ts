@@ -10,15 +10,15 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretScanningDataSourcesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   externalId: z.string().nullable().optional(),
   name: z.string(),
   description: z.string().nullable().optional(),
   type: z.string(),
   config: z.unknown(),
   encryptedCredentials: zodBuffer.nullable().optional(),
-  connectionId: z.string().uuid().nullable().optional(),
-  isAutoScanEnabled: z.boolean().default(true).nullable().optional(),
+  connectionId: z.string().guid().nullable().optional(),
+  isAutoScanEnabled: z.boolean().nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),

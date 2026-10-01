@@ -29,7 +29,7 @@ export const registerSpaceliftConnectionRouter = async (server: FastifyZodProvid
     },
     schema: {
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z

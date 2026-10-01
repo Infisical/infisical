@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const WebhooksSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   secretPath: z.string().default("/"),
   url: z.string().nullable().optional(),
   lastStatus: z.string().nullable().optional(),
@@ -23,11 +23,11 @@ export const WebhooksSchema = z.object({
   keyEncoding: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  envId: z.string().uuid(),
+  envId: z.string().guid(),
   urlCipherText: z.string().nullable().optional(),
   urlIV: z.string().nullable().optional(),
   urlTag: z.string().nullable().optional(),
-  type: z.string().default("general").nullable().optional(),
+  type: z.string().nullable().optional(),
   encryptedPassKey: zodBuffer.nullable().optional(),
   encryptedUrl: zodBuffer,
   filteredEvents: z.string().array().nullable().optional()

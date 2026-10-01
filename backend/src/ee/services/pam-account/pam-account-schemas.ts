@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { netbiosFromDomainFqdn } from "@app/lib/ldap/ldap-search-fns";
+import { bidirectionalTransform } from "@app/lib/zod";
 
 import {
   GcpServiceAccountAuthMethod,
@@ -33,19 +34,10 @@ enum PamFieldWidget {
   Password = "password"
 }
 
-const optionalTrimmedString = z
-  .string()
-  .trim()
-  .transform((v) => v || undefined)
-  .optional();
+const optionalTrimmedString = bidirectionalTransform(z.string().trim().optional(), (v) => v || undefined).optional();
 
 const boundedOptionalString = (max: number) =>
-  z
-    .string()
-    .trim()
-    .max(max)
-    .transform((v) => v || undefined)
-    .optional();
+  bidirectionalTransform(z.string().trim().max(max).optional(), (v) => v || undefined).optional();
 
 const normalizeDelimitedStringList = (value: unknown): unknown => {
   if (Array.isArray(value)) return value;
@@ -60,10 +52,10 @@ const normalizeDelimitedStringList = (value: unknown): unknown => {
 
 export const hostPattern = new RE2(/^[A-Za-z0-9.:_-]+$/);
 const snowflakeAccountPattern = new RE2(/^[A-Za-z0-9][A-Za-z0-9._-]*$/);
-const delimitedStringList = z.preprocess(
-  normalizeDelimitedStringList,
-  z.array(z.string().trim().min(1).max(255).regex(hostPattern, "Must be a valid hostname or IP address")).min(1)
-);
+const delimitedStringList = bidirectionalTransform(
+  z.union([z.string(), z.array(z.string())]),
+  normalizeDelimitedStringList
+).pipe(z.array(z.string().trim().min(1).max(255).regex(hostPattern, "Must be a valid hostname or IP address")).min(1));
 
 // A type that gained its authMethod discriminator after launch has stored rows without one,
 // which a discriminated union rejects outright. Defaulting it keeps them parsing
@@ -120,12 +112,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
         z.object({
           authMethod: z.literal(PamPostgresAuthMethod.Password),
           username: z.string().trim().min(1).max(63),
-          password: z
-            .string()
-            .trim()
-            .max(256)
-            .transform((v) => v || undefined)
-            .optional()
+          password: bidirectionalTransform(z.string().trim().max(256).optional(), (v) => v || undefined).optional()
         }),
         z.object({
           authMethod: z.literal(PamPostgresAuthMethod.AwsIam),
@@ -207,12 +194,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(32),
-      password: z
-        .string()
-        .trim()
-        .max(256)
-        .transform((v) => v || undefined)
-        .optional()
+      password: bidirectionalTransform(z.string().trim().max(256).optional(), (v) => v || undefined).optional()
     }),
     sanitizedCredentials: z.object({ username: z.string() }),
     ui: {
@@ -246,33 +228,18 @@ export const ACCOUNT_TYPE_CONFIGS = {
       z.object({
         authMethod: z.literal("sql-login"),
         username: z.string().trim().min(1).max(63),
-        password: z
-          .string()
-          .trim()
-          .max(256)
-          .transform((v) => v || undefined)
-          .optional()
+        password: bidirectionalTransform(z.string().trim().max(256).optional(), (v) => v || undefined).optional()
       }),
       z.object({
         authMethod: z.literal("ntlm"),
         username: z.string().trim().min(1).max(63),
-        password: z
-          .string()
-          .trim()
-          .max(256)
-          .transform((v) => v || undefined)
-          .optional(),
+        password: bidirectionalTransform(z.string().trim().max(256).optional(), (v) => v || undefined).optional(),
         domain: z.string().trim().min(1).max(255)
       }),
       z.object({
         authMethod: z.literal("kerberos"),
         username: z.string().trim().min(1).max(63),
-        password: z
-          .string()
-          .trim()
-          .max(256)
-          .transform((v) => v || undefined)
-          .optional(),
+        password: bidirectionalTransform(z.string().trim().max(256).optional(), (v) => v || undefined).optional(),
         realm: z
           .string()
           .trim()
@@ -280,13 +247,15 @@ export const ACCOUNT_TYPE_CONFIGS = {
           .max(255)
           .regex(new RE2(/^[A-Za-z0-9._-]+$/))
           .transform((v) => v.toUpperCase()),
-        kdcAddress: z
-          .string()
-          .trim()
-          .max(255)
-          .regex(new RE2(/^[A-Za-z0-9._:-]*$/))
-          .transform((v) => v || undefined)
-          .optional(),
+        kdcAddress: bidirectionalTransform(
+          z
+            .string()
+            .trim()
+            .max(255)
+            .regex(new RE2(/^[A-Za-z0-9._:-]*$/))
+            .optional(),
+          (v) => v || undefined
+        ).optional(),
         spn: z
           .string()
           .trim()
@@ -354,12 +323,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(128),
-      password: z
-        .string()
-        .trim()
-        .max(256)
-        .transform((v) => v || undefined)
-        .optional()
+      password: bidirectionalTransform(z.string().trim().max(256).optional(), (v) => v || undefined).optional()
     }),
     sanitizedCredentials: z.object({ username: z.string() }),
     ui: {
@@ -386,42 +350,37 @@ export const ACCOUNT_TYPE_CONFIGS = {
     name: "MongoDB",
     icon: "MongoDB.png",
     connectionDetails: z.object({
-      connectionString: z
-        .string()
-        .trim()
-        .min(1)
-        .max(1024)
-        .transform((val, ctx) => {
-          let cs: ConnectionString;
-          try {
-            cs = new ConnectionString(val);
-          } catch {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: "Invalid MongoDB connection string. Must start with mongodb:// or mongodb+srv://"
-            });
-            return z.NEVER;
-          }
+      connectionString: bidirectionalTransform(z.string().trim().min(1).max(1024), (val, ctx) => {
+        let cs: ConnectionString;
+        try {
+          cs = new ConnectionString(val);
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Invalid MongoDB connection string. Must start with mongodb:// or mongodb+srv://"
+          });
+          return z.NEVER;
+        }
 
-          if (cs.username || cs.password) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message:
-                "Credentials should not be included in the connection string. Use the Username and Password fields instead"
-            });
-            return z.NEVER;
-          }
+        if (cs.username || cs.password) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "Credentials should not be included in the connection string. Use the Username and Password fields instead"
+          });
+          return z.NEVER;
+        }
 
-          if (cs.pathname && cs.pathname !== "/") {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: "Database should not be included in the connection string. Use the Database field instead"
-            });
-            return z.NEVER;
-          }
+        if (cs.pathname && cs.pathname !== "/") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Database should not be included in the connection string. Use the Database field instead"
+          });
+          return z.NEVER;
+        }
 
-          return cs.toString();
-        }),
+        return cs.toString();
+      }),
       database: z
         .string()
         .trim()
@@ -436,12 +395,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),
-      password: z
-        .string()
-        .trim()
-        .max(256)
-        .transform((v) => v || undefined)
-        .optional()
+      password: bidirectionalTransform(z.string().trim().max(256).optional(), (v) => v || undefined).optional()
     }),
     sanitizedCredentials: z.object({ username: z.string().optional() }),
     ui: {
@@ -477,12 +431,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(256),
-      password: z
-        .string()
-        .trim()
-        .max(256)
-        .transform((v) => v || undefined)
-        .optional()
+      password: bidirectionalTransform(z.string().trim().max(256).optional(), (v) => v || undefined).optional()
     }),
     sanitizedCredentials: z.object({ username: z.string() }),
     ui: {
@@ -653,12 +602,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       z.object({
         authMethod: z.literal(PamSshAuthMethod.PublicKey),
         username: z.string().trim().min(1),
-        privateKey: z
-          .string()
-          .trim()
-          .max(5000)
-          .transform((v) => v || undefined)
-          .optional()
+        privateKey: bidirectionalTransform(z.string().trim().max(5000).optional(), (v) => v || undefined).optional()
       }),
       z.object({ authMethod: z.literal(PamSshAuthMethod.Certificate), username: z.string().trim().min(1) })
     ]),
@@ -909,17 +853,19 @@ export const ACCOUNT_TYPE_CONFIGS = {
         .min(1)
         .max(255)
         .regex(new RE2(/^[A-Za-z0-9.-]+$/), "Must be a valid Azure tenant ID or domain"),
-      subscriptionId: z
-        .string()
-        .trim()
-        .refine((v) => v === "" || z.string().uuid().safeParse(v).success, {
-          message: "Must be a valid Azure subscription ID"
-        })
-        .transform((v) => v || undefined)
-        .optional()
+      subscriptionId: bidirectionalTransform(
+        z
+          .string()
+          .trim()
+          .refine((v) => v === "" || z.string().guid().safeParse(v).success, {
+            message: "Must be a valid Azure subscription ID"
+          })
+          .optional(),
+        (v) => v || undefined
+      ).optional()
     }),
     credentials: z.object({
-      clientId: z.string().trim().uuid("Must be a valid Azure application (client) ID"),
+      clientId: z.string().trim().guid("Must be a valid Azure application (client) ID"),
       clientSecret: z.string().trim().min(1).max(512)
     }),
     sanitizedCredentials: z.object({
@@ -1342,18 +1288,17 @@ const humanizeKey = (key: string) => {
     .join(" ");
 };
 
-const unwrapField = (schema: z.ZodTypeAny): { base: z.ZodTypeAny; required: boolean } => {
+const unwrapField = (schema: z.ZodType): { base: z.ZodType; required: boolean } => {
   let current = schema;
   let required = true;
   for (let depth = 0; depth < 20; depth += 1) {
-    const { typeName } = current._def as { typeName?: string };
-    if (typeName === "ZodOptional" || typeName === "ZodDefault") {
+    if (current instanceof z.ZodOptional || current instanceof z.ZodDefault) {
       required = false;
-      current = (current._def as { innerType: z.ZodTypeAny }).innerType;
-    } else if (typeName === "ZodNullable") {
-      current = (current._def as { innerType: z.ZodTypeAny }).innerType;
-    } else if (typeName === "ZodEffects") {
-      current = (current._def as { schema: z.ZodTypeAny }).schema;
+      current = current.unwrap() as z.ZodType;
+    } else if (current instanceof z.ZodNullable) {
+      current = current.unwrap() as z.ZodType;
+    } else if (current instanceof z.ZodPipe) {
+      current = (current.in instanceof z.ZodTransform ? current.out : current.in) as z.ZodType;
     } else {
       break;
     }
@@ -1361,24 +1306,23 @@ const unwrapField = (schema: z.ZodTypeAny): { base: z.ZodTypeAny; required: bool
   return { base: current, required };
 };
 
-const widgetForBase = (base: z.ZodTypeAny): PamFieldWidget => {
-  const { typeName } = base._def as { typeName?: string };
-  if (typeName === "ZodNumber") return PamFieldWidget.Number;
-  if (typeName === "ZodBoolean") return PamFieldWidget.Boolean;
-  if (typeName === "ZodEnum") return PamFieldWidget.Select;
+const widgetForBase = (base: z.ZodType): PamFieldWidget => {
+  if (base instanceof z.ZodNumber) return PamFieldWidget.Number;
+  if (base instanceof z.ZodBoolean) return PamFieldWidget.Boolean;
+  if (base instanceof z.ZodEnum) return PamFieldWidget.Select;
   return PamFieldWidget.Text;
 };
 
 const describeField = (
   key: string,
-  schema: z.ZodTypeAny,
+  schema: z.ZodType,
   ui: Record<string, TFieldUiHint>,
   showWhen?: PamFieldDescriptor["showWhen"]
 ): PamFieldDescriptor => {
   const { base, required } = unwrapField(schema);
   const hint = ui[key] ?? {};
   const widget = hint.widget ?? widgetForBase(base);
-  const enumValues = (base._def as { values?: string[] }).values;
+  const enumValues = base instanceof z.ZodEnum ? (base.options as string[]) : undefined;
   const resolvedShowWhen = hint.showWhen ?? showWhen;
 
   return {
@@ -1398,24 +1342,20 @@ const describeField = (
   };
 };
 
-const fieldsFromSchema = (schema: z.ZodTypeAny, ui: Record<string, TFieldUiHint> = {}): PamFieldDescriptor[] => {
+const fieldsFromSchema = (schema: z.ZodType, ui: Record<string, TFieldUiHint> = {}): PamFieldDescriptor[] => {
   // Peels wrappers such as the legacy-discriminator preprocess so the described shape is the one underneath
   const { base } = unwrapField(schema);
-  const { typeName } = base._def as { typeName?: string };
 
-  if (typeName === "ZodObject") {
-    const { shape } = base as z.ZodObject<z.ZodRawShape>;
-    return Object.entries(shape).map(([key, fieldSchema]) => describeField(key, fieldSchema, ui));
+  if (base instanceof z.ZodObject) {
+    return Object.entries(base.shape as Record<string, z.ZodType>).map(([key, fieldSchema]) =>
+      describeField(key, fieldSchema, ui)
+    );
   }
 
   // Discriminated union (e.g. SSH authMethod)
-  if (typeName === "ZodDiscriminatedUnion") {
-    const def = base._def as {
-      discriminator: string;
-      options: z.ZodObject<z.ZodRawShape>[];
-    };
-    const variants = [...def.options];
-    const { discriminator } = def;
+  if (base instanceof z.ZodDiscriminatedUnion) {
+    const variants = [...base.options] as z.ZodObject<Record<string, z.ZodType>>[];
+    const { discriminator } = base.def;
 
     const occurrences = new Map<string, number>();
     variants.forEach((variant) => {
@@ -1424,9 +1364,7 @@ const fieldsFromSchema = (schema: z.ZodTypeAny, ui: Record<string, TFieldUiHint>
       });
     });
 
-    const discriminatorValues = variants.map(
-      (variant) => (variant.shape[discriminator]._def as { value: string }).value
-    );
+    const discriminatorValues = variants.map((variant) => (variant.shape[discriminator] as z.ZodLiteral<string>).value);
     const discHint = ui[discriminator] ?? {};
     const fields: PamFieldDescriptor[] = [
       {
@@ -1443,7 +1381,7 @@ const fieldsFromSchema = (schema: z.ZodTypeAny, ui: Record<string, TFieldUiHint>
 
     const added = new Set<string>([discriminator]);
     variants.forEach((variant) => {
-      const variantValue = (variant.shape[discriminator]._def as { value: string }).value;
+      const variantValue = (variant.shape[discriminator] as z.ZodLiteral<string>).value;
       Object.entries(variant.shape).forEach(([key, fieldSchema]) => {
         if (key === discriminator) return;
         const isShared = occurrences.get(key) === variants.length;

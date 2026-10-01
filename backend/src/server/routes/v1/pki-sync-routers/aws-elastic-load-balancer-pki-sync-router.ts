@@ -45,7 +45,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
       ...(enableOperationId ? { operationId: "listAwsElasticLoadBalancers" } : {}),
       description: "List AWS Elastic Load Balancers available for the specified connection and region.",
       querystring: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().guid(),
         region: z.nativeEnum(AWSRegion)
       }),
       response: {
@@ -88,7 +88,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
       ...(enableOperationId ? { operationId: "listAwsElasticLoadBalancerListeners" } : {}),
       description: "List HTTPS/TLS listeners for the specified AWS Elastic Load Balancer.",
       querystring: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().guid(),
         region: z.nativeEnum(AWSRegion),
         loadBalancerArn: z.string().trim().min(1, "Load Balancer ARN required")
       }),
@@ -139,10 +139,10 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
       description:
         "Set a certificate as the default for all listeners in this AWS ELB PKI Sync. This will trigger a sync immediately.",
       params: z.object({
-        pkiSyncId: z.string().uuid()
+        pkiSyncId: z.string().guid()
       }),
       body: z.object({
-        certificateId: z.string().uuid()
+        certificateId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -191,7 +191,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
       description:
         "Clear the default certificate for this AWS ELB PKI Sync. No certificate will be set as the default on listeners. This will trigger a sync immediately.",
       params: z.object({
-        pkiSyncId: z.string().uuid()
+        pkiSyncId: z.string().guid()
       }),
       response: {
         200: z.object({

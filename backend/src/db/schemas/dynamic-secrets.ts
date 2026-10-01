@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const DynamicSecretsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   version: z.number(),
   type: z.string(),
@@ -21,17 +21,17 @@ export const DynamicSecretsSchema = z.object({
   inputTag: z.string().nullable().optional(),
   algorithm: z.string().default("aes-256-gcm"),
   keyEncoding: z.string().default("utf8"),
-  folderId: z.string().uuid(),
+  folderId: z.string().guid(),
   status: z.string().nullable().optional(),
   statusDetails: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   encryptedInput: zodBuffer,
-  projectGatewayId: z.string().uuid().nullable().optional(),
-  gatewayId: z.string().uuid().nullable().optional(),
+  projectGatewayId: z.string().guid().nullable().optional(),
+  gatewayId: z.string().guid().nullable().optional(),
   usernameTemplate: z.string().nullable().optional(),
-  gatewayV2Id: z.string().uuid().nullable().optional(),
-  gatewayPoolId: z.string().uuid().nullable().optional()
+  gatewayV2Id: z.string().guid().nullable().optional(),
+  gatewayPoolId: z.string().guid().nullable().optional()
 });
 
 export type TDynamicSecrets = z.infer<typeof DynamicSecretsSchema>;

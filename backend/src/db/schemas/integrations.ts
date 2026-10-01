@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IntegrationsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   isActive: z.boolean(),
   url: z.string().nullable().optional(),
   app: z.string().nullable().optional(),
@@ -23,8 +23,8 @@ export const IntegrationsSchema = z.object({
   scope: z.string().nullable().optional(),
   integration: z.string(),
   metadata: z.unknown().nullable().optional(),
-  integrationAuthId: z.string().uuid(),
-  envId: z.string().uuid(),
+  integrationAuthId: z.string().guid(),
+  envId: z.string().guid(),
   secretPath: z.string().default("/"),
   createdAt: z.date(),
   updatedAt: z.date(),

@@ -10,10 +10,10 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const CertificateBodiesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  certId: z.string().uuid(),
+  certId: z.string().guid(),
   encryptedCertificate: zodBuffer,
   encryptedCertificateChain: zodBuffer.nullable().optional()
 });

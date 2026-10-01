@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const FolderCheckpointResourcesSchema = z.object({
-  id: z.string().uuid(),
-  folderCheckpointId: z.string().uuid(),
-  secretVersionId: z.string().uuid().nullable().optional(),
-  folderVersionId: z.string().uuid().nullable().optional(),
+  id: z.string().guid(),
+  folderCheckpointId: z.string().guid(),
+  secretVersionId: z.string().guid().nullable().optional(),
+  folderVersionId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

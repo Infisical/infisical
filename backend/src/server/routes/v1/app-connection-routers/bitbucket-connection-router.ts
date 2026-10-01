@@ -32,7 +32,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
     schema: {
       operationId: "listBitbucketWorkspaces",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         search: z.string().trim().optional()
@@ -69,7 +69,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
     schema: {
       operationId: "listBitbucketRepositories",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         workspaceSlug: z.string().min(1).max(255),
@@ -107,7 +107,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
     schema: {
       operationId: "listBitbucketEnvironments",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         workspaceSlug: z.string().min(1).max(255),

@@ -31,7 +31,7 @@ export const registerHasuraCloudConnectionRouter = async (server: FastifyZodProv
     schema: {
       operationId: "listHasuraCloudProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

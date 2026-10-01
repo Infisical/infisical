@@ -8,16 +8,16 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamAccountTemplatesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   name: z.string(),
   description: z.string().nullable().optional(),
   type: z.string(),
   policies: z.unknown().nullable().optional(),
   settings: z.unknown().nullable().optional(),
-  gatewayId: z.string().uuid().nullable().optional(),
-  gatewayPoolId: z.string().uuid().nullable().optional(),
-  recordingConnectionId: z.string().uuid().nullable().optional(),
+  gatewayId: z.string().guid().nullable().optional(),
+  gatewayPoolId: z.string().guid().nullable().optional(),
+  recordingConnectionId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

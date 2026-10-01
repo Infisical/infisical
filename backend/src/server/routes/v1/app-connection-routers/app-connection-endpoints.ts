@@ -159,7 +159,7 @@ export const buildListAvailableAppConnectionsRoute = (
             .object({
               app: z.literal(app),
               name: z.string(),
-              id: z.string().uuid(),
+              id: z.string().guid(),
               projectId: z.string().nullish(),
               orgId: z.string()
             })
@@ -214,7 +214,7 @@ export const buildGetAppConnectionRoute = (
       tags,
       description,
       params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.GET_BY_ID(app).connectionId)
+        connectionId: z.string().guid().describe(AppConnections.GET_BY_ID(app).connectionId)
       }),
       response: {
         200: z.object({ appConnection: sanitizedResponseSchema })
@@ -426,7 +426,7 @@ export const buildUpdateAppConnectionRoute = <I extends TAppConnectionInput>(
       tags,
       description,
       params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.UPDATE(app).connectionId)
+        connectionId: z.string().guid().describe(AppConnections.UPDATE(app).connectionId)
       }),
       body: updateSchema,
       response: {
@@ -516,7 +516,7 @@ export const buildDeleteAppConnectionRoute = (
       tags,
       description,
       params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.DELETE(app).connectionId)
+        connectionId: z.string().guid().describe(AppConnections.DELETE(app).connectionId)
       }),
       response: {
         200: z.object({ appConnection: sanitizedResponseSchema })
@@ -582,7 +582,7 @@ export const buildRotateAppConnectionCredentialsRoute = (
       tags,
       description,
       params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.ROTATE_CREDENTIALS(app).connectionId)
+        connectionId: z.string().guid().describe(AppConnections.ROTATE_CREDENTIALS(app).connectionId)
       }),
       response: {
         200: z.object({ appConnection: sanitizedResponseSchema })
@@ -657,7 +657,7 @@ export const registerAppConnectionEndpoints = <I extends TAppConnectionInput>({
   //     hide: true, // scott: we could expose this in the future but just for UI right now
   //     tags: [ApiDocsTags.AppConnections],
   //     params: z.object({
-  //       connectionId: z.string().uuid()
+  //       connectionId: z.string().guid()
   //     }),
   //     response: {
   //       200: z.object({

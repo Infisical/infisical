@@ -104,15 +104,15 @@ export const PkiSyncOptionsSchema = z.object({
 // Schema for destination-specific configurations
 export const PkiSyncDestinationConfigSchema = z.object({
   destination: z.nativeEnum(PkiSync),
-  config: z.record(z.unknown())
+  config: z.record(z.string(), z.unknown())
 });
 
 const PkiSyncFiltersSchema = z
   .object({
-    profileIds: z.string().uuid().array().max(20).optional().describe(PKI_SYNC_FILTERS.profileIds),
+    profileIds: z.string().guid().array().max(20).optional().describe(PKI_SYNC_FILTERS.profileIds),
     certificateOrderIds: z
       .string()
-      .uuid()
+      .guid()
       .array()
       .max(PKI_SYNC_MAX_FILTER_ORDERS)
       .optional()
@@ -139,8 +139,8 @@ export const PkiSyncFiltersField = PkiSyncFiltersSchema.nullish().describe(PKI_S
 export const UpdatePkiSyncFiltersField = PkiSyncFiltersSchema.nullish().describe(PKI_SYNC_FILTERS.updateFilters);
 
 const StoredPkiSyncFiltersSchema = z.object({
-  profileIds: z.string().uuid().array().optional(),
-  certificateOrderIds: z.string().uuid().array().optional(),
+  profileIds: z.string().guid().array().optional(),
+  certificateOrderIds: z.string().guid().array().optional(),
   metadata: z.object({ key: z.string(), value: z.string().optional() }).array().optional()
 });
 
@@ -148,16 +148,16 @@ export const PkiSyncStoredFiltersField = StoredPkiSyncFiltersSchema.nullish().de
 
 // Base PKI sync schema for API responses
 export const PkiSyncSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string().max(256),
   description: z.string().nullable().optional(),
   destination: z.nativeEnum(PkiSync),
   isAutoSyncEnabled: z.boolean(),
-  destinationConfig: z.record(z.unknown()),
-  syncOptions: z.record(z.unknown()),
-  projectId: z.string().uuid(),
-  subscriberId: z.string().uuid().nullable().optional(),
-  connectionId: z.string().uuid(),
+  destinationConfig: z.record(z.string(), z.unknown()),
+  syncOptions: z.record(z.string(), z.unknown()),
+  projectId: z.string().guid(),
+  subscriberId: z.string().guid().nullable().optional(),
+  connectionId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   syncStatus: z.string().nullable().optional(),
@@ -169,9 +169,9 @@ export const PkiSyncSchema = z.object({
 });
 
 export const BaseHealthCheckTestSchema = z.object({
-  connectionId: z.string().uuid(),
-  applicationId: z.string().uuid().optional(),
-  syncId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).max(100).optional(),
+  connectionId: z.string().guid(),
+  applicationId: z.string().guid().optional(),
+  syncId: z.string().guid().optional(),
+  certificateIds: z.array(z.string().guid()).max(100).optional(),
   filters: PkiSyncFiltersField
 });

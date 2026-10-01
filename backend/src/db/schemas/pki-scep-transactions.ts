@@ -10,17 +10,17 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiScepTransactionsSchema = z.object({
-  id: z.string().uuid(),
-  profileId: z.string().uuid(),
+  id: z.string().guid(),
+  profileId: z.string().guid(),
   transactionId: z.string(),
   senderNonce: zodBuffer,
   signerCertDer: zodBuffer,
-  certificateRequestId: z.string().uuid().nullable().optional(),
+  certificateRequestId: z.string().guid().nullable().optional(),
   clientCipherOid: z.string().nullable().optional(),
   expiresAt: z.date(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  applicationId: z.string().uuid().nullable().optional()
+  applicationId: z.string().guid().nullable().optional()
 });
 
 export type TPkiScepTransactions = z.infer<typeof PkiScepTransactionsSchema>;

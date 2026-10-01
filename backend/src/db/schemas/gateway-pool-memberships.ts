@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const GatewayPoolMembershipsSchema = z.object({
-  id: z.string().uuid(),
-  gatewayPoolId: z.string().uuid(),
-  gatewayId: z.string().uuid(),
+  id: z.string().guid(),
+  gatewayPoolId: z.string().guid(),
+  gatewayId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

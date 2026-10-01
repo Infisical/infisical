@@ -31,7 +31,7 @@ export const registerChecklyConnectionRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "listChecklyAccounts",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -64,7 +64,7 @@ export const registerChecklyConnectionRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "listChecklyGroups",
       params: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().guid(),
         accountId: z.string()
       }),
       response: {

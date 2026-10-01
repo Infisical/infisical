@@ -337,10 +337,10 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
                 })
               ),
               group: z.object({
-                id: z.string().uuid(),
+                id: z.string().guid(),
                 name: z.string(),
                 slug: z.string(),
-                orgId: z.string().uuid().optional()
+                orgId: z.string().guid().optional()
               })
             })
           )

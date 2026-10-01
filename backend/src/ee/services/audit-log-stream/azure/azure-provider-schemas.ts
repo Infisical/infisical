@@ -5,8 +5,8 @@ import { LogProvider, StreamMode } from "../audit-log-stream-enums";
 import { BaseProviderSchema } from "../audit-log-stream-schemas";
 
 export const AzureProviderCredentialsSchema = z.object({
-  tenantId: z.string().trim().uuid(),
-  clientId: z.string().trim().uuid(),
+  tenantId: z.string().trim().guid(),
+  clientId: z.string().trim().guid(),
   clientSecret: z.string().trim().length(40),
 
   // Data Collection Endpoint URL

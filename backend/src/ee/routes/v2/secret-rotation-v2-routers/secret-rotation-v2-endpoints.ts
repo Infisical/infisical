@@ -121,7 +121,7 @@ export const registerSecretRotationEndpoints = <
       tags: [ApiDocsTags.SecretRotations],
       description: `Get the specified ${rotationType} Rotation by ID.`,
       params: z.object({
-        rotationId: z.string().uuid().describe(SecretRotations.GET_BY_ID(type).rotationId)
+        rotationId: z.string().guid().describe(SecretRotations.GET_BY_ID(type).rotationId)
       }),
       response: {
         200: z.object({ secretRotation: responseSchema })
@@ -290,7 +290,7 @@ export const registerSecretRotationEndpoints = <
       tags: [ApiDocsTags.SecretRotations],
       description: `Update the specified ${rotationType} Rotation.`,
       params: z.object({
-        rotationId: z.string().uuid().describe(SecretRotations.UPDATE(type).rotationId)
+        rotationId: z.string().guid().describe(SecretRotations.UPDATE(type).rotationId)
       }),
       body: updateSchema,
       response: {
@@ -351,7 +351,7 @@ export const registerSecretRotationEndpoints = <
       tags: [ApiDocsTags.SecretRotations],
       description: `Delete the specified ${rotationType} Rotation.`,
       params: z.object({
-        rotationId: z.string().uuid().describe(SecretRotations.DELETE(type).rotationId)
+        rotationId: z.string().guid().describe(SecretRotations.DELETE(type).rotationId)
       }),
       querystring: z.object({
         deleteSecrets: z
@@ -424,13 +424,13 @@ export const registerSecretRotationEndpoints = <
       tags: [ApiDocsTags.SecretRotations],
       description: `Get the generated credentials for the specified ${rotationType} Rotation.`,
       params: z.object({
-        rotationId: z.string().uuid().describe(SecretRotations.GET_GENERATED_CREDENTIALS_BY_ID(type).rotationId)
+        rotationId: z.string().guid().describe(SecretRotations.GET_GENERATED_CREDENTIALS_BY_ID(type).rotationId)
       }),
       response: {
         200: z.object({
           generatedCredentials: generatedCredentialsSchema,
           activeIndex: z.number(),
-          rotationId: z.string().uuid(),
+          rotationId: z.string().guid(),
           type: z.literal(type)
         })
       }
@@ -480,7 +480,7 @@ export const registerSecretRotationEndpoints = <
       tags: [ApiDocsTags.SecretRotations],
       description: `Move the specified ${rotationType} Rotation to a different secret path or environment.`,
       params: z.object({
-        rotationId: z.string().uuid().describe(SecretRotations.UPDATE(type).rotationId)
+        rotationId: z.string().guid().describe(SecretRotations.UPDATE(type).rotationId)
       }),
       body: z.object({
         destinationEnvironment: z.string().trim().min(1, "Destination environment required"),
@@ -536,7 +536,7 @@ export const registerSecretRotationEndpoints = <
       tags: [ApiDocsTags.SecretRotations],
       description: `Rotate the generated credentials for the specified ${rotationType} Rotation.`,
       params: z.object({
-        rotationId: z.string().uuid().describe(SecretRotations.ROTATE(type).rotationId)
+        rotationId: z.string().guid().describe(SecretRotations.ROTATE(type).rotationId)
       }),
       response: {
         200: z.object({ secretRotation: responseSchema })
@@ -588,7 +588,7 @@ export const registerSecretRotationEndpoints = <
       tags: [ApiDocsTags.SecretRotations],
       description: `Check whether the active credentials for the specified ${rotationType} Rotation are still valid against the upstream system.`,
       params: z.object({
-        rotationId: z.string().uuid().describe(SecretRotations.CHECK_CREDENTIALS(type).rotationId)
+        rotationId: z.string().guid().describe(SecretRotations.CHECK_CREDENTIALS(type).rotationId)
       }),
       response: {
         204: z.string().length(0)

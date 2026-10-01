@@ -68,14 +68,14 @@ export const InternalCertificateAuthorityConfigurationSchema = z
       .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.keySource),
     hsmConnectorId: z
       .string()
-      .uuid()
+      .guid()
       .optional()
       .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmConnectorId),
     hsmKeyLabel: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmKeyLabel),
     dn: z.string().trim().max(PKI_TEXT_COLUMN_MAX_LENGTH).nullish(),
-    parentCaId: z.string().uuid().nullish(),
+    parentCaId: z.string().guid().nullish(),
     serialNumber: z.string().trim().nullish(),
-    activeCaCertId: z.string().uuid().nullish(),
+    activeCaCertId: z.string().guid().nullish(),
     crlDistributionPointUrls: distributionPointUrlsSchema
       .optional()
       .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.crlDistributionPointUrls),

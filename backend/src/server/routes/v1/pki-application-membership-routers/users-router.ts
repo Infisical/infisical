@@ -13,13 +13,13 @@ import { ApplicationIdParamsSchema } from "../pki-application-schemas";
 import { ApplicationMemberSchema, RemoveResponseSchema, RoleBodySchema } from "./schemas";
 
 const UserParamsSchema = z.object({
-  applicationId: z.string().uuid(),
-  userId: z.string().uuid()
+  applicationId: z.string().guid(),
+  userId: z.string().guid()
 });
 
 const AddUsersBodySchema = z
   .object({
-    userIds: z.string().uuid().array().default([]),
+    userIds: z.string().guid().array().default([]),
     emails: z
       .string()
       .email()

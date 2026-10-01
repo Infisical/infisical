@@ -8,12 +8,12 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiCollectionItemsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  pkiCollectionId: z.string().uuid(),
-  caId: z.string().uuid().nullable().optional(),
-  certId: z.string().uuid().nullable().optional()
+  pkiCollectionId: z.string().guid(),
+  caId: z.string().guid().nullable().optional(),
+  certId: z.string().guid().nullable().optional()
 });
 
 export type TPkiCollectionItems = z.infer<typeof PkiCollectionItemsSchema>;

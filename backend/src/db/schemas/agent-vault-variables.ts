@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultVariablesSchema = z.object({
-  id: z.string().uuid(),
-  accessBundleId: z.string().uuid(),
+  id: z.string().guid(),
+  accessBundleId: z.string().guid(),
   key: z.string(),
   encryptedValue: zodBuffer,
   isSecret: z.boolean().default(true),

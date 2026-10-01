@@ -110,7 +110,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          gatewayId: z.string().uuid().describe(GATEWAYS.METRICS_REPORT.gatewayId),
+          gatewayId: z.string().guid().describe(GATEWAYS.METRICS_REPORT.gatewayId),
           activeChannels: z.number().int().describe(GATEWAYS.METRICS_REPORT.activeChannels)
         })
       }
@@ -279,7 +279,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "getGatewayConnectedResources",
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({

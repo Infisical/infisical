@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentitySpiffeAuthsSchema = z.object({
-  id: z.string().uuid(),
-  identityId: z.string().uuid(),
+  id: z.string().guid(),
+  identityId: z.string().guid(),
   trustDomain: z.string(),
   allowedSpiffeIds: z.string(),
   allowedAudiences: z.string(),

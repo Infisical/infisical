@@ -10,14 +10,14 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const CertificateRequestsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   status: z.string(),
   projectId: z.string(),
-  profileId: z.string().uuid().nullable().optional(),
-  caId: z.string().uuid().nullable().optional(),
-  certificateId: z.string().uuid().nullable().optional(),
+  profileId: z.string().guid().nullable().optional(),
+  caId: z.string().guid().nullable().optional(),
+  certificateId: z.string().guid().nullable().optional(),
   csr: z.string().nullable().optional(),
   commonName: z.string().nullable().optional(),
   keyUsages: z.string().array().nullable().optional(),
@@ -28,9 +28,9 @@ export const CertificateRequestsSchema = z.object({
   signatureAlgorithm: z.string().nullable().optional(),
   errorMessage: z.string().nullable().optional(),
   metadata: z.string().nullable().optional(),
-  acmeOrderId: z.string().uuid().nullable().optional(),
+  acmeOrderId: z.string().guid().nullable().optional(),
   basicConstraints: z.unknown().nullable().optional(),
-  approvalRequestId: z.string().uuid().nullable().optional(),
+  approvalRequestId: z.string().guid().nullable().optional(),
   ttl: z.string().nullable().optional(),
   enrollmentType: z.string().nullable().optional(),
   altNames: z.unknown().nullable().optional(),
@@ -41,7 +41,7 @@ export const CertificateRequestsSchema = z.object({
   locality: z.string().nullable().optional(),
   encryptedPrivateKey: zodBuffer.nullable().optional(),
   pendingMessage: z.string().nullable().optional(),
-  applicationId: z.string().uuid().nullable().optional(),
+  applicationId: z.string().guid().nullable().optional(),
   domainComponents: z.string().nullable().optional(),
   customExtensions: z.unknown().nullable().optional()
 });

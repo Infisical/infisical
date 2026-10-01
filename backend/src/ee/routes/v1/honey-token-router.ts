@@ -62,10 +62,7 @@ const HoneyTokenResetResponseSchema = HoneyTokensSchema.pick({
 
 const HoneyTokenCredentialsResponseSchema = z.discriminatedUnion(
   "type",
-  Object.values(HONEY_TOKEN_CREDENTIALS_RESPONSE_SCHEMA_MAP) as unknown as [
-    z.ZodDiscriminatedUnionOption<"type">,
-    ...z.ZodDiscriminatedUnionOption<"type">[]
-  ]
+  Object.values(HONEY_TOKEN_CREDENTIALS_RESPONSE_SCHEMA_MAP) as unknown as [z.ZodObject, ...z.ZodObject[]]
 );
 
 export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider) => {
@@ -167,7 +164,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -193,7 +190,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       body: z.object({
         name: slugSchema({ field: "name" }).optional(),
@@ -259,7 +256,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -304,11 +301,11 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({
-          honeyTokenId: z.string().uuid()
+          honeyTokenId: z.string().guid()
         })
       }
     },
@@ -359,7 +356,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: HoneyTokenCredentialsResponseSchema
@@ -386,7 +383,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0),
@@ -396,8 +393,8 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         200: z.object({
           events: z.array(
             z.object({
-              id: z.string().uuid(),
-              honeyTokenId: z.string().uuid(),
+              id: z.string().guid(),
+              honeyTokenId: z.string().guid(),
               eventType: z.string(),
               metadata: z.unknown().nullable().optional(),
               createdAt: z.date(),

@@ -126,7 +126,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     config: { rateLimit: readLimit },
     schema: {
       params: z.object({
-        grantId: z.string().uuid()
+        grantId: z.string().guid()
       }),
       querystring: z.object({
         sourceProjectId: z.string()
@@ -157,7 +157,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     config: { rateLimit: writeLimit },
     schema: {
       params: z.object({
-        grantId: z.string().uuid()
+        grantId: z.string().guid()
       }),
       querystring: z.object({
         sourceProjectId: z.string()

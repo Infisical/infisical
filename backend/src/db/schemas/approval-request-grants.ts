@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ApprovalRequestGrantsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
-  requestId: z.string().uuid().nullable().optional(),
-  granteeUserId: z.string().uuid().nullable().optional(),
-  revokedByUserId: z.string().uuid().nullable().optional(),
+  requestId: z.string().guid().nullable().optional(),
+  granteeUserId: z.string().guid().nullable().optional(),
+  revokedByUserId: z.string().guid().nullable().optional(),
   revocationReason: z.string().nullable().optional(),
   status: z.string(),
   type: z.string(),
@@ -20,7 +20,7 @@ export const ApprovalRequestGrantsSchema = z.object({
   createdAt: z.date().nullable().optional(),
   expiresAt: z.date().nullable().optional(),
   revokedAt: z.date().nullable().optional(),
-  granteeMachineIdentityId: z.string().uuid().nullable().optional(),
+  granteeMachineIdentityId: z.string().guid().nullable().optional(),
   isBreakGlass: z.boolean().default(false),
   bypassReason: z.string().nullable().optional()
 });

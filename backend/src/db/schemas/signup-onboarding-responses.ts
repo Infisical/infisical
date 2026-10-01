@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SignupOnboardingResponsesSchema = z.object({
-  id: z.string().uuid(),
-  userId: z.string().uuid(),
-  orgId: z.string().uuid(),
+  id: z.string().guid(),
+  userId: z.string().guid(),
+  orgId: z.string().guid(),
   selectedProducts: z.string().array().nullable().optional(),
   isExploring: z.boolean().nullable().optional(),
   launchDestination: z.string().nullable().optional(),

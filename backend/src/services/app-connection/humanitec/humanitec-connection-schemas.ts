@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -25,7 +26,7 @@ export const HumanitecConnectionSchema = BaseHumanitecConnectionSchema.extend({
 export const SanitizedHumanitecConnectionSchema = z.discriminatedUnion("method", [
   BaseHumanitecConnectionSchema.extend({
     method: z.literal(HumanitecConnectionMethod.ApiToken),
-    credentials: HumanitecConnectionAccessTokenCredentialsSchema.pick({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Humanitec]} (API Token)` }))
 ]);
 

@@ -10,15 +10,15 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SuperAdminSchema = z.object({
-  id: z.string().uuid(),
-  initialized: z.boolean().default(false).nullable().optional(),
-  allowSignUp: z.boolean().default(true).nullable().optional(),
+  id: z.string().guid(),
+  initialized: z.boolean().nullable().optional(),
+  allowSignUp: z.boolean().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   allowedSignUpDomain: z.string().nullable().optional(),
-  instanceId: z.string().uuid().default("00000000-0000-0000-0000-000000000000"),
-  trustLdapEmails: z.boolean().default(false).nullable().optional(),
-  defaultAuthOrgId: z.string().uuid().nullable().optional(),
+  instanceId: z.string().guid().default("00000000-0000-0000-0000-000000000000"),
+  trustLdapEmails: z.boolean().nullable().optional(),
+  defaultAuthOrgId: z.string().guid().nullable().optional(),
   enabledLoginMethods: z.string().array().nullable().optional(),
   encryptedSlackClientId: zodBuffer.nullable().optional(),
   encryptedSlackClientSecret: zodBuffer.nullable().optional(),

@@ -28,7 +28,6 @@ import {
 } from "./cert-request/cert-request-policy-types";
 import {
   TCodeSigningPolicy,
-  TCodeSigningPolicyConditions,
   TCodeSigningPolicyConstraints,
   TCodeSigningPolicyInputs,
   TCodeSigningRequest,
@@ -49,10 +48,7 @@ export type TApprovalSubjectActor = Pick<TApprovalActor, "id" | "type">;
 
 export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy | TCodeSigningPolicy;
 export type TApprovalPolicyInputs = TPamAccessPolicyInputs | TCertRequestPolicyInputs | TCodeSigningPolicyInputs;
-export type TApprovalPolicyConditions =
-  | TPamAccessPolicyConditions
-  | TCertRequestPolicyConditions
-  | TCodeSigningPolicyConditions;
+export type TApprovalPolicyConditions = TPamAccessPolicyConditions | TCertRequestPolicyConditions;
 export type TApprovalPolicyConstraints =
   | TPamAccessPolicyConstraints
   | TCertRequestPolicyConstraints

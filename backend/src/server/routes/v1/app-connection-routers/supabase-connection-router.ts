@@ -31,7 +31,7 @@ export const registerSupabaseConnectionRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "listSupabaseProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

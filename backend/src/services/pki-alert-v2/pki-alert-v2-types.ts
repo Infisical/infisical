@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { PAGERDUTY_INTEGRATION_KEY_ERROR, pagerDutyIntegrationKeyRegex } from "@app/lib/pagerduty/integration-key";
 import { TGenericPermission } from "@app/lib/types";
+import { partialWithoutDefaults } from "@app/lib/zod";
 
 const createSecureNameValidator = () => {
   // Validates name format: lowercase alphanumeric characters with optional hyphens
@@ -197,7 +198,7 @@ export type TSlackChannelConfig = z.infer<typeof SlackChannelConfigSchema>;
 export type TChannelConfig = z.infer<typeof ChannelConfigSchema>;
 
 export const CreateChannelSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().guid().optional(),
   channelType: z.nativeEnum(PkiAlertChannelType),
   config: ChannelConfigSchema,
   enabled: z.boolean().default(true)
@@ -239,11 +240,11 @@ export const CreatePkiAlertV2Schema = BasePkiAlertV2Schema.superRefine((data, ct
 
 export type TCreatePkiAlertV2 = z.infer<typeof CreatePkiAlertV2Schema>;
 
-export const UpdatePkiAlertV2Schema = BasePkiAlertV2Schema.partial();
+export const UpdatePkiAlertV2Schema = partialWithoutDefaults(BasePkiAlertV2Schema);
 export type TUpdatePkiAlertV2 = z.infer<typeof UpdatePkiAlertV2Schema>;
 
 export const PkiAlertV2ResponseSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable(),
   eventType: z.nativeEnum(PkiAlertEventType),
@@ -251,13 +252,13 @@ export const PkiAlertV2ResponseSchema = z.object({
   filters: z.array(PkiFilterRuleSchema),
   enabled: z.boolean(),
   projectId: z.string(),
-  applicationId: z.string().uuid().nullable().optional(),
+  applicationId: z.string().guid().nullable().optional(),
   notificationConfig: NotificationConfigSchema.nullable(),
   channels: z.array(
     z.object({
-      id: z.string().uuid(),
+      id: z.string().guid(),
       channelType: z.nativeEnum(PkiAlertChannelType),
-      config: z.record(z.any()),
+      config: z.record(z.string(), z.any()),
       enabled: z.boolean(),
       createdAt: z.date(),
       updatedAt: z.date()

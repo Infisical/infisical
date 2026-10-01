@@ -49,7 +49,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       ]),
       response: {
         200: z.object({
-          proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
+          proxyId: z.string().guid().describe(AGENT_VAULT.PROXY.proxyId),
           name: z.string().describe(AGENT_VAULT.PROXY.name),
           accessToken: z.string(),
           config: ProxyConfigSchema
@@ -155,11 +155,11 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         .nullish(),
       response: {
         200: z.object({
-          sessionId: z.string().uuid(),
+          sessionId: z.string().guid(),
           expiresAt: z.date().nullable(),
           services: z
             .object({
-              id: z.string().uuid(),
+              id: z.string().guid(),
               name: z.string(),
               accessBundleName: z.string(),
               hostPattern: z.string(),
@@ -214,7 +214,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       description:
         "Records an encrypted session log chunk and returns a presigned URL to upload the chunk to. If you send the same `chunkId` again, you get a new URL for the same chunk.",
       tags: [ApiDocsTags.AgentVaultSessionLogs],
-      params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
+      params: z.object({ sessionId: z.string().guid().describe(AGENT_VAULT.SESSION.sessionId) }),
       body: AgentVaultSessionLogChunkCreateSchema,
       response: { 200: AgentVaultSessionLogChunkCreateResponseSchema }
     },

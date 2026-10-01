@@ -30,7 +30,7 @@ export const registerADCSConnectionRouter = async (server: FastifyZodProvider) =
     schema: {
       operationId: "listAdcsCertificateTemplates",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         caName: z.string().trim().min(1).optional()

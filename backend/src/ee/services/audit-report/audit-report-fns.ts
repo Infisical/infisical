@@ -79,7 +79,7 @@ export const buildFolderPathMap = async (
 const StoredReportConfigsSchema = z.array(
   z.object({
     type: z.nativeEnum(AuditReportType),
-    inputs: z.record(z.unknown())
+    inputs: z.record(z.string(), z.unknown())
   })
 );
 
@@ -104,7 +104,7 @@ export type TPresentedAuditReport = ReturnType<typeof presentAuditReport>;
 const StoredOrgReportConfigsSchema = z.array(
   z.object({
     type: z.nativeEnum(OrgAuditReportType),
-    inputs: z.record(z.unknown())
+    inputs: z.record(z.string(), z.unknown())
   })
 );
 

@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretScanningScansSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   status: z.string().default("queued"),
   statusMessage: z.string().nullable().optional(),
   type: z.string(),
-  resourceId: z.string().uuid(),
+  resourceId: z.string().guid(),
   createdAt: z.date().nullable().optional(),
   scanningStartedAt: z.date().nullable().optional(),
   lastScannedCommit: z.string().nullable().optional(),

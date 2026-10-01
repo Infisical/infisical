@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiCertificateInstallationCertsSchema = z.object({
-  id: z.string().uuid(),
-  installationId: z.string().uuid(),
-  certificateId: z.string().uuid(),
+  id: z.string().guid(),
+  installationId: z.string().guid(),
+  certificateId: z.string().guid(),
   firstSeenAt: z.date(),
   lastSeenAt: z.date(),
   createdAt: z.date(),

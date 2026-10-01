@@ -8,14 +8,14 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ResourceTokenAuthsSchema = z.object({
-  id: z.string().uuid(),
-  orgId: z.string().uuid(),
+  id: z.string().guid(),
+  orgId: z.string().guid(),
   tokenHash: z.string(),
   ttl: z.number().default(3600),
   expiresAt: z.date(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  authMethodId: z.string().uuid()
+  authMethodId: z.string().guid()
 });
 
 export type TResourceTokenAuths = z.infer<typeof ResourceTokenAuthsSchema>;

@@ -12,7 +12,7 @@ import { z } from "zod";
 const HOST_LABELS_RE = new RE2(/^(?:\*\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i);
 const PORT_RE = new RE2(/^\d+$/);
 const IPV4_RE = new RE2(/^\d{1,3}(?:\.\d{1,3}){3}$/);
-const IPV6_SCHEMA = z.string().ip({ version: "v6" });
+const IPV6_SCHEMA = z.ipv6();
 
 export const AGENT_VAULT_DEFAULT_PORT = "443";
 export const AGENT_VAULT_MAX_HOST_PATTERN_LENGTH = 1024;

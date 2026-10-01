@@ -26,7 +26,7 @@ export const AzureAppConfigurationConnectionOAuthOutputCredentialsSchema = z.obj
 export const AzureAppConfigurationConnectionClientSecretInputCredentialsSchema = z.object({
   clientId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .min(1, "Client ID required")
     .max(50, "Client ID must be at most 50 characters long"),
@@ -35,10 +35,10 @@ export const AzureAppConfigurationConnectionClientSecretInputCredentialsSchema =
     .trim()
     .min(1, "Client Secret required")
     .max(50, "Client Secret must be at most 50 characters long"),
-  tenantId: z.string().uuid().trim().min(1, "Tenant ID required"),
+  tenantId: z.string().guid().trim().min(1, "Tenant ID required"),
   clientSecretKeyId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .optional()
     .describe(

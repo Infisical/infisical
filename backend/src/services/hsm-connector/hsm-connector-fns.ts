@@ -56,12 +56,12 @@ export const decryptHsmConnectorCredentials = async ({
 };
 
 export const HsmConnectorSanitizedSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable(),
   projectId: z.string(),
-  gatewayId: z.string().uuid().nullable(),
-  gatewayPoolId: z.string().uuid().nullable(),
+  gatewayId: z.string().guid().nullable(),
+  gatewayPoolId: z.string().guid().nullable(),
   slotLabel: z.string(),
   keyNamePrefix: z.string().nullable(),
   createdAt: z.date(),

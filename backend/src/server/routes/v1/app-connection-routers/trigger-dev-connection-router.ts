@@ -31,7 +31,7 @@ export const registerTriggerDevConnectionRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listTriggerDevProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z
@@ -64,7 +64,7 @@ export const registerTriggerDevConnectionRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listTriggerDevEnvironments",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         projectRef: z.string().trim().min(1)

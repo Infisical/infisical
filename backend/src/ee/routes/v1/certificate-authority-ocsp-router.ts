@@ -98,7 +98,7 @@ export const registerCaOcspRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: true,
       params: z.object({
-        caId: z.string().uuid()
+        caId: z.string().guid()
       }),
       response: {
         200: z.instanceof(Buffer)
@@ -116,7 +116,7 @@ export const registerCaOcspRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: true,
       params: z.object({
-        caId: z.string().uuid(),
+        caId: z.string().guid(),
         "*": z.string().trim().min(1).max(OCSP_MAX_REQUEST_BYTES)
       }),
       response: {

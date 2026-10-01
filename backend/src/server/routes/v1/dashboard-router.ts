@@ -193,14 +193,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .describe(DASHBOARD.SECRET_OVERVIEW_LIST.secretPath),
         offset: z.coerce.number().min(0).optional().default(0).describe(DASHBOARD.SECRET_OVERVIEW_LIST.offset),
         limit: z.coerce.number().min(1).max(100).optional().default(100).describe(DASHBOARD.SECRET_OVERVIEW_LIST.limit),
-        orderBy: z
-          .nativeEnum(SecretsOrderBy)
-          .default(SecretsOrderBy.Name)
-          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderBy)
-          .optional(),
+        orderBy: z.nativeEnum(SecretsOrderBy).describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderBy).optional(),
         orderDirection: z
           .nativeEnum(OrderByDirection)
-          .default(OrderByDirection.ASC)
           .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderDirection)
           .optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.search).optional(),
@@ -868,14 +863,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .describe(DASHBOARD.SECRET_DETAILS_LIST.secretPath),
         offset: z.coerce.number().min(0).optional().default(0).describe(DASHBOARD.SECRET_DETAILS_LIST.offset),
         limit: z.coerce.number().min(1).max(100).optional().default(100).describe(DASHBOARD.SECRET_DETAILS_LIST.limit),
-        orderBy: z
-          .nativeEnum(SecretsOrderBy)
-          .default(SecretsOrderBy.Name)
-          .describe(DASHBOARD.SECRET_DETAILS_LIST.orderBy)
-          .optional(),
+        orderBy: z.nativeEnum(SecretsOrderBy).describe(DASHBOARD.SECRET_DETAILS_LIST.orderBy).optional(),
         orderDirection: z
           .nativeEnum(OrderByDirection)
-          .default(OrderByDirection.ASC)
           .describe(DASHBOARD.SECRET_DETAILS_LIST.orderDirection)
           .optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_DETAILS_LIST.search).optional(),
@@ -1520,7 +1510,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         search: z.string().trim().optional(),
         tags: z.string().trim().transform(decodeURIComponent).optional(),
         limit: z.coerce
-          .number({ invalid_type_error: "Limit must be a number" })
+          .number({ error: "Limit must be a number" })
           .int({ message: "Limit must be a whole number" })
           .min(1, { message: "Limit must be at least 1" })
           .max(DEEP_SEARCH_MAX_PAGE_LIMIT, {
@@ -1529,7 +1519,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .default(DEEP_SEARCH_DEFAULT_PAGE_LIMIT)
           .describe(DASHBOARD.SECRET_DEEP_SEARCH.limit),
         offset: z.coerce
-          .number({ invalid_type_error: "Offset must be a number" })
+          .number({ error: "Offset must be a number" })
           .int({ message: "Offset must be a whole number" })
           .min(0, { message: "Offset cannot be negative" })
           .max(MAX_DEEP_SEARCH_LIMIT, {
@@ -2089,12 +2079,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 .object({
                   username: z.string().nullable(),
                   email: z.string().nullable().optional(),
-                  projectMembershipId: z.string().uuid().nullable().optional()
+                  projectMembershipId: z.string().guid().nullable().optional()
                 })
                 .nullable()
                 .optional(),
               redactedAt: z.date().nullable(),
-              redactedByUserId: z.string().uuid().nullable(),
+              redactedByUserId: z.string().guid().nullable(),
               secretValueHidden: z.boolean()
             })
             .array()
@@ -2185,7 +2175,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        folderId: z.string().trim().uuid()
+        folderId: z.string().trim().guid()
       }),
       querystring: z.object({
         destinationEnvironment: z.string().trim().optional(),

@@ -129,7 +129,7 @@ export const AgentVaultSessionLogTailResponseSchema = z.object({
 
 export const AgentVaultSessionLogSettingsSchema = z.object({
   enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.configEnabled),
-  appConnectionId: z.string().uuid().nullable().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
+  appConnectionId: z.string().guid().nullable().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
   bucket: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.bucket),
   region: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.region),
   keyPrefix: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)
@@ -158,7 +158,7 @@ export const AgentVaultSessionLogCorsProbeResponseSchema = z.object({
 export const AgentVaultSessionLogSettingsUpdateSchema = z
   .object({
     enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.configEnabled),
-    appConnectionId: z.string().uuid().nullable().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
+    appConnectionId: z.string().guid().nullable().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
     bucket: z
       .string()
       .trim()

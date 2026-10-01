@@ -49,7 +49,7 @@ export const runModesSchema = zpStr(z.string().optional())
   .pipe(
     z
       .nativeEnum(RunMode, {
-        errorMap: () => ({
+        error: () => ({
           message: `INFISICAL_RUN_MODES must be a comma-separated list of: ${Object.values(RunMode).join(", ")}`
         })
       })
@@ -164,14 +164,14 @@ const databaseReadReplicaSchema = z
 const envSchema = z
   .object({
     INFISICAL_PLATFORM_VERSION: zpStr(z.string().optional()),
-    KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN: zodStrBool.default("false"),
+    KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN: zodStrBool.prefault("false"),
     PORT: z.coerce.number().default(IS_PACKAGED ? 8080 : 4000),
     DISABLE_SECRET_SCANNING: z
       .enum(["true", "false"])
-      .default("false")
+      .prefault("false")
       .transform((el) => el === "true"),
-    DISABLE_PUBLIC_SECRET_SHARING: zodStrBool.default("false"),
-    DISABLE_UPDATE_CHECK: zodStrBool.default("false"),
+    DISABLE_PUBLIC_SECRET_SHARING: zodStrBool.prefault("false"),
+    DISABLE_UPDATE_CHECK: zodStrBool.prefault("false"),
     REDIS_URL: zpStr(z.string().optional()),
     REDIS_USERNAME: zpStr(z.string().optional()),
     REDIS_PASSWORD: zpStr(z.string().optional()),
@@ -203,14 +203,14 @@ const envSchema = z
     ),
     REDIS_CLUSTER_ENABLE_TLS: z
       .enum(["true", "false"])
-      .default("false")
+      .prefault("false")
       .transform((el) => el === "true"),
     REDIS_CLUSTER_AWS_ELASTICACHE_DNS_LOOKUP_MODE: z
       .enum(["true", "false"])
-      .default("false")
+      .prefault("false")
       .transform((el) => el === "true"),
     HOST: zpStr(z.string().default("localhost")),
-    DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
+    DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).prefault(
       `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
     ),
     AUDIT_LOGS_DB_CONNECTION_URI: zpStr(
@@ -233,7 +233,7 @@ const envSchema = z
           if (!val || val.trim() === "") return DEFAULT_CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS;
           return JSON.parse(val) as Record<string, string | number | boolean>;
         })
-        .default(JSON.stringify(DEFAULT_CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS))
+        .prefault(JSON.stringify(DEFAULT_CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS))
         .describe(
           'ClickHouse insert settings as JSON. Eg: {"async_insert":1,"wait_for_async_insert":1}. Applied when inserting audit logs.'
         )
@@ -250,8 +250,10 @@ const envSchema = z
     CLICKHOUSE_AUDIT_LOG_TABLE_NAME: zpStr(
       z.string().optional().default("audit_logs").describe("ClickHouse table name for audit logs")
     ),
-    CLICKHOUSE_AUDIT_LOG_ENABLED: zodStrBool.default("true").describe("Enable inserting audit logs into ClickHouse"),
-    AUDIT_LOG_STREAMS_ENABLED: zodStrBool.default("true").describe("Enable sending audit logs to external log streams"),
+    CLICKHOUSE_AUDIT_LOG_ENABLED: zodStrBool.prefault("true").describe("Enable inserting audit logs into ClickHouse"),
+    AUDIT_LOG_STREAMS_ENABLED: zodStrBool
+      .prefault("true")
+      .describe("Enable sending audit logs to external log streams"),
     DISABLE_AUDIT_LOG_STORAGE: zodStrBool.optional(), // deprecated: use DISABLE_POSTGRES_AUDIT_LOG_STORAGE instead
     DISABLE_POSTGRES_AUDIT_LOG_STORAGE: z
       .string()
@@ -259,10 +261,10 @@ const envSchema = z
       .transform((val) => (val === undefined ? undefined : val === "true"))
       .describe("Disable PostgreSQL audit log storage"),
     GENERATE_SANITIZED_SCHEMA: zodStrBool
-      .default("false")
+      .prefault("false")
       .describe("Generate sanitized schema with views after migrations"),
     FAIL_ON_SANITIZED_SCHEMA_ERROR: zodStrBool
-      .default("false")
+      .prefault("false")
       .describe("Exit startup when sanitized schema generation fails"),
     SANITIZED_SCHEMA_ROLE: zpStr(
       z.string().describe("PostgreSQL role to grant read access to the sanitized schema").optional()
@@ -313,11 +315,11 @@ const envSchema = z
     KMS_ROOT_KEY_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(7),
     INFISICAL_RUN_MODES: runModesSchema,
     HTTPS_ENABLED: zodStrBool,
-    ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
-    DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
-    BDD_NOCK_API_ENABLED: zodStrBool.default("false").optional(),
-    ACME_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
-    ACME_SKIP_UPSTREAM_VALIDATION: zodStrBool.default("false").optional(),
+    ROTATION_DEVELOPMENT_MODE: zodStrBool.prefault("false").optional(),
+    DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.prefault("false").optional(),
+    BDD_NOCK_API_ENABLED: zodStrBool.prefault("false").optional(),
+    ACME_DEVELOPMENT_MODE: zodStrBool.prefault("false").optional(),
+    ACME_SKIP_UPSTREAM_VALIDATION: zodStrBool.prefault("false").optional(),
     ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(
       z
         .string()
@@ -326,7 +328,7 @@ const envSchema = z
           if (!val) return {};
           return JSON.parse(val) as Record<string, string>;
         })
-        .default("{}")
+        .prefault("{}")
     ),
     ACME_DNS_RESOLVER_SERVERS: zpStr(
       z
@@ -337,13 +339,13 @@ const envSchema = z
           return val.split(",");
         })
     ),
-    ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED: zodStrBool.default("false").optional(),
-    DNS_MADE_EASY_SANDBOX_ENABLED: zodStrBool.default("false").optional(),
+    ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED: zodStrBool.prefault("false").optional(),
+    DNS_MADE_EASY_SANDBOX_ENABLED: zodStrBool.prefault("false").optional(),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
-    SMTP_IGNORE_TLS: zodStrBool.default("false"),
-    SMTP_REQUIRE_TLS: zodStrBool.default("true"),
-    SMTP_TLS_REJECT_UNAUTHORIZED: zodStrBool.default("true"),
+    SMTP_IGNORE_TLS: zodStrBool.prefault("false"),
+    SMTP_REQUIRE_TLS: zodStrBool.prefault("true"),
+    SMTP_TLS_REJECT_UNAUTHORIZED: zodStrBool.prefault("true"),
     SMTP_PORT: z.coerce.number().default(587),
     SMTP_USERNAME: zpStr(z.string().optional()),
     SMTP_PASSWORD: zpStr(z.string().optional()),
@@ -365,7 +367,7 @@ const envSchema = z
     // Ensure that the SITE_URL never ends with a trailing slash
     SITE_URL: zpStr(z.string().transform((val) => (val ? removeTrailingSlash(val) : val))).optional(),
     // Telemetry
-    TELEMETRY_ENABLED: zodStrBool.default("true"),
+    TELEMETRY_ENABLED: zodStrBool.prefault("true"),
     POSTHOG_HOST: zpStr(z.string().optional().default("https://app.posthog.com")),
     POSTHOG_PROJECT_API_KEY: zpStr(z.string().optional().default("phc_swoSUd69FLA4ztGPkBhnNHDVbrssfPkuYEGCquN33FCX")),
     LOOPS_API_KEY: zpStr(z.string().optional()),
@@ -374,7 +376,7 @@ const envSchema = z
     HUBSPOT_SIGNUP_FORM_ID: zpStr(z.string().optional()),
     // In-app announcements (Contentful). Public read-only delivery token; safe to bake in defaults.
     // Self-hosted admins can disable outbound calls with ANNOUNCEMENTS_ENABLED=false.
-    ANNOUNCEMENTS_ENABLED: zodStrBool.default("true"),
+    ANNOUNCEMENTS_ENABLED: zodStrBool.prefault("true"),
     CONTENTFUL_SPACE_ID: zpStr(z.string().optional()),
     CONTENTFUL_DELIVERY_TOKEN: zpStr(z.string().optional()),
     CONTENTFUL_ENVIRONMENT: zpStr(z.string().optional().default("master")),
@@ -385,7 +387,7 @@ const envSchema = z
     SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS: z.coerce.number().default(2),
     SECRETS_ACTIVATION_ORG_MAX_MEMBERS: z.coerce.number().default(5),
     // jwt options
-    AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
+    AUTH_SECRET: zpStr(z.string()).prefault(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
     JWT_SIGNUP_LIFETIME: zpStr(z.string().default("15m")),
     JWT_REFRESH_LIFETIME: zpStr(z.string().default("90d")),
@@ -414,7 +416,7 @@ const envSchema = z
         .optional()
         .default(process.env.URL_GITLAB_LOGIN ?? GITLAB_URL)
     ), // fallback since URL_GITLAB_LOGIN has been renamed
-    DEFAULT_SAML_ORG_SLUG: zpStr(z.string().optional()).default(process.env.NEXT_PUBLIC_SAML_ORG_SLUG),
+    DEFAULT_SAML_ORG_SLUG: zpStr(z.string().optional()).prefault(process.env.NEXT_PUBLIC_SAML_ORG_SLUG),
     // integration client secrets
     // heroku
     CLIENT_ID_HEROKU: zpStr(z.string().optional()),
@@ -502,32 +504,32 @@ const envSchema = z
       .enum(["true", "false"])
       .transform((val) => val === "true" || IS_PACKAGED)
       .optional(),
-    INFISICAL_CLOUD: zodStrBool.default("false"),
-    INFISICAL_DEDICATED: zodStrBool.default("false"),
-    MAINTENANCE_MODE: zodStrBool.default("false"),
+    INFISICAL_CLOUD: zodStrBool.prefault("false"),
+    INFISICAL_DEDICATED: zodStrBool.prefault("false"),
+    MAINTENANCE_MODE: zodStrBool.prefault("false"),
     CAPTCHA_SECRET: zpStr(z.string().optional()),
     CAPTCHA_SITE_KEY: zpStr(z.string().optional()),
     INTERCOM_ID: zpStr(z.string().optional()),
     CDN_HOST: zpStr(z.string().optional()),
 
     // TELEMETRY
-    OTEL_TELEMETRY_COLLECTION_ENABLED: zodStrBool.default("false"),
+    OTEL_TELEMETRY_COLLECTION_ENABLED: zodStrBool.prefault("false"),
     OTEL_EXPORT_OTLP_ENDPOINT: zpStr(z.string().optional()),
     OTEL_OTLP_PUSH_INTERVAL: z.coerce.number().default(30000),
     OTEL_COLLECTOR_BASIC_AUTH_USERNAME: zpStr(z.string().optional()),
     OTEL_COLLECTOR_BASIC_AUTH_PASSWORD: zpStr(z.string().optional()),
     OTEL_EXPORT_TYPE: z.enum(["prometheus", "otlp"]).optional(),
-    OTEL_DROP_HIGH_CARDINALITY_METERS: zodStrBool.default("false"),
+    OTEL_DROP_HIGH_CARDINALITY_METERS: zodStrBool.prefault("false"),
 
     PYLON_API_KEY: zpStr(z.string().optional()),
-    DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
+    DISABLE_AUDIT_LOG_GENERATION: zodStrBool.prefault("false"),
     SSL_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default("x-ssl-client-cert"),
     IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default(
       "x-identity-tls-cert-auth-client-cert"
     ),
     WORKFLOW_SLACK_CLIENT_ID: zpStr(z.string().optional()),
     WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
-    ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
+    ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.prefault("true"),
 
     // Special Detection Feature
     PARAMS_FOLDER_SECRET_DETECTION_PATHS: zpStr(
@@ -549,18 +551,18 @@ const envSchema = z
     HSM_KEY_LABEL: zpStr(z.string().optional()),
     HSM_SLOT: z.coerce.number().optional().default(0),
 
-    USE_PG_QUEUE: zodStrBool.default("false"),
-    SHOULD_INIT_PG_QUEUE: zodStrBool.default("false"),
+    USE_PG_QUEUE: zodStrBool.prefault("false"),
+    SHOULD_INIT_PG_QUEUE: zodStrBool.prefault("false"),
 
     /* Gateway----------------------------------------------------------------------------- */
     RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
-    DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
-    AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
-    DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
+    DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.prefault("false"),
+    AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP: zodStrBool.prefault("false"),
+    DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).prefault(
       process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
     ),
-    DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()).default(
+    DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()).prefault(
       process.env.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
     ),
 
@@ -570,12 +572,12 @@ const envSchema = z
     /* ----------------------------------------------------------------------------- */
 
     /* App Connections ----------------------------------------------------------------------------- */
-    ALLOW_INTERNAL_IP_CONNECTIONS: zodStrBool.default("false"),
+    ALLOW_INTERNAL_IP_CONNECTIONS: zodStrBool.prefault("false"),
 
     // Forces outbound requests made through the SSRF-safe HTTP client to use
     // direct egress (axios `proxy: false`), so the resolved-and-pinned target
     // IP cannot be bypassed by an ambient HTTP(S)_PROXY.
-    SAFE_REQUEST_FORCE_DIRECT_EGRESS: zodStrBool.default("false"),
+    SAFE_REQUEST_FORCE_DIRECT_EGRESS: zodStrBool.prefault("false"),
 
     // aws
     INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
@@ -638,8 +640,8 @@ const envSchema = z
     INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL: zpStr(z.string().optional()),
 
     // datadog
-    SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
-    DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),
+    SHOULD_USE_DATADOG_TRACER: zodStrBool.prefault("false"),
+    DATADOG_PROFILING_ENABLED: zodStrBool.prefault("false"),
     DATADOG_ENV: zpStr(z.string().optional().default("prod")),
     DATADOG_SERVICE: zpStr(z.string().optional().default("infisical-core")),
     DATADOG_HOSTNAME: zpStr(z.string().optional()),
@@ -681,10 +683,10 @@ const envSchema = z
 
     /* Go Sidecar ----------------------------------------------------------------------------- */
     GOLANG_SIDECAR_URL: zpStr(z.string().optional()),
-    GO_SIDECAR_SHADOW_ENABLED: zodStrBool.default("false"),
+    GO_SIDECAR_SHADOW_ENABLED: zodStrBool.prefault("false"),
     GO_SIDECAR_SHADOW_SAMPLE_RATE: z.coerce.number().min(0).max(100).default(10),
     GO_SIDECAR_BINARY_PATH: zpStr(z.string().optional()),
-    GO_SIDECAR_SPAWN_ENABLED: zodStrBool.default("false"),
+    GO_SIDECAR_SPAWN_ENABLED: zodStrBool.prefault("false"),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional()),
@@ -1186,7 +1188,7 @@ export const overridableKeys = new Set(
   Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key))
 );
 
-export const validateOverrides = (config: Record<string, string>) => {
+export const validateOverrides = (config: Partial<Record<string, string>>) => {
   const allowedOverrides = Object.fromEntries(
     Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
   );

@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const RemindersRecipientsSchema = z.object({
-  id: z.string().uuid(),
-  reminderId: z.string().uuid(),
-  userId: z.string().uuid(),
+  id: z.string().guid(),
+  reminderId: z.string().guid(),
+  userId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

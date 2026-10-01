@@ -22,12 +22,12 @@ export const BaseSecretScanningDataSourceSchema = ({
     config: true
   }).extend({
     type: z.literal(type),
-    connectionId: isConnectionRequired ? z.string().uuid() : z.null(),
+    connectionId: isConnectionRequired ? z.string().guid() : z.null(),
     connection: isConnectionRequired
       ? z.object({
           app: z.literal(SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]),
           name: z.string(),
-          id: z.string().uuid()
+          id: z.string().guid()
         })
       : z.null()
   });
@@ -50,7 +50,7 @@ export const BaseCreateSecretScanningDataSourceSchema = ({
       .nullish()
       .describe(SecretScanningDataSources.CREATE(type).description),
     connectionId: isConnectionRequired
-      ? z.string().uuid().describe(SecretScanningDataSources.CREATE(type).connectionId)
+      ? z.string().guid().describe(SecretScanningDataSources.CREATE(type).connectionId)
       : z.undefined(),
     isAutoScanEnabled: z
       .boolean()

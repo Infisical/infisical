@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, JWT_AUTH } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { partialWithoutDefaults } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -51,8 +52,8 @@ const CreateBaseSchema = z.object({
   accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(JWT_AUTH.ATTACH.accessTokenNumUsesLimit)
 });
 
-const UpdateBaseSchema = z
-  .object({
+const UpdateBaseSchema = partialWithoutDefaults(
+  z.object({
     boundIssuer: z.string().trim().default("").describe(JWT_AUTH.UPDATE.boundIssuer),
     boundAudiences: validateJwtAuthAudiencesField.describe(JWT_AUTH.UPDATE.boundAudiences),
     boundClaims: validateJwtBoundClaimsField.describe(JWT_AUTH.UPDATE.boundClaims),
@@ -75,7 +76,7 @@ const UpdateBaseSchema = z
       .describe(JWT_AUTH.UPDATE.accessTokenMaxTTL),
     accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(JWT_AUTH.UPDATE.accessTokenNumUsesLimit)
   })
-  .partial();
+);
 
 const JwksConfigurationSchema = z.object({
   configurationType: z.literal(JwtConfigurationType.JWKS).describe(JWT_AUTH.ATTACH.configurationType),

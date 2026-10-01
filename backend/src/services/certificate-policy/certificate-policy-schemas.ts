@@ -190,8 +190,8 @@ export const policyBasicConstraintsSchema = z
   .nullable();
 
 export const certificatePolicyResponseSchema = z.object({
-  id: z.string().uuid(),
-  projectId: z.string().uuid("Project ID must be valid"),
+  id: z.string().guid(),
+  projectId: z.string().guid("Project ID must be valid"),
   name: z
     .string()
     .trim()

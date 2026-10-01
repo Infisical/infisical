@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const HoneyTokenSecretMappingsSchema = z.object({
-  id: z.string().uuid(),
-  secretId: z.string().uuid(),
-  honeyTokenId: z.string().uuid()
+  id: z.string().guid(),
+  secretId: z.string().guid(),
+  honeyTokenId: z.string().guid()
 });
 
 export type THoneyTokenSecretMappings = z.infer<typeof HoneyTokenSecretMappingsSchema>;

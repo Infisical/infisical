@@ -6,9 +6,9 @@ import { EnrollmentType, IssuerType } from "./certificate-profile-types";
 
 export const createCertificateProfileSchema = z
   .object({
-    projectId: z.string().uuid("Project ID must be valid"),
-    caId: z.string().uuid().nullable().optional(),
-    certificateTemplateId: z.string().uuid(),
+    projectId: z.string().guid("Project ID must be valid"),
+    caId: z.string().guid().nullable().optional(),
+    certificateTemplateId: z.string().guid(),
     slug: z
       .string()
       .min(1)
@@ -227,30 +227,30 @@ export const updateCertificateProfileSchema = z
   );
 
 export const getCertificateProfileByIdSchema = z.object({
-  id: z.string().uuid()
+  id: z.string().guid()
 });
 
 export const getCertificateProfileBySlugSchema = z.object({
-  projectId: z.string().uuid("Project ID must be valid"),
+  projectId: z.string().guid("Project ID must be valid"),
   slug: z.string().min(1)
 });
 
 export const listCertificateProfilesSchema = z.object({
-  projectId: z.string().uuid("Project ID must be valid"),
+  projectId: z.string().guid("Project ID must be valid"),
   offset: z.coerce.number().min(0).default(0),
   limit: z.coerce.number().min(1).max(100).default(20),
   search: z.string().optional(),
   enrollmentType: z.nativeEnum(EnrollmentType).optional(),
   issuerType: z.nativeEnum(IssuerType).optional(),
-  caId: z.string().uuid().optional()
+  caId: z.string().guid().optional()
 });
 
 export const deleteCertificateProfileSchema = z.object({
-  id: z.string().uuid()
+  id: z.string().guid()
 });
 
 export const listCertificatesByProfileSchema = z.object({
-  profileId: z.string().uuid(),
+  profileId: z.string().guid(),
   offset: z.coerce.number().min(0).default(0),
   limit: z.coerce.number().min(1).max(100).default(20),
   status: z.nativeEnum(CertStatus).optional(),

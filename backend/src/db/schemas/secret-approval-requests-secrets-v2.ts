@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretApprovalRequestsSecretsV2Schema = z.object({
-  id: z.string().uuid(),
-  version: z.number().default(1).nullable().optional(),
+  id: z.string().guid(),
+  version: z.number().nullable().optional(),
   key: z.string(),
   encryptedValue: zodBuffer.nullable().optional(),
   encryptedComment: zodBuffer.nullable().optional(),
@@ -21,10 +21,10 @@ export const SecretApprovalRequestsSecretsV2Schema = z.object({
   metadata: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  requestId: z.string().uuid(),
+  requestId: z.string().guid(),
   op: z.string(),
-  secretId: z.string().uuid().nullable().optional(),
-  secretVersion: z.string().uuid().nullable().optional(),
+  secretId: z.string().guid().nullable().optional(),
+  secretVersion: z.string().guid().nullable().optional(),
   secretMetadata: z.unknown().nullable().optional(),
   internalMetadata: z.unknown().nullable().optional()
 });

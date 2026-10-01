@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiSyncsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   destination: z.string(),
@@ -19,8 +19,8 @@ export const PkiSyncsSchema = z.object({
   destinationConfig: z.unknown(),
   syncOptions: z.unknown(),
   projectId: z.string(),
-  subscriberId: z.string().uuid().nullable().optional(),
-  connectionId: z.string().uuid(),
+  subscriberId: z.string().guid().nullable().optional(),
+  connectionId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   syncStatus: z.string().nullable().optional(),
@@ -35,7 +35,7 @@ export const PkiSyncsSchema = z.object({
   lastRemoveJobId: z.string().nullable().optional(),
   lastRemoveMessage: z.string().nullable().optional(),
   lastRemovedAt: z.date().nullable().optional(),
-  applicationId: z.string().uuid().nullable().optional(),
+  applicationId: z.string().guid().nullable().optional(),
   encryptedCredentials: zodBuffer.nullable().optional(),
   lastHealthCheckRanAt: z.date().nullable().optional(),
   lastHealthCheckStatus: z.string().nullable().optional(),

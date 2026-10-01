@@ -10,7 +10,7 @@ import { z } from "zod";
 
 import { ApiDocsTags } from "@app/lib/api-docs";
 
-import { jsonSchemaTransform } from "./fastify-zod";
+import { jsonSchemaTransform, jsonSchemaTransformObject } from "./openapi-schema-transform";
 
 const DOCS_ROUTE_PREFIX = "/api/docs";
 const SPEC_CACHE_MAX_AGE_SECONDS = 600;
@@ -142,6 +142,7 @@ const pickSpecEncoding = (header: FastifyRequest["headers"]["accept-encoding"]):
 export const fastifySwagger = fp(async (fastify) => {
   await fastify.register(swagger, {
     transform: jsonSchemaTransform,
+    transformObject: jsonSchemaTransformObject,
     openapi: {
       info: {
         title: "Infisical API",

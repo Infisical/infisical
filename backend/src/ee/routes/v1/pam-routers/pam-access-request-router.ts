@@ -16,7 +16,7 @@ const EnrichedRequestSchema = ApprovalRequestsSchema.extend({
   accountType: z.string().nullable(),
   folderName: z.string().nullable(),
   accessType: z.nativeEnum(PamAccessType),
-  grantId: z.string().uuid().nullable(),
+  grantId: z.string().guid().nullable(),
   grantExpiresAt: z.date().nullable(),
   grantStatus: z.string().nullable(),
   isBreakGlass: z.boolean(),
@@ -31,7 +31,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     schema: {
       body: z
         .object({
-          accountId: z.string().uuid().optional(),
+          accountId: z.string().guid().optional(),
           path: z.string().min(3).optional().describe("Account path in the format 'folderName/accountName'"),
           reason: z.string().max(500).optional(),
           duration: z
@@ -151,10 +151,10 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     config: { rateLimit: readLimit },
     schema: {
       querystring: z.object({
-        folderId: z.string().uuid(),
+        folderId: z.string().guid(),
         status: z.string().optional(),
-        offset: z.coerce.number().min(0).default(0).optional(),
-        limit: z.coerce.number().min(1).max(100).default(20).optional()
+        offset: z.coerce.number().min(0).optional(),
+        limit: z.coerce.number().min(1).max(100).optional()
       }),
       response: {
         200: z.object({
@@ -186,7 +186,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     config: { rateLimit: readLimit },
     schema: {
       querystring: z.object({
-        folderId: z.string().uuid().optional()
+        folderId: z.string().guid().optional()
       }),
       response: {
         200: z.object({
@@ -239,7 +239,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     config: { rateLimit: readLimit },
     schema: {
       params: z.object({
-        accountId: z.string().uuid()
+        accountId: z.string().guid()
       }),
       querystring: z.object({
         accessType: z.nativeEnum(PamAccessType).default(PamAccessType.Session)

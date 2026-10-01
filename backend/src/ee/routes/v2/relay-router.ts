@@ -130,7 +130,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/:relayId",
     config: { rateLimit: readLimit },
     schema: {
-      params: z.object({ relayId: z.string().uuid() }),
+      params: z.object({ relayId: z.string().guid() }),
       response: {
         200: RelayWithAuthMethodSchema
       }
@@ -159,7 +159,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/:relayId/gateways",
     config: { rateLimit: readLimit },
     schema: {
-      params: z.object({ relayId: z.string().uuid() }),
+      params: z.object({ relayId: z.string().guid() }),
       response: {
         200: z.array(
           z.object({
@@ -186,7 +186,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/:relayId",
     config: { rateLimit: writeLimit },
     schema: {
-      params: z.object({ relayId: z.string().uuid() }),
+      params: z.object({ relayId: z.string().guid() }),
       body: z.object({
         host: z.string().trim().min(1).optional(),
         authMethod: SettableAuthMethodInputSchema.optional()
@@ -271,7 +271,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/:relayId/token-auth/generate-enrollment-token",
     config: { rateLimit: writeLimit },
     schema: {
-      params: z.object({ relayId: z.string().uuid() }),
+      params: z.object({ relayId: z.string().guid() }),
       response: {
         200: z.object({ token: z.string(), expiresAt: z.date() })
       }
@@ -302,7 +302,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/:relayId/revoke",
     config: { rateLimit: writeLimit },
     schema: {
-      params: z.object({ relayId: z.string().uuid() }),
+      params: z.object({ relayId: z.string().guid() }),
       response: {
         200: z.object({ method: z.string() })
       }
@@ -341,7 +341,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
       body: z.discriminatedUnion("method", [
         z.object({
           method: z.literal(ResourceAuthMethodType.Aws),
-          relayId: z.string().uuid(),
+          relayId: z.string().guid(),
           iamHttpRequestMethod: z.string().default("POST"),
           iamRequestBody: z.string(),
           iamRequestHeaders: z.string()

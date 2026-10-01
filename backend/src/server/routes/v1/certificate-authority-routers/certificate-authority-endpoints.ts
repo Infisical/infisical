@@ -53,7 +53,7 @@ export const registerCertificateAuthorityEndpoints = <
       operationId: `list${caTypeNameForOpId}CertificateAuthoritiesV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       querystring: z.object({
-        projectId: z.string().uuid().optional().describe(openApiHidden())
+        projectId: z.string().guid().optional().describe(openApiHidden())
       }),
       response: {
         200: responseSchema.array()

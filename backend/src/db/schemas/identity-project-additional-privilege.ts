@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityProjectAdditionalPrivilegeSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   slug: z.string(),
-  projectMembershipId: z.string().uuid(),
+  projectMembershipId: z.string().guid(),
   isTemporary: z.boolean().default(false),
   temporaryMode: z.string().nullable().optional(),
   temporaryRange: z.string().nullable().optional(),

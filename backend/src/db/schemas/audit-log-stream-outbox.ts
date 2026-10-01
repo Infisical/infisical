@@ -9,9 +9,9 @@ import { TImmutableDBKeys } from "./models";
 
 export const AuditLogStreamOutboxSchema = z.object({
   id: z.coerce.number(),
-  streamId: z.string().uuid(),
-  orgId: z.string().uuid(),
-  auditLogId: z.string().uuid(),
+  streamId: z.string().guid(),
+  orgId: z.string().guid(),
+  auditLogId: z.string().guid(),
   payload: z.unknown(),
   status: z.string().default("pending"),
   attempts: z.number().default(0),

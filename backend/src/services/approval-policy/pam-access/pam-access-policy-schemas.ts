@@ -16,8 +16,8 @@ export const PamAccessTypeSchema = z.enum(["session", "credential"]);
 
 // Inputs
 export const PamAccessPolicyInputsSchema = z.object({
-  folderId: z.string().uuid().optional(),
-  accountId: z.string().uuid(),
+  folderId: z.string().guid().optional(),
+  accountId: z.string().guid(),
   accessType: PamAccessTypeSchema.optional()
 });
 
@@ -43,16 +43,16 @@ export const PamAccessPolicyConstraintsSchema = z.object({
 
 // Request Data
 export const PamAccessPolicyRequestDataSchema = z.object({
-  accountId: z.string().uuid(),
-  folderId: z.string().uuid(),
+  accountId: z.string().guid(),
+  folderId: z.string().guid(),
   reason: z.string().trim().max(1024).optional(),
   duration: DurationSchema,
   accessType: PamAccessTypeSchema.optional()
 });
 
 export const PamAccessGrantAttributesSchema = z.object({
-  accountId: z.string().uuid(),
-  folderId: z.string().uuid().nullable().optional(),
+  accountId: z.string().guid(),
+  folderId: z.string().guid().nullable().optional(),
   accessType: PamAccessTypeSchema.optional()
 });
 

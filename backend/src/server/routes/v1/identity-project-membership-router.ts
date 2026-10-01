@@ -37,14 +37,14 @@ const folderAccessFolderFields = (docs: { environmentSlug: string; secretPath: s
 
 const identityFolderAccessParamsSchema = z.object({
   projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.CREATE.projectId),
-  identityId: z.string().uuid().describe(FOLDER_ACCESS.CREATE.identityId)
+  identityId: z.string().guid().describe(FOLDER_ACCESS.CREATE.identityId)
 });
 
 const folderAccessCreateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS.CREATE);
 const folderAccessUpdateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS.UPDATE);
 
 const identityFolderAccessResponseSchema = SanitizedFolderAccessSchema.extend({
-  identityId: z.string().uuid()
+  identityId: z.string().guid()
 });
 
 const toSecretFolderAccessAuditMetadata = (
@@ -340,14 +340,12 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         offset: z.coerce
           .number()
           .min(0)
-          .default(0)
           .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.offset)
           .optional(),
         limit: z.coerce
           .number()
           .min(1)
           .max(1000)
-          .default(20)
           .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.limit)
           .optional(),
         identityName: z
@@ -578,14 +576,12 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         offset: z.coerce
           .number()
           .min(0)
-          .default(0)
           .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.offset)
           .optional(),
         limit: z.coerce
           .number()
           .min(1)
           .max(1000)
-          .default(20)
           .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.limit)
           .optional(),
         identityName: z
@@ -836,7 +832,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
       ],
       params: z.object({
         projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.LIST_IDENTITY_GRANTS.projectId),
-        identityId: z.string().uuid().describe(FOLDER_ACCESS.LIST_IDENTITY_GRANTS.identityId)
+        identityId: z.string().guid().describe(FOLDER_ACCESS.LIST_IDENTITY_GRANTS.identityId)
       }),
       response: {
         200: z.object({

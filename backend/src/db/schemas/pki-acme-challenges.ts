@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiAcmeChallengesSchema = z.object({
-  id: z.string().uuid(),
-  authId: z.string().uuid(),
+  id: z.string().guid(),
+  authId: z.string().guid(),
   type: z.string(),
   status: z.string(),
   error: z.string().nullable().optional(),

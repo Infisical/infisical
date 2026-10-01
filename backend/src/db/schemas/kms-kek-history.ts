@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const KmsKekHistorySchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   kekLabel: z.string(),
   activatedAt: z.date(),
   supersededAt: z.date().nullable().optional(),

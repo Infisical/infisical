@@ -8,14 +8,14 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const OrgRolesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   slug: z.string(),
   permissions: z.unknown(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid()
+  orgId: z.string().guid()
 });
 
 export type TOrgRoles = z.infer<typeof OrgRolesSchema>;

@@ -154,7 +154,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       tags: [ApiDocsTags.AgentVaultMembers],
       params: z.object({
         actorType: z.enum(ACTOR_TYPE_SEGMENTS).describe(AGENT_VAULT.MEMBER.actorType),
-        actorId: z.string().uuid().describe(AGENT_VAULT.MEMBER.actorId)
+        actorId: z.string().guid().describe(AGENT_VAULT.MEMBER.actorId)
       }),
       body: z.object({ role: AgentVaultProductRoleSchema }),
       response: { 200: z.object({ member: AgentVaultProductMemberRefSchema }) }

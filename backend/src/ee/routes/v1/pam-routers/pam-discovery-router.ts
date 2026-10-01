@@ -69,9 +69,9 @@ const registerPerTypeEndpoints = (
       tags: [ApiDocsTags.PamDiscovery],
       body: z.object({
         name: slugSchema({ field: "Name" }),
-        credentialAccountId: z.string().uuid().describe("The PAM account used to authenticate and scan"),
-        gatewayId: z.string().uuid().optional(),
-        gatewayPoolId: z.string().uuid().optional(),
+        credentialAccountId: z.string().guid().describe("The PAM account used to authenticate and scan"),
+        gatewayId: z.string().guid().optional(),
+        gatewayPoolId: z.string().guid().optional(),
         schedule: z.nativeEnum(PamDiscoverySchedule).default(PamDiscoverySchedule.Manual),
         configuration: config.configuration.optional()
       }),
@@ -125,12 +125,12 @@ const registerPerTypeEndpoints = (
       operationId: `update${typeId}PamDiscoverySource`,
       description: `Update a ${discoveryType} PAM discovery source`,
       tags: [ApiDocsTags.PamDiscovery],
-      params: z.object({ sourceId: z.string().uuid() }),
+      params: z.object({ sourceId: z.string().guid() }),
       body: z.object({
         name: slugSchema({ field: "Name" }).optional(),
-        credentialAccountId: z.string().uuid().optional(),
-        gatewayId: z.string().uuid().nullable().optional(),
-        gatewayPoolId: z.string().uuid().nullable().optional(),
+        credentialAccountId: z.string().guid().optional(),
+        gatewayId: z.string().guid().nullable().optional(),
+        gatewayPoolId: z.string().guid().nullable().optional(),
         schedule: z.nativeEnum(PamDiscoverySchedule).optional(),
         configuration: config.configuration.optional()
       }),
@@ -180,7 +180,7 @@ const registerPerTypeEndpoints = (
       operationId: `get${typeId}PamDiscoverySource`,
       description: `Get a ${discoveryType} PAM discovery source`,
       tags: [ApiDocsTags.PamDiscovery],
-      params: z.object({ sourceId: z.string().uuid() }),
+      params: z.object({ sourceId: z.string().guid() }),
       response: { 200: z.object({ source: SourceSchema }) }
     },
     config: { rateLimit: readLimit },
@@ -206,7 +206,7 @@ const registerPerTypeEndpoints = (
       operationId: `delete${typeId}PamDiscoverySource`,
       description: `Delete a ${discoveryType} PAM discovery source`,
       tags: [ApiDocsTags.PamDiscovery],
-      params: z.object({ sourceId: z.string().uuid() }),
+      params: z.object({ sourceId: z.string().guid() }),
       response: { 200: z.object({ source: SourceSchema }) }
     },
     config: { rateLimit: writeLimit },
@@ -252,7 +252,7 @@ const registerPerTypeEndpoints = (
       operationId: `scan${typeId}PamDiscoverySource`,
       description: `Trigger a scan for a ${discoveryType} PAM discovery source`,
       tags: [ApiDocsTags.PamDiscovery],
-      params: z.object({ sourceId: z.string().uuid() }),
+      params: z.object({ sourceId: z.string().guid() }),
       response: { 200: z.object({ message: z.string() }) }
     },
     config: { rateLimit: writeLimit },
@@ -339,10 +339,10 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "listPamDiscoveryRuns",
       description: "List scan runs for a PAM discovery source",
       tags: [ApiDocsTags.PamDiscovery],
-      params: z.object({ sourceId: z.string().uuid() }),
+      params: z.object({ sourceId: z.string().guid() }),
       querystring: z.object({
-        offset: z.coerce.number().min(0).default(0).optional(),
-        limit: z.coerce.number().min(1).max(100).default(20).optional()
+        offset: z.coerce.number().min(0).optional(),
+        limit: z.coerce.number().min(1).max(100).optional()
       }),
       response: { 200: z.object({ runs: z.array(PamDiscoverySourceRunsSchema) }) }
     },
@@ -370,11 +370,11 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "listPamDiscoveredAccounts",
       description: "List staged accounts discovered by a PAM discovery source",
       tags: [ApiDocsTags.PamDiscovery],
-      params: z.object({ sourceId: z.string().uuid() }),
+      params: z.object({ sourceId: z.string().guid() }),
       querystring: z.object({
         search: z.string().optional(),
-        offset: z.coerce.number().min(0).default(0).optional(),
-        limit: z.coerce.number().min(1).max(100).default(20).optional()
+        offset: z.coerce.number().min(0).optional(),
+        limit: z.coerce.number().min(1).max(100).optional()
       }),
       response: {
         200: z.object({ discoveredAccounts: z.array(DiscoveredAccountSchema), totalCount: z.number() })
@@ -405,11 +405,11 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "listPamStaleAccounts",
       description: "List imported accounts the discovery source's latest scan no longer found in the environment",
       tags: [ApiDocsTags.PamDiscovery],
-      params: z.object({ sourceId: z.string().uuid() }),
+      params: z.object({ sourceId: z.string().guid() }),
       querystring: z.object({
         search: z.string().optional(),
-        offset: z.coerce.number().min(0).default(0).optional(),
-        limit: z.coerce.number().min(1).max(100).default(20).optional()
+        offset: z.coerce.number().min(0).optional(),
+        limit: z.coerce.number().min(1).max(100).optional()
       }),
       response: {
         200: z.object({
@@ -453,13 +453,13 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "importPamDiscoveredAccounts",
       description: "Import staged accounts into a folder",
       tags: [ApiDocsTags.PamDiscovery],
-      params: z.object({ sourceId: z.string().uuid() }),
+      params: z.object({ sourceId: z.string().guid() }),
       body: z.object({
-        folderId: z.string().uuid(),
+        folderId: z.string().guid(),
         accounts: z
           .object({
-            discoveredAccountId: z.string().uuid(),
-            templateId: z.string().uuid(),
+            discoveredAccountId: z.string().guid(),
+            templateId: z.string().guid(),
             name: slugSchema({ field: "Name" }).optional()
           })
           .array()

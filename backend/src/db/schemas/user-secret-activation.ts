@@ -8,12 +8,12 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const UserSecretActivationSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   firstSecretCreatedAt: z.date().nullable().optional(),
   returnedAfterThreeDaysAt: z.date().nullable().optional(),
   returnedAfterSevenDaysAt: z.date().nullable().optional(),
-  userId: z.string().uuid(),
-  orgId: z.string().uuid(),
+  userId: z.string().guid(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
