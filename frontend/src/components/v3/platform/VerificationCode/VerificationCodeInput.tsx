@@ -174,7 +174,7 @@ export const VerificationCodeInput = ({
     <div
       data-slot="verification-code-input"
       aria-invalid={isError}
-      className="group relative w-full"
+      className="relative w-full"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -186,12 +186,7 @@ export const VerificationCodeInput = ({
           return (
             <div
               aria-hidden
-              className={cn(
-                "relative flex h-[68px] min-w-0 items-center justify-center rounded-md border border-border bg-container font-jetbrains-mono text-xl text-foreground transition-colors max-sm:aspect-square max-sm:h-auto",
-                "group-hover:border-foreground/20",
-                isActive && "border-project/45",
-                isError && "border-danger/55"
-              )}
+              className="relative flex h-[68px] min-w-0 items-center justify-center rounded-md border border-border bg-container font-jetbrains-mono text-xl text-foreground max-sm:aspect-square max-sm:h-auto"
               key={index}
             >
               {value[index] ?? ""}
