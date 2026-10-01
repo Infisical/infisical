@@ -357,6 +357,22 @@ export const recordLocalRefreshRunMetric = (params: {
   });
 };
 
+export const responseSerializationFallbackCounter = infisicalCoreMeter.createCounter(
+  "infisical.http.response_serialization.fallback.count",
+  {
+    description:
+      "Responses that failed Zod 4 encoding and were served by the Zod 3 style parse fallback. Each one is a route returning data its response schema does not describe, usually a missing defaulted field.",
+    unit: "{response}"
+  }
+);
+
+export const recordResponseSerializationFallbackMetric = (params: { method: string; route: string }) => {
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    responseSerializationFallbackCounter.add(1, { "http.request.method": params.method, "http.route": params.route });
+  });
+};
+
 // Audit log lifecycle metrics. Wired in audit-log-queue.ts: enqueued when an event is appended to
 // the Redis ingest stream, dropped when the request-path push fails, persist duration around the
 // batch insert in the unified consumer.

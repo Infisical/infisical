@@ -1,4 +1,6 @@
 /* eslint-disable no-underscore-dangle, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
+import { readdirSync } from "node:fs";
+import { join, sep } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
 import cookie from "@fastify/cookie";
@@ -13,7 +15,7 @@ import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { registerV2EERoutes } from "@app/ee/routes/v2";
 import { registerV3EERoutes } from "@app/ee/routes/v3";
 import { initEnvConfig } from "@app/lib/config/env";
-import { bidirectionalTransform } from "@app/lib/zod";
+import { bidirectionalTransform, partialWithoutDefaults } from "@app/lib/zod";
 import { registerV1Routes } from "@app/server/routes/v1";
 import { registerV2Routes } from "@app/server/routes/v2";
 import { registerV3Routes } from "@app/server/routes/v3";
@@ -22,7 +24,7 @@ import { registerV4Routes } from "@app/server/routes/v4";
 const REQUIRED_ENV_DEFAULTS: Record<string, string> = {
   DB_CONNECTION_URI: "postgres://infisical:infisical@localhost:5432/infisical",
   REDIS_URL: "redis://localhost:6379",
-  AUTH_SECRET: "route-schema-guards-test-secret",
+  AUTH_SECRET: "zod-schema-guards-test-secret",
   ENCRYPTION_KEY: "6c1fe4e407b8911c104518103505b218"
 };
 
@@ -169,6 +171,57 @@ const findOffenders = (rule: TGuardRule) =>
 
 const ruleNamed = (name: string) => RULES.find((rule) => rule.name === name) as TGuardRule;
 
+// Zod 3 never filled a field marked .optional(), whatever sat inside it. A plain .default() field is
+// left out because Zod 3 filled that too.
+const isExplicitlyOptional = (field: any) => {
+  let node = field;
+  while (node?._zod) {
+    const { def } = node._zod;
+    if (def.type === "optional") return true;
+    if (def.type !== "nullable" && def.type !== "readonly") return false;
+    node = def.innerType;
+  }
+  return false;
+};
+
+// Every .optional() field, at any depth, that a parse fills in when the caller leaves it out. Behavioral
+// on purpose: a default, a prefault, a preprocess or anything else that produces a value is caught.
+const findFilledOmissions = (root: unknown) => {
+  const paths = new Set<string>();
+  walkSchema(root, (node, context) => {
+    if (node._zod.def.type !== "object") return;
+    Object.entries(node._zod.def.shape ?? {}).forEach(([key, field]: [string, any]) => {
+      if (!isExplicitlyOptional(field)) return;
+      const result = field.safeParse(undefined);
+      if (result.success && result.data !== undefined) paths.add(context.path ? `${context.path}.${key}` : key);
+    });
+  });
+  return [...paths];
+};
+
+const OMITTED_FIELD_EXPLANATION = [
+  "These fields are marked .optional() but still receive a value when the caller leaves them out. Zod 3",
+  "left them absent; Zod 4 applies a .default() or .prefault() inside .optional(). On an update that",
+  "overwrites the stored value. Use partialWithoutDefaults or withoutDefault from @app/lib/zod, or remove",
+  "the .optional() if the field should always get the value."
+].join("\n");
+
+const SRC_ROOT = join(__dirname, "../..");
+
+// Tests, type declarations, and modules that run work as soon as they are imported (scripts, seeds,
+// migrations). The exported schema sweep must never load these; add any new one here.
+const MODULES_NOT_TO_IMPORT = [
+  /\.test\.ts$/,
+  /\.d\.ts$/,
+  /^main\.ts$/,
+  /^lib\/telemetry\/instrumentation\.ts$/,
+  /^db\/(knexfile|auditlog-knexfile|run-clickhouse-migrations|rename-migrations-to-mjs)\.ts$/,
+  /^db\/seed-[^/]+\.ts$/,
+  /^db\/(migrations|seeds|manual-migrations)\//
+];
+
+const UNREACHABLE_DB = "postgres://schema-guard:schema-guard@127.0.0.1:1/schema-guard";
+
 beforeAll(async () => {
   Object.entries(REQUIRED_ENV_DEFAULTS).forEach(([name, value]) => {
     if (!process.env[name]) vi.stubEnv(name, value);
@@ -225,6 +278,88 @@ describe("route schemas avoid Zod 4 behavior changes", () => {
   });
 });
 
+describe("exported schemas avoid Zod 4 behavior changes", () => {
+  const exportedSchemas = new Map<unknown, string>();
+  const unloadable: string[] = [];
+  const visitedExports = new Set<unknown>();
+
+  // Schemas also live inside exported config maps (ACCOUNT_TYPE_CONFIGS, provider option maps), so
+  // plain objects and arrays are searched a few levels down.
+  const collectSchemas = (value: any, label: string, depth: number) => {
+    if (!value || typeof value !== "object" || visitedExports.has(value)) return;
+    visitedExports.add(value);
+    if (value._zod) {
+      if (!exportedSchemas.has(value)) exportedSchemas.set(value, label);
+      return;
+    }
+    if (depth >= 4) return;
+    if (Array.isArray(value)) value.forEach((item, index) => collectSchemas(item, `${label}[${index}]`, depth + 1));
+    else if (Object.getPrototypeOf(value) === Object.prototype)
+      Object.entries(value).forEach(([key, item]) => collectSchemas(item, `${label}.${key}`, depth + 1));
+  };
+
+  beforeAll(async () => {
+    // A script that slips past the exclude list must fail to connect rather than reach a real database.
+    vi.stubEnv("DB_CONNECTION_URI", UNREACHABLE_DB);
+    vi.stubEnv("AUDIT_LOGS_DB_CONNECTION_URI", UNREACHABLE_DB);
+    vi.stubEnv("REDIS_URL", "redis://127.0.0.1:1");
+    vi.stubEnv("NODE_ENV", "test");
+
+    const modules = (readdirSync(SRC_ROOT, { recursive: true }) as string[])
+      .map((file) => file.split(sep).join("/"))
+      .filter((file) => file.endsWith(".ts") && !MODULES_NOT_TO_IMPORT.some((pattern) => pattern.test(file)));
+    for (const file of modules) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const exported = (await import(join(SRC_ROOT, file))) as Record<string, unknown>;
+        Object.entries(exported).forEach(([name, value]) => collectSchemas(value, `src/${file} ${name}`, 0));
+      } catch (error) {
+        unloadable.push(`src/${file}: ${(error as Error).message}`);
+      }
+    }
+    vi.unstubAllEnvs();
+  }, 300_000);
+
+  test("every module under src loads, so none of its schemas are skipped", () => {
+    expect(
+      unloadable,
+      [
+        "These modules threw while being imported, so their schemas were not checked. If a module runs",
+        "work on import (a script or a seed), add it to MODULES_NOT_TO_IMPORT."
+      ].join("\n")
+    ).toEqual([]);
+    expect(exportedSchemas.size).toBeGreaterThan(1500);
+  });
+
+  test.each(RULES.filter((rule) => !rule.parts.every((part) => part === "response")))("$name", (rule) => {
+    const offenders = [...exportedSchemas].flatMap(([schema, label]) =>
+      offendingPaths(rule, schema).map((fieldPath) => `${label}: ${fieldPath}`)
+    );
+    expect(offenders, `${rule.explanation}\n\nOffending fields:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  test("no exported schema fills in an .optional() field the caller left out", () => {
+    const offenders = [...exportedSchemas].flatMap(([schema, label]) =>
+      findFilledOmissions(schema).map((fieldPath) => `${label}: ${fieldPath}`)
+    );
+    expect(offenders, `${OMITTED_FIELD_EXPLANATION}\n\nOffending fields:\n${offenders.join("\n")}`).toEqual([]);
+  });
+});
+
+describe("requests leave omitted optional fields alone", () => {
+  test("no request body or querystring fills in an .optional() field the caller left out", () => {
+    const offenders = routes.flatMap((route) =>
+      (["body", "querystring"] as const).flatMap((part) =>
+        findFilledOmissions((route.schema as Record<string, unknown> | undefined)?.[part]).map(
+          (fieldPath) => `${String(route.method)} ${route.url} ${part}: ${fieldPath}`
+        )
+      )
+    );
+
+    expect(offenders, `${OMITTED_FIELD_EXPLANATION}\n\nOffending fields:\n${offenders.join("\n")}`).toEqual([]);
+  });
+});
+
 describe("each guard flags the shape it exists for", () => {
   const trimSlash = (value: string) => value.replace(/\/+$/, "") || "/";
 
@@ -268,6 +403,32 @@ describe("each guard flags the shape it exists for", () => {
   ])("$rule: $path", ({ rule, offending, fixed, path }) => {
     expect(offendingPaths(ruleNamed(rule), offending)).toEqual([path]);
     expect(offendingPaths(ruleNamed(rule), fixed)).toEqual([]);
+  });
+
+  test("the omitted-field check catches any way of filling an .optional() field, at any depth", () => {
+    const body = z.object({
+      name: z.string().optional(),
+      ttl: z.number().default(60).optional(),
+      mode: z.string().prefault("strict").optional(),
+      label: z
+        .preprocess((value) => value ?? "none", z.string())
+        .nullable()
+        .optional(),
+      settings: z.object({ retries: z.number().default(3).optional(), note: z.string().optional() }).optional(),
+      rules: z
+        .object({ level: z.string().default("low") })
+        .partial()
+        .array()
+        .optional()
+    });
+    // label stays absent: .optional() skips a preprocess when the value is missing, as Zod 3 did.
+    expect(findFilledOmissions(body).sort()).toEqual(["mode", "rules[].level", "settings.retries", "ttl"]);
+  });
+
+  test("a plain .default() field is not flagged, because Zod 3 filled it too", () => {
+    const body = z.object({ allowedSelfApprovals: z.boolean().default(true), level: z.string().prefault("low") });
+    expect(findFilledOmissions(body)).toEqual([]);
+    expect(findFilledOmissions(partialWithoutDefaults(body))).toEqual([]);
   });
 
   test("a default whose value the transform leaves alone is not flagged", () => {

@@ -96,15 +96,25 @@ port: z.number().int().min(1).max(65535),
   key is missing, so a `PATCH` body built with `.partial()` silently resets every defaulted
   field the caller left out. Use `partialWithoutDefaults` from `@app/lib/zod` for update
   bodies, `withoutDefault(schema).optional()` when a shared defaulted schema is made optional,
-  and `.prefault(x)` (not `.default(x)`) when the default must go through a transform.
+  and `.prefault(x)` (not `.default(x)`) when the default must go through a transform. Export
+  any schema a service builds and parses with, even if only that file uses it: the guard test
+  only sees schemas that are exported or used by a route.
 - **Response schemas never contain a plain `.transform()` or `z.preprocess`.** Responses are
   serialized with `z.encode`, which throws on one-way transforms. Use `bidirectionalTransform`
   from `@app/lib/zod`.
+- **A response carries every field its schema requires, defaulted ones included.** `z.encode`
+  never fills a `.default()`, so a query that skips a column fails to serialize. Outside tests,
+  production falls back to a Zod 3 style parse and logs `served by the Zod 3 parse fallback`;
+  treat that warning (and `infisical.http.response_serialization.fallback.count`) as a bug in
+  the query or handler, not as handled.
 - **A record keyed by an enum is `z.partialRecord`**, unless every key is genuinely required.
   Zod 4's `z.record(z.enum([...]), ...)` rejects any object missing a key.
-- `route-schema-guards.test.ts` fails the build on each of these Zod 4 traps (and on a
-  `.default()` whose value the field's transform would have changed; use `.prefault()`), and the
-  failure message names the route, the field and the fix.
+- `zod-schema-guards.test.ts` fails the build on each of these Zod 4 traps (and on a
+  `.default()` whose value the field's transform would have changed; use `.prefault()`) in every
+  route schema and every exported schema under `src`, including ones nested in exported config
+  maps. It also fails when any request body or querystring fills in an `.optional()` field the
+  caller left out, whether through a default, a prefault or anything else. The failure message
+  names the field and the fix.
 
 Zod only validates shape and bounds. Rules that need to read other rows (does this `caId`
 exist, is it in this project, is this state transition legal) belong in the service, and

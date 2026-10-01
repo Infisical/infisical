@@ -10,7 +10,7 @@ import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
 import { fastifyRequestContext } from "@fastify/request-context";
-import { serializerCompiler, ZodTypeProvider } from "@fastify/type-provider-zod";
+import { ZodTypeProvider } from "@fastify/type-provider-zod";
 import websocket from "@fastify/websocket";
 import fastify from "fastify";
 import { Cluster, Redis } from "ioredis";
@@ -29,6 +29,7 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
+import { createSerializerCompiler } from "./lib/serializer-compiler";
 import { validatorCompiler } from "./lib/validator-compiler";
 import { apiMetrics } from "./plugins/api-metrics";
 import { fastifyErrHandler } from "./plugins/error-handler";
@@ -92,7 +93,7 @@ export const main = async ({
   }).withTypeProvider<ZodTypeProvider>();
 
   server.setValidatorCompiler(validatorCompiler);
-  server.setSerializerCompiler(serializerCompiler);
+  server.setSerializerCompiler(createSerializerCompiler({ legacyParseFallback: appCfg.isProductionMode }));
 
   // @ts-expect-error akhilmhdh: even on setting it fastify as Redis | Cluster it's throwing error
   server.decorate("redis", redis);
