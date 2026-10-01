@@ -169,6 +169,13 @@ describe("Linking root groups to a sub-organization with a machine identity", ()
     const [otherGroup] = await testDb(TableName.Groups)
       .insert({ orgId: otherOrg.id, name: `other-grp-${suffix}`, slug: `other-grp-${suffix}` })
       .returning("*");
+    const [otherMembership] = await testDb(TableName.Membership)
+      .insert({ isActive: true, scope: AccessScope.Organization, scopeOrgId: otherOrg.id, actorGroupId: otherGroup.id })
+      .returning("*");
+    await testDb(TableName.MembershipRole).insert({
+      membershipId: otherMembership.id,
+      role: OrgMembershipRole.NoAccess
+    });
 
     try {
       const headers = { authorization: `Bearer ${adminSubOrgToken}` };
@@ -181,15 +188,17 @@ describe("Linking root groups to a sub-organization with a machine identity", ()
           headers,
           body: { roles: [{ role: OrgMembershipRole.Member }] }
         });
-        expect(updateRes.statusCode).toBe(400);
+        expect(updateRes.statusCode).toBe(404);
         expect(updateRes.json().message).toBe(`Group with ID '${id}' not found`);
 
         // eslint-disable-next-line no-await-in-loop
         const deleteRes = await testServer.inject({ method: "DELETE", url, headers });
-        expect(deleteRes.statusCode).toBe(400);
+        expect(deleteRes.statusCode).toBe(404);
         expect(deleteRes.json().message).toBe(`Group with ID '${id}' not found`);
       }
     } finally {
+      await testDb(TableName.MembershipRole).where({ membershipId: otherMembership.id }).del();
+      await testDb(TableName.Membership).where({ id: otherMembership.id }).del();
       await testDb(TableName.Groups).where({ id: otherGroup.id }).del();
       await testDb(TableName.Organization).where({ id: otherOrg.id }).del();
     }

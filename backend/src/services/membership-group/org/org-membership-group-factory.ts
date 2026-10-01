@@ -13,7 +13,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
@@ -77,7 +77,7 @@ export const newOrgMembershipGroupFactory = ({
   const $getGroupInActorScope = async (actor: OrgServiceActor, groupId: string) => {
     const group = await groupDAL.findById(groupId);
     if (!group || (group.orgId !== actor.orgId && group.orgId !== actor.rootOrgId)) {
-      throw new BadRequestError({ message: `Group with ID '${groupId}' not found` });
+      throw new NotFoundError({ message: `Group with ID '${groupId}' not found` });
     }
     return group;
   };
