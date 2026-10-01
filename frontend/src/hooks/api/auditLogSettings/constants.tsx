@@ -34,9 +34,13 @@ export const AUDIT_LOG_EVENT_CLASSES = [
   AuditLogEventClass.Authorization
 ] as const;
 
+export const ALWAYS_RECORDED_AUDIT_LOG_EVENT_CLASSES: readonly AuditLogEventClass[] = [
+  AuditLogEventClass.Management,
+  AuditLogEventClass.DataAccess
+];
+
 // Updates are full replacements, so send all of these.
 export const CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES = [
-  AuditLogEventClass.DataAccess,
   AuditLogEventClass.Authentication,
   AuditLogEventClass.Authorization
 ] as const;

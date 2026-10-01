@@ -23,6 +23,7 @@ import {
   AuditLogEventClass,
   CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES,
   getAuditLogEventClass,
+  isAlwaysRecordedEventClass,
   TConfigurableAuditLogEventClass
 } from "./audit-log-event-classes";
 import { TAuditLogSettingsDALFactory } from "./audit-log-settings-dal";
@@ -57,7 +58,7 @@ export const isAuditLogEventEnabled = (
   projectId?: string | null
 ) => {
   const eventClass = getAuditLogEventClass(eventType);
-  if (eventClass === AuditLogEventClass.Management) return true;
+  if (isAlwaysRecordedEventClass(eventClass)) return true;
   if (!settings) return true;
   const scope = projectId ? settings.projects[projectId] : settings.org;
   return scope?.[eventClass] ?? AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass];
@@ -74,16 +75,18 @@ const toOverrides = (rows: TScopeRow[]): TAuditLogEventClassOverrides =>
 const toSettings = (overrides: TAuditLogEventClassOverrides): TAuditLogEventClassSetting[] =>
   AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({
     eventClass,
-    isEnabled:
-      eventClass === AuditLogEventClass.Management
-        ? true
-        : (overrides[eventClass] ?? AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass])
+    isEnabled: isAlwaysRecordedEventClass(eventClass)
+      ? true
+      : (overrides[eventClass] ?? AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass])
   }));
 
 // Updates are full replacements, so every configurable class has to be sent exactly once.
 const toFullOverrides = (eventClasses: TAuditLogEventClassSetting[]): TFullOverrides => {
-  if (eventClasses.some((el) => el.eventClass === AuditLogEventClass.Management)) {
-    throw new BadRequestError({ message: "Management events are always recorded and cannot be changed" });
+  const alwaysRecorded = eventClasses.find((el) => isAlwaysRecordedEventClass(el.eventClass));
+  if (alwaysRecorded) {
+    throw new BadRequestError({
+      message: `Event class '${alwaysRecorded.eventClass}' is always recorded and cannot be changed`
+    });
   }
   const seen = new Set<AuditLogEventClass>();
   eventClasses.forEach((el) => {
@@ -95,7 +98,7 @@ const toFullOverrides = (eventClasses: TAuditLogEventClassSetting[]): TFullOverr
   const missing = CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.filter((eventClass) => !seen.has(eventClass));
   if (missing.length) {
     throw new BadRequestError({
-      message: `Every event class except management must be included. Missing: ${missing.join(", ")}`
+      message: `Every event class except management and data-access must be included. Missing: ${missing.join(", ")}`
     });
   }
   return Object.fromEntries(eventClasses.map((el) => [el.eventClass, el.isEnabled])) as TFullOverrides;

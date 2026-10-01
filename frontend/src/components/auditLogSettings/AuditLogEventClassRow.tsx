@@ -1,9 +1,6 @@
 import { ReactNode } from "react";
-import { TriangleAlert } from "lucide-react";
 
 import {
-  Alert,
-  AlertDescription,
   Field,
   FieldContent,
   FieldDescription,
@@ -28,7 +25,6 @@ type Props = {
   isDisabled?: boolean;
   onCheckedChange?: (isEnabled: boolean) => void;
   descriptionExtra?: ReactNode;
-  warning?: ReactNode;
 };
 
 export const AuditLogEventClassRow = ({
@@ -38,8 +34,7 @@ export const AuditLogEventClassRow = ({
   lockedReason,
   isDisabled,
   onCheckedChange,
-  descriptionExtra,
-  warning
+  descriptionExtra
 }: Props) => {
   const id = `audit-log-event-class-${eventClass}`;
 
@@ -65,12 +60,6 @@ export const AuditLogEventClassRow = ({
         </FieldDescription>
         {descriptionExtra && (
           <FieldDescription className="max-w-2xl">{descriptionExtra}</FieldDescription>
-        )}
-        {warning && (
-          <Alert variant="warning" className="mt-2 max-w-2xl">
-            <TriangleAlert />
-            <AlertDescription>{warning}</AlertDescription>
-          </Alert>
         )}
       </FieldContent>
       <div className="shrink-0">

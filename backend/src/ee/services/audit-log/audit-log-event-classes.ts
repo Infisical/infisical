@@ -21,13 +21,20 @@ export const AUDIT_LOG_EVENT_CLASSES = [
   AuditLogEventClass.Authorization
 ] as const;
 
+export const ALWAYS_RECORDED_AUDIT_LOG_EVENT_CLASSES: readonly AuditLogEventClass[] = [
+  AuditLogEventClass.Management,
+  AuditLogEventClass.DataAccess
+];
+
 export const CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES = [
-  AuditLogEventClass.DataAccess,
   AuditLogEventClass.Authentication,
   AuditLogEventClass.Authorization
 ] as const;
 
 export type TConfigurableAuditLogEventClass = (typeof CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES)[number];
+
+export const isAlwaysRecordedEventClass = (eventClass: AuditLogEventClass) =>
+  ALWAYS_RECORDED_AUDIT_LOG_EVENT_CLASSES.includes(eventClass);
 
 const AUTHENTICATION_EVENT_TYPES: readonly EventType[] = [
   EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,

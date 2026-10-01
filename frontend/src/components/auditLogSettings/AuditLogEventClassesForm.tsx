@@ -14,8 +14,10 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
+  ALWAYS_RECORDED_AUDIT_LOG_EVENT_CLASSES,
   AUDIT_LOG_EVENT_CLASS_DEFAULTS,
   AUDIT_LOG_EVENT_CLASSES,
+  auditLogEventClassToNameMap,
   CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES
 } from "@app/hooks/api/auditLogSettings/constants";
 import {
@@ -30,7 +32,6 @@ import { AuditLogEventClassRow } from "./AuditLogEventClassRow";
 type TForm = Record<AuditLogEventClass, boolean>;
 
 const REQUIRES_NEW_PRIVILEGE_SYSTEM = "Requires the new privilege system";
-const ALWAYS_RECORDED = "Management events are always recorded";
 
 type Props = {
   title: string;
@@ -112,11 +113,12 @@ export const AuditLogEventClassesForm = ({
         ) : (
           <div className="divide-y divide-border">
             {AUDIT_LOG_EVENT_CLASSES.map((eventClass) => {
-              const isManagement = eventClass === AuditLogEventClass.Management;
+              const isAlwaysRecorded = ALWAYS_RECORDED_AUDIT_LOG_EVENT_CLASSES.includes(eventClass);
               const isAuthorization = eventClass === AuditLogEventClass.Authorization;
               const isLocked = isAuthorization && !shouldUseNewPrivilegeSystem;
               let lockedReason: string | undefined;
-              if (isManagement) lockedReason = ALWAYS_RECORDED;
+              if (isAlwaysRecorded)
+                lockedReason = `${auditLogEventClassToNameMap[eventClass]} events are always recorded`;
               else if (isLocked) lockedReason = REQUIRES_NEW_PRIVILEGE_SYSTEM;
               return (
                 <Controller
@@ -126,16 +128,11 @@ export const AuditLogEventClassesForm = ({
                   render={({ field }) => (
                     <AuditLogEventClassRow
                       eventClass={eventClass}
-                      isEnabled={isManagement || (!isLocked && field.value)}
+                      isEnabled={isAlwaysRecorded || (!isLocked && field.value)}
                       variant={variant}
                       isDisabled={!canEdit}
                       lockedReason={lockedReason}
                       onCheckedChange={field.onChange}
-                      warning={
-                        eventClass === AuditLogEventClass.DataAccess && !field.value
-                          ? "Secret Insights are counted from these events and stay flat while this is off."
-                          : undefined
-                      }
                       descriptionExtra={
                         isLocked ? (
                           <>

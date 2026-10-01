@@ -227,12 +227,12 @@ Each log contains the following fields:
 
 ## Event classes
 
-Every event type belongs to exactly one of four classes. The class tells you what kind of activity an event records, and it's also the unit you turn recording on or off for, so you can keep every configuration change and login while dropping the high-volume read events that make up most of the log.
+Every event type belongs to exactly one of four classes. The class tells you what kind of activity an event records. You can also turn recording on or off for the `authentication` and `authorization` classes.
 
 | Class            | What it covers                                                                                                             | Default |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------- | ------- |
 | `management`     | Creates, updates, deletes, membership, roles, policies, background jobs, and the start and end of privileged sessions      | Always on |
-| `data-access`    | Reads and lists, plus the crypto operations that return or operate on secret material, such as KMS encrypt and decrypt     | On      |
+| `data-access`    | Reads and lists, plus the crypto operations that return or operate on secret material, such as KMS encrypt and decrypt     | Always on |
 | `authentication` | Logins, failed logins, organization selection, machine identity authentication, and Gateway and Relay connections          | On      |
 | `authorization`  | [Permission denials](#permission-denials)                                                                                  | Off     |
 
@@ -240,7 +240,7 @@ A class follows the operation that was attempted, not its outcome, so a failed l
 
 ### Choose which classes to record
 
-By default, Infisical records every class except `authorization`. The `management` class is always recorded and can't be turned off, so every configuration change stays in the log, including changes to these settings. Each organization, sub-organization, and project has its own settings, and they don't inherit from each other. The organization settings cover organization-level events such as membership and login changes. A project's settings cover that project's events, so turning a class off for the organization doesn't turn it off for its projects.
+By default, Infisical records every class except `authorization`. The `management` and `data-access` classes are always recorded and can't be turned off, so every configuration change and every read of secret material stays in the log, including changes to these settings. Each organization, sub-organization, and project has its own settings, and they don't inherit from each other. The organization settings cover organization-level events such as membership and login changes. A project's settings cover that project's events, so turning a class off for the organization doesn't turn it off for its projects.
 
 <Tabs>
   <Tab title="For an organization">
@@ -268,7 +268,7 @@ By default, Infisical records every class except `authorization`. The `managemen
     Only project admins can change these toggles. A project that has never saved a setting uses the defaults. The section appears in the settings of Secret Manager, KMS, and Secret Scanning projects. For other project types, use the API.
   </Tab>
   <Tab title="API">
-    Update the organization's classes with [the organization audit log settings endpoint](/api-reference/endpoints/audit-logs/update-organization-audit-log-settings), or one project's classes with [the project audit log settings endpoint](/api-reference/endpoints/audit-logs/update-project-audit-log-settings). The request replaces the current settings, so include every class except `management`.
+    Update the organization's classes with [the organization audit log settings endpoint](/api-reference/endpoints/audit-logs/update-organization-audit-log-settings), or one project's classes with [the project audit log settings endpoint](/api-reference/endpoints/audit-logs/update-project-audit-log-settings). The request replaces the current settings, so include every class except `management` and `data-access`.
 
     ```bash
     curl -X PUT "https://app.infisical.com/api/v1/organization/audit-log-settings" \
@@ -276,7 +276,6 @@ By default, Infisical records every class except `authorization`. The `managemen
       -H "Content-Type: application/json" \
       -d '{
         "eventClasses": [
-          {"eventClass": "data-access", "isEnabled": false},
           {"eventClass": "authentication", "isEnabled": true},
           {"eventClass": "authorization", "isEnabled": false}
         ]
@@ -287,10 +286,6 @@ By default, Infisical records every class except `authorization`. The `managemen
 </Tabs>
 
 A change applies to new events within a minute. Events that were already recorded stay in the log until their retention period ends.
-
-<Note>
-  Secret Insights are counted from `data-access` events, so they stay flat for any project where the class is off.
-</Note>
 
 Every change to these settings is itself recorded as an `update-audit-log-settings` event in the `management` class, with the classes that changed in `event.metadata`.
 

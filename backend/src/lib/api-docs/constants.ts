@@ -2086,7 +2086,7 @@ export const AUDIT_LOG_SETTINGS = {
   shouldUseNewPrivilegeSystem:
     "Whether the organization is on the new privilege system. Permission denials (the authorization class) are only recorded on the new privilege system.",
   eventClasses:
-    "Every event class except management, each exactly once. The request replaces the current settings. Management events are always recorded, so a request that includes the management class is rejected. The authorization class can only be turned on for organizations on the new privilege system; otherwise the request is rejected.",
+    "Every event class except management and data-access, each exactly once. The request replaces the current settings. Management and data-access events are always recorded, so a request that includes either class is rejected. The authorization class can only be turned on for organizations on the new privilege system; otherwise the request is rejected.",
   UPDATE_ORG: {
     isEnabled:
       "Whether to record events of this class for the organization. This only covers organization-level events; each project has its own setting."
