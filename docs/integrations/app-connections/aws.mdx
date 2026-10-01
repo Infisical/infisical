@@ -11,6 +11,7 @@ import SelfHostedInstance from "/snippets/app-connections/aws/self-hosted-instan
 import CreateIamRole from "/snippets/app-connections/aws/create-iam-role.mdx";
 import CreateIamUser from "/snippets/app-connections/aws/create-iam-user.mdx";
 import ConnectionFormFields from "/snippets/app-connections/aws/form-fields.mdx";
+import AgentVaultSessionLogsCorsRule from "/snippets/app-connections/aws/agent-vault-session-logs-cors-rule.mdx";
 
 <UseCasePicker prefix="I want the connection to work with" groups={awsUseCaseGroups} />
 
@@ -174,38 +175,7 @@ Next, add the required policies to the IAM role or user from [Step 1](#step-1-cr
     Your browser downloads session logs directly from the bucket, so the bucket needs a CORS rule. To see the same rule with your Infisical URL filled in, select **View AWS Setup** in the **Session Logs** dialog.
 
     <Steps>
-        <Step>
-            In the Amazon S3 console, open the session logs bucket, go to **Permissions**, and select **Edit** under **Cross-origin resource sharing (CORS)**.
-        </Step>
-        <Step>
-            Paste this rule, then select **Save changes**:
-
-            <CodeGroup>
-                ```json Infisical Cloud (US)
-                [
-                    {
-                        "AllowedHeaders": ["*"],
-                        "AllowedMethods": ["GET"],
-                        "AllowedOrigins": ["https://app.infisical.com"],
-                        "MaxAgeSeconds": 3000
-                    }
-                ]
-                ```
-
-                ```json Infisical Cloud (EU)
-                [
-                    {
-                        "AllowedHeaders": ["*"],
-                        "AllowedMethods": ["GET"],
-                        "AllowedOrigins": ["https://eu.infisical.com"],
-                        "MaxAgeSeconds": 3000
-                    }
-                ]
-                ```
-            </CodeGroup>
-
-            If you self-host Infisical or use a dedicated instance, replace `AllowedOrigins` with your instance's URL.
-        </Step>
+        <AgentVaultSessionLogsCorsRule />
     </Steps>
 </UseCase>
 

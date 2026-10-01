@@ -1,8 +1,10 @@
 {/*
 Bare <Step> elements, so a page can place them inside its own <Steps> and keep the numbering.
 Props:
-- externalId: "required" adds the External ID instructions. "skip" leaves them out, for a page
-  whose connection sends an External ID the reader can't look up.
+- externalId: "required" adds the External ID instructions, split by the page's
+  Organization-level and Project-level views. "organization" adds a single instruction to use the
+  Organization ID, for a page whose connection always sends it (Agent Vault) and that has no views.
+  "skip" leaves them out.
 */}
 
 <Step>
@@ -37,6 +39,12 @@ Props:
             </View>
 
             Infisical sends this ID every time it assumes the role, so the role only works for connections in the organization or project you named. This protects your account from the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html).
+        </MDX>
+    )}
+
+    {externalId === "organization" && (
+        <MDX>
+            Enable **Require external ID** and enter your Organization ID. You can copy it from your Infisical URL: it's the ID after `/organizations/`.
         </MDX>
     )}
 </Step>

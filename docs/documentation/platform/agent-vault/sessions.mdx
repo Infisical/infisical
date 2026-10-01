@@ -56,11 +56,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
 
 ## View session logs
 
-Session logs record every request an agent makes during a session. If you haven't already, [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs). Then go to **Sessions** and select **View Session Logs** on the session's row. You can filter and search the requests, and while the session is active, new logs keep appearing.
-
-<Frame>
-  <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for an active session, listing each request's time, method, host, path, upstream status, and outcome" />
-</Frame>
+If [session logs](/documentation/platform/agent-vault/session-logs) are set up, select **View Session Logs** on a session's row to see every request the agent made during the session.
 
 ## Revoke a session
 
@@ -89,4 +85,4 @@ If a session stops getting credentials because of a lost grant or a deleted bund
 
 When you create or revoke a session, Infisical writes an audit event. To review these events, open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
 
-Audit events cover what you changed in Infisical. To see what an agent reached while its session was running, [view its session logs](#view-session-logs).
+Audit events cover what you changed in Infisical. To see which requests an agent made while its session was running, [view its session logs](#view-session-logs).
