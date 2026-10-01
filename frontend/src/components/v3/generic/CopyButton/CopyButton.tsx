@@ -1,5 +1,5 @@
-import { ComponentProps, forwardRef, useRef } from "react";
-import { Check, Copy, X } from "lucide-react";
+import { ComponentProps, forwardRef } from "react";
+import { Check, Copy } from "lucide-react";
 
 import { useTimedReset } from "@app/hooks";
 
@@ -12,12 +12,9 @@ type CopyButtonProps = Omit<ComponentProps<"button">, "value" | "children"> & {
 
 export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
   ({ value, ariaLabel, variant = "ghost", size = "xs", onClick, ...props }, ref): JSX.Element => {
-    const copyAttempt = useRef(0);
-    const feedbackValue = useRef(value);
-    const [copyState, , setCopyState] = useTimedReset<"idle" | "copied" | "failed">({
-      initialState: "idle"
+    const [, isCopying, setCopyText] = useTimedReset<string>({
+      initialState: "Copy to clipboard"
     });
-    const feedbackState = feedbackValue.current === value ? copyState : "idle";
 
     return (
       <IconButton
@@ -25,31 +22,14 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
         ref={ref}
         variant={variant}
         size={size}
-        aria-label={
-          {
-            idle: ariaLabel,
-            copied: "Copied to clipboard",
-            failed: "Copy failed. Try again."
-          }[feedbackState]
-        }
-        onClick={async (event) => {
+        aria-label={ariaLabel}
+        onClick={(event) => {
+          navigator.clipboard.writeText(value);
+          setCopyText("Copied");
           onClick?.(event);
-          copyAttempt.current += 1;
-          const attempt = copyAttempt.current;
-          setCopyState("idle");
-          try {
-            await navigator.clipboard.writeText(value);
-            if (attempt !== copyAttempt.current) return;
-            feedbackValue.current = value;
-            setCopyState("copied");
-          } catch {
-            if (attempt !== copyAttempt.current) return;
-            feedbackValue.current = value;
-            setCopyState("failed");
-          }
         }}
       >
-        {{ idle: <Copy />, copied: <Check />, failed: <X /> }[feedbackState]}
+        {isCopying ? <Check /> : <Copy />}
       </IconButton>
     );
   }

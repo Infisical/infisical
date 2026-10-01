@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2 } from "lucide-react";
+import { Building2, Check, Copy } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -13,12 +13,12 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CopyButton,
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
+  IconButton,
   Input,
   InputGroup,
   InputGroupAddon,
@@ -37,6 +37,7 @@ import {
   useOrgPermission
 } from "@app/context";
 import { isCustomOrgRole } from "@app/helpers/roles";
+import { useTimedReset } from "@app/hooks";
 import { useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
@@ -49,6 +50,50 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+const OrganizationIdCopyButton = ({ orgId }: { orgId: string }) => {
+  const isWritePending = useRef(false);
+  const [isPending, setIsPending] = useState(false);
+  const [copyText, isCopied, setCopyText] = useTimedReset<string>({
+    initialState: "Copy organization ID"
+  });
+
+  return (
+    <>
+      <IconButton
+        type="button"
+        variant="ghost"
+        size="xs"
+        aria-label={isPending ? "Copying organization ID" : copyText}
+        isPending={isPending}
+        isDisabled={isPending}
+        onClick={async () => {
+          if (isWritePending.current) return;
+          isWritePending.current = true;
+          setIsPending(true);
+          setCopyText("Copy organization ID");
+          try {
+            await navigator.clipboard.writeText(orgId);
+            setCopyText("Organization ID copied");
+          } catch {
+            createNotification({
+              type: "error",
+              text: "Could not copy organization ID. Select and copy it manually."
+            });
+          } finally {
+            isWritePending.current = false;
+            setIsPending(false);
+          }
+        }}
+      >
+        {isCopied ? <Check /> : <Copy />}
+      </IconButton>
+      <span className="sr-only" role="status">
+        {isCopied ? copyText : ""}
+      </span>
+    </>
+  );
+};
 
 export const OrgNameChangeSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
@@ -140,11 +185,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
                 <InputGroup>
                   <InputGroupInput id="org-id" value={currentOrg.id} readOnly />
                   <InputGroupAddon align="inline-end">
-                    <CopyButton
-                      value={currentOrg.id}
-                      ariaLabel="Copy organization ID"
-                      type="button"
-                    />
+                    <OrganizationIdCopyButton key={currentOrg.id} orgId={currentOrg.id} />
                   </InputGroupAddon>
                 </InputGroup>
               </Field>
