@@ -319,6 +319,9 @@ export enum PostHogEventTypes {
   AgentVaultServiceCreated = "Agent Vault Service Created",
   AgentVaultServiceUpdated = "Agent Vault Service Updated",
   AgentVaultServiceDeleted = "Agent Vault Service Deleted",
+  AgentVaultVariableCreated = "Agent Vault Variable Created",
+  AgentVaultVariableUpdated = "Agent Vault Variable Updated",
+  AgentVaultVariableDeleted = "Agent Vault Variable Deleted",
   AgentVaultAccessBundleMemberAdded = "Agent Vault Access Bundle Member Added",
   AgentVaultAccessBundleMemberRemoved = "Agent Vault Access Bundle Member Removed",
   AgentVaultSessionCreated = "Agent Vault Session Created",
@@ -2443,6 +2446,7 @@ export type TAgentVaultServiceCreatedEvent = {
     allowedPathPrefixCount: number;
     customHeaderCount: number;
     substitutionCount: number;
+    variableReferenceCount: number;
   };
 };
 
@@ -2457,12 +2461,35 @@ export type TAgentVaultServiceUpdatedEvent = {
     allowedPathPrefixCount: number;
     customHeaderCount: number;
     substitutionCount: number;
+    variableReferenceCount: number;
   };
 };
 
 export type TAgentVaultServiceDeletedEvent = {
   event: PostHogEventTypes.AgentVaultServiceDeleted;
   properties: TAgentVaultEventBase & { accessBundleId: string; serviceId: string };
+};
+
+export type TAgentVaultVariableCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultVariableCreated;
+  properties: TAgentVaultEventBase & { accessBundleId: string; variableId: string; isSecret: boolean };
+};
+
+export type TAgentVaultVariableUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultVariableUpdated;
+  properties: TAgentVaultEventBase & {
+    accessBundleId: string;
+    variableId: string;
+    isSecret: boolean;
+    keyChanged: boolean;
+    valueReplaced: boolean;
+    usedByServiceCount: number;
+  };
+};
+
+export type TAgentVaultVariableDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultVariableDeleted;
+  properties: TAgentVaultEventBase & { accessBundleId: string; variableId: string };
 };
 
 export type TAgentVaultAccessBundleMemberAddedEvent = {
@@ -2562,6 +2589,9 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultServiceCreatedEvent
   | TAgentVaultServiceUpdatedEvent
   | TAgentVaultServiceDeletedEvent
+  | TAgentVaultVariableCreatedEvent
+  | TAgentVaultVariableUpdatedEvent
+  | TAgentVaultVariableDeletedEvent
   | TAgentVaultAccessBundleMemberAddedEvent
   | TAgentVaultAccessBundleMemberRemovedEvent
   | TAgentVaultSessionCreatedEvent
