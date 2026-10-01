@@ -1,8 +1,12 @@
-import { CSSProperties, ReactNode, useState } from "react";
+import { CSSProperties, ReactNode } from "react";
 import { ChevronRight, EllipsisVerticalIcon, PlusIcon, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Badge,
   Button,
   Card,
@@ -12,11 +16,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   Tabs,
   TabsContent,
@@ -269,7 +268,7 @@ const ProductSummaryCard = ({
           the trial ends.
         </p>
       )}
-      <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5">
         {!isManaged && (
           <Metric
             label="Charge"
@@ -347,6 +346,98 @@ const AddProductMenu = ({
   </DropdownMenu>
 );
 
+const UsageMeterSources = ({
+  prod,
+  dim,
+  orgId,
+  scope,
+  onViewBreakdown
+}: BreakdownTarget & {
+  prod: BillingV2CatalogProduct;
+  dim: BillingV2EntitlementDim;
+  onViewBreakdown: (productId: string, dimensionKey?: string) => void;
+}) => {
+  const { data, isPending, isError, refetch } = useGetBillingV2UsageBreakdown(
+    orgId,
+    dim.key,
+    scope
+  );
+
+  const ranked = data
+    ? [...data.scopes].filter((scope_) => scope_.count > 0).sort((a, b) => b.count - a.count)
+    : [];
+  const shown = ranked.slice(0, 5);
+  const rest = ranked.length - shown.length;
+
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-medium text-foreground">{dim.label}</h3>
+        <Button
+          variant="outline"
+          size="xs"
+          aria-label={`Full breakdown for ${prod.name} ${dim.label}`}
+          onClick={() => onViewBreakdown(prod.id, dim.key)}
+        >
+          Full Breakdown
+        </Button>
+      </div>
+      {isPending && <Skeleton className="h-32 w-full" />}
+      {isError && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs text-muted">Unable to load usage sources.</span>
+          <Button variant="ghost" size="xs" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </div>
+      )}
+      {data && !isError && (
+        <div className="flex flex-col gap-3">
+          {data.userCount > 0 && (
+            <span className="text-xs text-accent">
+              <span className="font-medium text-foreground">{data.userCount.toLocaleString()}</span>{" "}
+              {unitForCount("user identity", data.userCount)} ·{" "}
+              <span className="font-medium text-foreground">
+                {data.scopedCount.toLocaleString()}
+              </span>{" "}
+              {unitForCount(data.unit, data.scopedCount)}
+            </span>
+          )}
+          {shown.length === 0 && (
+            <span className="text-sm text-muted">
+              No {pluralizeUnit(data.unit)} have been created yet.
+            </span>
+          )}
+          {shown.map((source) => (
+            <div key={source.orgId} className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="truncate text-foreground">{source.name}</span>
+                <span className="shrink-0 text-xs text-muted tabular-nums">
+                  <span className="font-medium text-foreground">
+                    {source.count.toLocaleString()}
+                  </span>{" "}
+                  · {share(source.count, data.scopedCount)}%
+                </span>
+              </div>
+              <div className="h-[3px] w-full overflow-hidden rounded-xs bg-background">
+                <div
+                  className={source.isRoot ? "h-full bg-org/85" : "h-full bg-sub-org/85"}
+                  style={{ width: `${share(source.count, data.scopedCount)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+          {rest > 0 && (
+            <span className="text-xs text-muted">
+              {rest} more {rest === 1 ? "organization" : "organizations"} in the full breakdown
+            </span>
+          )}
+        </div>
+      )}
+    </section>
+  );
+};
+
 const UsageSources = ({
   products,
   orgId,
@@ -356,14 +447,9 @@ const UsageSources = ({
   products: ActiveProduct[];
   onViewBreakdown: (productId: string, dimensionKey?: string) => void;
 }) => {
-  const options = products.flatMap(({ prod, ent }) =>
-    breakdownableDimensions(ent).map((dim) => ({ prod, dim, value: `${prod.id}:${dim.key}` }))
-  );
-  const [value, setValue] = useState(options[0]?.value ?? "");
-  const active = options.find((option) => option.value === value) ?? options[0];
-  const { data, isPending } = useGetBillingV2UsageBreakdown(orgId, active?.dim.key ?? null, scope);
+  const meteredProducts = products.filter(({ ent }) => breakdownableDimensions(ent).length > 0);
 
-  if (!active) {
+  if (meteredProducts.length === 0) {
     return (
       <CardEmpty
         title="No usage to break down"
@@ -372,99 +458,51 @@ const UsageSources = ({
     );
   }
 
-  const ranked = data
-    ? [...data.scopes].filter((scope_) => scope_.count > 0).sort((a, b) => b.count - a.count)
-    : [];
-  const shown = ranked.slice(0, 5);
-  const rest = ranked.length - shown.length;
-
   return (
     <div className="flex flex-col gap-3">
-      <SectionLabel
-        action={
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={() => onViewBreakdown(active.prod.id, active.dim.key)}
-          >
-            Full Breakdown
-          </Button>
-        }
+      <SectionLabel>Where usage comes from</SectionLabel>
+      <p className="text-xs text-muted">Expand a product to see its usage sources.</p>
+      <Accordion
+        type="multiple"
+        variant="ghost"
+        defaultValue={[meteredProducts[0].prod.id]}
+        className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2"
       >
-        Where usage comes from
-      </SectionLabel>
-      <Card className="gap-5">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <Select value={active.value} onValueChange={setValue}>
-            <SelectTrigger className="w-72 max-w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.dim.label} · {option.prod.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {data && (
-            <span className="text-sm text-muted">
-              <span className="text-2xl font-medium text-foreground tabular-nums">
-                {data.total.toLocaleString()}
-              </span>{" "}
-              {data.userCount > 0
-                ? unitForCount("identity", data.total)
-                : unitForCount(data.unit, data.total)}
-            </span>
-          )}
-        </div>
-        {isPending && <Skeleton className="h-32 w-full" />}
-        {data && (
-          <div className="flex flex-col gap-3">
-            {data.userCount > 0 && (
-              <span className="text-xs text-accent">
-                <span className="font-medium text-foreground">
-                  {data.userCount.toLocaleString()}
-                </span>{" "}
-                {unitForCount("user identity", data.userCount)} ·{" "}
-                <span className="font-medium text-foreground">
-                  {data.scopedCount.toLocaleString()}
-                </span>{" "}
-                {unitForCount(data.unit, data.scopedCount)}
-              </span>
-            )}
-            {shown.length === 0 && (
-              <span className="text-sm text-muted">
-                No {pluralizeUnit(data.unit)} have been created yet.
-              </span>
-            )}
-            {shown.map((source) => (
-              <div key={source.orgId} className="flex flex-col gap-1">
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="truncate text-foreground">{source.name}</span>
-                  <span className="shrink-0 text-xs text-muted tabular-nums">
-                    <span className="font-medium text-foreground">
-                      {source.count.toLocaleString()}
-                    </span>{" "}
-                    · {share(source.count, data.scopedCount)}%
-                  </span>
-                </div>
-                <div className="h-[3px] w-full overflow-hidden rounded-xs bg-background">
-                  <div
-                    className={source.isRoot ? "h-full bg-org/85" : "h-full bg-sub-org/85"}
-                    style={{ width: `${share(source.count, data.scopedCount)}%` }}
+        {meteredProducts.map(({ prod, ent }) => (
+          <Card key={prod.id} className="min-w-0 gap-0 p-0">
+            <AccordionItem value={prod.id}>
+              <AccordionTrigger className="px-5 group-data-[variant=ghost]/accordion:py-4">
+                <ProductIcon product={prod} size={32} />
+                <span className="min-w-0 text-sm font-medium text-foreground">{prod.name}</span>
+              </AccordionTrigger>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-5 pb-5">
+                {(ent.dimensions ?? []).map((dim) => (
+                  <Metric
+                    key={dim.key}
+                    label={dim.label}
+                    value={dim.used.toLocaleString()}
+                    note={meterNote(dim)}
                   />
-                </div>
+                ))}
               </div>
-            ))}
-            {rest > 0 && (
-              <span className="text-xs text-muted">
-                {rest} more {rest === 1 ? "organization" : "organizations"} in the full breakdown
-              </span>
-            )}
-          </div>
-        )}
-      </Card>
+              <AccordionContent className="border-t border-border px-5 group-data-[variant=ghost]/accordion:pt-4 group-data-[variant=ghost]/accordion:pb-5">
+                <div className="flex flex-col gap-5 divide-y divide-border [&>section:not(:first-child)]:pt-5">
+                  {breakdownableDimensions(ent).map((dim) => (
+                    <UsageMeterSources
+                      key={dim.key}
+                      prod={prod}
+                      dim={dim}
+                      orgId={orgId}
+                      scope={scope}
+                      onViewBreakdown={onViewBreakdown}
+                    />
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Card>
+        ))}
+      </Accordion>
       <p className="text-xs text-muted">Current counts. Usage history isn&apos;t tracked.</p>
     </div>
   );
@@ -556,25 +594,27 @@ export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode })
     </div>
     <div className="flex flex-col gap-3">
       <SectionLabel action={orgFilter}>Products</SectionLabel>
-      {SKELETON_PRODUCTS.map((key) => (
-        <Card key={key} className="gap-5">
-          <div className="flex items-center gap-3">
-            <Skeleton className="size-8 rounded-md" />
-            <div className="flex flex-col gap-1.5">
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-3 w-56" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-            {SKELETON_PRODUCTS.concat("product-c").map((metric) => (
-              <div key={metric} className="flex flex-col gap-2">
-                <Skeleton className="h-3 w-16" />
-                <Skeleton className="h-5 w-12" />
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+        {SKELETON_PRODUCTS.map((key) => (
+          <Card key={key} className="gap-5">
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-8 rounded-md" />
+              <div className="flex flex-col gap-1.5">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-56" />
               </div>
-            ))}
-          </div>
-        </Card>
-      ))}
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              {SKELETON_PRODUCTS.concat("product-c").map((metric) => (
+                <div key={metric} className="flex flex-col gap-2">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-5 w-12" />
+                </div>
+              ))}
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   </div>
 );
@@ -741,21 +781,23 @@ export const TabbedOverview = ({
               onContact={onContact}
             />
           )}
-          {products.map(({ prod, ent }) => (
-            <ProductSummaryCard
-              key={prod.id}
-              prod={prod}
-              ent={ent}
-              readOnly={readOnly}
-              selfServe={overview.selfServe}
-              isManaged={isManaged}
-              orgId={orgId}
-              scope={scope}
-              onManage={onManage}
-              onSetCommitment={onSetCommitment}
-              onViewBreakdown={onViewBreakdown}
-            />
-          ))}
+          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+            {products.map(({ prod, ent }) => (
+              <ProductSummaryCard
+                key={prod.id}
+                prod={prod}
+                ent={ent}
+                readOnly={readOnly}
+                selfServe={overview.selfServe}
+                isManaged={isManaged}
+                orgId={orgId}
+                scope={scope}
+                onManage={onManage}
+                onSetCommitment={onSetCommitment}
+                onViewBreakdown={onViewBreakdown}
+              />
+            ))}
+          </div>
         </div>
       </TabsContent>
 
