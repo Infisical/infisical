@@ -200,13 +200,6 @@ export type TCreateAccessRequestDTO = {
   note?: string;
 } & Omit<TProjectUserPrivilege, "id" | "createdAt" | "updatedAt" | "slug" | "projectMembershipId">;
 
-export type TUpdateAccessRequestDTO = {
-  requestId: string;
-  editNote: string;
-  temporaryRange: string;
-  projectSlug: string;
-};
-
 export type TGetAccessApprovalRequestsDTO = {
   projectSlug: string;
   policyId?: string;
