@@ -308,10 +308,15 @@ export const licenseServiceFactory = ({
   };
 
   const refreshPlan = async (orgId: string) => {
-    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
     if (instanceType === InstanceType.Cloud) {
-      await getPlan(orgId);
+      try {
+        await fetchAndCacheCloudPlan(orgId);
+      } catch (error) {
+        logger.error(error, `getPlan: explicit refresh failed [orgId=${orgId}]`);
+      }
+      return;
     }
+    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
     if (instanceType === InstanceType.EnterpriseOnPrem) {
       // Bust the license server's cached entitlements (e.g. after a license change), then re-sync.
       await licenseClient?.refreshEntitlements({ id: SELF_HOSTED_LICENSE_ORG_ID });
