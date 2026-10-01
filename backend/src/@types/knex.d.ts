@@ -35,6 +35,9 @@ import {
   TAgentVaultServiceSubstitutionsInsert,
   TAgentVaultServiceSubstitutionsUpdate,
   TAgentVaultServicesUpdate,
+  TAgentVaultServiceVariableReferences,
+  TAgentVaultServiceVariableReferencesInsert,
+  TAgentVaultServiceVariableReferencesUpdate,
   TAgentVaultSessionAccessBundles,
   TAgentVaultSessionAccessBundlesInsert,
   TAgentVaultSessionAccessBundlesUpdate,
@@ -47,6 +50,9 @@ import {
   TAgentVaultSessions,
   TAgentVaultSessionsInsert,
   TAgentVaultSessionsUpdate,
+  TAgentVaultVariables,
+  TAgentVaultVariablesInsert,
+  TAgentVaultVariablesUpdate,
   TAlertChannelMemberships,
   TAlertChannelMembershipsInsert,
   TAlertChannelMembershipsUpdate,
@@ -1817,6 +1823,16 @@ declare module "knex/types/tables" {
       TAgentVaultServiceSubstitutions,
       TAgentVaultServiceSubstitutionsInsert,
       TAgentVaultServiceSubstitutionsUpdate
+    >;
+    [TableName.AgentVaultVariable]: KnexOriginal.CompositeTableType<
+      TAgentVaultVariables,
+      TAgentVaultVariablesInsert,
+      TAgentVaultVariablesUpdate
+    >;
+    [TableName.AgentVaultServiceVariableReference]: KnexOriginal.CompositeTableType<
+      TAgentVaultServiceVariableReferences,
+      TAgentVaultServiceVariableReferencesInsert,
+      TAgentVaultServiceVariableReferencesUpdate
     >;
     [TableName.AgentVaultSession]: KnexOriginal.CompositeTableType<
       TAgentVaultSessions,
