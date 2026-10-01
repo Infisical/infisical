@@ -1,5 +1,5 @@
 import { ComponentProps, forwardRef } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
 
 import { useTimedReset } from "@app/hooks";
 
@@ -12,8 +12,8 @@ type CopyButtonProps = Omit<ComponentProps<"button">, "value" | "children"> & {
 
 export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
   ({ value, ariaLabel, variant = "ghost", size = "xs", onClick, ...props }, ref): JSX.Element => {
-    const [, isCopying, setCopyText] = useTimedReset<string>({
-      initialState: "Copy to clipboard"
+    const [copyState, , setCopyState] = useTimedReset<"idle" | "copied" | "failed">({
+      initialState: "idle"
     });
 
     return (
@@ -22,14 +22,25 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
         ref={ref}
         variant={variant}
         size={size}
-        aria-label={isCopying ? "Copied to clipboard" : ariaLabel}
-        onClick={(event) => {
-          navigator.clipboard.writeText(value);
-          setCopyText("Copied");
+        aria-label={
+          {
+            idle: ariaLabel,
+            copied: "Copied to clipboard",
+            failed: "Copy failed. Try again."
+          }[copyState]
+        }
+        onClick={async (event) => {
           onClick?.(event);
+          setCopyState("idle");
+          try {
+            await navigator.clipboard.writeText(value);
+            setCopyState("copied");
+          } catch {
+            setCopyState("failed");
+          }
         }}
       >
-        {isCopying ? <Check /> : <Copy />}
+        {{ idle: <Copy />, copied: <Check />, failed: <X /> }[copyState]}
       </IconButton>
     );
   }
