@@ -777,6 +777,10 @@ export enum EventType {
   AGENT_VAULT_SERVICE_CREATE = "agent-vault-service-create",
   AGENT_VAULT_SERVICE_UPDATE = "agent-vault-service-update",
   AGENT_VAULT_SERVICE_DELETE = "agent-vault-service-delete",
+  AGENT_VAULT_VARIABLE_CREATE = "agent-vault-variable-create",
+  AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
+  AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
+  AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
@@ -6347,6 +6351,7 @@ interface AgentVaultServiceCreateEvent {
   type: EventType.AGENT_VAULT_SERVICE_CREATE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     serviceId: string;
     name: string;
     hostPattern: string;
@@ -6358,6 +6363,7 @@ interface AgentVaultServiceCreateEvent {
     // Names and placeholders only. A sealed value must never reach an audit row.
     customHeaderNames?: string[];
     substitutionPlaceholders?: string[];
+    variableKeys?: string[];
   };
 }
 
@@ -6365,6 +6371,7 @@ interface AgentVaultServiceUpdateEvent {
   type: EventType.AGENT_VAULT_SERVICE_UPDATE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     serviceId: string;
     name?: string;
     hostPattern?: string;
@@ -6378,6 +6385,8 @@ interface AgentVaultServiceUpdateEvent {
     substitutionPlaceholders?: string[];
     substitutionsReplaced?: string[];
     credentialReplaced: boolean;
+    // Every key the service uses after the update, present when the update wrote a value that can hold one.
+    variableKeys?: string[];
   };
 }
 
@@ -6385,8 +6394,56 @@ interface AgentVaultServiceDeleteEvent {
   type: EventType.AGENT_VAULT_SERVICE_DELETE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     serviceId: string;
     name: string;
+  };
+}
+
+// Keys and flags only. A variable's value never reaches an audit row, secret or not.
+interface AgentVaultVariableCreateEvent {
+  type: EventType.AGENT_VAULT_VARIABLE_CREATE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    variableId: string;
+    key: string;
+    isSecret: boolean;
+  };
+}
+
+interface AgentVaultVariableUpdateEvent {
+  type: EventType.AGENT_VAULT_VARIABLE_UPDATE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    variableId: string;
+    key: string;
+    // The previous* fields are present only when the update changed them.
+    previousKey?: string;
+    isSecret: boolean;
+    previousIsSecret?: boolean;
+    valueReplaced: boolean;
+  };
+}
+
+interface AgentVaultVariableDeleteEvent {
+  type: EventType.AGENT_VAULT_VARIABLE_DELETE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    variableId: string;
+    key: string;
+  };
+}
+
+interface AgentVaultVariableValueViewEvent {
+  type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    variableId: string;
+    key: string;
   };
 }
 
@@ -6603,7 +6660,11 @@ interface PamAccessRequestCreateEvent {
   metadata: {
     requestId: string;
     accountId: string;
+    accountName?: string;
     folderId: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     duration: string;
     accessType: string;
     reason?: string;
@@ -6615,7 +6676,11 @@ interface PamAccessRequestReviewEvent {
   metadata: {
     requestId: string;
     accountId?: string;
+    accountName?: string;
     folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     status: string;
     comment?: string;
   };
@@ -6627,7 +6692,11 @@ interface PamAccessGrantRevokeEvent {
     requestId: string;
     grantId: string;
     accountId?: string;
+    accountName?: string;
     folderId?: string;
+    folderName?: string;
+    granteeName?: string;
+    granteeEmail?: string;
   };
 }
 
@@ -8344,6 +8413,10 @@ export type Event =
   | AgentVaultServiceCreateEvent
   | AgentVaultServiceUpdateEvent
   | AgentVaultServiceDeleteEvent
+  | AgentVaultVariableCreateEvent
+  | AgentVaultVariableUpdateEvent
+  | AgentVaultVariableDeleteEvent
+  | AgentVaultVariableValueViewEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent
   | AgentVaultProductMemberRemoveEvent

@@ -6,7 +6,8 @@ import {
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface,
-  AgentVaultTrafficPolicy
+  AgentVaultTrafficPolicy,
+  AgentVaultVariableReferenceField
 } from "./enums";
 
 export type TAgentVaultCredentialSummary =
@@ -58,6 +59,19 @@ export type TAgentVaultSubstitutionInput = {
   value?: string;
 };
 
+export type TAgentVaultVariableReference = {
+  variableId: string;
+  key: string;
+} & (
+  | {
+      field:
+        | AgentVaultVariableReferenceField.CredentialValue
+        | AgentVaultVariableReferenceField.CredentialUsername;
+    }
+  | { field: AgentVaultVariableReferenceField.CustomHeader; customHeaderId: string }
+  | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
+);
+
 export type TAgentVaultService = {
   id: string;
   accessBundleId: string;
@@ -69,6 +83,8 @@ export type TAgentVaultService = {
   credential: TAgentVaultCredentialSummary;
   customHeaders: TAgentVaultCustomHeaderSummary[];
   substitutions: TAgentVaultSubstitutionSummary[];
+  // Left out for a member, who can't see variables.
+  variableReferences?: TAgentVaultVariableReference[];
   createdAt: string;
   updatedAt: string;
 };
@@ -417,4 +433,34 @@ export type TAgentVaultDecryptedSessionLogPage<
   P extends TAgentVaultSessionLogPage = TAgentVaultSessionLogPage
 > = P & {
   decrypted: Record<string, TAgentVaultDecryptedChunk>;
+};
+
+export type TAgentVaultVariable = {
+  id: string;
+  accessBundleId: string;
+  key: string;
+  isSecret: boolean;
+  /** Null for a secret variable, whose value comes only from the value route. */
+  value: string | null;
+  serviceIds: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TAgentVaultVariableRef = {
+  accessBundleId: string;
+  variableId: string;
+};
+
+export type TCreateAgentVaultVariableDTO = {
+  accessBundleId: string;
+  key: string;
+  value: string;
+  isSecret: boolean;
+};
+
+export type TUpdateAgentVaultVariableDTO = TAgentVaultVariableRef & {
+  key?: string;
+  value?: string;
+  isSecret?: boolean;
 };
