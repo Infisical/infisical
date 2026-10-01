@@ -19,14 +19,14 @@ import {
   CertificateAlertScopeKind,
   NO_FILTERS_DESCRIPTION,
   TCertificateAlertScope,
-  TProjectMemberEmails
+  TMemberEmails
 } from "./types";
 import { useCertificateFilterNames } from "./useCertificateFilterNames";
 
 type Props = {
   form: UseFormReturn<TCertificateAlertForm>;
   scope: TCertificateAlertScope;
-  members: TProjectMemberEmails;
+  members: TMemberEmails;
 };
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
@@ -47,7 +47,7 @@ const EnabledBadge = ({ enabled }: { enabled: boolean }) => (
   <Badge variant={enabled ? "success" : "neutral"}>{enabled ? "Enabled" : "Disabled"}</Badge>
 );
 
-const describeChannel = (channel: TChannelForm, members: TProjectMemberEmails): string => {
+const describeChannel = (channel: TChannelForm, members: TMemberEmails): string => {
   switch (channel.channelType) {
     case AlertChannelType.Email: {
       const groupCount = channel.recipients.filter(

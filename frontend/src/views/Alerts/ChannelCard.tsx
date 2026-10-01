@@ -42,6 +42,7 @@ type Props = {
   projectId?: string;
   resourceType: string;
   resourceId?: string | null;
+  alertId?: string;
   onRemove: () => void;
   canRemove: boolean;
   renderRecipients?: (props: TChannelRecipientsRenderProps) => ReactElement;
@@ -89,6 +90,7 @@ export const ChannelCard = ({
   projectId,
   resourceType,
   resourceId,
+  alertId,
   onRemove,
   canRemove,
   renderRecipients
@@ -120,6 +122,7 @@ export const ChannelCard = ({
         resourceType,
         resourceId,
         projectId: projectId ?? null,
+        alertId,
         channelId: channel?.id,
         channelType,
         config,

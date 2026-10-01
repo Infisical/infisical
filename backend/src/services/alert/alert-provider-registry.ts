@@ -12,14 +12,14 @@ export const alertProviderRegistryFactory = () => {
     }
 
     for (const event of provider.events) {
-      if (event.triggerType === AlertTriggerType.Scheduled && !provider.findDueTargets) {
+      if (event.triggerType === AlertTriggerType.Scheduled && !provider.findScheduledTargets) {
         throw new Error(
-          `Alert provider '${provider.resourceType}' declares scheduled event '${event.key}' but does not implement findDueTargets`
+          `Alert provider '${provider.resourceType}' declares scheduled event '${event.key}' but does not implement findScheduledTargets`
         );
       }
-      if (event.triggerType === AlertTriggerType.Event && !provider.findTargetsByIds) {
+      if (event.triggerType === AlertTriggerType.Event && !provider.findEventTargets) {
         throw new Error(
-          `Alert provider '${provider.resourceType}' declares event-triggered event '${event.key}' but does not implement findTargetsByIds`
+          `Alert provider '${provider.resourceType}' declares event-triggered event '${event.key}' but does not implement findEventTargets`
         );
       }
     }

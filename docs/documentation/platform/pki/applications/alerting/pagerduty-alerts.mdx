@@ -47,7 +47,7 @@ A PagerDuty channel on a certificate [alert](/documentation/platform/pki/applica
 
 ## Severity mapping
 
-Infisical sets each incident's PagerDuty severity from the alert's event. For expiration alerts, each certificate gets its own incident, and that incident's severity comes from how close the certificate is to expiry.
+Each incident's PagerDuty severity comes from the alert's event. For expiration alerts, it comes from how close the certificate is to expiry.
 
 ### Expiration alerts
 
@@ -68,9 +68,9 @@ Infisical sets each incident's PagerDuty severity from the alert's event. For ex
 
 ## Incident grouping
 
-Infisical opens one incident per certificate. If the same alert fires again for the same certificate, PagerDuty updates the existing incident instead of opening a new one.
+Each certificate gets its own incident. If the same alert fires again for the same certificate, PagerDuty updates the existing incident instead of opening a new one.
 
-Each PagerDuty channel opens at most 10 incidents per run. If more than 10 certificates are due for an expiration alert, Infisical sends the certificates closest to expiry first and sends the rest on the next daily run.
+Each PagerDuty channel opens at most 10 incidents per run. If more than 10 certificates are due for an expiration alert, the ones closest to expiry go first and the rest go on the next daily run.
 
 ## What's next?
 

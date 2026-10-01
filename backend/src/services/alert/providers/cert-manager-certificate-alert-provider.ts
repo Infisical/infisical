@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -17,16 +18,18 @@ import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/teleme
 import { durationToDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
+  AlertAuditAction,
   AlertTelemetryAction,
   AlertTriggerType,
   IEventAlertProvider,
   IScheduledAlertProvider,
+  TAlertAuditInput,
   TAlertContext,
   TAlertPermissionInput,
   TAlertTelemetryEvent,
   TAlertTelemetryInput,
-  TFindDueTargetsInput,
-  TFindTargetsByIdsInput
+  TFindEventTargetsInput,
+  TFindScheduledTargetsInput
 } from "../alert-types";
 import { TAlertCertificate, TCertManagerCertificateAlertDALFactory } from "./cert-manager-certificate-alert-dal";
 import {
@@ -78,7 +81,7 @@ export const certManagerCertificateAlertProviderFactory = ({
   certManagerProjectResolver
 }: TCertManagerCertificateAlertProviderDep): IScheduledAlertProvider<TAlertCertificate> &
   IEventAlertProvider<TAlertCertificate> => {
-  const findDueTargets = async (input: TFindDueTargetsInput): Promise<TAlertCertificate[]> => {
+  const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TAlertCertificate[]> => {
     if (!input.projectId) return [];
     const { alertBefore, applicationIds, profileIds } = ExpirationConditionSchema.parse(input.condition);
 
@@ -93,7 +96,7 @@ export const certManagerCertificateAlertProviderFactory = ({
     });
   };
 
-  const findTargetsByIds = async (input: TFindTargetsByIdsInput): Promise<TAlertCertificate[]> => {
+  const findEventTargets = async (input: TFindEventTargetsInput): Promise<TAlertCertificate[]> => {
     if (!input.projectId) return [];
     const condition = EventConditionSchema.parse(input.condition);
 
@@ -194,6 +197,55 @@ export const certManagerCertificateAlertProviderFactory = ({
     }
   };
 
+  const getWebhookSource = ({ alertId }: { alertId: string }) => `/alerts/${alertId}`;
+
+  const $labelled = (ids: string[] | undefined, names: { id: string; name: string }[]) => {
+    const nameById = new Map(names.map((entry) => [entry.id, entry.name]));
+    return (ids ?? []).map((id) => ({ id, name: nameById.get(id) ?? null }));
+  };
+
+  const getAuditEvent = async (input: TAlertAuditInput): Promise<TAuditEvent> => {
+    if (input.action === AlertAuditAction.TestChannel) {
+      const { test } = input;
+      return {
+        type: EventType.TEST_PKI_CERTIFICATE_ALERT_CHANNEL,
+        metadata: {
+          alertId: test.alertId,
+          alertName: test.alertName ?? null,
+          channelId: test.channelId,
+          channelName: test.channelName ?? null,
+          channelType: test.channelType,
+          success: test.success,
+          deliveredTo: test.deliveredTo,
+          error: test.error
+        }
+      };
+    }
+
+    const { alert } = input;
+    const filters = CertificateFilterSchema.safeParse(alert.condition ?? {});
+    const applicationIds = filters.success ? filters.data.applicationIds : undefined;
+    const profileIds = filters.success ? filters.data.profileIds : undefined;
+    const [applicationNames, profileNames] = await Promise.all([
+      applicationIds?.length && alert.orgId
+        ? certManagerCertificateAlertDAL.findApplicationNamesByIds(applicationIds, alert.orgId)
+        : [],
+      profileIds?.length && alert.projectId
+        ? certManagerCertificateAlertDAL.findProfileNamesByIds(alert.projectId, profileIds)
+        : []
+    ]);
+    const metadata = {
+      alertId: alert.id,
+      name: alert.name,
+      eventType: alert.eventType,
+      applications: $labelled(applicationIds, applicationNames),
+      profiles: $labelled(profileIds, profileNames)
+    };
+    if (input.action === AlertAuditAction.Create) return { type: EventType.CREATE_PKI_CERTIFICATE_ALERT, metadata };
+    if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_PKI_CERTIFICATE_ALERT, metadata };
+    return { type: EventType.DELETE_PKI_CERTIFICATE_ALERT, metadata };
+  };
+
   return {
     resourceType: CERT_MANAGER_CERTIFICATE_RESOURCE_TYPE,
     allowsMultipleAlertsPerEvent: true,
@@ -212,8 +264,8 @@ export const certManagerCertificateAlertProviderFactory = ({
         })
       )
     ],
-    findDueTargets,
-    findTargetsByIds,
+    findScheduledTargets,
+    findEventTargets,
     buildViewUrl: async (alert: TAlertContext) =>
       `${getConfig().SITE_URL}/organizations/${alert.orgId}/projects/cert-manager/${alert.projectId}/inventory`,
     buildPayload: (alert, targets, viewUrl) =>
@@ -222,7 +274,8 @@ export const certManagerCertificateAlertProviderFactory = ({
         targets,
         viewUrl,
         eventType: alert.eventType as CertificateAlertEvent,
-        isApplicationAlert: false
+        isApplicationAlert: false,
+        webhookSource: getWebhookSource({ alertId: alert.id })
       }),
     getTelemetryEvent,
     targetId: (certificate) => certificate.id,
@@ -231,6 +284,10 @@ export const certManagerCertificateAlertProviderFactory = ({
     assertResourceInScope,
     assertConditionInScope,
     assertChannelTypesAllowed: (input) => assertCertificateAlertChannelTypesAllowed(licenseService, input),
+    recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
+    includeLastRun: true,
+    getWebhookSource,
+    getAuditEvent,
     resolveProjectId: ({ orgId }) => resolveOrgCertManagerProjectId(certManagerProjectResolver, orgId)
   };
 };

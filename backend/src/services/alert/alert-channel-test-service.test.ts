@@ -33,6 +33,7 @@ const buildProvider = (opts?: {
   assertPermission?: (input: TAlertPermissionInput) => Promise<void>;
   resolvedProjectId?: string;
   blockedChannelTypes?: string[];
+  webhookSource?: boolean;
 }) => {
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
@@ -43,7 +44,7 @@ const buildProvider = (opts?: {
         conditionSchema: z.object({}).optional()
       }
     ],
-    findDueTargets: async () => [],
+    findScheduledTargets: async () => [],
     buildViewUrl: async () => "https://app.infisical.com/x",
     buildPayload: (alert, targets, viewUrl) =>
       ({
@@ -66,7 +67,10 @@ const buildProvider = (opts?: {
       const blocked = channelTypes.find((channelType) => opts?.blockedChannelTypes?.includes(channelType));
       if (blocked) throw new Error(`plan does not include ${blocked}`);
     },
-    ...(opts?.resolvedProjectId ? { resolveProjectId: async () => opts.resolvedProjectId as string } : {})
+    ...(opts?.resolvedProjectId ? { resolveProjectId: async () => opts.resolvedProjectId as string } : {}),
+    ...(opts?.webhookSource
+      ? { getWebhookSource: ({ alertId, resourceId }) => `/resources/${resourceId}/alerts/${alertId}` }
+      : {})
   };
 
   const registry = alertProviderRegistryFactory();
@@ -111,14 +115,16 @@ const buildDeps = (overrides?: {
         findById: async () => overrides?.channel ?? null
       },
       alertDAL: {
-        findByChannelId: async () => overrides?.channelOwners ?? [OWNING_ALERT]
+        findByChannelId: async () => overrides?.channelOwners ?? [OWNING_ALERT],
+        findActiveById: async (id: string) => (id === OWNING_ALERT.id ? OWNING_ALERT : undefined)
       },
       alertRecipientResolver: {
         resolveMany: async (rowsByChannel: Map<string, unknown[]>) =>
           new Map([...rowsByChannel.keys()].map((channelId) => [channelId, overrides?.recipients ?? []]))
       },
       alertChannelService: {
-        validateEmailRecipients: async () => {}
+        validateRecipients: async () => {},
+        assertRecipientTypesAllowed: () => {}
       },
       alertProviderRegistry: overrides?.registry ?? buildProvider(),
       kmsService: {
@@ -143,6 +149,41 @@ const stubSend = (channelType: "slack" | "email", impl: (ctx: TAlertChannelSendC
 };
 
 describe("alertChannelTestService", () => {
+  test("uses the provider's webhook source on a test send and main's source otherwise", async () => {
+    const sent: TAlertChannelSendContext[] = [];
+    const restore = stubSend("slack", async (ctx) => {
+      sent.push(ctx);
+      return { success: true };
+    });
+    try {
+      const withSource = alertChannelTestServiceFactory(
+        buildDeps({ registry: buildProvider({ webhookSource: true }) }).deps
+      );
+      await withSource.testChannel({
+        ...actor,
+        resourceType: RESOURCE_TYPE,
+        resourceId: "resource-1",
+        alertId: OWNING_ALERT.id,
+        channelType: "slack" as never,
+        config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
+      });
+      expect(sent[0].payload.webhookSource).toBe(`/resources/resource-1/alerts/${OWNING_ALERT.id}`);
+      expect(sent[0].payload.alert.resourceId).toBe("resource-1");
+
+      const withoutSource = alertChannelTestServiceFactory(buildDeps().deps);
+      await withoutSource.testChannel({
+        ...actor,
+        resourceType: RESOURCE_TYPE,
+        channelType: "slack" as never,
+        config: { webhookUrl: "https://hooks.slack.com/services/T/B/y" }
+      });
+      expect(sent[1].payload.webhookSource).toBeUndefined();
+      expect(sent[1].payload.alert.resourceId).toBeUndefined();
+    } finally {
+      restore();
+    }
+  });
+
   test("sends a test through an undirected channel with the supplied config", async () => {
     const sent: TAlertChannelSendContext[] = [];
     const restore = stubSend("slack", async (ctx) => {
@@ -161,7 +202,14 @@ describe("alertChannelTestService", () => {
         config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
       });
 
-      expect(result).toEqual({ success: true, deliveredTo: 1, projectId: null });
+      expect(result).toEqual({
+        success: true,
+        deliveredTo: 1,
+        projectId: null,
+        resourceName: null,
+        alertName: null,
+        channelName: null
+      });
       expect(sent).toHaveLength(1);
       expect(sent[0].config).toEqual({ webhookUrl: "https://hooks.slack.com/services/T/B/x" });
       // A test must never page an on-call rotation at the severity a real firing would carry.
@@ -317,6 +365,50 @@ describe("alertChannelTestService", () => {
     expect(checked).toContainEqual({ action: "edit", resourceId: OWNING_ALERT.resourceId });
   });
 
+  test("checks Edit instead of Create when testing from an existing alert", async () => {
+    const actions: string[] = [];
+    const restore = stubSend("slack", async () => ({ success: true }));
+    const { deps } = buildDeps({
+      registry: buildProvider({
+        assertPermission: async (input) => {
+          actions.push(input.action);
+          if (input.action === "create") throw new Error("forbidden");
+        }
+      })
+    });
+    const service = alertChannelTestServiceFactory(deps);
+    const dto = {
+      ...actor,
+      resourceType: RESOURCE_TYPE,
+      resourceId: OWNING_ALERT.resourceId,
+      channelType: "slack" as never,
+      config: { webhookUrl: "https://hooks.slack.com/services/T/B/new" }
+    };
+
+    await expect(service.testChannel({ ...dto, alertId: OWNING_ALERT.id })).resolves.toMatchObject({ success: true });
+    await expect(service.testChannel(dto)).rejects.toThrow("forbidden");
+    restore();
+    expect(actions).toEqual(["edit", "create"]);
+  });
+
+  test("rejects an alert id from another resource or that does not exist", async () => {
+    const { deps } = buildDeps();
+    const service = alertChannelTestServiceFactory(deps);
+    const dto = {
+      ...actor,
+      resourceType: RESOURCE_TYPE,
+      channelType: "slack" as never,
+      config: { webhookUrl: "https://hooks.slack.com/services/T/B/new" }
+    };
+
+    await expect(
+      service.testChannel({ ...dto, resourceId: "another-resource", alertId: OWNING_ALERT.id })
+    ).rejects.toThrow(`Alert with ID '${OWNING_ALERT.id}' was not found in this scope`);
+    await expect(
+      service.testChannel({ ...dto, resourceId: OWNING_ALERT.resourceId, alertId: "missing-alert" })
+    ).rejects.toThrow("Alert with ID 'missing-alert' was not found in this scope");
+  });
+
   test("rejects a saved channel that no alert owns", async () => {
     const { deps } = buildDeps({
       channelOwners: [],
@@ -373,7 +465,14 @@ describe("alertChannelTestService", () => {
         config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
       };
 
-      await expect(service.testChannel(dto)).resolves.toEqual({ success: true, deliveredTo: 1, projectId: null });
+      await expect(service.testChannel(dto)).resolves.toEqual({
+        success: true,
+        deliveredTo: 1,
+        projectId: null,
+        resourceName: null,
+        alertName: null,
+        channelName: null
+      });
       await expect(service.testChannel(dto)).rejects.toThrow(/Try again in 60s/);
     } finally {
       restore();
@@ -403,7 +502,14 @@ describe("alertChannelTestService", () => {
           config: {},
           recipients: [{ principalType: "user" as never, principalId: "user-1" }]
         })
-      ).resolves.toEqual({ success: true, deliveredTo: 1, projectId: null });
+      ).resolves.toEqual({
+        success: true,
+        deliveredTo: 1,
+        projectId: null,
+        resourceName: null,
+        alertName: null,
+        channelName: null
+      });
     } finally {
       restoreSlack();
       restoreEmail();
@@ -426,7 +532,14 @@ describe("alertChannelTestService", () => {
         config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
       });
 
-      expect(result).toEqual({ success: false, error: "connect ECONNREFUSED", projectId: null });
+      expect(result).toEqual({
+        success: false,
+        error: "connect ECONNREFUSED",
+        projectId: null,
+        resourceName: null,
+        alertName: null,
+        channelName: null
+      });
     } finally {
       restore();
     }

@@ -9,7 +9,7 @@ import {
 } from "@app/hooks/api/alerts";
 
 import { TCertificateAlertForm } from "./certificate-alert-schema";
-import { CertificateAlertScopeKind, TCertificateAlertScope, TProjectMemberEmails } from "./types";
+import { CertificateAlertScopeKind, TCertificateAlertScope, TMemberEmails } from "./types";
 
 const ALERT_EVENT_TYPE_BY_SCOPE: Record<
   CertificateAlertScopeKind,
@@ -54,7 +54,7 @@ export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 export const toRecipientEmails = (
   recipients: TAlertChannelRecipient[],
-  { emailByUserId }: Pick<TProjectMemberEmails, "emailByUserId">
+  { emailByUserId }: Pick<TMemberEmails, "emailByUserId">
 ) =>
   recipients.flatMap((recipient) => {
     if (recipient.principalType === AlertPrincipalType.User) {
@@ -67,7 +67,7 @@ export const toRecipientEmails = (
 export const toCertificateAlertForm = (
   scope: TCertificateAlertScope,
   alert: TAlert,
-  { emailByUserId, isAvailable }: Pick<TProjectMemberEmails, "emailByUserId" | "isAvailable">
+  { emailByUserId, isAvailable }: Pick<TMemberEmails, "emailByUserId" | "isAvailable">
 ): TCertificateAlertForm => ({
   eventType: fromAlertEventType(scope, alert.eventType) ?? CertificateAlertEventType.Expiry,
   name: alert.name,

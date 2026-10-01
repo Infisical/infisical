@@ -34,12 +34,12 @@ const HANDLER_TIMEOUT_MS = 30 * 60 * 1000;
 type TDigiCertRevocationSyncQueueFactoryDep = {
   cronJob: TCronJobFactory;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findWithAssociatedCa">;
-  certificateDAL: Pick<TCertificateDALFactory, "findActiveDigiCertCertsByOrderIds" | "updateById" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "findActiveDigiCertCertsByOrderIds" | "updateById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
-  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TDigiCertRevocationSyncQueueFactory = ReturnType<typeof digicertRevocationSyncQueueFactory>;
@@ -63,25 +63,17 @@ export const digicertRevocationSyncQueueFactory = ({
     projectId: string;
     applicationId?: string | null;
   }) => {
-    await certificateDAL.transaction(async (tx) => {
-      await certificateDAL.updateById(
-        cert.id,
-        {
-          status: CertStatus.REVOKED,
-          revokedAt: new Date(),
-          revocationReason: revocationReasonToCrlCode(CrlReason.UNSPECIFIED)
-        },
-        tx
-      );
-      await certificateAlertEventEmitter.emit(
-        {
-          certificateId: cert.id,
-          projectId: cert.projectId,
-          eventType: CertificateAlertEvent.Revocation,
-          applicationId: cert.applicationId ?? null
-        },
-        tx
-      );
+    await certificateDAL.updateById(cert.id, {
+      status: CertStatus.REVOKED,
+      revokedAt: new Date(),
+      revocationReason: revocationReasonToCrlCode(CrlReason.UNSPECIFIED)
+    });
+
+    await certificateAlertEventEmitter.notify({
+      certificateId: cert.id,
+      projectId: cert.projectId,
+      eventType: CertificateAlertEvent.Revocation,
+      applicationId: cert.applicationId ?? null
     });
 
     await auditLogService.createAuditLog({

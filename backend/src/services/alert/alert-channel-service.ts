@@ -24,7 +24,7 @@ import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal"
 import { TAlertChannelEmbedded, TChannelRecipientInput } from "./alert-channel-service-types";
 import { AlertChannelType } from "./alert-channel-types";
 import { findVerifiedEmailDomains, isOnVerifiedDomain, resolvePrincipalsInScope } from "./alert-principal-scope-fns";
-import { AlertPrincipalType } from "./alert-types";
+import { AlertPrincipalType, TAlertRecipientScope } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 export type TAlertChannelServiceFactoryDep = {
@@ -49,6 +49,7 @@ export type TCreateChannelInTxInput = {
   recipients?: TChannelRecipientInput[];
   orgId: string;
   projectId?: string | null;
+  recipientScope: TAlertRecipientScope;
   createdByActorId: string;
   createdByActorType: string;
 };
@@ -60,6 +61,7 @@ export type TUpdateChannelInTxInput = {
   config?: Record<string, unknown>;
   enabled?: boolean;
   recipients?: TChannelRecipientInput[];
+  recipientScope: TAlertRecipientScope;
 };
 
 const capitalize = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
@@ -72,26 +74,24 @@ export const alertChannelServiceFactory = ({
   groupDAL,
   emailDomainDAL
 }: TAlertChannelServiceFactoryDep) => {
-  const $normalizeRecipients = (recipients: TChannelRecipientInput[]): TChannelRecipientInput[] => {
+  const $assertNoDuplicateRecipients = (recipients: TChannelRecipientInput[]) => {
     const seen = new Set<string>();
-    return recipients
-      .map((recipient) =>
+    const duplicates = new Set<string>();
+    recipients.forEach((recipient) => {
+      const principalId =
         recipient.principalType === AlertPrincipalType.EMAIL
-          ? { ...recipient, principalId: recipient.principalId.trim().toLowerCase() }
-          : recipient
-      )
-      .filter((recipient) => {
-        const key = `${recipient.principalType}:${recipient.principalId}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+          ? recipient.principalId.toLowerCase()
+          : recipient.principalId;
+      const key = `${recipient.principalType}:${principalId}`;
+      if (seen.has(key)) duplicates.add(recipient.principalId);
+      seen.add(key);
+    });
+    if (duplicates.size) {
+      throw new BadRequestError({ message: `Duplicate recipients: ${[...duplicates].join(", ")}` });
+    }
   };
 
-  const $validateEmailRecipients = async (orgId: string, recipients: TChannelRecipientInput[], tx?: Knex) => {
-    const emails = [
-      ...new Set(recipients.filter((r) => r.principalType === AlertPrincipalType.EMAIL).map((r) => r.principalId))
-    ];
+  const $validateEmailRecipients = async (orgId: string, emails: string[], tx?: Knex) => {
     if (!emails.length) return;
 
     const malformed = emails.filter((email) => !z.string().email().safeParse(email).success);
@@ -108,20 +108,30 @@ export const alertChannelServiceFactory = ({
     }
   };
 
+  const assertRecipientTypesAllowed = (scope: TAlertRecipientScope, recipients: TChannelRecipientInput[]) => {
+    if (!scope.allowEmailAddresses && recipients.some((r) => r.principalType === AlertPrincipalType.EMAIL)) {
+      throw new BadRequestError({ message: "This alert type doesn't accept email address recipients" });
+    }
+  };
+
   // Confirms every recipient principal (user/group) actually belongs to the channel's scope so an
   // alert can't be made to notify a foreign principal.
-  const $validateRecipients = async (
+  const validateRecipients = async (
     orgId: string,
-    projectId: string | null | undefined,
+    scope: TAlertRecipientScope,
     recipients: TChannelRecipientInput[],
     tx?: Knex
   ) => {
-    const userIds = [
-      ...new Set(recipients.filter((r) => r.principalType === AlertPrincipalType.USER).map((r) => r.principalId))
-    ];
-    const groupIds = [
-      ...new Set(recipients.filter((r) => r.principalType === AlertPrincipalType.GROUP).map((r) => r.principalId))
-    ];
+    const { projectId } = scope;
+    assertRecipientTypesAllowed(scope, recipients);
+    $assertNoDuplicateRecipients(recipients);
+
+    const idsOfType = (principalType: AlertPrincipalType) =>
+      recipients.filter((r) => r.principalType === principalType).map((r) => r.principalId);
+    const userIds = idsOfType(AlertPrincipalType.USER);
+    const groupIds = idsOfType(AlertPrincipalType.GROUP);
+
+    await $validateEmailRecipients(orgId, idsOfType(AlertPrincipalType.EMAIL), tx);
     if (userIds.length === 0 && groupIds.length === 0) return;
 
     const inScope = await resolvePrincipalsInScope(
@@ -178,11 +188,10 @@ export const alertChannelServiceFactory = ({
     tx: Knex
   ): Promise<TAlertChannels> => {
     const definition = getChannelDefinition(input.channelType);
-    const recipients = $normalizeRecipients(input.recipients ?? []);
+    const recipients = input.recipients ?? [];
     $assertRecipientRules(definition, input.channelType, recipients);
     assertChannelConfigValid(definition, input.channelType, input.config);
-    await $validateRecipients(input.orgId, input.projectId, recipients, tx);
-    await $validateEmailRecipients(input.orgId, recipients, tx);
+    await validateRecipients(input.orgId, input.recipientScope, recipients, tx);
 
     const created = await alertChannelDAL.create(
       {
@@ -229,11 +238,10 @@ export const alertChannelServiceFactory = ({
       finalConfig = merged;
     }
 
-    const recipients = input.recipients === undefined ? undefined : $normalizeRecipients(input.recipients);
+    const { recipients } = input;
     if (recipients !== undefined) {
       $assertRecipientRules(definition, channel.channelType, recipients);
-      await $validateRecipients(channel.orgId, channel.projectId, recipients, tx);
-      await $validateEmailRecipients(channel.orgId, recipients, tx);
+      await validateRecipients(channel.orgId, input.recipientScope, recipients, tx);
     }
 
     await alertChannelDAL.updateById(
@@ -260,9 +268,6 @@ export const alertChannelServiceFactory = ({
       }
     }
   };
-
-  const validateEmailRecipients = (orgId: string, recipients: TChannelRecipientInput[]) =>
-    $validateEmailRecipients(orgId, $normalizeRecipients(recipients));
 
   const deleteChannelInTx = async (channelId: string, tx: Knex): Promise<void> => {
     await alertChannelDAL.deleteById(channelId, tx);
@@ -306,6 +311,7 @@ export const alertChannelServiceFactory = ({
     updateChannelInTx,
     deleteChannelInTx,
     getDetailsForChannels,
-    validateEmailRecipients
+    validateRecipients,
+    assertRecipientTypesAllowed
   };
 };

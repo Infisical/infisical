@@ -4,7 +4,7 @@ import { vi } from "vitest";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
-import { AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
+import { AlertAuditAction, AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
 import {
   certManagerApplicationAlertProviderFactory,
   TCertManagerApplicationAlertProviderDep
@@ -28,8 +28,12 @@ const sampleCertificate = (overrides: Partial<TAlertCertificate> = {}): TAlertCe
   commonName: "api.example.com",
   altNames: "api.example.com, www.api.example.com",
   profileName: "tls-server",
+  status: "active",
+  notBefore: new Date("2026-09-01T00:00:00.000Z"),
   notAfter: futureDate(5),
+  revokedAt: null,
   revocationReason: null,
+  applicationId: "app-1",
   applicationName: "payments-api",
   ...overrides
 });
@@ -80,7 +84,6 @@ const buildProvider = (opts?: {
   };
   const ability = () => createMongoAbility(opts?.abilityRules ?? [{ action: "read", subject: "pki-alerts" }]);
   const permissionService = {
-    getProjectPermission: vi.fn(async () => ({ permission: ability() })),
     getResourcePermission: vi.fn(async () => ({ permission: ability() }))
   };
   const licenseService = {
@@ -126,14 +129,14 @@ describe("cert manager application alert provider", () => {
       });
   });
 
-  test("findDueTargets converts alertBefore to days and scopes the scan to the alert's application", async () => {
+  test("findScheduledTargets converts alertBefore to days and scopes the scan to the alert's application", async () => {
     let args: Record<string, unknown> | undefined;
     const { provider } = buildProvider({
       onFindExpiring: (value) => {
         args = value;
       }
     });
-    await provider.findDueTargets({
+    await provider.findScheduledTargets({
       orgId: "org-1",
       projectId: "proj-1",
       resourceId: "7b0a6b54-3c1e-4f3a-9d5e-2f1b8c4d6e90",
@@ -148,10 +151,10 @@ describe("cert manager application alert provider", () => {
     });
   });
 
-  test("findDueTargets and findTargetsByIds return nothing for an alert with no application", async () => {
+  test("findScheduledTargets and findEventTargets return nothing for an alert with no application", async () => {
     const { provider } = buildProvider({ certificates: [sampleCertificate()] });
     await expect(
-      provider.findDueTargets({
+      provider.findScheduledTargets({
         orgId: "org-1",
         projectId: "proj-1",
         eventType: EXPIRY_EVENT,
@@ -160,7 +163,7 @@ describe("cert manager application alert provider", () => {
       })
     ).resolves.toEqual([]);
     await expect(
-      provider.findTargetsByIds({
+      provider.findEventTargets({
         orgId: "org-1",
         projectId: "proj-1",
         eventType: ISSUANCE_EVENT,
@@ -189,9 +192,44 @@ describe("cert manager application alert provider", () => {
     expect(payload.summary).toBe("1 certificate in application 'payments-api' expiring within 1 day");
     expect(payload.alert.condition).toBe("1d");
     expect(payload.webhookType).toBe(`com.infisical.${EXPIRY_EVENT}`);
+    expect(payload.webhookSource).toBe(`/applications/${alertContext().resourceId}/alerts/alert-1`);
+    expect(payload.alert.resourceId).toBe(alertContext().resourceId);
     expect(payload.severity).toBe("critical");
-    expect(payload.items[0]).toMatchObject({ id: "cert-1", title: "api.example.com", identifier: "105d3b4c" });
-    expect(payload.items[0].fields?.map((field) => field.label)).toEqual(["SANs", "Profile", "Expires"]);
+    expect(payload.items[0]).toMatchObject({ id: "cert-1", title: "api.example.com" });
+    expect(payload.items[0].fields?.map((field) => field.label)).toEqual([
+      "Serial Number",
+      "SANs",
+      "Profile",
+      "Expires"
+    ]);
+    expect(payload.items[0].resource).toEqual({
+      id: "cert-1",
+      serialNumber: "105d3b4c",
+      commonName: "api.example.com",
+      altNames: ["api.example.com", "www.api.example.com"],
+      status: "active",
+      notBefore: "2026-09-01T00:00:00.000Z",
+      notAfter: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) as string,
+      revokedAt: null,
+      revocationReason: null,
+      profileName: "tls-server",
+      applicationId: "app-1",
+      applicationName: "payments-api"
+    });
+  });
+
+  test("buildPayload names a certificate without a common name by its first SAN, then its serial", async () => {
+    const { provider } = buildProvider();
+    const issuance = alertContext({ eventType: ISSUANCE_EVENT, condition: null });
+    const bySan = provider.buildPayload(issuance, [sampleCertificate({ commonName: "" })], "https://x");
+    expect(bySan.summary).toBe("Certificate 'api.example.com' was issued in application 'payments-api'");
+    expect(bySan.items[0].title).toBe("api.example.com");
+    const bySerial = provider.buildPayload(
+      issuance,
+      [sampleCertificate({ commonName: "", altNames: null })],
+      "https://x"
+    );
+    expect(bySerial.items[0].title).toBe("105d3b4c");
   });
 
   test("buildPayload for a revocation names the certificate and adds the revocation reason", async () => {
@@ -205,9 +243,73 @@ describe("cert manager application alert provider", () => {
     expect(payload.severity).toBe("warning");
     expect(payload.alert.condition).toBeUndefined();
     expect(payload.items[0].fields).toEqual([
+      { label: "Serial Number", value: "105d3b4c" },
       { label: "Expires", value: expect.any(String) as string },
       { label: "Revocation Reason", value: "Key Compromise" }
     ]);
+  });
+
+  test("emits application-specific audit events carrying the application", () => {
+    const { provider } = buildProvider();
+    const alert = {
+      id: "alert-1",
+      name: "tls-expiry",
+      resourceType: "cert-manager.application",
+      resourceId: "app-1",
+      resourceName: "payments-api",
+      eventType: EXPIRY_EVENT
+    };
+    const metadata = {
+      applicationId: "app-1",
+      applicationName: "payments-api",
+      alertId: "alert-1",
+      name: "tls-expiry",
+      eventType: EXPIRY_EVENT
+    };
+
+    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Create, alert })).toEqual({
+      type: "create-pki-application-alert",
+      metadata
+    });
+    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Update, alert })).toEqual({
+      type: "update-pki-application-alert",
+      metadata
+    });
+    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Delete, alert })).toEqual({
+      type: "delete-pki-application-alert",
+      metadata
+    });
+    expect(
+      provider.getAuditEvent?.({
+        action: AlertAuditAction.TestChannel,
+        test: {
+          resourceType: "cert-manager.application",
+          resourceId: "app-1",
+          resourceName: "payments-api",
+          alertId: "alert-1",
+          alertName: "tls-expiry",
+          channelId: "channel-1",
+          channelName: "Email",
+          channelType: "email",
+          success: true,
+          deliveredTo: 1
+        }
+      })
+    ).toEqual({
+      type: "test-pki-application-alert-channel",
+      metadata: {
+        applicationId: "app-1",
+        applicationName: "payments-api",
+        alertId: "alert-1",
+        alertName: "tls-expiry",
+        channelId: "channel-1",
+        channelName: "Email",
+        channelType: "email",
+        success: true,
+        deliveredTo: 1,
+        error: undefined
+      }
+    });
   });
 
   test("buildViewUrl deep-links to the application and falls back to the applications list", async () => {
@@ -241,15 +343,14 @@ describe("cert manager application alert provider", () => {
       })
     ).rejects.toThrow();
     expect(permissionService.getResourcePermission).toHaveBeenCalled();
-    expect(permissionService.getProjectPermission).not.toHaveBeenCalled();
   });
 
-  test("assertPermission falls back to the project permission without an application and requires a project", async () => {
+  test("assertPermission requires a project and an application", async () => {
     const { provider, permissionService } = buildProvider();
     await expect(
       provider.assertPermission({ action: AlertPermissionAction.Read, orgId: "org-1", projectId: "proj-1", actor })
-    ).resolves.toBeUndefined();
-    expect(permissionService.getProjectPermission).toHaveBeenCalled();
+    ).rejects.toThrow("Application alerts require an application ID");
+    expect(permissionService.getResourcePermission).not.toHaveBeenCalled();
     await expect(
       provider.assertPermission({ action: AlertPermissionAction.Read, orgId: "org-1", actor })
     ).rejects.toThrow("Certificate alerts must be created in Certificate Manager");
@@ -295,7 +396,7 @@ describe("cert manager application alert provider", () => {
     const { provider } = buildProvider();
     await expect(provider.resolveProjectId?.({ orgId: "org-1" })).resolves.toBe("proj-1");
     await expect(provider.resolveProjectId?.({ orgId: "org-2" })).rejects.toThrow(
-      "This organization has no Certificate Manager project"
+      "Certificate Manager isn't set up for this organization"
     );
   });
 

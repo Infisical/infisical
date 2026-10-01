@@ -66,12 +66,14 @@ const eventSeverity = (eventType: CertificateAlertEvent, targets: TAlertCertific
   return "info";
 };
 
-const formatAltNames = (altNames: string | null): string =>
+const splitAltNames = (altNames: string | null): string[] =>
   (altNames ?? "")
     .split(",")
     .map((name) => name.trim())
-    .filter(Boolean)
-    .join(", ");
+    .filter(Boolean);
+
+const certificateDisplayName = (certificate: TAlertCertificate): string =>
+  certificate.commonName || splitAltNames(certificate.altNames)[0] || certificate.serialNumber;
 
 const inApplication = (applicationName?: string | null) =>
   applicationName ? ` in application '${applicationName}'` : "";
@@ -87,16 +89,16 @@ const buildSummary = (
     return `${certificates}${inApplication(applicationName)} expiring within ${humanizeDays(durationToDays(alertBefore))}`;
   }
   if (targets.length === 1) {
-    return `Certificate '${targets[0].commonName}' ${EVENT_VERBS[eventType]}${inApplication(targets[0].applicationName)}`;
+    return `Certificate '${certificateDisplayName(targets[0])}' ${EVENT_VERBS[eventType]}${inApplication(targets[0].applicationName)}`;
   }
   return `${targets.length} certificates ${EVENT_VERBS[eventType]}${inApplication(applicationName)}`;
 };
 
 const buildItemSummary = (eventType: CertificateAlertEvent, certificate: TAlertCertificate): string => {
   if (eventType === CertificateAlertEvent.Expiry) {
-    return `Certificate '${certificate.commonName}'${inApplication(certificate.applicationName)} expires on ${formatUtcDate(certificate.notAfter)}`;
+    return `Certificate '${certificateDisplayName(certificate)}'${inApplication(certificate.applicationName)} expires on ${formatUtcDate(certificate.notAfter)}`;
   }
-  return `Certificate '${certificate.commonName}' ${EVENT_VERBS[eventType]}${inApplication(certificate.applicationName)}`;
+  return `Certificate '${certificateDisplayName(certificate)}' ${EVENT_VERBS[eventType]}${inApplication(certificate.applicationName)}`;
 };
 
 const DAILY_CRON_DRIFT_MARGIN_HOURS = 4;
@@ -120,13 +122,15 @@ export const buildCertificateAlertPayload = ({
   targets,
   viewUrl,
   eventType,
-  isApplicationAlert
+  isApplicationAlert,
+  webhookSource
 }: {
   alert: TAlertContext;
   targets: TAlertCertificate[];
   viewUrl: string;
   eventType: CertificateAlertEvent;
   isApplicationAlert: boolean;
+  webhookSource?: string;
 }): TAlertPayload => {
   const expiryCondition = ExpiryConditionFieldsSchema.safeParse(alert.condition);
   const alertBefore =
@@ -141,12 +145,14 @@ export const buildCertificateAlertPayload = ({
       orgId: alert.orgId,
       ...(alert.projectId ? { projectId: alert.projectId } : {}),
       resourceType: alert.resourceType,
+      ...(alert.resourceId ? { resourceId: alert.resourceId } : {}),
       ...(alertBefore ? { condition: alertBefore } : {}),
       viewUrl
     },
     eventKey: alert.eventType,
     eventLabel: EVENT_LABELS[eventType],
     webhookType: `com.infisical.${alert.eventType}`,
+    ...(webhookSource ? { webhookSource } : {}),
     resourceKind: "Certificate",
     resourceOwnerKind: isApplicationAlert ? "Application" : "Certificate Manager",
     severity: eventSeverity(eventType, targets),
@@ -161,23 +167,36 @@ export const buildCertificateAlertPayload = ({
         eventType === CertificateAlertEvent.Revocation
           ? getRevocationReasonLabel(certificate.revocationReason)
           : undefined;
+      const altNames = splitAltNames(certificate.altNames);
       return {
         id: certificate.id,
-        title: certificate.commonName,
-        identifier: certificate.serialNumber,
+        title: certificateDisplayName(certificate),
         summary: buildItemSummary(eventType, certificate),
         severity: eventSeverity(eventType, [certificate]),
         fields: [
-          ...(formatAltNames(certificate.altNames)
-            ? [{ label: "SANs", value: formatAltNames(certificate.altNames) }]
-            : []),
+          { label: "Serial Number", value: certificate.serialNumber },
+          ...(altNames.length ? [{ label: "SANs", value: altNames.join(", ") }] : []),
           ...(certificate.profileName ? [{ label: "Profile", value: certificate.profileName }] : []),
           ...(!isApplicationAlert && certificate.applicationName
             ? [{ label: "Application", value: certificate.applicationName }]
             : []),
           { label: "Expires", value: formatUtcDate(certificate.notAfter) },
           ...(revocationReason ? [{ label: "Revocation Reason", value: revocationReason }] : [])
-        ]
+        ],
+        resource: {
+          id: certificate.id,
+          serialNumber: certificate.serialNumber,
+          commonName: certificate.commonName,
+          altNames,
+          status: certificate.status,
+          notBefore: certificate.notBefore.toISOString(),
+          notAfter: certificate.notAfter.toISOString(),
+          revokedAt: certificate.revokedAt?.toISOString() ?? null,
+          revocationReason: certificate.revocationReason,
+          profileName: certificate.profileName,
+          applicationId: certificate.applicationId,
+          applicationName: certificate.applicationName
+        }
       };
     })
   };
@@ -204,7 +223,7 @@ export const resolveOrgCertManagerProjectId = async (
 ): Promise<string> => {
   const projectId = await certManagerProjectResolver.getActiveProjectId(orgId);
   if (!projectId) {
-    throw new NotFoundError({ message: "This organization has no Certificate Manager project" });
+    throw new NotFoundError({ message: "Certificate Manager isn't set up for this organization" });
   }
   return projectId;
 };

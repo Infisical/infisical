@@ -28,8 +28,8 @@ import {
   MAX_DEDUP_WINDOW_HOURS,
   TAlertContext,
   TAlertPermissionInput,
-  TFindDueTargetsInput,
-  TFindTargetsByIdsInput
+  TFindEventTargetsInput,
+  TFindScheduledTargetsInput
 } from "../alert-types";
 import {
   TExpiringTokenAuthToken,
@@ -238,7 +238,7 @@ export const identityCredentialAlertProviderFactory = ({
       : `${siteUrl}/organizations/${alert.orgId}/access-management?selectedTab=identities`;
   };
 
-  const findDueTargets = async (input: TFindDueTargetsInput): Promise<TIdentityCredentialTarget[]> => {
+  const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TIdentityCredentialTarget[]> => {
     const { alertBefore } = IdentityCredentialConditionSchema.parse(input.condition);
 
     const scan = {
@@ -286,7 +286,7 @@ export const identityCredentialAlertProviderFactory = ({
     return typeLabel;
   };
 
-  const findTargetsByIds = async (input: TFindTargetsByIdsInput): Promise<TIdentityCredentialTarget[]> => {
+  const findEventTargets = async (input: TFindEventTargetsInput): Promise<TIdentityCredentialTarget[]> => {
     if (input.eventType !== IDENTITY_AUTH_METHOD_CHANGED_EVENT) return [];
 
     const parsed = IdentityAuthMethodChangePayloadSchema.safeParse(input.payload);
@@ -511,8 +511,8 @@ export const identityCredentialAlertProviderFactory = ({
         conditionSchema: IdentityAuthMethodChangeConditionSchema
       }
     ],
-    findDueTargets,
-    findTargetsByIds,
+    findScheduledTargets,
+    findEventTargets,
     buildViewUrl,
     buildPayload,
     targetId,
@@ -526,13 +526,6 @@ export const identityCredentialAlertProviderFactory = ({
       );
     },
     assertPermission,
-    assertResourceInScope,
-    getResourceNames: async ({ orgId, resourceIds }) =>
-      new Map(
-        (await identityCredentialAlertDAL.findIdentitiesByIds(resourceIds, orgId)).map((identity) => [
-          identity.id,
-          identity.name
-        ])
-      )
+    assertResourceInScope
   };
 };

@@ -11,7 +11,7 @@ export type TCertificateAlertScope =
 
 export type TCertificateFilterKind = "applicationIds" | "profileIds";
 
-export type TProjectMemberEmails = {
+export type TMemberEmails = {
   emailByUserId: Map<string, string>;
   memberIdByEmail: Map<string, string>;
   isAvailable: boolean;

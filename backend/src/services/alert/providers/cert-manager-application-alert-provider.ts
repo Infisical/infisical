@@ -1,10 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { ResourceType } from "@app/db/schemas";
+import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -19,16 +19,18 @@ import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/teleme
 import { durationToDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
+  AlertAuditAction,
   AlertTelemetryAction,
   AlertTriggerType,
   IEventAlertProvider,
   IScheduledAlertProvider,
+  TAlertAuditInput,
   TAlertContext,
   TAlertPermissionInput,
   TAlertTelemetryEvent,
   TAlertTelemetryInput,
-  TFindDueTargetsInput,
-  TFindTargetsByIdsInput
+  TFindEventTargetsInput,
+  TFindScheduledTargetsInput
 } from "../alert-types";
 import { TAlertCertificate, TCertManagerCertificateAlertDALFactory } from "./cert-manager-certificate-alert-dal";
 import {
@@ -53,7 +55,7 @@ const assertValidApplicationId = (applicationId: string) => {
 
 export type TCertManagerApplicationAlertProviderDep = {
   certManagerCertificateAlertDAL: TCertManagerCertificateAlertDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certManagerProjectResolver: Pick<TCertManagerProjectResolverFactory, "getActiveProjectId">;
 };
@@ -73,7 +75,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     return application ? `${base}/applications/${encodeURIComponent(application.name)}` : `${base}/applications`;
   };
 
-  const findDueTargets = async (input: TFindDueTargetsInput): Promise<TAlertCertificate[]> => {
+  const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TAlertCertificate[]> => {
     if (!input.projectId || !input.resourceId) return [];
     const { alertBefore } = ExpirationConditionSchema.parse(input.condition);
 
@@ -87,7 +89,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     });
   };
 
-  const findTargetsByIds = async (input: TFindTargetsByIdsInput): Promise<TAlertCertificate[]> => {
+  const findEventTargets = async (input: TFindEventTargetsInput): Promise<TAlertCertificate[]> => {
     if (!input.projectId || !input.resourceId) return [];
     EventConditionSchema.parse(input.condition);
 
@@ -96,6 +98,41 @@ export const certManagerApplicationAlertProviderFactory = ({
       applicationId: input.resourceId,
       certificateIds: input.targetIds
     });
+  };
+
+  const getWebhookSource = ({ alertId, resourceId }: { alertId: string; resourceId?: string | null }) =>
+    resourceId ? `/applications/${resourceId}/alerts/${alertId}` : undefined;
+
+  const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
+    if (input.action === AlertAuditAction.TestChannel) {
+      const { test } = input;
+      return {
+        type: EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL,
+        metadata: {
+          applicationId: test.resourceId ?? null,
+          applicationName: test.resourceName ?? null,
+          alertId: test.alertId,
+          alertName: test.alertName ?? null,
+          channelId: test.channelId,
+          channelName: test.channelName ?? null,
+          channelType: test.channelType,
+          success: test.success,
+          deliveredTo: test.deliveredTo,
+          error: test.error
+        }
+      };
+    }
+
+    const metadata = {
+      applicationId: input.alert.resourceId,
+      applicationName: input.alert.resourceName ?? null,
+      alertId: input.alert.id,
+      name: input.alert.name,
+      eventType: input.alert.eventType
+    };
+    if (input.action === AlertAuditAction.Create) return { type: EventType.CREATE_PKI_APPLICATION_ALERT, metadata };
+    if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_PKI_APPLICATION_ALERT, metadata };
+    return { type: EventType.DELETE_PKI_APPLICATION_ALERT, metadata };
   };
 
   const getTelemetryEvent = ({
@@ -132,19 +169,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     }
 
     if (!resourceId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.actor,
-        actorId: actor.actorId,
-        projectId,
-        actorAuthMethod: actor.actorAuthMethod,
-        actorOrgId: actor.actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        CERTIFICATE_ALERT_PERMISSION_ACTIONS[action],
-        ProjectPermissionSub.PkiAlerts
-      );
-      return;
+      throw new BadRequestError({ message: "Application alerts require an application ID" });
     }
 
     assertValidApplicationId(resourceId);
@@ -207,8 +232,8 @@ export const certManagerApplicationAlertProviderFactory = ({
         conditionSchema: EventConditionSchema
       }))
     ],
-    findDueTargets,
-    findTargetsByIds,
+    findScheduledTargets,
+    findEventTargets,
     buildViewUrl,
     buildPayload: (alert, targets, viewUrl) =>
       buildCertificateAlertPayload({
@@ -216,7 +241,8 @@ export const certManagerApplicationAlertProviderFactory = ({
         targets,
         viewUrl,
         eventType: CERTIFICATE_EVENT_BY_APPLICATION_EVENT[alert.eventType as ApplicationCertificateAlertEvent],
-        isApplicationAlert: true
+        isApplicationAlert: true,
+        webhookSource: getWebhookSource({ alertId: alert.id, resourceId: alert.resourceId })
       }),
     getTelemetryEvent,
     targetId: (certificate) => certificate.id,
@@ -224,6 +250,10 @@ export const certManagerApplicationAlertProviderFactory = ({
     assertPermission,
     assertResourceInScope,
     assertChannelTypesAllowed: (input) => assertCertificateAlertChannelTypesAllowed(licenseService, input),
+    recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
+    includeLastRun: true,
+    getAuditEvent,
+    getWebhookSource,
     resolveProjectId,
     getResourceNames: async ({ orgId, resourceIds }) =>
       new Map(

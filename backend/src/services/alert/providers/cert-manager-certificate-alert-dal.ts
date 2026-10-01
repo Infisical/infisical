@@ -14,8 +14,12 @@ export type TAlertCertificate = {
   commonName: string;
   altNames: string | null;
   profileName: string | null;
+  status: string;
+  notBefore: Date;
   notAfter: Date;
+  revokedAt: Date | null;
   revocationReason: number | null;
+  applicationId: string | null;
   applicationName: string | null;
 };
 
@@ -53,8 +57,12 @@ export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
       `${TableName.Certificate}.serialNumber`,
       `${TableName.Certificate}.commonName`,
       `${TableName.Certificate}.altNames`,
+      `${TableName.Certificate}.status`,
+      `${TableName.Certificate}.notBefore`,
       `${TableName.Certificate}.notAfter`,
+      `${TableName.Certificate}.revokedAt`,
       `${TableName.Certificate}.revocationReason`,
+      `${TableName.Certificate}.applicationId`,
       "profile.slug as profileName",
       `${TableName.PkiApplication}.name as applicationName`
     );
@@ -164,6 +172,19 @@ export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findProfileNamesByIds = async (projectId: string, profileIds: string[]) => {
+    if (profileIds.length === 0) return [];
+    try {
+      return (await db
+        .replicaNode()(TableName.PkiCertificateProfile)
+        .where({ projectId })
+        .whereIn("id", profileIds)
+        .select("id", "slug as name")) as { id: string; name: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindProfileNamesByIds" });
+    }
+  };
+
   const findProjectApplicationIds = async (projectId: string, applicationIds: string[], tx?: Knex) => {
     try {
       return (await (tx || db)(TableName.PkiApplication)
@@ -191,6 +212,7 @@ export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
     findCertificatesByIds,
     findApplicationById,
     findApplicationNamesByIds,
+    findProfileNamesByIds,
     findProjectApplicationIds,
     findProjectProfileIds
   };

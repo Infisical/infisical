@@ -42,6 +42,7 @@ export type TTestAlertChannelDTO = TGenericPermission & {
   resourceType: string;
   resourceId?: string | null;
   projectId?: string | null;
+  alertId?: string;
   channelId?: string;
   channelType: AlertChannelType;
   config?: Record<string, unknown>;
@@ -54,7 +55,12 @@ export type TTestAlertChannelResponse = {
   error?: string;
 };
 
-export type TTestAlertChannelResult = TTestAlertChannelResponse & { projectId: string | null };
+export type TTestAlertChannelResult = TTestAlertChannelResponse & {
+  projectId: string | null;
+  resourceName: string | null;
+  alertName: string | null;
+  channelName: string | null;
+};
 
 export type TAlertResponse = {
   id: string;
@@ -68,9 +74,9 @@ export type TAlertResponse = {
   enabled: boolean;
   orgId: string;
   projectId: string | null;
-  resourceName: string | null;
+  resourceName?: string | null;
   channels: TAlertChannelEmbedded[];
-  lastRun: TAlertLastRun | null;
+  lastRun?: TAlertLastRun | null;
   createdAt: Date;
   updatedAt: Date;
 };

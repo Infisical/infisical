@@ -23,11 +23,11 @@ Certificate alerting tells your team about certificate lifecycle events in an [A
   </Card>
 </CardGroup>
 
-Infisical checks expiration alerts once a day. Issuance, renewal, and revocation alerts are sent within seconds of the event. Importing a certificate into the application doesn't trigger an Issuance alert, but expiration and revocation alerts still cover imported certificates.
+Expiration alerts are checked once a day. Issuance, renewal, and revocation alerts are sent within seconds of the event. Importing a certificate into the application doesn't trigger an Issuance alert, but expiration and revocation alerts still cover imported certificates.
 
 ## Prerequisites
 
-- For email alerts, recipients who are members of Certificate Manager, or addresses on one of your organization's [verified email domains](/documentation/platform/email-domain)
+- For email alerts, recipients who are organization members, or addresses on one of your organization's [verified email domains](/documentation/platform/email-domain)
 
 ## Create an alert
 
@@ -58,7 +58,7 @@ An application can have one alert of each type. To notify more places about the 
 
 | Channel | Sends to |
 |---------|----------|
-| **Email** | Certificate Manager members, or any address on one of your organization's verified email domains |
+| **Email** | Organization members, or any address on one of your organization's verified email domains |
 | **[Slack](/documentation/platform/pki/applications/alerting/slack-alerts)** | A Slack channel through an Incoming Webhook |
 | **[PagerDuty](/documentation/platform/pki/applications/alerting/pagerduty-alerts)** | A PagerDuty service through Events API v2 |
 | **[Webhook](/documentation/platform/pki/applications/alerting/webhook-alerts)** | Any HTTPS endpoint, with an optional signature |
@@ -67,22 +67,22 @@ An application can have one alert of each type. To notify more places about the 
 
 <AccordionGroup>
   <Accordion title="Who receives email alerts?">
-    The addresses you enter on the email channel. An address that belongs to a Certificate Manager member only receives alerts while that person is still a member. Any other address has to be on one of your organization's [verified email domains](/documentation/platform/email-domain) when you add it.
+    The addresses you enter on the email channel. An address that belongs to an organization member only receives alerts while that person is still in the organization. Any other address has to be on one of your organization's [verified email domains](/documentation/platform/email-domain) when you add it.
   </Accordion>
   <Accordion title="How often does an expiration alert notify about the same certificate?">
-    The alert repeats until the certificate is renewed or expires. How often it repeats depends on how many days before expiry the alert starts:
+    The alert repeats until the certificate is renewed or expires. How often it repeats depends on the alert's **Alert Before** setting:
 
-    | Days before expiry | Repeats every |
-    |--------------------|---------------|
-    | 7 or fewer | Day |
-    | 8 to 30 | 2 days |
-    | 31 to 90 | 7 days |
-    | More than 90 | 30 days |
+    | Alert before | Repeats every |
+    |--------------|---------------|
+    | 7 days or fewer | Day |
+    | 8 to 30 days | 2 days |
+    | 31 to 90 days | 7 days |
+    | More than 90 days | 30 days |
 
     If you turn on **Repeat daily until expiry**, the alert repeats every day.
   </Accordion>
   <Accordion title="What happens to an alert when I delete its application?">
-    Infisical deletes the application's alerts and their channels along with the application.
+    The application's alerts and their channels are deleted along with the application.
   </Accordion>
 </AccordionGroup>
 

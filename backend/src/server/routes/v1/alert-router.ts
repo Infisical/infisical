@@ -1,12 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AlertChannelType } from "@app/services/alert/alert-channel-types";
 import {
+  AlertAuditAction,
   AlertPrincipalType,
   AlertRunStatus,
   AlertTelemetryAction,
@@ -49,7 +49,7 @@ const AlertResponseSchema = z.object({
   enabled: z.boolean(),
   orgId: z.string(),
   projectId: z.string().nullable(),
-  resourceName: z.string().nullable(),
+  resourceName: z.string().nullable().optional(),
   channels: z.array(
     z.object({
       id: z.string().uuid(),
@@ -60,7 +60,10 @@ const AlertResponseSchema = z.object({
       recipients: z.array(z.object({ principalType: z.string(), principalId: z.string() }))
     })
   ),
-  lastRun: z.object({ timestamp: z.date(), status: z.nativeEnum(AlertRunStatus) }).nullable(),
+  lastRun: z
+    .object({ timestamp: z.date(), status: z.nativeEnum(AlertRunStatus) })
+    .nullable()
+    .optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
@@ -112,17 +115,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         ...(alert.projectId ? { projectId: alert.projectId } : { orgId: alert.orgId }),
-        event: {
-          type: EventType.CREATE_ALERT,
-          metadata: {
-            alertId: alert.id,
-            name: alert.name,
-            resourceType: alert.resourceType,
-            resourceId: alert.resourceId,
-            resourceName: alert.resourceName,
-            eventType: alert.eventType
-          }
-        }
+        event: await server.services.alert.getAuditEvent({ action: AlertAuditAction.Create, alert })
       });
 
       await $sendAlertTelemetry(req, AlertTelemetryAction.Create, alert);
@@ -141,6 +134,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         resourceType: z.string().min(1),
         resourceId: z.string().nullable().optional(),
         projectId: z.string().nullable().optional(),
+        alertId: z.string().uuid().optional(),
         channelId: z.string().uuid().optional(),
         channelType: z.nativeEnum(AlertChannelType),
         config: z.record(z.unknown()).default({}),
@@ -156,29 +150,34 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId, ...result } = await server.services.alertChannelTest.testChannel({
-        ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
-      });
+      const { projectId, resourceName, alertName, channelName, ...result } =
+        await server.services.alertChannelTest.testChannel({
+          ...req.body,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         ...(projectId ? { projectId } : { orgId: req.permission.orgId }),
-        event: {
-          type: EventType.TEST_ALERT_CHANNEL,
-          metadata: {
-            channelId: req.body.channelId,
-            channelType: req.body.channelType,
+        event: await server.services.alert.getAuditEvent({
+          action: AlertAuditAction.TestChannel,
+          test: {
             resourceType: req.body.resourceType,
             resourceId: req.body.resourceId,
+            resourceName,
+            alertId: req.body.alertId,
+            alertName,
+            channelId: req.body.channelId,
+            channelName,
+            channelType: req.body.channelType,
             success: result.success,
             deliveredTo: result.deliveredTo,
             error: result.error
           }
-        }
+        })
       });
 
       return result;
@@ -267,17 +266,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         ...(alert.projectId ? { projectId: alert.projectId } : { orgId: alert.orgId }),
-        event: {
-          type: EventType.UPDATE_ALERT,
-          metadata: {
-            alertId: alert.id,
-            name: alert.name,
-            resourceType: alert.resourceType,
-            resourceId: alert.resourceId,
-            resourceName: alert.resourceName,
-            eventType: alert.eventType
-          }
-        }
+        event: await server.services.alert.getAuditEvent({ action: AlertAuditAction.Update, alert })
       });
 
       await $sendAlertTelemetry(req, AlertTelemetryAction.Update, alert);
@@ -308,17 +297,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         ...(alert.projectId ? { projectId: alert.projectId } : { orgId: alert.orgId }),
-        event: {
-          type: EventType.DELETE_ALERT,
-          metadata: {
-            alertId: alert.id,
-            name: alert.name,
-            resourceType: alert.resourceType,
-            resourceId: alert.resourceId,
-            resourceName: alert.resourceName,
-            eventType: alert.eventType
-          }
-        }
+        event: await server.services.alert.getAuditEvent({ action: AlertAuditAction.Delete, alert })
       });
 
       await $sendAlertTelemetry(req, AlertTelemetryAction.Delete, alert);

@@ -3,7 +3,7 @@ import { vi } from "vitest";
 
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
+import { AlertAuditAction, AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
 import { TAlertCertificate } from "./cert-manager-certificate-alert-dal";
 import {
   certManagerCertificateAlertProviderFactory,
@@ -29,8 +29,12 @@ const sampleCertificate = (overrides: Partial<TAlertCertificate> = {}): TAlertCe
   commonName: "api.example.com",
   altNames: null,
   profileName: "tls-server",
+  status: "active",
+  notBefore: new Date("2026-09-01T00:00:00.000Z"),
   notAfter: futureDate(20),
+  revokedAt: null,
   revocationReason: null,
+  applicationId: "app-1",
   applicationName: "payments-api",
   ...overrides
 });
@@ -69,7 +73,11 @@ const buildProvider = (opts?: {
       return ids.filter((id) => (opts?.projectApplicationIds ?? [APPLICATION_ID]).includes(id));
     },
     findProjectProfileIds: async (_projectId: string, ids: string[]) =>
-      ids.filter((id) => (opts?.projectProfileIds ?? [PROFILE_ID]).includes(id))
+      ids.filter((id) => (opts?.projectProfileIds ?? [PROFILE_ID]).includes(id)),
+    findApplicationNamesByIds: async (ids: string[]) =>
+      ids.filter((id) => id === APPLICATION_ID).map((id) => ({ id, name: "payments-api" })),
+    findProfileNamesByIds: async (_projectId: string, ids: string[]) =>
+      ids.filter((id) => id === PROFILE_ID).map((id) => ({ id, name: "tls-server" }))
   };
   const permissionService = {
     getProjectPermission: async () => ({
@@ -129,14 +137,14 @@ describe("cert manager project certificate alert provider", () => {
     expect(provider.dedupWindowHours?.({ alertBefore: "1y", dailyReminder: true, applicationIds })).toBe(20);
   });
 
-  test("findDueTargets scans the whole project narrowed by the condition's lists", async () => {
+  test("findScheduledTargets scans the whole project narrowed by the condition's lists", async () => {
     let args: Record<string, unknown> | undefined;
     const provider = buildProvider({
       onFindExpiring: (value) => {
         args = value;
       }
     });
-    await provider.findDueTargets({
+    await provider.findScheduledTargets({
       orgId: "org-1",
       projectId: "proj-1",
       resourceId: null,
@@ -148,14 +156,14 @@ describe("cert manager project certificate alert provider", () => {
     expect(args?.applicationId).toBeUndefined();
   });
 
-  test("findTargetsByIds applies the lists to event-triggered alerts", async () => {
+  test("findEventTargets applies the lists to event-triggered alerts", async () => {
     let args: Record<string, unknown> | undefined;
     const provider = buildProvider({
       onFindByIds: (value) => {
         args = value;
       }
     });
-    await provider.findTargetsByIds({
+    await provider.findEventTargets({
       orgId: "org-1",
       projectId: "proj-1",
       resourceId: null,
@@ -257,11 +265,63 @@ describe("cert manager project certificate alert provider", () => {
     });
   });
 
+  test("emits its own audit events, naming the alert's application and profile filters", async () => {
+    const provider = buildProvider();
+    const alert = {
+      id: "alert-1",
+      name: "prod-expiry",
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: null,
+      eventType: EXPIRY_EVENT,
+      condition: {
+        alertBefore: "30d",
+        applicationIds: [APPLICATION_ID, OTHER_APPLICATION_ID],
+        profileIds: [PROFILE_ID]
+      }
+    };
+    const metadata = {
+      alertId: "alert-1",
+      name: "prod-expiry",
+      eventType: EXPIRY_EVENT,
+      applications: [
+        { id: APPLICATION_ID, name: "payments-api" },
+        { id: OTHER_APPLICATION_ID, name: null }
+      ],
+      profiles: [{ id: PROFILE_ID, name: "tls-server" }]
+    };
+
+    await expect(provider.getAuditEvent?.({ action: AlertAuditAction.Create, alert })).resolves.toEqual({
+      type: "create-pki-certificate-alert",
+      metadata
+    });
+    await expect(provider.getAuditEvent?.({ action: AlertAuditAction.Delete, alert })).resolves.toEqual({
+      type: "delete-pki-certificate-alert",
+      metadata
+    });
+    await expect(
+      provider.getAuditEvent?.({
+        action: AlertAuditAction.TestChannel,
+        test: {
+          resourceType: RESOURCE_TYPE,
+          alertId: "alert-1",
+          alertName: "prod-expiry",
+          channelType: "email",
+          success: true
+        }
+      })
+    ).resolves.toMatchObject({
+      type: "test-pki-certificate-alert-channel",
+      metadata: { alertId: "alert-1", alertName: "prod-expiry", channelType: "email", success: true }
+    });
+  });
+
   test("resolveProjectId resolves the org's Certificate Manager project", async () => {
     const provider = buildProvider();
     await expect(provider.resolveProjectId?.({ orgId: "org-1" })).resolves.toBe("proj-1");
     await expect(provider.resolveProjectId?.({ orgId: "org-2" })).rejects.toThrow(
-      "This organization has no Certificate Manager project"
+      "Certificate Manager isn't set up for this organization"
     );
   });
 });

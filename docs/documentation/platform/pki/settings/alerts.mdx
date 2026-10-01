@@ -11,7 +11,7 @@ These alerts use the same events and [notification channels](/documentation/plat
 ## Prerequisites
 
 - The **Create** action on **PKI Alerts**, which only the Certificate Manager **Admin** role has by default
-- For email alerts, recipients who are members of Certificate Manager, or addresses on one of your organization's [verified email domains](/documentation/platform/email-domain)
+- For email alerts, recipients who are organization members, or addresses on one of your organization's [verified email domains](/documentation/platform/email-domain)
 
 ## Create an alert
 
@@ -59,7 +59,7 @@ You can select up to 100 applications and 100 profiles.
     If a certificate is covered by one of these alerts and an older alert under **Legacy** > **Alerts** in the sidebar, each alert sends its own notification. Older alerts keep running until you delete them. You can also get one notification from these alerts and one from an application alert if both cover the certificate.
   </Accordion>
   <Accordion title="What do webhook receivers get from these alerts?">
-    The [application alert webhook payload](/documentation/platform/pki/applications/alerting/webhook-alerts#webhook-payload-format), with four differences: `type` and `subject` use certificate events such as `com.infisical.cert-manager.certificate.expiry`, `data.alert.resourceType` is `cert-manager.certificate`, `data.metadata.viewUrl` opens the certificate inventory, and each item has an `Application` field when the certificate belongs to an application.
+    The [application alert webhook payload](/documentation/platform/pki/applications/alerting/webhook-alerts#webhook-payload-format), with these differences: `type` and `subject` use certificate events such as `com.infisical.cert-manager.certificate.expiry`, `source` is `/alerts/<alert-id>`, `data.alert.resourceType` is `cert-manager.certificate` and has no `resourceId`, `data.metadata.viewUrl` opens the certificate inventory, and each item has an `Application` field when the certificate belongs to an application. Each item's `resource` carries the same typed certificate values, including `applicationId`.
   </Accordion>
 </AccordionGroup>
 

@@ -26,6 +26,7 @@ export type TAlertItem = {
   fields?: Array<{ label: string; value: string }>; // extra display key-values (expiry date, days left, reason)
   summary?: string;
   severity?: TAlertSeverity;
+  resource?: Record<string, unknown>;
 };
 
 export type TAlertPayload = {
@@ -35,12 +36,14 @@ export type TAlertPayload = {
     orgId: string;
     projectId?: string;
     resourceType: string; // dot-namespaced, e.g. "pki.certificate"
+    resourceId?: string;
     condition?: string; // display label for the "when", e.g. "30d"
     viewUrl: string; // deep link into the app, built by the provider
   };
   eventKey: string; // dot-namespaced event, e.g. "pki.certificate.expiration"
   eventLabel: string; // human label, e.g. "Expiration"
   webhookType: string; // CloudEvents `type` string, e.g. "com.infisical.pki.certificate.expiration"
+  webhookSource?: string;
   resourceKind: string; // display noun, e.g. "Certificate", "Client Secret"
   resourceOwnerKind: string; // display noun of the entity the alert is configured on, e.g. "Machine Identity"
   severity: TAlertSeverity;

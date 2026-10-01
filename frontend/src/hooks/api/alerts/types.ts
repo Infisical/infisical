@@ -143,6 +143,7 @@ export type TTestAlertChannelDTO = {
   resourceType: string;
   resourceId?: string | null;
   projectId?: string | null;
+  alertId?: string;
   channelId?: string;
   channelType: AlertChannelType;
   config?: Record<string, unknown>;

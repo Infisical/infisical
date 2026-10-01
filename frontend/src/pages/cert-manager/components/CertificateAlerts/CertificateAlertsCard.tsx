@@ -454,6 +454,7 @@ export const CertificateAlertsCard = ({
         isOpen={deleteAlertModal.isOpen}
         confirmKey="delete"
         title={`Delete Alert "${deleteAlertModal.name ?? ""}"?`}
+        description="The alert and its notification channels are deleted, and it stops sending notifications."
         onOpenChange={(isOpen) =>
           setDeleteAlertModal({ isOpen, alertId: undefined, name: undefined })
         }

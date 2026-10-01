@@ -48,15 +48,15 @@ export type TCertificateAlertEventInput = {
 
 type TCertificateAlertEventEmitterDep = {
   eventEmitter: TEventEmitter;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TCertificateAlertEventEmitter = ReturnType<typeof certificateAlertEventEmitterFactory>;
 
 export const certificateAlertEventEmitterFactory = ({ eventEmitter, projectDAL }: TCertificateAlertEventEmitterDep) => {
-  const emit = async (
+  const $emit = async (
     { certificateId, projectId, orgId, applicationId, eventType }: TCertificateAlertEventInput,
-    tx: Knex
+    tx?: Knex
   ) => {
     const resolvedOrgId = orgId ?? (await projectDAL.findById(projectId, tx))?.orgId;
     if (!resolvedOrgId) return;
@@ -94,9 +94,11 @@ export const certificateAlertEventEmitterFactory = ({ eventEmitter, projectDAL }
     }
   };
 
+  const emit = (input: TCertificateAlertEventInput, tx: Knex) => $emit(input, tx);
+
   const notify = async (input: TCertificateAlertEventInput) => {
     try {
-      await projectDAL.transaction((tx) => emit(input, tx));
+      await $emit(input);
     } catch (error) {
       logger.warn(
         error,

@@ -158,7 +158,7 @@ type TCertificateServiceFactoryDep = {
   certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "revokeCertificate">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
-  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
@@ -769,17 +769,14 @@ export const certificateServiceFactory = ({
       if (!ca.externalCa?.id) {
         await internalCertificateAuthorityDAL.update({ caId: ca.id }, { $incr: { ocspGeneration: 1 } }, tx);
       }
+    });
 
-      await certificateAlertEventEmitter.emit(
-        {
-          certificateId: revokedCertId,
-          projectId: ca.projectId,
-          orgId: actorOrgId,
-          eventType: CertificateAlertEvent.Revocation,
-          applicationId: revokedCertApplicationId
-        },
-        tx
-      );
+    await certificateAlertEventEmitter.notify({
+      certificateId: revokedCertId,
+      projectId: ca.projectId,
+      orgId: actorOrgId,
+      eventType: CertificateAlertEvent.Revocation,
+      applicationId: revokedCertApplicationId
     });
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);

@@ -98,6 +98,25 @@ describe("buildWebhookPayload", () => {
     expect(wh.data.alert.condition).toBe("30d");
   });
 
+  test("carries each item's typed resource for receivers that act on it", () => {
+    const payload = samplePayload();
+    payload.items[0].resource = { serialNumber: "abc", notAfter: "2026-10-04T23:59:00.000Z" };
+    expect(buildWebhookPayload(payload).data.items[0].resource).toEqual({
+      serialNumber: "abc",
+      notAfter: "2026-10-04T23:59:00.000Z"
+    });
+  });
+
+  test("prefers the provider's source and exposes the alert's resource id", () => {
+    const payload = samplePayload();
+    payload.webhookSource = "/applications/app-1/alerts/alert-1";
+    payload.alert.resourceId = "app-1";
+    const wh = buildWebhookPayload(payload);
+    expect(wh.source).toBe("/applications/app-1/alerts/alert-1");
+    expect(wh.data.alert.resourceId).toBe("app-1");
+    expect(buildWebhookPayload(samplePayload()).data.alert).not.toHaveProperty("resourceId");
+  });
+
   test("uses an org-less source when there is no project", () => {
     const payload = samplePayload();
     payload.alert.projectId = undefined;
