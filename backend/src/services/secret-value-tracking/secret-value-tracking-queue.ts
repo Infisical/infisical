@@ -141,22 +141,23 @@ export const secretValueTrackingQueueFactory = ({
 
           const pending = rows.filter(needsBackfill);
           if (pending.length) {
+            // One row at a time: each digest runs on the libuv threadpool, and fanning out a whole
+            // batch at once would queue thousands of jobs ahead of the API's own crypto and DNS work.
+            const updates: Parameters<TSecretV2BridgeDALFactory["batchSetBlindIndexes"]>[0] = [];
             // eslint-disable-next-line no-await-in-loop
-            const updates = await Promise.all(
-              pending.map(async (row) => {
-                const value = decryptor({ cipherTextBlob: row.encryptedValue as Buffer });
-                const [secretValueBlindIndex, secretValueOrgBlindIndex] = await Promise.all([
-                  generateSecretBlindIndex(value),
-                  generateOrgLevelBlindIndex(value)
-                ]);
-                return {
-                  id: row.id,
-                  encryptedValue: row.encryptedValue as Buffer,
-                  secretValueBlindIndex,
-                  secretValueOrgBlindIndex
-                };
-              })
-            );
+            for await (const row of pending) {
+              const value = decryptor({ cipherTextBlob: row.encryptedValue as Buffer });
+              const [secretValueBlindIndex, secretValueOrgBlindIndex] = await Promise.all([
+                generateSecretBlindIndex(value),
+                generateOrgLevelBlindIndex(value)
+              ]);
+              updates.push({
+                id: row.id,
+                encryptedValue: row.encryptedValue as Buffer,
+                secretValueBlindIndex,
+                secretValueOrgBlindIndex
+              });
+            }
             // eslint-disable-next-line no-await-in-loop
             await secretV2BridgeDAL.batchSetBlindIndexes(updates);
             progress.secretsProcessed += updates.length;
