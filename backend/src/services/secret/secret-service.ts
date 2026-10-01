@@ -429,7 +429,8 @@ export const secretServiceFactory = ({
         ...inputSecret
       },
       oldSecret: secrets[0],
-      projectId
+      projectId,
+      actor: { actor, actorId, actorOrgId, actorAuthMethod }
     });
 
     const tags = inputSecret.tags ? await secretTagDAL.findManyTagsById(projectId, inputSecret.tags) : [];

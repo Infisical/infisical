@@ -249,15 +249,15 @@ const buildWriteService = (opts: { existingAlert?: TStoredAlert; projectUserIds?
       filterRecipientsInScope: async (_scope: unknown, recipients: { principalType: string; principalId: string }[]) =>
         opts.projectUserIds ? recipients.filter((r) => opts.projectUserIds!.includes(r.principalId)) : recipients,
       findAlertsForResources: async () => (opts.existingAlert ? [opts.existingAlert] : []),
-      createAlertInternal: async (input: unknown) => {
+      createAlert: async (input: unknown) => {
         calls.push("alert:create");
         created.push(input);
         return input;
       },
-      updateAlertInternal: async (input: { alertId: string; name?: string; channels?: unknown[] }) => {
+      updateAlert: async ({ alertId, name, channels }: { alertId: string; name?: string; channels?: unknown[] }) => {
         calls.push("alert:update");
-        updated.push(input);
-        return input;
+        updated.push({ alertId, name, channels });
+        return { alertId, name, channels };
       },
       findRecipientsForResources: async ({ resourceIds }: { resourceIds: string[] }) =>
         resourceIds.map((resourceId) => ({ resourceId, principalId: "user-1" })),
@@ -276,18 +276,21 @@ const buildWriteService = (opts: { existingAlert?: TStoredAlert; projectUserIds?
   return { service, calls, created, updated, deletedAlerts, repointed };
 };
 
-const createInput = (recipients?: string[] | null) => ({
-  secretId: "secret-1",
-  projectId: "proj-1",
-  repeatDays: 30,
-  message: "rotate it",
-  recipients
-});
+const caller = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null };
+
+const saveReminder = (
+  service: ReturnType<typeof buildWriteService>["service"],
+  fields: { recipients?: string[] | null; channels?: unknown[] }
+) =>
+  service.createReminder({
+    ...caller,
+    reminder: { secretId: "secret-1", repeatDays: 30, message: "rotate it", ...fields }
+  } as never);
 
 describe("reminder alert sync", () => {
-  test("a new reminder gets an alert with an email channel to its recipients, created by the platform", async () => {
+  test("a new reminder gets an alert with an email channel to its recipients, written as the caller", async () => {
     const { service, created } = buildWriteService();
-    await service.createReminderInternal(createInput(["user-1", "user-2"]));
+    await saveReminder(service, { recipients: ["user-1", "user-2"] });
 
     expect(created).toEqual([
       expect.objectContaining({
@@ -295,9 +298,8 @@ describe("reminder alert sync", () => {
         resourceType: SECRET_REMINDER_RESOURCE_TYPE,
         resourceId: "secret-1",
         eventType: SECRET_REMINDER_DUE_EVENT,
-        orgId: "org-1",
         projectId: "proj-1",
-        createdBy: { actorType: "platform", actorId: null },
+        ...caller,
         channels: [
           {
             name: "Email",
@@ -314,13 +316,13 @@ describe("reminder alert sync", () => {
 
   test("syncs the alert before writing the reminder, so a reminder never exists without one", async () => {
     const { service, calls } = buildWriteService();
-    await service.createReminderInternal(createInput(["user-1"]));
+    await saveReminder(service, { recipients: ["user-1"] });
     expect(calls).toEqual(["alert:create", "reminder:create"]);
   });
 
   test("no recipients means everyone in the project", async () => {
     const { service, created } = buildWriteService();
-    await service.createReminderInternal(createInput([]));
+    await saveReminder(service, { recipients: [] });
     expect((created[0] as { channels: { recipients: unknown }[] }).channels[0].recipients).toEqual([
       { principalType: "project-members", principalId: "proj-1" }
     ]);
@@ -328,7 +330,7 @@ describe("reminder alert sync", () => {
 
   test("recipients who left the project are dropped instead of failing the write", async () => {
     const { service, created } = buildWriteService({ projectUserIds: ["user-1"] });
-    await service.createReminderInternal(createInput(["user-1", "user-gone"]));
+    await saveReminder(service, { recipients: ["user-1", "user-gone"] });
     expect((created[0] as { channels: { recipients: unknown }[] }).channels[0].recipients).toEqual([
       { principalType: "user", principalId: "user-1" }
     ]);
@@ -336,7 +338,7 @@ describe("reminder alert sync", () => {
 
   test("refuses a recipient list with nobody left in the project rather than sending to everyone", async () => {
     const { service, calls } = buildWriteService({ projectUserIds: [] });
-    await expect(service.createReminderInternal(createInput(["user-gone"]))).rejects.toThrow(
+    await expect(saveReminder(service, { recipients: ["user-gone"] })).rejects.toThrow(
       /None of the selected reminder recipients/
     );
     expect(calls).toEqual([]);
@@ -352,13 +354,7 @@ describe("reminder alert sync", () => {
       { name: "Webhook", channelType: "webhook", config: { url: "https://example.com" } }
     ];
     const save = (service: ReturnType<typeof buildWriteService>["service"]) =>
-      service.createReminder({
-        actor: "user",
-        actorId: "user-1",
-        actorOrgId: "org-1",
-        actorAuthMethod: null,
-        reminder: { secretId: "secret-1", repeatDays: 30, recipients: ["user-1"], channels }
-      } as never);
+      saveReminder(service, { recipients: ["user-1"], channels });
 
     const existing = buildWriteService({
       existingAlert: { id: "alert-1", name: "Reminder for OLD_NAME", resourceId: "secret-1", channels: [] }
@@ -373,7 +369,7 @@ describe("reminder alert sync", () => {
 
   test("more than 20 recipients are split across email channels", async () => {
     const { service, created } = buildWriteService();
-    await service.createReminderInternal(createInput(Array.from({ length: 45 }, (_, i) => `user-${i}`)));
+    await saveReminder(service, { recipients: Array.from({ length: 45 }, (_, i) => `user-${i}`) });
     const { channels } = created[0] as { channels: { name: string; recipients: unknown[] }[] };
     expect(channels.map((c) => c.name)).toEqual(["Email", "Email 2", "Email 3"]);
     expect(channels.map((c) => c.recipients.length)).toEqual([20, 20, 5]);
@@ -391,7 +387,7 @@ describe("reminder alert sync", () => {
         ]
       }
     });
-    await service.createReminderInternal(createInput(["user-1"]));
+    await saveReminder(service, { recipients: ["user-1"] });
 
     expect(created).toHaveLength(0);
     expect(updated).toEqual([

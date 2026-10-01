@@ -17,12 +17,11 @@ import { TAlertProviderRegistry } from "./alert-provider-registry";
 import {
   TAlertResponse,
   TCreateAlertDTO,
-  TCreateAlertInternalDTO,
   TDeleteAlertDTO,
   TGetAlertDTO,
   TListAlertsDTO,
-  TUpdateAlertDTO,
-  TUpdateAlertInternalDTO
+  TNewAlertRows,
+  TUpdateAlertDTO
 } from "./alert-service-types";
 import { AlertPermissionAction, IResourceAlertProvider, TAlertEventDefinition, toAlertActor } from "./alert-types";
 
@@ -111,7 +110,7 @@ export const alertServiceFactory = ({
   });
 
   const $createAlertRows = async (
-    input: TCreateAlertInternalDTO,
+    input: TNewAlertRows,
     event: TAlertEventDefinition,
     cipher: Awaited<ReturnType<typeof getAlertChannelCipher>>,
     tx: Knex
@@ -216,7 +215,7 @@ export const alertServiceFactory = ({
       throw new BadRequestError({ message: "At least one channel is required" });
     }
 
-    const input: TCreateAlertInternalDTO = {
+    const input: TNewAlertRows = {
       name: dto.name,
       description: dto.description,
       resourceType: dto.resourceType,
@@ -355,7 +354,7 @@ export const alertServiceFactory = ({
 
   const $updateAlertRows = async (
     alert: TAlerts,
-    input: TUpdateAlertInternalDTO,
+    input: Omit<TUpdateAlertDTO, keyof TGenericPermission>,
     cipher: Awaited<ReturnType<typeof getAlertChannelCipher>>,
     tx: Knex
   ): Promise<TAlertResponse> => {
@@ -471,36 +470,6 @@ export const alertServiceFactory = ({
     tx?: Knex
   ): Promise<number> => $reapAlerts({ resourceType, resourceId }, tx);
 
-  const createAlertInternal = async (input: TCreateAlertInternalDTO, tx?: Knex): Promise<TAlertResponse> => {
-    const provider = $getProvider(input.resourceType);
-    const event = $getEvent(provider, input.eventType);
-    $validateCondition(event, input.condition);
-    if (input.channels.length === 0) {
-      throw new BadRequestError({ message: "At least one channel is required" });
-    }
-
-    const cipher = await getAlertChannelCipher(kmsService, input, tx);
-    return tx
-      ? $createAlertRows(input, event, cipher, tx)
-      : alertDAL.transaction((trx) => $createAlertRows(input, event, cipher, trx));
-  };
-
-  const updateAlertInternal = async (input: TUpdateAlertInternalDTO, tx?: Knex): Promise<TAlertResponse> => {
-    const alert = await alertDAL.findActiveById(input.alertId, tx);
-    if (!alert) throw new NotFoundError({ message: `Alert with ID '${input.alertId}' not found` });
-
-    const provider = $getProvider(alert.resourceType);
-    if (input.condition !== undefined) $validateCondition($getEvent(provider, alert.eventType), input.condition);
-    if (input.channels !== undefined && input.channels.length === 0) {
-      throw new BadRequestError({ message: "At least one channel is required" });
-    }
-
-    const cipher = await getAlertChannelCipher(kmsService, { orgId: alert.orgId, projectId: alert.projectId }, tx);
-    return tx
-      ? $updateAlertRows(alert, input, cipher, tx)
-      : alertDAL.transaction((trx) => $updateAlertRows(alert, input, cipher, trx));
-  };
-
   const findAlertsForResources = async (
     { resourceType, resourceIds }: { resourceType: string; resourceIds: string[] },
     tx?: Knex
@@ -577,8 +546,6 @@ export const alertServiceFactory = ({
     deleteAlert,
     deleteAlertsForResource,
     deleteAlertsForDeletedResource,
-    createAlertInternal,
-    updateAlertInternal,
     findAlertsForResources,
     deleteAlertsForDeletedResources,
     repointAlertsForResource,

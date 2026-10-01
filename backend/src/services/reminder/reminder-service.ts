@@ -8,6 +8,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TGenericPermission } from "@app/lib/types";
 
 import { TAlertChannelInput } from "../alert/alert-channel-service-types";
 import { AlertChannelType } from "../alert/alert-channel-types";
@@ -34,8 +35,8 @@ type TReminderServiceFactoryDep = {
   eventEmitter: TEventEmitter;
   alertService: Pick<
     TAlertServiceFactory,
-    | "createAlertInternal"
-    | "updateAlertInternal"
+    | "createAlert"
+    | "updateAlert"
     | "findAlertsForResources"
     | "findRecipientsForResources"
     | "deleteAlertsForDeletedResources"
@@ -83,21 +84,22 @@ export const reminderServiceFactory = ({
   // Given `channels`, they are the alert's complete channel list. Otherwise the reminder API only knows
   // user ids, so it owns the alert's email channels and leaves every other channel (Slack, webhook,
   // PagerDuty) as the user configured it. An empty list keeps the reminder's original meaning: everyone
-  // in the project.
+  // in the project. The alert is written as the caller, so the reminder provider checks they can edit
+  // the secret.
   const $syncReminderAlert = async ({
     secretId,
     secretKey,
     projectId,
     recipients,
     channels,
-    createdBy
+    actor
   }: {
     secretId: string;
     secretKey: string;
     projectId: string;
     recipients?: string[] | null;
     channels?: TAlertChannelInput[];
-    createdBy: { actorType: ActorType; actorId: string | null };
+    actor: TGenericPermission;
   }) => {
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
@@ -107,22 +109,30 @@ export const reminderServiceFactory = ({
       resourceIds: [secretId]
     });
 
-    if (channels) {
+    const $writeAlert = async (alertChannels: TAlertChannelInput[]) => {
       if (existing) {
-        await alertService.updateAlertInternal({ alertId: existing.id, name: reminderAlertName(secretKey), channels });
-      } else {
-        await alertService.createAlertInternal({
+        await alertService.updateAlert({
+          alertId: existing.id,
           name: reminderAlertName(secretKey),
-          resourceType: SECRET_REMINDER_RESOURCE_TYPE,
-          resourceId: secretId,
-          eventType: SECRET_REMINDER_DUE_EVENT,
-          condition: null,
-          orgId: project.orgId,
-          projectId,
-          channels,
-          createdBy
+          channels: alertChannels,
+          ...actor
         });
+        return;
       }
+      await alertService.createAlert({
+        name: reminderAlertName(secretKey),
+        resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+        resourceId: secretId,
+        eventType: SECRET_REMINDER_DUE_EVENT,
+        condition: null,
+        projectId,
+        channels: alertChannels,
+        ...actor
+      });
+    };
+
+    if (channels) {
+      await $writeAlert(channels);
       return;
     }
 
@@ -156,22 +166,7 @@ export const reminderServiceFactory = ({
       });
     }
 
-    if (!existing) {
-      await alertService.createAlertInternal({
-        name: reminderAlertName(secretKey),
-        resourceType: SECRET_REMINDER_RESOURCE_TYPE,
-        resourceId: secretId,
-        eventType: SECRET_REMINDER_DUE_EVENT,
-        condition: null,
-        orgId: project.orgId,
-        projectId,
-        channels: emailChannels,
-        createdBy
-      });
-      return;
-    }
-
-    const otherChannels: TAlertChannelInput[] = existing.channels
+    const otherChannels: TAlertChannelInput[] = (existing?.channels ?? [])
       .filter((channel) => channel.channelType !== AlertChannelType.EMAIL)
       .map((channel) => ({
         id: channel.id,
@@ -180,11 +175,7 @@ export const reminderServiceFactory = ({
         enabled: channel.enabled
       }));
 
-    await alertService.updateAlertInternal({
-      alertId: existing.id,
-      name: reminderAlertName(secretKey),
-      channels: [...emailChannels, ...otherChannels]
-    });
+    await $writeAlert([...emailChannels, ...otherChannels]);
   };
 
   const $getSecretForPermissionCheck = async (secretId: string) => {
@@ -221,7 +212,7 @@ export const reminderServiceFactory = ({
     channels,
     projectId,
     fromDate: fromDateInput,
-    createdBy
+    actor
   }: {
     secretId: string;
     secretKey: string;
@@ -232,7 +223,7 @@ export const reminderServiceFactory = ({
     channels?: TAlertChannelInput[];
     fromDate?: string | null;
     projectId: string;
-    createdBy: { actorType: ActorType; actorId: string | null };
+    actor: TGenericPermission;
   }) => {
     let nextReminderDate;
     let fromDate;
@@ -255,7 +246,7 @@ export const reminderServiceFactory = ({
 
     // The alert goes first, outside any transaction because encrypting channel config can call out to
     // KMS. If the reminder write then fails, an alert with no reminder never fires and is reused next time.
-    await $syncReminderAlert({ secretId, secretKey, projectId, recipients, channels, createdBy });
+    await $syncReminderAlert({ secretId, secretKey, projectId, recipients, channels, actor });
 
     const existingReminder = await reminderDAL.findOne({ secretId });
     let reminderId: string;
@@ -281,28 +272,6 @@ export const reminderServiceFactory = ({
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return { id: reminderId, created: !existingReminder };
-  };
-
-  const createReminderInternal: TReminderServiceFactory["createReminderInternal"] = async ({
-    secretId,
-    projectId,
-    ...reminder
-  }) => {
-    if (!secretId) {
-      throw new BadRequestError({ message: "secretId is required" });
-    }
-    const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: secretId });
-    if (!secret) {
-      throw new NotFoundError({ message: `Secret with ID '${secretId}' not found` });
-    }
-
-    return $saveReminder({
-      ...reminder,
-      secretId,
-      secretKey: secret.key,
-      projectId,
-      createdBy: { actorType: ActorType.PLATFORM, actorId: null }
-    });
   };
 
   const createReminder: TReminderServiceFactory["createReminder"] = async ({
@@ -331,7 +300,7 @@ export const reminderServiceFactory = ({
       secretId: secret.id,
       secretKey: secret.key,
       projectId: secret.projectId,
-      createdBy: { actorType: actor, actorId }
+      actor: { actor, actorId, actorOrgId, actorAuthMethod }
     });
   };
 
@@ -598,7 +567,6 @@ export const reminderServiceFactory = ({
     deleteReminderBySecretId,
     batchCreateReminders,
     moveReminderAlerts,
-    createReminderInternal,
     getRemindersForDashboard
   };
 };

@@ -89,25 +89,5 @@ export interface TReminderServiceFactory {
 
   moveReminderAlerts: (moves: { fromSecretId: string; toSecretId: string }[], tx: Knex) => Promise<void>;
 
-  createReminderInternal: ({
-    secretId,
-    message,
-    repeatDays,
-    nextReminderDate,
-    recipients,
-    projectId
-  }: {
-    secretId?: string;
-    message?: string | null;
-    repeatDays?: number | null;
-    nextReminderDate?: string | null;
-    recipients?: string[] | null;
-    projectId: string;
-    fromDate?: string | null;
-  }) => Promise<{
-    id: string;
-    created: boolean;
-  }>;
-
   getRemindersForDashboard: (secretIds: string[]) => Promise<Record<string, TReminder & { recipients: string[] }>>;
 }

@@ -63,8 +63,6 @@ const buildService = (opts?: {
   const alerts = new Map<string, Record<string, unknown>>();
   const channels = new Map<string, TChannelRow>(); // channelId -> row
   const memberships = new Map<string, string[]>(); // alertId -> channelIds
-  const createTxs: unknown[] = [];
-  let transactionsOpened = 0;
   let channelSeq = 0;
 
   const matches = (row: Record<string, unknown>, filter: Record<string, unknown>) => {
@@ -84,12 +82,8 @@ const buildService = (opts?: {
 
   const service = alertServiceFactory({
     alertDAL: {
-      transaction: async (cb: (tx: unknown) => unknown) => {
-        transactionsOpened += 1;
-        return cb({});
-      },
-      create: async (data: Record<string, unknown>, tx?: unknown) => {
-        createTxs.push(tx);
+      transaction: async (cb: (tx: unknown) => unknown) => cb({}),
+      create: async (data: Record<string, unknown>) => {
         if (opts?.createError) throw opts.createError;
         const row = {
           id: "alert-1",
@@ -210,9 +204,7 @@ const buildService = (opts?: {
     service,
     permissionCalls,
     alerts,
-    memberships,
-    createTxs,
-    transactionsOpened: () => transactionsOpened
+    memberships
   };
 };
 
@@ -377,64 +369,12 @@ describe("alert service", () => {
 
     expect(permissionCalls.map((call) => call.action)).toContain("delete");
   });
-});
-
-describe("alert service internal entry points", () => {
-  const internalCreate = {
-    name: "Reminder for DB_PASSWORD",
-    resourceType: RESOURCE_TYPE,
-    resourceId: "resource-1",
-    eventType: "test.resource.opened",
-    condition: null,
-    orgId: "org-1",
-    projectId: "proj-1",
-    channels: [emailChannel],
-    createdBy: { actorType: "platform", actorId: null }
-  };
-
-  test("createAlertInternal skips the provider permission check and records the given creator", async () => {
-    const { service, permissionCalls, alerts } = buildService();
-    const alert = await service.createAlertInternal(internalCreate);
-
-    expect(permissionCalls).toHaveLength(0);
-    expect(alerts.get(alert.id)).toMatchObject({ createdByActorType: "platform", createdByActorId: null });
-    expect(alert.channels).toHaveLength(1);
-  });
-
-  test("createAlertInternal still validates the condition", async () => {
-    const { service } = buildService();
-    await expect(
-      service.createAlertInternal({
-        ...internalCreate,
-        eventType: "test.resource.expiration",
-        condition: { wrong: true }
-      })
-    ).rejects.toThrow("Invalid alert condition");
-  });
-
-  test("createAlertInternal writes inside the caller's transaction when given one", async () => {
-    const { service, createTxs, transactionsOpened } = buildService();
-    const callerTx = { caller: true } as never;
-    await service.createAlertInternal(internalCreate, callerTx);
-
-    expect(createTxs).toEqual([callerTx]);
-    expect(transactionsOpened()).toBe(0);
-  });
-
-  test("updateAlertInternal skips the provider permission check", async () => {
-    const { service, permissionCalls } = buildService();
-    const created = await service.createAlertInternal(internalCreate);
-    const updated = await service.updateAlertInternal({ alertId: created.id, enabled: false });
-
-    expect(permissionCalls).toHaveLength(0);
-    expect(updated.enabled).toBe(false);
-  });
 
   test("a concurrent duplicate create surfaces as a readable error, not a 500", async () => {
     const { service } = buildService({
       createError: new DatabaseError({ error: { code: DatabaseErrorCode.UniqueViolation }, name: "Create" })
     });
-    await expect(service.createAlertInternal(internalCreate)).rejects.toThrow(
+    await expect(service.createAlert(validCreate)).rejects.toThrow(
       "An alert for this resource and event already exists"
     );
   });

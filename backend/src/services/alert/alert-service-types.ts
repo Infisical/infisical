@@ -24,17 +24,12 @@ export type TUpdateAlertDTO = TGenericPermission & {
   channels?: TAlertChannelInput[];
 };
 
-// For domain services that own their resource's authorization (eg reminders) and for background
-// work with no actor. They skip the provider's permission check, so callers must check first.
-export type TAlertCreator = { actorType: string; actorId: string | null };
-
-export type TCreateAlertInternalDTO = Omit<TCreateAlertDTO, keyof TGenericPermission | "projectId"> & {
+// What a create writes once the caller has been authorized and the input validated.
+export type TNewAlertRows = Omit<TCreateAlertDTO, keyof TGenericPermission | "projectId"> & {
   orgId: string;
   projectId: string | null;
-  createdBy: TAlertCreator;
+  createdBy: { actorType: string; actorId: string };
 };
-
-export type TUpdateAlertInternalDTO = Omit<TUpdateAlertDTO, keyof TGenericPermission>;
 
 export type TGetAlertDTO = TGenericPermission & { alertId: string };
 
