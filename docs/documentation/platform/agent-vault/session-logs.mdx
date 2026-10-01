@@ -151,7 +151,7 @@ You can view a session's logs if you created the session or you're an Agent Vaul
       Decrypt the chunk with AES-256-GCM. The key is `sessionLogs.sessionKey` and the IV is the chunk's `iv`, both base64 decoded. The associated data is the SHA-256 digest of `<sessionId>|<chunkId>|v1`. The last 16 bytes of the chunk are the authentication tag.
     </Step>
     <Step>
-      Parse the decrypted bytes as JSON. Each chunk holds an array of records like the following one, and `decision` holds the [outcome](#what-gets-recorded) in lowercase:
+      Parse the decrypted bytes as JSON. Each chunk holds an array of records, and `decision` holds the [outcome](#what-gets-recorded) in lowercase:
 
       ```json
       {
