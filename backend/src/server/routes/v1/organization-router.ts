@@ -29,6 +29,16 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { integrationAuthPubSchema, SanitizedUserSchema } from "../sanitizedSchemas";
 
+const commaSeparatedEnumList = <T extends z.EnumLike>(enumObj: T) => {
+  const values = Object.values(enumObj);
+  return z
+    .string()
+    .max(values.join(",").length)
+    .optional()
+    .transform((val) => (val ? [...new Set(val.split(","))] : undefined))
+    .pipe(z.nativeEnum(enumObj).array().max(values.length).optional());
+};
+
 export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -232,18 +242,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             .transform((val) => (!val ? val : removeTrailingSlash(val)))
             .describe(AUDIT_LOGS.EXPORT.secretPath),
           secretKey: z.string().optional().describe(AUDIT_LOGS.EXPORT.secretKey),
-          // eventType is split with , for multiple values, we need to transform it to array
-          eventType: z
-            .string()
-            .optional()
-            .transform((val) => (val ? val.split(",") : undefined))
-            .pipe(z.nativeEnum(EventType).array().optional()),
-          eventClass: z
-            .string()
-            .optional()
-            .transform((val) => (val ? val.split(",") : undefined))
-            .pipe(z.nativeEnum(AuditLogEventClass).array().optional())
-            .describe(AUDIT_LOGS.EXPORT.eventClass),
+          eventType: commaSeparatedEnumList(EventType),
+          eventClass: commaSeparatedEnumList(AuditLogEventClass).describe(AUDIT_LOGS.EXPORT.eventClass),
           userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
           eventMetadata: z
             .string()
