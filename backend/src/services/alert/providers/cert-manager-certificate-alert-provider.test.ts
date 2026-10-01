@@ -10,6 +10,8 @@ import {
   TCertManagerCertificateAlertProviderDep
 } from "./cert-manager-certificate-alert-provider";
 
+vi.mock("@app/lib/logger", () => ({ logger: { warn: () => {}, info: () => {}, error: () => {}, debug: () => {} } }));
+
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ SITE_URL: "https://app.infisical.com" })
 }));
@@ -58,6 +60,7 @@ const buildProvider = (opts?: {
   onFindByIds?: (args: Record<string, unknown>) => void;
   onFindApplicationIds?: (ids: string[]) => void;
   abilityRules?: { action: string; subject: string }[];
+  nameLookupFails?: boolean;
 }) => {
   const dal = {
     findExpiringCertificates: async (args: Record<string, unknown>) => {
@@ -74,8 +77,10 @@ const buildProvider = (opts?: {
     },
     findProjectProfileIds: async (_projectId: string, ids: string[]) =>
       ids.filter((id) => (opts?.projectProfileIds ?? [PROFILE_ID]).includes(id)),
-    findApplicationNamesByIds: async (ids: string[]) =>
-      ids.filter((id) => id === APPLICATION_ID).map((id) => ({ id, name: "payments-api" })),
+    findApplicationNamesByIds: async (ids: string[]) => {
+      if (opts?.nameLookupFails) throw new Error("replica unavailable");
+      return ids.filter((id) => id === APPLICATION_ID).map((id) => ({ id, name: "payments-api" }));
+    },
     findProfileNamesByIds: async (_projectId: string, ids: string[]) =>
       ids.filter((id) => id === PROFILE_ID).map((id) => ({ id, name: "tls-server" }))
   };
@@ -314,6 +319,30 @@ describe("cert manager project certificate alert provider", () => {
     ).resolves.toMatchObject({
       type: "test-pki-certificate-alert-channel",
       metadata: { alertId: "alert-1", alertName: "prod-expiry", channelType: "email", success: true }
+    });
+  });
+
+  test("logs the audit event with null filter names when the name lookup fails", async () => {
+    const provider = buildProvider({ nameLookupFails: true });
+    const event = await provider.getAuditEvent?.({
+      action: AlertAuditAction.Update,
+      alert: {
+        id: "alert-1",
+        name: "prod-expiry",
+        orgId: "org-1",
+        projectId: "proj-1",
+        resourceType: RESOURCE_TYPE,
+        resourceId: null,
+        eventType: EXPIRY_EVENT,
+        condition: { alertBefore: "30d", applicationIds: [APPLICATION_ID], profileIds: [PROFILE_ID] }
+      }
+    });
+    expect(event).toMatchObject({
+      type: "update-pki-certificate-alert",
+      metadata: {
+        applications: [{ id: APPLICATION_ID, name: null }],
+        profiles: [{ id: PROFILE_ID, name: null }]
+      }
     });
   });
 

@@ -8,6 +8,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import {
   CERT_MANAGER_CERTIFICATE_RESOURCE_TYPE,
@@ -199,9 +200,37 @@ export const certManagerCertificateAlertProviderFactory = ({
 
   const getWebhookSource = ({ alertId }: { alertId: string }) => `/alerts/${alertId}`;
 
-  const $labelled = (ids: string[] | undefined, names: { id: string; name: string }[]) => {
+  const $labelled = (ids: string[] = [], names: { id: string; name: string }[] = []) => {
     const nameById = new Map(names.map((entry) => [entry.id, entry.name]));
-    return (ids ?? []).map((id) => ({ id, name: nameById.get(id) ?? null }));
+    return ids.map((id) => ({ id, name: nameById.get(id) ?? null }));
+  };
+
+  const $findFilterLabels = async (alert: {
+    id: string;
+    orgId?: string;
+    projectId?: string | null;
+    condition?: unknown;
+  }) => {
+    const filters = CertificateFilterSchema.safeParse(alert.condition ?? {});
+    const { applicationIds = [], profileIds = [] } = filters.success ? filters.data : {};
+
+    try {
+      const [applicationNames, profileNames] = await Promise.all([
+        applicationIds.length && alert.orgId
+          ? certManagerCertificateAlertDAL.findApplicationNamesByIds(applicationIds, alert.orgId)
+          : [],
+        profileIds.length && alert.projectId
+          ? certManagerCertificateAlertDAL.findProfileNamesByIds(alert.projectId, profileIds)
+          : []
+      ]);
+      return {
+        applications: $labelled(applicationIds, applicationNames),
+        profiles: $labelled(profileIds, profileNames)
+      };
+    } catch (error) {
+      logger.warn(error, `Failed to resolve certificate alert filter names for audit log [alertId=${alert.id}]`);
+      return { applications: $labelled(applicationIds), profiles: $labelled(profileIds) };
+    }
   };
 
   const getAuditEvent = async (input: TAlertAuditInput): Promise<TAuditEvent> => {
@@ -223,23 +252,11 @@ export const certManagerCertificateAlertProviderFactory = ({
     }
 
     const { alert } = input;
-    const filters = CertificateFilterSchema.safeParse(alert.condition ?? {});
-    const applicationIds = filters.success ? filters.data.applicationIds : undefined;
-    const profileIds = filters.success ? filters.data.profileIds : undefined;
-    const [applicationNames, profileNames] = await Promise.all([
-      applicationIds?.length && alert.orgId
-        ? certManagerCertificateAlertDAL.findApplicationNamesByIds(applicationIds, alert.orgId)
-        : [],
-      profileIds?.length && alert.projectId
-        ? certManagerCertificateAlertDAL.findProfileNamesByIds(alert.projectId, profileIds)
-        : []
-    ]);
     const metadata = {
       alertId: alert.id,
       name: alert.name,
       eventType: alert.eventType,
-      applications: $labelled(applicationIds, applicationNames),
-      profiles: $labelled(profileIds, profileNames)
+      ...(await $findFilterLabels(alert))
     };
     if (input.action === AlertAuditAction.Create) return { type: EventType.CREATE_PKI_CERTIFICATE_ALERT, metadata };
     if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_PKI_CERTIFICATE_ALERT, metadata };
