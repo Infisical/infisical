@@ -78,7 +78,7 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
       return (
         <Empty variant="unstyled">
           <EmptyHeader>
-            <EmptyTitle>Paste a secret value, then press Enter or select Search</EmptyTitle>
+            <EmptyTitle>Paste a secret value, then press Enter to search.</EmptyTitle>
             <EmptyDescription>
               Results cover every project in the organization, including ones you are not a member
               of.
