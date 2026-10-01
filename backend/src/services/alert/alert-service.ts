@@ -2,7 +2,7 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { TAlertChannels, TAlerts } from "@app/db/schemas";
-import { Event as TAuditEvent } from "@app/ee/services/audit-log/audit-log-types";
+import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -14,7 +14,8 @@ import { TAlertChannelServiceFactory } from "./alert-channel-service";
 import { TAlertChannelEmbedded, TAlertChannelInput } from "./alert-channel-service-types";
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertHistoryDALFactory } from "./alert-history-dal";
-import { TAlertProviderRegistry } from "./alert-provider-registry";
+import { getRecipientScope } from "./alert-principal-scope-fns";
+import { getAlertResourceName, resolveAlertProjectId, TAlertProviderRegistry } from "./alert-provider-registry";
 import {
   TAlertLastRun,
   TAlertResponse,
@@ -29,11 +30,7 @@ import {
   AlertPermissionAction,
   AlertRunStatus,
   AlertTelemetryAction,
-  buildGenericAlertAuditEvent,
-  getAlertResourceName,
-  getRecipientScope,
   IResourceAlertProvider,
-  resolveAlertProjectId,
   TAlertAuditInput,
   TAlertEventDefinition,
   TAlertRecipientScope,
@@ -54,6 +51,36 @@ export type TAlertServiceFactoryDep = {
 };
 
 export type TAlertServiceFactory = ReturnType<typeof alertServiceFactory>;
+
+const buildGenericAlertAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
+  if (input.action === AlertAuditAction.TestChannel) {
+    const { test } = input;
+    return {
+      type: EventType.TEST_ALERT_CHANNEL,
+      metadata: {
+        channelId: test.channelId,
+        channelType: test.channelType,
+        resourceType: test.resourceType,
+        resourceId: test.resourceId,
+        success: test.success,
+        deliveredTo: test.deliveredTo,
+        error: test.error
+      }
+    };
+  }
+  const { alert } = input;
+  const metadata = {
+    alertId: alert.id,
+    name: alert.name,
+    resourceType: alert.resourceType,
+    eventType: alert.eventType
+  };
+  if (input.action === AlertAuditAction.Create) {
+    return { type: EventType.CREATE_ALERT, metadata: { ...metadata, resourceId: alert.resourceId } };
+  }
+  if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_ALERT, metadata };
+  return { type: EventType.DELETE_ALERT, metadata };
+};
 
 export const alertServiceFactory = ({
   alertDAL,

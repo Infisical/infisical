@@ -11,15 +11,10 @@ import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
 import { AlertChannelType, TAlertChannelDeps, TAlertRecipient, TChannelTargetResult } from "./alert-channel-types";
 import { getDedupCutoff, TAlertHistoryDALFactory } from "./alert-history-dal";
+import { getRecipientScope } from "./alert-principal-scope-fns";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
-import {
-  AlertRunStatus,
-  DEFAULT_DEDUP_WINDOW_HOURS,
-  getRecipientScope,
-  IResourceAlertProvider,
-  TAlertContext
-} from "./alert-types";
+import { AlertRunStatus, DEFAULT_DEDUP_WINDOW_HOURS, IResourceAlertProvider, TAlertContext } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 const ALERT_DELIVERY_CONCURRENCY = 10;
