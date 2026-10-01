@@ -24,6 +24,22 @@ An AWS connection authenticates Infisical to your AWS account, either by assumin
 
 - An AWS account where you can create IAM roles or users and attach policies to them
 
+<UseCase use="pam-recording" hideWhenEmpty>
+    - An [Amazon S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) for PAM session recordings
+</UseCase>
+
+<UseCase use="agent-vault-session-logs" hideWhenEmpty>
+    - An [Amazon S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) for Agent Vault session logs
+</UseCase>
+
+<UseCase use="private-ca" hideWhenEmpty>
+    - An [AWS Private CA](https://docs.aws.amazon.com/privateca/latest/userguide/create-CA.html) for Infisical to issue certificates from
+</UseCase>
+
+<UseCase use="acm-public-ca,acme-route53" hideWhenEmpty>
+    - A [Route 53 hosted zone](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/CreatingHostedZone.html) for the domain you'll issue certificates for
+</UseCase>
+
 ## Step 1: Create an IAM role or IAM user
 
 Infisical can assume an IAM role in your account, or sign in as an IAM user with an access key. An IAM role is recommended, because Infisical never holds a long-lived credential for it.
