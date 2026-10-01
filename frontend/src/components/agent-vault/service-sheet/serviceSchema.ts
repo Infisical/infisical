@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { addHostIssues, hostError } from "@app/helpers/agentVaultHostPattern";
 import { addPathPrefixIssues, pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
+import { variableReferenceError } from "@app/helpers/agentVaultVariables";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
@@ -60,6 +61,12 @@ const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
 const CONTROL_CHARS_MESSAGE =
   "This can't contain line breaks or other control characters. Check for a stray newline if you pasted it.";
 
+// Double braces wrap a variable reference, and neither a prefix nor a placeholder takes one.
+const hasDoubleBraces = (text: string) => text.includes("{{") || text.includes("}}");
+
+const PREFIX_BRACES_MESSAGE =
+  "A prefix can't contain {{ or }}. Put a variable reference in the value instead.";
+
 // Set by the proxy on every request, so naming one here would either be dropped or corrupt the request.
 const RESERVED_HEADER_NAMES = new Set([
   "host",
@@ -97,7 +104,8 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Review]: []
 };
 
-export const buildServiceSchema = (service?: TAgentVaultService | null) =>
+/** `variableKeys` stays undefined while the list loads, so only the shape of a reference is checked. */
+export const buildServiceSchema = (service?: TAgentVaultService | null, variableKeys?: string[]) =>
   z
     .object({
       name: slugSchema({ max: 64, field: "Name" }),
@@ -208,6 +216,18 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
         });
       }
 
+      if (
+        data.credentialType === AgentVaultCredentialType.Bearer &&
+        data.headerPrefix &&
+        hasDoubleBraces(data.headerPrefix)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["headerPrefix"],
+          message: PREFIX_BRACES_MESSAGE
+        });
+      }
+
       const seenHeaders = new Set<string>();
       data.customHeaders.forEach((header, index) => {
         const at = (field: string, message: string) =>
@@ -241,6 +261,8 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
 
         if (header.prefix && !NO_CONTROL_CHARS_RE.test(header.prefix)) {
           at("prefix", CONTROL_CHARS_MESSAGE);
+        } else if (header.prefix && hasDoubleBraces(header.prefix)) {
+          at("prefix", PREFIX_BRACES_MESSAGE);
         }
       });
 
@@ -257,6 +279,11 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
           at("placeholder", "Required");
         } else if (!NO_CONTROL_CHARS_RE.test(substitution.placeholder)) {
           at("placeholder", CONTROL_CHARS_MESSAGE);
+        } else if (hasDoubleBraces(substitution.placeholder)) {
+          at(
+            "placeholder",
+            "A placeholder can't contain {{ or }}. Double braces are reserved for variable references."
+          );
         } else if (seenPlaceholders.has(substitution.placeholder)) {
           at("placeholder", "This placeholder is listed twice.");
         }
@@ -268,6 +295,26 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
           at("surfaces", "Pick at least one place to look for the placeholder.");
         }
       });
+
+      const variableKeySet = variableKeys ? new Set(variableKeys) : undefined;
+      const addReferenceIssue = (value: string | undefined, path: (string | number)[]) => {
+        if (!value || value === UNCHANGED_SECRET) return;
+        const message = variableReferenceError(value, variableKeySet);
+        if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
+      };
+
+      if (data.credentialType !== AgentVaultCredentialType.Passthrough) {
+        addReferenceIssue(data.secret, ["secret"]);
+      }
+      if (data.credentialType === AgentVaultCredentialType.Basic) {
+        addReferenceIssue(data.username, ["username"]);
+      }
+      data.customHeaders.forEach((header, index) =>
+        addReferenceIssue(header.value, ["customHeaders", index, "value"])
+      );
+      data.substitutions.forEach((substitution, index) =>
+        addReferenceIssue(substitution.value, ["substitutions", index, "value"])
+      );
 
       if (data.credentialType === AgentVaultCredentialType.Passthrough) return;
 

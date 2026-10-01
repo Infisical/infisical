@@ -706,7 +706,7 @@ export const certificateServiceFactory = ({
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
 
-    if (ca.internalCa && cert.profileId && cert.source === CertificateSource.Imported) {
+    if (ca.internalCa?.id && cert.profileId && cert.source === CertificateSource.Imported) {
       const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
       if (!certBody) {
         throw new NotFoundError({ message: "Certificate body not found" });

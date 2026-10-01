@@ -166,7 +166,7 @@ export const FolderTableRow = ({
             )}
           >
             {pendingAction !== PendingAction.Delete && (
-              <Tooltip disableHoverableContent>
+              <Tooltip>
                 <TooltipTrigger>
                   <IconButton
                     aria-label="Move folder"
@@ -188,7 +188,7 @@ export const FolderTableRow = ({
               </Tooltip>
             )}
             {pendingAction !== PendingAction.Delete && (
-              <Tooltip disableHoverableContent>
+              <Tooltip>
                 <TooltipTrigger>
                   <IconButton
                     aria-label="Edit folder"
@@ -212,7 +212,7 @@ export const FolderTableRow = ({
             {onToggleFolderAccess &&
               canManageFolderAccess &&
               pendingAction !== PendingAction.Delete && (
-                <Tooltip disableHoverableContent>
+                <Tooltip>
                   <TooltipTrigger>
                     <IconButton
                       aria-label="Manage folder access"
@@ -231,7 +231,7 @@ export const FolderTableRow = ({
                 </Tooltip>
               )}
             {pendingAction ? (
-              <Tooltip disableHoverableContent>
+              <Tooltip>
                 <TooltipTrigger>
                   <IconButton
                     aria-label="Discard pending folder changes"
@@ -249,7 +249,7 @@ export const FolderTableRow = ({
                 <TooltipContent>Discard pending changes</TooltipContent>
               </Tooltip>
             ) : (
-              <Tooltip disableHoverableContent>
+              <Tooltip>
                 <TooltipTrigger>
                   <IconButton
                     aria-label="Delete folder"

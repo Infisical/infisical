@@ -1512,7 +1512,7 @@ export const SecretEditTableRow = ({
                     <MessageSquareIcon className={twMerge(comment && "text-project")} />
                     {comment ? "View Comment" : "Add Comment"}
                   </DropdownMenuItem>
-                  <Tooltip open={!canReadTags ? undefined : false} disableHoverableContent>
+                  <Tooltip open={!canReadTags ? undefined : false}>
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
                         className="px-2.5 py-1.5"
@@ -1527,10 +1527,7 @@ export const SecretEditTableRow = ({
                     </TooltipTrigger>
                     <TooltipContent side="left">Access Denied</TooltipContent>
                   </Tooltip>
-                  <Tooltip
-                    open={!secretId || isPendingCreate ? undefined : false}
-                    disableHoverableContent
-                  >
+                  <Tooltip open={!secretId || isPendingCreate ? undefined : false}>
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
                         className="px-2.5 py-1.5"
@@ -1555,10 +1552,7 @@ export const SecretEditTableRow = ({
 
               <div className="my-1" />
               <DropdownMenuLabel className="px-2.5 py-0.5 text-[10px]">Insights</DropdownMenuLabel>
-              <Tooltip
-                open={!canReadSecretValue || !secretId || isEmpty ? undefined : false}
-                disableHoverableContent
-              >
+              <Tooltip open={!canReadSecretValue || !secretId || isEmpty ? undefined : false}>
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
                     className="px-2.5 py-1.5"
@@ -1584,7 +1578,6 @@ export const SecretEditTableRow = ({
                         ? undefined
                         : false
                     }
-                    disableHoverableContent
                   >
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
@@ -1616,7 +1609,6 @@ export const SecretEditTableRow = ({
               </ProjectPermissionCan>
               <Tooltip
                 open={isPendingBatchChange || isImportedSecret || isCreatable ? undefined : false}
-                disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
@@ -1653,7 +1645,6 @@ export const SecretEditTableRow = ({
                     ? undefined
                     : false
                 }
-                disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuCheckboxItem
@@ -1693,7 +1684,6 @@ export const SecretEditTableRow = ({
                     ? undefined
                     : false
                 }
-                disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
@@ -1734,7 +1724,6 @@ export const SecretEditTableRow = ({
                     ? undefined
                     : false
                 }
-                disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
@@ -1781,7 +1770,6 @@ export const SecretEditTableRow = ({
                     ? undefined
                     : false
                 }
-                disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
@@ -1832,7 +1820,6 @@ export const SecretEditTableRow = ({
                         ? undefined
                         : false
                     }
-                    disableHoverableContent
                   >
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
