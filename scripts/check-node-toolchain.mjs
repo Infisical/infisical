@@ -126,9 +126,7 @@ for (const path of dockerfiles) {
     `${path}: NPM_VERSION defaults must match build-versions.env.`,
   );
   check(
-    path === "backend/Dockerfile.dev.fips"
-      ? text.includes('RUN test "$(npm --version)" = "${NPM_VERSION}"')
-      : text.includes("npm install -g npm@${NPM_VERSION}"),
+    text.includes("npm install -g npm@${NPM_VERSION}"),
     `${path}: use the pinned npm version.`,
   );
   check(

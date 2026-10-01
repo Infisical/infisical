@@ -2,7 +2,8 @@ ARG TOOLCHAIN_IMAGE=ghcr.io/infisical/backend-fips-toolchain:main
 FROM ${TOOLCHAIN_IMAGE}
 
 ARG NPM_VERSION=11.19.1
-RUN test "$(npm --version)" = "${NPM_VERSION}"
+RUN if [ "$(npm --version)" != "${NPM_VERSION}" ]; then npm install -g npm@${NPM_VERSION}; fi \
+    && test "$(npm --version)" = "${NPM_VERSION}"
 ENV npm_config_min_release_age=7
 
 # ? App setup
