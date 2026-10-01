@@ -1,4 +1,4 @@
-import { ComponentProps, forwardRef } from "react";
+import { ComponentProps, forwardRef, useRef } from "react";
 import { Check, Copy, X } from "lucide-react";
 
 import { useTimedReset } from "@app/hooks";
@@ -12,6 +12,7 @@ type CopyButtonProps = Omit<ComponentProps<"button">, "value" | "children"> & {
 
 export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
   ({ value, ariaLabel, variant = "ghost", size = "xs", onClick, ...props }, ref): JSX.Element => {
+    const isWritePending = useRef(false);
     const [copyState, , setCopyState] = useTimedReset<"idle" | "copied" | "failed">({
       initialState: "idle"
     });
@@ -30,13 +31,17 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
           }[copyState]
         }
         onClick={async (event) => {
+          if (isWritePending.current) return;
           onClick?.(event);
+          isWritePending.current = true;
           setCopyState("idle");
           try {
             await navigator.clipboard.writeText(value);
             setCopyState("copied");
           } catch {
             setCopyState("failed");
+          } finally {
+            isWritePending.current = false;
           }
         }}
       >
