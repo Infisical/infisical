@@ -136,7 +136,7 @@ Next, add the required policies to the IAM role or user from [Step 1](#step-1-cr
             In the Amazon S3 console, open the recording bucket, go to **Permissions**, and select **Edit** under **Cross-origin resource sharing (CORS)**.
         </Step>
         <Step>
-            Paste this rule, then select **Save changes**:
+            Paste this rule, then select **Save changes**. If the bucket already has CORS rules, add this rule's object to the existing array instead of replacing it, so other applications that use the bucket keep working:
 
             <CodeGroup>
                 ```json Infisical Cloud (US)
