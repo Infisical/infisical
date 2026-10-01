@@ -10,6 +10,13 @@ import { TEntitlementsResponse } from "./license-client-types";
 export const projectV2ToFeatureSet = (base: TFeatureSet, entitlements: TEntitlementsResponse): TFeatureSet => {
   const plan = JSON.parse(JSON.stringify(base)) as Record<string, unknown> & { rateLimits: Record<string, unknown> };
   plan.slug = entitlements?.slug;
+  plan.productPlans = (entitlements.products ?? []).map((product) => ({
+    productKey: product.product_key,
+    planKey: product.plan_key ?? null,
+    status: product.status ?? null,
+    trialPlanKey: product.trial_plan_key ?? null,
+    trialEndsAt: product.trial_ends_at ?? null
+  }));
 
   FEATURE_MAPPINGS.forEach((mapping) => {
     if (mapping.v1Field === null) {
