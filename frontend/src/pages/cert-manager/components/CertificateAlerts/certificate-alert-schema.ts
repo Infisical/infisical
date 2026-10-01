@@ -61,6 +61,7 @@ export const certificateAlertFormSchema = z
         `Select up to ${MAX_CERTIFICATE_ALERT_FILTER_IDS} profiles`
       )
       .optional(),
+    conditionNames: z.record(z.string()),
     channels: z.array(channelFormSchema).min(1, "Add at least one channel").max(MAX_CHANNELS)
   })
   .superRefine((form, ctx) => {
@@ -112,5 +113,6 @@ export const emptyCertificateAlertForm = (
   alertBefore: "30d",
   dailyReminder: false,
   enabled: true,
+  conditionNames: {},
   channels: []
 });

@@ -25,6 +25,7 @@ import {
   IEventAlertProvider,
   IScheduledAlertProvider,
   TAlertAuditInput,
+  TAlertConditionNames,
   TAlertContext,
   TAlertPermissionInput,
   TAlertTelemetryEvent,
@@ -200,9 +201,41 @@ export const certManagerCertificateAlertProviderFactory = ({
 
   const getWebhookSource = ({ alertId }: { alertId: string }) => `/alerts/${alertId}`;
 
-  const $labelled = (ids: string[] = [], names: { id: string; name: string }[] = []) => {
-    const nameById = new Map(names.map((entry) => [entry.id, entry.name]));
-    return ids.map((id) => ({ id, name: nameById.get(id) ?? null }));
+  const $parseFilters = (condition: unknown) => {
+    const filters = CertificateFilterSchema.safeParse(condition ?? {});
+    return filters.success ? filters.data : {};
+  };
+
+  const getConditionNames = async ({
+    orgId,
+    projectId,
+    alerts
+  }: {
+    orgId: string;
+    projectId: string | null;
+    alerts: { id: string; condition: unknown }[];
+  }): Promise<Map<string, TAlertConditionNames>> => {
+    const filtersByAlert = alerts.map((alert) => ({ id: alert.id, ...$parseFilters(alert.condition) }));
+    const applicationIds = [...new Set(filtersByAlert.flatMap((filters) => filters.applicationIds ?? []))];
+    const profileIds = [...new Set(filtersByAlert.flatMap((filters) => filters.profileIds ?? []))];
+
+    const [applications, profiles] = await Promise.all([
+      certManagerCertificateAlertDAL.findApplicationNamesByIds(applicationIds, orgId),
+      projectId ? certManagerCertificateAlertDAL.findProfileNamesByIds(projectId, profileIds) : []
+    ]);
+    const nameById = new Map([...applications, ...profiles].map((entry) => [entry.id, entry.name]));
+
+    return new Map(
+      filtersByAlert.map((filters) => [
+        filters.id,
+        Object.fromEntries(
+          [...(filters.applicationIds ?? []), ...(filters.profileIds ?? [])].flatMap((id) => {
+            const name = nameById.get(id);
+            return name ? [[id, name]] : [];
+          })
+        )
+      ])
+    );
   };
 
   const $findFilterLabels = async (alert: {
@@ -211,25 +244,23 @@ export const certManagerCertificateAlertProviderFactory = ({
     projectId?: string | null;
     condition?: unknown;
   }) => {
-    const filters = CertificateFilterSchema.safeParse(alert.condition ?? {});
-    const { applicationIds = [], profileIds = [] } = filters.success ? filters.data : {};
+    const { applicationIds = [], profileIds = [] } = $parseFilters(alert.condition);
+    const withNames = (ids: string[], names: TAlertConditionNames = {}) =>
+      ids.map((id) => ({ id, name: names[id] ?? null }));
+    if (!alert.orgId) return { applications: withNames(applicationIds), profiles: withNames(profileIds) };
 
     try {
-      const [applicationNames, profileNames] = await Promise.all([
-        applicationIds.length && alert.orgId
-          ? certManagerCertificateAlertDAL.findApplicationNamesByIds(applicationIds, alert.orgId)
-          : [],
-        profileIds.length && alert.projectId
-          ? certManagerCertificateAlertDAL.findProfileNamesByIds(alert.projectId, profileIds)
-          : []
-      ]);
-      return {
-        applications: $labelled(applicationIds, applicationNames),
-        profiles: $labelled(profileIds, profileNames)
-      };
+      const names = (
+        await getConditionNames({
+          orgId: alert.orgId,
+          projectId: alert.projectId ?? null,
+          alerts: [{ id: alert.id, condition: alert.condition }]
+        })
+      ).get(alert.id);
+      return { applications: withNames(applicationIds, names), profiles: withNames(profileIds, names) };
     } catch (error) {
       logger.warn(error, `Failed to resolve certificate alert filter names for audit log [alertId=${alert.id}]`);
-      return { applications: $labelled(applicationIds), profiles: $labelled(profileIds) };
+      return { applications: withNames(applicationIds), profiles: withNames(profileIds) };
     }
   };
 
@@ -305,6 +336,7 @@ export const certManagerCertificateAlertProviderFactory = ({
     includeLastRun: true,
     getWebhookSource,
     getAuditEvent,
+    getConditionNames,
     resolveProjectId: ({ orgId }) => resolveOrgCertManagerProjectId(certManagerProjectResolver, orgId)
   };
 };

@@ -4,13 +4,14 @@ sidebarTitle: "Alerts"
 description: "Get notified about certificate events anywhere in Certificate Manager, inside or outside an application."
 ---
 
-An alert under **Settings** > **Alerts** covers certificates across Certificate Manager for one event, whether or not they belong to an [Application](/documentation/platform/pki/applications/overview). Without filters, it covers every certificate. Use one when a team needs to hear about certificates across several applications. To alert on a single application, create an [application alert](/documentation/platform/pki/applications/alerting/overview) instead.
+An alert under **Settings** > **Alerts** covers certificates across Certificate Manager for one event, whether or not they belong to an [Application](/documentation/platform/pki/applications/overview). Without filters, it covers every certificate. Use a Certificate Manager alert when a team needs to hear about certificates across several applications. To alert on a single application, create an [application alert](/documentation/platform/pki/applications/alerting/overview) instead.
 
-These alerts use the same events and [notification channels](/documentation/platform/pki/applications/alerting/overview#notification-channels) as application alerts.
+Certificate Manager alerts use the same events and [notification channels](/documentation/platform/pki/applications/alerting/overview#notification-channels) as application alerts.
 
 ## Prerequisites
 
 - The **Create** action on **PKI Alerts**, which only the Certificate Manager **Admin** role has by default
+- For Slack, PagerDuty, and webhook channels, the Enterprise plan. Email channels are available on every plan.
 - For email alerts, recipients who are organization members, or addresses on one of your organization's [verified email domains](/documentation/platform/email-domain)
 
 ## Create an alert
@@ -23,7 +24,7 @@ These alerts use the same events and [notification channels](/documentation/plat
     Select **Create Alert**.
   </Step>
   <Step>
-    Select the **Alert Type**, then enter an **Alert Name** and an optional **Description**. For an expiration alert, enter **Alert Before** as a number and a unit, for example `30d` or `2w`, up to 365 days. Select **Continue**.
+    Select the **Alert Type**, then enter an **Alert Name** and an optional **Description**. For an expiration alert, enter **Alert Before** as a number and a unit, for example `30d` or `2w`, up to 365 days. Turn on **Repeat daily until expiry** to get a reminder every day. See [how often expiration alerts repeat](/documentation/platform/pki/applications/alerting/overview#faq). Select **Continue**.
   </Step>
   <Step>
     On the **Filters** step, optionally select **Add Filter** to narrow the alert by **Applications** or **Certificate Profiles**. See [which certificates an alert covers](#which-certificates-an-alert-covers). **Matched Certificates** lists the active certificates the alert covers. After you change a filter, select **Reload Preview** to update the list. Select **Continue**.
@@ -53,13 +54,22 @@ You can select up to 100 applications and 100 profiles.
 
 <AccordionGroup>
   <Accordion title="What happens to an alert when I delete an application or profile it lists?">
-    The alert keeps the deleted application or profile in its list, and the deleted one matches no certificates. When you edit the alert, the **Filters** step shows it as **Unknown application** or **Unknown profile**, so you can remove it. The same label appears for an application or profile you don't have access to.
+    The alert keeps the deleted application or profile in its list, and the deleted one matches no certificates. When you edit the alert, the **Filters** step shows it as **Unknown application** or **Unknown profile**, so you can remove it.
   </Accordion>
   <Accordion title="Why did I get two notifications for the same certificate?">
-    If a certificate is covered by one of these alerts and an older alert under **Legacy** > **Alerts** in the sidebar, each alert sends its own notification. Older alerts keep running until you delete them. You can also get one notification from these alerts and one from an application alert if both cover the certificate.
+    If a certificate is covered by a Certificate Manager alert and an older alert under **Legacy** > **Alerts** in the sidebar, each alert sends its own notification. Older alerts keep running until you delete them. You can also get one notification from a Certificate Manager alert and one from an application alert if both cover the certificate.
   </Accordion>
-  <Accordion title="What do webhook receivers get from these alerts?">
-    The [application alert webhook payload](/documentation/platform/pki/applications/alerting/webhook-alerts#webhook-payload-format), with these differences: `type` and `subject` use certificate events such as `com.infisical.cert-manager.certificate.expiry`, `source` is `/alerts/<alert-id>`, `data.alert.resourceType` is `cert-manager.certificate` and has no `resourceId`, `data.metadata.viewUrl` opens the certificate inventory, and each item has an `Application` field when the certificate belongs to an application. Each item's `resource` carries the same typed certificate values, including `applicationId`.
+  <Accordion title="What do webhook receivers get from Certificate Manager alerts?">
+    The [application alert webhook payload](/documentation/platform/pki/applications/alerting/webhook-alerts#webhook-payload-format), with these differences:
+
+    | Field | Certificate Manager alert |
+    |-------|---------------------------|
+    | `type` and `subject` | Certificate events such as `com.infisical.cert-manager.certificate.expiry` |
+    | `source` | `/alerts/<alert-id>` |
+    | `data.alert.resourceType` | `cert-manager.certificate`, with no `resourceId` |
+    | `data.metadata.viewUrl` | Opens the certificate inventory |
+    | `data.items[].fields` | Includes an entry labelled `Application` when the certificate belongs to an application |
+    | `data.items[].resource.applicationId` | `null` for a certificate outside an application |
   </Accordion>
 </AccordionGroup>
 

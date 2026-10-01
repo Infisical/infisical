@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   BellIcon,
   CircleStopIcon,
@@ -45,7 +45,6 @@ import {
 import {
   AlertRunStatus,
   CertificateAlertEventType,
-  MAX_CERTIFICATE_ALERT_FILTER_IDS,
   TAlert,
   useDeleteAlert,
   useListAlerts,
@@ -56,7 +55,8 @@ import { PkiDocsUrls } from "../../pki-docs-urls";
 import {
   fromAlertEventType,
   getAlertResourceId,
-  getAlertResourceType
+  getAlertResourceType,
+  getFilterName
 } from "./certificate-alert-fns";
 import { formatAlertBefore } from "./certificate-alert-schema";
 import { CertificateAlertSheet } from "./CertificateAlertSheet";
@@ -64,11 +64,9 @@ import {
   CERTIFICATE_ALERT_EVENT_LABELS,
   CERTIFICATE_FILTER_DEFINITIONS,
   CertificateAlertScopeKind,
-  TCertificateAlertScope
+  TCertificateAlertScope,
+  TCertificateFilterKind
 } from "./types";
-import { useCertificateFilterNames } from "./useCertificateFilterNames";
-
-type TFilterNames = ReturnType<typeof useCertificateFilterNames>;
 
 const SCOPE_CARD_CONFIG: Record<
   CertificateAlertScopeKind,
@@ -93,15 +91,11 @@ const SCOPE_CARD_CONFIG: Record<
 
 const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 
-const AlertFiltersSummary = ({
-  alert,
-  filterNames
-}: {
-  alert: TAlert;
-  filterNames: TFilterNames;
-}) => {
+const AlertFiltersSummary = ({ alert }: { alert: TAlert }) => {
   const applicationIds = alert.condition?.applicationIds ?? [];
   const profileIds = alert.condition?.profileIds ?? [];
+  const namesOf = (kind: TCertificateFilterKind, ids: string[]) =>
+    ids.map((id) => getFilterName(kind, id, alert.conditionNames ?? {})).join(", ");
 
   if (!applicationIds.length && !profileIds.length) {
     return <span className="text-muted">All certificates</span>;
@@ -125,13 +119,13 @@ const AlertFiltersSummary = ({
             <span className="text-muted">
               {CERTIFICATE_FILTER_DEFINITIONS.applicationIds.label}:{" "}
             </span>
-            {applicationIds.map(filterNames.getApplicationName).join(", ")}
+            {namesOf("applicationIds", applicationIds)}
           </span>
         )}
         {profileIds.length > 0 && (
           <span>
             <span className="text-muted">{CERTIFICATE_FILTER_DEFINITIONS.profileIds.label}: </span>
-            {profileIds.map(filterNames.getProfileName).join(", ")}
+            {namesOf("profileIds", profileIds)}
           </span>
         )}
       </TooltipContent>
@@ -156,7 +150,6 @@ type AlertRowProps = {
   canEdit: boolean;
   canDelete: boolean;
   scope: TCertificateAlertScope;
-  filterNames: TFilterNames;
 };
 
 const AlertRow = ({
@@ -166,8 +159,7 @@ const AlertRow = ({
   onDelete,
   canEdit,
   canDelete,
-  scope,
-  filterNames
+  scope
 }: AlertRowProps) => {
   const eventType = fromAlertEventType(scope, alert.eventType);
   const { mutate: updateAlert } = useUpdateAlert();
@@ -211,14 +203,14 @@ const AlertRow = ({
       </TableCell>
       {SCOPE_CARD_CONFIG[scope.kind].hasFiltersColumn && (
         <TableCell className="whitespace-nowrap">
-          <AlertFiltersSummary alert={alert} filterNames={filterNames} />
+          <AlertFiltersSummary alert={alert} />
         </TableCell>
       )}
       <TableCell className="whitespace-nowrap text-accent">
         {alert.condition?.alertBefore ? (
           formatAlertBefore(alert.condition.alertBefore)
         ) : (
-          <span className="text-surface-selected">—</span>
+          <span className="text-surface-selected">-</span>
         )}
       </TableCell>
       <TableCell className="whitespace-nowrap">
@@ -239,7 +231,7 @@ const AlertRow = ({
             </TooltipContent>
           </Tooltip>
         ) : (
-          <span className="text-surface-selected">—</span>
+          <span className="text-surface-selected">-</span>
         )}
       </TableCell>
       <TableCell className="text-right">
@@ -306,21 +298,6 @@ export const CertificateAlertsCard = ({
     projectId,
     ...(resourceId ? { resourceId } : {})
   });
-  const filterIds = useMemo(() => {
-    const applicationIds = new Set<string>();
-    const profileIds = new Set<string>();
-    if (config.hasFiltersColumn) {
-      alerts.forEach((alert) => {
-        alert.condition?.applicationIds?.forEach((id) => applicationIds.add(id));
-        alert.condition?.profileIds?.forEach((id) => profileIds.add(id));
-      });
-    }
-    return {
-      applicationIds: [...applicationIds].slice(0, MAX_CERTIFICATE_ALERT_FILTER_IDS),
-      profileIds: [...profileIds].slice(0, MAX_CERTIFICATE_ALERT_FILTER_IDS)
-    };
-  }, [alerts, config.hasFiltersColumn]);
-  const filterNames = useCertificateFilterNames(filterIds);
   const usedEventTypes =
     scope.kind === CertificateAlertScopeKind.Application
       ? alerts
@@ -433,7 +410,6 @@ export const CertificateAlertsCard = ({
                       canEdit={canEdit}
                       canDelete={canDelete}
                       scope={scope}
-                      filterNames={filterNames}
                     />
                   ))}
               </TableBody>

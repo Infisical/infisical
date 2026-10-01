@@ -353,4 +353,22 @@ describe("cert manager project certificate alert provider", () => {
       "Certificate Manager isn't set up for this organization"
     );
   });
+
+  test("maps each alert's filter IDs to their names, leaving out IDs that no longer exist", async () => {
+    const provider = buildProvider();
+    const names = await provider.getConditionNames?.({
+      orgId: "org-1",
+      projectId: "proj-1",
+      alerts: [
+        {
+          id: "alert-1",
+          condition: { applicationIds: [APPLICATION_ID, OTHER_APPLICATION_ID], profileIds: [PROFILE_ID] }
+        },
+        { id: "alert-2", condition: null }
+      ]
+    });
+
+    expect(names?.get("alert-1")).toEqual({ [APPLICATION_ID]: "payments-api", [PROFILE_ID]: "tls-server" });
+    expect(names?.get("alert-2")).toEqual({});
+  });
 });

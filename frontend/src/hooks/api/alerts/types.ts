@@ -106,6 +106,7 @@ export type TAlert = {
   orgId: string;
   projectId: string | null;
   resourceName: string | null;
+  conditionNames?: Record<string, string>;
   channels: TAlertChannelEmbedded[];
   lastRun: { timestamp: string; status: AlertRunStatus } | null;
   createdAt: string;

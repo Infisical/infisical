@@ -120,6 +120,8 @@ export type IScheduledAlertProvider<TTarget = unknown> = IResourceAlertProvider<
 export type IEventAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
   Required<Pick<IResourceAlertProvider<TTarget>, "findEventTargets">>;
 
+export type TAlertConditionNames = Record<string, string>;
+
 export enum AlertAuditAction {
   Create = "create",
   Update = "update",
@@ -237,6 +239,12 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   getAuditEvent?(input: TAlertAuditInput): TAuditEvent | Promise<TAuditEvent>;
 
   getResourceNames?(input: { orgId: string; resourceIds: string[] }): Promise<Map<string, string>>;
+
+  getConditionNames?(input: {
+    orgId: string;
+    projectId: string | null;
+    alerts: { id: string; condition: unknown }[];
+  }): Promise<Map<string, TAlertConditionNames>>;
 
   resolveProjectId?(input: { orgId: string; resourceId?: string | null }): Promise<string>;
 

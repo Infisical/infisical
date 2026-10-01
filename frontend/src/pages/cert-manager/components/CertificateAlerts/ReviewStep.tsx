@@ -11,8 +11,8 @@ import {
   TChannelForm
 } from "@app/hooks/api/alerts";
 
-import { toRecipientEmails } from "./certificate-alert-fns";
-import { TCertificateAlertForm } from "./certificate-alert-schema";
+import { getFilterName, toRecipientEmails } from "./certificate-alert-fns";
+import { formatAlertBefore, TCertificateAlertForm } from "./certificate-alert-schema";
 import {
   CERTIFICATE_ALERT_EVENT_LABELS,
   CERTIFICATE_FILTER_DEFINITIONS,
@@ -21,7 +21,6 @@ import {
   TCertificateAlertScope,
   TMemberEmails
 } from "./types";
-import { useCertificateFilterNames } from "./useCertificateFilterNames";
 
 type Props = {
   form: UseFormReturn<TCertificateAlertForm>;
@@ -53,8 +52,14 @@ const describeChannel = (channel: TChannelForm, members: TMemberEmails): string 
       const groupCount = channel.recipients.filter(
         (recipient) => recipient.principalType === AlertPrincipalType.Group
       ).length;
+      const unlistedMemberCount = channel.recipients.filter(
+        (recipient) =>
+          recipient.principalType === AlertPrincipalType.User &&
+          !members.emailByUserId.has(recipient.principalId)
+      ).length;
       return [
         ...toRecipientEmails(channel.recipients, members),
+        ...(unlistedMemberCount ? [`${unlistedMemberCount} member(s)`] : []),
         ...(groupCount ? [`${groupCount} group(s)`] : [])
       ].join(", ");
     }
@@ -71,15 +76,15 @@ const describeChannel = (channel: TChannelForm, members: TMemberEmails): string 
 
 const FilterDetails = ({
   applicationIds,
-  profileIds
+  profileIds,
+  conditionNames
 }: {
   applicationIds: string[];
   profileIds: string[];
+  conditionNames: Record<string, string>;
 }) => {
-  const { getApplicationName, getProfileName } = useCertificateFilterNames({
-    applicationIds,
-    profileIds
-  });
+  const getApplicationName = (id: string) => getFilterName("applicationIds", id, conditionNames);
+  const getProfileName = (id: string) => getFilterName("profileIds", id, conditionNames);
 
   return (
     <>
@@ -114,7 +119,9 @@ export const ReviewStep = ({ form, scope, members }: Props) => {
           <Detail label="Status">
             <EnabledBadge enabled={values.enabled} />
           </Detail>
-          {isExpiry && <Detail label="Alert Before">{values.alertBefore}</Detail>}
+          {isExpiry && (
+            <Detail label="Alert Before">{formatAlertBefore(values.alertBefore)}</Detail>
+          )}
           {isExpiry && (
             <Detail label="Repeat daily">
               <EnabledBadge enabled={values.dailyReminder} />
@@ -131,6 +138,7 @@ export const ReviewStep = ({ form, scope, members }: Props) => {
               <FilterDetails
                 applicationIds={values.applicationIds ?? []}
                 profileIds={values.profileIds ?? []}
+                conditionNames={values.conditionNames}
               />
             </div>
           ) : (

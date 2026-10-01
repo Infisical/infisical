@@ -1260,8 +1260,7 @@ export const certificateProfileServiceFactory = ({
     enrollmentType,
     issuerType,
     caId,
-    applicationId,
-    profileIds
+    applicationId
   }: {
     actor: ActorType;
     actorId: string;
@@ -1275,7 +1274,6 @@ export const certificateProfileServiceFactory = ({
     issuerType?: IssuerType;
     caId?: string;
     applicationId?: string;
-    profileIds?: string[];
   }): Promise<{
     profiles: TCertificateProfileWithConfigs[];
     totalCount: number;
@@ -1319,12 +1317,7 @@ export const certificateProfileServiceFactory = ({
       );
     }
 
-    const scopedProfileIds =
-      profileIds && attachedProfileIds
-        ? profileIds.filter((id) => attachedProfileIds?.includes(id))
-        : (profileIds ?? attachedProfileIds);
-
-    if (scopedProfileIds && scopedProfileIds.length === 0) {
+    if (attachedProfileIds && attachedProfileIds.length === 0) {
       return { profiles: [], totalCount: 0 };
     }
 
@@ -1337,7 +1330,7 @@ export const certificateProfileServiceFactory = ({
         enrollmentType,
         issuerType,
         caId,
-        profileIds: scopedProfileIds
+        profileIds: attachedProfileIds
       },
       processedRules
     );
@@ -1349,7 +1342,7 @@ export const certificateProfileServiceFactory = ({
         enrollmentType,
         issuerType,
         caId,
-        profileIds: scopedProfileIds
+        profileIds: attachedProfileIds
       },
       processedRules
     );

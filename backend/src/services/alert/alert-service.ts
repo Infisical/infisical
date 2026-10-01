@@ -32,6 +32,7 @@ import {
   AlertTelemetryAction,
   IResourceAlertProvider,
   TAlertAuditInput,
+  TAlertConditionNames,
   TAlertEventDefinition,
   TAlertRecipientScope,
   toAlertActor
@@ -158,11 +159,23 @@ export const alertServiceFactory = ({
     );
   };
 
+  const $getConditionNames = async (
+    provider: IResourceAlertProvider,
+    scope: { orgId: string; projectId: string | null },
+    alerts: Pick<TAlerts, "id" | "condition">[]
+  ): Promise<Map<string, TAlertConditionNames>> => {
+    if (!provider.getConditionNames || alerts.length === 0) return new Map();
+    return provider.getConditionNames({
+      ...scope,
+      alerts: alerts.map((alert) => ({ id: alert.id, condition: alert.condition }))
+    });
+  };
+
   const $assembleResponse = (
     provider: IResourceAlertProvider,
     alert: TAlerts,
     channels: TAlertChannelEmbedded[],
-    extras: { resourceName: string | null; lastRun?: TAlertLastRun }
+    extras: { resourceName: string | null; lastRun?: TAlertLastRun; conditionNames?: TAlertConditionNames }
   ): TAlertResponse => ({
     id: alert.id,
     name: alert.name,
@@ -176,6 +189,7 @@ export const alertServiceFactory = ({
     orgId: alert.orgId,
     projectId: alert.projectId ?? null,
     ...(provider.getResourceNames ? { resourceName: extras.resourceName } : {}),
+    ...(provider.getConditionNames ? { conditionNames: extras.conditionNames ?? {} } : {}),
     channels,
     ...(provider.includeLastRun ? { lastRun: extras.lastRun ?? null } : {}),
     createdAt: alert.createdAt,
@@ -289,8 +303,10 @@ export const alertServiceFactory = ({
       return { created: createdAlert, channels: details };
     });
 
+    const conditionNames = await $getConditionNames(provider, scope, [created]);
     return $assembleResponse(provider, created, channels, {
-      resourceName: await $getResourceName(provider, created)
+      resourceName: await $getResourceName(provider, created),
+      conditionNames: conditionNames.get(created.id)
     });
   };
 
@@ -310,9 +326,15 @@ export const alertServiceFactory = ({
     const cipher = await getAlertChannelCipher(kmsService, { orgId: alert.orgId, projectId: alert.projectId });
     const details = await alertChannelService.getDetailsForChannels(channels, cipher);
     const lastRuns = await $getLastRuns(provider, [alert.id]);
+    const conditionNames = await $getConditionNames(
+      provider,
+      { orgId: alert.orgId, projectId: alert.projectId ?? null },
+      [alert]
+    );
     return $assembleResponse(provider, alert, details, {
       resourceName: await $getResourceName(provider, alert),
-      lastRun: lastRuns.get(alert.id)
+      lastRun: lastRuns.get(alert.id),
+      conditionNames: conditionNames.get(alert.id)
     });
   };
 
@@ -347,6 +369,7 @@ export const alertServiceFactory = ({
       provider,
       alerts.map((alert) => alert.id)
     );
+    const conditionNames = await $getConditionNames(provider, { orgId: dto.actorOrgId, projectId }, alerts);
     const resourceNames = await $getResourceNames(
       provider,
       dto.actorOrgId,
@@ -370,7 +393,8 @@ export const alertServiceFactory = ({
           .filter((detail): detail is TAlertChannelEmbedded => Boolean(detail)),
         {
           resourceName: (alert.resourceId && resourceNames.get(alert.resourceId)) || null,
-          lastRun: lastRuns.get(alert.id)
+          lastRun: lastRuns.get(alert.id),
+          conditionNames: conditionNames.get(alert.id)
         }
       )
     );
@@ -501,9 +525,15 @@ export const alertServiceFactory = ({
     });
 
     const lastRuns = await $getLastRuns(provider, [alert.id]);
+    const conditionNames = await $getConditionNames(
+      provider,
+      { orgId: alert.orgId, projectId: alert.projectId ?? null },
+      [updated]
+    );
     return $assembleResponse(provider, updated, channels, {
       resourceName: await $getResourceName(provider, alert),
-      lastRun: lastRuns.get(alert.id)
+      lastRun: lastRuns.get(alert.id),
+      conditionNames: conditionNames.get(updated.id)
     });
   };
 

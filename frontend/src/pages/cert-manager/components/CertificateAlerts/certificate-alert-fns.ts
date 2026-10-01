@@ -9,7 +9,13 @@ import {
 } from "@app/hooks/api/alerts";
 
 import { TCertificateAlertForm } from "./certificate-alert-schema";
-import { CertificateAlertScopeKind, TCertificateAlertScope, TMemberEmails } from "./types";
+import {
+  CERTIFICATE_FILTER_DEFINITIONS,
+  CertificateAlertScopeKind,
+  TCertificateAlertScope,
+  TCertificateFilterKind,
+  TMemberEmails
+} from "./types";
 
 const ALERT_EVENT_TYPE_BY_SCOPE: Record<
   CertificateAlertScopeKind,
@@ -64,6 +70,12 @@ export const toRecipientEmails = (
     return recipient.principalType === AlertPrincipalType.Email ? [recipient.principalId] : [];
   });
 
+export const getFilterName = (
+  kind: TCertificateFilterKind,
+  id: string,
+  conditionNames: Record<string, string>
+) => conditionNames[id] ?? CERTIFICATE_FILTER_DEFINITIONS[kind].unknownLabel;
+
 export const toCertificateAlertForm = (
   scope: TCertificateAlertScope,
   alert: TAlert,
@@ -77,6 +89,7 @@ export const toCertificateAlertForm = (
   enabled: alert.enabled,
   applicationIds: alert.condition?.applicationIds,
   profileIds: alert.condition?.profileIds,
+  conditionNames: alert.conditionNames ?? {},
   channels: alert.channels.map(
     (channel): TChannelForm => ({
       id: channel.id,

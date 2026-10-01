@@ -50,6 +50,7 @@ const AlertResponseSchema = z.object({
   orgId: z.string(),
   projectId: z.string().nullable(),
   resourceName: z.string().nullable().optional(),
+  conditionNames: z.record(z.string()).optional(),
   channels: z.array(
     z.object({
       id: z.string().uuid(),

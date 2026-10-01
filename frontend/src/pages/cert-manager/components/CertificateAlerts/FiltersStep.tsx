@@ -29,6 +29,7 @@ type Props = { form: UseFormReturn<TCertificateAlertForm>; projectId: string };
 export const FiltersStep = ({ form, projectId }: Props) => {
   const applicationIds = useWatch({ control: form.control, name: "applicationIds" });
   const profileIds = useWatch({ control: form.control, name: "profileIds" });
+  const conditionNames = useWatch({ control: form.control, name: "conditionNames" });
   const filters = { applicationIds, profileIds };
 
   const { previewFilters, page, setPage, isStale, reloadPreview } =
@@ -62,7 +63,20 @@ export const FiltersStep = ({ form, projectId }: Props) => {
       onRemove: () => setFilter(kind, undefined),
       body: (
         <>
-          <Select value={filters[kind] ?? []} onChange={(ids) => setFilter(kind, ids)} />
+          <Select
+            value={filters[kind] ?? []}
+            conditionNames={conditionNames}
+            onChange={(selected) => {
+              form.setValue("conditionNames", {
+                ...conditionNames,
+                ...Object.fromEntries(selected.map(({ id, name }) => [id, name]))
+              });
+              setFilter(
+                kind,
+                selected.map(({ id }) => id)
+              );
+            }}
+          />
           <FieldError errors={[form.formState.errors[kind]]} />
         </>
       )

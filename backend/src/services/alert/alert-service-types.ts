@@ -2,7 +2,7 @@ import { TGenericPermission } from "@app/lib/types";
 
 import { TAlertChannelEmbedded, TAlertChannelInput, TChannelRecipientInput } from "./alert-channel-service-types";
 import { AlertChannelType } from "./alert-channel-types";
-import { AlertRunStatus } from "./alert-types";
+import { AlertRunStatus, TAlertConditionNames } from "./alert-types";
 
 export type TCreateAlertDTO = TGenericPermission & {
   name: string;
@@ -75,6 +75,7 @@ export type TAlertResponse = {
   orgId: string;
   projectId: string | null;
   resourceName?: string | null;
+  conditionNames?: TAlertConditionNames;
   channels: TAlertChannelEmbedded[];
   lastRun?: TAlertLastRun | null;
   createdAt: Date;

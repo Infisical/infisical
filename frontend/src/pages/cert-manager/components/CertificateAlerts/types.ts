@@ -46,17 +46,19 @@ export const getAlertEventDescription = (
 
 export const CERTIFICATE_FILTER_DEFINITIONS: Record<
   TCertificateFilterKind,
-  { label: string; hint: string; allLabel: string }
+  { label: string; hint: string; allLabel: string; unknownLabel: string }
 > = {
   applicationIds: {
     label: "Applications",
     hint: "Certificates in one of these applications",
-    allLabel: "All applications"
+    allLabel: "All applications",
+    unknownLabel: "Unknown application"
   },
   profileIds: {
     label: "Certificate Profiles",
     hint: "Issued from one of these profiles",
-    allLabel: "All certificate profiles"
+    allLabel: "All certificate profiles",
+    unknownLabel: "Unknown profile"
   }
 };
 

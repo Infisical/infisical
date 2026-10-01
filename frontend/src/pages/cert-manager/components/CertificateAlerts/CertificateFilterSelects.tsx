@@ -6,27 +6,30 @@ import { MAX_CERTIFICATE_ALERT_FILTER_IDS } from "@app/hooks/api/alerts";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 
-import { useCertificateFilterNames } from "./useCertificateFilterNames";
+import { getFilterName } from "./certificate-alert-fns";
+import { TCertificateFilterKind } from "./types";
 
 type TFilterOption = { id: string; name: string };
 
 type Props = {
   value: string[];
-  onChange: (ids: string[]) => void;
+  conditionNames: Record<string, string>;
+  onChange: (selected: TFilterOption[]) => void;
 };
 
 const FilterCombobox = ({
+  kind,
   value,
+  conditionNames,
   onChange,
   options,
   isLoading,
-  resolveName,
   onSearchChange,
   placeholder
 }: Props & {
+  kind: TCertificateFilterKind;
   options: TFilterOption[];
   isLoading: boolean;
-  resolveName: (id: string) => string;
   onSearchChange: (search: string) => void;
   placeholder: string;
 }) => {
@@ -40,8 +43,11 @@ const FilterCombobox = ({
       multiple
       isClearable
       options={options}
-      value={value.map((id) => ({ id, name: optionNames.get(id) ?? resolveName(id) }))}
-      onValueChange={(selected) => onChange(selected.map((option) => option.id))}
+      value={value.map((id) => ({
+        id,
+        name: optionNames.get(id) ?? getFilterName(kind, id, conditionNames)
+      }))}
+      onValueChange={(selected) => onChange([...selected])}
       getOptionValue={(option) => option.id}
       getOptionLabel={(option) => option.name}
       onSearchChange={onSearchChange}
@@ -51,13 +57,9 @@ const FilterCombobox = ({
   );
 };
 
-export const ApplicationFilterSelect = ({ value, onChange }: Props) => {
+export const ApplicationFilterSelect = (props: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
-  const { getApplicationName } = useCertificateFilterNames({
-    applicationIds: value,
-    profileIds: []
-  });
   const { data, isPending } = useListPkiApplications({
     limit: MAX_CERTIFICATE_ALERT_FILTER_IDS,
     ...(debouncedSearch ? { search: debouncedSearch } : {})
@@ -69,21 +71,19 @@ export const ApplicationFilterSelect = ({ value, onChange }: Props) => {
 
   return (
     <FilterCombobox
-      value={value}
-      onChange={onChange}
+      {...props}
+      kind="applicationIds"
       options={options}
       isLoading={isPending}
-      resolveName={getApplicationName}
       onSearchChange={setSearch}
       placeholder="Select applications"
     />
   );
 };
 
-export const ProfileFilterSelect = ({ value, onChange }: Props) => {
+export const ProfileFilterSelect = (props: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
-  const { getProfileName } = useCertificateFilterNames({ applicationIds: [], profileIds: value });
   const { data, isPending } = useListCertificateProfiles({
     limit: MAX_CERTIFICATE_ALERT_FILTER_IDS,
     ...(debouncedSearch ? { search: debouncedSearch } : {})
@@ -95,11 +95,10 @@ export const ProfileFilterSelect = ({ value, onChange }: Props) => {
 
   return (
     <FilterCombobox
-      value={value}
-      onChange={onChange}
+      {...props}
+      kind="profileIds"
       options={options}
       isLoading={isPending}
-      resolveName={getProfileName}
       onSearchChange={setSearch}
       placeholder="Select profiles"
     />

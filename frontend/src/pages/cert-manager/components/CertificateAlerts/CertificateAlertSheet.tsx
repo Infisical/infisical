@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BellIcon } from "lucide-react";
@@ -6,6 +6,7 @@ import { BellIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  DiscardChangesAlertDialog,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -31,6 +32,7 @@ import {
   useCreateAlert,
   useUpdateAlert
 } from "@app/hooks/api/alerts";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { buildNextChannel, canReceiveAlerts } from "@app/views/Alerts";
 
 import {
@@ -68,7 +70,10 @@ type Props = {
   usedEventTypes: CertificateAlertEventType[];
 };
 
-type WizardProps = Omit<Props, "isOpen"> & { members: TMemberEmails };
+type WizardProps = Omit<Props, "isOpen"> & {
+  members: TMemberEmails;
+  onDirtyChange: (isDirty: boolean) => void;
+};
 
 const CertificateAlertWizard = ({
   onOpenChange,
@@ -77,7 +82,8 @@ const CertificateAlertWizard = ({
   alert,
   isReadOnly = false,
   usedEventTypes,
-  members
+  members,
+  onDirtyChange
 }: WizardProps) => {
   const isEditing = Boolean(alert);
   const steps = getSteps(scope);
@@ -95,6 +101,11 @@ const CertificateAlertWizard = ({
         )
   });
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "channels" });
+  const { isDirty } = form.formState;
+
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const onSubmit = async (values: TCertificateAlertForm) => {
     const channels = values.channels.map(toChannelInput);
@@ -127,7 +138,7 @@ const CertificateAlertWizard = ({
       }
       onOpenChange(false);
     } catch {
-      // MutationCache reports request errors globally; keep the sheet open for another attempt.
+      /* empty */
     }
   };
 
@@ -153,22 +164,20 @@ const CertificateAlertWizard = ({
 
   return (
     <FormProvider {...form}>
-      <SheetHeader className="border-b">
-        <SheetTitle>
-          <div className="flex w-full items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-project/10 text-project">
-              <BellIcon className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-label">{title}</div>
-              <SheetDescription>
-                {scope.kind === CertificateAlertScopeKind.Application
-                  ? `Get notified about certificate events in ${scope.applicationName}.`
-                  : "Get notified about certificate events across Certificate Manager."}
-              </SheetDescription>
-            </div>
+      <SheetHeader className="border-b border-border">
+        <div className="flex w-full items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-project/10 text-project">
+            <BellIcon className="h-5 w-5" />
           </div>
-        </SheetTitle>
+          <div className="min-w-0">
+            <SheetTitle>{title}</SheetTitle>
+            <SheetDescription>
+              {scope.kind === CertificateAlertScopeKind.Application
+                ? `Get notified about certificate events in ${scope.applicationName}.`
+                : "Get notified about certificate events across Certificate Manager."}
+            </SheetDescription>
+          </div>
+        </div>
       </SheetHeader>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -294,23 +303,50 @@ export const CertificateAlertSheet = ({ isOpen, onOpenChange, ...props }: Props)
     };
   }, [orgUsers]);
 
+  const [isDirty, setIsDirty] = useState(false);
+  const closeSheet = () => {
+    setIsDirty(false);
+    onOpenChange(false);
+  };
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: closeSheet });
+
+  const handleSheetOpenChange = (open: boolean) => {
+    if (!open) {
+      requestDiscard();
+      return;
+    }
+    onOpenChange(true);
+  };
+
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent size="wide" className="flex h-full max-h-full flex-col gap-y-0">
-        {isOpen && isUsersPending && (
-          <div className="flex flex-1 items-center justify-center">
-            <Spinner />
-          </div>
-        )}
-        {isOpen && !isUsersPending && (
-          <CertificateAlertWizard
-            key={props.alert?.id ?? "new"}
-            onOpenChange={onOpenChange}
-            members={members}
-            {...props}
-          />
-        )}
-      </SheetContent>
-    </Sheet>
+    <>
+      <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
+        <SheetContent size="wide" className="flex h-full max-h-full flex-col gap-y-0">
+          {isOpen && isUsersPending && (
+            <div className="flex flex-1 items-center justify-center">
+              <Spinner />
+            </div>
+          )}
+          {isOpen && !isUsersPending && (
+            <CertificateAlertWizard
+              key={props.alert?.id ?? "new"}
+              onOpenChange={(open) => (open ? onOpenChange(true) : closeSheet())}
+              onDirtyChange={setIsDirty}
+              members={members}
+              {...props}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your unsaved changes to this alert will be lost."
+      />
+    </>
   );
 };
