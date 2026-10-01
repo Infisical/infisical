@@ -1,5 +1,22 @@
 import { AlertTriggerType, IResourceAlertProvider } from "./alert-types";
 
+export const resolveAlertProjectId = async (
+  provider: IResourceAlertProvider,
+  { orgId, projectId, resourceId }: { orgId: string; projectId?: string | null; resourceId?: string | null }
+): Promise<string | null> => {
+  if (projectId || !resourceId || !provider.resolveProjectId) return projectId ?? null;
+  return provider.resolveProjectId({ orgId, resourceId });
+};
+
+export const getAlertResourceName = async (
+  provider: Pick<IResourceAlertProvider, "getResourceNames">,
+  orgId: string,
+  resourceId?: string | null
+): Promise<string | null> => {
+  if (!resourceId || !provider.getResourceNames) return null;
+  return (await provider.getResourceNames({ orgId, resourceIds: [resourceId] })).get(resourceId) ?? null;
+};
+
 export type TAlertProviderRegistry = ReturnType<typeof alertProviderRegistryFactory>;
 
 export const alertProviderRegistryFactory = () => {

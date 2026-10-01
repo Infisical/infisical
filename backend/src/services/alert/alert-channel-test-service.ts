@@ -14,19 +14,12 @@ import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelServiceFactory } from "./alert-channel-service";
 import { TAlertChannelDeps, TAlertRecipient } from "./alert-channel-types";
 import { TAlertDALFactory } from "./alert-dal";
-import { TAlertProviderRegistry } from "./alert-provider-registry";
+import { getRecipientScope } from "./alert-principal-scope-fns";
+import { getAlertResourceName, resolveAlertProjectId, TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { TTestAlertChannelDTO, TTestAlertChannelResponse, TTestAlertChannelResult } from "./alert-service-types";
 import { buildTestAlertPayload } from "./alert-test-payload-fns";
-import {
-  AlertPermissionAction,
-  getAlertResourceName,
-  getRecipientScope,
-  IResourceAlertProvider,
-  resolveAlertProjectId,
-  TAlertRecipientScope,
-  toAlertActor
-} from "./alert-types";
+import { AlertPermissionAction, IResourceAlertProvider, TAlertRecipientScope, toAlertActor } from "./alert-types";
 
 export type TAlertChannelTestServiceFactoryDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findById">;

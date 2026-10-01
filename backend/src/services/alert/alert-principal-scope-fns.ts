@@ -7,6 +7,8 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import { IResourceAlertProvider, TAlertRecipientScope } from "./alert-types";
+
 export type TPrincipalScopeDALs = {
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
@@ -86,4 +88,21 @@ export const resolvePrincipalsInScope = async (
 
   const orgGroups = await groupDAL.find({ $in: { id: groupIds }, orgId }, { tx });
   return { userIds: inScopeUserIds, groupIds: new Set(orgGroups.map((group) => group.id)) };
+};
+
+export const getRecipientScope = (
+  provider: Pick<IResourceAlertProvider, "recipientPolicy">,
+  projectId?: string | null
+): TAlertRecipientScope => ({
+  projectId: provider.recipientPolicy?.atOrgScope ? null : (projectId ?? null),
+  allowEmailAddresses: Boolean(provider.recipientPolicy?.allowEmailAddresses)
+});
+
+export const getAlertResourceName = async (
+  provider: Pick<IResourceAlertProvider, "getResourceNames">,
+  orgId: string,
+  resourceId?: string | null
+): Promise<string | null> => {
+  if (!resourceId || !provider.getResourceNames) return null;
+  return (await provider.getResourceNames({ orgId, resourceIds: [resourceId] })).get(resourceId) ?? null;
 };

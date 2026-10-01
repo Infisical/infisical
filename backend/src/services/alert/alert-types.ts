@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { Event as TAuditEvent } from "@app/ee/services/audit-log/audit-log-types";
 import { TGenericPermission } from "@app/lib/types";
 import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
@@ -51,14 +51,6 @@ export const toAlertActor = (dto: TGenericPermission): TGenericPermission => ({
   actorOrgId: dto.actorOrgId
 });
 
-export const resolveAlertProjectId = async (
-  provider: IResourceAlertProvider,
-  { orgId, projectId, resourceId }: { orgId: string; projectId?: string | null; resourceId?: string | null }
-): Promise<string | null> => {
-  if (projectId || !resourceId || !provider.resolveProjectId) return projectId ?? null;
-  return provider.resolveProjectId({ orgId, resourceId });
-};
-
 type TAlertRecipientPolicy = {
   atOrgScope?: boolean;
   allowEmailAddresses?: boolean;
@@ -67,23 +59,6 @@ type TAlertRecipientPolicy = {
 export type TAlertRecipientScope = {
   projectId: string | null;
   allowEmailAddresses: boolean;
-};
-
-export const getRecipientScope = (
-  provider: Pick<IResourceAlertProvider, "recipientPolicy">,
-  projectId?: string | null
-): TAlertRecipientScope => ({
-  projectId: provider.recipientPolicy?.atOrgScope ? null : (projectId ?? null),
-  allowEmailAddresses: Boolean(provider.recipientPolicy?.allowEmailAddresses)
-});
-
-export const getAlertResourceName = async (
-  provider: Pick<IResourceAlertProvider, "getResourceNames">,
-  orgId: string,
-  resourceId?: string | null
-): Promise<string | null> => {
-  if (!resourceId || !provider.getResourceNames) return null;
-  return (await provider.getResourceNames({ orgId, resourceIds: [resourceId] })).get(resourceId) ?? null;
 };
 
 export const DEFAULT_DEDUP_WINDOW_HOURS = 24;
@@ -172,36 +147,6 @@ type TAlertChannelTestAudit = {
 export type TAlertAuditInput =
   | { action: AlertAuditAction.Create | AlertAuditAction.Update | AlertAuditAction.Delete; alert: TAlertAuditAlert }
   | { action: AlertAuditAction.TestChannel; test: TAlertChannelTestAudit };
-
-export const buildGenericAlertAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
-  if (input.action === AlertAuditAction.TestChannel) {
-    const { test } = input;
-    return {
-      type: EventType.TEST_ALERT_CHANNEL,
-      metadata: {
-        channelId: test.channelId,
-        channelType: test.channelType,
-        resourceType: test.resourceType,
-        resourceId: test.resourceId,
-        success: test.success,
-        deliveredTo: test.deliveredTo,
-        error: test.error
-      }
-    };
-  }
-  const { alert } = input;
-  const metadata = {
-    alertId: alert.id,
-    name: alert.name,
-    resourceType: alert.resourceType,
-    eventType: alert.eventType
-  };
-  if (input.action === AlertAuditAction.Create) {
-    return { type: EventType.CREATE_ALERT, metadata: { ...metadata, resourceId: alert.resourceId } };
-  }
-  if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_ALERT, metadata };
-  return { type: EventType.DELETE_ALERT, metadata };
-};
 
 export enum AlertTelemetryAction {
   Create = "create",
