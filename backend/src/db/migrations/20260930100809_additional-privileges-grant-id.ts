@@ -16,11 +16,10 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.raw(`DROP INDEX IF EXISTS "${GRANT_ID_UNIQUE_INDEX}"`);
-
   const hasColumn = await knex.schema.hasColumn(TableName.AdditionalPrivilege, "grantId");
   if (hasColumn) {
     await knex.schema.alterTable(TableName.AdditionalPrivilege, (t) => {
+      t.dropUnique(["grantId"], GRANT_ID_UNIQUE_INDEX);
       t.dropForeign("grantId");
       t.dropColumn("grantId");
     });

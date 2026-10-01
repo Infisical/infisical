@@ -1875,6 +1875,12 @@ export const approvalPolicyServiceFactory = ({
       }
     }
 
+    if (grantPolicyType === ApprovalPolicyType.SecretAccess) {
+      throw new BadRequestError({
+        message: "This grant is for a secret access request. Revoke it from the access request instead."
+      });
+    }
+
     if (grant.status !== ApprovalRequestGrantStatus.Active) {
       throw new BadRequestError({ message: "Grant is not active" });
     }
