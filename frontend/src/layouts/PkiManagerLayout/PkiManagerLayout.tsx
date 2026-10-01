@@ -2,13 +2,11 @@ import { useEffect, useState } from "react";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { useProjectPermission, useSubscription } from "@app/context";
+import { useSubscription } from "@app/context";
 
-import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 import { CertManagerInstanceBanner } from "./components/CertManagerInstanceBanner";
 
 export const PkiManagerLayout = () => {
-  const { assumedPrivilegeDetails } = useProjectPermission();
   const { subscription } = useSubscription();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isDashboard = /\/cert-manager\/[^/]+\/overview\/?$/.test(pathname);
@@ -22,7 +20,6 @@ export const PkiManagerLayout = () => {
 
   return (
     <div className="flex h-full w-full flex-col overflow-x-hidden">
-      {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
       {isDashboard && <CertManagerInstanceBanner />}
       <div className="flex-1 overflow-x-hidden overflow-y-auto p-6 md:p-10">
         <Outlet />

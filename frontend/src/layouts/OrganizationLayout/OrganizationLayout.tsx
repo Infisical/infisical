@@ -7,6 +7,8 @@ import { SidebarInset, SidebarProvider } from "@app/components/v3";
 import { useServerConfig, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus } from "@app/hooks/api";
+import { useImplicitProduct } from "@app/hooks/useImplicitProduct";
+import { AssumePrivilegeModeBanner } from "@app/layouts/ProjectLayout/components/AssumePrivilegeModeBanner";
 
 import { AuditLogBanner } from "./components/AuditLogBanner";
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
@@ -23,6 +25,7 @@ export const OrganizationLayout = () => {
     select: (el) => el?.projectId
   });
   const isInsideProject = Boolean(projectId);
+  const implicitProduct = useImplicitProduct();
 
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
@@ -37,6 +40,7 @@ export const OrganizationLayout = () => {
       <SidebarProvider
         className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-page transition-all`}
       >
+        {(isInsideProject || implicitProduct) && <AssumePrivilegeModeBanner />}
         <Navbar />
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <OrgSidebar />
