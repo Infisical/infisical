@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronDownIcon, CopyIcon, FolderIcon, SlashIcon } from "lucide-react";
+import { ChevronDownIcon, CopyIcon, FolderIcon, HomeIcon, SlashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -247,7 +247,7 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
           data-measure="root"
           className="inline-flex max-w-48 items-center gap-4 pr-1.5 pl-3 text-sm"
         >
-          <FolderIcon className="size-4" />
+          <HomeIcon className="size-4" />
           <span>/</span>
         </span>
         <span data-measure="separator" className="inline-flex items-center">
@@ -276,7 +276,7 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
           <BreadcrumbItem>
             <BreadcrumbLink
               asChild
-              className="inline-flex min-h-7 max-w-48 items-center gap-4 pr-1.5 pl-3 hover:no-underline"
+              className="inline-flex min-h-7 max-w-48 items-center gap-4 pr-1.5 pl-3 hover:no-underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             >
               <Link
                 from="/organizations/$orgId/projects/secret-management/$projectId/overview"
@@ -285,7 +285,7 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
                 aria-label="Root folder"
                 title="/"
               >
-                <FolderIcon className="size-4 shrink-0 text-folder" />
+                <HomeIcon className="size-4 shrink-0 text-accent" aria-hidden="true" />
                 <span>/</span>
               </Link>
             </BreadcrumbLink>
