@@ -17,11 +17,12 @@ never in anything the agent holds.
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
-agent-vault-access-bundle/   bundles, services, credential encryption, grants
+agent-vault-access-bundle/   bundles, services, variables, credential encryption, grants
 agent-vault-member/          product membership (list, add, role, remove)
-agent-vault-session/         mint, revoke, list, retention sweep
+agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           login (enrollment), heartbeat, resolve
+agent-vault-session-log/     storage settings, chunk ingest, playback
 ```
 
 Routes: `ee/routes/v1/agent-vault-routers/`, prefix `/api/v1/agent-vault`. CLI: `packages/cmd/agent_vault*.go`
@@ -92,10 +93,13 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   the actor is out and work again if the actor is added back. Settled with the product owner.
 - Session actor columns are `SET NULL` so history survives the actor. Resolve refuses a session with neither
   id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
+  `actorType` is stored at mint because `SET NULL` erases which kind of owner it was. It stays nullable (a pod
+  on the previous release writes none) and `toSessionActor` falls back to the backfill's guess.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
-  actor id reads as revoked in the list, the status filter and the sweep, so they agree with resolve refusing
-  it. Expiry is enforced against the clock on every resolve. `sweepRetiredSessions` exists only for the 30 day hard delete; there is no expiry audit
-  event, matching every other product.
+  actor id reads as revoked in the list and the status filter, so they agree with resolve refusing it. Expiry
+  is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
+- **Sessions are never deleted**, so the Sessions page is a full history and a session's row keeps the key its
+  logs need. Settled with the product owner.
 
 ## Proxies
 
@@ -114,13 +118,13 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 
 ## Host and path grammar
 
-`agent-vault-host-pattern.ts` is the grammar of record. The CLI matcher (`packages/agentvault/match.go`) does
+`agent-vault-host-pattern-fns.ts` is the grammar of record. The CLI matcher (`packages/agentvault/match.go`) does
 the matching at runtime and reimplements the same rules, so a change here needs the same change there.
 
 - Paths are rejected *in a host pattern*; `allowedPathPrefixes` is a separate filter that never decodes.
   A filter is judged by what it *allows*, so the refusals are the load-bearing half. The grammar is an
   allowlist because a prefix is compared against the escaped path: one carrying anything Go's encoder
-  rewrites could never match. `agent-vault-path-prefix.ts` is the grammar of record, `policy.go` the match.
+  rewrites could never match. `agent-vault-path-prefix-schemas.ts` is the grammar of record, `policy.go` the match.
 - Methods and path prefixes are filters on a service that already matched, **not** part of the match key,
   so the same-bundle host conflict rule stays host-only. Two services on one host differing only by method
   is still a hard reject.
@@ -156,6 +160,69 @@ header" is the name in every layer; unqualified "header" means the credential's 
 - A PATCH replaces the whole list. Omitting a row's `value` keeps what is sealed; every other field
   replaces.
 
+## Variables
+
+A variable is a key and a sealed value on one bundle. A service uses one as `{{KEY}}` in its token, username,
+password, a custom header value or a substitution value. Nothing else takes one: a host pattern, method or
+path decides what a service can reach, so it stays literal.
+
+- **Sealed text names a variable by id, `{{<uuid>}}`, never by key.** The key form exists only at the API
+  boundary: a service write maps keys to ids before it seals (`toStoredVariableReferences`), reading the
+  primary, since a variable created a moment earlier may not be on a replica yet. So a rename is one row.
+- The variable list and its Used By rows read the primary too. The service sheet refetches the list the moment
+  it creates a variable, and a replica that has not caught up would drop the new key and fail the reference
+  to it.
+- `agent_vault_service_variable_references` holds a row per field per variable. It drives Used By, the delete
+  refusal, and the keys the service sheet lists under a stored value. **Resolve does not read it**: it pulls
+  the ids out of the decrypted fields, so a service saved mid-poll can never leave the two describing
+  different versions of a field.
+- **The rows are read off the stored text, never off the request**: `findStoredVariableIds`, kept to the
+  bundle's own variables, which is exactly what resolve expands. Nothing in the database can compare the
+  rows with sealed text, and an id with no row is a variable the delete refusal lets go while a service still
+  sends it. Any new path that seals a service field derives its rows the same way, and moving a service to
+  another bundle would have to remap its ids, since resolve expands only its own bundle's.
+- A stored value never comes back in any form, a lone `{{KEY}}` included. The sheet lists the keys a stored
+  field uses under the field and keeps the field masked until it is retyped. Settled: putting a lone
+  reference back in its field made it the one stored field that shows, and left a field mixing text with a
+  reference looking like it used none.
+- A save rebuilds the rows of each value it seals: both credential fields whenever the secret is written, since
+  a kept basic half is sealed again with it, and each header or substitution whose value arrived. An omitted
+  value keeps its sealed text and its rows, and a dropped header or substitution takes its rows through the
+  foreign key.
+- Only text that arrived is mapped from keys to ids. A kept basic half is already stored text, and one saved
+  before variables existed has to keep reaching the host as it was, braces included.
+- A credential update merges against the service read before the lock, so under the lock it re-reads the row
+  and returns a 409 if the type changed, or, for a partial basic update, the sealed secret did. Otherwise the
+  half left out is written back stale, and its rows describe text that is no longer sealed. That first read is
+  on the primary (`findByIdInAccessBundle`): a replica still behind the previous save would 409 the next one.
+- The `variableId` key is `DEFERRABLE INITIALLY DEFERRED`. A bundle delete cascades to its services and its
+  variables in one statement, and an immediate check can fire before the service cascade has removed the
+  rows, depending on which constraint was created first. The refusal that matters is the check under the
+  bundle lock (a 409 naming the services); the deferred key is the backstop and only raises at commit.
+- Every `{{...}}` in a value must be an existing, well-formed key, or the save fails. A malformed one is
+  refused without quoting it, because the text was cut from a secret. Placeholders and header prefixes (the
+  bearer prefix and custom header prefixes) can't contain double braces, which would read as a reference the
+  proxy never fills in. A service saved with braces there before the rule still resolves, but its next save
+  has to drop them; that is intended, not something to grandfather. A variable's own value is sent as is and
+  never expanded again, which is also how a service sends a literal `{{`.
+- **A value takes at most 3 references** (`AGENT_VAULT_MAX_REFERENCES_PER_FIELD`), and a repeat counts each
+  time: repeating one short reference is what fills a field in to millions of characters. The field schemas
+  refuse a fourth with a 422, and the service sheet checks the same limit before it saves.
+- **That limit is the only bound on a filled-in field**: what was typed plus three 8,192 character values,
+  about 32K characters, and nothing measures a field filled in. Settled over an exact 8,192 cap, which every
+  service save and value change had to measure against other rows' current values, so two of them measured
+  before the bundle lock and together pushed a field past it. Closing that under the lock would have meant
+  decrypting every field that uses the variable inside the transaction.
+- Resolve reads variable values on a replica, then asks the primary for any id the replica lacks, since each
+  query can land on a different replica. An id with no variable behind it on either stays as text and is
+  logged rather than dropping the service, which would also drop the service's method and path restrictions.
+  Values saved before variables existed hold no id tokens, so they pass through untouched.
+- Admin only, reads included: every variable route checks `Edit` on access bundles, which a member lacks,
+  and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
+  an empty list would claim they use none). Every value is sealed;
+  `isSecret` only decides whether the list returns it. The value route is a GET with no-store headers and
+  one audit event per read.
+
 ## Credentials at rest
 
 - The KMS cipher pair is project-scoped (`KmsDataKey.SecretManager`) and built once per resolve.
@@ -168,6 +235,50 @@ header" is the name in every layer; unqualified "header" means the credential's 
 - The sealed secret has three write states: a value re-seals, `null` clears it (passthrough), `undefined`
   leaves it alone. `$decryptCredential` reads NULL as passthrough, so a bearer row that lost its secret would
   silently stop attaching a credential.
+
+## Session logs
+
+Metadata only (method, host, path, status, decision), never bodies, headers or the query string. The agent is
+hostile input: nothing it sends may erase or hide its own records, so a refused chunk counts as dropped, never
+lost silently.
+
+- **Bytes go proxy to the customer's bucket to the browser.** Infisical keeps one index row per chunk and never
+  seals or opens one. There is no Postgres payload path; AWS only.
+- **PAM session recording is a separate product.** The overlap with `pam-session-recording` is deliberate; don't
+  share code with it.
+- **Keys.** Mint wraps a per-session log key with the project data key, even while session logs are off, and
+  puts `sha256(sessionId|v1)` in front because the KMS wrap takes no context. Unwrap only through
+  `openSessionLogKey`, so a key copied onto another row is refused. A key that won't open turns logs off for
+  that session on resolve: session logs must never break brokering.
+- **The AAD is `sha256("{sessionId}|{chunkId}|v1")`**, pinned by one vector in the CLI's
+  `session_log_crypto_test.go` and `sessionLogDecrypt.test.ts`. Chunk ids are lowercase UUIDv7s because the
+  browser rebuilds the AAD from Postgres's string. A change here is a change in all three places.
+- **Write order is insert, commit, presign.** Row first so a failed upload is a visible gap, presign after commit
+  so no network call holds the config row lock. The PUT is create-only (`If-None-Match: *`, the proxy reads 412
+  as uploaded) with the length and `x-amz-checksum-sha256` signed, so S3 refuses any other body.
+- **A chunk row records its bucket and full key**, and reads presign only chunks in the current bucket, so
+  switching back makes old history readable. A re-send moves the row only through `moveToDestinationIfCurrent`,
+  whose one UPDATE checks the settings. No row locks.
+- **`chunks.proxyId` has no FK**: the browser checks each record's `proxyId` against it, and `SET NULL` would make
+  a deleted proxy's chunks unreadable.
+- **Chunks are accepted for 24 hours after a session ends**, including when its owner is deleted (read from
+  `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
+- **History (`/logs`) pages on `chunkId`, the tail (`/logs/tail`) on our `createdAt`**, re-reading
+  `AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS` and deduping by chunk id. A late chunk has an old id and a new
+  `createdAt`, so the tail can't page on the id.
+- **The org chunk limit is a lifetime counter** and internal: no env var, not documented, surfaced only as
+  `isStorageFull`. Kept as abuse prevention until usage and plans are decided. At the limit writes are refused,
+  never drop-oldest, which would let flooding evict evidence.
+- **Nothing deletes from the bucket**, so the IAM policy asks for no `s3:DeleteObject`.
+- **Session logs are a paid feature (`agentVaultByoS3`).** Without it, nothing new is recorded, but saved logs
+  stay readable. That breaks the License Checks rule in `CODE_QUALITY.md` on purpose. Turning session logs off
+  and removing their connection stay allowed, or the connection could never be deleted.
+- **`/agent-vault/app-connections/aws/*` are the shared builders in `app-connection-endpoints.ts` called with
+  a `resolveScope`.** The project comes from the server, a connection outside Agent Vault is a 404 before any
+  permission check, and responses leave out `projectId`. `createAppConnection` refuses any app but AWS in this
+  project, the general routes included. The UI uses the general `/app-connections/aws` routes.
+- **The admin role carries the CASL `AppConnections` subject**, the one exception to `hasRole(Admin)`, because
+  the shared connection modals read CASL.
 
 ## The CLI
 
@@ -192,3 +303,6 @@ header" is the name in every layer; unqualified "header" means the credential's 
 - The service template catalog (`helpers/agentVaultTemplates.ts`) is frontend-only and never persisted; icons
   re-derive from the stored host pattern. The backend must never learn a service name.
 - Docs links live in `pages/agent-vault/agent-vault-docs-urls.ts`; keep them pointing at existing pages.
+- The browser fetches session logs straight from S3, so `frontend/index.html`'s CSP `connect-src` must list
+  every host the SDK presigns: `*.s3.<region>`, the path-style `s3.<region>` used for dotted bucket names, and
+  both `s3-fips` forms. A region added to `AWSRegion` needs its hosts there too.

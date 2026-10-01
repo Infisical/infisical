@@ -56,13 +56,6 @@ const GatewayWithAuthMethodSchema = SanitizedGatewayV2Schema.extend({
 const AwsAuthMethodInputSchema = z
   .object({
     method: z.literal(ResourceAuthMethodType.Aws),
-    stsEndpoint: z
-      .string()
-      .trim()
-      .min(1)
-      .max(255)
-      .default("https://sts.amazonaws.com/")
-      .describe(GATEWAYS.AUTH_METHOD.stsEndpoint),
     allowedPrincipalArns: validatePrincipalArns.describe(GATEWAYS.AUTH_METHOD.allowedPrincipalArns),
     allowedAccountIds: validateAccountIds
       .refine((val) => val.length <= 2048, "Allowed account IDs must be at most 2048 characters")
@@ -163,7 +156,6 @@ const toCreateAuthMethodArg = (input: TSettableAuthMethodInput) => {
     return {
       method: ResourceAuthMethodType.Aws,
       config: {
-        stsEndpoint: input.stsEndpoint,
         allowedPrincipalArns: input.allowedPrincipalArns,
         allowedAccountIds: input.allowedAccountIds
       }
@@ -204,7 +196,6 @@ const toSetAuthMethodArg = (input: TSettableAuthMethodInput) => {
   if (input.method === ResourceAuthMethodType.Aws) {
     return {
       method: ResourceAuthMethodType.Aws,
-      stsEndpoint: input.stsEndpoint,
       allowedPrincipalArns: input.allowedPrincipalArns,
       allowedAccountIds: input.allowedAccountIds
     } as const;

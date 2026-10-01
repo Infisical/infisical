@@ -15,6 +15,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
@@ -349,7 +350,36 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.MicrosoftIntune
 ];
 
-export const listAppConnectionOptions = (projectType?: ProjectType) => {
+const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
+
+export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
+  switch (projectType) {
+    case ProjectType.SecretManager:
+      return (
+        Boolean(SECRET_SYNC_APP_CONNECTION_MAP[app]) ||
+        Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[app]) ||
+        EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(app)
+      );
+    case ProjectType.SecretScanning:
+      return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[app]);
+    case ProjectType.CertificateManager:
+      return PKI_APP_CONNECTIONS.includes(app);
+    case ProjectType.KMS:
+      return false;
+    case ProjectType.PAM:
+      return false;
+    case ProjectType.AgentVault:
+      return AGENT_VAULT_APP_CONNECTIONS.includes(app);
+    default:
+      return true;
+  }
+};
+
+// Products whose allowed connection types are also enforced on create. Other products only use them to filter the picker.
+// Add a product only once nothing creates other connection types in it through the API.
+export const PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES = [ProjectType.AgentVault];
+
+export const listAppConnectionOptions = (orgId: string, projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
     getGitHubConnectionListItem(),
@@ -439,26 +469,13 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getStripeConnectionListItem()
   ]
     .filter((option) => {
-      switch (projectType) {
-        case ProjectType.SecretManager:
-          return (
-            Boolean(SECRET_SYNC_APP_CONNECTION_MAP[option.app]) ||
-            Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[option.app]) ||
-            EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(option.app)
-          );
-        case ProjectType.SecretScanning:
-          return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[option.app]);
-        case ProjectType.CertificateManager:
-          return PKI_APP_CONNECTIONS.includes(option.app);
-        case ProjectType.KMS:
+      if (option.app === AppConnection.Stripe) {
+        if (!getConfig().WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.includes(orgId)) {
           return false;
-        case ProjectType.PAM:
-          return false;
-        case ProjectType.AgentVault:
-          return false;
-        default:
-          return true;
+        }
       }
+
+      return isAppConnectionAllowedInProject(option.app, projectType);
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 };

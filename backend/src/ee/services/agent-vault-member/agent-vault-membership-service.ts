@@ -18,6 +18,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TGenericPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { AgentVaultIdentities } from "@app/services/license-client";
@@ -31,7 +32,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias-fns";
 
-import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
 import { AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
 
@@ -53,7 +53,7 @@ export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMe
 
 export type TListAgentVaultProductMembersDTO = {
   projectId: string;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
 };
 
 export type TListAgentVaultMembersDTO = {
@@ -62,7 +62,7 @@ export type TListAgentVaultMembersDTO = {
   search?: string;
   limit: number;
   offset: number;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
 };
 
 export type TAgentVaultActorRef = { type: AgentVaultMemberType; id: string };
@@ -79,19 +79,19 @@ export type TAddAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
   projectId: string;
   emails: string[];
   role: ProjectMembershipRole.Admin | ProjectMembershipRole.Member;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
 };
 
 export type TUpdateAgentVaultProductMemberDTO = {
   projectId: string;
   actor: TAgentVaultActorRef;
   role: string;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
 };
 
 export type TRevokeAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
   projectId: string;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
 };
 
 // actorName is for the audit body; the response schemas do not select it.
@@ -132,7 +132,7 @@ const actorToIds = (actor: TAgentVaultActorRef): TAgentVaultMemberIds => ({
   machineIdentityIds: actor.type === AgentVaultMemberType.MachineIdentity ? [actor.id] : []
 });
 
-const isSelf = (actor: TAgentVaultActorRef, ctx: TAgentVaultActorContext) =>
+const isSelf = (actor: TAgentVaultActorRef, ctx: TGenericPermission) =>
   (actor.type === AgentVaultMemberType.User && ctx.actor === ActorType.USER && actor.id === ctx.actorId) ||
   (actor.type === AgentVaultMemberType.MachineIdentity && ctx.actor === ActorType.IDENTITY && actor.id === ctx.actorId);
 
@@ -149,7 +149,7 @@ export const agentVaultMembershipServiceFactory = ({
   permissionService,
   usageMeteringService
 }: TAgentVaultMembershipServiceFactoryDep) => {
-  const getActorPermission = (projectId: string, ctx: TAgentVaultActorContext) =>
+  const getActorPermission = (projectId: string, ctx: TGenericPermission) =>
     permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
@@ -159,7 +159,7 @@ export const agentVaultMembershipServiceFactory = ({
       actionProjectType: ActionProjectType.AgentVault
     });
 
-  const checkProductAdmin = async (projectId: string, ctx: TAgentVaultActorContext) => {
+  const checkProductAdmin = async (projectId: string, ctx: TGenericPermission) => {
     const { hasRole } = await getActorPermission(projectId, ctx);
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only Agent Vault admins can perform this action" });

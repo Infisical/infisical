@@ -10,7 +10,6 @@ import { TImmutableDBKeys } from "./models";
 export const ResourceAwsAuthsSchema = z.object({
   id: z.string().guid(),
   authMethodId: z.string().guid(),
-  stsEndpoint: z.string(),
   allowedPrincipalArns: z.string().default(""),
   allowedAccountIds: z.string().default(""),
   createdAt: z.date(),

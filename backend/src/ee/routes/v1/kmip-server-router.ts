@@ -60,7 +60,6 @@ const KmipServerWithAuthMethodSchema = SanitizedKmipServerSchema.extend({
 
 const AwsAuthMethodInputSchema = z.object({
   method: z.literal(ResourceAuthMethodType.Aws),
-  stsEndpoint: z.string().trim().min(1).max(255).default("https://sts.amazonaws.com/"),
   allowedPrincipalArns: validatePrincipalArns,
   allowedAccountIds: validateAccountIds.refine(
     (val) => val.length <= 2048,
@@ -121,7 +120,6 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
           ? {
               method: "aws" as const,
               config: {
-                stsEndpoint: authMethodInput.stsEndpoint,
                 allowedPrincipalArns: authMethodInput.allowedPrincipalArns,
                 allowedAccountIds: authMethodInput.allowedAccountIds
               }
@@ -281,7 +279,6 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
           authMethodInput.method === ResourceAuthMethodType.Aws
             ? {
                 method: "aws" as const,
-                stsEndpoint: authMethodInput.stsEndpoint,
                 allowedPrincipalArns: authMethodInput.allowedPrincipalArns,
                 allowedAccountIds: authMethodInput.allowedAccountIds
               }

@@ -2,7 +2,7 @@ import z from "zod";
 
 import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccessStatus, PamAccountType, PamAccountWarning, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
+import { PamAccountType, PamAccountWarning, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
 import {
   ACCOUNT_TYPE_CONFIGS,
   buildPamAccountTypeMetadata,
@@ -25,6 +25,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -71,12 +72,14 @@ const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
     .describe("Whether the account's template has scheduled credential health checks turned on."),
   requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
   requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
-  accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
+  accessStatus: z.nativeEnum(ApprovalAccessStatus).describe("Current approval status for the caller"),
   grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
   pendingRequestId: z.string().nullable().describe("The caller's pending access request for this account, if any"),
   canBreakGlass: z.boolean().describe("Whether the caller may self-approve their own pending request for this account"),
   supportsCredentialReveal: z.boolean().describe("Whether this account type stores a credential that can be revealed"),
-  credentialAccessStatus: z.nativeEnum(PamAccessStatus).describe("Current credential-approval status for the caller"),
+  credentialAccessStatus: z
+    .nativeEnum(ApprovalAccessStatus)
+    .describe("Current credential-approval status for the caller"),
   credentialPendingRequestId: z
     .string()
     .nullable()
@@ -454,7 +457,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
                 .describe(
                   "Whether launching a session for this account requires MFA verification. Machine identities cannot satisfy MFA, so launch is rejected for them when this is true."
                 ),
-              accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
+              accessStatus: z.nativeEnum(ApprovalAccessStatus).describe("Current approval status for the caller"),
               grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
               pendingRequestId: z
                 .string()

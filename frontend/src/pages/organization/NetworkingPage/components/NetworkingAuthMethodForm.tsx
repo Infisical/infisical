@@ -41,7 +41,6 @@ const REVIEW_MODE_OPTIONS = [
 const schema = z
   .object({
     method: z.enum(["aws", "gcp", "kubernetes", "token"]),
-    stsEndpoint: z.string(),
     allowedPrincipalArns: z.string(),
     allowedAccountIds: z.string(),
     gcpAuthType: z.enum(["gce", "iam"]),
@@ -152,7 +151,6 @@ export const toNetworkingAuthMethodInput = (form: FormData) => {
   if (form.method === "aws") {
     return {
       method: "aws" as const,
-      stsEndpoint: form.stsEndpoint,
       allowedPrincipalArns: form.allowedPrincipalArns,
       allowedAccountIds: form.allowedAccountIds
     };
@@ -196,7 +194,6 @@ type AuthMethod =
   | {
       method: "aws";
       config: {
-        stsEndpoint: string;
         allowedPrincipalArns: string;
         allowedAccountIds: string;
       };
@@ -260,7 +257,6 @@ export const NetworkingAuthMethodForm = ({
   );
   const defaultValues: FormData = {
     method: initialMethod,
-    stsEndpoint: initialAws?.stsEndpoint ?? "https://sts.amazonaws.com/",
     allowedPrincipalArns: initialAws?.allowedPrincipalArns ?? "",
     allowedAccountIds: initialAws?.allowedAccountIds ?? "",
     gcpAuthType: initialGcp?.type ?? "gce",
@@ -298,7 +294,6 @@ export const NetworkingAuthMethodForm = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentMethod.method,
-    initialAws?.stsEndpoint,
     initialAws?.allowedPrincipalArns,
     initialAws?.allowedAccountIds,
     initialGcp?.type,
@@ -400,24 +395,6 @@ export const NetworkingAuthMethodForm = ({
                     disabled={isDisabled || isSaving}
                     isError={Boolean(error)}
                     placeholder="123456789012, ..."
-                  />
-                  <FieldError errors={[error]} />
-                </FieldContent>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="stsEndpoint"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>STS Endpoint</FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    disabled={isDisabled || isSaving}
-                    isError={Boolean(error)}
-                    placeholder="https://sts.amazonaws.com/"
                   />
                   <FieldError errors={[error]} />
                 </FieldContent>
