@@ -89,7 +89,7 @@ export type TSecretAccessApprovalBridgeServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue">;
   secretAccessApprovalResource: Pick<
     TSecretAccessApprovalResource,
-    "canAccess" | "validateConstraints" | "postApprovalTxRoutine"
+    "canAccess" | "validateConstraints" | "postApprovalTxRoutine" | "isBreakGlassEligible"
   >;
 };
 

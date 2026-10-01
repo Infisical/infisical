@@ -107,7 +107,7 @@ export const accessApprovalPolicyServiceFactory = ({
   }) => {
     const resolvedEnvIds = envId ? [envId] : envIds;
     if (!resolvedEnvIds?.length) {
-      throw new BadRequestError({ message: "Must provide either envId or envIds" }); // this message is not good for error
+      throw new BadRequestError({ message: "Must provide either envId or envIds" }); 
     }
 
     for (const id of resolvedEnvIds) {

@@ -8,7 +8,12 @@ import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 
-import { ApprovalPolicyType, ApprovalRequestGrantStatus } from "../approval-policy-enums";
+import {
+  ApprovalPolicyType,
+  ApprovalRequestGrantStatus,
+  ApproverType,
+  EnforcementLevel
+} from "../approval-policy-enums";
 import { TApprovalRequestGrantsDALFactory } from "../approval-request-dal";
 import { SecretAccessPolicyRequestDataSchema } from "./secret-access-policy-schemas";
 import { TSecretAccessPolicyConstraints, TSecretAccessRequestData } from "./secret-access-policy-types";
@@ -69,6 +74,26 @@ export const validateSecretAccessConstraints = (
   };
 };
 
+export const isSecretAccessBreakGlassEligible = ({
+  enforcementLevel,
+  bypassers,
+  actorUserId,
+  actorGroupIds
+}: {
+  enforcementLevel: string;
+  bypassers: { type: string; id?: string | null }[];
+  actorUserId: string;
+  actorGroupIds: Set<string>;
+}) => {
+  if (enforcementLevel !== EnforcementLevel.Soft) return false;
+  if (bypassers.length === 0) return true;
+
+  return bypassers.some((bypasser) => {
+    if (!bypasser.id) return false;
+    return bypasser.type === ApproverType.Group ? actorGroupIds.has(bypasser.id) : bypasser.id === actorUserId;
+  });
+};
+
 export const getSecretAccessGrantWindow = (
   { isTemporary, temporaryRange }: Pick<TSecretAccessRequestData, "isTemporary" | "temporaryRange">,
   now: Date = new Date()
@@ -95,12 +120,14 @@ export const createSecretAccessGrantWithPrivilege = async (
     projectId,
     requestId,
     granteeUserId,
-    data
+    data,
+    breakGlass
   }: {
     projectId: string;
     requestId: string;
     granteeUserId: string;
     data: TSecretAccessRequestData;
+    breakGlass?: { bypassReason: string };
   },
   { approvalRequestGrantsDAL, additionalPrivilegeDAL }: TCreateSecretAccessGrantWithPrivilegeDep,
   tx: Knex
@@ -115,7 +142,9 @@ export const createSecretAccessGrantWithPrivilege = async (
       status: ApprovalRequestGrantStatus.Active,
       type: ApprovalPolicyType.SecretAccess,
       attributes: data,
-      expiresAt: grantWindow?.endTime ?? null
+      expiresAt: grantWindow?.endTime ?? null,
+      isBreakGlass: Boolean(breakGlass),
+      bypassReason: breakGlass?.bypassReason ?? null
     },
     tx
   );

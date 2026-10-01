@@ -1,14 +1,16 @@
+import { TApprovalPolicies } from "@app/db/schemas";
 import { NotFoundError } from "@app/lib/errors";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy-dal";
 import { ApprovalPolicyType, ApprovalRequestGrantStatus } from "../approval-policy-enums";
-import { TApprovalResource } from "../approval-policy-types";
+import { TApprovalActor, TApprovalResource } from "../approval-policy-types";
 import { TApprovalRequestGrantsDALFactory } from "../approval-request-dal";
 import {
   createSecretAccessGrantWithPrivilege,
   getSecretAccessRequestData,
   hasSameAccessCriteria,
+  isSecretAccessBreakGlassEligible,
   validateSecretAccessConstraints
 } from "./secret-access-policy-fns";
 import { SecretAccessPolicyRequestDataSchema } from "./secret-access-policy-schemas";
@@ -61,7 +63,7 @@ export const secretAccessApprovalResourceFactory = ({
     validateConstraints: (policy, requestData) =>
       validateSecretAccessConstraints(policy.constraints.constraints, requestData),
 
-    postApprovalTxRoutine: async (request, tx) => {
+    postApprovalTxRoutine: async (request, tx, breakGlass?: { bypassReason: string }) => {
       const { requesterId } = request;
       if (!requesterId) {
         throw new NotFoundError({ message: "The user who created this access request no longer exists" });
@@ -72,12 +74,31 @@ export const secretAccessApprovalResourceFactory = ({
           projectId: request.projectId,
           requestId: request.id,
           granteeUserId: requesterId,
-          data: getSecretAccessRequestData(request)
+          data: getSecretAccessRequestData(request),
+          breakGlass
         },
         { approvalRequestGrantsDAL, additionalPrivilegeDAL },
         tx
       );
 
       return { grantId: grant.id };
-    }
+    },
+
+    isBreakGlassEligible: async ({
+      policy,
+      bypassers,
+      actor,
+      userGroupIds
+    }: {
+      policy: Pick<TApprovalPolicies, "enforcementLevel">;
+      bypassers: { type: string; id?: string | null }[];
+      actor: Pick<TApprovalActor, "id">;
+      userGroupIds: Set<string>;
+    }) =>
+      isSecretAccessBreakGlassEligible({
+        enforcementLevel: policy.enforcementLevel,
+        bypassers,
+        actorUserId: actor.id,
+        actorGroupIds: userGroupIds
+      })
   }) satisfies TApprovalResource<TSecretAccessPolicyInputs, TSecretAccessPolicy, TSecretAccessRequestData>;

@@ -1,6 +1,7 @@
 import {
   getSecretAccessGrantWindow,
   hasSameAccessCriteria,
+  isSecretAccessBreakGlassEligible,
   validateSecretAccessConstraints
 } from "./secret-access-policy-fns";
 import { TSecretAccessRequestData } from "./secret-access-policy-types";
@@ -95,5 +96,59 @@ describe("hasSameAccessCriteria", () => {
 
   test("unreadable stored data never matches", () => {
     expect(hasSameAccessCriteria(null, { permissions: storedRequest.permissions, isTemporary: false })).toBe(false);
+  });
+});
+
+describe("isSecretAccessBreakGlassEligible", () => {
+  const actorUserId = "a3c1f0e2-5b7d-4e8f-9a0b-1c2d3e4f5a6b";
+  const groupId = "0f9e8d7c-6b5a-4e3d-8c2b-1a0f9e8d7c6b";
+  const actorGroupIds = new Set([groupId]);
+
+  test("a hard policy can never be bypassed", () => {
+    expect(
+      isSecretAccessBreakGlassEligible({ enforcementLevel: "hard", bypassers: [], actorUserId, actorGroupIds })
+    ).toBe(false);
+  });
+
+  test("a soft policy with no bypassers lets anyone bypass", () => {
+    expect(
+      isSecretAccessBreakGlassEligible({ enforcementLevel: "soft", bypassers: [], actorUserId, actorGroupIds })
+    ).toBe(true);
+  });
+
+  test("a soft policy lets a listed user bypass", () => {
+    expect(
+      isSecretAccessBreakGlassEligible({
+        enforcementLevel: "soft",
+        bypassers: [{ type: "user", id: actorUserId }],
+        actorUserId,
+        actorGroupIds
+      })
+    ).toBe(true);
+  });
+
+  test("a soft policy lets a member of a listed group bypass", () => {
+    expect(
+      isSecretAccessBreakGlassEligible({
+        enforcementLevel: "soft",
+        bypassers: [{ type: "group", id: groupId }],
+        actorUserId,
+        actorGroupIds
+      })
+    ).toBe(true);
+  });
+
+  test("a soft policy refuses a user who is on neither list", () => {
+    expect(
+      isSecretAccessBreakGlassEligible({
+        enforcementLevel: "soft",
+        bypassers: [
+          { type: "user", id: "ffffffff-0000-4000-8000-000000000000" },
+          { type: "group", id: "eeeeeeee-0000-4000-8000-000000000000" }
+        ],
+        actorUserId,
+        actorGroupIds
+      })
+    ).toBe(false);
   });
 });

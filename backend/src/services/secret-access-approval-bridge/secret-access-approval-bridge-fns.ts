@@ -106,7 +106,7 @@ export const toLegacyAccessApprovalRequest = (
   updatedAt: Date;
   editedByUserId: null;
   editNote: null;
-  bypassReason: null;
+  bypassReason: string | null;
   privilegeDeletedAt: null;
 } => {
   if (!request.policyId) {
@@ -143,7 +143,7 @@ export const toLegacyAccessApprovalRequest = (
     updatedAt: request.updatedAt,
     editedByUserId: null,
     editNote: null,
-    bypassReason: null,
+    bypassReason: grant?.isBreakGlass ? (grant.bypassReason ?? null) : null,
     privilegeDeletedAt: null
   };
 };
@@ -261,6 +261,80 @@ export const notifySecretAccessStepApprovers = async (
     }
   } catch (error) {
     logger.error(error, `Failed to notify access request approvers [requestId=${request.id}]`);
+  }
+};
+
+type TNotifySecretAccessBypassDep = Pick<
+  TSecretAccessApprovalBridgeServiceFactoryDep,
+  "userDAL" | "userGroupMembershipDAL" | "notificationService" | "smtpService"
+>;
+
+export const notifySecretAccessBypass = async (
+  {
+    request,
+    project,
+    policy,
+    actingUser,
+    environmentName,
+    bypassReason
+  }: {
+    request: Pick<TSecretAccessRequestRow, "id" | "organizationId">;
+    project: { id: string; name: string; orgId: string };
+    policy: { secretPath: string; approvers: { type: ApproverType; id?: string | null }[] };
+    actingUser: Pick<TUsers, "id" | "firstName" | "lastName" | "email">;
+    environmentName: string;
+    bypassReason: string;
+  },
+  { userDAL, userGroupMembershipDAL, notificationService, smtpService }: TNotifySecretAccessBypassDep
+) => {
+  try {
+    const approverUserIds = await resolveStepApproverUserIds(
+      {
+        requiredApprovals: 1,
+        approvers: policy.approvers.flatMap(({ type, id }) => (id ? [{ type, id }] : []))
+      },
+      userGroupMembershipDAL
+    );
+    if (!approverUserIds.size) return;
+
+    const approverUsers = await userDAL.find({ $in: { id: [...approverUserIds] } });
+    if (!approverUsers.length) return;
+
+    const cfg = getConfig();
+    const actingUserFullName = [actingUser.firstName, actingUser.lastName].filter(Boolean).join(" ");
+    const approvalPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}/approval?selectedTab=resource-requests&requestId=${encodeURIComponent(request.id)}`;
+
+    await notificationService.createUserNotifications(
+      approverUsers.map((approver) => ({
+        userId: approver.id,
+        orgId: request.organizationId,
+        type: NotificationType.ACCESS_POLICY_BYPASSED,
+        title: "Secret Access Policy Bypassed",
+        body: `**${actingUserFullName}** (${actingUser.email}) has accessed a secret in **${policy.secretPath || "/"}** in the **${environmentName}** environment for project **${project.name}** without obtaining the required approval.`,
+        link: approvalPath
+      }))
+    );
+
+    const recipients = approverUsers.filter((approver) => approver.email).map((approver) => approver.email!);
+    if (recipients.length) {
+      await smtpService.sendMail({
+        recipients,
+        subjectLine: "Infisical Secret Access Policy Bypassed",
+        substitutions: {
+          projectName: project.name,
+          requesterFullName: actingUserFullName,
+          requesterEmail: actingUser.email,
+          bypassReason,
+          secretPath: policy.secretPath || "/",
+          environment: environmentName,
+          approvalUrl: `${cfg.SITE_URL}${approvalPath}`,
+          requestType: "access"
+        },
+        template: SmtpTemplates.AccessSecretRequestBypassed
+      });
+    }
+  } catch (error) {
+    logger.error(error, `Failed to notify access request approvers of a bypass [requestId=${request.id}]`);
   }
 };
 

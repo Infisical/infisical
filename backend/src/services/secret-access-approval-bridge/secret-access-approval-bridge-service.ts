@@ -35,7 +35,8 @@ import { createApprovalRequestWithSteps } from "@app/services/approval-policy/ap
 import {
   getSecretAccessRequestData,
   hasSameAccessCriteria,
-  parseSecretAccessRequestData
+  parseSecretAccessRequestData,
+  validateSecretAccessConstraints
 } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import {
   TSecretAccessPolicy,
@@ -50,6 +51,7 @@ import {
   collectSecretAccessRequestUserIds,
   composeSecretAccessRequestRows,
   isPolicySubjectMatch,
+  notifySecretAccessBypass,
   notifySecretAccessStepApprovers,
   secretAccessApprovalPolicyExists,
   toLegacyAccessApprovalRequest
@@ -929,10 +931,6 @@ export const secretAccessApprovalBridgeServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TReviewSecretAccessApprovalRequestDTO) => {
-    if (bypassReason !== undefined) {
-      throw new BadRequestError({ message: "Break-glass approvals are not supported for this request yet" });
-    }
-
     const request = await $findRequestById(requestId);
     if (!request.policyId) {
       throw new BadRequestError({ message: "The policy associated with this access request has been deleted." });
@@ -973,7 +971,11 @@ export const secretAccessApprovalBridgeServiceFactory = ({
 
     const isSelfReview = actorId === request.requesterId;
     const isApproving = status === ApprovalStatus.APPROVED;
-    if (isSelfReview && isApproving && !policy.allowedSelfApprovals) {
+    const isBreakGlassAttempt = bypassReason !== undefined;
+    if (isBreakGlassAttempt && !isApproving) {
+      throw new BadRequestError({ message: "A bypass reason can only be provided when approving a request" });
+    }
+    if (isSelfReview && isApproving && !policy.allowedSelfApprovals && !isBreakGlassAttempt) {
       throw new BadRequestError({
         message: "Failed to review access approval request. Users are not authorized to review their own request."
       });
@@ -984,6 +986,107 @@ export const secretAccessApprovalBridgeServiceFactory = ({
     const project = await projectDAL.findById(request.projectId);
     if (!project) {
       throw new NotFoundError({ message: "The project associated with this access request was not found." });
+    }
+
+    if (isBreakGlassAttempt) {
+      const trimmedBypassReason = bypassReason.trim();
+      if (trimmedBypassReason.length < 10) {
+        throw new BadRequestError({
+          message: "A bypass reason of at least 10 characters is required to bypass approvals"
+        });
+      }
+
+      const isEligible =
+        actor === ActorType.USER &&
+        isSelfReview &&
+        (await secretAccessApprovalResource.isBreakGlassEligible({
+          policy,
+          bypassers: policy.bypassers,
+          actor: { id: actorId },
+          userGroupIds: actorGroupIds
+        }));
+      if (!isEligible) {
+        throw new ForbiddenRequestError({ message: "You are not permitted to bypass approval on this request" });
+      }
+
+      const constraintValidation = validateSecretAccessConstraints({ maxTimePeriod: policy.maxTimePeriod }, data);
+      if (!constraintValidation.valid) {
+        throw new BadRequestError({
+          message: `Policy constraints not met: ${constraintValidation.errors?.join("; ") ?? "unknown"}`
+        });
+      }
+
+      const approval = await approvalRequestDAL.transaction(async (tx) => {
+        const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
+        if (!locked || locked.status !== ApprovalRequestStatus.Pending) {
+          throw new BadRequestError({ message: "The request has been closed" });
+        }
+        if (locked.expiresAt && new Date(locked.expiresAt) < new Date()) {
+          throw new BadRequestError({ message: "This access request has expired and can no longer be reviewed" });
+        }
+
+        const steps = await approvalRequestStepsDAL.find({ requestId }, { tx, sort: [["stepNumber", "asc"]] });
+        const currentStep = steps.find((step) => step.stepNumber === locked.currentStep);
+        if (!currentStep) throw new BadRequestError({ message: "Current step not found" });
+
+        const completedAt = new Date();
+        await Promise.all(
+          steps.map((step) =>
+            approvalRequestStepsDAL.updateById(
+              step.id,
+              { status: ApprovalRequestStepStatus.Completed, completedAt },
+              tx
+            )
+          )
+        );
+
+        const stepApprovals = await approvalRequestApprovalsDAL.find({ stepId: currentStep.id }, { tx });
+        const bypassApproval =
+          stepApprovals.find((a) => a.approverUserId === actorId) ??
+          (await approvalRequestApprovalsDAL.create(
+            {
+              stepId: currentStep.id,
+              approverUserId: actorId,
+              decision: ApprovalRequestApprovalDecision.Approved
+            },
+            tx
+          ));
+
+        const approved = await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Approved }, tx);
+        await secretAccessApprovalResource.postApprovalTxRoutine(approved as TApprovalRequest, tx, {
+          bypassReason: trimmedBypassReason
+        });
+
+        return bypassApproval;
+      });
+
+      const actingUser = await userDAL.findById(actorId);
+      if (actingUser) {
+        await notifySecretAccessBypass(
+          {
+            request,
+            project,
+            policy,
+            actingUser,
+            environmentName: policy.environment?.name ?? data.envSlug,
+            bypassReason: trimmedBypassReason
+          },
+          { userDAL, userGroupMembershipDAL, notificationService, smtpService }
+        );
+      }
+
+      const createdAt = approval.createdAt ?? new Date();
+      return {
+        id: approval.id,
+        requestId,
+        reviewerUserId: approval.approverUserId,
+        status: approval.decision,
+        createdAt,
+        updatedAt: createdAt,
+        projectId: request.projectId,
+        policyId: policy.id,
+        isBypass: true
+      };
     }
 
     const { approval, nextStep } = await approvalRequestDAL.transaction(async (tx) => {

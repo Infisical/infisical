@@ -278,8 +278,8 @@ describe("Access approval request lifecycle on the global system", () => {
     expect(patchRes.json().message).toBe("Access requests on the global approval system cannot be edited");
 
     const bypassRes = await reviewAccessRequest(requestId, { status: "approved", bypassReason: "need it right now" });
-    expect(bypassRes.statusCode).toBe(400);
-    expect(bypassRes.json().message).toBe("Break-glass approvals are not supported for this request yet");
+    expect(bypassRes.statusCode).toBe(403);
+    expect(bypassRes.json().message).toBe("You are not permitted to bypass approval on this request");
   });
 
   test("A policy's max time period caps the requested range and survives an update that omits it", async () => {
@@ -695,5 +695,183 @@ describe("Per-step required approvals on the global system", () => {
     const state = await getRequestState(requestId);
     expect(state.status).toBe("approved");
     expect(state.privilege).toBeDefined();
+  });
+});
+
+describe("Break-glass approvals on the global system", () => {
+  const approvers: TApprover[] = [];
+  let approver: TApprover;
+
+  const bypassReason = "incident INC-1234 needs the production key now";
+
+  const createSoftPolicy = async (body: { secretPath: string; bypassers?: { type: "user"; id: string }[] }) => {
+    const res = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/access-approvals/policies",
+      headers: authHeaders(),
+      body: {
+        projectSlug: seedData1.project.slug,
+        environment: seedData1.environment.slug,
+        name: `break-glass-${body.secretPath.slice(1)}`,
+        secretPath: body.secretPath,
+        approvers: [{ type: ApproverType.User, id: approver.userId }],
+        approvals: 1,
+        allowedSelfApprovals: false,
+        enforcementLevel: "soft",
+        ...(body.bypassers && { bypassers: body.bypassers })
+      }
+    });
+    expect(res.statusCode).toBe(200);
+    const { approval } = res.json();
+    globalPolicyIds.push(approval.id);
+    return approval as { id: string };
+  };
+
+  beforeAll(async () => {
+    initLogger();
+    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    approver = await createApproverUser();
+    approvers.push(approver);
+  });
+
+  afterEach(async () => {
+    const db = getDb();
+    const globalIds = globalPolicyIds.splice(0);
+
+    await db(TableName.AdditionalPrivilege)
+      .where({ actorUserId: seedData1.id })
+      .whereLike("name", "requested-privilege-%")
+      .del();
+    await db(TableName.ApprovalRequestGrants)
+      .where({ projectId: seedData1.project.id, type: SECRET_ACCESS_TYPE })
+      .del();
+    if (globalIds.length) {
+      await db(TableName.ApprovalRequests).whereIn("policyId", globalIds).del();
+      await db(TableName.ApprovalPolicies).whereIn("id", globalIds).del();
+    }
+  });
+
+  afterAll(async () => {
+    const db = getDb();
+    const userIds = approvers.map((el) => el.userId);
+    await db(TableName.AuthTokenSession).whereIn("userId", userIds).del();
+    await db(TableName.Membership).whereIn("actorUserId", userIds).del();
+    await db(TableName.Users).whereIn("id", userIds).del();
+  });
+
+  test("A listed bypasser approves their own request without the approver and gets a break-glass grant", async () => {
+    const db = getDb();
+    const secretPath = "/break-glass-listed";
+    const policy = await createSoftPolicy({ secretPath, bypassers: [{ type: "user", id: seedData1.id }] });
+
+    const createRes = await createAccessRequest(secretPath, { isTemporary: true, temporaryRange: "1h" });
+    expect(createRes.statusCode).toBe(200);
+    const requestId = createRes.json().approval.id as string;
+
+    const selfApproveRes = await reviewAccessRequest(requestId, { status: "approved" });
+    expect(selfApproveRes.statusCode).toBe(400);
+
+    const bypassRes = await reviewAccessRequest(requestId, { status: "approved", bypassReason });
+    expect(bypassRes.statusCode).toBe(200);
+    expect(bypassRes.json().review.status).toBe("approved");
+    expect(bypassRes.json().review.reviewerUserId).toBe(seedData1.id);
+
+    const state = await getRequestState(requestId);
+    expect(state.status).toBe("approved");
+    expect(state.grant?.status).toBe("active");
+    expect(state.grant?.isBreakGlass).toBe(true);
+    expect(state.grant?.bypassReason).toBe(bypassReason);
+    expect(state.grant?.granteeUserId).toBe(seedData1.id);
+    expect(state.privilege?.actorUserId).toBe(seedData1.id);
+    expect(state.privilege?.temporaryRange).toBe("1h");
+
+    const steps = await db(TableName.ApprovalRequestSteps).where({ requestId });
+    expect(steps.length).toBeGreaterThan(0);
+    expect(steps.every((step) => step.status === "completed")).toBe(true);
+
+    const listed = (await listAccessRequests()).json().requests.find((el: { id: string }) => el.id === requestId);
+    expect(listed.policyId).toBe(policy.id);
+    expect(listed.status).toBe("approved");
+    expect(listed.bypassReason).toBe(bypassReason);
+    expect(listed.policy.bypassers).toEqual([seedData1.id]);
+  });
+
+  test("A soft policy with no bypassers lets the requester break glass", async () => {
+    const secretPath = "/break-glass-anyone";
+    await createSoftPolicy({ secretPath });
+
+    const createRes = await createAccessRequest(secretPath);
+    expect(createRes.statusCode).toBe(200);
+    const requestId = createRes.json().approval.id as string;
+
+    const bypassRes = await reviewAccessRequest(requestId, { status: "approved", bypassReason });
+    expect(bypassRes.statusCode).toBe(200);
+
+    const state = await getRequestState(requestId);
+    expect(state.status).toBe("approved");
+    expect(state.grant?.isBreakGlass).toBe(true);
+    expect(state.grant?.expiresAt).toBeNull();
+    expect(state.privilege?.isTemporary).toBe(false);
+  });
+
+  test("A requester who is not on a non-empty bypasser list is refused", async () => {
+    const secretPath = "/break-glass-not-listed";
+    await createSoftPolicy({ secretPath, bypassers: [{ type: "user", id: approver.userId }] });
+
+    const createRes = await createAccessRequest(secretPath);
+    expect(createRes.statusCode).toBe(200);
+    const requestId = createRes.json().approval.id as string;
+
+    const bypassRes = await reviewAccessRequest(requestId, { status: "approved", bypassReason });
+    expect(bypassRes.statusCode).toBe(403);
+    expect(bypassRes.json().message).toBe("You are not permitted to bypass approval on this request");
+
+    const state = await getRequestState(requestId);
+    expect(state.status).toBe("pending");
+    expect(state.grant).toBeUndefined();
+  });
+
+  test("Only the requester can break glass, even when the actor is an approver and a bypasser", async () => {
+    const secretPath = "/break-glass-not-requester";
+    await createSoftPolicy({ secretPath, bypassers: [{ type: "user", id: approver.userId }] });
+
+    const createRes = await createAccessRequest(secretPath);
+    expect(createRes.statusCode).toBe(200);
+    const requestId = createRes.json().approval.id as string;
+
+    const bypassRes = await testServer.inject({
+      method: "POST",
+      url: `/api/v1/access-approvals/requests/${requestId}/review`,
+      headers: { authorization: `Bearer ${approver.token}` },
+      body: { status: "approved", bypassReason }
+    });
+    expect(bypassRes.statusCode).toBe(403);
+    expect(bypassRes.json().message).toBe("You are not permitted to bypass approval on this request");
+
+    const normalRes = await reviewAs(approver, requestId);
+    expect(normalRes.statusCode).toBe(200);
+    const state = await getRequestState(requestId);
+    expect(state.status).toBe("approved");
+    expect(state.grant?.isBreakGlass).toBe(false);
+    expect(state.grant?.bypassReason).toBeNull();
+  });
+
+  test("A bypass reason is rejected on a rejection and when it is too short", async () => {
+    const secretPath = "/break-glass-bad-input";
+    await createSoftPolicy({ secretPath });
+
+    const createRes = await createAccessRequest(secretPath);
+    expect(createRes.statusCode).toBe(200);
+    const requestId = createRes.json().approval.id as string;
+
+    const rejectRes = await reviewAccessRequest(requestId, { status: "rejected", bypassReason });
+    expect(rejectRes.statusCode).toBe(400);
+    expect(rejectRes.json().message).toBe("A bypass reason can only be provided when approving a request");
+
+    const shortRes = await reviewAccessRequest(requestId, { status: "approved", bypassReason: "too short" });
+    expect(shortRes.statusCode).toBe(422);
+
+    const state = await getRequestState(requestId);
+    expect(state.status).toBe("pending");
   });
 });

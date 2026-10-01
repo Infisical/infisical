@@ -1832,6 +1832,13 @@ export const approvalPolicyServiceFactory = ({
     const request = grant.requestId ? await approvalRequestDAL.findById(grant.requestId) : null;
     const assertDomainCanRevoke = resources[grantPolicyType]?.assertCanRevokeGrant;
 
+    // Secret access grants are managed on secret-access-approval-bridge service
+    if (grantPolicyType === ApprovalPolicyType.SecretAccess) {
+      throw new BadRequestError({
+        message: "This grant is for a secret access request. Revoke it from the access request instead."
+      });
+    }
+
     if (assertDomainCanRevoke) {
       await assertDomainCanRevoke({ grant, request, actor });
     } else {
@@ -1873,12 +1880,6 @@ export const approvalPolicyServiceFactory = ({
           );
         }
       }
-    }
-
-    if (grantPolicyType === ApprovalPolicyType.SecretAccess) {
-      throw new BadRequestError({
-        message: "This grant is for a secret access request. Revoke it from the access request instead."
-      });
     }
 
     if (grant.status !== ApprovalRequestGrantStatus.Active) {
