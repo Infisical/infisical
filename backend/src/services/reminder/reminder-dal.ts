@@ -5,6 +5,8 @@ import { TableName, TProjectEnvironments, TProjects, TSecretFolders, TSecretsV2 
 import { RemindersSchema } from "@app/db/schemas/reminders";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
+const UUID_PATTERN = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
+
 export type TReminderDALFactory = ReturnType<typeof reminderDALFactory>;
 
 export const reminderDALFactory = (db: TDbClient) => {
@@ -50,9 +52,12 @@ export const reminderDALFactory = (db: TDbClient) => {
         void qb
           .select(db.raw("1"))
           .from(TableName.SecretV2)
-          // The CASE keeps a non-uuid resourceId from failing the cast for the whole query.
+          // alerts.resourceId is text and secrets_v2.id is a uuid, so the id is cast to compare them. The
+          // cast only runs on values shaped like a uuid, so a malformed id becomes NULL (and is reaped)
+          // instead of failing the whole query.
           .whereRaw(
-            `"${TableName.SecretV2}"."id" = CASE WHEN "${TableName.Alert}"."resourceId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN "${TableName.Alert}"."resourceId"::uuid END`
+            `"${TableName.SecretV2}"."id" = CASE WHEN "${TableName.Alert}"."resourceId" ~* ? THEN "${TableName.Alert}"."resourceId"::uuid END`,
+            [UUID_PATTERN]
           );
       })
       .limit(limit)
