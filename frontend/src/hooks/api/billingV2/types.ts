@@ -146,6 +146,7 @@ export type BillingV2Entitlement = {
   // Formatted grace deadline while the trial's conversion charge waits on the customer's bank. The
   // product stays trialing and usable until then, even though trialEndsAt has passed.
   trialPaymentDueAt?: string | null;
+  trialPlanPaymentDueAt?: string | null;
   // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
   // the product has no dated line.
   renewsOn?: string | null;
@@ -372,8 +373,8 @@ export type TConfirmBillingV2TrialPaymentDTO = {
 };
 
 export type BillingV2ConfirmTrialPaymentResult = {
-  outcome: "checkout_created";
-  checkoutUrl: string;
+  outcome: "checkout_created" | "payment_action_required";
+  redirectUrl: string;
 };
 
 // License-server machine codes the billing UI branches on (read from the error's details.code).

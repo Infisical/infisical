@@ -170,6 +170,8 @@ const subscriptionItemSchema = z
     trialPlan: z.string().nullish(),
     trialPlanEndsAt: z.number().nullish(),
     trialPaymentDueAt: z.number().nullish(),
+    // An upgrade trial held for the customer's payment approval: trialPlan stays live until then.
+    trialPlanPaymentDueAt: z.number().nullish(),
     // Present only when this item's product OR plan is deprecated (product supersedes plan). The item
     // keeps working; this carries the contract-specific message (the sunset date comes from the catalog).
     deprecation: z.object({ reason: z.string().nullish(), nextSteps: z.string().nullish() }).nullish(),
@@ -225,7 +227,7 @@ export const subscriptionResponseSchema = z
     currentPeriodEnd: z.number().nullish(),
     recurringTotal: z.number().nullish(),
     billing: subscriptionBillingSchema.nullish(),
-    payment: z.object({ state: z.string(), actionUrl: z.string() }).passthrough().nullish(),
+    payment: z.object({ state: z.string().nullish(), actionUrl: z.string().nullish() }).passthrough().nullish(),
     tier: z.string().optional(),
     items: z.array(subscriptionItemSchema)
   })
@@ -480,19 +482,20 @@ export type TConfirmTrialPaymentPayload = {
   returnUrl: string;
 };
 
-// A Stripe Checkout that runs the bank's approval step for a trial conversion charge. 409
+const httpUrlSchema = z
+  .string()
+  .url()
+  .refine((val) => val.startsWith("http://") || val.startsWith("https://"), {
+    message: "URL must start with http:// or https://"
+  });
+
+// Where the customer approves a trial conversion charge their bank held: a Stripe Checkout for a
+// free-tier trial, or the invoice of a change Stripe holds for an upgrade trial. 409
 // no_trial_awaiting_payment when nothing is waiting.
-const confirmTrialPaymentResultSchema = z
-  .object({
-    outcome: z.literal("checkout_created"),
-    checkoutUrl: z
-      .string()
-      .url()
-      .refine((val) => val.startsWith("http://") || val.startsWith("https://"), {
-        message: "URL must start with http:// or https://"
-      })
-  })
-  .passthrough();
+const confirmTrialPaymentResultSchema = z.discriminatedUnion("outcome", [
+  z.object({ outcome: z.literal("checkout_created"), checkoutUrl: httpUrlSchema }).passthrough(),
+  z.object({ outcome: z.literal("payment_action_required"), paymentUrl: httpUrlSchema }).passthrough()
+]);
 export type TConfirmTrialPaymentResult = z.infer<typeof confirmTrialPaymentResultSchema>;
 export { confirmTrialPaymentResultSchema };
 

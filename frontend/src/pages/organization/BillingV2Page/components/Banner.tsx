@@ -50,7 +50,7 @@ const PAYMENT_ALERT: Record<
   needs_action: {
     variant: "warning",
     icon: TriangleAlert,
-    title: "Your bank needs you to approve your renewal payment",
+    title: "Your bank needs you to approve a payment",
     body: "Approve the payment to keep your products active.",
     actionLabel: "Approve Payment"
   },

@@ -100,7 +100,10 @@ const BILLING_ERROR_MESSAGES: Record<string, string> = {
   no_payment_method: "Add a payment method before making this change.",
   subscription_syncing: "Your billing details are still syncing. Please try again in a moment.",
   plan_deprecated: "This plan is being retired and is no longer available.",
-  no_trial_awaiting_payment: "There's no trial payment waiting to be completed. It may have already gone through."
+  no_trial_awaiting_payment: "There's no trial payment waiting to be completed. It may have already gone through.",
+  change_awaiting_payment:
+    "You have a payment waiting for your bank's approval. Complete it from the banner above before making another change.",
+  lock_held: "Another billing change is in progress. Please try again in a moment."
 };
 
 const throwIfResponseError = async (res: Response): Promise<void> => {

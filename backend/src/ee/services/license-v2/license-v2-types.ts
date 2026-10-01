@@ -145,6 +145,7 @@ export type BillingV2Entitlement = {
   trialPlanEndsAt?: string | null;
   trialPlanDaysLeft?: number | null;
   trialPaymentDueAt?: string | null;
+  trialPlanPaymentDueAt?: string | null;
   // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
   // the product has no dated line (e.g. feature-only entitlements).
   renewsOn?: string | null;

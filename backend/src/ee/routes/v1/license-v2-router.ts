@@ -128,6 +128,7 @@ const BillingV2EntitlementSchema = z.object({
   trialPlanEndsAt: z.string().nullable().optional(),
   trialPlanDaysLeft: z.number().nullable().optional(),
   trialPaymentDueAt: z.string().nullable().optional(),
+  trialPlanPaymentDueAt: z.string().nullable().optional(),
   renewsOn: z.string().nullable().optional(),
   deprecation: BillingV2DeprecationSchema.extend({
     kind: z.enum(["product", "plan"])
@@ -787,13 +788,13 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "confirmBillingTrialPayment",
       description:
-        "Open a Stripe Checkout where the customer approves a trial conversion charge their bank is holding (for example 3D Secure). The trial converts once the checkout completes.",
+        "Get the page where the customer approves a trial conversion charge their bank is holding (for example 3D Secure): a Stripe Checkout for a trial on the free tier, or the invoice of the held change for an upgrade trial. The trial converts once it is paid.",
       params: z.object({ organizationId: z.string().trim().uuid() }),
       body: z.object({ returnPath: ReturnPathSchema }),
       response: {
         200: z.object({
-          outcome: z.literal("checkout_created"),
-          checkoutUrl: z.string()
+          outcome: z.enum(["checkout_created", "payment_action_required"]),
+          redirectUrl: z.string()
         })
       }
     },

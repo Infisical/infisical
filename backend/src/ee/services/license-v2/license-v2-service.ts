@@ -683,7 +683,8 @@ export const licenseV2ServiceFactory = ({
                 trialPlanName:
                   catalogProduct?.plans.find((candidate) => candidate.tier === item.trialPlan)?.name ?? item.trialPlan,
                 trialPlanEndsAt: formatDate(item.trialPlanEndsAt),
-                trialPlanDaysLeft: daysUntil(item.trialPlanEndsAt)
+                trialPlanDaysLeft: item.trialPlanPaymentDueAt ? null : daysUntil(item.trialPlanEndsAt),
+                trialPlanPaymentDueAt: formatDate(item.trialPlanPaymentDueAt)
               }
             : {}),
           trialPaymentDueAt: formatDate(item.trialPaymentDueAt),
@@ -862,9 +863,10 @@ export const licenseV2ServiceFactory = ({
       nextCharge
     };
 
-    const itemsAwaitingPayment = (subscription?.items ?? []).flatMap((item) =>
-      item.trialPaymentDueAt ? [{ productId: item.productId, dueAt: item.trialPaymentDueAt }] : []
-    );
+    const itemsAwaitingPayment = (subscription?.items ?? []).flatMap((item) => {
+      const dueAt = item.trialPaymentDueAt ?? item.trialPlanPaymentDueAt;
+      return dueAt ? [{ productId: item.productId, dueAt }] : [];
+    });
     const trialPaymentDue =
       itemsAwaitingPayment.length > 0
         ? {
@@ -1452,13 +1454,17 @@ export const licenseV2ServiceFactory = ({
     return { outcome: result.outcome };
   };
 
-  // Hands back a Stripe Checkout that runs the bank's approval step for a trial conversion charge. The
-  // trial converts via webhook once it completes, so the revalidation window is held open like checkout.
+  // The trial converts via webhook once the customer approves, so the revalidation window is held open
+  // like checkout.
   const confirmTrialPayment = async ({ orgId, actor, returnPath }: TConfirmBillingV2TrialPaymentDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.confirmTrialPayment(orgId, { returnUrl: buildReturnUrl(orgId, returnPath) });
+    if (result.outcome === "payment_action_required") {
+      const { paymentUrl } = await paymentActionRequired(orgId, result.paymentUrl);
+      return { outcome: result.outcome, redirectUrl: paymentUrl };
+    }
     await licenseClient.markEntitlementsStale(orgId, { checkout: true });
-    return { outcome: result.outcome, checkoutUrl: result.checkoutUrl };
+    return { outcome: result.outcome, redirectUrl: result.checkoutUrl };
   };
 
   // Remove a single product from a multi-product subscription, the operation the Stripe Customer

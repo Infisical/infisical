@@ -82,6 +82,7 @@ const ActiveProductCard = ({
   const trialDaysLeft = entitlement?.trialPlanDaysLeft;
   // Past trialEndsAt but still usable: the conversion charge is waiting on the customer's bank.
   const trialPaymentDueAt = entitlement?.trialPaymentDueAt;
+  const trialPlanPaymentDueAt = entitlement?.trialPlanPaymentDueAt;
 
   // The headline figure steps down a size when a second amount line shares the block.
   const priceLines = [annualCommitted > 0, monthlyRecurring > 0, onDemand > 0].filter(
@@ -172,10 +173,10 @@ const ActiveProductCard = ({
               <Clock className="size-3.5 shrink-0 text-warning" />
               Trialing {trialPlanName}
             </span>
-            {trialPaymentDueAt && (
+            {trialPlanPaymentDueAt && (
               <span className="shrink-0 text-xs font-medium text-warning">Payment needed</span>
             )}
-            {!trialPaymentDueAt && trialDaysLeft !== null && trialDaysLeft !== undefined && (
+            {!trialPlanPaymentDueAt && trialDaysLeft !== null && trialDaysLeft !== undefined && (
               <span className="shrink-0 text-xs font-medium text-warning tabular-nums">
                 {trialDaysLeft === 0
                   ? "Ends today"
@@ -184,9 +185,9 @@ const ActiveProductCard = ({
             )}
           </div>
           <span className="text-[11px] text-muted">
-            {trialPaymentDueAt ? (
+            {trialPlanPaymentDueAt ? (
               <>
-                Access until {trialPaymentDueAt} · confirm payment to upgrade to {trialPlanName}
+                Access until {trialPlanPaymentDueAt} · confirm payment to upgrade to {trialPlanName}
               </>
             ) : (
               <>

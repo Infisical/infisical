@@ -192,8 +192,13 @@ export const BillingV2Page = () => {
         returnPath: window.location.pathname
       },
       {
-        onSuccess: ({ checkoutUrl }) => {
-          window.location.href = checkoutUrl;
+        onSuccess: ({ outcome, redirectUrl }) => {
+          // A Stripe hosted invoice never redirects back, so it opens beside the app.
+          if (outcome === "payment_action_required") {
+            window.open(redirectUrl, "_blank", "noopener,noreferrer");
+            return;
+          }
+          window.location.href = redirectUrl;
         }
       }
     );
