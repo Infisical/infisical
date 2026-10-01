@@ -1182,7 +1182,7 @@ export const overridableKeys = new Set(
   Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key))
 );
 
-export const validateOverrides = (config: Record<string, string>) => {
+export const validateOverrides = (config: Partial<Record<string, string>>) => {
   const allowedOverrides = Object.fromEntries(
     Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
   );

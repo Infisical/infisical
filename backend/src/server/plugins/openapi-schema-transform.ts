@@ -33,6 +33,15 @@ const overrideJsonSchema = (ctx: { zodSchema: { _zod: { def: FreeformRecord } };
   const { def } = ctx.zodSchema._zod;
   const { jsonSchema } = ctx;
 
+  // Zod drops a default from the input schema when the field transforms (booleanSchema, for one).
+  if (def.type === "default") {
+    try {
+      jsonSchema.default = JSON.parse(JSON.stringify(def.defaultValue)) as unknown;
+    } catch {
+      // undefined and bigint defaults have no JSON form
+    }
+  }
+
   if (def.type === "date") Object.assign(jsonSchema, { type: "string", format: "date-time" });
   if (def.type === "bigint") Object.assign(jsonSchema, { type: "integer", format: "int64" });
 

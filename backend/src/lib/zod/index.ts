@@ -35,16 +35,24 @@ export const re2Validator = (pattern: string | RegExp) => {
 };
 
 // Zod 3 never applied a default wrapped in .optional(); use this where a shared defaulted schema is made optional.
+const keepDescription = (from: z.ZodType, to: z.ZodType) =>
+  from.description && !to.description ? to.describe(from.description) : to;
+
 const stripDefault = (field: z.ZodType): z.ZodType => {
-  if (field instanceof z.ZodDefault) {
-    const inner = field.unwrap() as z.ZodType;
-    return field.description && !inner.description ? inner.describe(field.description) : inner;
+  if (field instanceof z.ZodDefault || field instanceof z.ZodPrefault) {
+    const inner = stripDefault(field.unwrap() as z.ZodType);
+    const checks = (field.def.checks ?? []) as z.core.$ZodCheck<unknown>[];
+    return keepDescription(field, checks.length ? inner.check(...checks) : inner);
+  }
+  if (field instanceof z.ZodOptional || field instanceof z.ZodNullable) {
+    const inner = stripDefault(field.unwrap() as z.ZodType);
+    if (inner === field.unwrap()) return field;
+    return keepDescription(field, (field as z.ZodType).clone({ ...field.def, innerType: inner } as never));
   }
   if (field instanceof z.ZodPipe && !(field.in instanceof z.ZodTransform)) {
     const input = stripDefault(field.in as z.ZodType);
     if (input === field.in) return field;
-    const rebuilt = field.clone({ ...field.def, in: input }) as z.ZodType;
-    return field.description ? rebuilt.describe(field.description) : rebuilt;
+    return keepDescription(field, field.clone({ ...field.def, in: input }) as z.ZodType);
   }
   return field;
 };

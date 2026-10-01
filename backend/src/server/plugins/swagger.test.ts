@@ -7,6 +7,9 @@ import Fastify, { FastifyInstance } from "fastify";
 import { beforeAll, describe, expect, test } from "vitest";
 import { z } from "zod";
 
+import { booleanSchema } from "@app/server/routes/sanitizedSchemas";
+import { AcmeCertificateAuthorityConfigurationSchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
+
 import { fastifySwagger } from "./swagger";
 
 const buildServer = async ({ corsOrigin }: { corsOrigin?: string | string[] } = {}) => {
@@ -93,6 +96,19 @@ const buildServer = async ({ corsOrigin }: { corsOrigin?: string | string[] } = 
   });
 
   app.get("/api/v1/schemaless-widgets", async () => ({ ok: true }));
+
+  app.route({
+    method: "POST",
+    url: "/api/v1/resolvers",
+    schema: {
+      hide: false,
+      operationId: "createResolver",
+      querystring: z.object({ recursive: booleanSchema.default(false) }),
+      body: AcmeCertificateAuthorityConfigurationSchema.pick({ dnsResolver: true }),
+      response: { 200: z.object({ ok: z.boolean() }) }
+    },
+    handler: async () => ({ ok: true })
+  });
 
   await app.ready();
   app.swagger();
@@ -318,6 +334,22 @@ describe("OpenAPI spec routes", () => {
     test("leaves routes out unless they opt in with hide: false", () => {
       expect(spec.paths).not.toHaveProperty("/api/v1/internal-widgets");
       expect(spec.paths).not.toHaveProperty("/api/v1/schemaless-widgets");
+    });
+
+    test("keeps the default of a request field that transforms", () => {
+      const { parameters } = operation("/api/v1/resolvers", "post") as TOperation & {
+        parameters: { name: string; schema: { default?: unknown } }[];
+      };
+
+      expect(parameters.find((parameter) => parameter.name === "recursive")?.schema.default).toBe(false);
+    });
+
+    test("documents the accepted formats of a request field, not just its string input", () => {
+      const dnsResolver = requestBody("/api/v1/resolvers", "post")?.properties?.dnsResolver as TJsonSchema & {
+        anyOf?: { format?: string }[];
+      };
+
+      expect(dnsResolver.anyOf?.map((option) => option.format)).toEqual(["ipv4", "ipv6"]);
     });
   });
 

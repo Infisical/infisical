@@ -99,7 +99,12 @@ port: z.number().int().min(1).max(65535),
   and `.prefault(x)` (not `.default(x)`) when the default must go through a transform.
 - **Response schemas never contain a plain `.transform()` or `z.preprocess`.** Responses are
   serialized with `z.encode`, which throws on one-way transforms. Use `bidirectionalTransform`
-  from `@app/lib/zod`. `route-schema-guards.test.ts` fails the build on either mistake.
+  from `@app/lib/zod`.
+- **A record keyed by an enum is `z.partialRecord`**, unless every key is genuinely required.
+  Zod 4's `z.record(z.enum([...]), ...)` rejects any object missing a key.
+- `route-schema-guards.test.ts` fails the build on each of these Zod 4 traps (and on a
+  `.default()` whose value the field's transform would have changed; use `.prefault()`), and the
+  failure message names the route, the field and the fix.
 
 Zod only validates shape and bounds. Rules that need to read other rows (does this `caId`
 exist, is it in this project, is this state transition legal) belong in the service, and

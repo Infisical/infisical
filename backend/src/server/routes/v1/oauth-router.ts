@@ -4,7 +4,6 @@ import { OauthClientsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { getRequestValidationIssues } from "@app/server/lib/request-validation-issues";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { isAllowedRedirectUri, parseBasicAuthHeader } from "@app/services/oauth-client/oauth-client-fns";
@@ -70,11 +69,12 @@ const tokenExchangeIdpSatisfiesMfaSchema = z
     "Declares that authentication at the identity provider satisfies this organization's MFA requirement. Required for token exchange in an organization that enforces MFA."
   );
 
+// The zod validator compiler hands Fastify the raw ZodError, whose `message` is the whole issue list
+// stringified as JSON. Summarise it instead, so error_description names the offending fields.
 const describeValidationError = (error: Error) => {
-  const issues = getRequestValidationIssues(error);
-  if (!issues) return error.message;
+  if (!(error instanceof z.ZodError)) return error.message;
 
-  return issues
+  return error.issues
     .map((issue) => (issue.path.length ? `${issue.path.join(".")}: ${issue.message}` : issue.message))
     .join("; ");
 };

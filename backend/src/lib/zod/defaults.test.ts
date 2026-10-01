@@ -22,6 +22,35 @@ describe("withoutDefault", () => {
     expect(schema.parse({ items: " a,b " })).toEqual({ items: ["a", "b"] });
     expect(schema.safeParse({ items: "a,b,c" }).success).toBe(false);
   });
+
+  test("strips defaults nested in optional, nullable and prefault wrappers", () => {
+    const schema = z.object({
+      optional: withoutDefault(z.string().default("a").optional()).optional(),
+      nullable: withoutDefault(z.string().default("b").nullable()).optional(),
+      prefault: withoutDefault(z.string().prefault("c")).optional()
+    });
+    expect(schema.parse({})).toEqual({});
+    expect(schema.parse({ nullable: null })).toEqual({ nullable: null });
+  });
+
+  test("keeps refinements chained after the default", () => {
+    const schema = z.object({
+      tags: withoutDefault(
+        z
+          .string()
+          .array()
+          .default([])
+          .refine((tags) => tags.length < 2, "At most one tag")
+      ).optional()
+    });
+    expect(schema.parse({})).toEqual({});
+    expect(schema.safeParse({ tags: ["a", "b"] }).success).toBe(false);
+  });
+
+  test("keeps the description of the field", () => {
+    expect(withoutDefault(z.string().default("a").describe("Name")).description).toBe("Name");
+    expect(withoutDefault(z.string().default("a").optional().describe("Name")).description).toBe("Name");
+  });
 });
 
 describe("partialWithoutDefaults", () => {

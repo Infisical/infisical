@@ -182,7 +182,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             message: "Page frame content contains unsafe HTML."
           })
           .optional(),
-        envOverrides: z.record(z.enum(Array.from(overridableKeys) as [string, ...string[]]), z.string()).optional()
+        envOverrides: z
+          .partialRecord(z.enum(Array.from(overridableKeys) as [string, ...string[]]), z.string())
+          .optional()
       }),
       response: {
         200: z.object({

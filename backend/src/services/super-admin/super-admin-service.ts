@@ -345,7 +345,7 @@ export const superAdminServiceFactory = ({
       gitHubAppConnectionSlug?: string;
       gitHubAppConnectionId?: string;
       gitHubAppConnectionPrivateKey?: string;
-      envOverrides?: Record<string, string>;
+      envOverrides?: Partial<Record<string, string>>;
     },
     userId: string
   ) => {
