@@ -41,8 +41,8 @@ export const CombinedIamPolicy = ({ groups = [], param = "use" }) => {
   if (picked.length === 0) {
     return (
       <p className="ifx-iamp__empty">
-        Pick the integrations you'll use in the selector at the top of the page, and a single policy
-        that covers all of them appears here.
+        Pick the integrations you'll use in the <a href="#use-case-picker">selector at the top of the page</a>,
+        and a single policy that covers all of them appears here.
       </p>
     );
   }

@@ -1,14 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-// A multi-select "I want to set up ___ with {product}" picker, plus a <UseCase> wrapper that shows
-// its children only for the picked use cases. The page passes the options in, so any guide whose
+// A multi-select "{prefix} ___ with {product}" picker, plus a <UseCase> wrapper that shows its
+// children only for the picked use cases. Pass `prefix` for wording that has to name the product
+// before the dropdown, such as "I want my AWS connection to work for", and leave `product` out. The page passes the options in, so any guide whose
 // steps vary by integration can reuse it. See snippets/app-connections/aws/use-cases.jsx for the
 // data shape and integrations/app-connections/aws.mdx for a page that uses it.
 //
 // Mintlify evaluates each exported component in isolation, so module-scope constants are out of
 // scope at render time. Both components below declare their own copies of the shared values.
 
-export const UseCasePicker = ({ product, groups = [], param = "use", noun = "an integration" }) => {
+export const UseCasePicker = ({
+  product,
+  prefix = "I want to set up",
+  groups = [],
+  param = "use",
+  noun = "an integration",
+  id = "use-case-picker"
+}) => {
   const SELECTION_EVENT = "use-case-picker-change";
 
   const options = groups.flatMap((group) => group.options);
@@ -97,9 +105,9 @@ export const UseCasePicker = ({ product, groups = [], param = "use", noun = "an 
   })();
 
   return (
-    <div ref={rootRef} className="ifx-avqs">
+    <div ref={rootRef} id={id} className="ifx-avqs">
       <p className="ifx-avqs__sentence">
-        I want to set up{" "}
+        {prefix}{" "}
         <span className="ifx-avqs__slot">
           <button
             ref={buttonRef}
@@ -164,7 +172,7 @@ export const UseCasePicker = ({ product, groups = [], param = "use", noun = "an 
             </button>
           </>
         ) : (
-          "Pick one or more to see only the steps they need, or leave it empty to see all of them."
+          "Pick one or more to view the steps they need."
         )}
       </p>
     </div>

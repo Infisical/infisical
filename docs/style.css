@@ -1274,6 +1274,8 @@ a.ifx-card__title:hover .ifx-card__chevron {
   padding: 1rem 1.25rem;
   border: 1px solid var(--ifx-card-line);
   background-color: var(--ifx-card-bg);
+  /* Matches Mintlify's heading scroll margin, so a link to the picker clears the sticky navbar. */
+  scroll-margin-top: 136px;
 }
 
 .ifx-avqs__sentence {

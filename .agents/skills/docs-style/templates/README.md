@@ -71,8 +71,8 @@ When a connection needs different setup for each integration that uses it, such 
 permission policy per integration, put a use case picker at the top of the page instead of a tab
 per integration. `snippets/UseCasePicker.jsx` exports two components:
 
-- `<UseCasePicker product="{Product}" groups={...} />`: an "I want to set up ___ with {Product}"
-  dropdown where the reader picks one or more integrations
+- `<UseCasePicker prefix="I want my {Product} connection to work for" groups={...} />`: a
+  sentence ending in a dropdown where the reader picks one or more integrations
 - `<UseCase use="{id}">`: shows its children only when the reader picked that id, or when they
   picked nothing, so the page reads as the complete guide by default. `use` takes a
   comma-separated list for content that several integrations share. Add `hideWhenEmpty` for
