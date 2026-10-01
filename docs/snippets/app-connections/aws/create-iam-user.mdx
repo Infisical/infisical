@@ -1,7 +1,7 @@
 {/* Bare <Step> elements, so a page can place them inside its own <Steps> and keep the numbering. */}
 
 <Step>
-    In the IAM console, [create an IAM user](https://console.aws.amazon.com/iam/home#/users/create) for Infisical. On the **Set permissions** page, select **Next** without choosing a policy. You'll add the permissions as an inline policy after the user exists.
+    In the IAM console, [create an IAM user](https://console.aws.amazon.com/iam/home#/users/create) for Infisical. Give it a **User name** that includes Infisical and what the connection is for, such as `infisical-payments-prod`, so CloudTrail logs show where its actions came from. On the **Set permissions** page, select **Next** without choosing a policy. You'll add the permissions as an inline policy after the user exists.
 </Step>
 <Step>
     Open the user's **Security credentials** tab, create an access key, and copy the **Access key ID** and **Secret access key**. AWS shows the secret access key only once.
