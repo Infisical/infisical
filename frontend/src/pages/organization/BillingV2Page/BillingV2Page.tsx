@@ -95,6 +95,8 @@ export const BillingV2Page = () => {
 
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
   const [removeProdId, setRemoveProdId] = useState<string | null>(null);
+  const [trialApproval, setTrialApproval] = useState<{ orgId: string; url: string } | null>(null);
+  const trialApprovalUrl = trialApproval?.orgId === selectedOrgId ? trialApproval.url : null;
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
@@ -186,16 +188,16 @@ export const BillingV2Page = () => {
   };
 
   const onCompleteTrialPayment = () => {
+    const orgIdAtRequest = selectedOrgId;
     confirmTrialPayment.mutate(
       {
-        orgId: selectedOrgId,
+        orgId: orgIdAtRequest,
         returnPath: window.location.pathname
       },
       {
         onSuccess: ({ outcome, redirectUrl }) => {
-          // A Stripe hosted invoice never redirects back, so it opens beside the app.
           if (outcome === "payment_action_required") {
-            window.open(redirectUrl, "_blank", "noopener,noreferrer");
+            setTrialApproval({ orgId: orgIdAtRequest, url: redirectUrl });
             return;
           }
           window.location.href = redirectUrl;
@@ -267,6 +269,7 @@ export const BillingV2Page = () => {
               onContact={onContact}
               onCompleteTrialPayment={onCompleteTrialPayment}
               isCompletingTrialPayment={confirmTrialPayment.isPending}
+              trialApprovalUrl={trialApprovalUrl}
               onRetry={onRetry}
               canManageBilling={canManageBilling}
             />

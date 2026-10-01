@@ -1,4 +1,4 @@
-import { CircleAlert, CreditCard } from "lucide-react";
+import { CircleAlert, CreditCard, ExternalLink } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle, Button } from "@app/components/v3";
 import { BillingV2CatalogProduct, BillingV2Overview, BillingV2Trial } from "@app/hooks/api";
@@ -59,6 +59,7 @@ type Props = {
   onContact: (prod: BillingV2CatalogProduct) => void;
   onCompleteTrialPayment: () => void;
   isCompletingTrialPayment: boolean;
+  trialApprovalUrl: string | null;
 };
 
 // A running upgrade trial is rendered on the product's own card, not here. This is only the
@@ -71,7 +72,8 @@ export const TrialBanners = ({
   onUpdatePayment,
   onContact,
   onCompleteTrialPayment,
-  isCompletingTrialPayment
+  isCompletingTrialPayment,
+  trialApprovalUrl
 }: Props) => {
   const canAct = overview.selfServe && !readOnly;
   // The trial history is a permanent log, so an unpaid end is stale news once the org has moved on:
@@ -102,14 +104,25 @@ export const TrialBanners = ({
             {overview.trialPaymentDue.dueAt}.
             {canAct && (
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  variant="warning"
-                  size="xs"
-                  isPending={isCompletingTrialPayment}
-                  onClick={onCompleteTrialPayment}
-                >
-                  Complete Payment
-                </Button>
+                {trialApprovalUrl ? (
+                  <Button
+                    variant="warning"
+                    size="xs"
+                    onClick={() => window.open(trialApprovalUrl, "_blank", "noopener,noreferrer")}
+                  >
+                    <ExternalLink />
+                    Approve Payment
+                  </Button>
+                ) : (
+                  <Button
+                    variant="warning"
+                    size="xs"
+                    isPending={isCompletingTrialPayment}
+                    onClick={onCompleteTrialPayment}
+                  >
+                    Complete Payment
+                  </Button>
+                )}
               </div>
             )}
           </AlertDescription>

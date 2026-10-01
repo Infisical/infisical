@@ -38,6 +38,7 @@ export type OverviewProps = {
   onContact: (prod: BillingV2CatalogProduct) => void;
   onCompleteTrialPayment: () => void;
   isCompletingTrialPayment: boolean;
+  trialApprovalUrl: string | null;
   onRetry: () => void;
   canManageBilling: boolean;
 };
@@ -64,6 +65,7 @@ export const Overview = ({
   onContact,
   onCompleteTrialPayment,
   isCompletingTrialPayment,
+  trialApprovalUrl,
   onRetry,
   canManageBilling
 }: OverviewProps) => {
@@ -205,6 +207,7 @@ export const Overview = ({
           onContact={onContact}
           onCompleteTrialPayment={onCompleteTrialPayment}
           isCompletingTrialPayment={isCompletingTrialPayment}
+          trialApprovalUrl={trialApprovalUrl}
         />
         <ProductsCard
           key="products"
@@ -243,6 +246,7 @@ export const Overview = ({
         onContact={onContact}
         onCompleteTrialPayment={onCompleteTrialPayment}
         isCompletingTrialPayment={isCompletingTrialPayment}
+        trialApprovalUrl={trialApprovalUrl}
       />
       <BillingHeaderCard overview={overview} catalog={catalog} />
       <ProductsCard
