@@ -112,7 +112,7 @@ const PasswordGeneratorModal = ({
         className="w-full max-w-lg rounded-lg border border-border-control bg-surface-raised shadow-xl"
       >
         <div className="p-6">
-          <h2 className="mb-1 text-xl font-medium text-foreground-soft">Generate Random Value</h2>
+          <h2 className="mb-1 text-xl font-normal text-foreground-soft">Generate Random Value</h2>
           <p className="mb-6 text-sm text-muted-secondary">Generate strong unique values</p>
           <div className="relative mb-4 rounded-md bg-surface-base p-4">
             <div className="flex items-center justify-between">

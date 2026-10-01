@@ -215,7 +215,7 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
                 <span className="text-xs font-bold text-white">!</span>
               </div>
               <div className="flex-1">
-                <h3 className="font-medium text-danger">Automatic Renewal Failed</h3>
+                <h3 className="font-normal text-danger">Automatic Renewal Failed</h3>
                 <p className="mt-1 text-sm text-danger">
                   The last automatic renewal attempt failed: {certificateData.renewalError}
                 </p>

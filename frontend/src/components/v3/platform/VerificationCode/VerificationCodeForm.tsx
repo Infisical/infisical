@@ -25,7 +25,7 @@ export const VerificationCodeHeader = ({
         <div className="flex min-w-0 items-baseline justify-between gap-3">
           <div
             aria-label={recipient}
-            className="ml-0.5 min-w-0 flex-1 truncate font-alliance text-2xl font-normal text-foreground"
+            className="ml-0.5 min-w-0 flex-1 truncate font-sans text-2xl font-normal text-foreground"
             title={recipient}
           >
             {recipient}
@@ -50,7 +50,7 @@ type VerificationCodeFormProps = {
   isDisabled?: boolean;
   isPending?: boolean;
   name: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, reason: "input" | "reset") => void;
   onSubmit: () => void | Promise<void>;
   submitVariant?: React.ComponentProps<typeof Button>["variant"];
   value: string;
@@ -74,15 +74,18 @@ export const VerificationCodeForm = ({
   const [hasAttemptedVerification, setHasAttemptedVerification] = useState(false);
   const [hasFailedVerification, setHasFailedVerification] = useState(false);
   const onSubmitRef = useRef(onSubmit);
+  const onChangeRef = useRef(onChange);
 
   useEffect(() => {
     onSubmitRef.current = onSubmit;
-  }, [onSubmit]);
+    onChangeRef.current = onChange;
+  }, [onChange, onSubmit]);
 
   useEffect(() => {
     if (hasError && !isPending) {
       setHasChangedSinceError(false);
       setHasFailedVerification(true);
+      onChangeRef.current("", "reset");
     }
   }, [hasError, isPending]);
 
@@ -95,7 +98,7 @@ export const VerificationCodeForm = ({
 
   const handleChange = (nextValue: string) => {
     if (hasError) setHasChangedSinceError(true);
-    onChange(nextValue);
+    onChange(nextValue, "input");
   };
 
   return (
@@ -115,7 +118,7 @@ export const VerificationCodeForm = ({
           fields={fields}
           onChange={handleChange}
           value={value}
-          isError={hasError && !hasChangedSinceError}
+          isError={hasError && !isPending && !hasChangedSinceError}
         />
         {error && <FieldError className="mt-0">{error}</FieldError>}
       </div>

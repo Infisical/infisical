@@ -119,7 +119,7 @@ export const PkiSyncFieldMappingsFields = ({ destination }: Props) => {
       </div>
 
       <div className="mt-6 rounded-lg border border-border bg-container p-4">
-        <h4 className="mb-2 text-sm font-medium text-foreground">Preview JSON Structure</h4>
+        <h4 className="mb-2 text-sm font-normal text-foreground">Preview JSON Structure</h4>
         <pre className="text-xs text-muted">
           {`{
   "id": "certificate-item-name",

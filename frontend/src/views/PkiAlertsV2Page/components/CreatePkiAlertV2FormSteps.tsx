@@ -473,7 +473,7 @@ export const CreatePkiAlertV2FormSteps = ({
                   className="space-y-2 rounded-md border border-border-control p-3"
                 >
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-foreground">
+                    <h4 className="text-sm font-normal text-foreground">
                       Filter Rule #{index + 1}
                     </h4>
                     <IconButton

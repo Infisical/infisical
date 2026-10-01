@@ -63,6 +63,7 @@ import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
+  SecretSortField,
   TGetASecretByIdDTO,
   TRedactSecretVersionValueDTO
 } from "../secret/secret-types";
@@ -111,6 +112,7 @@ import {
   TGetASecretDTO,
   TGetSecretReferencesTreeDTO,
   TGetSecretsDTO,
+  TGetSecretsMultiEnvDTO,
   TGetSecretsRawByFolderMappingsDTO,
   TGetSecretVersionsDTO,
   TMoveSecretsDTO,
@@ -1269,13 +1271,7 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     isInternal,
     ...params
-  }: Pick<
-    TGetSecretsDTO,
-    "actorId" | "actor" | "path" | "projectId" | "actorOrgId" | "actorAuthMethod" | "search" | "tagSlugs"
-  > & {
-    environments: string[];
-    isInternal?: boolean;
-  }) => {
+  }: TGetSecretsMultiEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1305,11 +1301,24 @@ export const secretV2BridgeServiceFactory = ({
       environment: folder.environment.slug
     }));
 
+    const isTimestampSort =
+      params.orderBy === SecretSortField.CreatedAt || params.orderBy === SecretSortField.UpdatedAt;
+    const sortEnvironment = params.sortEnvironment ?? (environments.length === 1 ? environments[0] : undefined);
+    if (isTimestampSort && !sortEnvironment) {
+      throw new BadRequestError({
+        message: "A sort environment is required for timestamp sorting when multiple environments are requested"
+      });
+    }
+
+    const sortFolderIds = isTimestampSort
+      ? folders.filter((folder) => folder.environment.slug === sortEnvironment).map((folder) => folder.id)
+      : undefined;
+
     const { secrets } = await getSecretsByFolderMappings(
       {
         projectId,
         folderMappings,
-        filters: params,
+        filters: { ...params, sortFolderIds },
         userId: actorId,
         filterByAction: ProjectPermissionSecretActions.DescribeSecret
       },
