@@ -53,6 +53,7 @@ import {
 import { DetailsCard } from "./cards/DetailsCard";
 import { InvoicesCard } from "./cards/InvoicesCard";
 import { PaymentCard } from "./cards/PaymentCard";
+import { ProductCardGrid } from "./ProductCardGrid";
 import { CardEmpty, ProductIcon } from "./shared";
 import { breakdownableDimensions } from "./UsageBreakdownSheet";
 
@@ -462,46 +463,43 @@ const UsageSources = ({
     <div className="flex flex-col gap-3">
       <SectionLabel>Where usage comes from</SectionLabel>
       <p className="text-xs text-muted">Expand a product to see its usage sources.</p>
-      <Accordion
-        type="multiple"
-        variant="ghost"
-        defaultValue={[meteredProducts[0].prod.id]}
-        className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2"
-      >
-        {meteredProducts.map(({ prod, ent }) => (
-          <Card key={prod.id} className="min-w-0 gap-0 p-0">
-            <AccordionItem value={prod.id}>
-              <AccordionTrigger className="px-5 group-data-[variant=ghost]/accordion:py-4">
-                <ProductIcon product={prod} size={32} />
-                <span className="min-w-0 text-sm font-medium text-foreground">{prod.name}</span>
-              </AccordionTrigger>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-5 pb-5">
-                {(ent.dimensions ?? []).map((dim) => (
-                  <Metric
-                    key={dim.key}
-                    label={dim.label}
-                    value={dim.used.toLocaleString()}
-                    note={meterNote(dim)}
-                  />
-                ))}
-              </div>
-              <AccordionContent className="border-t border-border px-5 group-data-[variant=ghost]/accordion:pt-4 group-data-[variant=ghost]/accordion:pb-5">
-                <div className="flex flex-col gap-5 divide-y divide-border [&>section:not(:first-child)]:pt-5">
-                  {breakdownableDimensions(ent).map((dim) => (
-                    <UsageMeterSources
+      <Accordion type="multiple" variant="ghost" defaultValue={[meteredProducts[0].prod.id]}>
+        <ProductCardGrid>
+          {meteredProducts.map(({ prod, ent }) => (
+            <Card key={prod.id} className="min-w-0 gap-0 p-0">
+              <AccordionItem value={prod.id}>
+                <AccordionTrigger className="px-5 group-data-[variant=ghost]/accordion:py-4">
+                  <ProductIcon product={prod} size={32} />
+                  <span className="min-w-0 text-sm font-medium text-foreground">{prod.name}</span>
+                </AccordionTrigger>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-5 pb-5">
+                  {(ent.dimensions ?? []).map((dim) => (
+                    <Metric
                       key={dim.key}
-                      prod={prod}
-                      dim={dim}
-                      orgId={orgId}
-                      scope={scope}
-                      onViewBreakdown={onViewBreakdown}
+                      label={dim.label}
+                      value={dim.used.toLocaleString()}
+                      note={meterNote(dim)}
                     />
                   ))}
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Card>
-        ))}
+                <AccordionContent className="border-t border-border px-5 group-data-[variant=ghost]/accordion:pt-4 group-data-[variant=ghost]/accordion:pb-5">
+                  <div className="flex flex-col gap-5 divide-y divide-border [&>section:not(:first-child)]:pt-5">
+                    {breakdownableDimensions(ent).map((dim) => (
+                      <UsageMeterSources
+                        key={dim.key}
+                        prod={prod}
+                        dim={dim}
+                        orgId={orgId}
+                        scope={scope}
+                        onViewBreakdown={onViewBreakdown}
+                      />
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Card>
+          ))}
+        </ProductCardGrid>
       </Accordion>
       <p className="text-xs text-muted">Current counts. Usage history isn&apos;t tracked.</p>
     </div>
@@ -594,7 +592,7 @@ export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode })
     </div>
     <div className="flex flex-col gap-3">
       <SectionLabel action={orgFilter}>Products</SectionLabel>
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+      <ProductCardGrid>
         {SKELETON_PRODUCTS.map((key) => (
           <Card key={key} className="gap-5">
             <div className="flex items-center gap-3">
@@ -614,7 +612,7 @@ export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode })
             </div>
           </Card>
         ))}
-      </div>
+      </ProductCardGrid>
     </div>
   </div>
 );
@@ -781,7 +779,7 @@ export const TabbedOverview = ({
               onContact={onContact}
             />
           )}
-          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+          <ProductCardGrid>
             {products.map(({ prod, ent }) => (
               <ProductSummaryCard
                 key={prod.id}
@@ -797,7 +795,7 @@ export const TabbedOverview = ({
                 onViewBreakdown={onViewBreakdown}
               />
             ))}
-          </div>
+          </ProductCardGrid>
         </div>
       </TabsContent>
 
