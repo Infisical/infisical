@@ -132,10 +132,10 @@ const InteractiveExample = ({ initialFields = 6 }: { initialFields?: number }) =
         </p>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => setFields(fields === 6 ? 8 : 6)}>
-            {fields === 6 ? "Use a recovery code" : "Use an email code"}
+            {fields === 6 ? "Use a Recovery Code" : "Use an Email Code"}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setSession((key) => key + 1)}>
-            Restart demo
+            Restart Demo
           </Button>
         </div>
       </div>

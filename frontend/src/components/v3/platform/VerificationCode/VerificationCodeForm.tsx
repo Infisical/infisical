@@ -50,7 +50,7 @@ type VerificationCodeFormProps = {
   isDisabled?: boolean;
   isPending?: boolean;
   name: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, reason: "input" | "reset") => void;
   onSubmit: () => void | Promise<void>;
   submitVariant?: React.ComponentProps<typeof Button>["variant"];
   value: string;
@@ -85,7 +85,7 @@ export const VerificationCodeForm = ({
     if (hasError && !isPending) {
       setHasChangedSinceError(false);
       setHasFailedVerification(true);
-      onChangeRef.current("");
+      onChangeRef.current("", "reset");
     }
   }, [hasError, isPending]);
 
@@ -98,7 +98,7 @@ export const VerificationCodeForm = ({
 
   const handleChange = (nextValue: string) => {
     if (hasError) setHasChangedSinceError(true);
-    onChange(nextValue);
+    onChange(nextValue, "input");
   };
 
   return (
