@@ -445,8 +445,8 @@ export const orgServiceFactory = ({
       );
     });
 
-    // Denials only get recorded on the new privilege system, so bust the cache or the first
-    // denial after upgrading gets missed.
+    // Denials only get recorded on the new privilege system, so bust the cache or denials right
+    // after upgrading get missed. Never throws, since the upgrade has already committed.
     await auditLogSettingsService.invalidateCache(actorOrgId);
 
     return upgradedOrg;

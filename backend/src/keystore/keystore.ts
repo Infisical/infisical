@@ -43,7 +43,8 @@ export const PgSqlLock = {
   OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
   OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`),
   ExternalGroupOrgRoleMappingUpdate: (orgId: string) =>
-    pgAdvisoryLockHashText(`external-group-org-role-mapping-update:${orgId}`)
+    pgAdvisoryLockHashText(`external-group-org-role-mapping-update:${orgId}`),
+  AuditLogSettingsUpdate: (scopeId: string) => pgAdvisoryLockHashText(`audit-log-settings-update:${scopeId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict

@@ -275,3 +275,18 @@ export const getAuditLogEventClass = (eventType: string): AuditLogEventClass =>
 
 export const getEventTypesForClasses = (eventClasses: AuditLogEventClass[]): EventType[] =>
   eventClasses.flatMap((eventClass) => AUDIT_LOG_EVENT_CLASS_MEMBERS[eventClass]);
+
+export const resolveEventClassFilter = (
+  eventClasses: AuditLogEventClass[],
+  eventType?: EventType[]
+): { eventType?: EventType[]; excludeEventType?: EventType[] } | null => {
+  if (eventType?.length) {
+    const matching = eventType.filter((type) => eventClasses.includes(getAuditLogEventClass(type)));
+    return matching.length ? { eventType: matching } : null;
+  }
+  if (eventClasses.includes(AuditLogEventClass.Management)) {
+    const excluded = AUDIT_LOG_EVENT_CLASSES.filter((eventClass) => !eventClasses.includes(eventClass));
+    return { excludeEventType: getEventTypesForClasses(excluded) };
+  }
+  return { eventType: getEventTypesForClasses(eventClasses) };
+};

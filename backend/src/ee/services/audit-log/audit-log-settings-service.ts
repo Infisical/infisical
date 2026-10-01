@@ -7,7 +7,7 @@ import {
   ProjectMembershipRole,
   TAuditLogSettings
 } from "@app/db/schemas";
-import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
@@ -155,7 +155,11 @@ export const auditLogSettingsServiceFactory = ({
   });
 
   const invalidateCache = async (orgId: string) => {
-    await keyStore.deleteItem(KeyStorePrefixes.AuditLogOrgSettings(orgId));
+    try {
+      await keyStore.deleteItem(KeyStorePrefixes.AuditLogOrgSettings(orgId));
+    } catch (error) {
+      logger.warn(error, `audit-log-settings: failed to invalidate cached settings [orgId=${orgId}]`);
+    }
   };
 
   const loadSettings = async (orgId: string): Promise<TEffectiveAuditLogSettings | null> => {
@@ -201,6 +205,9 @@ export const auditLogSettingsServiceFactory = ({
 
   const writeScopeSettings = async (scope: TScope, overrides: TFullOverrides) => {
     await auditLogSettingsDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [
+        PgSqlLock.AuditLogSettingsUpdate(scope.projectId ?? scope.orgId)
+      ]);
       await auditLogSettingsDAL.delete(scope, tx);
       await auditLogSettingsDAL.insertMany(
         CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({

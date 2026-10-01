@@ -17,7 +17,7 @@ export const AuditLogSettingsTab = withPermission(
     const scopeVariant = useScopeVariant();
     const canEdit = hasOrgRole(OrgMembershipRole.Admin);
 
-    const { data: settings, isPending } = useGetOrgAuditLogSettings(currentOrg.id);
+    const { data: settings, isPending, isError } = useGetOrgAuditLogSettings(currentOrg.id);
     const { mutateAsync: updateSettings, isPending: isSaving } = useUpdateOrgAuditLogSettings(
       currentOrg.id
     );
@@ -28,8 +28,10 @@ export const AuditLogSettingsTab = withPermission(
         description="Choose which classes of organization-level events are recorded. Each project has its own setting for its events."
         settings={settings}
         isPending={isPending}
+        isError={isError}
         isSaving={isSaving}
         canEdit={canEdit}
+        readOnlyMessage={`Only ${scopeVariant === "sub-org" ? "sub-organization" : "organization"} admins can change these settings.`}
         variant={scopeVariant}
         onSave={(eventClasses) => updateSettings({ eventClasses })}
       />

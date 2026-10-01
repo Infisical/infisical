@@ -5,7 +5,8 @@ import {
   AUDIT_LOG_EVENT_CLASS_MEMBERS,
   AuditLogEventClass,
   getAuditLogEventClass,
-  getEventTypesForClasses
+  getEventTypesForClasses,
+  resolveEventClassFilter
 } from "./audit-log-event-classes";
 import { EventType } from "./audit-log-types";
 
@@ -71,5 +72,38 @@ describe("audit log event classes", () => {
       AUDIT_LOG_EVENT_CLASS_MEMBERS[AuditLogEventClass.Authorization].length +
         AUDIT_LOG_EVENT_CLASS_MEMBERS[AuditLogEventClass.Authentication].length
     );
+  });
+});
+
+describe("resolveEventClassFilter", () => {
+  test("lists the member types when management isn't selected", () => {
+    expect(resolveEventClassFilter([AuditLogEventClass.Authorization])).toEqual({
+      eventType: [EventType.PERMISSION_DENIED]
+    });
+  });
+
+  test("excludes the unselected classes when management is selected", () => {
+    const resolved = resolveEventClassFilter([AuditLogEventClass.Management, AuditLogEventClass.DataAccess]);
+    expect(resolved?.eventType).toBeUndefined();
+    expect(resolved?.excludeEventType).toEqual(
+      getEventTypesForClasses([AuditLogEventClass.Authentication, AuditLogEventClass.Authorization])
+    );
+  });
+
+  test("excludes nothing when every class is selected", () => {
+    expect(resolveEventClassFilter(Object.values(AuditLogEventClass))).toEqual({ excludeEventType: [] });
+  });
+
+  test("keeps only the requested event types that are in the selected classes", () => {
+    expect(
+      resolveEventClassFilter(
+        [AuditLogEventClass.Management],
+        [EventType.UPDATE_SECRET, EventType.GET_SECRETS, EventType.USER_LOGIN]
+      )
+    ).toEqual({ eventType: [EventType.UPDATE_SECRET] });
+  });
+
+  test("returns null when no requested event type is in the selected classes", () => {
+    expect(resolveEventClassFilter([AuditLogEventClass.Authorization], [EventType.GET_SECRETS])).toBeNull();
   });
 });

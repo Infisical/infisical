@@ -19,6 +19,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TAuditLogDALFactory } from "./audit-log-dal";
+import { getAuditLogEventClass, isAlwaysRecordedEventClass } from "./audit-log-event-classes";
 import { isAuditLogEventEnabled, TAuditLogSettingsServiceFactory } from "./audit-log-settings-service";
 import { TAuditLogStreamEntry, TCreateAuditLogDTO } from "./audit-log-types";
 
@@ -107,10 +108,12 @@ export const auditLogQueueServiceFactory = async ({
     const orgId = data.orgId ?? project?.orgId;
     if (!orgId) return null;
 
-    const settings = await requestMemoize(requestMemoKeys.auditLogSettings(orgId), () =>
-      auditLogSettingsService.getEffectiveSettings(orgId)
-    );
-    if (!isAuditLogEventEnabled(settings, data.event.type, projectId)) return null;
+    if (!isAlwaysRecordedEventClass(getAuditLogEventClass(data.event.type))) {
+      const settings = await requestMemoize(requestMemoKeys.auditLogSettings(orgId), () =>
+        auditLogSettingsService.getEffectiveSettings(orgId)
+      );
+      if (!isAuditLogEventEnabled(settings, data.event.type, projectId)) return null;
+    }
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan?.auditLogsRetentionDays) return null;

@@ -21,7 +21,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TClickHouseAuditLogDALFactory } from "./audit-log-clickhouse-dal";
 import { TAuditLogDALFactory, TPamAuditLogScope } from "./audit-log-dal";
-import { getAuditLogEventClass, getEventTypesForClasses } from "./audit-log-event-classes";
+import { getAuditLogEventClass, resolveEventClassFilter } from "./audit-log-event-classes";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
 import { isAuditLogEventEnabled, TAuditLogSettingsServiceFactory } from "./audit-log-settings-service";
 import {
@@ -142,11 +142,11 @@ export const auditLogServiceFactory = ({
     const appCfg = getConfig();
     const useClickHouse = appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL;
 
-    let { eventType } = filter;
+    let eventTypeFilter: { eventType?: EventType[]; excludeEventType?: EventType[] } = { eventType: filter.eventType };
     if (filter.eventClass?.length) {
-      const classEventTypes = getEventTypesForClasses(filter.eventClass);
-      eventType = eventType?.length ? eventType.filter((type) => classEventTypes.includes(type)) : classEventTypes;
-      if (!eventType.length) return [];
+      const resolved = resolveEventClassFilter(filter.eventClass, filter.eventType);
+      if (!resolved) return [];
+      eventTypeFilter = resolved;
     }
 
     const findArgs = {
@@ -154,7 +154,7 @@ export const auditLogServiceFactory = ({
       endDate: filter.endDate,
       limit: filter.limit,
       offset: filter.offset,
-      eventType,
+      ...eventTypeFilter,
       userAgentType: filter.userAgentType,
       actorId: filter.auditLogActorId,
       actorType: filter.actorType,

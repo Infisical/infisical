@@ -70,6 +70,7 @@ const orgActor = {
 } as never;
 
 const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true, isAdmin = true } = {}) => {
+  const tx = { raw: vi.fn(async () => undefined) };
   const orgDAL = {
     findById: vi.fn(async (id: string) => ({ id, shouldUseNewPrivilegeSystem }))
   };
@@ -79,7 +80,7 @@ const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true
         (row) => row.orgId === filter.orgId && (filter.projectId === undefined || row.projectId === filter.projectId)
       )
     ),
-    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
+    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(tx)),
     delete: vi.fn(async () => []),
     insertMany: vi.fn(async (data: TRow[]) => data)
   };
@@ -119,7 +120,7 @@ const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true
     keyStore: keyStore as never
   });
 
-  return { service, orgDAL, auditLogSettingsDAL, keyStore };
+  return { service, orgDAL, auditLogSettingsDAL, keyStore, tx };
 };
 
 describe("getEffectiveSettings", () => {
@@ -289,6 +290,28 @@ describe("updateOrgSettings", () => {
         { eventClass: AuditLogEventClass.Authorization, isEnabled: true }
       ]
     });
+  });
+});
+
+describe("writing settings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("takes a per-scope lock before replacing the rows", async () => {
+    const { service, tx, auditLogSettingsDAL } = createHarness();
+
+    await service.updateOrgSettings({ actor: orgActor, eventClasses: fullEventClasses });
+
+    expect(tx.raw).toHaveBeenCalledWith("SELECT pg_advisory_xact_lock(?)", [expect.any(Number)]);
+    expect(tx.raw.mock.invocationCallOrder[0]).toBeLessThan(auditLogSettingsDAL.delete.mock.invocationCallOrder[0]);
+  });
+
+  test("still succeeds when the cache can't be invalidated after the write", async () => {
+    const { service, keyStore } = createHarness();
+    keyStore.deleteItem.mockRejectedValueOnce(new Error("redis down"));
+
+    await expect(service.updateOrgSettings({ actor: orgActor, eventClasses: fullEventClasses })).resolves.toBeDefined();
   });
 });
 
