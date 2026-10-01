@@ -1,0 +1,48 @@
+{/*
+Bare <Step> elements, so a page can place them inside its own <Steps> and keep the numbering.
+Props:
+- externalId: "required" adds the External ID instructions. "skip" leaves them out, for a page
+  whose connection sends an External ID the reader can't look up.
+*/}
+
+<Step>
+    In the IAM console, go to [Create role](https://console.aws.amazon.com/iam/home#/roles/create?step=selectEntities). Under **Trusted entity type**, select **AWS account**.
+
+    ![IAM Role Creation](/images/integrations/aws/integration-aws-iam-assume-role.png)
+</Step>
+<Step>
+    Select **Another AWS account**, and enter the AWS account ID that Infisical assumes the role from:
+
+    - Infisical Cloud (US): `381492033652`
+    - Infisical Cloud (EU): `345594589636`
+    - Dedicated instance: contact Infisical support for your account ID
+    - Self-hosted: the account ID of your instance's credentials (see [If you self-host Infisical](#if-you-self-host-infisical))
+
+    {externalId === "required" && (
+        <MDX>
+            <View title="Organization-level">
+                Enable **Require external ID** and enter your Organization ID. It's shown under **Organization ID** in your organization's **Settings**.
+            </View>
+
+            <View title="Project-level">
+                Enable **Require external ID** and enter the ID for the type of project you'll create the connection in:
+
+                - **Secrets Manager:** the project's ID, shown under **Project ID** in the project's settings
+                - **Certificate Manager:** your Organization ID, shown under **Organization ID** in your organization's **Settings**
+                - **Agent Vault:** your Organization ID
+
+                <Note>
+                    If you created a project-level connection before May 26, 2026 on Infisical Cloud (or before v0.160.7 if you self-host Infisical), Infisical sends your Organization ID for it. To use the Project ID instead, recreate the connection and update the role's trust policy.
+                </Note>
+            </View>
+
+            Infisical sends this ID every time it assumes the role, so the role only works for connections in the organization or project you named. This protects your account from the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html).
+        </MDX>
+    )}
+</Step>
+<Step>
+    Select **Next** to go to the **Add permissions** page. Then, select **Next** again without choosing a policy. You'll add the permissions as an inline policy after the role exists.
+</Step>
+<Step>
+    Enter a **Role name**, then select **Create role**.
+</Step>

@@ -1,0 +1,199 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+
+// A multi-select "I want to set up ___ with {product}" picker, plus a <UseCase> wrapper that shows
+// its children only for the picked use cases. The page passes the options in, so any guide whose
+// steps vary by integration can reuse it. See snippets/app-connections/aws/use-cases.jsx for the
+// data shape and integrations/app-connections/aws.mdx for a page that uses it.
+//
+// Mintlify evaluates each exported component in isolation, so module-scope constants are out of
+// scope at render time. Both components below declare their own copies of the shared values.
+
+export const UseCasePicker = ({ product, groups = [], param = "use", noun = "an integration" }) => {
+  const SELECTION_EVENT = "use-case-picker-change";
+
+  const options = groups.flatMap((group) => group.options);
+  const knownIds = new Set(options.map((option) => option.id));
+
+  const [selected, setSelected] = useState([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const rootRef = useRef(null);
+  const buttonRef = useRef(null);
+
+  useEffect(() => {
+    const sync = () => {
+      const raw = new URLSearchParams(window.location.search).get(param);
+      setSelected(
+        raw
+          ? raw
+              .split(",")
+              .map((id) => id.trim())
+              .filter((id) => knownIds.has(id))
+          : []
+      );
+    };
+    sync();
+    window.addEventListener(SELECTION_EVENT, sync);
+    window.addEventListener("popstate", sync);
+    return () => {
+      window.removeEventListener(SELECTION_EVENT, sync);
+      window.removeEventListener("popstate", sync);
+    };
+  }, [param]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onDown = (event) => {
+      if (rootRef.current && !rootRef.current.contains(event.target)) setIsOpen(false);
+    };
+    const onKey = (event) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+        if (buttonRef.current) buttonRef.current.focus();
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen]);
+
+  const write = (ids) => {
+    const params = new URLSearchParams(window.location.search);
+    if (ids.length === 0) params.delete(param);
+    else params.set(param, ids.join(","));
+    // Keep the commas readable in a shared link; URLSearchParams would encode them as %2C.
+    const query = params.toString().replace(/%2C/g, ",");
+    const next = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+    window.history.replaceState({}, "", next);
+    window.dispatchEvent(new Event(SELECTION_EVENT));
+  };
+
+  const toggle = (id) => {
+    const next = selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id];
+    write(options.map((option) => option.id).filter((value) => next.includes(value)));
+  };
+
+  const chipLabel = (() => {
+    if (selected.length === 0) return noun;
+    const first = options.find((option) => option.id === selected[0]);
+    if (selected.length === 1) return first.label;
+    return `${first.label} + ${selected.length - 1} more`;
+  })();
+
+  return (
+    <div ref={rootRef} className="ifx-avqs">
+      <p className="ifx-avqs__sentence">
+        I want to set up{" "}
+        <span className="ifx-avqs__slot">
+          <button
+            ref={buttonRef}
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={isOpen}
+            className={selected.length ? "ifx-avqs__chip ifx-avqs__chip--filled" : "ifx-avqs__chip"}
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            <span>{chipLabel}</span>
+            <svg
+              className="ifx-avqs__chevron"
+              width="10"
+              height="10"
+              viewBox="0 0 12 12"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M3 4.5L6 7.5L9 4.5"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          {isOpen && (
+            <div className="ifx-avqs__menu ifx-ucp__menu" role="dialog" aria-label="Choose integrations">
+              {groups.map((group) => (
+                <fieldset key={group.label} className="ifx-ucp__group">
+                  <legend className="ifx-ucp__legend">{group.label}</legend>
+                  {group.options.map((option) => (
+                    <label key={option.id} className="ifx-ucp__option">
+                      <input
+                        type="checkbox"
+                        className="ifx-ucp__checkbox"
+                        checked={selected.includes(option.id)}
+                        onChange={() => toggle(option.id)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              ))}
+              {selected.length > 0 && (
+                <button type="button" className="ifx-avqs__clear" onClick={() => write([])}>
+                  Clear selection
+                </button>
+              )}
+            </div>
+          )}
+        </span>
+        {product ? ` with ${product}` : ""}
+      </p>
+      <p className="ifx-avqs__hint">
+        {selected.length ? (
+          <>
+            The steps below match your choice.{" "}
+            <button type="button" className="ifx-avqs__reset" onClick={() => write([])}>
+              Reset
+            </button>
+          </>
+        ) : (
+          "Pick one or more to see only the steps they need, or leave it empty to see all of them."
+        )}
+      </p>
+    </div>
+  );
+};
+
+// Renders its children when nothing is picked (so the page reads as the full guide by default)
+// or when any of the comma-separated ids in `use` is picked. `param` must match the picker's.
+export const UseCase = ({ use, param = "use", children }) => {
+  const SELECTION_EVENT = "use-case-picker-change";
+
+  const [selected, setSelected] = useState([]);
+
+  useEffect(() => {
+    const sync = () => {
+      const raw = new URLSearchParams(window.location.search).get(param);
+      setSelected(
+        raw
+          ? raw
+              .split(",")
+              .map((id) => id.trim())
+              .filter(Boolean)
+          : []
+      );
+    };
+    sync();
+    window.addEventListener(SELECTION_EVENT, sync);
+    window.addEventListener("popstate", sync);
+    return () => {
+      window.removeEventListener(SELECTION_EVENT, sync);
+      window.removeEventListener("popstate", sync);
+    };
+  }, [param]);
+
+  const isVisible = useMemo(() => {
+    if (selected.length === 0) return true;
+    const wanted = String(use || "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    return wanted.some((id) => selected.includes(id));
+  }, [selected, use]);
+
+  if (!isVisible) return null;
+  return <>{children}</>;
+};
