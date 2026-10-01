@@ -1,8 +1,11 @@
+import { LightMyRequestResponse } from "fastify";
+
 import { request } from "./request";
 
 type TAlertRecord = {
   id: string;
   name: string;
+  projectId: string | null;
   channels: {
     id: string;
     name: string;
@@ -12,13 +15,43 @@ type TAlertRecord = {
   }[];
 };
 
-export const listAlerts = (dto: { resourceType: string; projectId: string; resourceId: string; authToken: string }) =>
+const parseAlert = (res: LightMyRequestResponse) => {
+  expect(res.statusCode).toBe(200);
+  return res.json<{ alert: TAlertRecord }>().alert;
+};
+
+export const createAlert = (dto: { body: Record<string, unknown>; authToken: string }) =>
+  request(
+    {
+      method: "POST",
+      url: "/api/v1/alerts",
+      headers: { authorization: `Bearer ${dto.authToken}` },
+      body: dto.body
+    },
+    parseAlert
+  );
+
+export const getAlert = (dto: { alertId: string; authToken: string }) =>
+  request(
+    {
+      method: "GET",
+      url: `/api/v1/alerts/${dto.alertId}`,
+      headers: { authorization: `Bearer ${dto.authToken}` }
+    },
+    parseAlert
+  );
+
+export const listAlerts = (dto: { resourceType: string; projectId?: string; resourceId?: string; authToken: string }) =>
   request(
     {
       method: "GET",
       url: "/api/v1/alerts",
       headers: { authorization: `Bearer ${dto.authToken}` },
-      query: { resourceType: dto.resourceType, projectId: dto.projectId, resourceId: dto.resourceId }
+      query: {
+        resourceType: dto.resourceType,
+        ...(dto.projectId ? { projectId: dto.projectId } : {}),
+        ...(dto.resourceId ? { resourceId: dto.resourceId } : {})
+      }
     },
     (res) => {
       expect(res.statusCode).toBe(200);
@@ -34,8 +67,17 @@ export const updateAlert = (dto: { alertId: string; body: Record<string, unknown
       headers: { authorization: `Bearer ${dto.authToken}` },
       body: dto.body
     },
+    parseAlert
+  );
+
+export const deleteAlert = (dto: { alertId: string; authToken: string }) =>
+  request(
+    {
+      method: "DELETE",
+      url: `/api/v1/alerts/${dto.alertId}`,
+      headers: { authorization: `Bearer ${dto.authToken}` }
+    },
     (res) => {
       expect(res.statusCode).toBe(200);
-      return res.json<{ alert: TAlertRecord }>().alert;
     }
   );

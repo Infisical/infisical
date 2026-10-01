@@ -65,7 +65,7 @@ export const alertRecipientResolverFactory = ({
             recipient.principalType === AlertPrincipalType.PROJECT_MEMBERS && recipient.principalId === scope.projectId
         )
       );
-    const projectMemberIds: string[] = [];
+    const projectMemberIds = new Set<string>();
     if (wantsProjectMembers && scope.projectId) {
       // Direct members and members through a project group, so "everyone in the project" matches who
       // the scope check below lets through.
@@ -74,7 +74,7 @@ export const alertRecipientResolverFactory = ({
         groupProjectDAL.findAllProjectGroupMembers(scope.projectId)
       ]);
       [...directMembers, ...projectGroupMembers].forEach((member) => {
-        projectMemberIds.push(member.user.id);
+        projectMemberIds.add(member.user.id);
         allUserIds.add(member.user.id);
       });
     }
