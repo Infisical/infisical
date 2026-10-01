@@ -13,7 +13,7 @@ import AgentVaultSessionLogsCorsRule from "/snippets/app-connections/aws/agent-v
   If you're using Infisical Cloud, they're available under the **Enterprise Tier**. If you're self-hosting Infisical, contact sales@infisical.com to purchase an enterprise license to use them.
 </Info>
 
-A session log records every request an agent makes during a [session](/documentation/platform/agent-vault/sessions): the method, host, path, status code, and whether the proxy attached a credential. The [proxy](/documentation/platform/agent-vault/proxies) records every request it receives, including requests to hosts that no [access bundle](/documentation/platform/agent-vault/access-bundles) covers.
+A session log is a record of every request an agent makes during a [session](/documentation/platform/agent-vault/sessions): the method, host, path, status code, and whether the proxy attached a credential. The [proxy](/documentation/platform/agent-vault/proxies) adds every request it receives to the session log, including requests to hosts that no [access bundle](/documentation/platform/agent-vault/access-bundles) covers.
 
 The proxy encrypts the records before they leave your network and uploads them to an Amazon S3 bucket you own.
 
