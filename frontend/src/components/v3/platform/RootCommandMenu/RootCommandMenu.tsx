@@ -272,8 +272,13 @@ const useEntityCommandGroups = ({
     ],
     priority: organization.id === currentOrganizationId ? 20 : 0,
     onSelect: () => {
-      if (organization.id === currentOrganizationId) return;
-      navigate(
+      if (organization.id === currentOrganizationId) {
+        return navigate({
+          to: "/organizations/$orgId/projects",
+          params: { orgId: organization.id }
+        });
+      }
+      return navigate(
         getOrganizationSwitchDestination(location, organization.id, organization.isSubOrganization)
       );
     }
