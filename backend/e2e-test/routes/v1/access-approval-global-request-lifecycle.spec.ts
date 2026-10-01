@@ -1,8 +1,13 @@
+import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { getConfig, initEnvConfig } from "@app/lib/config/env";
+import { initLogger, logger } from "@app/lib/logger";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 
@@ -274,5 +279,329 @@ describe("Access approval request lifecycle on the global system", () => {
     const bypassRes = await reviewAccessRequest(requestId, { status: "approved", bypassReason: "need it right now" });
     expect(bypassRes.statusCode).toBe(400);
     expect(bypassRes.json().message).toBe("Break-glass approvals are not supported for this request yet");
+  });
+});
+
+type TApprover = { userId: string; token: string };
+
+const createApproverUser = async (): Promise<TApprover> => {
+  const db = getDb();
+  const username = `access-approver-${alphaNumericNanoId(8)}@example.com`.toLowerCase();
+  const [user] = await db(TableName.Users)
+    .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
+    .returning("*");
+
+  const [orgMembership] = await db(TableName.Membership)
+    .insert({
+      scope: AccessScope.Organization,
+      scopeOrgId: seedData1.organization.id,
+      actorUserId: user.id,
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
+    })
+    .returning("*");
+  await db(TableName.MembershipRole).insert({ membershipId: orgMembership.id, role: OrgMembershipRole.Member });
+
+  const [projectMembership] = await db(TableName.Membership)
+    .insert({
+      scope: AccessScope.Project,
+      scopeOrgId: seedData1.organization.id,
+      scopeProjectId: seedData1.project.id,
+      actorUserId: user.id
+    })
+    .returning("*");
+  await db(TableName.MembershipRole).insert({
+    membershipId: projectMembership.id,
+    role: ProjectMembershipRole.Member
+  });
+
+  const [session] = await db(TableName.AuthTokenSession)
+    .insert({
+      userId: user.id,
+      ip: "127.0.0.1",
+      userAgent: "e2e-access-approval-required-approvals",
+      accessVersion: 1,
+      refreshVersion: 1,
+      lastUsed: new Date()
+    } as never)
+    .returning("*");
+
+  return {
+    userId: user.id,
+    token: jwt.sign(
+      {
+        authTokenType: AuthTokenType.ACCESS_TOKEN,
+        userId: user.id,
+        tokenVersionId: session.id,
+        authMethod: AuthMethod.EMAIL,
+        organizationId: seedData1.organization.id,
+        accessVersion: 1
+      },
+      getConfig().AUTH_SECRET,
+      { expiresIn: 3600 }
+    )
+  };
+};
+
+const reviewAs = (approver: TApprover, requestId: string) =>
+  testServer.inject({
+    method: "POST",
+    url: `/api/v1/access-approvals/requests/${requestId}/review`,
+    headers: { authorization: `Bearer ${approver.token}` },
+    body: { status: "approved" }
+  });
+
+const createPolicyWithApprovers = async (body: {
+  secretPath: string;
+  approvers: { type: ApproverType; id: string; sequence?: number }[];
+  approvals: number;
+  approvalsRequired?: { stepNumber: number; numberOfApprovals: number }[];
+}) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: "/api/v1/access-approvals/policies",
+    headers: authHeaders(),
+    body: {
+      projectSlug: seedData1.project.slug,
+      environment: seedData1.environment.slug,
+      name: `required-${body.secretPath.slice(1)}`,
+      allowedSelfApprovals: false,
+      ...body
+    }
+  });
+  expect(res.statusCode).toBe(200);
+  const { approval } = res.json();
+  globalPolicyIds.push(approval.id);
+  return approval as { id: string };
+};
+
+const getPolicySteps = (policyId: string) =>
+  getDb()(TableName.ApprovalPolicySteps).where({ policyId }).orderBy("stepNumber", "asc");
+
+const getRequestState = async (requestId: string) => {
+  const db = getDb();
+  const request = await db(TableName.ApprovalRequests).where({ id: requestId }).first();
+  const grant = await db(TableName.ApprovalRequestGrants).where({ requestId }).first();
+  const privilege = grant ? await db(TableName.AdditionalPrivilege).where({ grantId: grant.id }).first() : undefined;
+  return { status: request?.status, currentStep: request?.currentStep, grant, privilege };
+};
+
+const openRequest = async (secretPath: string) => {
+  const res = await createAccessRequest(secretPath);
+  expect(res.statusCode).toBe(200);
+  return res.json().approval.id as string;
+};
+
+describe("Per-step required approvals on the global system", () => {
+  const approvers: TApprover[] = [];
+  const groupIds: string[] = [];
+  let a: TApprover;
+  let b: TApprover;
+  let c: TApprover;
+
+  beforeAll(async () => {
+    initLogger();
+    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    a = await createApproverUser();
+    b = await createApproverUser();
+    c = await createApproverUser();
+    approvers.push(a, b, c);
+  });
+
+  afterEach(async () => {
+    const db = getDb();
+    const globalIds = globalPolicyIds.splice(0);
+
+    await db(TableName.AdditionalPrivilege)
+      .where({ actorUserId: seedData1.id })
+      .whereLike("name", "requested-privilege-%")
+      .del();
+    await db(TableName.ApprovalRequestGrants)
+      .where({ projectId: seedData1.project.id, type: SECRET_ACCESS_TYPE })
+      .del();
+    if (globalIds.length) {
+      await db(TableName.ApprovalRequests).whereIn("policyId", globalIds).del();
+      await db(TableName.ApprovalPolicies).whereIn("id", globalIds).del();
+    }
+  });
+
+  afterAll(async () => {
+    const db = getDb();
+    const userIds = approvers.map((approver) => approver.userId);
+    await db(TableName.UserGroupMembership).whereIn("userId", userIds).del();
+    if (groupIds.length) {
+      await db(TableName.Membership).whereIn("actorGroupId", groupIds).del();
+      await db(TableName.Groups).whereIn("id", groupIds).del();
+    }
+    await db(TableName.AuthTokenSession).whereIn("userId", userIds).del();
+    await db(TableName.Membership).whereIn("actorUserId", userIds).del();
+    await db(TableName.Users).whereIn("id", userIds).del();
+  });
+
+  test("Two of three approvers complete a step that needs two approvals", async () => {
+    const secretPath = "/required-two-of-three";
+    const policy = await createPolicyWithApprovers({
+      secretPath,
+      approvers: [a, b, c].map((approver) => ({ type: ApproverType.User, id: approver.userId })),
+      approvals: 1,
+      approvalsRequired: [{ stepNumber: 1, numberOfApprovals: 2 }]
+    });
+
+    const steps = await getPolicySteps(policy.id);
+    expect(steps.map((step) => step.requiredApprovals)).toEqual([2]);
+
+    const requestId = await openRequest(secretPath);
+
+    expect((await reviewAs(a, requestId)).statusCode).toBe(200);
+    const afterFirst = await getRequestState(requestId);
+    expect(afterFirst.status).toBe("pending");
+    expect(afterFirst.grant).toBeUndefined();
+
+    expect((await reviewAs(b, requestId)).statusCode).toBe(200);
+    const afterSecond = await getRequestState(requestId);
+    expect(afterSecond.status).toBe("approved");
+    expect(afterSecond.grant?.status).toBe("active");
+    expect(afterSecond.privilege?.actorUserId).toBe(seedData1.id);
+
+    const lateReview = await reviewAs(c, requestId);
+    expect(lateReview.statusCode).toBe(400);
+    expect(lateReview.json().message).toBe("The request has been closed");
+  });
+
+  test("With two approvers and one required approval, the first approval approves the request", async () => {
+    const secretPath = "/required-one-of-two";
+    const policy = await createPolicyWithApprovers({
+      secretPath,
+      approvers: [a, b].map((approver) => ({ type: ApproverType.User, id: approver.userId })),
+      approvals: 1,
+      approvalsRequired: [{ stepNumber: 1, numberOfApprovals: 1 }]
+    });
+
+    const steps = await getPolicySteps(policy.id);
+    expect(steps.map((step) => step.requiredApprovals)).toEqual([1]);
+
+    const requestId = await openRequest(secretPath);
+
+    expect((await reviewAs(b, requestId)).statusCode).toBe(200);
+    const state = await getRequestState(requestId);
+    expect(state.status).toBe("approved");
+    expect(state.grant?.status).toBe("active");
+    expect(state.privilege?.actorUserId).toBe(seedData1.id);
+
+    const secondReview = await reviewAs(a, requestId);
+    expect(secondReview.statusCode).toBe(400);
+    expect(secondReview.json().message).toBe("The request has been closed");
+  });
+
+  test("A step with no approvalsRequired entry needs one approval, whatever approvals says", async () => {
+    const secretPath = "/required-default-one";
+    const policy = await createPolicyWithApprovers({
+      secretPath,
+      approvers: [{ type: ApproverType.User, id: a.userId }],
+      approvals: 3
+    });
+
+    const steps = await getPolicySteps(policy.id);
+    expect(steps.map((step) => step.requiredApprovals)).toEqual([1]);
+
+    const requestId = await openRequest(secretPath);
+    expect((await reviewAs(a, requestId)).statusCode).toBe(200);
+
+    const state = await getRequestState(requestId);
+    expect(state.status).toBe("approved");
+    expect(state.privilege).toBeDefined();
+  });
+
+  test("The second step starts only after the first and needs its own two approvals", async () => {
+    const secretPath = "/required-two-steps";
+    const policy = await createPolicyWithApprovers({
+      secretPath,
+      approvers: [
+        { type: ApproverType.User, id: a.userId, sequence: 1 },
+        { type: ApproverType.User, id: b.userId, sequence: 2 },
+        { type: ApproverType.User, id: c.userId, sequence: 2 }
+      ],
+      approvals: 1,
+      approvalsRequired: [
+        { stepNumber: 1, numberOfApprovals: 1 },
+        { stepNumber: 2, numberOfApprovals: 2 }
+      ]
+    });
+
+    const steps = await getPolicySteps(policy.id);
+    expect(steps.map((step) => step.requiredApprovals)).toEqual([1, 2]);
+
+    const requestId = await openRequest(secretPath);
+
+    const early = await reviewAs(b, requestId);
+    expect(early.statusCode).toBe(400);
+    expect(early.json().message).toBe("You are not a reviewer in this step");
+
+    expect((await reviewAs(a, requestId)).statusCode).toBe(200);
+    const afterStepOne = await getRequestState(requestId);
+    expect(afterStepOne.status).toBe("pending");
+    expect(afterStepOne.currentStep).toBe(2);
+
+    expect((await reviewAs(b, requestId)).statusCode).toBe(200);
+    const afterOneOfTwo = await getRequestState(requestId);
+    expect(afterOneOfTwo.status).toBe("pending");
+    expect(afterOneOfTwo.grant).toBeUndefined();
+
+    expect((await reviewAs(c, requestId)).statusCode).toBe(200);
+    const approved = await getRequestState(requestId);
+    expect(approved.status).toBe("approved");
+    expect(approved.privilege).toBeDefined();
+  });
+
+  test("Each approving group member counts as one approval", async () => {
+    const db = getDb();
+    const secretPath = "/required-group";
+    const slug = `required-group-${alphaNumericNanoId(6).toLowerCase()}`;
+    const [group] = await db(TableName.Groups)
+      .insert({ orgId: seedData1.organization.id, name: slug, slug })
+      .returning("*");
+    groupIds.push(group.id);
+    await db(TableName.UserGroupMembership).insert([
+      { userId: a.userId, groupId: group.id, isPending: false },
+      { userId: b.userId, groupId: group.id, isPending: false }
+    ]);
+    const [groupOrgMembership, groupProjectMembership] = await db(TableName.Membership)
+      .insert([
+        {
+          actorGroupId: group.id,
+          scope: AccessScope.Organization,
+          scopeOrgId: seedData1.organization.id,
+          isActive: true
+        },
+        {
+          actorGroupId: group.id,
+          scope: AccessScope.Project,
+          scopeOrgId: seedData1.organization.id,
+          scopeProjectId: seedData1.project.id,
+          isActive: true
+        }
+      ])
+      .returning("*");
+    await db(TableName.MembershipRole).insert([
+      { membershipId: groupOrgMembership.id, role: OrgMembershipRole.Member },
+      { membershipId: groupProjectMembership.id, role: ProjectMembershipRole.Member }
+    ]);
+
+    await createPolicyWithApprovers({
+      secretPath,
+      approvers: [{ type: ApproverType.Group, id: group.id }],
+      approvals: 1,
+      approvalsRequired: [{ stepNumber: 1, numberOfApprovals: 2 }]
+    });
+
+    const requestId = await openRequest(secretPath);
+
+    expect((await reviewAs(a, requestId)).statusCode).toBe(200);
+    expect((await getRequestState(requestId)).status).toBe("pending");
+
+    expect((await reviewAs(b, requestId)).statusCode).toBe(200);
+    const state = await getRequestState(requestId);
+    expect(state.status).toBe("approved");
+    expect(state.privilege).toBeDefined();
   });
 });

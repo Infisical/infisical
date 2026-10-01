@@ -1,8 +1,9 @@
 import { Knex } from "knex";
 
-import { TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { EnforcementLevel } from "@app/lib/types";
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
@@ -388,5 +389,128 @@ describe("Access approval policy routing", () => {
     expect(globalRow?.type).toBe(SECRET_ACCESS_TYPE);
     expect(globalRow?.name).toBe("policy-routing-stay-global-renamed");
     await expectNoLegacyRow(globalPolicy.id);
+  });
+});
+
+const seedProjectMember = async () => {
+  const db = getDb();
+  const username = `policy-routing-approver-${alphaNumericNanoId(8)}@example.com`.toLowerCase();
+  const [user] = await db(TableName.Users)
+    .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: ["email"] })
+    .returning("*");
+
+  const [orgMembership] = await db(TableName.Membership)
+    .insert({
+      scope: AccessScope.Organization,
+      scopeOrgId: seedData1.organization.id,
+      actorUserId: user.id,
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
+    })
+    .returning("*");
+  await db(TableName.MembershipRole).insert({ membershipId: orgMembership.id, role: OrgMembershipRole.Member });
+
+  const [projectMembership] = await db(TableName.Membership)
+    .insert({
+      scope: AccessScope.Project,
+      scopeOrgId: seedData1.organization.id,
+      scopeProjectId: seedData1.project.id,
+      actorUserId: user.id
+    })
+    .returning("*");
+  await db(TableName.MembershipRole).insert({ membershipId: projectMembership.id, role: ProjectMembershipRole.Member });
+
+  return user.id;
+};
+
+describe("Access approval policy required approvals per step", () => {
+  let otherApproverId: string;
+
+  beforeAll(async () => {
+    otherApproverId = await seedProjectMember();
+  });
+
+  afterEach(async () => {
+    const db = getDb();
+    const legacyIds = legacyPolicyIds.splice(0);
+    const globalIds = globalPolicyIds.splice(0);
+
+    if (legacyIds.length) {
+      await db(TableName.AccessApprovalPolicyApprover).whereIn("policyId", legacyIds).del();
+      await db(TableName.AccessApprovalPolicyBypasser).whereIn("policyId", legacyIds).del();
+      await db(TableName.AccessApprovalPolicyEnvironment).whereIn("policyId", legacyIds).del();
+      await db(TableName.AccessApprovalPolicy).whereIn("id", legacyIds).del();
+    }
+    if (globalIds.length) {
+      await db(TableName.ApprovalPolicies).whereIn("id", globalIds).del();
+    }
+  });
+
+  afterAll(async () => {
+    const db = getDb();
+    await db(TableName.Membership).where({ actorUserId: otherApproverId }).del();
+    await db(TableName.Users).where({ id: otherApproverId }).del();
+  });
+
+  const getStepRequirements = async (policyId: string) =>
+    (await getDb()(TableName.ApprovalPolicySteps).where({ policyId }).orderBy("stepNumber", "asc")).map(
+      (step) => step.requiredApprovals
+    );
+
+  test("Updating without approvalsRequired resets every step to one approval", async () => {
+    const policy = await createGlobalPolicy({ name: "policy-routing-required-reset", secretPath: "/required-reset" });
+    const approvers = [
+      { type: ApproverType.User, id: seedData1.id, sequence: 1 },
+      { type: ApproverType.User, id: otherApproverId, sequence: 1 }
+    ];
+
+    const withEntry = await patchPolicy(policy.id, {
+      approvers,
+      approvals: 2,
+      approvalsRequired: [{ stepNumber: 1, numberOfApprovals: 2 }]
+    });
+    expect(withEntry.statusCode).toBe(200);
+    expect(await getStepRequirements(policy.id)).toEqual([2]);
+
+    const withoutEntry = await patchPolicy(policy.id, { approvers, approvals: 2 });
+    expect(withoutEntry.statusCode).toBe(200);
+    expect(await getStepRequirements(policy.id)).toEqual([1]);
+
+    const getRes = await getPolicy(policy.id);
+    expect(getRes.statusCode).toBe(200);
+    expect(
+      getRes.json().approval.approvers.map((approver: { approvalsRequired: number }) => approver.approvalsRequired)
+    ).toEqual([1, 1]);
+  });
+
+  test("The same update stores the same effective requirement on legacy and global", async () => {
+    const db = getDb();
+    const legacyPolicy = await createLegacyPolicy({
+      name: "policy-routing-required-legacy",
+      secretPath: "/required-parity-legacy"
+    });
+    const globalPolicy = await createGlobalPolicy({
+      name: "policy-routing-required-global",
+      secretPath: "/required-parity-global"
+    });
+    const body = {
+      approvers: [
+        { type: ApproverType.User, id: seedData1.id, sequence: 1 },
+        { type: ApproverType.User, id: otherApproverId, sequence: 2 }
+      ],
+      approvals: 2,
+      approvalsRequired: [{ stepNumber: 1, numberOfApprovals: 1 }]
+    };
+
+    expect((await patchPolicy(legacyPolicy.id, body)).statusCode).toBe(200);
+    expect((await patchPolicy(globalPolicy.id, body)).statusCode).toBe(200);
+
+    const legacyApprovers = await db(TableName.AccessApprovalPolicyApprover)
+      .where({ policyId: legacyPolicy.id })
+      .orderBy("sequence", "asc");
+    const legacyEffective = legacyApprovers.map((approver) => approver.approvalsRequired || 1);
+
+    expect(legacyEffective).toEqual([1, 1]);
+    expect(await getStepRequirements(globalPolicy.id)).toEqual(legacyEffective);
   });
 });

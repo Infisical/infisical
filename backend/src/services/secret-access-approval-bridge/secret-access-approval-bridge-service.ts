@@ -38,6 +38,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { AccessRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import {
+  buildSecretAccessPolicySteps,
   collectSecretAccessPolicyGroupIds,
   collectSecretAccessRequestUserIds,
   composeSecretAccessRequestRows,
@@ -234,30 +235,19 @@ export const secretAccessApprovalBridgeServiceFactory = ({
   const $buildSteps = ({
     approverUserIds,
     groupApprovers,
-    approvals,
     approvalsRequired
   }: {
     approverUserIds: TSequencedSubject[];
     groupApprovers: TSequencedSubject[];
-    approvals: number;
     approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
-  }): TPolicyStep[] => {
-    const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
-    const stepApproversBySequence = groupBy(
+  }): TPolicyStep[] =>
+    buildSecretAccessPolicySteps(
       [
         ...approverUserIds.map((el) => ({ type: ApproverType.User, id: el.id, sequence: el.sequence ?? 1 })),
         ...groupApprovers.map((el) => ({ type: ApproverType.Group, id: el.id, sequence: el.sequence ?? 1 }))
       ],
-      (el) => el.sequence
+      approvalsRequired
     );
-    return Object.keys(stepApproversBySequence)
-      .map(Number)
-      .sort((a, b) => a - b)
-      .map((sequence) => ({
-        requiredApprovals: approvalsRequiredGroupByStepNumber?.[sequence]?.[0]?.numberOfApprovals ?? approvals,
-        approvers: stepApproversBySequence[sequence]
-      }));
-  };
 
   const $insertStepsAndBypassers = async (
     {
@@ -386,7 +376,7 @@ export const secretAccessApprovalBridgeServiceFactory = ({
     const scope = { projectId: project.id, orgId: project.orgId };
     const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope);
     const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope);
-    const steps = $buildSteps({ approverUserIds, groupApprovers, approvals, approvalsRequired });
+    const steps = $buildSteps({ approverUserIds, groupApprovers, approvalsRequired });
 
     const policy = await approvalPolicyDAL.transaction(async (tx) => {
       const doc = await approvalPolicyDAL.create(
@@ -501,7 +491,7 @@ export const secretAccessApprovalBridgeServiceFactory = ({
     const scope = { projectId: policy.projectId, orgId: actorOrgId };
     const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope);
     const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope);
-    const steps = $buildSteps({ approverUserIds, groupApprovers, approvals: currentApprovals, approvalsRequired });
+    const steps = $buildSteps({ approverUserIds, groupApprovers, approvalsRequired });
 
     return approvalPolicyDAL.transaction(async (tx) => {
       await approvalPolicyDAL.updateById(

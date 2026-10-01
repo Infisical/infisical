@@ -6,6 +6,7 @@ import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approva
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
@@ -79,6 +80,23 @@ export const secretAccessApprovalPolicyExists = async (
     excludePolicyId
   });
   return Boolean(policy);
+};
+
+// Legacy stores null on approver rows for a step with no approvalsRequired entry and reviews it as 1,
+// so the top-level `approvals` must not leak into a step's requirement.
+export const buildSecretAccessPolicySteps = <T extends { sequence: number }>(
+  approvers: T[],
+  approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[]
+) => {
+  const approvalsRequiredByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
+  const approversBySequence = groupBy(approvers, (el) => el.sequence);
+  return Object.keys(approversBySequence)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map((sequence) => ({
+      requiredApprovals: approvalsRequiredByStepNumber[sequence]?.[0]?.numberOfApprovals || 1,
+      approvers: approversBySequence[sequence]
+    }));
 };
 
 export type TSecretAccessRequestRow = TApprovalRequests & {
