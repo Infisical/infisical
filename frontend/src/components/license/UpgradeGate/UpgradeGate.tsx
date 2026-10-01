@@ -18,7 +18,10 @@ import {
   DialogPortal,
   DialogTitle,
   Label,
-  Loader
+  Loader,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   OrgPermissionBillingActions,
@@ -36,12 +39,7 @@ import {
 } from "@app/hooks/api";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { waitForMinimumDuration } from "@app/lib/fn/promise";
-import {
-  cadenceWord,
-  fmtMoney,
-  isMeteredCadence,
-  unitPrice
-} from "@app/pages/organization/BillingV2Page/billing-v2-format";
+import { fmtMoney } from "@app/pages/organization/BillingV2Page/billing-v2-format";
 import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
 
 import { CapabilityUpgradeGate } from "./CapabilityUpgradeGate";
@@ -50,7 +48,6 @@ import { focusUpgradeContinuation, PlanFeature, ProductUpgradeDialog } from "./P
 import {
   BillingPlan,
   buildUpgradeReturnPath,
-  UpgradeFeature,
   UpgradeIntent,
   UpgradeReturnTarget
 } from "./upgrade-intents";
@@ -544,7 +541,7 @@ const ProductUpgradeGate = ({
         ? `FREE for ${plan.trialDays} Days`
         : "FREE during trial";
   if (isUpgradeTrial) trialPriceLabel = `Trial Upgrade: ${trialPriceLabel}`;
-  const upgradeLabel = intent.upgradeLabel ?? `Upgrade ${product.name}`;
+  const upgradeLabel = intent.upgradeLabel ?? `Unlock ${product.name}`;
   const productStyle = { "--product-color": product.color } as CSSProperties;
 
   const handleStartTrial = async () => {
@@ -632,12 +629,6 @@ const ProductUpgradeGate = ({
   }
 
   const hasUsedTrial = overview.data.trialedProductKeys.includes(product.id);
-  const hasPricingRow = !plan.salesLed || plan.tier === product.baselinePlan?.tier;
-  const hasEntitlementIntent =
-    intent.featureKey !== UpgradeFeature.CertificateManagement &&
-    intent.featureKey !== UpgradeFeature.Pam;
-  const footerUnlockLabel =
-    !hasPricingRow ? intent.upgradeLabel ?? `Unlock ${product.name}` : undefined;
   const hasPeriodOption =
     !trialAvailable && planSupportsCadence(plan, "annual") && planSupportsCadence(plan, "monthly");
   const showUsedTrialNotice =
@@ -649,10 +640,14 @@ const ProductUpgradeGate = ({
     hasUsedTrial &&
     !currentEntitlement?.isTrialing;
 
+  const trialBillingTerms = isUpgradeTrial
+    ? `Your ${trialDurationLabel.toLowerCase()} trial upgrade is free. You'll keep paying for ${currentPlanName} during the trial. After it ends, you'll move to ${plan.name} and be charged the difference. End the trial before then to stay on ${currentPlanName}. The displayed monthly rate is a catalog reference, not your actual upgrade charge.`
+    : `Your ${trialDurationLabel.toLowerCase()} trial is free. A payment method is required. If you do not have one on file, secure card setup must finish before the trial starts. After the trial, billing continues monthly based on usage unless you cancel.`;
+
   return (
     <ProductUpgradeDialog
       product={product}
-      upgradeLabel={hasEntitlementIntent ? upgradeLabel : undefined}
+      upgradeLabel={upgradeLabel}
       requiredPlanName={requiredPlan.name}
       plans={plans}
       selectedTier={plan.tier}
@@ -660,83 +655,6 @@ const ProductUpgradeGate = ({
       onTierChange={setSelectedTier}
       onOpenChange={onOpenChange}
       features={features}
-      billingDetails={
-        trialAvailable ? (
-          <section aria-label="Trial billing terms" className="space-y-3 text-sm text-muted">
-            <p>
-              {isUpgradeTrial
-                ? `Your ${trialDurationLabel.toLowerCase()} trial upgrade is free. You'll keep paying for ${currentPlanName} during the trial. After it ends, you'll move to ${plan.name} and be charged the difference. End the trial before then to stay on ${currentPlanName}.`
-                : `Your ${trialDurationLabel.toLowerCase()} trial is free. A payment method is required. If you do not have one on file, secure card setup must finish before the trial starts. After the trial, billing continues monthly based on usage unless you cancel.`}
-            </p>
-            {isUpgradeTrial && (
-              <div className="space-y-2 text-sm text-muted">
-                <p className="font-medium text-foreground">{plan.name} Catalog Reference Prices</p>
-                <p>
-                  These rates are not your upgrade charge. Your actual charge depends on your
-                  subscription and the remaining billing period.
-                </p>
-                {(["monthly", "annual"] as const)
-                  .filter((referenceCadence) => planSupportsCadence(plan, referenceCadence))
-                  .map((referenceCadence) => (
-                    <div key={referenceCadence}>
-                      <p>{referenceCadence === "annual" ? "Billed Annually" : "Billed Monthly"}</p>
-                      <ul className="mt-1 space-y-1">
-                        {plan.base && unitPrice(plan.base, referenceCadence) > 0 && (
-                          <li>
-                            Base Fee:{" "}
-                            {fmtMoney(
-                              unitPrice(plan.base, referenceCadence) /
-                                (referenceCadence === "annual" ? 12 : 1),
-                              6
-                            )}{" "}
-                            / month
-                          </li>
-                        )}
-                        {plan.dims
-                          .filter((dimension) => unitPrice(dimension, referenceCadence) > 0)
-                          .map((dimension) => {
-                            const perMonth =
-                              referenceCadence === "annual" &&
-                              !isMeteredCadence(dimension, referenceCadence);
-                            return (
-                              <li key={dimension.key}>
-                                {dimension.label}:{" "}
-                                {fmtMoney(
-                                  unitPrice(dimension, referenceCadence) / (perMonth ? 12 : 1),
-                                  6
-                                )}{" "}
-                                / {dimension.noun} /{" "}
-                                {perMonth ? "month" : cadenceWord(referenceCadence)}
-                                {dimension.included > 0 ? ` · ${dimension.included} included` : ""}
-                              </li>
-                            );
-                          })}
-                      </ul>
-                    </div>
-                  ))}
-                {!planSupportsCadence(plan, "annual") && !planSupportsCadence(plan, "monthly") && (
-                  <p>Catalog reference prices are unavailable.</p>
-                )}
-              </div>
-            )}
-            {!isUpgradeTrial && plan.dims.some((dimension) => dimension.monthly > 0) && (
-              <div className="text-sm text-muted">
-                <p className="font-medium text-foreground">Monthly Usage Rates</p>
-                <ul className="mt-2 space-y-1">
-                  {plan.dims
-                    .filter((dimension) => dimension.monthly > 0)
-                    .map((dimension) => (
-                      <li key={dimension.key}>
-                        {dimension.label}: {fmtMoney(dimension.monthly, 6)} / {dimension.noun} / month
-                        {dimension.included > 0 ? ` · ${dimension.included} included` : ""}
-                      </li>
-                    ))}
-                </ul>
-              </div>
-            )}
-          </section>
-        ) : undefined
-      }
       notice={
         !selfServe ? (
           <Alert variant="info" appearance="borderless">
@@ -762,53 +680,67 @@ const ProductUpgradeGate = ({
               <span className="text-foreground font-medium">FREE</span>
             </div>
           )}
-          {!plan.salesLed && plan.tier !== product.baselinePlan?.tier && (
-            <div
-              className={`flex flex-wrap items-center gap-3 px-1 ${hasPeriodOption ? "justify-between" : "justify-center"}`}
-            >
-              {hasPeriodOption ? (
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={`upgrade-cadence-${product.id}`}
-                    variant="org"
-                    isChecked={visibleCadence === "annual"}
-                    isDisabled={startTrial.isPending}
-                    onCheckedChange={(checked) =>
-                      setCadence(checked === true ? "annual" : "monthly")
-                    }
-                  />
-                  <Label htmlFor={`upgrade-cadence-${product.id}`}>Annual Billing</Label>
-                  {visibleCadence === "annual" && savingsPercent > 0 && (
-                    <Badge variant="success" className="min-h-4 px-1 py-0 text-[10px]">
-                      -{savingsPercent}%
-                    </Badge>
+          {!plan.salesLed &&
+            plan.tier !== product.baselinePlan?.tier &&
+            (trialAvailable ? (
+              <Tooltip key={plan.tier}>
+                <TooltipTrigger asChild>
+                  <div
+                    tabIndex={0}
+                    className="flex w-full items-baseline justify-between gap-3 rounded-sm px-1 text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="text-muted line-through">
+                      {comparePrice.amount > 0
+                        ? `${fmtMoney(comparePrice.amount, 6)}${comparePrice.compactUnit}`
+                        : "Usage-based"}
+                    </span>
+                    <span className="text-foreground font-medium">{trialPriceLabel}*</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="w-96 max-w-(--radix-tooltip-content-available-width) leading-relaxed"
+                >
+                  {trialBillingTerms}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <div
+                className={`flex flex-wrap items-center gap-3 px-1 ${hasPeriodOption ? "justify-between" : "justify-center"}`}
+              >
+                {hasPeriodOption ? (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`upgrade-cadence-${product.id}`}
+                      variant="org"
+                      isChecked={visibleCadence === "annual"}
+                      isDisabled={startTrial.isPending}
+                      onCheckedChange={(checked) =>
+                        setCadence(checked === true ? "annual" : "monthly")
+                      }
+                    />
+                    <Label htmlFor={`upgrade-cadence-${product.id}`}>Annual Billing</Label>
+                    {visibleCadence === "annual" && savingsPercent > 0 && (
+                      <Badge variant="success" className="min-h-4 px-1 py-0 text-[10px]">
+                        -{savingsPercent}%
+                      </Badge>
+                    )}
+                  </div>
+                ) : null}
+                <div
+                  className={`flex items-baseline gap-2 text-sm tabular-nums ${hasPeriodOption ? "ml-auto" : ""}`}
+                >
+                  {comparePrice.amount > 0 ? (
+                    <span className="text-foreground font-medium">
+                      {fmtMoney(comparePrice.amount, 6)}
+                      {comparePrice.compactUnit}
+                    </span>
+                  ) : (
+                    <span className="text-foreground font-medium">Usage-based</span>
                   )}
                 </div>
-              ) : null}
-              <div
-                className={`flex items-baseline gap-2 text-sm tabular-nums ${hasPeriodOption ? "ml-auto" : ""}`}
-              >
-                {comparePrice.amount > 0 && (!trialAvailable || !isUpgradeTrial) ? (
-                  <span
-                    className={
-                      trialAvailable ? "text-muted line-through" : "text-foreground font-medium"
-                    }
-                  >
-                    {fmtMoney(comparePrice.amount, 6)}
-                    {comparePrice.compactUnit}
-                  </span>
-                ) : !trialAvailable || !isUpgradeTrial ? (
-                  <span className="text-foreground font-medium">Usage-based</span>
-                ) : null}
-                {trialAvailable && (
-                  <span className="text-foreground font-medium">{trialPriceLabel}</span>
-                )}
               </div>
-            </div>
-          )}
-          {footerUnlockLabel && (
-            <p className="text-foreground text-sm font-medium">{footerUnlockLabel}</p>
-          )}
+            ))}
           {productUpgradeAction}
         </>
       }

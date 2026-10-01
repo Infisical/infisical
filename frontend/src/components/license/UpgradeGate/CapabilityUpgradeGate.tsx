@@ -112,12 +112,9 @@ const CapabilityUpgradeDialog = ({
       }
       onOpenChange={onOpenChange}
       footer={
-        <>
-          <p className="text-center text-sm font-medium">{intent.title}</p>
-          <Button data-upgrade-cta variant="org" className="w-full" onClick={openUpgradeDestination}>
-            {isInstance ? "Contact Sales" : isSubOrganization ? "Continue to Root Billing" : "View Plans"}
-          </Button>
-        </>
+        <Button data-upgrade-cta variant="org" className="w-full" onClick={openUpgradeDestination}>
+          {isInstance ? "Contact Sales" : isSubOrganization ? "Continue to Root Billing" : "View Plans"}
+        </Button>
       }
     >
       <p className="text-sm text-foreground">{intent.description}</p>
