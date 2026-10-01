@@ -6,6 +6,7 @@ import { HOSTNAME_MAX_LENGTH, isValidHostname } from "@app/lib/validator/validat
 
 import { buildCertificateNameSchemaTestName } from "./pki-sync-certificate-name-fns";
 import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
+import { EXPORT_PASSWORD_BLANK_MESSAGE } from "./pki-sync-export-fns";
 import { PKI_SYNC_MAX_FILTER_ORDERS } from "./pki-sync-filter-fns";
 import { HOST_COMMAND_MAX_LENGTH } from "./pki-sync-host-command-fns";
 
@@ -31,7 +32,11 @@ export const KeystoreAliasSchema = z
     "Alias of the private key entry in a PKCS#12 or JKS keystore. Defaults to the certificate's file base name. JKS stores aliases in lowercase."
   );
 
-export const ExportPasswordSchema = z.string().min(1).max(1024);
+export const ExportPasswordSchema = z
+  .string()
+  .min(1)
+  .max(1024)
+  .refine((password) => password.trim().length > 0, { message: EXPORT_PASSWORD_BLANK_MESSAGE });
 
 export const IncludeTruststoreSchema = z
   .boolean()

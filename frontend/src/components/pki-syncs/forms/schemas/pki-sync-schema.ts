@@ -174,7 +174,11 @@ const refineKeystoreAlias = (
 };
 
 // Drops keystore options the chosen format does not use, since the API rejects them.
-export const removeUnusedKeystoreOptions = <T extends { syncOptions?: unknown }>(data: T): T => {
+export const removeUnusedKeystoreOptions = <
+  T extends { syncOptions?: unknown; credentials?: unknown }
+>(
+  data: T
+): T => {
   if (!data.syncOptions) return data;
   const syncOptions = { ...(data.syncOptions as Record<string, unknown>) };
   const alias =
@@ -183,6 +187,8 @@ export const removeUnusedKeystoreOptions = <T extends { syncOptions?: unknown }>
   if (!isKeystoreExportFormat(exportFormat) || !alias) delete syncOptions.keystoreAlias;
   else syncOptions.keystoreAlias = alias;
   if (exportFormat !== PkiSyncExportFormat.Jks) delete syncOptions.includeTruststore;
+  if (!isKeystoreExportFormat(exportFormat))
+    return { ...data, syncOptions, credentials: undefined };
   return { ...data, syncOptions };
 };
 

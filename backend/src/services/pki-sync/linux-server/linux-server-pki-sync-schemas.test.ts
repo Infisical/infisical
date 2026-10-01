@@ -144,8 +144,8 @@ describe("Linux Server export password validation", () => {
     expect(parseCreate("jks").success).toBe(false);
   });
 
-  test("ignores a leftover password for PEM", () => {
-    expect(parseCreate("pem", "   ").success).toBe(true);
+  test("rejects a blank password for PEM too", () => {
+    expect(parseCreate("pem", "   ").success).toBe(false);
   });
 
   test("keeps surrounding spaces in a real password", () => {
