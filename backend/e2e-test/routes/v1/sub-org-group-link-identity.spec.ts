@@ -127,6 +127,38 @@ describe("Linking root groups to a sub-organization with a machine identity", ()
     expect(await subOrgLinkRows()).toHaveLength(0);
   });
 
+  test("rejects updating or unlinking an existing link when the identity lacks LinkGroup on the root organization", async () => {
+    const adminHeaders = { authorization: `Bearer ${adminSubOrgToken}` };
+    const memberHeaders = { authorization: `Bearer ${memberSubOrgToken}` };
+
+    const createRes = await testServer.inject({
+      method: "POST",
+      url: linkUrl(),
+      headers: adminHeaders,
+      body: { roles: [{ role: OrgMembershipRole.NoAccess }] }
+    });
+    expect(createRes.statusCode).toBe(200);
+
+    const updateRes = await testServer.inject({
+      method: "PATCH",
+      url: linkUrl(),
+      headers: memberHeaders,
+      body: { roles: [{ role: OrgMembershipRole.Member }] }
+    });
+    expect(updateRes.statusCode).toBe(403);
+
+    const deleteRes = await testServer.inject({ method: "DELETE", url: linkUrl(), headers: memberHeaders });
+    expect(deleteRes.statusCode).toBe(403);
+
+    const [link] = await subOrgLinkRows();
+    const roles = await testDb(TableName.MembershipRole).where({ membershipId: link.id }).pluck("role");
+    expect(roles).toEqual([OrgMembershipRole.NoAccess]);
+
+    const cleanupRes = await testServer.inject({ method: "DELETE", url: linkUrl(), headers: adminHeaders });
+    expect(cleanupRes.statusCode).toBe(200);
+    expect(await subOrgLinkRows()).toHaveLength(0);
+  });
+
   test("links, updates, and unlinks a root group", async () => {
     const headers = { authorization: `Bearer ${adminSubOrgToken}` };
 
