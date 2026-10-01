@@ -1,6 +1,5 @@
-import { FormEvent, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { ArrowRightIcon, EyeIcon, EyeOffIcon, FolderIcon, KeyIcon } from "lucide-react";
+import { FormEvent, useMemo, useState } from "react";
+import { EyeIcon, EyeOffIcon, FolderIcon, KeyIcon } from "lucide-react";
 
 import {
   Badge,
@@ -23,21 +22,16 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
+import { useGetUserProjects } from "@app/hooks/api";
 import { useSearchSecretsByValue } from "@app/hooks/api/secretInsights";
 
+import { GoToSecretFolderButton } from "./GoToSecretFolderButton";
 import { SecretValueTrackingPrompt, useOrgSecretValueTracking } from "./SecretValueTrackingGate";
 
 // Mirrors SECRET_VALUE_SEARCH_LIMIT on the server, which truncates without saying so.
 const SEARCH_RESULT_LIMIT = 1000;
-
-const overviewRoute =
-  "/organizations/$orgId/projects/secret-management/$projectId/overview" as const;
 
 type Props = {
   orgId: string;
@@ -46,10 +40,14 @@ type Props = {
 };
 
 const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void }) => {
-  const navigate = useNavigate();
   const [value, setValue] = useState("");
   const [isRevealed, setIsRevealed] = useState(false);
   const search = useSearchSecretsByValue();
+  const { data: memberProjects } = useGetUserProjects();
+  const memberProjectIds = useMemo(
+    () => new Set(memberProjects?.map((project) => project.id)),
+    [memberProjects]
+  );
 
   const tracking = useOrgSecretValueTracking({ orgId, enabled: true });
 
@@ -80,7 +78,7 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
       return (
         <Empty variant="unstyled">
           <EmptyHeader>
-            <EmptyTitle>Enter a secret value to find where it is used</EmptyTitle>
+            <EmptyTitle>Paste a secret value, then press Enter or select Search</EmptyTitle>
             <EmptyDescription>
               Results cover every project in the organization, including ones you are not a member
               of.
@@ -149,32 +147,14 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
                     </div>
                   </TableCell>
                   <TableCell variant="action">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <IconButton
-                            variant="ghost"
-                            size="sm"
-                            aria-label="Go to secret folder"
-                            className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
-                            onClick={() => {
-                              onClose();
-                              navigate({
-                                to: overviewRoute,
-                                params: { orgId, projectId: match.projectId },
-                                search: {
-                                  secretPath: match.secretPath,
-                                  environments: [match.environment.slug]
-                                }
-                              });
-                            }}
-                          >
-                            <ArrowRightIcon className="size-3.5" />
-                          </IconButton>
-                        </TooltipTrigger>
-                        <TooltipContent>Go to secret folder</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <GoToSecretFolderButton
+                      orgId={orgId}
+                      projectId={match.projectId}
+                      secretPath={match.secretPath}
+                      environmentSlug={match.environment.slug}
+                      isProjectMember={memberProjectIds.has(match.projectId)}
+                      onNavigate={onClose}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

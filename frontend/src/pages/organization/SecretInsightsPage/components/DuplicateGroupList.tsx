@@ -1,30 +1,25 @@
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { ArrowRightIcon, FolderIcon, KeyIcon, LayersIcon, LockIcon } from "lucide-react";
+import { useMemo } from "react";
+import { useParams } from "@tanstack/react-router";
+import { FolderIcon, KeyIcon, LayersIcon, LockIcon } from "lucide-react";
 
+import { GoToSecretFolderButton } from "@app/components/secrets/GoToSecretFolderButton";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
   Badge,
-  IconButton,
   ProjectIcon,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { useGetUserProjects } from "@app/hooks/api";
 import { TOrgDuplicatedSecretGroup } from "@app/hooks/api/secretInsights";
-
-const overviewRoute =
-  "/organizations/$orgId/projects/secret-management/$projectId/overview" as const;
 
 type Props = {
   groups: TOrgDuplicatedSecretGroup[];
@@ -34,7 +29,11 @@ const pluralize = (count: number, word: string) => `${count} ${word}${count === 
 
 export const DuplicateGroupList = ({ groups }: Props) => {
   const { orgId } = useParams({ strict: false });
-  const navigate = useNavigate();
+  const { data: memberProjects } = useGetUserProjects();
+  const memberProjectIds = useMemo(
+    () => new Set(memberProjects?.map((project) => project.id)),
+    [memberProjects]
+  );
 
   return (
     <Accordion type="multiple">
@@ -108,34 +107,13 @@ export const DuplicateGroupList = ({ groups }: Props) => {
                         </div>
                       </TableCell>
                       <TableCell variant="action">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <IconButton
-                                variant="ghost"
-                                size="sm"
-                                aria-label="Go to secret folder"
-                                className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
-                                onClick={() =>
-                                  navigate({
-                                    to: overviewRoute,
-                                    params: {
-                                      orgId: orgId as string,
-                                      projectId: entry.projectId
-                                    },
-                                    search: {
-                                      secretPath: entry.secretPath,
-                                      environments: [entry.environment.slug]
-                                    }
-                                  })
-                                }
-                              >
-                                <ArrowRightIcon className="size-3.5" />
-                              </IconButton>
-                            </TooltipTrigger>
-                            <TooltipContent>Go to secret folder</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <GoToSecretFolderButton
+                          orgId={orgId as string}
+                          projectId={entry.projectId}
+                          secretPath={entry.secretPath}
+                          environmentSlug={entry.environment.slug}
+                          isProjectMember={memberProjectIds.has(entry.projectId)}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
