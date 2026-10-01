@@ -29,15 +29,31 @@ export const UseCasePicker = ({
 
   useEffect(() => {
     const sync = () => {
-      const raw = new URLSearchParams(window.location.search).get(param);
-      setSelected(
-        raw
-          ? raw
-              .split(",")
-              .map((id) => id.trim())
-              .filter((id) => knownIds.has(id))
-          : []
-      );
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get(param);
+      const requested = raw
+        ? raw
+            .split(",")
+            .map((id) => id.trim())
+            .filter(Boolean)
+        : [];
+      const known = requested.filter((id) => knownIds.has(id));
+      setSelected(known);
+
+      // A stale link can carry ids that no longer exist. <UseCase> blocks don't know the option
+      // list, so they would treat those ids as a selection and hide everything. Rewrite the URL to
+      // the known ids and announce it, so every block sees the same selection the picker does.
+      if (known.length !== requested.length) {
+        if (known.length === 0) params.delete(param);
+        else params.set(param, known.join(","));
+        const query = params.toString().replace(/%2C/g, ",");
+        window.history.replaceState(
+          {},
+          "",
+          `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
+        );
+        window.dispatchEvent(new Event(SELECTION_EVENT));
+      }
     };
     sync();
     window.addEventListener(SELECTION_EVENT, sync);

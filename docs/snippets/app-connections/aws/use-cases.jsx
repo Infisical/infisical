@@ -198,7 +198,6 @@ export const awsUseCaseGroups = [
               Effect: "Allow",
               Action: [
                 "secretsmanager:ListSecrets",
-                "secretsmanager:GetSecretValue",
                 "secretsmanager:CreateSecret",
                 "secretsmanager:UpdateSecret",
                 "secretsmanager:DeleteSecret"

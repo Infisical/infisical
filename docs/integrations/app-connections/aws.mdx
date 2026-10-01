@@ -111,6 +111,14 @@ Next, add the required policies to the IAM role or user from [Step 1](#step-1-cr
         <UseCase use="secrets-manager,parameter-store" hideWhenEmpty>
             If a sync encrypts with a customer managed KMS key, select its KMS checkbox above the policy. If that key doesn't use the default key policy, also add the IAM role or user under **Key users** on the key's page in the AWS KMS console.
         </UseCase>
+
+        <UseCase use="secrets-manager,parameter-store,iam-rotation,honey-tokens,acm-sync,elb-sync,pki-secrets-manager,private-ca,acm-public-ca,acme-route53,pam-recording,agent-vault-session-logs" hideWhenEmpty>
+            <Warning>
+                If you use the **Access Key** method, AWS may reject the policy as too large, because IAM users allow less inline policy than roles do.
+                
+                In this case, create it as a customer managed policy instead: in the IAM console, go to **Policies** > **Create policy**, paste the same JSON, and save it. Then open the IAM user and attach it under **Add permissions** > **Attach policies directly**.
+            </Warning>
+        </UseCase>
     </Step>
     <Step>
         Select **Next**, enter a **Policy name**, then select **Create policy**.
@@ -155,7 +163,7 @@ Next, add the required policies to the IAM role or user from [Step 1](#step-1-cr
                 ```
             </CodeGroup>
 
-            If you self-host Infisical, replace `AllowedOrigins` with your instance's URL.
+            If you self-host Infisical or use a dedicated instance, replace `AllowedOrigins` with your instance's URL.
         </Step>
     </Steps>
 </UseCase>
@@ -196,7 +204,7 @@ Next, add the required policies to the IAM role or user from [Step 1](#step-1-cr
                 ```
             </CodeGroup>
 
-            If you self-host Infisical, replace `AllowedOrigins` with your instance's URL.
+            If you self-host Infisical or use a dedicated instance, replace `AllowedOrigins` with your instance's URL.
         </Step>
     </Steps>
 </UseCase>
