@@ -55,7 +55,10 @@ const createHarness = ({ windowAcquired = true, storedCount = "0", retentionDays
     incrementByWithExpiry: vi.fn<(key: string, by: number, ttl: number) => Promise<number>>(async () => 1),
     deleteItem: vi.fn<(key: string) => Promise<number>>(async () => 1)
   };
-  const auditLogQueue = { pushToLog: vi.fn<(data: TPushedLog) => Promise<void>>(async () => undefined) };
+  const auditLogQueue = {
+    pushToLog: vi.fn<(data: TPushedLog) => Promise<void>>(async () => undefined),
+    pushToLogOrThrow: vi.fn<(data: TPushedLog) => Promise<void>>(async () => undefined)
+  };
   const licenseService = { getPlan: vi.fn(async () => ({ auditLogsRetentionDays: retentionDays })) };
   const auditLogSettingsService = {
     getEffectiveSettings: vi.fn<(orgId: string) => Promise<TEffectiveAuditLogSettings>>(async () => ({
@@ -196,6 +199,24 @@ describe("recordPermissionDenied", () => {
     await expect(service.recordPermissionDenied(denial())).resolves.toBeUndefined();
     expect(auditLogQueue.pushToLog).not.toHaveBeenCalled();
   });
+
+  test("a failed flush enqueue closes the window so later denials are not lost", async () => {
+    const { service, queueService, keyStore, auditLogQueue } = createHarness();
+    queueService.queue.mockRejectedValueOnce(new Error("queue down"));
+
+    await expect(service.recordPermissionDenied(denial())).resolves.toBeUndefined();
+
+    expect(auditLogQueue.pushToLog).toHaveBeenCalledTimes(1);
+    const [windowKey] = keyStore.setItemWithExpiryNX.mock.calls[0];
+    expect(keyStore.deleteItem).toHaveBeenCalledWith(windowKey);
+
+    await service.recordPermissionDenied(denial());
+
+    expect(keyStore.setItemWithExpiryNX).toHaveBeenCalledTimes(2);
+    expect(keyStore.incrementByWithExpiry).not.toHaveBeenCalled();
+    expect(auditLogQueue.pushToLog).toHaveBeenCalledTimes(2);
+    expect(queueService.queue).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("createCollapsedAuditLog", () => {
@@ -254,8 +275,9 @@ describe("collapsed audit log flush job", () => {
     expect(keyStore.getItem.mock.calls[0][0]).toContain(jobData.collapseKey);
     expect(keyStore.getItem.mock.calls[0][0]).toContain(jobData.windowStart);
     expect(keyStore.deleteItem).not.toHaveBeenCalled();
-    expect(auditLogQueue.pushToLog).toHaveBeenCalledTimes(1);
-    expect(auditLogQueue.pushToLog.mock.calls[0][0]).toMatchObject({
+    expect(auditLogQueue.pushToLog).not.toHaveBeenCalled();
+    expect(auditLogQueue.pushToLogOrThrow).toHaveBeenCalledTimes(1);
+    expect(auditLogQueue.pushToLogOrThrow.mock.calls[0][0]).toMatchObject({
       orgId: "org-1",
       projectId: "project-1",
       actor: { type: "identity", metadata: { identityId: "identity-1" } },
@@ -276,6 +298,23 @@ describe("collapsed audit log flush job", () => {
 
     await flush({ data: jobData });
 
-    expect(auditLogQueue.pushToLog).not.toHaveBeenCalled();
+    expect(auditLogQueue.pushToLogOrThrow).not.toHaveBeenCalled();
+  });
+
+  test("a failed summary push rejects so the job is retried", async () => {
+    const { flush, auditLogQueue } = createHarness({ storedCount: "3" });
+    auditLogQueue.pushToLogOrThrow.mockRejectedValueOnce(new Error("redis down"));
+
+    await expect(flush({ data: jobData })).rejects.toThrow("redis down");
+  });
+
+  test("the flush job is enqueued with retries", async () => {
+    const { service, queueService } = createHarness();
+
+    await service.recordPermissionDenied(denial());
+
+    const opts = queueService.queue.mock.calls[0][3] as { attempts?: number; backoff?: { type: string } };
+    expect(opts.attempts).toBeGreaterThan(1);
+    expect(opts.backoff?.type).toBe("exponential");
   });
 });

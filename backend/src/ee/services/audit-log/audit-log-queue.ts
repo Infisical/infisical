@@ -35,6 +35,7 @@ type TAuditLogQueueServiceFactoryDep = {
 
 export type TAuditLogQueueServiceFactory = {
   pushToLog: (data: TCreateAuditLogDTO) => Promise<void>;
+  pushToLogOrThrow: (data: TCreateAuditLogDTO) => Promise<void>;
 };
 
 const normalizeJsonPayload = (payload: unknown) => {
@@ -354,6 +355,7 @@ export const auditLogQueueServiceFactory = async ({
   }
 
   return {
-    pushToLog
+    pushToLog,
+    pushToLogOrThrow: appendToIngestStream
   };
 };

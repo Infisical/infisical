@@ -40,6 +40,8 @@ const DEFAULT_COLLAPSE_WINDOW_SECONDS = 60;
 // The flush runs after the window key has expired, so every repeat it counts was made while
 // that window was open.
 const COLLAPSE_FLUSH_GRACE_MS = 2_000;
+const COLLAPSE_FLUSH_ATTEMPTS = 5;
+const COLLAPSE_FLUSH_BACKOFF_MS = 3_000;
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
@@ -49,7 +51,10 @@ type TAuditLogServiceFactoryDep = {
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "setItemWithExpiryNX" | "incrementByWithExpiry">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "getItem" | "setItemWithExpiry" | "setItemWithExpiryNX" | "incrementByWithExpiry" | "deleteItem"
+  >;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "getUsersByFilter">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -200,7 +205,8 @@ export const auditLogServiceFactory = ({
   };
 
   // Runs outside a request, so it skips createAuditLog. The payload already carries the
-  // actor's permission metadata from the first event.
+  // actor's permission metadata from the first event. A failed push rejects so the job retries;
+  // the request-path push would swallow it and the whole window's repeats would vanish.
   const flushCollapsedRepeats = async ({
     collapseKey,
     windowStart,
@@ -216,7 +222,7 @@ export const auditLogServiceFactory = ({
       suppressedFrom: windowStart,
       suppressedUntil: windowEnd
     };
-    await auditLogQueue.pushToLog({
+    await auditLogQueue.pushToLogOrThrow({
       ...auditLog,
       event: { ...auditLog.event, metadata: { ...auditLog.event.metadata, ...summary } } as Event
     });
@@ -256,17 +262,24 @@ export const auditLogServiceFactory = ({
     await createAuditLog(data);
 
     const windowEnd = new Date(Date.parse(windowStart) + collapseWindowSeconds * 1000).toISOString();
-    await queueService.queue(
-      QueueName.AuditLogCollapsedFlush,
-      QueueJobs.AuditLogCollapsedFlush,
-      { ...data, collapseKey, windowStart, windowEnd },
-      {
-        jobId: `audit-log-collapse-${collapseKey}-${Date.parse(windowStart)}`,
-        delay: collapseWindowSeconds * 1000 + COLLAPSE_FLUSH_GRACE_MS,
-        removeOnComplete: true,
-        removeOnFail: true
-      }
-    );
+    try {
+      await queueService.queue(
+        QueueName.AuditLogCollapsedFlush,
+        QueueJobs.AuditLogCollapsedFlush,
+        { ...data, collapseKey, windowStart, windowEnd },
+        {
+          jobId: `audit-log-collapse-${collapseKey}-${Date.parse(windowStart)}`,
+          delay: collapseWindowSeconds * 1000 + COLLAPSE_FLUSH_GRACE_MS,
+          attempts: COLLAPSE_FLUSH_ATTEMPTS,
+          backoff: { type: "exponential", delay: COLLAPSE_FLUSH_BACKOFF_MS },
+          removeOnComplete: true,
+          removeOnFail: true
+        }
+      );
+    } catch (error) {
+      await keyStore.deleteItem(windowKey);
+      throw error;
+    }
   };
 
   const createCollapsedAuditLog: TAuditLogServiceFactory["createCollapsedAuditLog"] = async ({

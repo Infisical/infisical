@@ -242,6 +242,13 @@ describe("audit-log-queue pushToLog", () => {
     await expect(service.pushToLog(dto({ orgId: "o" }) as never)).resolves.toBeUndefined();
     expect(keyStore.streamAdd).not.toHaveBeenCalled();
   });
+
+  test("pushToLogOrThrow rejects when streamAdd fails", async () => {
+    const { service, keyStore } = await createHarness();
+    keyStore.streamAdd.mockRejectedValueOnce(new Error("redis down"));
+
+    await expect(service.pushToLogOrThrow(dto({ orgId: "o" }) as never)).rejects.toThrow("redis down");
+  });
 });
 
 describe("audit-log-queue event class settings", () => {
