@@ -1,4 +1,4 @@
-import { CSSProperties, ReactNode } from "react";
+import { CSSProperties, ReactNode, useEffect } from "react";
 import { ChevronRight, EllipsisVerticalIcon, PlusIcon, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -10,12 +10,16 @@ import {
   Badge,
   Button,
   Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
+  Separator,
   Skeleton,
   Tabs,
   TabsContent,
@@ -25,7 +29,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { cn } from "@app/components/v3/utils";
 import { useOrganization } from "@app/context";
 import {
   BillingV2BreakdownScopeKind,
@@ -53,7 +56,6 @@ import {
 import { DetailsCard } from "./cards/DetailsCard";
 import { InvoicesCard } from "./cards/InvoicesCard";
 import { PaymentCard } from "./cards/PaymentCard";
-import { ProductCardGrid } from "./ProductCardGrid";
 import { CardEmpty, ProductIcon } from "./shared";
 import { breakdownableDimensions } from "./UsageBreakdownSheet";
 
@@ -75,7 +77,12 @@ const priceLabel = (ent: BillingV2Entitlement) => {
 
 const planLine = (ent: BillingV2Entitlement) => {
   if (ent.isTrialing) {
-    return ent.trialEndsAt ? `Trial ends ${ent.trialEndsAt}` : "Trial";
+    return [
+      ent.planTier ? tierLabel(ent.planTier) : null,
+      ent.trialEndsAt ? `Trial ends ${ent.trialEndsAt}` : "Trial"
+    ]
+      .filter(Boolean)
+      .join(" · ");
   }
   return [
     ent.planTier ? tierLabel(ent.planTier) : null,
@@ -86,10 +93,11 @@ const planLine = (ent: BillingV2Entitlement) => {
     .join(" · ");
 };
 
-const meterNote = (dim: BillingV2EntitlementDim): ReactNode => {
+const meterNote = (dim: BillingV2EntitlementDim, showPricing: boolean): ReactNode => {
+  let usageNote: ReactNode;
   if (dimCommitted(dim)) {
     const overflow = dimOnDemandQuantity(dim);
-    return (
+    usageNote = (
       <>
         of {(dim.committed ?? 0).toLocaleString()} committed
         {overflow > 0 && (
@@ -97,15 +105,30 @@ const meterNote = (dim: BillingV2EntitlementDim): ReactNode => {
         )}
       </>
     );
-  }
-  if (dim.limit !== null && dim.limit > 0) {
-    return `of ${dim.limit.toLocaleString()}`;
+  } else if (dim.limit !== null && dim.limit > 0) {
+    usageNote = `of ${dim.limit.toLocaleString()}`;
   }
   const rate = dimMonthlyRate(dim);
-  if (rate > 0) {
-    return `${fmtMoney(rate, 2)} per ${dim.noun} / mo`;
+  const prices: string[] = [];
+  if (showPricing && dimCommitted(dim) && dim.committedRate !== undefined) {
+    prices.push(`${fmtMoney(dim.committedRate, 2)} per ${dim.noun} / yr committed`);
   }
-  return undefined;
+  if (showPricing && rate > 0) {
+    prices.push(
+      `${fmtMoney(rate, 2)} per ${dim.noun} / mo${dimCommitted(dim) ? " on-demand" : ""}`
+    );
+  }
+  if (!usageNote && prices.length === 0) return undefined;
+  return (
+    <>
+      {usageNote}
+      {prices.map((price) => (
+        <span key={price} className="block">
+          {price}
+        </span>
+      ))}
+    </>
+  );
 };
 
 // Usage over an annual commitment is billed on-demand: the one state the overview calls out with a
@@ -115,13 +138,6 @@ const overCommitmentMeter = (ent: BillingV2Entitlement) =>
 
 const topSource = (breakdown: BillingV2UsageBreakdown) =>
   [...breakdown.scopes].filter((scope) => scope.count > 0).sort((a, b) => b.count - a.count)[0];
-
-const SectionLabel = ({ children, action }: { children: ReactNode; action?: ReactNode }) => (
-  <div className="flex min-h-8 flex-wrap items-center justify-between gap-3">
-    <h2 className="text-sm font-medium text-accent">{children}</h2>
-    {action}
-  </div>
-);
 
 const Metric = ({ label, value, note }: { label: string; value: ReactNode; note?: ReactNode }) => (
   <div className="flex min-w-0 flex-col gap-1">
@@ -137,6 +153,8 @@ type BreakdownTarget = {
 };
 
 type TabbedOverviewProps = BreakdownTarget & {
+  tab: string;
+  onTabChange: (tab: string) => void;
   overview: BillingV2Overview;
   catalog: BillingV2CatalogProduct[];
   readOnly: boolean;
@@ -191,7 +209,7 @@ const SourceLine = ({
   );
 };
 
-const ProductSummaryCard = ({
+const ProductSummaryRow = ({
   prod,
   ent,
   readOnly,
@@ -223,7 +241,7 @@ const ProductSummaryCard = ({
     : null;
 
   return (
-    <Card className="gap-5">
+    <section className="flex flex-col gap-5 py-5 first:pt-0 last:pb-0">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <ProductIcon product={prod} size={32} />
@@ -269,7 +287,7 @@ const ProductSummaryCard = ({
           the trial ends.
         </p>
       )}
-      <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
         {!isManaged && (
           <Metric
             label="Charge"
@@ -282,7 +300,7 @@ const ProductSummaryCard = ({
             key={dim.key}
             label={dim.label}
             value={dim.used.toLocaleString()}
-            note={meterNote(dim)}
+            note={meterNote(dim, !isManaged)}
           />
         ))}
       </div>
@@ -295,7 +313,7 @@ const ProductSummaryCard = ({
           onViewBreakdown={onViewBreakdown}
         />
       )}
-    </Card>
+    </section>
   );
 };
 
@@ -441,11 +459,13 @@ const UsageMeterSources = ({
 
 const UsageSources = ({
   products,
+  showPricing,
   orgId,
   scope,
   onViewBreakdown
 }: BreakdownTarget & {
   products: ActiveProduct[];
+  showPricing: boolean;
   onViewBreakdown: (productId: string, dimensionKey?: string) => void;
 }) => {
   const meteredProducts = products.filter(({ ent }) => breakdownableDimensions(ent).length > 0);
@@ -460,49 +480,44 @@ const UsageSources = ({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <SectionLabel>Where usage comes from</SectionLabel>
-      <p className="text-xs text-muted">Expand a product to see its usage sources.</p>
-      <Accordion type="multiple" variant="ghost" defaultValue={[meteredProducts[0].prod.id]}>
-        <ProductCardGrid>
+    <Card>
+      <CardContent>
+        <Accordion type="multiple" variant="ghost" defaultValue={[meteredProducts[0].prod.id]}>
           {meteredProducts.map(({ prod, ent }) => (
-            <Card key={prod.id} className="min-w-0 gap-0 p-0">
-              <AccordionItem value={prod.id}>
-                <AccordionTrigger className="px-5 group-data-[variant=ghost]/accordion:py-4">
-                  <ProductIcon product={prod} size={32} />
-                  <span className="min-w-0 text-sm font-medium text-foreground">{prod.name}</span>
-                </AccordionTrigger>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-5 pb-5">
-                  {(ent.dimensions ?? []).map((dim) => (
-                    <Metric
+            <AccordionItem key={prod.id} value={prod.id}>
+              <AccordionTrigger>
+                <ProductIcon product={prod} size={32} />
+                <span className="min-w-0 text-sm font-medium text-foreground">{prod.name}</span>
+              </AccordionTrigger>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 pb-5 sm:grid-cols-4">
+                {(ent.dimensions ?? []).map((dim) => (
+                  <Metric
+                    key={dim.key}
+                    label={dim.label}
+                    value={dim.used.toLocaleString()}
+                    note={meterNote(dim, showPricing)}
+                  />
+                ))}
+              </div>
+              <AccordionContent>
+                <div className="flex flex-col gap-5 divide-y divide-border border-t border-border pt-5 [&>section:not(:first-child)]:pt-5">
+                  {breakdownableDimensions(ent).map((dim) => (
+                    <UsageMeterSources
                       key={dim.key}
-                      label={dim.label}
-                      value={dim.used.toLocaleString()}
-                      note={meterNote(dim)}
+                      prod={prod}
+                      dim={dim}
+                      orgId={orgId}
+                      scope={scope}
+                      onViewBreakdown={onViewBreakdown}
                     />
                   ))}
                 </div>
-                <AccordionContent className="border-t border-border px-5 group-data-[variant=ghost]/accordion:pt-4 group-data-[variant=ghost]/accordion:pb-5">
-                  <div className="flex flex-col gap-5 divide-y divide-border [&>section:not(:first-child)]:pt-5">
-                    {breakdownableDimensions(ent).map((dim) => (
-                      <UsageMeterSources
-                        key={dim.key}
-                        prod={prod}
-                        dim={dim}
-                        orgId={orgId}
-                        scope={scope}
-                        onViewBreakdown={onViewBreakdown}
-                      />
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Card>
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </ProductCardGrid>
-      </Accordion>
-      <p className="text-xs text-muted">Current counts. Usage history isn&apos;t tracked.</p>
-    </div>
+        </Accordion>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -519,8 +534,8 @@ const AvailableProducts = ({
   onManage: (productId: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 }) => (
-  <Card className="gap-0 p-0">
-    {products.map((prod, index) => {
+  <div className="divide-y divide-border">
+    {products.map((prod) => {
       const selfServe = prod.plans.some((plan) => plan.selfServe);
       const salesLed = prod.plans.some((plan) => plan.salesLed);
       const trialPlan = prod.plans.find((plan) => plan.selfServe && plan.trialable);
@@ -546,13 +561,7 @@ const AvailableProducts = ({
         );
       }
       return (
-        <div
-          key={prod.id}
-          className={cn(
-            "flex flex-wrap items-center gap-3 px-5 py-4",
-            index > 0 && "border-t border-border"
-          )}
-        >
+        <div key={prod.id} className="flex flex-wrap items-center gap-3 py-4 first:pt-0 last:pb-0">
           <ProductIcon product={prod} size={32} />
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -565,7 +574,7 @@ const AvailableProducts = ({
         </div>
       );
     })}
-  </Card>
+  </div>
 );
 
 const SKELETON_PRODUCTS = ["product-a", "product-b"];
@@ -574,52 +583,61 @@ const SKELETON_PRODUCTS = ["product-a", "product-b"];
 // dead end.
 export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode }) => (
   <div className="flex flex-col gap-6">
+    {orgFilter && <div className="flex justify-end">{orgFilter}</div>}
     <div className="flex h-9 items-end gap-6 border-b border-border">
       <Skeleton className="mb-2 h-4 w-16" />
       <Skeleton className="mb-2 h-4 w-12" />
       <Skeleton className="mb-2 h-4 w-14" />
     </div>
-    <div className="flex flex-col gap-3">
-      <Skeleton className="h-4 w-10" />
-      <Card className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+    <Card>
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
         {SKELETON_PRODUCTS.concat("product-c").map((key) => (
           <div key={key} className="flex flex-col gap-2">
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-5 w-16" />
           </div>
         ))}
-      </Card>
-    </div>
-    <div className="flex flex-col gap-3">
-      <SectionLabel action={orgFilter}>Products</SectionLabel>
-      <ProductCardGrid>
-        {SKELETON_PRODUCTS.map((key) => (
-          <Card key={key} className="gap-5">
-            <div className="flex items-center gap-3">
-              <Skeleton className="size-8 rounded-md" />
-              <div className="flex flex-col gap-1.5">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-3 w-56" />
+      </div>
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <CardTitle>Products</CardTitle>
+          <div className="flex-1">
+            <Separator />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="divide-y divide-border">
+          {SKELETON_PRODUCTS.map((key) => (
+            <div key={key} className="flex flex-col gap-5 py-5 first:pt-0 last:pb-0">
+              <div className="flex items-center gap-3">
+                <Skeleton className="size-8 rounded-md" />
+                <div className="flex flex-col gap-1.5">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-56" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+                {SKELETON_PRODUCTS.concat("product-c").map((metric) => (
+                  <div key={metric} className="flex flex-col gap-2">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-5 w-12" />
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-6">
-              {SKELETON_PRODUCTS.concat("product-c").map((metric) => (
-                <div key={metric} className="flex flex-col gap-2">
-                  <Skeleton className="h-3 w-16" />
-                  <Skeleton className="h-5 w-12" />
-                </div>
-              ))}
-            </div>
-          </Card>
-        ))}
-      </ProductCardGrid>
-    </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   </div>
 );
 
 // Billing page as tabs: Overview (plan + products), Usage (where metered usage comes from), and the
 // billing administration tabs. Every loaded mode renders here: subscribed or not, cloud or managed.
 export const TabbedOverview = ({
+  tab,
+  onTabChange,
   overview,
   catalog,
   readOnly,
@@ -655,6 +673,16 @@ export const TabbedOverview = ({
   const available = visible.filter((prod) => !entitlements[prod.id]?.entitled);
   const showUsageTab = products.some(({ ent }) => breakdownableDimensions(ent).length > 0);
   const hasTabs = showUsageTab || showInvoicesTab || showPaymentTab;
+  const activeTab =
+    (tab === "usage" && !showUsageTab) ||
+    (tab === "invoices" && !showInvoicesTab) ||
+    (tab === "payment" && !showPaymentTab)
+      ? "overview"
+      : tab;
+
+  useEffect(() => {
+    onTabChange(activeTab);
+  }, [activeTab, onTabChange]);
 
   const handleRefresh = () => {
     refreshEntitlements.mutate(
@@ -668,7 +696,8 @@ export const TabbedOverview = ({
   };
 
   return (
-    <Tabs defaultValue="overview" className="flex flex-col gap-6">
+    <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col gap-6">
+      {orgFilter && <div className="flex justify-end">{orgFilter}</div>}
       {hasTabs && (
         <TabsList variant="org">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -678,11 +707,10 @@ export const TabbedOverview = ({
         </TabsList>
       )}
 
-      <TabsContent value="overview" className="flex flex-col gap-8">
-        <div className="flex flex-col gap-3">
-          <SectionLabel>Plan</SectionLabel>
+      <TabsContent value="overview">
+        <Card>
           {isManaged && (
-            <Card className="gap-4">
+            <div className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
                 <Metric label="Billing" value="By contract" note="Set by your license" />
                 <Metric
@@ -694,10 +722,10 @@ export const TabbedOverview = ({
                 Your plan is managed by your account team. Products and limits on this organization
                 are set by contract; contact your account manager to make changes.
               </p>
-            </Card>
+            </div>
           )}
           {!isManaged && !isSubscribed && (
-            <Card className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
               <Metric
                 label="Subscription"
                 value="None"
@@ -707,10 +735,10 @@ export const TabbedOverview = ({
                     : "No products to activate"
                 }
               />
-            </Card>
+            </div>
           )}
           {!isManaged && isSubscribed && (
-            <Card className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
               <Metric
                 label="Next Charge"
                 value={billing.nextCharge ? fmtMoney(billing.nextCharge.amount) : "—"}
@@ -730,15 +758,15 @@ export const TabbedOverview = ({
                 value={fmtMoney(billing.annualCommitted)}
                 note="per year"
               />
-            </Card>
+            </div>
           )}
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <SectionLabel
-            action={
+          <CardHeader>
+            <div className="flex flex-wrap items-center gap-3">
+              <CardTitle>Products</CardTitle>
+              <div className="min-w-8 flex-1">
+                <Separator />
+              </div>
               <div className="flex flex-wrap items-center gap-2">
-                {orgFilter}
                 {!readOnly && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -761,48 +789,60 @@ export const TabbedOverview = ({
                   <AddProductMenu products={available} onManage={onManage} onContact={onContact} />
                 )}
               </div>
-            }
-          >
-            Products
-          </SectionLabel>
-          {products.length === 0 && available.length === 0 && (
-            <CardEmpty
-              title="No products available"
-              description="Products will appear here once they're available."
-            />
-          )}
-          {products.length === 0 && available.length > 0 && (
-            <AvailableProducts
-              products={available}
-              readOnly={readOnly}
-              onManage={onManage}
-              onContact={onContact}
-            />
-          )}
-          <ProductCardGrid>
-            {products.map(({ prod, ent }) => (
-              <ProductSummaryCard
-                key={prod.id}
-                prod={prod}
-                ent={ent}
-                readOnly={readOnly}
-                selfServe={overview.selfServe}
-                isManaged={isManaged}
-                orgId={orgId}
-                scope={scope}
-                onManage={onManage}
-                onSetCommitment={onSetCommitment}
-                onViewBreakdown={onViewBreakdown}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {products.length === 0 && available.length === 0 && (
+              <CardEmpty
+                title="No products available"
+                description="Products will appear here once they're available."
               />
-            ))}
-          </ProductCardGrid>
-        </div>
+            )}
+            {products.length === 0 && available.length > 0 && (
+              <AvailableProducts
+                products={available}
+                readOnly={readOnly}
+                onManage={onManage}
+                onContact={onContact}
+              />
+            )}
+            <div className="divide-y divide-border">
+              {products.map(({ prod, ent }) => (
+                <ProductSummaryRow
+                  key={prod.id}
+                  prod={prod}
+                  ent={ent}
+                  readOnly={readOnly}
+                  selfServe={overview.selfServe}
+                  isManaged={isManaged}
+                  orgId={orgId}
+                  scope={scope}
+                  onManage={onManage}
+                  onSetCommitment={onSetCommitment}
+                  onViewBreakdown={onViewBreakdown}
+                />
+              ))}
+            </div>
+            {products.length > 0 && readOnly && available.length > 0 && (
+              <div className="mt-5 flex flex-col gap-4 border-t border-border pt-5">
+                <h3 className="text-sm font-medium text-foreground">Available Products</h3>
+                <AvailableProducts
+                  products={available}
+                  readOnly
+                  onManage={onManage}
+                  onContact={onContact}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </TabsContent>
 
       {showUsageTab && (
         <TabsContent value="usage">
           <UsageSources
             products={products}
+            showPricing={!isManaged}
             orgId={orgId}
             scope={scope}
             onViewBreakdown={onViewBreakdown}

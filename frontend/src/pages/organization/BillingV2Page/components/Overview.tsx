@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
@@ -65,6 +66,7 @@ export const Overview = ({
   onRetry,
   canManageBilling
 }: OverviewProps) => {
+  const [tab, setTab] = useState("overview");
   const orgFilter = showOrgFilter ? (
     <RootOrgFilter
       orgs={rootOrgs}
@@ -139,6 +141,8 @@ export const Overview = ({
         />
       )}
       <TabbedOverview
+        tab={tab}
+        onTabChange={setTab}
         overview={overview}
         catalog={catalog}
         readOnly={productsReadOnly}
