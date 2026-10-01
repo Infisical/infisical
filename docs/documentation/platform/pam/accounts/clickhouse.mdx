@@ -45,7 +45,7 @@ Either interface can be turned off on the server. Set whichever ports it serves 
     | **Password** | The user's password. Leave blank for a user created with `no_password` |
   </Step>
   <Step title="Save">
-    Select **Create**. Infisical signs in to ClickHouse through the gateway and confirms the credential works before saving the account. Each port you set is checked, and the error names the one that failed. An edit that leaves the password blank can't sign in, so it checks only that each port answers as the right ClickHouse interface.
+    Select **Create**. Infisical signs in to ClickHouse through the gateway and confirms the credential works before saving the account. Each port you set is checked, and the error names the one that failed. An edit that leaves the password blank can't sign in. With a native port set, each port is checked for the right ClickHouse interface without a credential. With only an HTTP port, the check is that the port accepts a connection.
   </Step>
 </Steps>
 
