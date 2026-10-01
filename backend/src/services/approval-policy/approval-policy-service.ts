@@ -1832,7 +1832,7 @@ export const approvalPolicyServiceFactory = ({
     const request = grant.requestId ? await approvalRequestDAL.findById(grant.requestId) : null;
     const assertDomainCanRevoke = resources[grantPolicyType]?.assertCanRevokeGrant;
 
-    // Secret access grants are managed on secret-access-approval-bridge service
+    // Secret access grants are managed by the secret-access-approval-request-bridge service
     if (grantPolicyType === ApprovalPolicyType.SecretAccess) {
       throw new BadRequestError({
         message: "This grant is for a secret access request. Revoke it from the access request instead."

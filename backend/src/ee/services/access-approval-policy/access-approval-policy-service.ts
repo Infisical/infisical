@@ -13,8 +13,8 @@ import {
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { secretAccessApprovalPolicyExists } from "@app/services/secret-access-approval-bridge/secret-access-approval-bridge-fns";
-import { TSecretAccessApprovalBridgeServiceFactory } from "@app/services/secret-access-approval-bridge/secret-access-approval-bridge-service";
+import { secretAccessApprovalPolicyExists } from "@app/services/secret-access-approval-policy-bridge/secret-access-approval-policy-bridge-fns";
+import { TSecretAccessApprovalPolicyBridgeServiceFactory } from "@app/services/secret-access-approval-policy-bridge/secret-access-approval-policy-bridge-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
@@ -56,8 +56,8 @@ type TAccessApprovalPolicyServiceFactoryDep = {
     TApprovalPolicySecretEnvironmentDALFactory,
     "findPolicyByEnvIdsAndSecretPath"
   >;
-  secretAccessApprovalBridge: Pick<
-    TSecretAccessApprovalBridgeServiceFactory,
+  secretAccessApprovalPolicyBridge: Pick<
+    TSecretAccessApprovalPolicyBridgeServiceFactory,
     | "updateAccessApprovalPolicy"
     | "deleteAccessApprovalPolicy"
     | "getAccessApprovalPolicyById"
@@ -81,7 +81,7 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalRequestReviewerDAL,
   approvalPolicyDAL,
   approvalPolicySecretEnvironmentDAL,
-  secretAccessApprovalBridge
+  secretAccessApprovalPolicyBridge
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
   const $usesGlobalApprovalBridge = async (policyId: string) => {
     const globalPolicy = await approvalPolicyDAL.findOne({ id: policyId, type: ApprovalPolicyType.SecretAccess });
@@ -89,10 +89,10 @@ export const accessApprovalPolicyServiceFactory = ({
   };
 
   const $listGlobalApprovalPolicies = (projectId: string) =>
-    secretAccessApprovalBridge.listAccessApprovalPolicies({ projectId });
+    secretAccessApprovalPolicyBridge.listAccessApprovalPolicies({ projectId });
 
   const $countGlobalApprovalPolicies = (projectId: string, envId: string) =>
-    secretAccessApprovalBridge.countAccessApprovalPolicies({ projectId, envId });
+    secretAccessApprovalPolicyBridge.countAccessApprovalPolicies({ projectId, envId });
 
   const $policyExists = async ({
     envId,
@@ -107,7 +107,7 @@ export const accessApprovalPolicyServiceFactory = ({
   }) => {
     const resolvedEnvIds = envId ? [envId] : envIds;
     if (!resolvedEnvIds?.length) {
-      throw new BadRequestError({ message: "Must provide either envId or envIds" }); 
+      throw new BadRequestError({ message: "Must provide either envId or envIds" });
     }
 
     for (const id of resolvedEnvIds) {
@@ -390,7 +390,7 @@ export const accessApprovalPolicyServiceFactory = ({
     requestExpirationTime
   }: TUpdateAccessApprovalPolicy) => {
     if (await $usesGlobalApprovalBridge(policyId)) {
-      return secretAccessApprovalBridge.updateAccessApprovalPolicy({
+      return secretAccessApprovalPolicyBridge.updateAccessApprovalPolicy({
         policyId,
         approvers,
         bypassers,
@@ -666,7 +666,7 @@ export const accessApprovalPolicyServiceFactory = ({
     actorOrgId
   }: TDeleteAccessApprovalPolicy) => {
     if (await $usesGlobalApprovalBridge(policyId)) {
-      return secretAccessApprovalBridge.deleteAccessApprovalPolicy({
+      return secretAccessApprovalPolicyBridge.deleteAccessApprovalPolicy({
         policyId,
         actor,
         actorId,
@@ -767,7 +767,7 @@ export const accessApprovalPolicyServiceFactory = ({
     policyId
   }) => {
     if (await $usesGlobalApprovalBridge(policyId)) {
-      return secretAccessApprovalBridge.getAccessApprovalPolicyById({
+      return secretAccessApprovalPolicyBridge.getAccessApprovalPolicyById({
         policyId,
         actor,
         actorId,

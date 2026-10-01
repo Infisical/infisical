@@ -148,7 +148,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const approval = await server.services.secretAccessApprovalBridge.createAccessApprovalPolicy({
+      const approval = await server.services.secretAccessApprovalPolicyBridge.createAccessApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

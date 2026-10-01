@@ -1,26 +1,11 @@
-import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
-import {
-  TCreateAccessApprovalPolicy,
-  TDeleteAccessApprovalPolicy,
-  TGetAccessApprovalPolicyByIdDTO,
-  TUpdateAccessApprovalPolicy
-} from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import {
   TReviewAccessRequestDTO,
   TRevokeAccessRequestDTO
 } from "@app/ee/services/access-approval-request/access-approval-request-types";
-import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TQueueServiceFactory } from "@app/queue";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import {
-  TApprovalPolicyBypassersDALFactory,
-  TApprovalPolicyDALFactory,
-  TApprovalPolicySecretEnvironmentDALFactory,
-  TApprovalPolicyStepApproversDALFactory,
-  TApprovalPolicyStepsDALFactory
-} from "@app/services/approval-policy/approval-policy-dal";
 import {
   TApprovalRequestApprovalsDALFactory,
   TApprovalRequestDALFactory,
@@ -35,41 +20,30 @@ import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/mic
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TSecretAccessApprovalPolicyBridgeDALFactory } from "@app/services/secret-access-approval-policy-bridge/secret-access-approval-policy-bridge-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { TSecretAccessApprovalBridgeDALFactory } from "./secret-access-approval-bridge-dal";
+import { TSecretAccessApprovalRequestBridgeDALFactory } from "./secret-access-approval-request-bridge-dal";
 
-export type TSecretAccessApprovalBridgeServiceFactoryDep = {
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findEffectiveProjectSubjectsMembership" | "findById">;
+export type TSecretAccessApprovalRequestBridgeServiceFactoryDep = {
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "find" | "findById">;
-  groupDAL: Pick<TGroupDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "findGroupMembershipsByUserIdInOrg">;
-  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "create" | "transaction" | "updateById" | "deleteById">;
-  approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "insertMany" | "delete">;
-  approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "insertMany">;
-  approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;
-  approvalPolicySecretEnvironmentDAL: Pick<
-    TApprovalPolicySecretEnvironmentDALFactory,
-    "insertMany" | "delete" | "findPolicyByEnvIdsAndSecretPath"
-  >;
   approvalRequestDAL: Pick<
     TApprovalRequestDALFactory,
-    "create" | "transaction" | "find" | "findOne" | "findByIdForUpdate" | "update" | "updateById"
+    "create" | "transaction" | "findOne" | "findByIdForUpdate" | "updateById"
   >;
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create" | "find" | "updateById">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create" | "find">;
   approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "create" | "find">;
-  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "update" | "updateById" | "findByIdForUpdate">;
+  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "updateById" | "findByIdForUpdate">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  secretAccessApprovalBridgeDAL: Pick<
-    TSecretAccessApprovalBridgeDALFactory,
-    | "findSecretAccessPolicies"
+  secretAccessApprovalPolicyBridgeDAL: Pick<TSecretAccessApprovalPolicyBridgeDALFactory, "findSecretAccessPolicies">;
+  secretAccessApprovalRequestBridgeDAL: Pick<
+    TSecretAccessApprovalRequestBridgeDALFactory,
     | "findSecretAccessRequestById"
     | "findSecretAccessRequests"
     | "findPendingRequests"
@@ -92,14 +66,6 @@ export type TSecretAccessApprovalBridgeServiceFactoryDep = {
     "canAccess" | "validateConstraints" | "postApprovalTxRoutine" | "isBreakGlassEligible"
   >;
 };
-
-export type TCreateSecretAccessApprovalPolicyDTO = TCreateAccessApprovalPolicy;
-export type TUpdateSecretAccessApprovalPolicyDTO = TUpdateAccessApprovalPolicy;
-export type TDeleteSecretAccessApprovalPolicyDTO = TDeleteAccessApprovalPolicy;
-export type TGetSecretAccessApprovalPolicyByIdDTO = TGetAccessApprovalPolicyByIdDTO;
-
-export type TListSecretAccessApprovalPoliciesDTO = { projectId: string };
-export type TCountSecretAccessApprovalPoliciesDTO = { projectId: string; envId: string };
 
 export type TCreateSecretAccessApprovalRequestDTO = {
   policy: TSecretAccessPolicy;

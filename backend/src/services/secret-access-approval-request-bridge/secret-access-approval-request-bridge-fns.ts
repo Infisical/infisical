@@ -1,16 +1,13 @@
 import msFn from "ms";
 
 import { TAdditionalPrivileges, TApprovalRequestGrants, TApprovalRequests, TUsers } from "@app/db/schemas";
-import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
-import { TApprovalPolicySecretEnvironmentDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
   ApprovalRequestGrantStatus,
   ApprovalRequestStatus,
@@ -21,65 +18,11 @@ import { resolveStepApproverUserIds } from "@app/services/approval-policy/approv
 import { getSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { NotificationType } from "@app/services/notification/notification-types";
+import { TSecretAccessApprovalPolicyBridgeDALFactory } from "@app/services/secret-access-approval-policy-bridge/secret-access-approval-policy-bridge-dal";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
-import { TSecretAccessApprovalBridgeDALFactory } from "./secret-access-approval-bridge-dal";
-import { TSecretAccessApprovalBridgeServiceFactoryDep } from "./secret-access-approval-bridge-types";
-
-type TSecretAccessApprovalPolicyExistsDep = {
-  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
-  approvalPolicySecretEnvironmentDAL: Pick<
-    TApprovalPolicySecretEnvironmentDALFactory,
-    "findPolicyByEnvIdsAndSecretPath"
-  >;
-};
-
-export const secretAccessApprovalPolicyExists = async (
-  { envId, secretPath, excludePolicyId }: { envId: string; secretPath: string; excludePolicyId?: string },
-  { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }: TSecretAccessApprovalPolicyExistsDep
-) => {
-  const legacyPolicy = await accessApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({ envIds: [envId], secretPath });
-  if (legacyPolicy && legacyPolicy.id !== excludePolicyId) return true;
-
-  const policy = await approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdsAndSecretPath({
-    envIds: [envId],
-    secretPath,
-    excludePolicyId
-  });
-  return Boolean(policy);
-};
-
-// Legacy stores null on approver rows for a step with no approvalsRequired entry and reviews it as 1,
-// so the top-level `approvals` must not leak into a step's requirement.
-export const buildSecretAccessPolicySteps = <T extends { type: ApproverType; id: string; sequence: number }>(
-  approvers: T[],
-  approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[]
-) => {
-  const approvalsRequiredByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
-  const approversBySequence = groupBy(approvers, (el) => el.sequence);
-  return Object.keys(approversBySequence)
-    .map(Number)
-    .sort((a, b) => a - b)
-    .map((sequence, index) => {
-      const seen = new Set<string>();
-      const stepApprovers = approversBySequence[sequence].filter((approver) => {
-        const key = `${approver.type}:${approver.id}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-      const requiredApprovals = approvalsRequiredByStepNumber[sequence]?.[0]?.numberOfApprovals || 1;
-
-      const hasGroupApprover = stepApprovers.some((approver) => approver.type === ApproverType.Group);
-      if (!hasGroupApprover && requiredApprovals > stepApprovers.length) {
-        throw new BadRequestError({
-          message: `Step ${index + 1} requires ${requiredApprovals} approvals but only has ${stepApprovers.length} approver${stepApprovers.length === 1 ? "" : "s"}. Add approvers to the step or lower its required approvals.`
-        });
-      }
-
-      return { requiredApprovals, approvers: stepApprovers };
-    });
-};
+import { TSecretAccessApprovalRequestBridgeDALFactory } from "./secret-access-approval-request-bridge-dal";
+import { TSecretAccessApprovalRequestBridgeServiceFactoryDep } from "./secret-access-approval-request-bridge-types";
 
 export type TSecretAccessRequestRow = TApprovalRequests & {
   grant: TApprovalRequestGrants | null;
@@ -164,7 +107,7 @@ export const toLegacyAccessApprovalRequest = (
 };
 
 type TNotifySecretAccessStepApproversDep = Pick<
-  TSecretAccessApprovalBridgeServiceFactoryDep,
+  TSecretAccessApprovalRequestBridgeServiceFactoryDep,
   | "userDAL"
   | "userGroupMembershipDAL"
   | "projectDAL"
@@ -280,7 +223,7 @@ export const notifySecretAccessStepApprovers = async (
 };
 
 type TNotifySecretAccessBypassDep = Pick<
-  TSecretAccessApprovalBridgeServiceFactoryDep,
+  TSecretAccessApprovalRequestBridgeServiceFactoryDep,
   "userDAL" | "userGroupMembershipDAL" | "notificationService" | "smtpService"
 >;
 
@@ -354,10 +297,10 @@ export const notifySecretAccessBypass = async (
 };
 
 type TSecretAccessPolicyRow = Awaited<
-  ReturnType<TSecretAccessApprovalBridgeDALFactory["findSecretAccessPolicies"]>
+  ReturnType<TSecretAccessApprovalPolicyBridgeDALFactory["findSecretAccessPolicies"]>
 >[number];
 type TApprovalWithRequestId = Awaited<
-  ReturnType<TSecretAccessApprovalBridgeDALFactory["findApprovalsByRequestIds"]>
+  ReturnType<TSecretAccessApprovalRequestBridgeDALFactory["findApprovalsByRequestIds"]>
 >[number];
 
 export type TSecretAccessRequestListInput = {
