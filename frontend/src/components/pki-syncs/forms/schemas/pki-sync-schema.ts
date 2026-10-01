@@ -123,6 +123,11 @@ const refineTargetHost = (data: unknown, ctx: z.RefinementCtx) => {
 const isServerDestination = (destination: PkiSync) =>
   destination === PkiSync.WindowsServer || destination === PkiSync.LinuxServer;
 
+const isServerSyncForm = <T extends { destination: PkiSync }>(
+  data: T
+): data is Extract<T, { destination: PkiSync.WindowsServer | PkiSync.LinuxServer }> =>
+  isServerDestination(data.destination);
+
 // Only keystore formats use the password, so a value left behind after switching to PEM is ignored.
 const refineExportPassword = (
   data: { destination: PkiSync; syncOptions?: unknown; credentials?: unknown },
@@ -195,7 +200,7 @@ export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
   }
 
   if (
-    (data.destination === PkiSync.WindowsServer || data.destination === PkiSync.LinuxServer) &&
+    isServerSyncForm(data) &&
     isKeystoreExportFormat(data.syncOptions?.exportFormat) &&
     !data.credentials?.exportPassword
   ) {

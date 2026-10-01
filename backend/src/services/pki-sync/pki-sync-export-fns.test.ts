@@ -6,12 +6,11 @@ import {
   buildStaleFileWarning,
   exportCertificateForSync,
   getExportedCertificateFileSuffixes,
-  getStaleCertificateFiles,
   getUnusedKeystoreOptionMessage,
   isExportFormatBlockedByFips,
   PemCertificateExtension,
   PkiSyncExportFormat,
-  splitStaleCertificateFiles,
+  planStaleCertificateFileCleanup,
   TExportedCertificateFile
 } from "./pki-sync-export-fns";
 
@@ -258,45 +257,106 @@ describe("isExportFormatBlockedByFips", () => {
   });
 });
 
-describe("splitStaleCertificateFiles", () => {
-  const staleFiles = ["/certs/app.pem", "/certs/app.key", "/certs/app.truststore.jks"];
-  const previousTruststoreFiles = ["/certs/app.truststore.jks"];
+describe("planStaleCertificateFileCleanup", () => {
+  const host = "host-a";
+  const base = {
+    writtenPaths: ["/certs/app.jks"],
+    writtenTruststorePaths: [],
+    deliveredPaths: new Set(["/certs/app.jks"]),
+    currentHost: host
+  };
+  const previousMetadata = {
+    host,
+    files: ["/certs/app.pem", "/certs/app.key", "/certs/app.truststore.jks"],
+    truststoreFiles: ["/certs/app.truststore.jks"]
+  };
 
-  test("removes every stale file when certificate removal is allowed", () => {
-    const split = splitStaleCertificateFiles({ staleFiles, previousTruststoreFiles, canRemoveCertificates: true });
-    expect(split.filesToRemove).toEqual(staleFiles);
-    expect(split.filesToKeep).toEqual([]);
+  test("removes every stale file when certificate removal is on", () => {
+    const plan = planStaleCertificateFileCleanup({ ...base, previousMetadata, canRemoveCertificates: true });
+    expect(plan.filesToRemove).toEqual(previousMetadata.files);
+    expect(plan.buildSyncMetadata([])).toEqual({ files: ["/certs/app.jks"], truststoreFiles: [], host });
   });
 
-  test("only removes a recorded truststore when certificate removal is off", () => {
-    const split = splitStaleCertificateFiles({ staleFiles, previousTruststoreFiles, canRemoveCertificates: false });
-    expect(split.filesToRemove).toEqual(["/certs/app.truststore.jks"]);
-    expect(split.filesToKeep).toEqual(["/certs/app.pem", "/certs/app.key"]);
+  test("only removes a recorded truststore when certificate removal is off, and keeps tracking the rest", () => {
+    const plan = planStaleCertificateFileCleanup({ ...base, previousMetadata, canRemoveCertificates: false });
+    expect(plan.filesToRemove).toEqual(["/certs/app.truststore.jks"]);
+    expect(plan.buildSyncMetadata([]).files).toEqual(["/certs/app.jks", "/certs/app.pem", "/certs/app.key"]);
+  });
+
+  test("keeps tracking a file whose removal failed so the next sync retries it", () => {
+    const plan = planStaleCertificateFileCleanup({ ...base, previousMetadata, canRemoveCertificates: false });
+    expect(plan.buildSyncMetadata(["/certs/app.truststore.jks"])).toEqual({
+      files: ["/certs/app.jks", "/certs/app.pem", "/certs/app.key", "/certs/app.truststore.jks"],
+      truststoreFiles: ["/certs/app.truststore.jks"],
+      host
+    });
   });
 
   test("keeps a keystore whose certificate name ends in .truststore", () => {
-    const split = splitStaleCertificateFiles({
-      staleFiles: ["/certs/api.truststore.jks"],
-      previousTruststoreFiles: [],
+    const plan = planStaleCertificateFileCleanup({
+      ...base,
+      previousMetadata: { host, files: ["/certs/api.truststore.jks"], truststoreFiles: [] },
       canRemoveCertificates: false
     });
-    expect(split.filesToRemove).toEqual([]);
-    expect(split.filesToKeep).toEqual(["/certs/api.truststore.jks"]);
+    expect(plan.filesToRemove).toEqual([]);
+    expect(plan.buildSyncMetadata([]).files).toContain("/certs/api.truststore.jks");
   });
 
-  test("keeps files when no truststores were recorded", () => {
-    const split = splitStaleCertificateFiles({ staleFiles, canRemoveCertificates: false });
-    expect(split.filesToRemove).toEqual([]);
-    expect(split.filesToKeep).toEqual(staleFiles);
-  });
-
-  test("matches recorded truststores without regard to case", () => {
-    const split = splitStaleCertificateFiles({
-      staleFiles: ["C:\\certs\\App.truststore.jks"],
-      previousTruststoreFiles: ["C:\\certs\\app.truststore.jks"],
-      canRemoveCertificates: false
+  test("keeps a file another certificate wrote this run", () => {
+    const plan = planStaleCertificateFileCleanup({
+      ...base,
+      deliveredPaths: new Set(["/certs/app.jks", "/certs/app.pem"]),
+      previousMetadata,
+      canRemoveCertificates: true
     });
-    expect(split.filesToRemove).toEqual(["C:\\certs\\App.truststore.jks"]);
+    expect(plan.filesToRemove).toEqual(["/certs/app.key", "/certs/app.truststore.jks"]);
+  });
+
+  test("deletes nothing and keeps tracking files recorded before hosts were saved", () => {
+    const plan = planStaleCertificateFileCleanup({
+      ...base,
+      previousMetadata: { files: ["/certs/app.pem", "/certs/app.key"] },
+      canRemoveCertificates: true
+    });
+    expect(plan.filesToRemove).toEqual([]);
+    expect(plan.buildSyncMetadata([])).toEqual({
+      files: ["/certs/app.jks", "/certs/app.pem", "/certs/app.key"],
+      truststoreFiles: [],
+      host
+    });
+  });
+
+  test("neither deletes nor keeps files recorded on a different host", () => {
+    const plan = planStaleCertificateFileCleanup({
+      ...base,
+      previousMetadata: { ...previousMetadata, host: "host-b" },
+      canRemoveCertificates: true
+    });
+    expect(plan.filesToRemove).toEqual([]);
+    expect(plan.buildSyncMetadata([]).files).toEqual(["/certs/app.jks"]);
+  });
+
+  test("falls back to the external identifier when no files were recorded", () => {
+    const plan = planStaleCertificateFileCleanup({
+      ...base,
+      previousMetadata: { host, files: [] },
+      previousExternalIdentifier: "/certs/app.pfx",
+      canRemoveCertificates: true
+    });
+    expect(plan.filesToRemove).toEqual(["/certs/app.pfx"]);
+  });
+
+  test("compares paths without regard to case when asked", () => {
+    const plan = planStaleCertificateFileCleanup({
+      writtenPaths: ["C:\\certs\\App.jks"],
+      writtenTruststorePaths: [],
+      deliveredPaths: new Set(["C:\\certs\\App.jks"]),
+      currentHost: "HOST-A",
+      previousMetadata: { host, files: ["C:\\certs\\app.jks", "C:\\certs\\app.pem"] },
+      canRemoveCertificates: true,
+      caseInsensitive: true
+    });
+    expect(plan.filesToRemove).toEqual(["C:\\certs\\app.pem"]);
   });
 });
 
@@ -309,67 +369,5 @@ describe("buildStaleFileWarning", () => {
     const warning = buildStaleFileWarning([{ path: "/certs/app.truststore.jks", error: "Permission denied" }]);
     expect(warning).toContain("/certs/app.truststore.jks");
     expect(warning).toContain("Permission denied");
-  });
-});
-
-describe("getStaleCertificateFiles", () => {
-  test("returns files written last time that this run no longer writes", () => {
-    expect(
-      getStaleCertificateFiles({
-        previousHost: "host-a",
-        currentHost: "host-a",
-        previousFiles: ["/certs/app.jks", "/certs/app.truststore.jks"],
-        writtenPaths: ["/certs/app.jks"],
-        deliveredPaths: new Set(["/certs/app.jks"])
-      })
-    ).toEqual(["/certs/app.truststore.jks"]);
-  });
-
-  test("keeps a file another certificate wrote this run", () => {
-    expect(
-      getStaleCertificateFiles({
-        previousHost: "host-a",
-        currentHost: "host-a",
-        previousFiles: ["/certs/app.pem", "/certs/shared.pem"],
-        writtenPaths: ["/certs/app.jks"],
-        deliveredPaths: new Set(["/certs/app.jks", "/certs/shared.pem"])
-      })
-    ).toEqual(["/certs/app.pem"]);
-  });
-
-  test("ignores case when paths are case-insensitive", () => {
-    expect(
-      getStaleCertificateFiles({
-        previousHost: "host-a",
-        currentHost: "host-a",
-        previousFiles: ["C:\\certs\\App.jks", "C:\\certs\\app.truststore.jks"],
-        writtenPaths: ["C:\\certs\\app.jks"],
-        deliveredPaths: new Set(["C:\\certs\\app.jks"]),
-        caseInsensitive: true
-      })
-    ).toEqual(["C:\\certs\\app.truststore.jks"]);
-  });
-
-  test("returns nothing when the files were written to another host", () => {
-    expect(
-      getStaleCertificateFiles({
-        previousHost: "host-a",
-        currentHost: "host-b",
-        previousFiles: ["/certs/app.jks"],
-        writtenPaths: ["/certs/other.jks"],
-        deliveredPaths: new Set(["/certs/other.jks"])
-      })
-    ).toEqual([]);
-  });
-
-  test("returns nothing when the previous host was not recorded", () => {
-    expect(
-      getStaleCertificateFiles({
-        currentHost: "host-a",
-        previousFiles: ["/certs/app.pem", "/certs/app.key"],
-        writtenPaths: ["/certs/app.jks"],
-        deliveredPaths: new Set(["/certs/app.jks"])
-      })
-    ).toEqual([]);
   });
 });

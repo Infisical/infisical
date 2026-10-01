@@ -5,6 +5,7 @@ import {
   generateJksTruststore,
   getJksTruststoreCertificates
 } from "@app/services/certificate/certificate-jks-fns";
+import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 export enum PkiSyncExportFormat {
   Pem = "pem",
@@ -31,30 +32,6 @@ export const JKS_FIPS_UNSUPPORTED_MESSAGE =
 export const isExportFormatBlockedByFips = (format: unknown): boolean =>
   format === PkiSyncExportFormat.Jks && crypto.isFipsModeEnabled();
 
-// Files this sync wrote for a certificate last time but no longer writes, such as a truststore
-// after it is turned off. Paths another certificate wrote this run are left alone, and nothing is
-// returned unless the files are known to have been written to the current host.
-export const getStaleCertificateFiles = ({
-  previousFiles,
-  previousHost,
-  currentHost,
-  writtenPaths,
-  deliveredPaths,
-  caseInsensitive = false
-}: {
-  previousFiles: string[];
-  previousHost?: string;
-  currentHost?: string;
-  writtenPaths: string[];
-  deliveredPaths: Set<string>;
-  caseInsensitive?: boolean;
-}): string[] => {
-  if (!previousHost || !currentHost || previousHost.toLowerCase() !== currentHost.toLowerCase()) return [];
-  const normalize = (filePath: string) => (caseInsensitive ? filePath.toLowerCase() : filePath);
-  const current = new Set([...writtenPaths, ...deliveredPaths].map(normalize));
-  return previousFiles.filter((filePath) => !current.has(normalize(filePath)));
-};
-
 export const buildFileCollisionMessage = (filePath: string) =>
   `Another certificate in this sync already writes "${filePath}". Change the certificate name schema so each certificate gets its own file names.`;
 
@@ -67,25 +44,57 @@ export const KEYSTORE_PASSWORD_REQUIRED_MESSAGE = "A password is required when t
 export const JKS_KEYSTORE_SUFFIX = ".jks";
 export const JKS_TRUSTSTORE_SUFFIX = ".truststore.jks";
 
-// A stale truststore still grants trust, so it is always removed. Other stale files may still be read
-// by a server, so they are only removed when the sync is allowed to remove certificates. Truststores
-// are known from what the sync recorded writing, since a certificate name can itself end in ".truststore".
-export const splitStaleCertificateFiles = ({
-  staleFiles,
-  previousTruststoreFiles = [],
-  canRemoveCertificates
+// A stale truststore still grants trust, so it is removed even when certificate removal is off.
+export const planStaleCertificateFileCleanup = ({
+  previousMetadata,
+  previousExternalIdentifier,
+  writtenPaths,
+  writtenTruststorePaths,
+  deliveredPaths,
+  currentHost,
+  canRemoveCertificates,
+  caseInsensitive = false
 }: {
-  staleFiles: string[];
-  previousTruststoreFiles?: string[];
+  previousMetadata: TSyncMetadata;
+  previousExternalIdentifier?: string | null;
+  writtenPaths: string[];
+  writtenTruststorePaths: string[];
+  deliveredPaths: Set<string>;
+  currentHost: string;
   canRemoveCertificates: boolean;
+  caseInsensitive?: boolean;
 }) => {
-  const truststores = new Set(previousTruststoreFiles.map((filePath) => filePath.toLowerCase()));
+  const normalize = (filePath: string) => (caseInsensitive ? filePath.toLowerCase() : filePath);
+  const previousFiles = previousMetadata?.files?.length
+    ? previousMetadata.files
+    : [previousExternalIdentifier].filter((filePath): filePath is string => Boolean(filePath));
+  const current = new Set([...writtenPaths, ...deliveredPaths].map(normalize));
+  const staleFiles = previousFiles.filter((filePath) => !current.has(normalize(filePath)));
+
+  const truststores = new Set((previousMetadata?.truststoreFiles ?? []).map((filePath) => filePath.toLowerCase()));
   const isTruststore = (filePath: string) => truststores.has(filePath.toLowerCase());
-  return {
-    filesToRemove: canRemoveCertificates ? staleFiles : staleFiles.filter(isTruststore),
-    filesToKeep: canRemoveCertificates ? [] : staleFiles.filter((filePath) => !isTruststore(filePath)),
-    isTruststore
+
+  const previousHost = previousMetadata?.host;
+  let filesToRemove: string[] = [];
+  let filesToKeep: string[] = [];
+  if (!previousHost) {
+    // Recorded before hosts were saved, so keep tracking the files without deleting anything yet.
+    filesToKeep = staleFiles;
+  } else if (previousHost.toLowerCase() === currentHost.toLowerCase()) {
+    filesToRemove = canRemoveCertificates ? staleFiles : staleFiles.filter(isTruststore);
+    filesToKeep = canRemoveCertificates ? [] : staleFiles.filter((filePath) => !isTruststore(filePath));
+  }
+
+  const buildSyncMetadata = (filesToRetry: string[]) => {
+    const trackedStaleFiles = [...filesToKeep, ...filesToRetry];
+    return {
+      files: [...writtenPaths, ...trackedStaleFiles],
+      truststoreFiles: [...writtenTruststorePaths, ...trackedStaleFiles.filter(isTruststore)],
+      host: currentHost
+    };
   };
+
+  return { filesToRemove, buildSyncMetadata };
 };
 
 const MAX_LISTED_STALE_FILES = 3;

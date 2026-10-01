@@ -21,14 +21,13 @@ import {
   buildFileCollisionMessage,
   buildStaleFileWarning,
   exportCertificateForSync,
-  getStaleCertificateFiles,
   isExportFormatBlockedByFips,
   isKeystoreExportFormat,
   JKS_FIPS_UNSUPPORTED_MESSAGE,
   JKS_TRUSTSTORE_SUFFIX,
   PemCertificateExtension,
   PkiSyncExportFormat,
-  splitStaleCertificateFiles
+  planStaleCertificateFileCleanup
 } from "../pki-sync-export-fns";
 import {
   buildHealthCheckCommandFailureMessage,
@@ -430,21 +429,15 @@ export const windowsServerPkiSyncFactory = ({
             ]);
           }
           if (record) {
-            const previousMetadata = record.syncMetadata as TSyncMetadata;
-            const previousFiles =
-              previousMetadata?.files ?? [record.externalIdentifier].filter((p): p is string => Boolean(p));
-            const staleFiles = getStaleCertificateFiles({
-              previousFiles,
-              previousHost: previousMetadata?.host,
-              currentHost: target.credentials.host,
+            const { filesToRemove, buildSyncMetadata } = planStaleCertificateFileCleanup({
+              previousMetadata: record.syncMetadata as TSyncMetadata,
+              previousExternalIdentifier: record.externalIdentifier,
               writtenPaths: paths,
+              writtenTruststorePaths: truststorePaths,
               deliveredPaths,
+              currentHost: target.credentials.host,
+              canRemoveCertificates,
               caseInsensitive: true
-            });
-            const { filesToRemove, filesToKeep, isTruststore } = splitStaleCertificateFiles({
-              staleFiles,
-              previousTruststoreFiles: previousMetadata?.truststoreFiles,
-              canRemoveCertificates
             });
             let staleFilesToRetry: string[] = [];
             if (filesToRemove.length > 0) {
@@ -462,11 +455,7 @@ export const windowsServerPkiSyncFactory = ({
             }
             await certificateSyncDAL.updateById(record.id, {
               externalIdentifier: paths[0],
-              syncMetadata: {
-                files: [...paths, ...filesToKeep, ...staleFilesToRetry],
-                truststoreFiles: [...truststorePaths, ...staleFilesToRetry.filter(isTruststore)],
-                host: target.credentials.host
-              }
+              syncMetadata: buildSyncMetadata(staleFilesToRetry)
             });
           }
         }

@@ -22,12 +22,12 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useServerConfig } from "@app/context";
 import {
   isKeystoreExportFormat,
   PemCertificateExtension,
   PKI_SYNC_EXPORT_FORMAT_LABELS,
-  PkiSyncExportFormat
+  PkiSyncExportFormat,
+  usePkiSyncOption
 } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
@@ -38,10 +38,12 @@ type Props = {
 
 export const ServerExportFormatFields = ({ isUpdate }: Props) => {
   const { control, watch } = useFormContext<TPkiSyncForm>();
-  const { config } = useServerConfig();
+  const { syncOption } = usePkiSyncOption(watch("destination"));
   const exportFormat = watch("syncOptions.exportFormat");
   const isKeystore = isKeystoreExportFormat(exportFormat);
-  const isJksBlockedByFips = Boolean(config.fipsEnabled);
+  const isJksBlockedByFips = Boolean(
+    syncOption?.unsupportedExportFormats?.includes(PkiSyncExportFormat.Jks)
+  );
 
   const keystoreLabel = exportFormat === PkiSyncExportFormat.Jks ? "JKS" : "PKCS#12";
   const keystoreFile = exportFormat === PkiSyncExportFormat.Jks ? ".jks keystore" : ".pfx bundle";

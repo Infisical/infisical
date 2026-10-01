@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 
 import RE2 from "re2";
-import { Client, SFTPWrapper, utils as ssh2Utils } from "ssh2";
+import { Client, SFTPWrapper } from "ssh2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -30,14 +30,13 @@ import {
   buildFileCollisionMessage,
   buildStaleFileWarning,
   exportCertificateForSync,
-  getStaleCertificateFiles,
   isExportFormatBlockedByFips,
   isKeystoreExportFormat,
   JKS_FIPS_UNSUPPORTED_MESSAGE,
   JKS_TRUSTSTORE_SUFFIX,
   PemCertificateExtension,
   PkiSyncExportFormat,
-  splitStaleCertificateFiles
+  planStaleCertificateFileCleanup
 } from "../pki-sync-export-fns";
 import {
   buildHealthCheckCommandFailureMessage,
@@ -245,10 +244,13 @@ const unlinkIfExists = (sftp: SFTPWrapper, filePath: string): Promise<void> =>
     sftp.unlink(filePath, () => resolve());
   });
 
+// SFTP status code for a missing file. ssh2 is CommonJS, so its "utils" export can't be imported by name.
+const SFTP_STATUS_NO_SUCH_FILE = 2;
+
 const unlinkOrThrow = (sftp: SFTPWrapper, filePath: string): Promise<void> =>
   new Promise<void>((resolve, reject) => {
     sftp.unlink(filePath, (err) => {
-      if (!err || (err as { code?: number }).code === ssh2Utils.sftp.STATUS_CODE.NO_SUCH_FILE) {
+      if (!err || (err as { code?: number }).code === SFTP_STATUS_NO_SUCH_FILE) {
         resolve();
         return;
       }
@@ -573,19 +575,13 @@ export const linuxServerPkiSyncFactory = ({
                 ]);
               }
               if (record) {
-                const previousMetadata = record.syncMetadata as TSyncMetadata;
-                const previousFiles =
-                  previousMetadata?.files ?? [record.externalIdentifier].filter((p): p is string => Boolean(p));
-                const staleFiles = getStaleCertificateFiles({
-                  previousFiles,
-                  previousHost: previousMetadata?.host,
-                  currentHost: targetHost,
+                const { filesToRemove, buildSyncMetadata } = planStaleCertificateFileCleanup({
+                  previousMetadata: record.syncMetadata as TSyncMetadata,
+                  previousExternalIdentifier: record.externalIdentifier,
                   writtenPaths,
-                  deliveredPaths
-                });
-                const { filesToRemove, filesToKeep, isTruststore } = splitStaleCertificateFiles({
-                  staleFiles,
-                  previousTruststoreFiles: previousMetadata?.truststoreFiles,
+                  writtenTruststorePaths,
+                  deliveredPaths,
+                  currentHost: targetHost,
                   canRemoveCertificates
                 });
                 const staleFilesToRetry: string[] = [];
@@ -594,10 +590,7 @@ export const linuxServerPkiSyncFactory = ({
                     await unlinkOrThrow(sftp, staleFile);
                   } catch (removeErr) {
                     staleFilesToRetry.push(staleFile);
-                    staleFileFailures.push({
-                      path: staleFile,
-                      error: (removeErr as Error)?.message ?? "Unknown error"
-                    });
+                    staleFileFailures.push({ path: staleFile, error: describeFailure(removeErr) });
                   }
                 }
                 const removedCount = filesToRemove.length - staleFilesToRetry.length;
@@ -608,11 +601,7 @@ export const linuxServerPkiSyncFactory = ({
                 }
                 await certificateSyncDAL.updateById(record.id, {
                   externalIdentifier: primaryPath,
-                  syncMetadata: {
-                    files: [...writtenPaths, ...filesToKeep, ...staleFilesToRetry],
-                    truststoreFiles: [...writtenTruststorePaths, ...staleFilesToRetry.filter(isTruststore)],
-                    host: targetHost
-                  }
+                  syncMetadata: buildSyncMetadata(staleFilesToRetry)
                 });
               }
             }
