@@ -12,10 +12,12 @@ type CopyButtonProps = Omit<ComponentProps<"button">, "value" | "children"> & {
 
 export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
   ({ value, ariaLabel, variant = "ghost", size = "xs", onClick, ...props }, ref): JSX.Element => {
-    const isWritePending = useRef(false);
+    const copyAttempt = useRef(0);
+    const feedbackValue = useRef(value);
     const [copyState, , setCopyState] = useTimedReset<"idle" | "copied" | "failed">({
       initialState: "idle"
     });
+    const feedbackState = feedbackValue.current === value ? copyState : "idle";
 
     return (
       <IconButton
@@ -28,24 +30,26 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
             idle: ariaLabel,
             copied: "Copied to clipboard",
             failed: "Copy failed. Try again."
-          }[copyState]
+          }[feedbackState]
         }
         onClick={async (event) => {
-          if (isWritePending.current) return;
           onClick?.(event);
-          isWritePending.current = true;
+          copyAttempt.current += 1;
+          const attempt = copyAttempt.current;
           setCopyState("idle");
           try {
             await navigator.clipboard.writeText(value);
+            if (attempt !== copyAttempt.current) return;
+            feedbackValue.current = value;
             setCopyState("copied");
           } catch {
+            if (attempt !== copyAttempt.current) return;
+            feedbackValue.current = value;
             setCopyState("failed");
-          } finally {
-            isWritePending.current = false;
           }
         }}
       >
-        {{ idle: <Copy />, copied: <Check />, failed: <X /> }[copyState]}
+        {{ idle: <Copy />, copied: <Check />, failed: <X /> }[feedbackState]}
       </IconButton>
     );
   }
