@@ -39,7 +39,7 @@ const ORG_PAGE_SIZE = 10;
 // from the "commit and save" nudge) instead of the default plans view.
 type BillingV2Flow =
   | { type: "sheet"; prodId: string; view?: "commitment" }
-  | { type: "breakdown"; prodId: string };
+  | { type: "breakdown"; prodId: string; dimensionKey?: string };
 
 export const BillingV2Page = () => {
   const { t } = useTranslation();
@@ -163,8 +163,8 @@ export const BillingV2Page = () => {
     setFlow({ type: "sheet", prodId: productId, view: "commitment" });
   };
 
-  const onViewBreakdown = (productId: string) => {
-    setFlow({ type: "breakdown", prodId: productId });
+  const onViewBreakdown = (productId: string, dimensionKey?: string) => {
+    setFlow({ type: "breakdown", prodId: productId, dimensionKey });
   };
 
   const hasActiveSubscription = overview?.subState === "active";
@@ -217,36 +217,40 @@ export const BillingV2Page = () => {
             I={OrgPermissionBillingActions.Read}
             a={OrgPermissionSubjects.Billing}
           >
-            <Overview
-              overview={overview}
-              catalog={catalog}
-              subState={subState}
-              onManageSubscription={onManageSubscription}
-              onUpgrade={onUpgrade}
-              onSetCommitment={onSetCommitment}
-              onViewBreakdown={onViewBreakdown}
-              rootOrgs={rootOrgs}
-              rootOrgCount={orgPage?.totalCount ?? rootOrgCount}
-              isRootOrgsLoading={isOrgSearchPending}
-              isReloading={isReloading}
-              selectedOrgId={breakdownScope === "instance" ? ALL_ORGS_VALUE : selectedOrgId}
-              onSelectOrg={(nextId) => {
-                if (nextId === ALL_ORGS_VALUE) {
-                  setBreakdownScope("instance");
-                  setSelectedOrgId(orgId);
-                  return;
-                }
-                setBreakdownScope("organization");
-                setSelectedOrgId(nextId);
-              }}
-              onSearchOrgs={setOrgSearch}
-              showOrgFilter={showOrgFilter}
-              onUpdatePayment={onUpdatePayment}
-              onEditDetails={onEditDetails}
-              onContact={onContact}
-              onRetry={onRetry}
-              canManageBilling={canManageBilling}
-            />
+            <div className="mx-auto w-full max-w-4xl">
+              <Overview
+                overview={overview}
+                catalog={catalog}
+                subState={subState}
+                onManageSubscription={onManageSubscription}
+                onUpgrade={onUpgrade}
+                onSetCommitment={onSetCommitment}
+                onViewBreakdown={onViewBreakdown}
+                breakdownOrgId={selectedOrgId}
+                breakdownScope={showOrgFilter ? breakdownScope : "organization"}
+                rootOrgs={rootOrgs}
+                rootOrgCount={orgPage?.totalCount ?? rootOrgCount}
+                isRootOrgsLoading={isOrgSearchPending}
+                isReloading={isReloading}
+                selectedOrgId={breakdownScope === "instance" ? ALL_ORGS_VALUE : selectedOrgId}
+                onSelectOrg={(nextId) => {
+                  if (nextId === ALL_ORGS_VALUE) {
+                    setBreakdownScope("instance");
+                    setSelectedOrgId(orgId);
+                    return;
+                  }
+                  setBreakdownScope("organization");
+                  setSelectedOrgId(nextId);
+                }}
+                onSearchOrgs={setOrgSearch}
+                showOrgFilter={showOrgFilter}
+                onUpdatePayment={onUpdatePayment}
+                onEditDetails={onEditDetails}
+                onContact={onContact}
+                onRetry={onRetry}
+                canManageBilling={canManageBilling}
+              />
+            </div>
           </OrgPermissionCan>
         </div>
       </div>
@@ -276,6 +280,7 @@ export const BillingV2Page = () => {
           scope={showOrgFilter ? breakdownScope : "organization"}
           prod={catalogById(catalog, flow.prodId)!}
           entitlement={overview?.entitlements[flow.prodId]}
+          initialDimensionKey={flow.dimensionKey}
           onClose={close}
         />
       )}
