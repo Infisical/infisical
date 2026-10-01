@@ -136,8 +136,8 @@ const TypeSelectInner = ({
         >
           <ProductIcon className="h-[14px] w-[14px] shrink-0" />
           <span className="truncate">{pillLabel}</span>
+          <ProductPlanBadge type={currentType} />
         </button>
-        <ProductPlanBadge type={currentType} />
         <PreviewBadge type={currentType} />
         <NavbarSwitcherTrigger aria-label="switch-product-type" />
         <NavbarSwitcherContent className="w-80">
