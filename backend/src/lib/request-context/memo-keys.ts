@@ -58,6 +58,8 @@ export const requestMemoKeys = {
 
   projectFindById: (projectId: string) => `project:findById:${projectId}`,
 
+  auditLogSettings: (orgId: string) => `audit-log-settings:${orgId}`,
+
   userFindById: (userId: string) => `user:findById:${userId}`,
 
   identityFindById: (identityId: string) => `identity:findById:${identityId}`,

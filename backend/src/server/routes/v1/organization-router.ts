@@ -10,9 +10,14 @@ import {
   OrgMembershipStatus,
   OrgRolesSchema
 } from "@app/db/schemas";
+import { AuditLogEventClass } from "@app/ee/services/audit-log/audit-log-event-classes";
+import {
+  AuditLogSettingsResponseSchema,
+  updateAuditLogSettingsBodySchema
+} from "@app/ee/services/audit-log/audit-log-settings-schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, KeyStoreTtls } from "@app/keystore/keystore";
-import { ApiDocsTags, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
+import { ApiDocsTags, AUDIT_LOG_SETTINGS, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
@@ -23,6 +28,16 @@ import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { integrationAuthPubSchema, SanitizedUserSchema } from "../sanitizedSchemas";
+
+const commaSeparatedEnumList = <T extends z.EnumLike>(enumObj: T) => {
+  const values = Object.values(enumObj);
+  return z
+    .string()
+    .max(values.join(",").length)
+    .optional()
+    .transform((val) => (val ? [...new Set(val.split(","))] : undefined))
+    .pipe(z.nativeEnum(enumObj).array().max(values.length).optional());
+};
 
 export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -145,6 +160,68 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/audit-log-settings",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getOrganizationAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Get which audit log event classes the organization records",
+      response: {
+        200: AuditLogSettingsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.getOrgSettings({ actor: req.permission });
+      return { auditLogSettings };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/audit-log-settings",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "updateOrganizationAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description:
+        "Update which audit log event classes the organization records. Requires the organization admin role.",
+      body: updateAuditLogSettingsBodySchema(AUDIT_LOG_SETTINGS.UPDATE_ORG.isEnabled),
+      response: {
+        200: AuditLogSettingsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.updateOrgSettings({
+        actor: req.permission,
+        eventClasses: req.body.eventClasses
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "organization",
+            eventClasses: req.body.eventClasses
+          }
+        }
+      });
+
+      return { auditLogSettings };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/audit-logs",
     config: {
       rateLimit: readLimit
@@ -165,12 +242,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             .transform((val) => (!val ? val : removeTrailingSlash(val)))
             .describe(AUDIT_LOGS.EXPORT.secretPath),
           secretKey: z.string().optional().describe(AUDIT_LOGS.EXPORT.secretKey),
-          // eventType is split with , for multiple values, we need to transform it to array
-          eventType: z
-            .string()
-            .optional()
-            .transform((val) => (val ? val.split(",") : undefined))
-            .pipe(z.nativeEnum(EventType).array().optional()),
+          eventType: commaSeparatedEnumList(EventType),
+          eventClass: commaSeparatedEnumList(AuditLogEventClass).describe(AUDIT_LOGS.EXPORT.eventClass),
           userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
           eventMetadata: z
             .string()
@@ -236,6 +309,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
               z.object({
                 event: z.object({
                   type: z.string(),
+                  class: z.nativeEnum(AuditLogEventClass),
                   metadata: z.any()
                 }),
                 actor: z.object({
@@ -258,7 +332,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           startDate: req.query.startDate || getLastMidnightDateISO(),
           auditLogActorId: req.query.actor,
           actorType: req.query.actorType,
-          eventType: req.query.eventType
+          eventType: req.query.eventType,
+          eventClass: req.query.eventClass
         },
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,

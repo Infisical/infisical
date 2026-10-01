@@ -11,6 +11,7 @@ import {
 } from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { TAuditLogCollapsedFlushJobData } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
 import {
   TSecretRotationRotateSecretsJobPayload,
@@ -124,6 +125,7 @@ export enum QueueName {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   AuditLogStreamOutbox = "audit-log-stream-outbox",
+  AuditLogCollapsedFlush = "audit-log-collapsed-flush",
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
   ProjectEnvHardDelete = "project-env-hard-delete",
@@ -208,6 +210,7 @@ export enum QueueJobs {
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
   AuditLogStreamFlush = "audit-log-stream-flush",
+  AuditLogCollapsedFlush = "audit-log-collapsed-flush-job",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
@@ -592,6 +595,10 @@ export type TQueueJobTypes = {
   [QueueName.AuditLogStreamOutbox]: {
     name: QueueJobs.AuditLogStreamFlush;
     payload: TAuditLogStreamFlushJobData;
+  };
+  [QueueName.AuditLogCollapsedFlush]: {
+    name: QueueJobs.AuditLogCollapsedFlush;
+    payload: TAuditLogCollapsedFlushJobData;
   };
   [QueueName.CaAutoRenewal]:
     | {
