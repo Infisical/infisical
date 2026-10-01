@@ -433,7 +433,6 @@ export const gatewayV2ServiceFactory = ({
     const routingInfo = {
       targetHost,
       targetPort,
-      // A gateway too old to read this keeps using targetPort, so adding it is additive.
       ...(allowedPorts.length > 1 ? { targetPorts: allowedPorts } : {})
     };
 

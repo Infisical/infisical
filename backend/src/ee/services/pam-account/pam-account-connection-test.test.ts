@@ -10,7 +10,6 @@ import {
 
 const ORG_ID = "11111111-1111-1111-1111-111111111111";
 
-// An `undefined` property is still a present key in JS, so only the wire form proves a field was omitted.
 const wireKeys = (request: unknown): string[] => Object.keys(JSON.parse(JSON.stringify(request)) as object);
 
 describe("buildGatewayConnectionTest: MSSQL Windows authentication", () => {

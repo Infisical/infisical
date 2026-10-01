@@ -256,7 +256,6 @@ describe("buildPamAccountTypeMetadata", () => {
       nativePort: 9000
     });
 
-    // Clearing a number input submits an empty string, so an HTTP-only account has to save through it.
     for (const cleared of ["", "   ", null, undefined]) {
       const result = validateConnectionDetails(PamAccountType.ClickHouse, { ...base, nativePort: cleared });
       expect((result as { nativePort?: number }).nativePort).toBeUndefined();

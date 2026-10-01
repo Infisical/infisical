@@ -43,7 +43,6 @@ export const testConnectionWithGateway = async (
   }
 };
 
-// Takes the built test whole so its authorised ports can't be dropped.
 export const testBuiltConnectionWithGateway = async (
   test: { host: string; port: number; request: Record<string, unknown>; additionalPorts?: number[] },
   gatewayId: string,
