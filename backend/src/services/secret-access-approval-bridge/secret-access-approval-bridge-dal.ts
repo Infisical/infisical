@@ -6,11 +6,7 @@ import { AccessScope, TableName, TUsers } from "@app/db/schemas";
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
-import {
-  ApprovalPolicyType,
-  ApprovalRequestGrantStatus,
-  ApprovalRequestStatus
-} from "@app/services/approval-policy/approval-policy-enums";
+import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { SecretAccessPolicyConstraintsSchema } from "@app/services/approval-policy/secret-access/secret-access-policy-schemas";
 
 const StoredConstraintsSchema = z.object({ version: z.literal(1), constraints: SecretAccessPolicyConstraintsSchema });
@@ -18,7 +14,7 @@ const StoredConstraintsSchema = z.object({ version: z.literal(1), constraints: S
 const parseConstraints = (constraints: unknown) => {
   const parsed = StoredConstraintsSchema.safeParse(constraints);
   if (parsed.success) return parsed.data.constraints;
-  return { allowedSelfApprovals: true, requestExpirationTime: null };
+  return { allowedSelfApprovals: true, requestExpirationTime: null, maxTimePeriod: null };
 };
 
 export type TSecretAccessApprovalBridgeDALFactory = ReturnType<typeof secretAccessApprovalBridgeDALFactory>;
@@ -91,7 +87,7 @@ export const secretAccessApprovalBridgeDALFactory = (db: TDbClient) => {
         data: docs,
         key: "id",
         parentMapper: (data) => {
-          const { allowedSelfApprovals, requestExpirationTime } = parseConstraints(data.constraints);
+          const { allowedSelfApprovals, requestExpirationTime, maxTimePeriod } = parseConstraints(data.constraints);
           return {
             id: data.id,
             name: data.name,
@@ -103,7 +99,7 @@ export const secretAccessApprovalBridgeDALFactory = (db: TDbClient) => {
             deletedAt: null as Date | null,
             secretPath: data.secretPath,
             envId: data.environmentId,
-            maxTimePeriod: data.maxRequestTtl ?? null,
+            maxTimePeriod,
             allowedSelfApprovals,
             requestExpirationTime
           };
@@ -190,25 +186,6 @@ export const secretAccessApprovalBridgeDALFactory = (db: TDbClient) => {
       return { ...request, grant: grant ?? null, privilegeId: privilege?.id ?? null };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret access approval request by id" });
-    }
-  };
-
-  const findActiveGrants = async ({ projectId, granteeUserId }: { projectId: string; granteeUserId: string }) => {
-    try {
-      return await db
-        .replicaNode()(TableName.ApprovalRequestGrants)
-        .where({
-          projectId,
-          granteeUserId,
-          type: ApprovalPolicyType.SecretAccess,
-          status: ApprovalRequestGrantStatus.Active
-        })
-        .whereNull("revokedAt")
-        .where((qb) => {
-          void qb.whereNull("expiresAt").orWhere("expiresAt", ">", new Date());
-        });
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find active secret access grants" });
     }
   };
 
@@ -330,7 +307,6 @@ export const secretAccessApprovalBridgeDALFactory = (db: TDbClient) => {
     findSecretAccessPolicies,
     findSecretAccessRequestById,
     findSecretAccessRequests,
-    findActiveGrants,
     findPendingRequests,
     findGrantsByRequestIds,
     findPrivilegesByGrantIds,

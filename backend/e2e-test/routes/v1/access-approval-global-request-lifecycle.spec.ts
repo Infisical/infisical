@@ -17,7 +17,7 @@ const globalPolicyIds: string[] = [];
 
 const authHeaders = () => ({ authorization: `Bearer ${jwtAuthToken}` });
 
-const createGlobalPolicy = async (dto: { name: string; secretPath: string }) => {
+const createGlobalPolicy = async (dto: { name: string; secretPath: string }, body: Record<string, unknown> = {}) => {
   const res = await testServer.inject({
     method: "POST",
     url: "/api/v1/access-approvals/policies",
@@ -29,7 +29,8 @@ const createGlobalPolicy = async (dto: { name: string; secretPath: string }) => 
       secretPath: dto.secretPath,
       approvers: [{ type: ApproverType.User, id: seedData1.id }],
       approvals: 1,
-      allowedSelfApprovals: true
+      allowedSelfApprovals: true,
+      ...body
     }
   });
   expect(res.statusCode).toBe(200);
@@ -279,6 +280,97 @@ describe("Access approval request lifecycle on the global system", () => {
     const bypassRes = await reviewAccessRequest(requestId, { status: "approved", bypassReason: "need it right now" });
     expect(bypassRes.statusCode).toBe(400);
     expect(bypassRes.json().message).toBe("Break-glass approvals are not supported for this request yet");
+  });
+
+  test("A policy's max time period caps the requested range and survives an update that omits it", async () => {
+    const db = getDb();
+    const secretPath = "/lifecycle-max-time";
+    const policy = await createGlobalPolicy({ name: "lifecycle-max-time", secretPath }, { maxTimePeriod: "1h" });
+
+    const storedPolicy = await db(TableName.ApprovalPolicies).where({ id: policy.id }).first();
+    expect(storedPolicy?.maxRequestTtl).toBeNull();
+    expect(storedPolicy?.constraints).toEqual(
+      expect.objectContaining({ constraints: expect.objectContaining({ maxTimePeriod: "1h" }) })
+    );
+
+    const tooLongRes = await createAccessRequest(secretPath, { isTemporary: true, temporaryRange: "2h" });
+    expect(tooLongRes.statusCode).toBe(400);
+    expect(tooLongRes.json().message).toBe("Requested access time range is limited to 1h by policy");
+
+    const permanentRes = await createAccessRequest(secretPath);
+    expect(permanentRes.statusCode).toBe(400);
+    expect(permanentRes.json().message).toBe("Requested access time range is limited to 1h by policy");
+
+    const updateRes = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v1/access-approvals/policies/${policy.id}`,
+      headers: authHeaders(),
+      body: { name: "lifecycle-max-time-renamed", approvers: [{ type: ApproverType.User, id: seedData1.id }] }
+    });
+    expect(updateRes.statusCode).toBe(200);
+
+    const getRes = await testServer.inject({
+      method: "GET",
+      url: `/api/v1/access-approvals/policies/${policy.id}`,
+      headers: authHeaders()
+    });
+    expect(getRes.statusCode).toBe(200);
+    expect(getRes.json().approval.maxTimePeriod).toBe("1h");
+
+    const withinRes = await createAccessRequest(secretPath, { isTemporary: true, temporaryRange: "30m" });
+    expect(withinRes.statusCode).toBe(200);
+  });
+
+  test("Asking again for access the user already holds is rejected", async () => {
+    const secretPath = "/lifecycle-active-grant";
+    await createApprovedTemporaryRequest(secretPath);
+
+    const repeatRes = await createAccessRequest(secretPath, { isTemporary: true, temporaryRange: "1h" });
+    expect(repeatRes.statusCode).toBe(400);
+    expect(repeatRes.json().message).toBe("You already have an active privilege with the same criteria");
+  });
+
+  test("A request with a range is granted temporary access even when isTemporary is false", async () => {
+    const db = getDb();
+    const secretPath = "/lifecycle-range-without-flag";
+    await createGlobalPolicy({ name: "lifecycle-range-without-flag", secretPath });
+
+    const createRes = await createAccessRequest(secretPath, { isTemporary: false, temporaryRange: "1h" });
+    expect(createRes.statusCode).toBe(200);
+    const requestId = createRes.json().approval.id as string;
+
+    const reviewRes = await reviewAccessRequest(requestId, { status: "approved" });
+    expect(reviewRes.statusCode).toBe(200);
+
+    const grant = await db(TableName.ApprovalRequestGrants).where({ requestId }).first();
+    expect(grant?.expiresAt).toBeTruthy();
+
+    const privilege = await db(TableName.AdditionalPrivilege).where({ grantId: grant?.id }).first();
+    expect(privilege?.isTemporary).toBe(true);
+    expect(privilege?.temporaryRange).toBe("1h");
+    expect(privilege?.temporaryAccessEndTime).toBeTruthy();
+  });
+
+  test("A temporary request without a range fails only on the approval that would grant it", async () => {
+    const db = getDb();
+    const secretPath = "/lifecycle-missing-range";
+    await createGlobalPolicy({ name: "lifecycle-missing-range", secretPath });
+
+    const createRes = await createAccessRequest(secretPath, { isTemporary: true });
+    expect(createRes.statusCode).toBe(200);
+    const requestId = createRes.json().approval.id as string;
+
+    const approveRes = await reviewAccessRequest(requestId, { status: "approved" });
+    expect(approveRes.statusCode).toBe(400);
+    expect(approveRes.json().message).toBe("Temporary range is required for temporary access");
+
+    const request = await db(TableName.ApprovalRequests).where({ id: requestId }).first();
+    expect(request?.status).toBe("pending");
+    const grants = await db(TableName.ApprovalRequestGrants).where({ requestId });
+    expect(grants).toHaveLength(0);
+
+    const rejectRes = await reviewAccessRequest(requestId, { status: "rejected" });
+    expect(rejectRes.statusCode).toBe(200);
   });
 });
 

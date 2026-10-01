@@ -16,7 +16,13 @@ import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integr
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { TApprovalPolicySecretEnvironmentDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { secretAccessPolicyFactory } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
+import {
+  TSecretAccessPolicy,
+  TSecretAccessPolicyInputs
+} from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
@@ -72,10 +78,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "getCount"
   >;
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findOne" | "find" | "findLastValidPolicy">;
-  approvalPolicySecretEnvironmentDAL: Pick<
-    TApprovalPolicySecretEnvironmentDALFactory,
-    "findPolicyByEnvIdsAndSecretPath"
-  >;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findSecretAccessPolicyByEnvIdAndSecretPath">;
   secretAccessApprovalBridge: Pick<
     TSecretAccessApprovalBridgeServiceFactory,
     | "createAccessApprovalRequest"
@@ -103,6 +106,13 @@ type TSecretApprovalRequestServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue">;
 };
 
+type TApprovalPolicyRouting =
+  | { usesGlobalBridge: true; globalPolicy: TSecretAccessPolicy }
+  | {
+      usesGlobalBridge: false;
+      legacyPolicy: Awaited<ReturnType<TAccessApprovalPolicyDALFactory["findLastValidPolicy"]>>;
+    };
+
 export const accessApprovalRequestServiceFactory = ({
   groupDAL,
   projectDAL,
@@ -112,7 +122,7 @@ export const accessApprovalRequestServiceFactory = ({
   accessApprovalRequestReviewerDAL,
   accessApprovalPolicyDAL,
   accessApprovalPolicyApproverDAL,
-  approvalPolicySecretEnvironmentDAL,
+  approvalPolicyDAL,
   secretAccessApprovalBridge,
   additionalPrivilegeDAL,
   smtpService,
@@ -124,6 +134,8 @@ export const accessApprovalRequestServiceFactory = ({
   notificationService,
   queueService
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
+  const secretAccessPolicy = secretAccessPolicyFactory(ApprovalPolicyType.SecretAccess);
+
   const $queueAccessRequestWebhook = async ({
     action,
     accessApprovalRequest,
@@ -237,25 +249,16 @@ export const accessApprovalRequestServiceFactory = ({
   };
 
   const $usesGlobalApprovalBridge = async ({
-    envId,
-    secretPath
-  }: {
-    envId: string;
-    secretPath: string;
-  }): Promise<
-    | { usesGlobalBridge: true; globalPolicy: { id: string; name: string } }
-    | {
-        usesGlobalBridge: false;
-        legacyPolicy: Awaited<ReturnType<TAccessApprovalPolicyDALFactory["findLastValidPolicy"]>>;
-      }
-  > => {
+    projectId,
+    ...inputs
+  }: TSecretAccessPolicyInputs & { projectId: string }): Promise<TApprovalPolicyRouting> => {
     const [legacyPolicy, globalPolicy] = await Promise.all([
-      accessApprovalPolicyDAL.findLastValidPolicy({ envId, secretPath }),
-      approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdsAndSecretPath({ envIds: [envId], secretPath })
+      accessApprovalPolicyDAL.findLastValidPolicy({ envId: inputs.envId, secretPath: inputs.secretPath }),
+      secretAccessPolicy.matchPolicy(approvalPolicyDAL as TApprovalPolicyDALFactory, projectId, inputs)
     ]);
 
     if (globalPolicy) {
-      return { usesGlobalBridge: true, globalPolicy: { id: globalPolicy.policyId, name: globalPolicy.policyName } };
+      return { usesGlobalBridge: true, globalPolicy };
     }
 
     return { usesGlobalBridge: false, legacyPolicy };
@@ -298,7 +301,13 @@ export const accessApprovalRequestServiceFactory = ({
 
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
-    const approvalBridge = await $usesGlobalApprovalBridge({ envId: environment.id, secretPath });
+    const approvalBridge = await $usesGlobalApprovalBridge({
+      projectId: project.id,
+      envId: environment.id,
+      secretPath,
+      permissions: requestedPermissions,
+      isTemporary
+    });
 
     if (approvalBridge.usesGlobalBridge) {
       return secretAccessApprovalBridge.createAccessApprovalRequest({
@@ -306,6 +315,7 @@ export const accessApprovalRequestServiceFactory = ({
         projectId: project.id,
         envId: environment.id,
         envSlug,
+        envName: environment.name,
         secretPath,
         requestedByUserId: actorId,
         actorOrgId,

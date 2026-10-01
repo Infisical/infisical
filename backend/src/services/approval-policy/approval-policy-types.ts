@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { TApprovalPolicies, TApprovalRequestGrants } from "@app/db/schemas";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -177,6 +178,7 @@ export type TPostApprovalContext = {
   };
   certificateApprovalService?: TCertificateApprovalService;
   certificateRequestDAL?: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
+  additionalPrivilegeDAL?: Pick<TAdditionalPrivilegeDALFactory, "create">;
 };
 
 export type TApprovalRequestFactoryPostApprovalRoutine<C extends TPostApprovalContext = TPostApprovalContext> = (

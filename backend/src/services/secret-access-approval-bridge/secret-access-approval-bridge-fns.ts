@@ -1,5 +1,4 @@
 import msFn from "ms";
-import { z } from "zod";
 
 import { TAdditionalPrivileges, TApprovalRequestGrants, TApprovalRequests, TUsers } from "@app/db/schemas";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
@@ -19,45 +18,13 @@ import {
 } from "@app/services/approval-policy/approval-policy-enums";
 import { ApprovalPolicyStep } from "@app/services/approval-policy/approval-policy-types";
 import { resolveStepApproverUserIds } from "@app/services/approval-policy/approval-request-fns";
-import { SecretAccessPolicyRequestDataSchema } from "@app/services/approval-policy/secret-access/secret-access-policy-schemas";
+import { getSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
 import { TSecretAccessApprovalBridgeDALFactory } from "./secret-access-approval-bridge-dal";
 import { TSecretAccessApprovalBridgeServiceFactoryDep } from "./secret-access-approval-bridge-types";
-
-const StoredRequestDataSchema = z.object({ version: z.literal(1), requestData: SecretAccessPolicyRequestDataSchema });
-
-export const parseSecretAccessRequestData = (requestData: unknown): TSecretAccessRequestData | null => {
-  const parsed = StoredRequestDataSchema.safeParse(requestData);
-  return parsed.success ? parsed.data.requestData : null;
-};
-
-// jsonb does not preserve object key order, so a stored permission set has to be
-// compared against the incoming one on a canonical form rather than raw JSON text.
-const canonicalize = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(canonicalize);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.keys(value as Record<string, unknown>)
-        .sort()
-        .map((key) => [key, canonicalize((value as Record<string, unknown>)[key])])
-    );
-  }
-  return value;
-};
-
-export const hasSameAccessCriteria = (
-  data: TSecretAccessRequestData | null,
-  criteria: { permissions: unknown; isTemporary: boolean }
-) => {
-  if (!data) return false;
-  return (
-    data.isTemporary === criteria.isTemporary &&
-    JSON.stringify(canonicalize(data.permissions)) === JSON.stringify(canonicalize(criteria.permissions))
-  );
-};
 
 type TSecretAccessApprovalPolicyExistsDep = {
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
@@ -102,16 +69,6 @@ export const buildSecretAccessPolicySteps = <T extends { sequence: number }>(
 export type TSecretAccessRequestRow = TApprovalRequests & {
   grant: TApprovalRequestGrants | null;
   privilegeId: string | null;
-};
-
-export const getSecretAccessRequestData = (
-  request: Pick<TSecretAccessRequestRow, "requestData">
-): TSecretAccessRequestData => {
-  const data = parseSecretAccessRequestData(request.requestData);
-  if (!data) {
-    throw new BadRequestError({ message: "The access request is malformed and cannot be processed" });
-  }
-  return data;
 };
 
 export const toLegacyAccessApprovalRequest = (

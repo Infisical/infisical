@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 import { ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
 import { ApprovalPolicyStep, PolicyBypasser } from "./approval-policy-types";
@@ -205,6 +205,43 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find approval policies by project id" });
+    }
+  };
+
+  const findSecretAccessPolicyByEnvIdAndSecretPath = async ({
+    projectId,
+    envId,
+    secretPath
+  }: {
+    projectId: string;
+    envId: string;
+    secretPath: string;
+  }) => {
+    try {
+      const policy = await db
+        .replicaNode()(TableName.ApprovalPolicies)
+        .join(
+          TableName.ApprovalPolicySecretEnvironment,
+          `${TableName.ApprovalPolicySecretEnvironment}.policyId`,
+          `${TableName.ApprovalPolicies}.id`
+        )
+        .where(`${TableName.ApprovalPolicies}.type`, ApprovalPolicyType.SecretAccess)
+        .where(`${TableName.ApprovalPolicies}.projectId`, projectId)
+        .where(`${TableName.ApprovalPolicySecretEnvironment}.envId`, envId)
+        .where(`${TableName.ApprovalPolicySecretEnvironment}.secretPath`, secretPath)
+        .select(selectAllTableCols(TableName.ApprovalPolicies))
+        .first();
+
+      if (!policy) return null;
+
+      const [steps, bypassers] = await Promise.all([
+        findStepsByPolicyId(policy.id),
+        findBypassersByPolicyId(policy.id)
+      ]);
+
+      return { ...policy, steps, bypassers };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find secret access approval policy by environment and secret path" });
     }
   };
 
@@ -490,6 +527,7 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     findBypassersByPolicyId,
     findBypassersByPolicyIds,
     findByProjectId,
+    findSecretAccessPolicyByEnvIdAndSecretPath,
     findPoliciesWhereSubjectIsApprover,
     isProjectApprover,
     findScopeIdsWithApprovers,

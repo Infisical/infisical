@@ -20,6 +20,5 @@ export const APPROVAL_POLICY_FACTORY_MAP: Record<ApprovalPolicyType, TApprovalPo
   [ApprovalPolicyType.PamAccess]: pamAccessPolicyFactory as TApprovalPolicyFactoryImplementation,
   [ApprovalPolicyType.CertRequest]: certRequestPolicyFactory as TApprovalPolicyFactoryImplementation,
   [ApprovalPolicyType.CertCodeSigning]: codeSigningPolicyFactory as TApprovalPolicyFactoryImplementation,
-  // TODO(adilson): stub while secret access requests stay on the legacy tables; every routine throws
   [ApprovalPolicyType.SecretAccess]: secretAccessPolicyFactory as TApprovalPolicyFactoryImplementation
 };

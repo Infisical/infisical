@@ -28,6 +28,7 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
+import { TSecretAccessPolicy } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
@@ -48,10 +49,7 @@ export type TSecretAccessApprovalBridgeServiceFactoryDep = {
   groupDAL: Pick<TGroupDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "findGroupMembershipsByUserIdInOrg">;
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
-  approvalPolicyDAL: Pick<
-    TApprovalPolicyDALFactory,
-    "create" | "transaction" | "updateById" | "deleteById" | "findStepsByPolicyId"
-  >;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "create" | "transaction" | "updateById" | "deleteById">;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "insertMany" | "delete">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "insertMany">;
   approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;
@@ -66,14 +64,13 @@ export type TSecretAccessApprovalBridgeServiceFactoryDep = {
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create" | "find" | "updateById">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create" | "find">;
   approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "create" | "find">;
-  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "create" | "updateById" | "findByIdForUpdate">;
+  approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "delete">;
   secretAccessApprovalBridgeDAL: Pick<
     TSecretAccessApprovalBridgeDALFactory,
     | "findSecretAccessPolicies"
     | "findSecretAccessRequestById"
     | "findSecretAccessRequests"
-    | "findActiveGrants"
     | "findPendingRequests"
     | "findGrantsByRequestIds"
     | "findPrivilegesByGrantIds"
@@ -100,10 +97,11 @@ export type TListSecretAccessApprovalPoliciesDTO = { projectId: string };
 export type TCountSecretAccessApprovalPoliciesDTO = { projectId: string; envId: string };
 
 export type TCreateSecretAccessApprovalRequestDTO = {
-  policy: { id: string; name: string };
+  policy: TSecretAccessPolicy;
   projectId: string;
   envId: string;
   envSlug: string;
+  envName: string;
   secretPath: string;
   requestedByUserId: string;
   actorOrgId: string;

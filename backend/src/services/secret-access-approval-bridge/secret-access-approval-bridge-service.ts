@@ -1,8 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
-import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { approvalPolicyMembershipVerifierFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-fns";
 import {
   ApproverType,
@@ -31,9 +30,18 @@ import {
   ApprovalRequestStatus,
   ApprovalRequestStepStatus
 } from "@app/services/approval-policy/approval-policy-enums";
+import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { createApprovalRequestWithSteps } from "@app/services/approval-policy/approval-request-fns";
-import { SecretAccessPolicyRequestDataSchema } from "@app/services/approval-policy/secret-access/secret-access-policy-schemas";
-import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
+import { secretAccessPolicyFactory } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
+import {
+  getSecretAccessRequestData,
+  hasSameAccessCriteria,
+  parseSecretAccessRequestData
+} from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
+import {
+  TSecretAccessPolicy,
+  TSecretAccessRequestData
+} from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { AccessRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
@@ -42,11 +50,8 @@ import {
   collectSecretAccessPolicyGroupIds,
   collectSecretAccessRequestUserIds,
   composeSecretAccessRequestRows,
-  getSecretAccessRequestData,
-  hasSameAccessCriteria,
   isPolicySubjectMatch,
   notifySecretAccessStepApprovers,
-  parseSecretAccessRequestData,
   secretAccessApprovalPolicyExists,
   toLegacyAccessApprovalRequest
 } from "./secret-access-approval-bridge-fns";
@@ -104,6 +109,7 @@ export const secretAccessApprovalBridgeServiceFactory = ({
   queueService
 }: TSecretAccessApprovalBridgeServiceFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
+  const secretAccessPolicy = secretAccessPolicyFactory(ApprovalPolicyType.SecretAccess);
 
   const $splitApprovers = (approvers: TApproverInput) => ({
     groupApprovers: approvers.filter((approver) => approver.type === ApproverType.Group) as TSequencedSubject[],
@@ -386,14 +392,17 @@ export const secretAccessApprovalBridgeServiceFactory = ({
           type: ApprovalPolicyType.SecretAccess,
           name,
           enforcementLevel,
-          maxRequestTtl: maxTimePeriod ?? null,
           bypassForMachineIdentities: false,
           scopeType: null,
           scopeId: null,
           conditions: { version: 1, conditions: {} },
           constraints: {
             version: 1,
-            constraints: { allowedSelfApprovals, requestExpirationTime: requestExpirationTime ?? null }
+            constraints: {
+              allowedSelfApprovals,
+              requestExpirationTime: requestExpirationTime ?? null,
+              maxTimePeriod: maxTimePeriod ?? null
+            }
           }
         },
         tx
@@ -421,7 +430,7 @@ export const secretAccessApprovalBridgeServiceFactory = ({
       deletedAt: null,
       allowedSelfApprovals,
       bypassForMachineIdentities: false,
-      maxTimePeriod: policy.maxRequestTtl ?? null,
+      maxTimePeriod: maxTimePeriod ?? null,
       requestExpirationTime: requestExpirationTime ?? null,
       environment: envs[0],
       environments: envs,
@@ -499,13 +508,13 @@ export const secretAccessApprovalBridgeServiceFactory = ({
         {
           name,
           enforcementLevel,
-          maxRequestTtl: maxTimePeriod,
           constraints: {
             version: 1,
             constraints: {
               allowedSelfApprovals,
               requestExpirationTime:
-                requestExpirationTime === undefined ? policy.requestExpirationTime : requestExpirationTime
+                requestExpirationTime === undefined ? policy.requestExpirationTime : requestExpirationTime,
+              maxTimePeriod: maxTimePeriod === undefined ? policy.maxTimePeriod : maxTimePeriod
             }
           }
         },
@@ -686,13 +695,13 @@ export const secretAccessApprovalBridgeServiceFactory = ({
     project,
     policy,
     requestedByUser,
-    envId,
     envSlug,
+    envName,
     secretPath
   }: {
     request: ReturnType<typeof toLegacyAccessApprovalRequest>;
     project: { id: string; name: string; orgId: string };
-    policy: Awaited<ReturnType<typeof $findPolicyById>>;
+    policy: TSecretAccessPolicy;
     requestedByUser: {
       id: string;
       firstName?: string | null;
@@ -700,8 +709,8 @@ export const secretAccessApprovalBridgeServiceFactory = ({
       username: string;
       email?: string | null;
     };
-    envId: string;
     envSlug: string;
+    envName: string;
     secretPath: string;
   }) => {
     const { requestedPermissions } = verifyRequestedPermissions({ permissions: request.permissions });
@@ -716,7 +725,7 @@ export const secretAccessApprovalBridgeServiceFactory = ({
           projectId: project.id,
           projectName: project.name,
           environment: envSlug,
-          environmentName: policy.environments.find((env) => env.id === envId)?.name,
+          environmentName: envName,
           secretPath,
           action: AccessRequestWebhookAction.Created,
           request: {
@@ -728,7 +737,7 @@ export const secretAccessApprovalBridgeServiceFactory = ({
               id: policy.id,
               name: policy.name,
               enforcementLevel: policy.enforcementLevel,
-              hasSequencedApprovers: policy.approvers.some((approver) => (approver.sequence ?? 1) > 1)
+              hasSequencedApprovers: policy.steps.length > 1
             },
             requestedAccess: {
               isTemporary: request.isTemporary,
@@ -766,10 +775,11 @@ export const secretAccessApprovalBridgeServiceFactory = ({
     Boolean(await approvalRequestDAL.findOne({ id: requestId, type: ApprovalPolicyType.SecretAccess }));
 
   const createAccessApprovalRequest = async ({
-    policy: policyRef,
+    policy,
     projectId,
     envId,
     envSlug,
+    envName,
     secretPath,
     requestedByUserId,
     actorOrgId,
@@ -778,40 +788,36 @@ export const secretAccessApprovalBridgeServiceFactory = ({
     temporaryRange,
     note
   }: TCreateSecretAccessApprovalRequestDTO) => {
-    const policy = await $findPolicyById(
-      policyRef.id,
-      `No policy in environment with slug '${envSlug}' and with secret path '${secretPath}' was found.`
-    );
+    const requestData: TSecretAccessRequestData = {
+      envId,
+      envSlug,
+      secretPath,
+      permissions,
+      isTemporary,
+      temporaryRange: temporaryRange || null
+    };
 
-    if (policy.maxTimePeriod) {
-      if (!temporaryRange || ms(temporaryRange) > ms(policy.maxTimePeriod)) {
-        throw new BadRequestError({
-          message: `Requested access time range is limited to ${policy.maxTimePeriod} by policy`
-        });
-      }
+    const constraintValidation = secretAccessPolicy.validateConstraints(policy, requestData);
+    if (!constraintValidation.valid) {
+      throw new BadRequestError({ message: constraintValidation.errors?.join("; ") ?? "Policy constraints not met" });
     }
 
-    const [requestedByUser, project, policySteps] = await Promise.all([
+    const [requestedByUser, project] = await Promise.all([
       userDAL.findById(requestedByUserId),
-      projectDAL.findById(projectId),
-      approvalPolicyDAL.findStepsByPolicyId(policy.id)
+      projectDAL.findById(projectId)
     ]);
     if (!requestedByUser) throw new ForbiddenRequestError({ message: "User not found" });
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-    if (!policySteps.length) {
+    if (!policy.steps.length) {
       throw new BadRequestError({ message: `Policy '${policy.name}' has no approvers configured` });
     }
 
-    const activeGrants = await secretAccessApprovalBridgeDAL.findActiveGrants({
-      projectId,
-      granteeUserId: requestedByUserId
+    const activeGrant = await secretAccessPolicy.canAccess(approvalRequestGrantsDAL, projectId, requestedByUserId, {
+      envId,
+      secretPath,
+      permissions,
+      isTemporary
     });
-    const activeGrant = activeGrants.find((grant) =>
-      hasSameAccessCriteria(SecretAccessPolicyRequestDataSchema.safeParse(grant.attributes).data ?? null, {
-        permissions,
-        isTemporary
-      })
-    );
     if (activeGrant) {
       throw new BadRequestError({ message: "You already have an active privilege with the same criteria" });
     }
@@ -827,17 +833,9 @@ export const secretAccessApprovalBridgeServiceFactory = ({
       throw new BadRequestError({ message: "You already have a pending access request with the same criteria" });
     }
 
-    const parsedMs = policy.requestExpirationTime ? ms(policy.requestExpirationTime) : null;
+    const { requestExpirationTime } = policy.constraints.constraints;
+    const parsedMs = requestExpirationTime ? ms(requestExpirationTime) : null;
     const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
-
-    const requestData: TSecretAccessRequestData = {
-      envId,
-      envSlug,
-      secretPath,
-      permissions,
-      isTemporary,
-      temporaryRange: temporaryRange || null
-    };
 
     const created = await approvalRequestDAL.transaction((tx) =>
       createApprovalRequestWithSteps(
@@ -846,7 +844,7 @@ export const secretAccessApprovalBridgeServiceFactory = ({
           organizationId: actorOrgId,
           policyId: policy.id,
           policyType: ApprovalPolicyType.SecretAccess,
-          policySteps,
+          policySteps: policy.steps,
           requestData,
           justification: note || null,
           expiresAt,
@@ -862,7 +860,7 @@ export const secretAccessApprovalBridgeServiceFactory = ({
 
     const request = await $findRequestById(created.id);
     await notifySecretAccessStepApprovers(
-      { step: policySteps[0], request, project, requestedByUser, data: requestData },
+      { step: policy.steps[0], request, project, requestedByUser, data: requestData },
       {
         userDAL,
         userGroupMembershipDAL,
@@ -884,8 +882,8 @@ export const secretAccessApprovalBridgeServiceFactory = ({
         project,
         policy,
         requestedByUser,
-        envId,
         envSlug,
+        envName,
         secretPath
       });
     } catch (error) {
@@ -948,9 +946,6 @@ export const secretAccessApprovalBridgeServiceFactory = ({
     }
 
     const data = getSecretAccessRequestData(request);
-    if (data.isTemporary && !data.temporaryRange) {
-      throw new BadRequestError({ message: "Temporary range is required for temporary access" });
-    }
 
     const isSelfReview = actorId === request.requesterId;
     const isApproving = status === ApprovalStatus.APPROVED;
@@ -1045,40 +1040,10 @@ export const secretAccessApprovalBridgeServiceFactory = ({
       }
 
       await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Approved }, tx);
-
-      const startTime = new Date();
-      const endTime = data.isTemporary ? new Date(startTime.getTime() + ms(data.temporaryRange!)) : null;
-
-      const grant = await approvalRequestGrantsDAL.create(
-        {
-          projectId: request.projectId,
-          requestId: request.id,
-          granteeUserId: request.requesterId,
-          status: ApprovalRequestGrantStatus.Active,
-          type: ApprovalPolicyType.SecretAccess,
-          attributes: data,
-          expiresAt: endTime
-        },
+      await secretAccessPolicy.postApprovalRoutine(approvalRequestGrantsDAL, locked as TApprovalRequest, {
+        additionalPrivilegeDAL,
         tx
-      );
-
-      await additionalPrivilegeDAL.create(
-        {
-          actorUserId: request.requesterId,
-          projectId: request.projectId,
-          name: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
-          permissions: JSON.stringify(data.permissions),
-          grantId: grant.id,
-          ...(data.isTemporary && {
-            isTemporary: true,
-            temporaryMode: TemporaryPermissionMode.Relative,
-            temporaryRange: data.temporaryRange!,
-            temporaryAccessStartTime: startTime,
-            temporaryAccessEndTime: endTime
-          })
-        },
-        tx
-      );
+      });
 
       return { approval: createdApproval, nextStep: null };
     });
