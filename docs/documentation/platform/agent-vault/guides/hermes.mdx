@@ -55,13 +55,19 @@ To set this up, you'll create an [access bundle](/documentation/platform/agent-v
 
 ## Step 1: List the API keys Hermes uses
 
-Hermes reads its API keys from `~/.hermes/.env`, or from `$HERMES_HOME/.env` if you've set `HERMES_HOME`. To list the names of the keys in the file without printing their values, run this on the Hermes machine:
+Hermes reads its API keys from `.env` in its home directory, which is `~/.hermes` by default.
+
+<Info>
+This guide uses `~/.hermes` throughout. If you've set `HERMES_HOME`, replace `~/.hermes` with its value in every command and path in this guide.
+</Info>
+
+To list the names of the keys in `~/.hermes/.env` without printing their values, run this on the Hermes machine:
 
 ```bash
 grep -o '^[A-Za-z_][A-Za-z0-9_]*=' ~/.hermes/.env | tr -d '='
 ```
 
-Take note of each key that holds a credential for an API. For each of these keys, you'll create a corresponding [service](/documentation/platform/agent-vault/services) in [Step 2](#step-2-set-up-agent-vault).
+Take note of each key that holds a credential for an API. In [Step 2](#step-2-set-up-agent-vault), you'll create [services](/documentation/platform/agent-vault/services) that hold these keys.
 
 <Note>
 If your `~/.hermes/.env` contains any keys that hold non-sensitive information, those keys don't need services in Agent Vault. This includes settings like allowed user IDs and channel IDs.
@@ -73,7 +79,7 @@ Agent Vault has service templates for many of the APIs Hermes uses, such as **Op
 
 ### Create an access bundle
 
-First, create an [access bundle](/documentation/platform/agent-vault/access-bundles) that holds a service for each API key from [Step 1](#step-1-list-the-api-keys-hermes-uses).
+First, create an [access bundle](/documentation/platform/agent-vault/access-bundles) that holds a service for each API from [Step 1](#step-1-list-the-api-keys-hermes-uses).
 
 <Steps>
   <Step>
@@ -94,12 +100,12 @@ First, create an [access bundle](/documentation/platform/agent-vault/access-bund
     [Add a substitution](/documentation/platform/agent-vault/services#add-a-substitution) for each key instead if either of these is true:
 
     - The API expects the key outside a header, such as in the URL path
-    - The API uses more than one key, such as one key for each kind of request
+    - The API uses more than one key, such as Slack's bot token and app token (one service can hold a substitution for each key, and an access bundle can't have two services for the same host)
 
     Note the placeholder you enter in **Replace**, because you'll put it in `~/.hermes/.env` in [Step 3](#replace-the-api-keys-with-placeholders).
   </Step>
   <Step>
-    Select **Add Service**. Repeat from the third step for each remaining API key.
+    Select **Add Service**. Repeat from the third step for each remaining API.
   </Step>
 </Steps>
 
@@ -112,7 +118,14 @@ Next, enroll a proxy on the Agent Vault machine. The Hermes gateway runs all the
     Go to **Proxies** and select **Create Proxy**.
   </Step>
   <Step>
-    Give the proxy a **Name**, then select **Create**.
+    Give the proxy a **Name**.
+
+    <Note>
+    Under the default [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), **Any host**, the proxy forwards requests to any host the Agent Vault machine can reach, including internal systems on your private network. If Hermes shouldn't reach those systems, expand **Advanced Options** and select **Access bundle hosts only**. Then list any other hosts Hermes needs, such as package registries, in **Exceptions**.
+    </Note>
+  </Step>
+  <Step>
+    Select **Create**.
   </Step>
   <Step>
     In the **Enrollment Token** dialog, open the **systemd** or **Docker** tab and copy what it shows. The enrollment token expires in an hour.
@@ -186,8 +199,16 @@ To attach the real credentials, the proxy decrypts the HTTPS requests Hermes sen
 
 ```bash
 mkdir -p ~/.hermes/agent-vault
-curl -s http://<proxy-host>:17323/_agent-vault/ca | jq -r .certificate > ~/.hermes/agent-vault/ca.pem
+curl -fsS http://<proxy-host>:17323/_agent-vault/ca | jq -er .certificate > ~/.hermes/agent-vault/ca.pem
 ```
+
+The certificate travels over plain HTTP, so check that it came from your proxy before you trust it. Print its fingerprint:
+
+```bash
+openssl x509 -in ~/.hermes/agent-vault/ca.pem -noout -fingerprint -sha256
+```
+
+Compare the colon-separated value with the proxy's fingerprint in Infisical. On the **Proxies** page, the **Certificate Authority** column shows the start of the fingerprint, and hovering over it shows the full value. If the values don't match, or either command reports an error, don't use the file. Check that `<proxy-host>` is the Agent Vault machine's address, then download the certificate again.
 
 <Note>
   If the Hermes machine runs macOS, also add the certificate to the System keychain. On macOS, Hermes checks certificates against the keychain and ignores `SSL_CERT_FILE`.
