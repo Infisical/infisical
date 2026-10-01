@@ -97,12 +97,3 @@ export const getRecipientScope = (
   projectId: provider.recipientPolicy?.atOrgScope ? null : (projectId ?? null),
   allowEmailAddresses: Boolean(provider.recipientPolicy?.allowEmailAddresses)
 });
-
-export const getAlertResourceName = async (
-  provider: Pick<IResourceAlertProvider, "getResourceNames">,
-  orgId: string,
-  resourceId?: string | null
-): Promise<string | null> => {
-  if (!resourceId || !provider.getResourceNames) return null;
-  return (await provider.getResourceNames({ orgId, resourceIds: [resourceId] })).get(resourceId) ?? null;
-};
