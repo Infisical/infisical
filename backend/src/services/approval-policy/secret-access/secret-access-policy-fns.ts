@@ -137,4 +137,6 @@ export const createSecretAccessGrantWithPrivilege = async (
     },
     tx
   );
+
+  return grant;
 };

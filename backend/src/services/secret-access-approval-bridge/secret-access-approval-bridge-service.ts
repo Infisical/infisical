@@ -32,7 +32,6 @@ import {
 } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { createApprovalRequestWithSteps } from "@app/services/approval-policy/approval-request-fns";
-import { secretAccessPolicyFactory } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import {
   getSecretAccessRequestData,
   hasSameAccessCriteria,
@@ -106,10 +105,10 @@ export const secretAccessApprovalBridgeServiceFactory = ({
   projectSlackConfigDAL,
   microsoftTeamsService,
   projectMicrosoftTeamsConfigDAL,
-  queueService
+  queueService,
+  secretAccessApprovalResource
 }: TSecretAccessApprovalBridgeServiceFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
-  const secretAccessPolicy = secretAccessPolicyFactory(ApprovalPolicyType.SecretAccess);
 
   const $splitApprovers = (approvers: TApproverInput) => ({
     groupApprovers: approvers.filter((approver) => approver.type === ApproverType.Group) as TSequencedSubject[],
@@ -797,7 +796,7 @@ export const secretAccessApprovalBridgeServiceFactory = ({
       temporaryRange: temporaryRange || null
     };
 
-    const constraintValidation = secretAccessPolicy.validateConstraints(policy, requestData);
+    const constraintValidation = secretAccessApprovalResource.validateConstraints(policy, requestData);
     if (!constraintValidation.valid) {
       throw new BadRequestError({ message: constraintValidation.errors?.join("; ") ?? "Policy constraints not met" });
     }
@@ -812,7 +811,7 @@ export const secretAccessApprovalBridgeServiceFactory = ({
       throw new BadRequestError({ message: `Policy '${policy.name}' has no approvers configured` });
     }
 
-    const activeGrant = await secretAccessPolicy.canAccess(approvalRequestGrantsDAL, projectId, requestedByUserId, {
+    const activeGrant = await secretAccessApprovalResource.canAccess(projectId, requestedByUserId, {
       envId,
       secretPath,
       permissions,
@@ -1040,10 +1039,7 @@ export const secretAccessApprovalBridgeServiceFactory = ({
       }
 
       await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Approved }, tx);
-      await secretAccessPolicy.postApprovalRoutine(approvalRequestGrantsDAL, locked as TApprovalRequest, {
-        additionalPrivilegeDAL,
-        tx
-      });
+      await secretAccessApprovalResource.postApprovalTxRoutine(locked as TApprovalRequest, tx);
 
       return { approval: createdApproval, nextStep: null };
     });

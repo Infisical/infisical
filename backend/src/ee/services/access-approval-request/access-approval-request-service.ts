@@ -16,9 +16,7 @@ import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integr
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
-import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { secretAccessPolicyFactory } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
+import { TSecretAccessApprovalResource } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import {
   TSecretAccessPolicy,
   TSecretAccessPolicyInputs
@@ -78,7 +76,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "getCount"
   >;
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findOne" | "find" | "findLastValidPolicy">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findSecretAccessPolicyByEnvIdAndSecretPath">;
+  secretAccessApprovalResource: Pick<TSecretAccessApprovalResource, "matchPolicy">;
   secretAccessApprovalBridge: Pick<
     TSecretAccessApprovalBridgeServiceFactory,
     | "createAccessApprovalRequest"
@@ -122,7 +120,7 @@ export const accessApprovalRequestServiceFactory = ({
   accessApprovalRequestReviewerDAL,
   accessApprovalPolicyDAL,
   accessApprovalPolicyApproverDAL,
-  approvalPolicyDAL,
+  secretAccessApprovalResource,
   secretAccessApprovalBridge,
   additionalPrivilegeDAL,
   smtpService,
@@ -134,8 +132,6 @@ export const accessApprovalRequestServiceFactory = ({
   notificationService,
   queueService
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
-  const secretAccessPolicy = secretAccessPolicyFactory(ApprovalPolicyType.SecretAccess);
-
   const $queueAccessRequestWebhook = async ({
     action,
     accessApprovalRequest,
@@ -254,7 +250,7 @@ export const accessApprovalRequestServiceFactory = ({
   }: TSecretAccessPolicyInputs & { projectId: string }): Promise<TApprovalPolicyRouting> => {
     const [legacyPolicy, globalPolicy] = await Promise.all([
       accessApprovalPolicyDAL.findLastValidPolicy({ envId: inputs.envId, secretPath: inputs.secretPath }),
-      secretAccessPolicy.matchPolicy(approvalPolicyDAL as TApprovalPolicyDALFactory, projectId, inputs)
+      secretAccessApprovalResource.matchPolicy(projectId, inputs)
     ]);
 
     if (globalPolicy) {

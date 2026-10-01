@@ -28,6 +28,7 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
+import { TSecretAccessApprovalResource } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import { TSecretAccessPolicy } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
@@ -64,8 +65,8 @@ export type TSecretAccessApprovalBridgeServiceFactoryDep = {
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create" | "find" | "updateById">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create" | "find">;
   approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "create" | "find">;
-  approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "delete">;
+  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "updateById" | "findByIdForUpdate">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   secretAccessApprovalBridgeDAL: Pick<
     TSecretAccessApprovalBridgeDALFactory,
     | "findSecretAccessPolicies"
@@ -86,6 +87,10 @@ export type TSecretAccessApprovalBridgeServiceFactoryDep = {
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   queueService: Pick<TQueueServiceFactory, "queue">;
+  secretAccessApprovalResource: Pick<
+    TSecretAccessApprovalResource,
+    "canAccess" | "validateConstraints" | "postApprovalTxRoutine"
+  >;
 };
 
 export type TCreateSecretAccessApprovalPolicyDTO = TCreateAccessApprovalPolicy;

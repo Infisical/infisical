@@ -1,12 +1,5 @@
 import { Knex } from "knex";
 
-import { TApprovalPolicies, TApprovalRequestGrants } from "@app/db/schemas";
-import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
-import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
-import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
 import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
 import { Event } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
@@ -58,18 +51,16 @@ import {
   TSecretAccessRequestData
 } from "./secret-access/secret-access-policy-types";
 
+export type TApprovalActor = Pick<OrgServiceActor, "id" | "type" | "authMethod" | "orgId">;
+
+export type TApprovalSubjectActor = Pick<TApprovalActor, "id" | "type">;
+
 export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy | TCodeSigningPolicy | TSecretAccessPolicy;
 export type TApprovalPolicyInputs =
   | TPamAccessPolicyInputs
   | TCertRequestPolicyInputs
   | TCodeSigningPolicyInputs
   | TSecretAccessPolicyInputs;
-export type TApprovalActor = Pick<OrgServiceActor, "id" | "type" | "authMethod" | "orgId">;
-
-export type TApprovalSubjectActor = Pick<TApprovalActor, "id" | "type">;
-
-export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy | TCodeSigningPolicy;
-export type TApprovalPolicyInputs = TPamAccessPolicyInputs | TCertRequestPolicyInputs | TCodeSigningPolicyInputs;
 export type TApprovalPolicyConditions =
   | TPamAccessPolicyConditions
   | TCertRequestPolicyConditions
@@ -175,33 +166,6 @@ export interface TCreateRequestFromPolicyDTO {
   tx?: Knex;
 }
 
-// Factory
-export type TApprovalRequestFactoryMatchPolicy<I extends TApprovalPolicyInputs, P extends TApprovalPolicy> = (
-  approvalPolicyDAL: TApprovalPolicyDALFactory,
-  projectId: string,
-  inputs: I
-) => Promise<P | null>;
-export type TApprovalRequestFactoryCanAccess<I extends TApprovalPolicyInputs> = (
-  approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory,
-  projectId: string,
-  userId: string,
-  inputs: I
-) => Promise<TApprovalRequestGrants | null>;
-export type TApprovalRequestFactoryValidateConstraints<P extends TApprovalPolicy, R extends TApprovalRequestData> = (
-  policy: P,
-  inputs: R
-) => { valid: boolean; errors?: string[] };
-
-export type TPostApprovalContext = {
-  actor?: {
-    type: ActorType;
-    id: string;
-    authMethod: ActorAuthMethod;
-    orgId: string;
-  };
-  certificateApprovalService?: TCertificateApprovalService;
-  certificateRequestDAL?: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
-  additionalPrivilegeDAL?: Pick<TAdditionalPrivilegeDALFactory, "create">;
 export type TApprovalNotification = {
   inApp?: { type: NotificationType; title: string; body: string; link?: string };
   email?: { subjectLine: string; template: SmtpTemplates; substitutions: Record<string, unknown> };

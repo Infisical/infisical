@@ -1,14 +1,10 @@
 import { NotFoundError } from "@app/lib/errors";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 
-import { ApprovalRequestGrantStatus } from "../approval-policy-enums";
-import {
-  TApprovalRequestFactoryCanAccess,
-  TApprovalRequestFactoryMatchPolicy,
-  TApprovalRequestFactoryPostApprovalRoutine,
-  TApprovalRequestFactoryPostRejectionRoutine,
-  TApprovalRequestFactoryValidateConstraints,
-  TApprovalResourceFactory
-} from "../approval-policy-types";
+import { TApprovalPolicyDALFactory } from "../approval-policy-dal";
+import { ApprovalPolicyType, ApprovalRequestGrantStatus } from "../approval-policy-enums";
+import { TApprovalResource } from "../approval-policy-types";
+import { TApprovalRequestGrantsDALFactory } from "../approval-request-dal";
 import {
   createSecretAccessGrantWithPrivilege,
   getSecretAccessRequestData,
@@ -16,94 +12,72 @@ import {
   validateSecretAccessConstraints
 } from "./secret-access-policy-fns";
 import { SecretAccessPolicyRequestDataSchema } from "./secret-access-policy-schemas";
-import {
-  TSecretAccessApprovalContext,
-  TSecretAccessPolicy,
-  TSecretAccessPolicyInputs,
-  TSecretAccessRequestData
-} from "./secret-access-policy-types";
+import { TSecretAccessPolicy, TSecretAccessPolicyInputs, TSecretAccessRequestData } from "./secret-access-policy-types";
 
-export const secretAccessPolicyFactory: TApprovalResourceFactory<
-  TSecretAccessPolicyInputs,
-  TSecretAccessPolicy,
-  TSecretAccessRequestData,
-  TSecretAccessApprovalContext
-> = (policyType) => {
-  const matchPolicy: TApprovalRequestFactoryMatchPolicy<TSecretAccessPolicyInputs, TSecretAccessPolicy> = async (
-    approvalPolicyDAL,
-    projectId,
-    inputs
-  ) => {
-    const policy = await approvalPolicyDAL.findSecretAccessPolicyByEnvIdAndSecretPath({
-      projectId,
-      envId: inputs.envId,
-      secretPath: inputs.secretPath
-    });
-
-    return policy as TSecretAccessPolicy | null;
-  };
-
-  const canAccess: TApprovalRequestFactoryCanAccess<TSecretAccessPolicyInputs> = async (
-    approvalRequestGrantsDAL,
-    projectId,
-    userId,
-    inputs
-  ) => {
-    const grants = await approvalRequestGrantsDAL.find({
-      granteeUserId: userId,
-      type: policyType,
-      status: ApprovalRequestGrantStatus.Active,
-      projectId,
-      revokedAt: null
-    });
-
-    const now = new Date();
-
-    return (
-      grants.find(
-        (grant) =>
-          (!grant.expiresAt || new Date(grant.expiresAt) > now) &&
-          hasSameAccessCriteria(SecretAccessPolicyRequestDataSchema.safeParse(grant.attributes).data ?? null, inputs)
-      ) ?? null
-    );
-  };
-
-  const validateConstraints: TApprovalRequestFactoryValidateConstraints<
-    TSecretAccessPolicy,
-    TSecretAccessRequestData
-  > = (policy, inputs) => validateSecretAccessConstraints(policy.constraints.constraints, inputs);
-
-  const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine<TSecretAccessApprovalContext> = async (
-    approvalRequestGrantsDAL,
-    request,
-    { additionalPrivilegeDAL, tx }
-  ) => {
-    const { requesterId } = request;
-    if (!requesterId) {
-      throw new NotFoundError({ message: "The user who created this access request no longer exists" });
-    }
-
-    await createSecretAccessGrantWithPrivilege(
-      {
-        projectId: request.projectId,
-        requestId: request.id,
-        granteeUserId: requesterId,
-        data: getSecretAccessRequestData(request)
-      },
-      { approvalRequestGrantsDAL, additionalPrivilegeDAL },
-      tx
-    );
-  };
-
-  const postRejectionRoutine: TApprovalRequestFactoryPostRejectionRoutine<
-    TSecretAccessApprovalContext
-  > = async () => {};
-
-  return {
-    matchPolicy,
-    canAccess,
-    validateConstraints,
-    postApprovalRoutine,
-    postRejectionRoutine
-  };
+type TSecretAccessApprovalResourceDep = {
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findSecretAccessPolicyByEnvIdAndSecretPath">;
+  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "create">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create">;
 };
+
+export type TSecretAccessApprovalResource = ReturnType<typeof secretAccessApprovalResourceFactory>;
+
+export const secretAccessApprovalResourceFactory = ({
+  approvalPolicyDAL,
+  approvalRequestGrantsDAL,
+  additionalPrivilegeDAL
+}: TSecretAccessApprovalResourceDep) =>
+  ({
+    matchPolicy: async (projectId, inputs) => {
+      const policy = await approvalPolicyDAL.findSecretAccessPolicyByEnvIdAndSecretPath({
+        projectId,
+        envId: inputs.envId,
+        secretPath: inputs.secretPath
+      });
+
+      return policy as TSecretAccessPolicy | null;
+    },
+
+    canAccess: async (projectId, actorId, inputs) => {
+      const grants = await approvalRequestGrantsDAL.find({
+        granteeUserId: actorId,
+        type: ApprovalPolicyType.SecretAccess,
+        status: ApprovalRequestGrantStatus.Active,
+        projectId,
+        revokedAt: null
+      });
+
+      const now = new Date();
+
+      return (
+        grants.find(
+          (grant) =>
+            (!grant.expiresAt || new Date(grant.expiresAt) > now) &&
+            hasSameAccessCriteria(SecretAccessPolicyRequestDataSchema.safeParse(grant.attributes).data ?? null, inputs)
+        ) ?? null
+      );
+    },
+
+    validateConstraints: (policy, requestData) =>
+      validateSecretAccessConstraints(policy.constraints.constraints, requestData),
+
+    postApprovalTxRoutine: async (request, tx) => {
+      const { requesterId } = request;
+      if (!requesterId) {
+        throw new NotFoundError({ message: "The user who created this access request no longer exists" });
+      }
+
+      const grant = await createSecretAccessGrantWithPrivilege(
+        {
+          projectId: request.projectId,
+          requestId: request.id,
+          granteeUserId: requesterId,
+          data: getSecretAccessRequestData(request)
+        },
+        { approvalRequestGrantsDAL, additionalPrivilegeDAL },
+        tx
+      );
+
+      return { grantId: grant.id };
+    }
+  }) satisfies TApprovalResource<TSecretAccessPolicyInputs, TSecretAccessPolicy, TSecretAccessRequestData>;

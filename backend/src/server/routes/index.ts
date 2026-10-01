@@ -278,6 +278,7 @@ import {
 } from "@app/services/approval-policy/approval-request-dal";
 import { certRequestApprovalResourceFactory } from "@app/services/approval-policy/cert-request/cert-request-policy-factory";
 import { codeSigningApprovalResourceFactory } from "@app/services/approval-policy/code-signing/code-signing-policy-factory";
+import { secretAccessApprovalResourceFactory } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
@@ -2467,6 +2468,12 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const secretAccessApprovalResource = secretAccessApprovalResourceFactory({
+    approvalPolicyDAL,
+    approvalRequestGrantsDAL,
+    additionalPrivilegeDAL
+  });
+
   const secretAccessApprovalBridgeService = secretAccessApprovalBridgeServiceFactory({
     projectDAL,
     permissionService,
@@ -2493,7 +2500,8 @@ export const registerRoutes = async (
     projectSlackConfigDAL,
     microsoftTeamsService,
     projectMicrosoftTeamsConfigDAL,
-    queueService
+    queueService,
+    secretAccessApprovalResource
   });
 
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
@@ -2519,7 +2527,7 @@ export const registerRoutes = async (
     permissionService,
     accessApprovalRequestReviewerDAL,
     accessApprovalPolicyDAL,
-    approvalPolicyDAL,
+    secretAccessApprovalResource,
     secretAccessApprovalBridge: secretAccessApprovalBridgeService,
     accessApprovalRequestDAL,
     projectEnvDAL,
