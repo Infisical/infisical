@@ -35,7 +35,7 @@ const formatDate = (dateString: string) =>
   });
 
 const SectionHeader = ({ title }: { title: string }) => (
-  <h3 className="border-b border-border-subtle pb-2 text-sm font-semibold text-foreground">
+  <h3 className="border-b border-border-subtle pb-2 text-sm font-normal text-foreground">
     {title}
   </h3>
 );

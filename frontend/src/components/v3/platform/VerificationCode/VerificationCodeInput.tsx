@@ -186,7 +186,7 @@ export const VerificationCodeInput = ({
           return (
             <div
               aria-hidden
-              className="relative flex h-[68px] min-w-0 items-center justify-center rounded-md border border-border bg-container font-jetbrains-mono text-xl text-foreground max-sm:aspect-square max-sm:h-auto"
+              className="relative flex h-[68px] min-w-0 items-center justify-center rounded-md border border-border bg-container font-mono text-xl text-foreground max-sm:aspect-square max-sm:h-auto"
               key={index}
             >
               {value[index] ?? ""}
