@@ -49,8 +49,9 @@ export const getOrganizationSwitchDestination = (
       : undefined;
 
   if (accessResource) {
-    section = `${accessResource[1] ? `${accessResource[1]}/` : ""}access-management`;
-    [, , selectedTab] = accessResource;
+    const [, productScope, resourceTab] = accessResource;
+    section = `${productScope ? `${productScope}/` : ""}access-management`;
+    selectedTab = resourceTab;
   } else if (path.startsWith("networking/relays/")) {
     selectedTab = "relays";
   } else if (path.startsWith("app-connections")) {
