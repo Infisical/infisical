@@ -115,6 +115,16 @@ export type TestConnectionRequest =
       sslRejectUnauthorized?: boolean;
       sslCertificate?: string;
     }
+  | {
+      mode: TestConnectionMode.ClickHouse;
+      probeOnly: true;
+      database: string;
+      httpPort?: number;
+      nativePort?: number;
+      sslEnabled?: boolean;
+      sslRejectUnauthorized?: boolean;
+      sslCertificate?: string;
+    }
   | { mode: TestConnectionMode.Tcp };
 
 const SQL_DIALECTS = {
@@ -125,6 +135,9 @@ const SQL_DIALECTS = {
 } as const;
 
 const tcp = (host: string, port: number) => ({ host, port, request: { mode: TestConnectionMode.Tcp } as const });
+
+export const testVerifiesCredential = (request: TestConnectionRequest): boolean =>
+  request.mode !== TestConnectionMode.Tcp && !("probeOnly" in request && request.probeOnly);
 
 export const exceedsOraclePasswordLimit = (
   accountType: PamAccountType,
@@ -398,22 +411,30 @@ export const buildGatewayConnectionTest = async (
         sslCertificate?: string;
       };
       const c = creds as { username: string; password?: string } | null;
-      if (!c) return tcp(host, port);
+      const details = {
+        database: cd.database,
+        httpPort: cd.port,
+        nativePort: cd.nativePort,
+        sslEnabled: cd.sslEnabled,
+        sslRejectUnauthorized: cd.sslRejectUnauthorized,
+        sslCertificate: cd.sslCertificate
+      };
+      const additionalPorts = [cd.port, cd.nativePort].filter((p): p is number => typeof p === "number");
+      if (!c) {
+        // Only a gateway with native support understands probeOnly, and a native port already requires one.
+        if (cd.nativePort === undefined) return tcp(host, port);
+        return {
+          host,
+          port,
+          additionalPorts,
+          request: { mode: TestConnectionMode.ClickHouse, probeOnly: true, ...details }
+        };
+      }
       return {
         host,
         port,
-        additionalPorts: [cd.port, cd.nativePort].filter((p): p is number => typeof p === "number"),
-        request: {
-          mode: TestConnectionMode.ClickHouse,
-          username: c.username,
-          password: c.password,
-          database: cd.database,
-          httpPort: cd.port,
-          nativePort: cd.nativePort,
-          sslEnabled: cd.sslEnabled,
-          sslRejectUnauthorized: cd.sslRejectUnauthorized,
-          sslCertificate: cd.sslCertificate
-        }
+        additionalPorts,
+        request: { mode: TestConnectionMode.ClickHouse, username: c.username, password: c.password, ...details }
       };
     }
     case PamAccountType.Windows:

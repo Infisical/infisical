@@ -18,7 +18,7 @@ import {
   CLOUD_CONNECTION_VALIDATORS,
   exceedsOraclePasswordLimit,
   ORACLE_MAX_PASSWORD_LENGTH,
-  TestConnectionMode
+  testVerifiesCredential
 } from "../pam-account/pam-account-connection-test";
 import { TPamAccountDALFactory, TPamAccountDetail } from "../pam-account/pam-account-dal";
 import {
@@ -228,8 +228,8 @@ export const pamAccountHeartbeatServiceFactory = ({
       return { status: PamHeartbeatStatus.Unknown, message: "This account type cannot be checked yet" };
     }
 
-    // Every type has a login-based check, so a TCP fallback means the credential is incomplete, not healthy.
-    if (test.request.mode === TestConnectionMode.Tcp) {
+    // Every type has a login-based check, so a check without one means the credential is incomplete, not healthy.
+    if (!testVerifiesCredential(test.request)) {
       return {
         status: PamHeartbeatStatus.Unknown,
         message: "This account is missing the credential details needed to sign in"

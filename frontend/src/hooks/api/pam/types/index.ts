@@ -225,6 +225,7 @@ export type TPamAccount = {
   // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
   isStale: boolean;
   heartbeatStatus?: PamHeartbeatStatus | null;
+  webAccessUnavailableReason?: string | null;
   createdAt: string;
   updatedAt: string;
 };

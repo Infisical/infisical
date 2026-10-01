@@ -4,7 +4,8 @@ import { PamAccountType, PamSshAuthMethod } from "../pam/pam-enums";
 import {
   buildGatewayConnectionTest,
   ORACLE_MAX_PASSWORD_LENGTH,
-  TestConnectionMode
+  TestConnectionMode,
+  testVerifiesCredential
 } from "./pam-account-connection-test";
 
 const ORG_ID = "11111111-1111-1111-1111-111111111111";
@@ -308,5 +309,43 @@ describe("buildGatewayConnectionTest: ClickHouse", () => {
     expect(result?.request).toMatchObject({ httpPort: 8123 });
     expect(result?.additionalPorts).toEqual([8123]);
     expect(wireKeys(result!.request)).not.toContain("nativePort");
+  });
+
+  test("an edit without a new password still checks both ports, sending no credential", async () => {
+    const result = await buildGatewayConnectionTest(
+      PamAccountType.ClickHouse,
+      { ...connectionDetails, nativePort: 9000 },
+      { username: "default" },
+      ORG_ID
+    );
+
+    expect(result?.request).toMatchObject({
+      mode: TestConnectionMode.ClickHouse,
+      probeOnly: true,
+      httpPort: 8123,
+      nativePort: 9000
+    });
+    expect(result?.additionalPorts).toEqual([8123, 9000]);
+    expect(wireKeys(result!.request)).not.toContain("username");
+    expect(wireKeys(result!.request)).not.toContain("password");
+    expect(testVerifiesCredential(result!.request)).toBe(false);
+  });
+
+  test("an http-only edit without a new password stays a reachability check older gateways understand", async () => {
+    const result = await buildGatewayConnectionTest(PamAccountType.ClickHouse, connectionDetails, null, ORG_ID);
+
+    expect(result?.request).toEqual({ mode: TestConnectionMode.Tcp });
+    expect(testVerifiesCredential(result!.request)).toBe(false);
+  });
+
+  test("a supplied password is a real credential check", async () => {
+    const result = await buildGatewayConnectionTest(
+      PamAccountType.ClickHouse,
+      { ...connectionDetails, nativePort: 9000 },
+      { username: "default", password: "pw" },
+      ORG_ID
+    );
+
+    expect(testVerifiesCredential(result!.request)).toBe(true);
   });
 });

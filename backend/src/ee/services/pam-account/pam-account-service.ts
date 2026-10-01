@@ -71,7 +71,7 @@ import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import {
   buildGatewayConnectionTest,
   CLOUD_CONNECTION_VALIDATORS,
-  TestConnectionMode
+  testVerifiesCredential
 } from "./pam-account-connection-test";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
@@ -93,7 +93,8 @@ import {
   type TSshInternalMetadata,
   type TSupportedAccountType,
   validateConnectionDetails,
-  validateCredentials
+  validateCredentials,
+  webAccessUnavailableReason
 } from "./pam-account-schemas";
 import {
   TCreatePamAccountDTO,
@@ -484,6 +485,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       settingsOverrides: account.settingsOverrides ?? null,
       connectionDetails,
       credentials,
+      webAccessUnavailableReason: webAccessUnavailableReason(account.accountType as PamAccountType, connectionDetails),
       ...computeAccessibility(account),
       isStale: account.isStale,
       createdAt: account.createdAt,
@@ -657,7 +659,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       throw new BadRequestError({ message: `Connection test failed: ${result.errorMessage}` });
     }
 
-    return Boolean(result?.ok) && test.request.mode !== TestConnectionMode.Tcp;
+    return Boolean(result?.ok) && testVerifiesCredential(test.request);
   };
 
   const create = async ({
