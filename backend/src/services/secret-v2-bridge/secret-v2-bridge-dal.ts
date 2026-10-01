@@ -849,26 +849,25 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
 
       if (timestampOrderBy) {
         const sortFolderIds = filters?.sortFolderIds ?? folderIds;
+        const sortFolderBindings = Object.fromEntries(
+          sortFolderIds.map((folderId, index) => [`sortFolderId${index}`, folderId])
+        );
+        const sortFolderPlaceholders = sortFolderIds.map((_, index) => `:sortFolderId${index}`).join(", ");
         const timestampValue = sortFolderIds.length
           ? db.raw(
               `COALESCE(
-                MAX(??) FILTER (WHERE ?? IN (${sortFolderIds.map(() => "?").join(", ")}) AND ?? = ?) OVER (PARTITION BY ??),
-                MAX(??) FILTER (WHERE ?? IN (${sortFolderIds.map(() => "?").join(", ")}) AND ?? = ?) OVER (PARTITION BY ??)
+                MAX(:timestampColumn:) FILTER (WHERE :folderColumn: IN (${sortFolderPlaceholders}) AND :typeColumn: = :sharedType) OVER (PARTITION BY :keyColumn:),
+                MAX(:timestampColumn:) FILTER (WHERE :folderColumn: IN (${sortFolderPlaceholders}) AND :typeColumn: = :personalType) OVER (PARTITION BY :keyColumn:)
               ) AS "sortValue"`,
-              [
-                `${TableName.SecretV2}.${timestampOrderBy}`,
-                `${TableName.SecretV2}.folderId`,
-                ...sortFolderIds,
-                `${TableName.SecretV2}.type`,
-                SecretType.Shared,
-                `${TableName.SecretV2}.key`,
-                `${TableName.SecretV2}.${timestampOrderBy}`,
-                `${TableName.SecretV2}.folderId`,
-                ...sortFolderIds,
-                `${TableName.SecretV2}.type`,
-                SecretType.Personal,
-                `${TableName.SecretV2}.key`
-              ]
+              {
+                timestampColumn: `${TableName.SecretV2}.${timestampOrderBy}`,
+                folderColumn: `${TableName.SecretV2}.folderId`,
+                typeColumn: `${TableName.SecretV2}.type`,
+                keyColumn: `${TableName.SecretV2}.key`,
+                sharedType: SecretType.Shared,
+                personalType: SecretType.Personal,
+                ...sortFolderBindings
+              }
             )
           : db.raw('NULL AS "sortValue"');
         void query.select(timestampValue);
