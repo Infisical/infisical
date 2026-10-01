@@ -57,6 +57,7 @@ const createGlobalPolicy = async (dto: {
   name: string;
   secretPath: string;
   bypassers?: { type: BypasserType; id: string }[];
+  environment?: string;
 }) => {
   const res = await testServer.inject({
     method: "POST",
@@ -64,7 +65,7 @@ const createGlobalPolicy = async (dto: {
     headers: authHeaders(),
     body: {
       projectSlug: seedData1.project.slug,
-      environment: seedData1.environment.slug,
+      environment: dto.environment ?? seedData1.environment.slug,
       name: dto.name,
       secretPath: dto.secretPath,
       approvers: [{ type: ApproverType.User, id: seedData1.id }],
@@ -115,6 +116,26 @@ const countPolicies = () =>
   testServer.inject({
     method: "GET",
     url: `/api/v1/access-approvals/policies/count?projectSlug=${seedData1.project.slug}&envSlug=${seedData1.environment.slug}`,
+    headers: authHeaders()
+  });
+
+const environmentUrl = `/api/v1/workspace/${seedData1.project.id}/environments`;
+
+const createEnvironment = async (slug: string) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: environmentUrl,
+    headers: authHeaders(),
+    body: { name: slug, slug }
+  });
+  expect(res.statusCode).toBe(200);
+  return res.json().environment as { id: string; slug: string };
+};
+
+const deleteEnvironment = (envId: string) =>
+  testServer.inject({
+    method: "DELETE",
+    url: `${environmentUrl}/${envId}?hardDelete=true`,
     headers: authHeaders()
   });
 
@@ -293,6 +314,27 @@ describe("Access approval policy routing", () => {
     expect(await db(TableName.ApprovalPolicyBypassers).where({ policyId: policy.id })).toHaveLength(0);
     expect(await db(TableName.ApprovalPolicySecretEnvironment).where({ policyId: policy.id })).toHaveLength(0);
     await expectNoLegacyRow(policy.id);
+  });
+
+  test("An environment a global policy covers cannot be deleted until the policy is removed", async () => {
+    const db = getDb();
+    const env = await createEnvironment("policy-routing-env-delete");
+    const policy = await createGlobalPolicy({
+      name: "policy-routing-env-delete",
+      secretPath: "/policy-routing-env-delete",
+      environment: env.slug
+    });
+
+    const blocked = await deleteEnvironment(env.id);
+    expect(blocked.statusCode).toBe(400);
+    expect(blocked.json().message).toBe("Environment is in use by an access approval policy");
+    expect(await db(TableName.ApprovalPolicySecretEnvironment).where({ policyId: policy.id })).toHaveLength(1);
+
+    expect((await deletePolicy(policy.id)).statusCode).toBe(200);
+
+    const deleted = await deleteEnvironment(env.id);
+    expect(deleted.statusCode).toBe(200);
+    expect(await db(TableName.Environment).where({ id: env.id }).first()).toBeUndefined();
   });
 
   test("A legacy policy keeps being served from the legacy tables", async () => {
