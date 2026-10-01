@@ -4,7 +4,6 @@ import { Info } from "lucide-react";
 import {
   Alert,
   AlertDescription,
-  AlertTitle,
   Field,
   FieldContent,
   FieldDescription,
@@ -95,13 +94,10 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
             {value === PkiSyncExportFormat.Jks && isJksBlockedByFips && (
               <Alert variant="warning">
                 <Info />
-                <AlertTitle className="line-clamp-none">
-                  JKS isn&apos;t available in FIPS mode
-                </AlertTitle>
                 <AlertDescription>
-                  The JKS format can only protect private keys with cryptography that is not
-                  FIPS-approved, so this sync will not deliver certificates. Switch the export
-                  format to PEM.
+                  JKS isn&apos;t available in FIPS mode. The format can only protect private keys
+                  with cryptography that is not FIPS-approved, so this sync will not deliver
+                  certificates. Switch the export format to PEM.
                 </AlertDescription>
               </Alert>
             )}
