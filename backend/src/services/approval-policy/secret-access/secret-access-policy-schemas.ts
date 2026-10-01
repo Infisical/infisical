@@ -11,7 +11,14 @@ export const SecretAccessPolicyConstraintsSchema = z.object({
   requestExpirationTime: z.string().nullable()
 });
 
-export const SecretAccessPolicyRequestDataSchema = z.object({});
+export const SecretAccessPolicyRequestDataSchema = z.object({
+  envId: z.string().uuid(),
+  envSlug: z.string(),
+  secretPath: z.string(),
+  permissions: z.unknown(),
+  isTemporary: z.boolean(),
+  temporaryRange: z.string().nullable()
+});
 
 export const SecretAccessPolicySchema = BaseApprovalPolicySchema.extend({
   conditions: z.object({

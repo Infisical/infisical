@@ -194,12 +194,16 @@ describe("Access approval policy routing", () => {
     await expectNoLegacyRow(policy.id);
   });
 
-  test("Updating a global policy onto a path another policy covers is rejected on either system", async () => {
+  test("Updating a policy onto a path another policy covers is rejected on either system", async () => {
+    const db = getDb();
     const policy = await createGlobalPolicy({
       name: "policy-routing-conflict",
       secretPath: "/policy-routing-conflict"
     });
-    await createLegacyPolicy({ name: "policy-routing-conflict-legacy", secretPath: "/policy-routing-conflict-legacy" });
+    const legacyPolicy = await createLegacyPolicy({
+      name: "policy-routing-conflict-legacy",
+      secretPath: "/policy-routing-conflict-legacy"
+    });
     await createGlobalPolicy({
       name: "policy-routing-conflict-global",
       secretPath: "/policy-routing-conflict-global"
@@ -212,6 +216,13 @@ describe("Access approval policy routing", () => {
     const globalConflict = await patchPolicy(policy.id, { secretPath: "/policy-routing-conflict-global" });
     expect(globalConflict.statusCode).toBe(400);
     expect(globalConflict.json().message).toContain(`already exists in environment '${seedData1.environment.slug}'`);
+
+    const legacyOntoGlobal = await patchPolicy(legacyPolicy.id, { secretPath: "/policy-routing-conflict-global" });
+    expect(legacyOntoGlobal.statusCode).toBe(400);
+    expect(legacyOntoGlobal.json().message).toContain(`already exists in environment '${seedData1.environment.slug}'`);
+
+    const unchangedLegacy = await db(TableName.AccessApprovalPolicy).where({ id: legacyPolicy.id }).first();
+    expect(unchangedLegacy?.secretPath).toBe("/policy-routing-conflict-legacy");
 
     const samePath = await patchPolicy(policy.id, { secretPath: "/policy-routing-conflict" });
     expect(samePath.statusCode).toBe(200);

@@ -2617,7 +2617,21 @@ export const registerRoutes = async (
     approvalPolicyStepApproversDAL,
     approvalPolicyBypassersDAL,
     approvalPolicySecretEnvironmentDAL,
-    secretAccessApprovalBridgeDAL
+    secretAccessApprovalBridgeDAL,
+    userGroupMembershipDAL,
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestApprovalsDAL,
+    approvalRequestGrantsDAL,
+    additionalPrivilegeDAL,
+    smtpService,
+    notificationService,
+    kmsService,
+    projectSlackConfigDAL,
+    microsoftTeamsService,
+    projectMicrosoftTeamsConfigDAL,
+    queueService
   });
 
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
@@ -2634,6 +2648,7 @@ export const registerRoutes = async (
     accessApprovalRequestReviewerDAL,
     additionalPrivilegeDAL,
     approvalPolicyDAL,
+    approvalPolicySecretEnvironmentDAL,
     secretAccessApprovalBridge: secretAccessApprovalBridgeService
   });
 
