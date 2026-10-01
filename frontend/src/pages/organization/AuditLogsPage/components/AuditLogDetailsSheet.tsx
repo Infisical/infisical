@@ -1,13 +1,6 @@
 import { useState } from "react";
 
-import {
-  Badge,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle
-} from "@app/components/v3";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
 import { formatDateTime, Timezone } from "@app/helpers/datetime";
 import { AuditLog } from "@app/hooks/api/auditLogs/types";
 
@@ -39,9 +32,6 @@ export const AuditLogDetailsSheet = ({ isOpen, onOpenChange, auditLog, timezone 
               <SheetDescription>
                 {formatDateTime({ timestamp: displayedLog.createdAt, timezone })}
               </SheetDescription>
-              <div>
-                <Badge variant="neutral">{displayedLog.event.class}</Badge>
-              </div>
             </SheetHeader>
             <div className="min-h-0 flex-1 p-4">
               <JsonHighlight value={displayedLog} className="h-full" />
