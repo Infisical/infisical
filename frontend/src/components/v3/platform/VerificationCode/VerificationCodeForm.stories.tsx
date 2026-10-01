@@ -59,9 +59,6 @@ const VerificationDemo = ({ fields }: { fields: number }) => {
     const timer = window.setTimeout(() => {
       setIsResending(false);
       setRemainingSeconds(5);
-      setValue("");
-      setStatus("idle");
-      setFormKey((key) => key + 1);
     }, 1000);
     return () => window.clearTimeout(timer);
   }, [isResending]);
@@ -106,7 +103,12 @@ const VerificationDemo = ({ fields }: { fields: number }) => {
                 isResending={isResending}
                 isDisabled={status === "verifying"}
                 remainingSeconds={remainingSeconds}
-                onResend={() => setIsResending(true)}
+                onResend={() => {
+                  setValue("");
+                  setStatus("idle");
+                  setFormKey((key) => key + 1);
+                  setIsResending(true);
+                }}
               />
             )}
           </VerificationCodeForm>
