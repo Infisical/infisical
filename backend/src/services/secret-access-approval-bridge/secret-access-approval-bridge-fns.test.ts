@@ -1,11 +1,14 @@
 import { describe, expect, test } from "vitest";
 
+import { BadRequestError } from "@app/lib/errors";
+import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+
 import { buildSecretAccessPolicySteps } from "./secret-access-approval-bridge-fns";
 
 type TApprovalsRequired = { numberOfApprovals: number; stepNumber: number }[];
 
-const user = (id: string, sequence = 1) => ({ type: "user", id, sequence });
-const group = (id: string, sequence = 1) => ({ type: "group", id, sequence });
+const user = (id: string, sequence = 1) => ({ type: ApproverType.User, id, sequence });
+const group = (id: string, sequence = 1) => ({ type: ApproverType.Group, id, sequence });
 
 // Mirrors the legacy path: the approver row stores the step's numberOfApprovals (null when the step has no
 // entry), and review reads it as `approvalsRequired || 1`.
@@ -50,6 +53,55 @@ describe("buildSecretAccessPolicySteps", () => {
     expect(steps).toHaveLength(1);
     expect(steps[0].approvers).toEqual([user("a"), group("g")]);
     expect(steps[0].requiredApprovals).toBe(2);
+  });
+
+  test("the same user may approve in two different steps", () => {
+    const steps = buildSecretAccessPolicySteps(
+      [user("a", 1), user("b", 1), user("b", 2)],
+      [
+        { stepNumber: 1, numberOfApprovals: 2 },
+        { stepNumber: 2, numberOfApprovals: 1 }
+      ]
+    );
+
+    expect(steps).toHaveLength(2);
+    expect(steps[0].approvers.map((el) => el.id)).toEqual(["a", "b"]);
+    expect(steps[0].requiredApprovals).toBe(2);
+    expect(steps[1].approvers.map((el) => el.id)).toEqual(["b"]);
+    expect(steps[1].requiredApprovals).toBe(1);
+  });
+
+  test("the same approver listed twice in one step counts once", () => {
+    const steps = buildSecretAccessPolicySteps([user("a"), user("a"), group("g"), group("g")]);
+
+    expect(steps[0].approvers).toEqual([user("a"), group("g")]);
+  });
+
+  test("a step that requires more approvals than it has user approvers is rejected", () => {
+    expect(() =>
+      buildSecretAccessPolicySteps(
+        [user("a", 1), user("b", 1), user("c", 2)],
+        [
+          { stepNumber: 1, numberOfApprovals: 2 },
+          { stepNumber: 2, numberOfApprovals: 2 }
+        ]
+      )
+    ).toThrow(BadRequestError);
+    expect(() =>
+      buildSecretAccessPolicySteps([user("a", 1), user("c", 2)], [{ stepNumber: 2, numberOfApprovals: 3 }])
+    ).toThrow("Step 2 requires 3 approvals but only has 1 approver.");
+  });
+
+  test("a duplicate approver does not count toward the step's requirement", () => {
+    expect(() =>
+      buildSecretAccessPolicySteps([user("a"), user("a")], [{ stepNumber: 1, numberOfApprovals: 2 }])
+    ).toThrow(BadRequestError);
+  });
+
+  test("a step containing a group approver is never rejected for its size", () => {
+    const steps = buildSecretAccessPolicySteps([user("a"), group("g")], [{ stepNumber: 1, numberOfApprovals: 10 }]);
+
+    expect(steps[0].requiredApprovals).toBe(10);
   });
 
   test.each([

@@ -51,7 +51,7 @@ export const secretAccessApprovalPolicyExists = async (
 
 // Legacy stores null on approver rows for a step with no approvalsRequired entry and reviews it as 1,
 // so the top-level `approvals` must not leak into a step's requirement.
-export const buildSecretAccessPolicySteps = <T extends { sequence: number }>(
+export const buildSecretAccessPolicySteps = <T extends { type: ApproverType; id: string; sequence: number }>(
   approvers: T[],
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[]
 ) => {
@@ -60,10 +60,25 @@ export const buildSecretAccessPolicySteps = <T extends { sequence: number }>(
   return Object.keys(approversBySequence)
     .map(Number)
     .sort((a, b) => a - b)
-    .map((sequence) => ({
-      requiredApprovals: approvalsRequiredByStepNumber[sequence]?.[0]?.numberOfApprovals || 1,
-      approvers: approversBySequence[sequence]
-    }));
+    .map((sequence, index) => {
+      const seen = new Set<string>();
+      const stepApprovers = approversBySequence[sequence].filter((approver) => {
+        const key = `${approver.type}:${approver.id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      const requiredApprovals = approvalsRequiredByStepNumber[sequence]?.[0]?.numberOfApprovals || 1;
+
+      const hasGroupApprover = stepApprovers.some((approver) => approver.type === ApproverType.Group);
+      if (!hasGroupApprover && requiredApprovals > stepApprovers.length) {
+        throw new BadRequestError({
+          message: `Step ${index + 1} requires ${requiredApprovals} approvals but only has ${stepApprovers.length} approver${stepApprovers.length === 1 ? "" : "s"}. Add approvers to the step or lower its required approvals.`
+        });
+      }
+
+      return { requiredApprovals, approvers: stepApprovers };
+    });
 };
 
 export type TSecretAccessRequestRow = TApprovalRequests & {

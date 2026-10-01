@@ -372,6 +372,35 @@ describe("Access approval request lifecycle on the global system", () => {
     const rejectRes = await reviewAccessRequest(requestId, { status: "rejected" });
     expect(rejectRes.statusCode).toBe(200);
   });
+
+  test("An expired request cannot be approved or rejected and is marked expired", async () => {
+    const db = getDb();
+    const secretPath = "/lifecycle-expired";
+    await createGlobalPolicy({ name: "lifecycle-expired", secretPath }, { requestExpirationTime: "1h" });
+
+    const createRes = await createAccessRequest(secretPath);
+    expect(createRes.statusCode).toBe(200);
+    const requestId = createRes.json().approval.id as string;
+    const created = await db(TableName.ApprovalRequests).where({ id: requestId }).first();
+    expect(created?.expiresAt).toBeTruthy();
+
+    await db(TableName.ApprovalRequests)
+      .where({ id: requestId })
+      .update({ expiresAt: new Date(Date.now() - 60_000) });
+
+    const approveRes = await reviewAccessRequest(requestId, { status: "approved" });
+    expect(approveRes.statusCode).toBe(400);
+    expect(approveRes.json().message).toBe("This access request has expired and can no longer be reviewed");
+
+    const request = await db(TableName.ApprovalRequests).where({ id: requestId }).first();
+    expect(request?.status).toBe("expired");
+    const grants = await db(TableName.ApprovalRequestGrants).where({ requestId });
+    expect(grants).toHaveLength(0);
+
+    const rejectRes = await reviewAccessRequest(requestId, { status: "rejected" });
+    expect(rejectRes.statusCode).toBe(400);
+    expect(rejectRes.json().message).toBe("The request has been closed");
+  });
 });
 
 type TApprover = { userId: string; token: string };

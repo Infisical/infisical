@@ -75,13 +75,15 @@ export const secretAccessApprovalBridgeDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.ApprovalPolicySteps).as("stepId"),
           db.ref("stepNumber").withSchema(TableName.ApprovalPolicySteps),
           db.ref("requiredApprovals").withSchema(TableName.ApprovalPolicySteps),
+          db.ref("id").withSchema(TableName.ApprovalPolicyStepApprovers).as("approverRowId"),
           db.ref("userId").withSchema(TableName.ApprovalPolicyStepApprovers).as("approverUserId"),
           db.ref("groupId").withSchema(TableName.ApprovalPolicyStepApprovers).as("approverGroupId"),
           db.ref("username").withSchema(TableName.Users).as("approverUsername"),
           db.ref("userId").withSchema(TableName.ApprovalPolicyBypassers).as("bypasserUserId"),
           db.ref("groupId").withSchema(TableName.ApprovalPolicyBypassers).as("bypasserGroupId"),
           db.ref("username").withSchema("bypasserUsers").as("bypasserUsername")
-        );
+        )
+        .orderBy(`${TableName.ApprovalPolicySteps}.stepNumber`, "asc");
 
       const formattedDocs = sqlNestRelationships({
         data: docs,
@@ -111,25 +113,23 @@ export const secretAccessApprovalBridgeDALFactory = (db: TDbClient) => {
             mapper: ({ stepId: id, stepNumber, requiredApprovals }) => ({ id, stepNumber, requiredApprovals })
           },
           {
-            key: "approverUserId",
+            key: "approverRowId",
             label: "approvers" as const,
-            mapper: ({ approverUserId: id, approverUsername, stepNumber, requiredApprovals }) => ({
-              id,
-              type: ApproverType.User as const,
-              name: approverUsername,
-              sequence: stepNumber,
-              approvalsRequired: requiredApprovals
-            })
-          },
-          {
-            key: "approverGroupId",
-            label: "approvers" as const,
-            mapper: ({ approverGroupId: id, stepNumber, requiredApprovals }) => ({
-              id,
-              type: ApproverType.Group as const,
-              sequence: stepNumber,
-              approvalsRequired: requiredApprovals
-            })
+            mapper: ({ approverUserId, approverGroupId, approverUsername, stepNumber, requiredApprovals }) =>
+              approverUserId
+                ? {
+                    id: approverUserId,
+                    type: ApproverType.User as const,
+                    name: approverUsername,
+                    sequence: stepNumber,
+                    approvalsRequired: requiredApprovals
+                  }
+                : {
+                    id: approverGroupId,
+                    type: ApproverType.Group as const,
+                    sequence: stepNumber,
+                    approvalsRequired: requiredApprovals
+                  }
           },
           {
             key: "bypasserUserId",

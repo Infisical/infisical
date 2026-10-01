@@ -449,7 +449,6 @@ export const secretAccessApprovalBridgeServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
-    approvals,
     enforcementLevel,
     allowedSelfApprovals,
     approvalsRequired,
@@ -467,12 +466,6 @@ export const secretAccessApprovalBridgeServiceFactory = ({
       projectId: policy.projectId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
-
-    const { groupApprovers: groupApproverInputs, userApprovers, userApproverNames } = $splitApprovers(approvers);
-    const currentApprovals = approvals || policy.approvals;
-    if (groupApproverInputs.length === 0 && currentApprovals > userApprovers.length + userApproverNames.length) {
-      throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
-    }
 
     let envs: { id: string; slug: string }[] = policy.environments;
     if (environments) {

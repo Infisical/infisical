@@ -483,6 +483,120 @@ describe("Access approval policy required approvals per step", () => {
     ).toEqual([1, 1]);
   });
 
+  const createPolicyRaw = (body: Record<string, unknown>) =>
+    testServer.inject({
+      method: "POST",
+      url: "/api/v1/access-approvals/policies",
+      headers: authHeaders(),
+      body: {
+        projectSlug: seedData1.project.slug,
+        environment: seedData1.environment.slug,
+        approvals: 1,
+        ...body
+      }
+    });
+
+  const approverViews = (approvers: { id: string; sequence: number; approvalsRequired: number }[]) =>
+    approvers
+      .map(({ id, sequence, approvalsRequired }) => ({ id, sequence, approvalsRequired }))
+      .sort((a, b) => a.sequence - b.sequence || a.id.localeCompare(b.id));
+
+  test("A user who approves in two steps is returned once per step", async () => {
+    const res = await createPolicyRaw({
+      name: "policy-routing-user-in-two-steps",
+      secretPath: "/user-in-two-steps",
+      approvers: [
+        { type: ApproverType.User, id: seedData1.id, sequence: 1 },
+        { type: ApproverType.User, id: otherApproverId, sequence: 1 },
+        { type: ApproverType.User, id: otherApproverId, sequence: 2 }
+      ],
+      approvalsRequired: [
+        { stepNumber: 1, numberOfApprovals: 2 },
+        { stepNumber: 2, numberOfApprovals: 1 }
+      ]
+    });
+    expect(res.statusCode).toBe(200);
+    const policyId = res.json().approval.id as string;
+    globalPolicyIds.push(policyId);
+
+    expect(await getStepRequirements(policyId)).toEqual([2, 1]);
+
+    const getRes = await getPolicy(policyId);
+    expect(getRes.statusCode).toBe(200);
+    expect(approverViews(getRes.json().approval.approvers)).toEqual(
+      approverViews([
+        { id: seedData1.id, sequence: 1, approvalsRequired: 2 },
+        { id: otherApproverId, sequence: 1, approvalsRequired: 2 },
+        { id: otherApproverId, sequence: 2, approvalsRequired: 1 }
+      ])
+    );
+  });
+
+  test("Creating a step that requires more approvals than it has approvers is rejected", async () => {
+    const name = "policy-routing-step-too-small";
+    const res = await createPolicyRaw({
+      name,
+      secretPath: "/step-too-small",
+      approvers: [
+        { type: ApproverType.User, id: seedData1.id, sequence: 1 },
+        { type: ApproverType.User, id: otherApproverId, sequence: 2 }
+      ],
+      approvalsRequired: [
+        { stepNumber: 1, numberOfApprovals: 1 },
+        { stepNumber: 2, numberOfApprovals: 2 }
+      ]
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toContain("Step 2 requires 2 approvals but only has 1 approver");
+    expect(await getDb()(TableName.ApprovalPolicies).where({ name }).first()).toBeUndefined();
+  });
+
+  test("Updating a policy into a step with too few approvers is rejected and leaves it untouched", async () => {
+    const policy = await createGlobalPolicy({ name: "policy-routing-step-too-small-update", secretPath: "/too-small" });
+
+    const res = await patchPolicy(policy.id, {
+      approvers: [{ type: ApproverType.User, id: seedData1.id, sequence: 1 }],
+      approvals: 2,
+      approvalsRequired: [{ stepNumber: 1, numberOfApprovals: 2 }]
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toContain("Step 1 requires 2 approvals but only has 1 approver");
+    expect(await getStepRequirements(policy.id)).toEqual([1]);
+  });
+
+  test("A legacy policy also returns a user once per step", async () => {
+    const legacyPolicy = await createLegacyPolicy({
+      name: "policy-routing-legacy-user-in-two-steps",
+      secretPath: "/legacy-user-in-two-steps"
+    });
+
+    const res = await patchPolicy(legacyPolicy.id, {
+      approvers: [
+        { type: ApproverType.User, id: seedData1.id, sequence: 1 },
+        { type: ApproverType.User, id: otherApproverId, sequence: 1 },
+        { type: ApproverType.User, id: otherApproverId, sequence: 2 }
+      ],
+      approvals: 2,
+      approvalsRequired: [
+        { stepNumber: 1, numberOfApprovals: 2 },
+        { stepNumber: 2, numberOfApprovals: 1 }
+      ]
+    });
+    expect(res.statusCode).toBe(200);
+
+    const getRes = await getPolicy(legacyPolicy.id);
+    expect(getRes.statusCode).toBe(200);
+    expect(approverViews(getRes.json().approval.approvers)).toEqual(
+      approverViews([
+        { id: seedData1.id, sequence: 1, approvalsRequired: 2 },
+        { id: otherApproverId, sequence: 1, approvalsRequired: 2 },
+        { id: otherApproverId, sequence: 2, approvalsRequired: 1 }
+      ])
+    );
+  });
+
   test("The same update stores the same effective requirement on legacy and global", async () => {
     const db = getDb();
     const legacyPolicy = await createLegacyPolicy({
