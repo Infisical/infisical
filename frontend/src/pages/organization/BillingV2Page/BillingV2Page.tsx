@@ -217,40 +217,38 @@ export const BillingV2Page = () => {
             I={OrgPermissionBillingActions.Read}
             a={OrgPermissionSubjects.Billing}
           >
-            <div className="mx-auto w-full max-w-4xl">
-              <Overview
-                overview={overview}
-                catalog={catalog}
-                subState={subState}
-                onManageSubscription={onManageSubscription}
-                onUpgrade={onUpgrade}
-                onSetCommitment={onSetCommitment}
-                onViewBreakdown={onViewBreakdown}
-                breakdownOrgId={selectedOrgId}
-                breakdownScope={showOrgFilter ? breakdownScope : "organization"}
-                rootOrgs={rootOrgs}
-                rootOrgCount={orgPage?.totalCount ?? rootOrgCount}
-                isRootOrgsLoading={isOrgSearchPending}
-                isReloading={isReloading}
-                selectedOrgId={breakdownScope === "instance" ? ALL_ORGS_VALUE : selectedOrgId}
-                onSelectOrg={(nextId) => {
-                  if (nextId === ALL_ORGS_VALUE) {
-                    setBreakdownScope("instance");
-                    setSelectedOrgId(orgId);
-                    return;
-                  }
-                  setBreakdownScope("organization");
-                  setSelectedOrgId(nextId);
-                }}
-                onSearchOrgs={setOrgSearch}
-                showOrgFilter={showOrgFilter}
-                onUpdatePayment={onUpdatePayment}
-                onEditDetails={onEditDetails}
-                onContact={onContact}
-                onRetry={onRetry}
-                canManageBilling={canManageBilling}
-              />
-            </div>
+            <Overview
+              overview={overview}
+              catalog={catalog}
+              subState={subState}
+              onManageSubscription={onManageSubscription}
+              onUpgrade={onUpgrade}
+              onSetCommitment={onSetCommitment}
+              onViewBreakdown={onViewBreakdown}
+              breakdownOrgId={selectedOrgId}
+              breakdownScope={showOrgFilter ? breakdownScope : "organization"}
+              rootOrgs={rootOrgs}
+              rootOrgCount={orgPage?.totalCount ?? rootOrgCount}
+              isRootOrgsLoading={isOrgSearchPending}
+              isReloading={isReloading}
+              selectedOrgId={breakdownScope === "instance" ? ALL_ORGS_VALUE : selectedOrgId}
+              onSelectOrg={(nextId) => {
+                if (nextId === ALL_ORGS_VALUE) {
+                  setBreakdownScope("instance");
+                  setSelectedOrgId(orgId);
+                  return;
+                }
+                setBreakdownScope("organization");
+                setSelectedOrgId(nextId);
+              }}
+              onSearchOrgs={setOrgSearch}
+              showOrgFilter={showOrgFilter}
+              onUpdatePayment={onUpdatePayment}
+              onEditDetails={onEditDetails}
+              onContact={onContact}
+              onRetry={onRetry}
+              canManageBilling={canManageBilling}
+            />
           </OrgPermissionCan>
         </div>
       </div>

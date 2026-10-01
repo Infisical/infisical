@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { CSSProperties, ReactNode, useState } from "react";
 import { ChevronRight, EllipsisVerticalIcon, PlusIcon, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -26,6 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useOrganization } from "@app/context";
 import {
   BillingV2BreakdownScopeKind,
@@ -104,7 +105,7 @@ const meterNote = (dim: BillingV2EntitlementDim): ReactNode => {
   if (rate > 0) {
     return `${fmtMoney(rate, 2)} per ${dim.noun} / mo`;
   }
-  return unitForCount(dim.noun, dim.used);
+  return undefined;
 };
 
 // Usage over an annual commitment is billed on-demand: the one state the overview calls out with a
@@ -195,6 +196,7 @@ const ProductSummaryCard = ({
   ent,
   readOnly,
   selfServe,
+  isManaged,
   orgId,
   scope,
   onManage,
@@ -204,6 +206,7 @@ const ProductSummaryCard = ({
   BreakdownTarget & {
     readOnly: boolean;
     selfServe: boolean;
+    isManaged: boolean;
     onManage: (productId: string) => void;
     onSetCommitment: (productId: string) => void;
     onViewBreakdown: (productId: string, dimensionKey?: string) => void;
@@ -267,11 +270,13 @@ const ProductSummaryCard = ({
         </p>
       )}
       <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
-        <Metric
-          label="Charge"
-          value={priceLabel(ent)}
-          note={onDemand > 0 ? `+${fmtMoney(onDemand, 2)} / mo on-demand` : undefined}
-        />
+        {!isManaged && (
+          <Metric
+            label="Charge"
+            value={priceLabel(ent)}
+            note={onDemand > 0 ? `+${fmtMoney(onDemand, 2)} / mo on-demand` : undefined}
+          />
+        )}
         {(ent.dimensions ?? []).map((dim) => (
           <Metric
             key={dim.key}
@@ -465,8 +470,117 @@ const UsageSources = ({
   );
 };
 
-// Active-subscription billing page as tabs: Overview (plan + products), Usage (where metered usage
-// comes from), and the billing administration tabs.
+// Shown in place of the product cards when the org holds none: every product it can start, with its
+// activate / trial / contact action.
+const AvailableProducts = ({
+  products,
+  readOnly,
+  onManage,
+  onContact
+}: {
+  products: BillingV2CatalogProduct[];
+  readOnly: boolean;
+  onManage: (productId: string) => void;
+  onContact: (prod: BillingV2CatalogProduct) => void;
+}) => (
+  <Card className="gap-0 p-0">
+    {products.map((prod, index) => {
+      const selfServe = prod.plans.some((plan) => plan.selfServe);
+      const salesLed = prod.plans.some((plan) => plan.salesLed);
+      const trialPlan = prod.plans.find((plan) => plan.selfServe && plan.trialable);
+      let action: ReactNode = null;
+      if (!readOnly && selfServe) {
+        action = (
+          <Button
+            variant="product"
+            size="xs"
+            style={{ "--product-color": prod.color } as CSSProperties}
+            onClick={() => onManage(prod.id)}
+          >
+            {trialPlan && trialPlan.trialDays > 0
+              ? `Try Free for ${trialPlan.trialDays} Days`
+              : "Activate"}
+          </Button>
+        );
+      } else if (!readOnly && salesLed) {
+        action = (
+          <Button variant="outline" size="xs" onClick={() => onContact(prod)}>
+            Contact Sales
+          </Button>
+        );
+      }
+      return (
+        <div
+          key={prod.id}
+          className={cn(
+            "flex flex-wrap items-center gap-3 px-5 py-4",
+            index > 0 && "border-t border-border"
+          )}
+        >
+          <ProductIcon product={prod} size={32} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+              {prod.name}
+              {prod.addon && <Badge variant="neutral">Add-on</Badge>}
+            </span>
+            {prod.tagline && <span className="text-xs text-muted">{prod.tagline}</span>}
+          </div>
+          {action}
+        </div>
+      );
+    })}
+  </Card>
+);
+
+const SKELETON_PRODUCTS = ["product-a", "product-b"];
+
+// Loading shape for the tabbed overview. The org picker stays live so a slow organization is not a
+// dead end.
+export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode }) => (
+  <div className="flex flex-col gap-6">
+    <div className="flex h-9 items-end gap-6 border-b border-border">
+      <Skeleton className="mb-2 h-4 w-16" />
+      <Skeleton className="mb-2 h-4 w-12" />
+      <Skeleton className="mb-2 h-4 w-14" />
+    </div>
+    <div className="flex flex-col gap-3">
+      <Skeleton className="h-4 w-10" />
+      <Card className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+        {SKELETON_PRODUCTS.concat("product-c").map((key) => (
+          <div key={key} className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-5 w-16" />
+          </div>
+        ))}
+      </Card>
+    </div>
+    <div className="flex flex-col gap-3">
+      <SectionLabel action={orgFilter}>Products</SectionLabel>
+      {SKELETON_PRODUCTS.map((key) => (
+        <Card key={key} className="gap-5">
+          <div className="flex items-center gap-3">
+            <Skeleton className="size-8 rounded-md" />
+            <div className="flex flex-col gap-1.5">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-3 w-56" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+            {SKELETON_PRODUCTS.concat("product-c").map((metric) => (
+              <div key={metric} className="flex flex-col gap-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-5 w-12" />
+              </div>
+            ))}
+          </div>
+        </Card>
+      ))}
+    </div>
+  </div>
+);
+
+// Billing page as tabs: Overview (plan + products), Usage (where metered usage comes from), and the
+// billing administration tabs. Every loaded mode renders here: subscribed or not, cloud or managed.
 export const TabbedOverview = ({
   overview,
   catalog,
@@ -486,7 +600,12 @@ export const TabbedOverview = ({
   const refreshEntitlements = useRefreshBillingV2Entitlements();
   const { billing, entitlements } = overview;
   const isManaged = overview.mode === "managed";
+  const isSubscribed = overview.subState !== "no-subscription";
+  const hasBillingHistory =
+    Boolean(overview.payment) || Boolean(overview.billingDetails) || overview.invoices.length > 0;
   const showPayment = overview.isCloud && !isManaged;
+  const showInvoicesTab = showPayment && (isSubscribed || overview.invoices.length > 0);
+  const showPaymentTab = !isManaged && (isSubscribed || hasBillingHistory);
 
   // A deprecated product stays visible to existing subscribers but is closed to new ones.
   const visible = [...catalog]
@@ -496,6 +615,8 @@ export const TabbedOverview = ({
     .filter((prod) => entitlements[prod.id]?.entitled)
     .map((prod) => ({ prod, ent: entitlements[prod.id] }));
   const available = visible.filter((prod) => !entitlements[prod.id]?.entitled);
+  const showUsageTab = products.some(({ ent }) => breakdownableDimensions(ent).length > 0);
+  const hasTabs = showUsageTab || showInvoicesTab || showPaymentTab;
 
   const handleRefresh = () => {
     refreshEntitlements.mutate(
@@ -510,37 +631,69 @@ export const TabbedOverview = ({
 
   return (
     <Tabs defaultValue="overview" className="flex flex-col gap-6">
-      <TabsList variant="org">
-        <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="usage">Usage</TabsTrigger>
-        {showPayment && <TabsTrigger value="invoices">Invoices</TabsTrigger>}
-        {!isManaged && <TabsTrigger value="payment">Payment</TabsTrigger>}
-      </TabsList>
+      {hasTabs && (
+        <TabsList variant="org">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          {showUsageTab && <TabsTrigger value="usage">Usage</TabsTrigger>}
+          {showInvoicesTab && <TabsTrigger value="invoices">Invoices</TabsTrigger>}
+          {showPaymentTab && <TabsTrigger value="payment">Payment</TabsTrigger>}
+        </TabsList>
+      )}
 
       <TabsContent value="overview" className="flex flex-col gap-8">
         <div className="flex flex-col gap-3">
           <SectionLabel>Plan</SectionLabel>
-          <Card className="grid grid-cols-2 gap-6 sm:grid-cols-3">
-            <Metric
-              label="Next Charge"
-              value={billing.nextCharge ? fmtMoney(billing.nextCharge.amount) : "—"}
-              note={
-                billing.nextCharge
-                  ? `${billing.nextCharge.at}${billing.nextCharge.hasUsage ? " · includes usage" : ""}`
-                  : "Nothing due"
-              }
-            />
-            <Metric
-              label="Monthly Recurring"
-              value={fmtMoney(billing.monthlyRecurring)}
-              note="per month"
-            />
-            <Metric
-              label="Annual Committed"
-              value={fmtMoney(billing.annualCommitted)}
-              note="per year"
-            />
-          </Card>
+          {isManaged && (
+            <Card className="gap-4">
+              <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+                <Metric label="Billing" value="By contract" note="Set by your license" />
+                <Metric
+                  label="Active Products"
+                  value={billing.activeProductCount.toLocaleString()}
+                />
+              </div>
+              <p className="border-t border-border pt-3 text-xs text-muted">
+                Your plan is managed by your account team. Products and limits on this organization
+                are set by contract; contact your account manager to make changes.
+              </p>
+            </Card>
+          )}
+          {!isManaged && !isSubscribed && (
+            <Card className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+              <Metric
+                label="Subscription"
+                value="None"
+                note={
+                  available.length > 0
+                    ? "Activate a product to start one"
+                    : "No products to activate"
+                }
+              />
+            </Card>
+          )}
+          {!isManaged && isSubscribed && (
+            <Card className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+              <Metric
+                label="Next Charge"
+                value={billing.nextCharge ? fmtMoney(billing.nextCharge.amount) : "—"}
+                note={
+                  billing.nextCharge
+                    ? `${billing.nextCharge.at}${billing.nextCharge.hasUsage ? " · includes usage" : ""}`
+                    : "Nothing due"
+                }
+              />
+              <Metric
+                label="Monthly Recurring"
+                value={fmtMoney(billing.monthlyRecurring)}
+                note="per month"
+              />
+              <Metric
+                label="Annual Committed"
+                value={fmtMoney(billing.annualCommitted)}
+                note="per year"
+              />
+            </Card>
+          )}
         </div>
 
         <div className="flex flex-col gap-3">
@@ -566,7 +719,7 @@ export const TabbedOverview = ({
                     </TooltipContent>
                   </Tooltip>
                 )}
-                {!readOnly && available.length > 0 && (
+                {!readOnly && products.length > 0 && available.length > 0 && (
                   <AddProductMenu products={available} onManage={onManage} onContact={onContact} />
                 )}
               </div>
@@ -574,8 +727,19 @@ export const TabbedOverview = ({
           >
             Products
           </SectionLabel>
-          {products.length === 0 && (
-            <CardEmpty title="No active products" description="Add a product to get started." />
+          {products.length === 0 && available.length === 0 && (
+            <CardEmpty
+              title="No products available"
+              description="Products will appear here once they're available."
+            />
+          )}
+          {products.length === 0 && available.length > 0 && (
+            <AvailableProducts
+              products={available}
+              readOnly={readOnly}
+              onManage={onManage}
+              onContact={onContact}
+            />
           )}
           {products.map(({ prod, ent }) => (
             <ProductSummaryCard
@@ -584,6 +748,7 @@ export const TabbedOverview = ({
               ent={ent}
               readOnly={readOnly}
               selfServe={overview.selfServe}
+              isManaged={isManaged}
               orgId={orgId}
               scope={scope}
               onManage={onManage}
@@ -594,22 +759,24 @@ export const TabbedOverview = ({
         </div>
       </TabsContent>
 
-      <TabsContent value="usage">
-        <UsageSources
-          products={products}
-          orgId={orgId}
-          scope={scope}
-          onViewBreakdown={onViewBreakdown}
-        />
-      </TabsContent>
+      {showUsageTab && (
+        <TabsContent value="usage">
+          <UsageSources
+            products={products}
+            orgId={orgId}
+            scope={scope}
+            onViewBreakdown={onViewBreakdown}
+          />
+        </TabsContent>
+      )}
 
-      {showPayment && (
+      {showInvoicesTab && (
         <TabsContent value="invoices">
           <InvoicesCard invoices={overview.invoices} />
         </TabsContent>
       )}
 
-      {!isManaged && (
+      {showPaymentTab && (
         <TabsContent value="payment" className="flex flex-col gap-4">
           {showPayment && (
             <PaymentCard
