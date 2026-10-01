@@ -14,7 +14,7 @@ import {
   waitForReminderEmails
 } from "../../testUtils/reminders";
 import { createSecretV2, getSecretByNameV2 } from "../../testUtils/secrets";
-import { addUserMembership, createUser } from "../../testUtils/users";
+import { addUserMembership, createUser, deleteUsers } from "../../testUtils/users";
 
 const ENVIRONMENT = "dev";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -33,17 +33,26 @@ describe("Secret reminders delivered through alerts", () => {
   let cleanup: () => Promise<void>;
   // A project member other than the caller, so a reminder's recipients are never just whoever set it.
   let member: { userId: string; username: string };
+  let createdUserIds: string[] = [];
+
+  const newUser = async (label: string) => {
+    const user = await createUser(label);
+    createdUserIds.push(user.userId);
+    return user;
+  };
 
   beforeEach(async () => {
     let orgId: string;
     ({ orgId, projectId, authToken, cleanup } = await createIsolatedOrgAndProject("reminders"));
-    member = await createUser("reminder-recipient");
+    member = await newUser("reminder-recipient");
     await addUserMembership({ userId: member.userId, orgId, role: OrgMembershipRole.Member });
     await addUserMembership({ userId: member.userId, orgId, projectId, role: ProjectMembershipRole.Member });
   });
 
   afterEach(async () => {
     await cleanup();
+    await deleteUsers(createdUserIds);
+    createdUserIds = [];
   });
 
   const createSecret = async (key: string, opts: { secretPath?: string } = {}) => {
@@ -231,7 +240,7 @@ describe("Secret reminders delivered through alerts", () => {
       const secretId = await createSecret("MIGRATE");
       const everyoneSecretId = await createSecret("MIGRATE_EVERYONE");
       const nobodyLeftSecretId = await createSecret("MIGRATE_NOBODY_LEFT");
-      const outsider = await createUser("reminder-outsider");
+      const outsider = await newUser("reminder-outsider");
       const dueDate = new Date(Date.now() + DAY_MS);
       const reminderId = await seedReminder(secretId, { repeatDays: 30, nextReminderDate: dueDate });
       await seedReminder(everyoneSecretId, { repeatDays: 7, nextReminderDate: dueDate });

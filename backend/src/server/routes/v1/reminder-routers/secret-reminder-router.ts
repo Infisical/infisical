@@ -5,7 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { MAX_CHANNELS_PER_ALERT } from "@app/services/alert/alert-types";
+import { MAX_CHANNELS_PER_ALERT, MAX_RECIPIENTS_PER_CHANNEL } from "@app/services/alert/alert-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -28,7 +28,12 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
           repeatDays: z.number().min(1).nullable().optional(),
           nextReminderDate: z.string().datetime().nullable().optional(),
           fromDate: z.string().datetime().nullable().optional(),
-          recipients: z.string().array().optional(),
+          recipients: z
+            .string()
+            .uuid()
+            .array()
+            .max(MAX_RECIPIENTS_PER_CHANNEL * MAX_CHANNELS_PER_ALERT)
+            .optional(),
           // The reminder alert's complete channel list, saved with the schedule. Replaces `recipients`.
           channels: z.array(UpdateChannelInputSchema).min(1).max(MAX_CHANNELS_PER_ALERT).optional()
         })

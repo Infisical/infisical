@@ -61,5 +61,7 @@ export const secretReminderAlertDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findReminderSecrets };
+  const primaryNode = () => db.primaryNode();
+
+  return { findReminderSecrets, primaryNode };
 };

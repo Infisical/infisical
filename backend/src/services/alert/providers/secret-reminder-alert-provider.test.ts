@@ -27,15 +27,18 @@ const SECRET: TReminderSecret = {
   tagSlugs: ["payments"]
 };
 
-const buildProvider = (opts: { secrets?: TReminderSecret[]; rules?: { action: string; subject: string }[] } = {}) => {
+const buildProvider = (
+  opts: { secrets?: TReminderSecret[]; rules?: { action: string; subject: string }[]; unresolvedPath?: boolean } = {}
+) => {
   const permissionCalls: unknown[] = [];
   const provider = secretReminderAlertProviderFactory({
     secretReminderAlertDAL: {
       findReminderSecrets: async (ids: string[]) =>
-        (opts.secrets ?? [SECRET]).filter((secret) => ids.includes(secret.secretId))
+        (opts.secrets ?? [SECRET]).filter((secret) => ids.includes(secret.secretId)),
+      primaryNode: () => ({}) as never
     },
     folderDAL: {
-      findSecretPathByFolderIds: async () => [{ id: "folder-1", path: "/payments" }]
+      findSecretPathByFolderIds: async () => (opts.unresolvedPath ? [] : [{ id: "folder-1", path: "/payments" }])
     } as never,
     permissionService: {
       getProjectPermission: async (input: unknown) => {
@@ -111,6 +114,11 @@ describe("secret reminder alert provider", () => {
 
   test("drops a secret that is gone or sits in a soft-deleted environment", async () => {
     const { provider } = buildProvider({ secrets: [] });
+    expect(await provider.findTargetsByIds(dueEvent())).toEqual([]);
+  });
+
+  test("drops a secret whose folder path cannot be resolved", async () => {
+    const { provider } = buildProvider({ unresolvedPath: true });
     expect(await provider.findTargetsByIds(dueEvent())).toEqual([]);
   });
 
@@ -219,6 +227,20 @@ describe("secret reminder alert provider", () => {
     await expect(
       provider.assertResourceInScope({ orgId: "org-2", projectId: "proj-1", resourceId: "secret-1" })
     ).rejects.toThrow("not found in this project");
+  });
+
+  test("refuses to authorize a secret whose folder path cannot be resolved, rather than checking the root", async () => {
+    const { provider, permissionCalls } = buildProvider({ unresolvedPath: true });
+    await expect(
+      provider.assertPermission({
+        action: AlertPermissionAction.Edit,
+        orgId: "org-1",
+        projectId: "proj-1",
+        resourceId: "secret-1",
+        actor
+      })
+    ).rejects.toThrow("Secret with ID 'secret-1' not found in this project");
+    expect(permissionCalls).toHaveLength(0);
   });
 
   test("rejects an org-scoped reminder alert", async () => {

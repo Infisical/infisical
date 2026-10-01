@@ -16,7 +16,9 @@ const globalScope = globalThis as typeof globalThis & {
 };
 
 export const eventOutboxQueueFactory: typeof RealEventOutboxQueue.eventOutboxQueueFactory = (deps) => {
-  globalScope.infisicalEventOutboxService = deps.eventOutboxService;
+  // The shared test server boots first. A spec that boots and closes a second server of its own (eg
+  // api-run-modes.spec.ts) must not take the handle, or later specs would drive that closed server.
+  globalScope.infisicalEventOutboxService ??= deps.eventOutboxService;
   return RealEventOutboxQueue.eventOutboxQueueFactory(deps);
 };
 

@@ -201,9 +201,16 @@ export const SecretReminderForm = ({
   const reminderType = watch("reminderType");
   const fromDate = watch("fromDate");
 
+  // A reminder can exist without an alert (eg the backfill skipped it because everyone it listed had
+  // left the project). It has nobody to notify, so the form asks for recipients instead of offering
+  // the everyone default, which would send to people nobody chose.
+  const hasNoAlert = isEditMode && isAlertLoaded && !alert;
+
   useEffect(() => {
     if (alert) setValue("channels", alert.channels.map(toChannelForm), { shouldDirty: false });
-  }, [alert, setValue]);
+    else if (hasNoAlert)
+      setValue("channels", [{ ...everyoneEmailChannel, recipients: [] }], { shouldDirty: false });
+  }, [alert, hasNoAlert, everyoneEmailChannel, setValue]);
 
   const isPending = isCreating || isDeleting;
 
@@ -427,7 +434,6 @@ export const SecretReminderForm = ({
                     {...field}
                     value={field.value ?? ""}
                     placeholder="Remember to rotate this secret every month."
-                    className="max-h-32 min-h-16 resize-none"
                     disabled={!canEditSecret}
                   />
                 )}
@@ -441,6 +447,11 @@ export const SecretReminderForm = ({
           {isEditMode && isAlertError && (
             <p className="text-xs text-danger">
               Couldn&apos;t load this reminder&apos;s channels. Close and reopen to try again.
+            </p>
+          )}
+          {hasNoAlert && (
+            <p className="text-xs text-muted">
+              This reminder has nobody to notify. Choose recipients.
             </p>
           )}
           {areChannelsReady && (

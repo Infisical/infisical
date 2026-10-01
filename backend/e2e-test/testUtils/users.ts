@@ -13,6 +13,13 @@ export const createUser = async (label: string) => {
   return { userId: (user as { id: string }).id, username };
 };
 
+// Spec files share one database, so a spec deletes the users it created. Removes their memberships too.
+export const deleteUsers = async (userIds: string[]) => {
+  if (userIds.length === 0) return;
+  await testDb(TableName.Membership).whereIn("actorUserId", userIds).delete();
+  await testDb(TableName.Users).whereIn("id", userIds).delete();
+};
+
 // Org memberships are written as accepted, the state a member who joined is in. Anything that
 // resolves members (alert recipients, for one) skips a membership that is still invited.
 export const addUserMembership = async (dto: {

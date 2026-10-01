@@ -1,5 +1,6 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { TableName, TKmsRootConfig } from "@app/db/schemas";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { getConfig, initEnvConfig, TEnvConfig } from "@app/lib/config/env";
 import { TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -23,7 +24,7 @@ import { projectDALFactory } from "@app/services/project/project-dal";
 // calls: promotion happens only when an *instance* starts with a key that matches a staged row. Each
 // "instance" below is a fresh KMS service whose env carries a different key, booted against the same
 // database the test server is running on. The tests form one saga — each builds on the state the
-// previous one left — and the file gets a freshly migrated database from the environment setup.
+// previous one left.
 
 // Simulates a separate instance booting with `key` as its configured encryption key.
 const bootInstanceWithKey = async (key: string) => {
@@ -76,11 +77,24 @@ describe("encryption key rotation: boot-time promotion", () => {
     stop: async () => {}
   };
 
+  // Every spec file shares this database, and the saga leaves the root key wrapped with keys the
+  // environment does not carry. Restoring the rows keeps a later file that boots its own KMS (eg a
+  // data migration run from a spec) on the configured key.
+  let rootConfigRows: TKmsRootConfig[] = [];
+
   beforeAll(async () => {
     // Spec files run in a separate module graph from the test server, so the env config and the
     // cryptography module must be initialized here as well (same process env, same result).
     initLogger();
     await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    rootConfigRows = await testDb(TableName.KmsServerRootConfig).select("*");
+  });
+
+  afterAll(async () => {
+    await testDb.transaction(async (tx) => {
+      await tx(TableName.KmsServerRootConfig).delete();
+      await tx(TableName.KmsServerRootConfig).insert(rootConfigRows);
+    });
   });
 
   let originalLabel: string;

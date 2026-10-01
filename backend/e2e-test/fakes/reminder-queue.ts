@@ -17,7 +17,9 @@ const globalScope = globalThis as typeof globalThis & {
 };
 
 export const dailyReminderQueueServiceFactory: typeof RealReminderQueue.dailyReminderQueueServiceFactory = (deps) => {
-  globalScope.infisicalReminderService = deps.reminderService;
+  // The shared test server boots first. A spec that boots and closes a second server of its own (eg
+  // api-run-modes.spec.ts) must not take the handle, or later specs would drive that closed server.
+  globalScope.infisicalReminderService ??= deps.reminderService;
   return RealReminderQueue.dailyReminderQueueServiceFactory(deps);
 };
 

@@ -37,7 +37,7 @@ export type TSecretReminderTarget = TReminderSecret & {
 };
 
 export type TSecretReminderAlertProviderDep = {
-  secretReminderAlertDAL: Pick<TSecretReminderAlertDALFactory, "findReminderSecrets">;
+  secretReminderAlertDAL: Pick<TSecretReminderAlertDALFactory, "findReminderSecrets" | "primaryNode">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
@@ -68,13 +68,24 @@ export const secretReminderAlertProviderFactory = ({
       folderIdsByProject.set(secret.projectId, [...(folderIdsByProject.get(secret.projectId) ?? []), secret.folderId]);
     });
     for (const [projectId, folderIds] of folderIdsByProject) {
+      // The path decides what a permission check allows, so it comes from the primary like the secret:
+      // a replica that has not seen a new folder would otherwise leave it unresolved.
       // eslint-disable-next-line no-await-in-loop -- reminders fire per secret, so this is one project
-      const folders = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
+      const folders = await folderDAL.findSecretPathByFolderIds(
+        projectId,
+        folderIds,
+        secretReminderAlertDAL.primaryNode()
+      );
       folders.forEach((folder) => {
         if (folder?.path) paths.set(folder.id, folder.path);
       });
     }
-    return secrets.map((secret) => ({ ...secret, secretPath: paths.get(secret.folderId) ?? "/" }));
+    // A secret whose path cannot be resolved is left out rather than treated as sitting at the root,
+    // which would check permissions against the wrong path.
+    return secrets.flatMap((secret) => {
+      const secretPath = paths.get(secret.folderId);
+      return secretPath ? [{ ...secret, secretPath }] : [];
+    });
   };
 
   const findTargetsByIds = async (input: TFindTargetsByIdsInput): Promise<TSecretReminderTarget[]> => {
