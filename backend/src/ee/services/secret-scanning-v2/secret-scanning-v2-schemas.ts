@@ -23,13 +23,13 @@ export const BaseSecretScanningDataSourceSchema = ({
   SecretScanningDataSourcesSchema.omit({
     // unique to provider
     type: true,
-    appConnectionId: true,
+    connectionId: true,
     config: true,
     // internal
     encryptedCredentials: true
   }).extend({
     type: z.literal(type),
-    appConnectionId: isConnectionRequired ? z.string().uuid() : z.null(),
+    connectionId: isConnectionRequired ? z.string().uuid() : z.null(),
     connection: isConnectionRequired
       ? z.object({
           app: z.literal(SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]),
@@ -56,8 +56,8 @@ export const BaseCreateSecretScanningDataSourceSchema = ({
       .max(256, "Description cannot exceed 256 characters")
       .nullish()
       .describe(SecretScanningDataSources.CREATE(type).description),
-    appConnectionId: isConnectionRequired
-      ? z.string().uuid().describe(SecretScanningDataSources.CREATE(type).appConnectionId)
+    connectionId: isConnectionRequired
+      ? z.string().uuid().describe(SecretScanningDataSources.CREATE(type).connectionId)
       : z.undefined(),
     isAutoScanEnabled: z
       .boolean()

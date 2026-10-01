@@ -252,11 +252,11 @@ export const secretScanningV2ServiceFactory = ({
     );
 
     let connection: TAppConnection | null = null;
-    if (payload.appConnectionId) {
+    if (payload.connectionId) {
       // validates permission to connect and app is valid for data source
       connection = await appConnectionService.validateAppConnectionUsageById(
         SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[payload.type],
-        { connectionId: payload.appConnectionId, projectId: payload.projectId },
+        { connectionId: payload.connectionId, projectId: payload.projectId },
         actor
       );
     }
@@ -380,11 +380,11 @@ export const secretScanningV2ServiceFactory = ({
       });
 
     let connection: TAppConnection | null = null;
-    if (dataSource.appConnectionId) {
+    if (dataSource.connectionId) {
       // validates permission to connect and app is valid for data source
       connection = await appConnectionService.validateAppConnectionUsageById(
         SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type],
-        { connectionId: dataSource.appConnectionId, projectId: dataSource.projectId },
+        { connectionId: dataSource.connectionId, projectId: dataSource.projectId },
         actor
       );
     }

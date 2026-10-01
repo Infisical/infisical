@@ -70,7 +70,7 @@ export const SecretScanningDataSourceForm = ({
         })
       : createDataSource.mutateAsync({
           ...formData,
-          appConnectionId: connection?.id,
+          connectionId: connection?.id,
           projectId: currentProject.id
         });
     const source = await mutation;

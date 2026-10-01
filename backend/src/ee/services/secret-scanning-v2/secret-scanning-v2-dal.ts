@@ -41,7 +41,7 @@ const baseSecretScanningDataSourceQuery = ({
   const query = (tx || db.replicaNode())(TableName.SecretScanningDataSource)
     .join(
       TableName.AppConnection,
-      `${TableName.SecretScanningDataSource}.appConnectionId`,
+      `${TableName.SecretScanningDataSource}.connectionId`,
       `${TableName.AppConnection}.id`
     )
     .select(selectAllTableCols(TableName.SecretScanningDataSource))
@@ -82,7 +82,7 @@ const expandSecretScanningDataSource = <
   const {
     connectionApp,
     connectionName,
-    appConnectionId,
+    connectionId,
     connectionOrgId,
     connectionIsAutoRotationEnabled,
     connectionEncryptedCredentials,
@@ -100,11 +100,11 @@ const expandSecretScanningDataSource = <
 
   return {
     ...el,
-    appConnectionId,
-    connection: appConnectionId
+    connectionId,
+    connection: connectionId
       ? {
           app: connectionApp,
-          id: appConnectionId,
+          id: connectionId,
           name: connectionName,
           orgId: connectionOrgId,
           encryptedCredentials: connectionEncryptedCredentials,

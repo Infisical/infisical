@@ -3792,7 +3792,7 @@ export const SecretScanningDataSources = {
       name: `The name of the ${sourceType} Data Source to create. Must be slug-friendly.`,
       description: `An optional description for the ${sourceType} Data Source.`,
       projectId: `The ID of the project to create the ${sourceType} Data Source in.`,
-      appConnectionId: `The ID of the ${
+      connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
       } Connection to use for this Data Source.`,
       isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,

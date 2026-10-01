@@ -7,28 +7,9 @@ const SCAN_STARTED_AT_INDEX = "secret_scanning_scans_started_at_index";
 const SCAN_TRIGGERED_BY_INDEX = "secret_scanning_scans_triggered_by_user_id_index";
 const FINDING_TRIAGED_BY_INDEX = "secret_scanning_findings_triaged_by_user_id_index";
 
-const renameConstraint = (knex: Knex, table: TableName, from: string, to: string) =>
-  knex.raw(`ALTER TABLE ?? RENAME CONSTRAINT ?? TO ??`, [table, from, to]);
-
 export async function up(knex: Knex): Promise<void> {
   // Scan workers write to these tables continuously; fail the deploy fast rather than queue behind them.
   await knex.raw("SET LOCAL lock_timeout = '10s'");
-
-  if (await knex.schema.hasColumn(TableName.SecretScanningDataSource, "connectionId")) {
-    await knex.schema.alterTable(TableName.SecretScanningDataSource, (t) => {
-      t.renameColumn("connectionId", "appConnectionId");
-    });
-    // Keeps knex's derived name in step with the column, so a later dropForeign(["appConnectionId"]) finds it.
-    await renameConstraint(
-      knex,
-      TableName.SecretScanningDataSource,
-      "secret_scanning_data_sources_connectionid_foreign",
-      "secret_scanning_data_sources_appconnectionid_foreign"
-    );
-    await knex.schema.alterTable(TableName.SecretScanningDataSource, (t) => {
-      t.index("appConnectionId");
-    });
-  }
 
   if (await knex.schema.hasColumn(TableName.SecretScanningResource, "type")) {
     await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
@@ -236,21 +217,6 @@ export async function down(knex: Knex): Promise<void> {
     );
     await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
       t.string("type").notNullable().alter();
-    });
-  }
-
-  if (await knex.schema.hasColumn(TableName.SecretScanningDataSource, "appConnectionId")) {
-    await knex.schema.alterTable(TableName.SecretScanningDataSource, (t) => {
-      t.dropIndex(["appConnectionId"]);
-    });
-    await renameConstraint(
-      knex,
-      TableName.SecretScanningDataSource,
-      "secret_scanning_data_sources_appconnectionid_foreign",
-      "secret_scanning_data_sources_connectionid_foreign"
-    );
-    await knex.schema.alterTable(TableName.SecretScanningDataSource, (t) => {
-      t.renameColumn("appConnectionId", "connectionId");
     });
   }
 }

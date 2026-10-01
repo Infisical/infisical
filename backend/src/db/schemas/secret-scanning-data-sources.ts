@@ -17,7 +17,7 @@ export const SecretScanningDataSourcesSchema = z.object({
   type: z.string(),
   config: z.unknown(),
   encryptedCredentials: zodBuffer.nullable().optional(),
-  appConnectionId: z.string().uuid().nullable().optional(),
+  connectionId: z.string().uuid().nullable().optional(),
   isAutoScanEnabled: z.boolean().default(true).nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),

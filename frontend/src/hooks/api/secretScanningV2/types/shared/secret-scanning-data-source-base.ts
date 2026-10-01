@@ -4,7 +4,7 @@ export type TSecretScanningDataSourceBase = {
   id: string;
   name: string;
   description?: string | null;
-  appConnectionId?: string | null;
+  connectionId?: string | null;
   createdAt: string;
   updatedAt: string;
   projectId: string;

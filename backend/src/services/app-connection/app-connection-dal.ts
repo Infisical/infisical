@@ -136,7 +136,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
       );
 
     const dataSources = await (tx || db.replicaNode())(TableName.SecretScanningDataSource)
-      .where(`${TableName.SecretScanningDataSource}.appConnectionId`, connectionId)
+      .where(`${TableName.SecretScanningDataSource}.connectionId`, connectionId)
       .join(TableName.Project, `${TableName.SecretScanningDataSource}.projectId`, `${TableName.Project}.id`)
       .select(
         db.ref("name").withSchema(TableName.SecretScanningDataSource),

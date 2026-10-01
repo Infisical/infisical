@@ -37,7 +37,7 @@ export const registerSecretScanningEndpoints = <
   createSchema: z.ZodType<{
     name: string;
     projectId: string;
-    appConnectionId?: string;
+    connectionId?: string;
     config: Partial<I["config"]>;
     description?: string | null;
     isAutoScanEnabled?: boolean;

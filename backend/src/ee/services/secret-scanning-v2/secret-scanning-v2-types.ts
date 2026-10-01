@@ -103,14 +103,14 @@ export type TCreateSecretScanningDataSourceDTO = Pick<
   TSecretScanningDataSource,
   "description" | "name" | "projectId"
 > & {
-  appConnectionId?: string;
+  connectionId?: string;
   type: SecretScanningDataSource;
   isAutoScanEnabled?: boolean;
   config: Partial<TSecretScanningDataSourceInput["config"]>;
 };
 
 export type TUpdateSecretScanningDataSourceDTO = Partial<
-  Omit<TCreateSecretScanningDataSourceDTO, "projectId" | "appConnectionId">
+  Omit<TCreateSecretScanningDataSourceDTO, "projectId" | "connectionId">
 > & {
   dataSourceId: string;
   type: SecretScanningDataSource;

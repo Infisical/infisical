@@ -45,11 +45,11 @@ export type TSecretScanningDataSourceResponse = { dataSource: TSecretScanningDat
 
 export type TCreateSecretScanningDataSourceDTO = DiscriminativePick<
   TSecretScanningDataSource,
-  "name" | "config" | "description" | "appConnectionId" | "type" | "isAutoScanEnabled" | "projectId"
+  "name" | "config" | "description" | "connectionId" | "type" | "isAutoScanEnabled" | "projectId"
 >;
 
 export type TUpdateSecretScanningDataSourceDTO = Partial<
-  Omit<TCreateSecretScanningDataSourceDTO, "type" | "appConnectionId" | "projectId">
+  Omit<TCreateSecretScanningDataSourceDTO, "type" | "connectionId" | "projectId">
 > & {
   type: SecretScanningDataSource;
   dataSourceId: string;
