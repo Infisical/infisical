@@ -75,7 +75,13 @@ per integration. `snippets/UseCasePicker.jsx` exports two components:
   dropdown where the reader picks one or more integrations
 - `<UseCase use="{id}">`: shows its children only when the reader picked that id, or when they
   picked nothing, so the page reads as the complete guide by default. `use` takes a
-  comma-separated list for content that several integrations share
+  comma-separated list for content that several integrations share. Add `hideWhenEmpty` for
+  content that only makes sense next to a filtered result, such as setup notes that follow a
+  combined policy, so it stays hidden until the reader picks something
+
+A `<UseCase>` can hold its own `###` heading. Mintlify builds the "On this page" list at build
+time, so it would still list hidden headings; the picker hides those entries at runtime, so the
+list matches what's on the page
 
 Put the options in `snippets/app-connections/{product}/use-cases.jsx` as an exported array of
 `{ label, options: [{ id, label }] }` groups, import it on the page next to the component, and

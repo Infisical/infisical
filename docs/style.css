@@ -1614,6 +1614,34 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 /* ==========================================================================
+   Combined IAM policy (snippets/AwsIamPolicy.jsx)
+   ========================================================================== */
+
+.ifx-iamp__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+
+.ifx-iamp__option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ifx-text-soft);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.ifx-iamp__empty {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--ifx-control-line);
+  color: var(--ifx-muted);
+  font-size: 0.875rem;
+}
+
+/* ==========================================================================
    CLI reference (snippets/CLIPage.jsx)
    ========================================================================== */
 

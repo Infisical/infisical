@@ -40,6 +40,20 @@ export const UseCasePicker = ({ product, groups = [], param = "use", noun = "an 
     };
   }, [param]);
 
+  // Mintlify builds "On this page" at build time, so it still lists headings that a <UseCase> has
+  // hidden. Hide each entry whose heading isn't on the page. If Mintlify changes the markup, the
+  // entries simply stay visible.
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      document.querySelectorAll('#table-of-contents-content a[href^="#"]').forEach((link) => {
+        const id = decodeURIComponent(link.getAttribute("href").slice(1));
+        const item = link.closest("li") || link;
+        item.style.display = document.getElementById(id) ? "" : "none";
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selected]);
+
   useEffect(() => {
     if (!isOpen) return undefined;
     const onDown = (event) => {
@@ -157,9 +171,11 @@ export const UseCasePicker = ({ product, groups = [], param = "use", noun = "an 
   );
 };
 
-// Renders its children when nothing is picked (so the page reads as the full guide by default)
-// or when any of the comma-separated ids in `use` is picked. `param` must match the picker's.
-export const UseCase = ({ use, param = "use", children }) => {
+// Renders its children when any of the comma-separated ids in `use` is picked. When nothing is
+// picked it renders them too, so the page reads as the full guide by default, unless
+// `hideWhenEmpty` is set: use that for content that only makes sense next to a filtered result.
+// `param` must match the picker's.
+export const UseCase = ({ use, param = "use", hideWhenEmpty = false, children }) => {
   const SELECTION_EVENT = "use-case-picker-change";
 
   const [selected, setSelected] = useState([]);
@@ -186,13 +202,13 @@ export const UseCase = ({ use, param = "use", children }) => {
   }, [param]);
 
   const isVisible = useMemo(() => {
-    if (selected.length === 0) return true;
+    if (selected.length === 0) return !hideWhenEmpty;
     const wanted = String(use || "")
       .split(",")
       .map((id) => id.trim())
       .filter(Boolean);
     return wanted.some((id) => selected.includes(id));
-  }, [selected, use]);
+  }, [selected, use, hideWhenEmpty]);
 
   if (!isVisible) return null;
   return <>{children}</>;
