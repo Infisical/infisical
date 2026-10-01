@@ -1,0 +1,111 @@
+---
+title: "Variables"
+description: "Values you store once in an access bundle and use in any of its services."
+---
+
+<Info>
+  This page is for Agent Vault admins. Members can't see or change variables.
+  [Learn more about roles
+  →](/documentation/platform/agent-vault/access-control#product-membership)
+</Info>
+
+A variable is a value stored once in an [access bundle](/documentation/platform/agent-vault/access-bundles) under a key, such as `GITHUB_TOKEN`. Any [service](/documentation/platform/agent-vault/services) in the bundle can use the variable through a reference, which is the key in double braces: `{{GITHUB_TOKEN}}`. The [proxy](/documentation/platform/agent-vault/proxies) sends the variable's value in place of each reference.
+
+For example, if several services send the same GitHub token, store the token as `GITHUB_TOKEN` and write `{{GITHUB_TOKEN}}` in each service. When the token changes, you update one variable instead of every service.
+
+## Add a variable
+
+To add a variable to an access bundle:
+
+<Steps>
+  <Step>
+    In Agent Vault, go to **Access Bundles** and select your access bundle.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-variables-empty.png" alt="The on-call access bundle's page, with its Services list and an empty Variables card with an Add Variable button" />
+    </Frame>
+
+  </Step>
+  <Step>
+    Under **Variables**, select **Add Variable**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/variable-create.png" alt="The Add Variable dialog with GITHUB_TOKEN as the key, a hidden value, and Secret selected" />
+    </Frame>
+
+  </Step>
+  <Step>
+    Enter a **Key** and a **Value**.
+
+    A key starts with a letter, uses only uppercase letters, numbers, and underscores, and can be up to 64 characters long. Two variables in the same access bundle can't have the same key.
+
+  </Step>
+  <Step>
+    Leave **Secret** selected to hide the value once you save it. If you're storing something that isn't sensitive, such as an organization ID, clear **Secret** so the value stays visible in the list.
+  </Step>
+  <Step>
+    Select **Add Variable**. The variable appears in the **Variables** list.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-variables.png" alt="The on-call access bundle's Variables list with GITHUB_TOKEN, its value hidden, and Unused in the Used By column" />
+    </Frame>
+
+  </Step>
+</Steps>
+
+An access bundle can hold up to 100 variables.
+
+## Use a variable in a service
+
+You can use a variable in the following fields of a service:
+
+| Part of the service                                                          | Accepts variables             |
+| ---------------------------------------------------------------------------- | ----------------------------- |
+| [Bearer](/documentation/platform/agent-vault/services#bearer) credential     | **Token**                     |
+| [Basic](/documentation/platform/agent-vault/services#basic) credential       | **Username** and **Password** |
+| [Custom header](/documentation/platform/agent-vault/services#custom-headers) | **Value**                     |
+| [Substitution](/documentation/platform/agent-vault/services#substitutions)   | **With** (value)              |
+
+<Info>
+  Other fields don't accept variables, and Infisical won't save the service if one of those fields contains `{{` or `}}`.
+</Info>
+
+To use a variable:
+
+<Steps>
+  <Step>
+    [Add a service](/documentation/platform/agent-vault/services#add-a-service), or open an existing service's actions menu and select **Edit**. Then go to the **Credential** step.
+  </Step>
+  <Step>
+    In a field that accepts variables, type `{{`. A list of the bundle's variables appears.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/service-variable-picker.png" alt="The Credential step of a GitHub service, with a partly typed reference in the Token field and a list showing GITHUB_TOKEN and Create GITHUB_" />
+    </Frame>
+
+  </Step>
+  <Step>
+    Select a variable from the list. Infisical inserts the reference, such as `{{GITHUB_TOKEN}}`.
+
+    You can also create a variable without leaving the service: type its key, then select **Create** at the end of the list.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/service-variable-reference.png" alt="The Credential step of a GitHub service with a GITHUB_TOKEN reference as the Token, and the Sends preview showing the reference after Authorization: Bearer" />
+    </Frame>
+
+  </Step>
+</Steps>
+
+A reference can fill a whole field or part of one. For example, if a custom header's **Value** is `org-{{ORG_ID}}`, the proxy sends `org-` followed by the value of `ORG_ID`.
+
+A field can contain up to three references. If a field uses the same key more than once, each use counts toward the limit, so `{{ORG_ID}}/{{ORG_ID}}` counts as two.
+
+## Change or delete a variable
+
+To change a variable, open its actions menu in the **Variables** list and select **Edit**. You can change the key, the value, and whether the value is secret. If the variable is secret, leave **Value** blank to keep the current value.
+
+If you rename a variable, the services that use it keep working, and you don't need to edit them. If you change a variable's value, the proxy sends the new value within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default), and running agents don't need a restart.
+
+The **Used By** column in the **Variables** list shows which services use each variable.
+
+To delete a variable, open its actions menu and select **Delete**. If any service still uses the variable, the dialog lists those services, and you can't delete the variable until you [remove the reference](#use-a-variable-in-a-service) from each one.
