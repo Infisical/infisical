@@ -6011,7 +6011,6 @@ interface PermissionDeniedEvent {
     message: string;
     route?: string;
     method: string;
-    projectId?: string;
   };
 }
 

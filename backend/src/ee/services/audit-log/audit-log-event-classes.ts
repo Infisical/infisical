@@ -14,6 +14,13 @@ export const AUDIT_LOG_EVENT_CLASS_DEFAULTS: Record<AuditLogEventClass, boolean>
   [AuditLogEventClass.Authorization]: false
 };
 
+export const AUDIT_LOG_EVENT_CLASSES = [
+  AuditLogEventClass.Management,
+  AuditLogEventClass.DataAccess,
+  AuditLogEventClass.Authentication,
+  AuditLogEventClass.Authorization
+] as const;
+
 export const CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES = [
   AuditLogEventClass.DataAccess,
   AuditLogEventClass.Authentication,
@@ -22,7 +29,7 @@ export const CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES = [
 
 export type TConfigurableAuditLogEventClass = (typeof CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES)[number];
 
-export const AUTHENTICATION_EVENT_TYPES: readonly EventType[] = [
+const AUTHENTICATION_EVENT_TYPES: readonly EventType[] = [
   EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,
   EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH_FAILED,
   EventType.LOGIN_IDENTITY_KUBERNETES_AUTH,
@@ -62,9 +69,9 @@ export const AUTHENTICATION_EVENT_TYPES: readonly EventType[] = [
   EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED
 ];
 
-export const AUTHORIZATION_EVENT_TYPES: readonly EventType[] = [EventType.PERMISSION_DENIED];
+const AUTHORIZATION_EVENT_TYPES: readonly EventType[] = [EventType.PERMISSION_DENIED];
 
-export const DATA_ACCESS_EVENT_TYPES: readonly EventType[] = [
+const DATA_ACCESS_EVENT_TYPES: readonly EventType[] = [
   EventType.GET_SECRETS,
   EventType.GET_SECRET,
   EventType.REVEAL_SECRET,
@@ -245,7 +252,7 @@ const EVENT_TYPE_TO_CLASS = new Map<EventType, AuditLogEventClass>([
   ...DATA_ACCESS_EVENT_TYPES.map((type) => [type, AuditLogEventClass.DataAccess] as const)
 ]);
 
-export const MANAGEMENT_EVENT_TYPES: readonly EventType[] = Object.values(EventType).filter(
+const MANAGEMENT_EVENT_TYPES: readonly EventType[] = Object.values(EventType).filter(
   (type) => !EVENT_TYPE_TO_CLASS.has(type)
 );
 

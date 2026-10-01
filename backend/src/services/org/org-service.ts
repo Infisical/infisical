@@ -13,6 +13,7 @@ import {
   TSamlConfigs
 } from "@app/db/schemas";
 import { bootstrapAgentVaultProject } from "@app/ee/services/agent-vault-project/agent-vault-project-bootstrap";
+import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -33,7 +34,7 @@ import {
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
-import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
@@ -148,7 +149,7 @@ type TOrgServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
-  keyStore: Pick<TKeyStoreFactory, "deleteItem">;
+  auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -189,7 +190,7 @@ export const orgServiceFactory = ({
   usageMeteringService,
   pamSessionDAL,
   gatewayV2Service,
-  keyStore
+  auditLogSettingsService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -446,7 +447,7 @@ export const orgServiceFactory = ({
 
     // Denials are only recorded on the new privilege system, so bust the cache or the first
     // denial after the upgrade is skipped.
-    await keyStore.deleteItem(KeyStorePrefixes.AuditLogOrgSettings(actorOrgId));
+    await auditLogSettingsService.invalidateCache(actorOrgId);
 
     return upgradedOrg;
   };

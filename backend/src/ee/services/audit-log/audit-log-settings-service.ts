@@ -1,9 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, OrganizationActionScope, ProjectMembershipRole } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, ProjectMembershipRole, TAuditLogSettings } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { OrgServiceActor } from "@app/lib/types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -12,6 +13,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import {
   AUDIT_LOG_EVENT_CLASS_DEFAULTS,
+  AUDIT_LOG_EVENT_CLASSES,
   AuditLogEventClass,
   CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES,
   getAuditLogEventClass,
@@ -29,7 +31,7 @@ import {
 } from "./audit-log-settings-types";
 
 type TAuditLogSettingsServiceFactoryDep = {
-  auditLogSettingsDAL: TAuditLogSettingsDALFactory;
+  auditLogSettingsDAL: Pick<TAuditLogSettingsDALFactory, "find" | "transaction" | "delete" | "insertMany">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
@@ -38,12 +40,9 @@ type TAuditLogSettingsServiceFactoryDep = {
 
 export type TAuditLogSettingsServiceFactory = ReturnType<typeof auditLogSettingsServiceFactory>;
 
-const ORDERED_EVENT_CLASSES = [
-  AuditLogEventClass.Management,
-  AuditLogEventClass.DataAccess,
-  AuditLogEventClass.Authentication,
-  AuditLogEventClass.Authorization
-] as const;
+type TScope = Pick<TAuditLogSettings, "orgId" | "projectId">;
+type TScopeRow = Pick<TAuditLogSettings, "projectId" | "eventClass" | "isEnabled">;
+type TFullOverrides = Record<TConfigurableAuditLogEventClass, boolean>;
 
 // Scopes don't inherit. A project without a row gets the default, not its org's value.
 export const isAuditLogEventEnabled = (
@@ -61,8 +60,13 @@ export const isAuditLogEventEnabled = (
 const isKnownEventClass = (value: string): value is AuditLogEventClass =>
   (Object.values(AuditLogEventClass) as string[]).includes(value);
 
+const toOverrides = (rows: TScopeRow[]): TAuditLogEventClassOverrides =>
+  Object.fromEntries(
+    rows.filter((row) => isKnownEventClass(row.eventClass)).map((row) => [row.eventClass, row.isEnabled])
+  );
+
 const toSettings = (overrides: TAuditLogEventClassOverrides): TAuditLogEventClassSetting[] =>
-  ORDERED_EVENT_CLASSES.map((eventClass) => ({
+  AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({
     eventClass,
     isEnabled:
       eventClass === AuditLogEventClass.Management
@@ -71,9 +75,7 @@ const toSettings = (overrides: TAuditLogEventClassOverrides): TAuditLogEventClas
   }));
 
 // An update replaces the scope's settings, so the request must name every configurable class once.
-const toFullOverrides = (
-  eventClasses: TAuditLogEventClassSetting[]
-): Record<TConfigurableAuditLogEventClass, boolean> => {
+const toFullOverrides = (eventClasses: TAuditLogEventClassSetting[]): TFullOverrides => {
   if (eventClasses.some((el) => el.eventClass === AuditLogEventClass.Management)) {
     throw new BadRequestError({ message: "Management events are always recorded and cannot be changed" });
   }
@@ -90,10 +92,7 @@ const toFullOverrides = (
       message: `Every event class except management must be included. Missing: ${missing.join(", ")}`
     });
   }
-  return Object.fromEntries(eventClasses.map((el) => [el.eventClass, el.isEnabled])) as Record<
-    TConfigurableAuditLogEventClass,
-    boolean
-  >;
+  return Object.fromEntries(eventClasses.map((el) => [el.eventClass, el.isEnabled])) as TFullOverrides;
 };
 
 export const auditLogSettingsServiceFactory = ({
@@ -103,6 +102,38 @@ export const auditLogSettingsServiceFactory = ({
   permissionService,
   keyStore
 }: TAuditLogSettingsServiceFactoryDep) => {
+  const findOrgOrThrow = async (orgId: string) => {
+    const org = await orgDAL.findById(orgId);
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    return org;
+  };
+
+  const findProjectOrThrow = async (projectId: string) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+    return project;
+  };
+
+  const assertOrgSettingsPermission = async (actor: OrgServiceActor, action: OrgPermissionActions) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.Settings);
+  };
+
+  const toResponse = (
+    overrides: TAuditLogEventClassOverrides,
+    org: { shouldUseNewPrivilegeSystem?: boolean | null }
+  ) => ({
+    eventClasses: toSettings(overrides),
+    shouldUseNewPrivilegeSystem: Boolean(org.shouldUseNewPrivilegeSystem)
+  });
+
   const invalidateCache = async (orgId: string) => {
     await keyStore.deleteItem(KeyStorePrefixes.AuditLogOrgSettings(orgId));
   };
@@ -111,21 +142,19 @@ export const auditLogSettingsServiceFactory = ({
     const org = await orgDAL.findById(orgId);
     if (!org) return null;
 
-    const rows = await auditLogSettingsDAL.findByOrgIds([orgId]);
-    const settings: TEffectiveAuditLogSettings = {
-      org: {},
-      projects: {},
+    const rows = await auditLogSettingsDAL.find({ orgId });
+    const projectRows = new Map<string, TScopeRow[]>();
+    rows.forEach((row) => {
+      if (!row.projectId) return;
+      projectRows.set(row.projectId, [...(projectRows.get(row.projectId) ?? []), row]);
+    });
+    return {
+      org: toOverrides(rows.filter((row) => !row.projectId)),
+      projects: Object.fromEntries(
+        [...projectRows].map(([projectId, scopeRows]) => [projectId, toOverrides(scopeRows)])
+      ),
       shouldUseNewPrivilegeSystem: Boolean(org.shouldUseNewPrivilegeSystem)
     };
-    rows.forEach((row) => {
-      if (!isKnownEventClass(row.eventClass)) return;
-      if (row.projectId) {
-        settings.projects[row.projectId] = { ...settings.projects[row.projectId], [row.eventClass]: row.isEnabled };
-      } else {
-        settings.org[row.eventClass] = row.isEnabled;
-      }
-    });
-    return settings;
   };
 
   // Hot path, so cached and never throws. On failure we fall back to recording everything.
@@ -150,10 +179,7 @@ export const auditLogSettingsServiceFactory = ({
     }
   };
 
-  const writeScopeSettings = async (
-    scope: { orgId: string; projectId: string | null },
-    overrides: Record<TConfigurableAuditLogEventClass, boolean>
-  ) => {
+  const writeScopeSettings = async (scope: TScope, overrides: TFullOverrides) => {
     await auditLogSettingsDAL.transaction(async (tx) => {
       await auditLogSettingsDAL.delete(scope, tx);
       await auditLogSettingsDAL.insertMany(
@@ -169,45 +195,18 @@ export const auditLogSettingsServiceFactory = ({
   };
 
   const getOrgSettings = async ({ actor }: TGetOrgAuditLogSettingsDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
-
-    const settings = await loadSettings(actor.orgId);
-    if (!settings) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });
-
-    return {
-      eventClasses: toSettings(settings.org),
-      shouldUseNewPrivilegeSystem: settings.shouldUseNewPrivilegeSystem
-    };
+    await assertOrgSettingsPermission(actor, OrgPermissionActions.Read);
+    const org = await findOrgOrThrow(actor.orgId);
+    const rows = await auditLogSettingsDAL.find({ orgId: org.id, projectId: null });
+    return toResponse(toOverrides(rows), org);
   };
 
   const updateOrgSettings = async ({ actor, eventClasses }: TUpdateOrgAuditLogSettingsDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
-
-    const org = await orgDAL.findById(actor.orgId);
-    if (!org) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });
-
+    await assertOrgSettingsPermission(actor, OrgPermissionActions.Edit);
+    const org = await findOrgOrThrow(actor.orgId);
     const overrides = toFullOverrides(eventClasses);
-    await writeScopeSettings({ orgId: actor.orgId, projectId: null }, overrides);
-    return {
-      eventClasses: toSettings(overrides),
-      shouldUseNewPrivilegeSystem: Boolean(org.shouldUseNewPrivilegeSystem)
-    };
+    await writeScopeSettings({ orgId: org.id, projectId: null }, overrides);
+    return toResponse(overrides, org);
   };
 
   const getProjectSettings = async ({
@@ -227,16 +226,10 @@ export const auditLogSettingsServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
 
-    const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-
-    const settings = await loadSettings(project.orgId);
-    if (!settings) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
-
-    return {
-      eventClasses: toSettings(settings.projects[projectId] ?? {}),
-      shouldUseNewPrivilegeSystem: settings.shouldUseNewPrivilegeSystem
-    };
+    const project = await findProjectOrThrow(projectId);
+    const org = await findOrgOrThrow(project.orgId);
+    const rows = await auditLogSettingsDAL.find({ orgId: org.id, projectId });
+    return toResponse(toOverrides(rows), org);
   };
 
   const updateProjectSettings = async ({ eventClasses, ...dto }: TUpdateProjectAuditLogSettingsDTO) => {
@@ -254,18 +247,11 @@ export const auditLogSettingsServiceFactory = ({
       });
     }
 
-    const project = await projectDAL.findById(dto.projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${dto.projectId}' not found` });
-
-    const org = await orgDAL.findById(project.orgId);
-    if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
-
+    const project = await findProjectOrThrow(dto.projectId);
+    const org = await findOrgOrThrow(project.orgId);
     const overrides = toFullOverrides(eventClasses);
-    await writeScopeSettings({ orgId: project.orgId, projectId: dto.projectId }, overrides);
-    return {
-      eventClasses: toSettings(overrides),
-      shouldUseNewPrivilegeSystem: Boolean(org.shouldUseNewPrivilegeSystem)
-    };
+    await writeScopeSettings({ orgId: org.id, projectId: project.id }, overrides);
+    return toResponse(overrides, org);
   };
 
   return {

@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { TriangleAlert } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import {
   Alert,
@@ -30,9 +29,6 @@ type Props = {
   onCheckedChange?: (isEnabled: boolean) => void;
   descriptionExtra?: ReactNode;
   warning?: ReactNode;
-  badge?: ReactNode;
-  action?: ReactNode;
-  className?: string;
 };
 
 export const AuditLogEventClassRow = ({
@@ -43,10 +39,7 @@ export const AuditLogEventClassRow = ({
   isDisabled,
   onCheckedChange,
   descriptionExtra,
-  warning,
-  badge,
-  action,
-  className
+  warning
 }: Props) => {
   const id = `audit-log-event-class-${eventClass}`;
 
@@ -62,11 +55,10 @@ export const AuditLogEventClassRow = ({
   );
 
   return (
-    <Field orientation="horizontal" className={twMerge("gap-8 px-6 py-6", className)}>
+    <Field orientation="horizontal" className="gap-8 px-6 py-6">
       <FieldContent>
         <FieldTitle className="text-base leading-5">
           <label htmlFor={id}>{auditLogEventClassToNameMap[eventClass]}</label>
-          {badge}
         </FieldTitle>
         <FieldDescription className="max-w-2xl text-sm text-accent">
           {auditLogEventClassToDescriptionMap[eventClass]}
@@ -83,7 +75,7 @@ export const AuditLogEventClassRow = ({
           </Alert>
         )}
       </FieldContent>
-      <div className="flex shrink-0 flex-col items-end gap-1.5">
+      <div className="shrink-0">
         {lockedReason ? (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -94,7 +86,6 @@ export const AuditLogEventClassRow = ({
         ) : (
           toggle
         )}
-        {action}
       </div>
     </Field>
   );

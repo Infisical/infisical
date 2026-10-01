@@ -2085,16 +2085,14 @@ export const AUDIT_LOG_SETTINGS = {
   isEnabled: "Whether events of this class are recorded.",
   shouldUseNewPrivilegeSystem:
     "Whether the organization is on the new privilege system. Permission denials (the authorization class) are only recorded on the new privilege system.",
+  eventClasses:
+    "Every event class except management, each exactly once. The request replaces the current settings. Management events are always recorded, so a request that includes the management class is rejected.",
   UPDATE_ORG: {
-    eventClasses:
-      "Every event class except management, each exactly once. The request replaces the current settings. Management events are always recorded, so a request that includes the management class is rejected.",
     isEnabled:
       "Whether to record events of this class for the organization. This only covers organization-level events; each project has its own setting."
   },
   UPDATE_PROJECT: {
     projectId: "The ID of the project to update the audit log settings for.",
-    eventClasses:
-      "Every event class except management, each exactly once. The request replaces the current settings. Management events are always recorded, so a request that includes the management class is rejected.",
     isEnabled:
       "Whether to record events of this class for the project. A project that has never saved a setting uses the default."
   },

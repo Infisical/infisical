@@ -32,8 +32,7 @@ const denial = (overrides: Partial<TRecordPermissionDeniedDTO> = {}): TRecordPer
     errorName: "ForbiddenError",
     message: "denied",
     route: "/api/v3/secrets/raw/:secretName",
-    method: "POST",
-    projectId: "project-1"
+    method: "POST"
   },
   ...overrides
 });

@@ -1,11 +1,10 @@
 import { AuditLogEventClassesForm } from "@app/components/auditLogSettings";
-import { useOrganization, useProject, useProjectPermission } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { useGetProjectAuditLogSettings, useUpdateProjectAuditLogSettings } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 export const AuditLogEventClassesSection = () => {
   const { currentProject } = useProject();
-  const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
@@ -23,10 +22,6 @@ export const AuditLogEventClassesSection = () => {
       isSaving={isSaving}
       canEdit={isAdmin}
       variant="project"
-      orgId={currentOrg.id}
-      shouldUseNewPrivilegeSystem={
-        settings?.shouldUseNewPrivilegeSystem ?? currentOrg.shouldUseNewPrivilegeSystem
-      }
       onSave={(eventClasses) => updateSettings({ projectId: currentProject.id, eventClasses })}
     />
   );

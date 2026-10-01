@@ -57,8 +57,7 @@ export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvid
         errorName: error.name,
         message: error.message,
         route: req.routeOptions.url,
-        method: req.method,
-        projectId
+        method: req.method
       }
     });
   });

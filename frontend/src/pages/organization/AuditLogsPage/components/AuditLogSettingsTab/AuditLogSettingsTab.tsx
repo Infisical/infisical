@@ -30,10 +30,6 @@ export const AuditLogSettingsTab = withPermission(
         isSaving={isSaving}
         canEdit={canEdit}
         variant={scopeVariant}
-        orgId={currentOrg.id}
-        shouldUseNewPrivilegeSystem={
-          settings?.shouldUseNewPrivilegeSystem ?? currentOrg.shouldUseNewPrivilegeSystem
-        }
         onSave={(eventClasses) => updateSettings({ eventClasses })}
       />
     );

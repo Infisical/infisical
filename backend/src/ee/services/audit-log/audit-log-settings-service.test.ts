@@ -62,7 +62,11 @@ const createHarness = ({ rows = [] as TRow[] } = {}) => {
     findById: vi.fn(async (id: string) => ({ id, shouldUseNewPrivilegeSystem: true }))
   };
   const auditLogSettingsDAL = {
-    findByOrgIds: vi.fn(async (orgIds: string[]) => rows.filter((row) => orgIds.includes(row.orgId))),
+    find: vi.fn(async (filter: { orgId: string; projectId?: string | null }) =>
+      rows.filter(
+        (row) => row.orgId === filter.orgId && (filter.projectId === undefined || row.projectId === filter.projectId)
+      )
+    ),
     transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
     delete: vi.fn(async () => []),
     insertMany: vi.fn(async (data: TRow[]) => data)
@@ -106,7 +110,7 @@ describe("getEffectiveSettings", () => {
 
     const result = await service.getEffectiveSettings("org-1");
 
-    expect(auditLogSettingsDAL.findByOrgIds).toHaveBeenCalledWith(["org-1"]);
+    expect(auditLogSettingsDAL.find).toHaveBeenCalledWith({ orgId: "org-1" });
     expect(result).toEqual({
       org: { "data-access": false },
       projects: { p1: { authentication: false } },
@@ -189,7 +193,7 @@ describe("updateOrgSettings", () => {
       ]
     });
 
-    expect(auditLogSettingsDAL.findByOrgIds).not.toHaveBeenCalled();
+    expect(auditLogSettingsDAL.find).not.toHaveBeenCalled();
     expect(auditLogSettingsDAL.delete).toHaveBeenCalledWith({ orgId: "org-1", projectId: null }, expect.anything());
     expect(auditLogSettingsDAL.insertMany).toHaveBeenCalledWith(
       [

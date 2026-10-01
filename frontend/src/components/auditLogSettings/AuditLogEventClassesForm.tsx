@@ -1,4 +1,3 @@
-import { ReactNode } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Link } from "@tanstack/react-router";
 
@@ -13,6 +12,7 @@ import {
   DocumentationLinkBadge,
   Skeleton
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import {
   AUDIT_LOG_EVENT_CLASS_DEFAULTS,
   AUDIT_LOG_EVENT_CLASSES,
@@ -33,15 +33,13 @@ const REQUIRES_NEW_PRIVILEGE_SYSTEM = "Requires the new privilege system";
 const ALWAYS_RECORDED = "Management events are always recorded";
 
 type Props = {
-  title: ReactNode;
+  title: string;
   description: string;
   settings?: TAuditLogSettings;
   isPending: boolean;
   isSaving: boolean;
   canEdit: boolean;
   variant: ScopeVariant;
-  orgId: string;
-  shouldUseNewPrivilegeSystem: boolean;
   onSave: (eventClasses: TAuditLogEventClassSetting[]) => Promise<unknown>;
   className?: string;
   titleClassName?: string;
@@ -55,12 +53,14 @@ export const AuditLogEventClassesForm = ({
   isSaving,
   canEdit,
   variant,
-  orgId,
-  shouldUseNewPrivilegeSystem,
   onSave,
   className,
   titleClassName
 }: Props) => {
+  const { currentOrg } = useOrganization();
+  const shouldUseNewPrivilegeSystem =
+    settings?.shouldUseNewPrivilegeSystem ?? currentOrg.shouldUseNewPrivilegeSystem;
+
   const isEnabled = (eventClass: AuditLogEventClass) =>
     settings?.eventClasses.find((el) => el.eventClass === eventClass)?.isEnabled ??
     AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass];
@@ -137,7 +137,10 @@ export const AuditLogEventClassesForm = ({
                         isLocked ? (
                           <>
                             Denials are only recorded on the new privilege system.{" "}
-                            <Link to="/organizations/$orgId/access-management" params={{ orgId }}>
+                            <Link
+                              to="/organizations/$orgId/access-management"
+                              params={{ orgId: currentOrg.id }}
+                            >
                               Upgrade the privilege system
                             </Link>{" "}
                             in Access Control to enable this class.

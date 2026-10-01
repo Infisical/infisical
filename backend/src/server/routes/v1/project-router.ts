@@ -14,7 +14,10 @@ import {
   SortDirection
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
-import { AuditLogEventClass } from "@app/ee/services/audit-log/audit-log-event-classes";
+import {
+  AuditLogSettingsResponseSchema,
+  updateAuditLogSettingsBodySchema
+} from "@app/ee/services/audit-log/audit-log-settings-schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
 import { ApiDocsTags, AUDIT_LOG_SETTINGS, PROJECTS } from "@app/lib/api-docs";
@@ -737,17 +740,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim().describe(AUDIT_LOG_SETTINGS.GET_PROJECT.projectId)
       }),
       response: {
-        200: z.object({
-          auditLogSettings: z.object({
-            eventClasses: z
-              .object({
-                eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
-                isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.isEnabled)
-              })
-              .array(),
-            shouldUseNewPrivilegeSystem: z.boolean().describe(AUDIT_LOG_SETTINGS.shouldUseNewPrivilegeSystem)
-          })
-        })
+        200: AuditLogSettingsResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -777,29 +770,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         projectId: z.string().trim().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.projectId)
       }),
-      body: z.object({
-        eventClasses: z
-          .object({
-            eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
-            isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.isEnabled)
-          })
-          .array()
-          .min(1)
-          .max(Object.values(AuditLogEventClass).length)
-          .describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.eventClasses)
-      }),
+      body: updateAuditLogSettingsBodySchema(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.isEnabled),
       response: {
-        200: z.object({
-          auditLogSettings: z.object({
-            eventClasses: z
-              .object({
-                eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
-                isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.isEnabled)
-              })
-              .array(),
-            shouldUseNewPrivilegeSystem: z.boolean().describe(AUDIT_LOG_SETTINGS.shouldUseNewPrivilegeSystem)
-          })
-        })
+        200: AuditLogSettingsResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),

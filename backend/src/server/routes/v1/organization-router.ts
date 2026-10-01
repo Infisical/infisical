@@ -11,6 +11,10 @@ import {
   OrgRolesSchema
 } from "@app/db/schemas";
 import { AuditLogEventClass } from "@app/ee/services/audit-log/audit-log-event-classes";
+import {
+  AuditLogSettingsResponseSchema,
+  updateAuditLogSettingsBodySchema
+} from "@app/ee/services/audit-log/audit-log-settings-schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, KeyStoreTtls } from "@app/keystore/keystore";
 import { ApiDocsTags, AUDIT_LOG_SETTINGS, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
@@ -156,17 +160,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.AuditLogs],
       description: "Get which audit log event classes the organization records",
       response: {
-        200: z.object({
-          auditLogSettings: z.object({
-            eventClasses: z
-              .object({
-                eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
-                isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.isEnabled)
-              })
-              .array(),
-            shouldUseNewPrivilegeSystem: z.boolean().describe(AUDIT_LOG_SETTINGS.shouldUseNewPrivilegeSystem)
-          })
-        })
+        200: AuditLogSettingsResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -187,29 +181,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       operationId: "updateOrganizationAuditLogSettings",
       tags: [ApiDocsTags.AuditLogs],
       description: "Update which audit log event classes the organization records",
-      body: z.object({
-        eventClasses: z
-          .object({
-            eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
-            isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.UPDATE_ORG.isEnabled)
-          })
-          .array()
-          .min(1)
-          .max(Object.values(AuditLogEventClass).length)
-          .describe(AUDIT_LOG_SETTINGS.UPDATE_ORG.eventClasses)
-      }),
+      body: updateAuditLogSettingsBodySchema(AUDIT_LOG_SETTINGS.UPDATE_ORG.isEnabled),
       response: {
-        200: z.object({
-          auditLogSettings: z.object({
-            eventClasses: z
-              .object({
-                eventClass: z.nativeEnum(AuditLogEventClass).describe(AUDIT_LOG_SETTINGS.eventClass),
-                isEnabled: z.boolean().describe(AUDIT_LOG_SETTINGS.isEnabled)
-              })
-              .array(),
-            shouldUseNewPrivilegeSystem: z.boolean().describe(AUDIT_LOG_SETTINGS.shouldUseNewPrivilegeSystem)
-          })
-        })
+        200: AuditLogSettingsResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
