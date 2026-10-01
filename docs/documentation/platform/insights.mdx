@@ -27,6 +27,8 @@ In your organization, go to **Secrets Management** > **Insights**.
 
 To view the page, your organization role needs the **Read** permission under **Secrets Management Insights**. The built-in **Admin** role has it. To grant it to another role, see [organization role-based access controls](/documentation/platform/access-controls/role-based-access-controls#organization-level-access-controls).
 
+![Organization insights](/images/platform/insights/org-overview.png)
+
 ## Summary
 
 The three cards at the top of the page count:
@@ -50,16 +52,19 @@ The **Needs Attention** tab shows only projects with at least one of these issue
 
 Select a project to open that project's Insights page.
 
+![Projects with issues](/images/platform/insights/org-projects.png)
+
 ## Duplicated secrets across projects
 
 The **Duplicated Secrets** card groups secrets that share the same value, across every project in the organization. Each group shows how many secrets share the value and how many projects and locations (an environment and path) they're stored in. Groups that span more than one project are marked with the number of projects.
 
 Expand a group to see each secret's project, key, environment, and path. To open a secret's folder, hover over its row and select the arrow icon. If you aren't a member of a secret's project, the arrow icon is disabled.
 
-The card needs two things:
+Infisical finds duplicates by comparing hashes of secret values, the same hashes [secret value search](/documentation/platform/secret-value-search#how-values-are-compared) uses, so it never compares plain text values.
 
-- The **Search All Secret Values** permission under **Secrets Management Insights**, because the card shows secrets in projects you might not be a member of (the built-in **Admin** role has it)
-- [Secret value search](/documentation/platform/secret-value-search#enable-secret-value-search) turned on for the organization; if it's off, the card shows an **Enable Secret Value Search** button that turns it on
+To see the card, you need the **Search All Secret Values** permission under **Secrets Management Insights**, because the card shows secrets in projects you might not be a member of. The built-in **Admin** role has it.
+
+If your organization was created before secret value search was released, the card shows an **Enable Secret Value Search** button until someone turns it on.
 
 Viewing the card is recorded in the organization's [audit logs](/documentation/platform/audit-logs) as a **View Org Secrets Duplication Insights** event.
 
@@ -72,6 +77,8 @@ The remaining cards show how secrets are created and read across all projects:
 - **Secret Access Volume**: the number of secret read requests each day over the past 7 days, with the busiest day called out
 
 If you self-host Infisical, **Auth Methods Used to Fetch Secrets** and **Secret Access Volume** appear only if your audit logs are stored in [ClickHouse](/documentation/platform/audit-logs-clickhouse-setup).
+
+![Secret activity](/images/platform/insights/org-activity.png)
 
 ## Generate an organization report
 
@@ -101,6 +108,8 @@ To generate an organization report:
     Select **Generate Report**.
   </Step>
 </Steps>
+
+![Generate an organization report](/images/platform/insights/org-generate-report.png)
 
 Generating a report requires the **Generate Report** permission under **Secrets Management Insights**. An organization can have one report generating at a time, so **Generate Report** is disabled until the current report finishes.
 
@@ -215,9 +224,7 @@ The **Duplicated Secrets** card groups secrets in the project that share the sam
 
 Secrets whose values contain [secret references](/documentation/platform/secret-reference) aren't included.
 
-Duplicate detection is off until you turn it on. To turn it on, select **Enable Detection** on the card. Infisical processes the project's secrets, then shows the results. Turning it on requires permission to edit the project's settings.
-
-If an organization admin has turned on [secret value search](/documentation/platform/secret-value-search), duplicate detection is already on for every project in the organization.
+Duplicate detection is on by default. If the project was created before it was released, select **Enable Detection** on the card to turn it on, which requires permission to edit the project's settings.
 
 ## Rotation and reminder calendar
 
