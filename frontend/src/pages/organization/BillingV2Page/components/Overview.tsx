@@ -3,16 +3,21 @@ import { TriangleAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { BillingV2CatalogProduct, BillingV2Organization, BillingV2Overview } from "@app/hooks/api";
+import {
+  BillingV2BreakdownScopeKind,
+  BillingV2CatalogProduct,
+  BillingV2Organization,
+  BillingV2Overview
+} from "@app/hooks/api";
 
 import { BillingV2RenderState } from "../billing-v2-view-types";
-import { BillingHeaderCard } from "./cards/BillingHeaderCard";
 import { DetailsCard } from "./cards/DetailsCard";
 import { InvoicesCard } from "./cards/InvoicesCard";
 import { PaymentCard } from "./cards/PaymentCard";
 import { ProductsCard } from "./cards/ProductsCard";
 import { ErrorPanel } from "./states/ErrorPanel";
 import { BillingSectionSkeleton, StatTilesSkeleton } from "./states/OverviewSkeleton";
+import { AttentionOverview } from "./AttentionOverview";
 import { Banner } from "./Banner";
 import { RootOrgFilter } from "./RootOrgFilter";
 import { TrialBanners } from "./TrialBanners";
@@ -24,7 +29,9 @@ export type OverviewProps = {
   onManageSubscription: () => void;
   onUpgrade: (productId: string) => void;
   onSetCommitment: (productId: string) => void;
-  onViewBreakdown: (productId: string) => void;
+  onViewBreakdown: (productId: string, dimensionKey?: string) => void;
+  breakdownOrgId: string;
+  breakdownScope: BillingV2BreakdownScopeKind;
   rootOrgs: BillingV2Organization[];
   rootOrgCount: number;
   isRootOrgsLoading: boolean;
@@ -49,6 +56,8 @@ export const Overview = ({
   onUpgrade,
   onSetCommitment,
   onViewBreakdown,
+  breakdownOrgId,
+  breakdownScope,
   rootOrgs,
   rootOrgCount,
   isRootOrgsLoading,
@@ -226,19 +235,21 @@ export const Overview = ({
         onUpdatePayment={onUpdatePayment}
         onContact={onContact}
       />
-      <BillingHeaderCard overview={overview} catalog={catalog} />
-      <ProductsCard
-        key="products"
+      <AttentionOverview
         overview={overview}
         catalog={catalog}
         readOnly={productsReadOnly}
+        canManageBilling={canManageBilling}
         orgFilter={orgFilter}
+        orgId={breakdownOrgId}
+        scope={breakdownScope}
         onManage={onUpgrade}
         onSetCommitment={onSetCommitment}
         onViewBreakdown={onViewBreakdown}
+        onUpdatePayment={onUpdatePayment}
+        onEditDetails={onEditDetails}
         onContact={onContact}
       />
-      {billingSection}
     </div>
   );
 };
