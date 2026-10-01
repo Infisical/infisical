@@ -34,6 +34,10 @@ export const VerificationCodeInput = ({
   const [isFocused, setIsFocused] = useState(false);
   const [selection, setSelection] = useState<Selection>({ start: 0, end: 0 });
 
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
   const syncSelection = useCallback(() => {
     const input = inputRef.current;
     if (!input) return;
