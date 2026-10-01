@@ -1,4 +1,4 @@
-import { CircleAlert, CreditCard, Info, type LucideIcon, TriangleAlert } from "lucide-react";
+import { CircleAlert, CreditCard, type LucideIcon, TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle, Button } from "@app/components/v3";
 
@@ -34,8 +34,8 @@ const DUNNING: Partial<Record<BillingV2RenderState, Dunning>> = {
   }
 };
 
-// Top-of-page notice: a managed org shows the "managed by your account team" note; a self-serve org in
-// dunning (past-due / suspended) shows a payment-recovery prompt. Nothing otherwise.
+// Top-of-page notice: a self-serve org in dunning (past-due / suspended) shows a payment-recovery
+// prompt. Nothing otherwise.
 export const Banner = ({
   mode,
   subState,
@@ -43,17 +43,10 @@ export const Banner = ({
   onUpdatePayment,
   onManageSubscription
 }: BannerProps) => {
+  // Managed (license) plans have no payment to recover; their account-team guidance lives in the
+  // plan summary.
   if (mode === "managed") {
-    return (
-      <Alert variant="info">
-        <Info />
-        <AlertTitle>Your plan is managed by your account team</AlertTitle>
-        <AlertDescription>
-          Products and limits on this organization are set by contract. Contact your account manager
-          to make changes.
-        </AlertDescription>
-      </Alert>
-    );
+    return null;
   }
 
   const dunning = DUNNING[subState];

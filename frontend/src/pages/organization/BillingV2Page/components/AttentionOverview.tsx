@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { CSSProperties, ReactNode, useState } from "react";
 import { ChevronRight, EllipsisVerticalIcon, PlusIcon, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -45,8 +45,7 @@ import {
   dimOnDemandQuantity,
   fmtMoney,
   productAnnualCommitted,
-  tierLabel,
-  unitForCount
+  tierLabel
 } from "../billing-v2-format";
 import { DetailsCard } from "./cards/DetailsCard";
 import { InvoicesCard } from "./cards/InvoicesCard";
@@ -180,6 +179,7 @@ const ProductRow = ({
   prod,
   ent,
   canChangePlan,
+  isManaged,
   onManage,
   onSetCommitment,
   onViewBreakdown
@@ -187,6 +187,7 @@ const ProductRow = ({
   prod: BillingV2CatalogProduct;
   ent: BillingV2Entitlement;
   canChangePlan: boolean;
+  isManaged: boolean;
   onManage: (productId: string) => void;
   onSetCommitment: (productId: string) => void;
   onViewBreakdown: (productId: string, dimensionKey?: string) => void;
@@ -215,14 +216,16 @@ const ProductRow = ({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <div className="flex flex-col items-end">
-            <span className="text-sm text-foreground tabular-nums">{priceLabel(ent)}</span>
-            {onDemand > 0 && (
-              <span className="text-xs text-warning tabular-nums">
-                +{fmtMoney(onDemand, 2)} / mo on-demand
-              </span>
-            )}
-          </div>
+          {!isManaged && (
+            <div className="flex flex-col items-end">
+              <span className="text-sm text-foreground tabular-nums">{priceLabel(ent)}</span>
+              {onDemand > 0 && (
+                <span className="text-xs text-warning tabular-nums">
+                  +{fmtMoney(onDemand, 2)} / mo on-demand
+                </span>
+              )}
+            </div>
+          )}
           {(canChangePlan || hasBreakdown) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -267,7 +270,7 @@ const ProductRow = ({
               {dim.limit !== null && dim.limit > 0 && (
                 <span className="text-muted"> / {dim.limit.toLocaleString()}</span>
               )}{" "}
-              {unitForCount(dim.noun, dim.used)}
+              {dim.label}
               {dimCommitted(dim) && (
                 <span className="text-muted">
                   {" "}
@@ -281,6 +284,107 @@ const ProductRow = ({
     </div>
   );
 };
+
+// Shown in place of the product list when the org holds none: every product it can start, with its
+// activate / trial / contact action.
+const AvailableProducts = ({
+  products,
+  readOnly,
+  onManage,
+  onContact
+}: {
+  products: BillingV2CatalogProduct[];
+  readOnly: boolean;
+  onManage: (productId: string) => void;
+  onContact: (prod: BillingV2CatalogProduct) => void;
+}) => (
+  <Card className="gap-0 p-0">
+    {products.map((prod, index) => {
+      const selfServe = prod.plans.some((plan) => plan.selfServe);
+      const salesLed = prod.plans.some((plan) => plan.salesLed);
+      const trialPlan = prod.plans.find((plan) => plan.selfServe && plan.trialable);
+      let action: ReactNode = null;
+      if (!readOnly && selfServe) {
+        action = (
+          <Button
+            variant="product"
+            size="xs"
+            style={{ "--product-color": prod.color } as CSSProperties}
+            onClick={() => onManage(prod.id)}
+          >
+            {trialPlan && trialPlan.trialDays > 0
+              ? `Try Free for ${trialPlan.trialDays} Days`
+              : "Activate"}
+          </Button>
+        );
+      } else if (!readOnly && salesLed) {
+        action = (
+          <Button variant="outline" size="xs" onClick={() => onContact(prod)}>
+            Contact Sales
+          </Button>
+        );
+      }
+      return (
+        <div
+          key={prod.id}
+          className={cn(
+            "flex flex-wrap items-center gap-3 px-5 py-4",
+            index > 0 && "border-t border-border"
+          )}
+        >
+          <ProductIcon product={prod} size={32} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+              {prod.name}
+              {prod.addon && <Badge variant="neutral">Add-on</Badge>}
+            </span>
+            {prod.tagline && <span className="text-xs text-muted">{prod.tagline}</span>}
+          </div>
+          {action}
+        </div>
+      );
+    })}
+  </Card>
+);
+
+const SKELETON_ROWS = ["product-a", "product-b", "product-c"];
+
+// Loading shape for the attention-first overview. The org picker stays live so a slow organization is
+// not a dead end.
+export const AttentionOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode }) => (
+  <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-3">
+      <Skeleton className="h-4 w-10" />
+      <Card className="flex-row items-center justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-3 w-80" />
+        </div>
+        <Skeleton className="h-8 w-36" />
+      </Card>
+    </div>
+    <div className="flex flex-col gap-3">
+      <SectionLabel action={orgFilter}>Products</SectionLabel>
+      <Card className="gap-0 p-0">
+        {SKELETON_ROWS.map((key, index) => (
+          <div
+            key={key}
+            className={cn("flex flex-col gap-3 px-5 py-4", index > 0 && "border-t border-border")}
+          >
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-7 rounded-md" />
+              <div className="flex flex-col gap-1.5">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-56" />
+              </div>
+            </div>
+            <Skeleton className="ml-10 h-4 w-72" />
+          </div>
+        ))}
+      </Card>
+    </div>
+  </div>
+);
 
 type AttentionOverviewProps = BreakdownTarget & {
   overview: BillingV2Overview;
@@ -296,8 +400,9 @@ type AttentionOverviewProps = BreakdownTarget & {
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-// Active-subscription billing page as one quiet column: a plan line, an attention section only when
-// usage runs over a commitment, the product list, and billing administration in a sheet.
+// Billing page as one quiet column: a plan line, an attention section only when usage runs over a
+// commitment, the product list, and billing administration in a sheet. Every loaded mode renders
+// here: subscribed or not, cloud or managed.
 export const AttentionOverview = ({
   overview,
   catalog,
@@ -318,7 +423,13 @@ export const AttentionOverview = ({
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const { billing, entitlements, payment } = overview;
   const isManaged = overview.mode === "managed";
+  const isSubscribed = overview.subState !== "no-subscription";
+  const hasBillingHistory =
+    Boolean(payment) || Boolean(overview.billingDetails) || overview.invoices.length > 0;
   const showPayment = overview.isCloud && !isManaged;
+  // Billing administration exists only for self-serve orgs, and without a subscription only once
+  // there is something to look at.
+  const showAdmin = !isManaged && (isSubscribed || hasBillingHistory);
   const canChangePlan = !readOnly && overview.selfServe;
 
   // A deprecated product stays visible to existing subscribers but is closed to new ones.
@@ -358,25 +469,51 @@ export const AttentionOverview = ({
         <SectionLabel>Plan</SectionLabel>
         <Card className="flex-row flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
-            <span className="text-sm text-foreground">
-              {billing.nextCharge ? (
-                <>
-                  Next charge{" "}
-                  <span className="font-medium tabular-nums">
-                    {fmtMoney(billing.nextCharge.amount)}
-                  </span>{" "}
-                  on {billing.nextCharge.at}
-                  {billing.nextCharge.hasUsage ? " (includes usage)" : ""}
-                </>
-              ) : (
-                "No upcoming charge"
-              )}
-            </span>
-            {recurring.length > 0 && (
-              <span className="text-xs text-muted">{recurring.join(" · ")}</span>
+            {isManaged && (
+              <>
+                <span className="text-sm text-foreground">
+                  Managed by your account team · {billing.activeProductCount}{" "}
+                  {billing.activeProductCount === 1 ? "product" : "products"}
+                </span>
+                <span className="text-xs text-muted">
+                  Products and limits on this organization are set by contract. Contact your account
+                  manager to make changes.
+                </span>
+              </>
+            )}
+            {!isManaged && !isSubscribed && (
+              <>
+                <span className="text-sm text-foreground">No active subscription</span>
+                <span className="text-xs text-muted">
+                  {available.length > 0
+                    ? "Activate a product below to start one."
+                    : "There are no products to activate yet."}
+                </span>
+              </>
+            )}
+            {!isManaged && isSubscribed && (
+              <>
+                <span className="text-sm text-foreground">
+                  {billing.nextCharge ? (
+                    <>
+                      Next charge{" "}
+                      <span className="font-medium tabular-nums">
+                        {fmtMoney(billing.nextCharge.amount)}
+                      </span>{" "}
+                      on {billing.nextCharge.at}
+                      {billing.nextCharge.hasUsage ? " (includes usage)" : ""}
+                    </>
+                  ) : (
+                    "No upcoming charge"
+                  )}
+                </span>
+                {recurring.length > 0 && (
+                  <span className="text-xs text-muted">{recurring.join(" · ")}</span>
+                )}
+              </>
             )}
           </div>
-          {!isManaged && (
+          {showAdmin && (
             <Button variant="outline" size="sm" onClick={() => setIsAdminOpen(true)}>
               {showPayment ? "Invoices & Payment" : "Billing Details"}
             </Button>
@@ -426,7 +563,7 @@ export const AttentionOverview = ({
                   </TooltipContent>
                 </Tooltip>
               )}
-              {!readOnly && available.length > 0 && (
+              {!readOnly && products.length > 0 && available.length > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="xs">
@@ -470,9 +607,21 @@ export const AttentionOverview = ({
         >
           Products
         </SectionLabel>
-        {products.length === 0 ? (
-          <CardEmpty title="No active products" description="Add a product to get started." />
-        ) : (
+        {products.length === 0 && available.length === 0 && (
+          <CardEmpty
+            title="No products available"
+            description="Products will appear here once they're available."
+          />
+        )}
+        {products.length === 0 && available.length > 0 && (
+          <AvailableProducts
+            products={available}
+            readOnly={readOnly}
+            onManage={onManage}
+            onContact={onContact}
+          />
+        )}
+        {products.length > 0 && (
           <Card className="gap-0 p-0">
             {products.map(({ prod, ent }, index) => (
               <div key={prod.id} className={cn(index > 0 && "border-t border-border")}>
@@ -480,6 +629,7 @@ export const AttentionOverview = ({
                   prod={prod}
                   ent={ent}
                   canChangePlan={canChangePlan}
+                  isManaged={isManaged}
                   onManage={onManage}
                   onSetCommitment={onSetCommitment}
                   onViewBreakdown={onViewBreakdown}
@@ -490,7 +640,7 @@ export const AttentionOverview = ({
         )}
       </div>
 
-      {!isManaged && (
+      {showAdmin && (
         <Sheet open={isAdminOpen} onOpenChange={setIsAdminOpen}>
           <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-2xl">
             <SheetHeader>
