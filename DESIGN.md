@@ -134,6 +134,9 @@ Typography uses three intentional families:
   Semantic headings and shared page, card, dialog, alert dialog, and sheet
   titles use its bundled Regular weight. Do not use it for arbitrary bold body
   text or request synthetic heavier weights.
+  Product and project tile names are titles, not descriptions. Use `CardTitle`
+  for them. Do not override semantic headings or shared titles with medium,
+  semibold, or bold weights; express hierarchy with size and spacing instead.
 - **JetBrains Mono** (`font-mono`, `--font-mono`) is the functional and
   decorative mono. Use it for code, secret values, identifiers, timestamps,
   logs, and short technical microcopy.

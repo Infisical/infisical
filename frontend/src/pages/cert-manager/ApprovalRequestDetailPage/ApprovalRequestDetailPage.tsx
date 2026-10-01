@@ -48,7 +48,7 @@ const CodeSigningDetailsSection = ({
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-border-control bg-surface-base p-4">
-        <h2 className="text-lg font-medium text-foreground">
+        <h2 className="text-lg font-normal text-foreground">
           Signing access for {requestData.signerName}
         </h2>
         <div className="mt-4 flex items-center gap-3">
@@ -67,7 +67,7 @@ const CodeSigningDetailsSection = ({
         </div>
       </div>
       <div className="rounded-lg border border-border-control bg-surface-base p-5">
-        <h3 className="mb-4 text-lg font-medium text-foreground">Signing Access Details</h3>
+        <h3 className="mb-4 text-lg font-normal text-foreground">Signing Access Details</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <span className="text-xs text-muted">Signer</span>
@@ -90,7 +90,7 @@ const CodeSigningDetailsSection = ({
         </div>
         {requestData.scope && Object.values(requestData.scope).some(Boolean) && (
           <div className="mt-4 border-t border-border-control pt-4">
-            <h4 className="mb-1 text-sm font-medium text-foreground">Request Scope</h4>
+            <h4 className="mb-1 text-sm font-normal text-foreground">Request Scope</h4>
             <p className="mb-3 text-xs text-muted">
               Signing is only allowed when every parameter below matches exactly.
             </p>
@@ -250,7 +250,7 @@ const PageContent = () => {
       return (
         <>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-foreground">Signing Request</h1>
+            <h1 className="text-2xl font-normal text-foreground">Signing Request</h1>
             <Badge variant={getStatusBadgeVariant(request.status)}>
               {getStatusLabel(request.status)}
             </Badge>
@@ -268,7 +268,7 @@ const PageContent = () => {
     return (
       <>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-foreground">Certificate Approval Request</h1>
+          <h1 className="text-2xl font-normal text-foreground">Certificate Approval Request</h1>
           <Badge variant={getStatusBadgeVariant(request.status)}>
             {getStatusLabel(request.status)}
           </Badge>

@@ -94,7 +94,7 @@ export const ProjectTemplateEnvironmentsForm = ({
     >
       <div className="mb-4 flex items-center justify-between border-b border-border-emphasis pb-4">
         <div>
-          <h2 className="text-lg font-medium">Project Environments</h2>
+          <h2 className="text-lg font-normal">Project Environments</h2>
           {!isInfisicalTemplate && (
             <p className="text-sm text-muted">
               Add, rename, remove and reorder environments for this project template

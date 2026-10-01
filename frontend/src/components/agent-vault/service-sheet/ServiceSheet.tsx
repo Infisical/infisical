@@ -590,7 +590,7 @@ export const ServiceSheet = ({
                   className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6"
                 >
                   <div className="mb-6">
-                    <h2 className="text-lg font-semibold text-foreground">{current.title}</h2>
+                    <h2 className="text-lg font-normal text-foreground">{current.title}</h2>
                     <p className="mt-1 text-sm text-muted">{current.subtitle}</p>
                   </div>
 
