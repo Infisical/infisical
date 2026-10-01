@@ -122,8 +122,8 @@ export type TCreateAuditLogDTO = {
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
-// Merged into the metadata of the summary event written when a collapse window closes, so
-// events passed to createCollapsedAuditLog should include it in their metadata type.
+// Lands in the summary event's metadata when a collapse window closes. Add it to the metadata
+// type of any event you pass to createCollapsedAuditLog.
 export type TAuditLogCollapseSummary = {
   suppressedRepeats?: number;
   suppressedFrom?: string;
@@ -131,7 +131,7 @@ export type TAuditLogCollapseSummary = {
 };
 
 export type TCreateCollapsedAuditLogDTO = TCreateAuditLogDTO & {
-  // Events with the same type and parts inside the window count as repeats.
+  // Same event type + same parts inside the window = repeat.
   collapseKeyParts: unknown[];
   collapseWindowSeconds?: number;
 };

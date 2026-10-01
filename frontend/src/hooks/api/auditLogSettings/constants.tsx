@@ -34,7 +34,7 @@ export const AUDIT_LOG_EVENT_CLASSES = [
   AuditLogEventClass.Authorization
 ] as const;
 
-// An update replaces the scope's settings, so every one of these must be sent.
+// Updates are full replacements, so send all of these.
 export const CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES = [
   AuditLogEventClass.DataAccess,
   AuditLogEventClass.Authentication,

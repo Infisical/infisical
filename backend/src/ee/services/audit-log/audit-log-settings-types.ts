@@ -22,7 +22,7 @@ export type TUpdateProjectAuditLogSettingsDTO = TProjectPermission & {
   eventClasses: TAuditLogEventClassSetting[];
 };
 
-// A missing key means not set at this scope.
+// Missing key = not set at this scope.
 export type TAuditLogEventClassOverrides = Partial<Record<AuditLogEventClass, boolean>>;
 
 export type TEffectiveAuditLogSettings = {

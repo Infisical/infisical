@@ -44,7 +44,7 @@ type TScope = Pick<TAuditLogSettings, "orgId" | "projectId">;
 type TScopeRow = Pick<TAuditLogSettings, "projectId" | "eventClass" | "isEnabled">;
 type TFullOverrides = Record<TConfigurableAuditLogEventClass, boolean>;
 
-// Scopes don't inherit. A project without a row gets the default, not its org's value.
+// No inheritance: a project without a row gets the default, not the org's value.
 export const isAuditLogEventEnabled = (
   settings: TEffectiveAuditLogSettings | null,
   eventType: string,
@@ -74,7 +74,7 @@ const toSettings = (overrides: TAuditLogEventClassOverrides): TAuditLogEventClas
         : (overrides[eventClass] ?? AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass])
   }));
 
-// An update replaces the scope's settings, so the request must name every configurable class once.
+// Updates are full replacements, so every configurable class has to be sent exactly once.
 const toFullOverrides = (eventClasses: TAuditLogEventClassSetting[]): TFullOverrides => {
   if (eventClasses.some((el) => el.eventClass === AuditLogEventClass.Management)) {
     throw new BadRequestError({ message: "Management events are always recorded and cannot be changed" });
@@ -95,8 +95,7 @@ const toFullOverrides = (eventClasses: TAuditLogEventClassSetting[]): TFullOverr
   return Object.fromEntries(eventClasses.map((el) => [el.eventClass, el.isEnabled])) as TFullOverrides;
 };
 
-// Denials are never recorded on the legacy privilege system, so accepting the toggle would store a
-// setting that silently does nothing.
+// Legacy privilege orgs never record denials, so don't let them save a toggle that does nothing.
 const assertAuthorizationClassAllowed = (
   org: { shouldUseNewPrivilegeSystem?: boolean | null },
   overrides: TFullOverrides
@@ -171,7 +170,7 @@ export const auditLogSettingsServiceFactory = ({
     };
   };
 
-  // Hot path, so cached and never throws. On failure we fall back to recording everything.
+  // Hot path: cached and never throws. If the lookup fails we just record everything.
   const getEffectiveSettings = async (orgId: string): Promise<TEffectiveAuditLogSettings | null> => {
     const cacheKey = KeyStorePrefixes.AuditLogOrgSettings(orgId);
     try {

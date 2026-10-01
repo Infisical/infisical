@@ -273,7 +273,7 @@ export const KeyStoreTtls = {
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 900, // 15 minutes
   LicenseCloudPlanLastKnownInSeconds: 86400, // 24 hours
-  AuditLogOrgSettingsInSeconds: 60, // caps staleness when a read races an invalidation (docs promise one minute)
+  AuditLogOrgSettingsInSeconds: 60, // 1 minute, docs promise settings changes apply within a minute
   PamDefaultProjectInSeconds: 300, // 5 minutes
   AgentVaultDefaultProjectInSeconds: 300, // 5 minutes
   // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).

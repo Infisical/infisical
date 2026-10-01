@@ -37,8 +37,7 @@ import {
 const AUDIT_LOG_ROW_WARNING_THRESHOLD = 350_000_000;
 const AUDIT_LOG_ALERT_ROW_INCREMENT = 10_000_000;
 const DEFAULT_COLLAPSE_WINDOW_SECONDS = 60;
-// The flush runs after the window key has expired, so every repeat it counts was made while
-// that window was open.
+// Flush lands after the window key expires, so it only counts repeats from that window.
 const COLLAPSE_FLUSH_GRACE_MS = 2_000;
 const COLLAPSE_FLUSH_ATTEMPTS = 5;
 const COLLAPSE_FLUSH_BACKOFF_MS = 3_000;
@@ -204,9 +203,8 @@ export const auditLogServiceFactory = ({
     return auditLogQueue.pushToLog(el);
   };
 
-  // Runs outside a request, so it skips createAuditLog. The payload already carries the
-  // actor's permission metadata from the first event. A failed push rejects so the job retries;
-  // the request-path push would swallow it and the whole window's repeats would vanish.
+  // No request here, so skip createAuditLog (payload already has the actor's permission metadata).
+  // Let a failed push throw so the job retries instead of losing the window's repeats.
   const flushCollapsedRepeats = async ({
     collapseKey,
     windowStart,
@@ -232,9 +230,7 @@ export const auditLogServiceFactory = ({
     await flushCollapsedRepeats(job.data);
   });
 
-  // First event per key is written and opens a window. The window key holds its own start, and
-  // repeats bump a counter scoped to that start, so a late flush never reads the next window's
-  // repeats and consecutive windows never share a counter.
+  // Counter is keyed by the window start, so a late flush never picks up the next window's repeats.
   const collapseAuditLog = async (
     data: TCreateAuditLogDTO,
     collapseKey: string,
@@ -294,7 +290,7 @@ export const auditLogServiceFactory = ({
     await collapseAuditLog(data, collapseKey, collapseWindowSeconds);
   };
 
-  // Called from the onError hook, so it must never throw or slow the response.
+  // Runs in onError, so never throw or block the response.
   const recordPermissionDenied: TAuditLogServiceFactory["recordPermissionDenied"] = async ({
     orgId,
     projectId,
@@ -306,6 +302,8 @@ export const auditLogServiceFactory = ({
 
     try {
       const settings = await auditLogSettingsService.getEffectiveSettings(orgId);
+      // Skip on a failed lookup (null) instead of recording everything: authorization is opt-in, and
+      // we can't tell if the org is on the new privilege system.
       if (!settings?.shouldUseNewPrivilegeSystem) return;
 
       if (!isAuditLogEventEnabled(settings, EventType.PERMISSION_DENIED, projectId)) return;

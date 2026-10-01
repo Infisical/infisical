@@ -7,8 +7,8 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 
 const isPrimitive = (value: unknown) => value === null || ["string", "number", "boolean"].includes(typeof value);
 
-// The subject() marker is non-enumerable so it drops out. Nested objects are skipped on
-// purpose since the subject can wrap a request body.
+// subject() marker is non-enumerable so it's dropped. Nested objects are skipped since the
+// subject can wrap a request body.
 const pickSubjectDetails = (subject: unknown) => {
   if (!subject || typeof subject !== "object" || Array.isArray(subject)) return undefined;
   const details: Record<string, unknown> = {};
@@ -37,12 +37,11 @@ const readProjectId = (source: unknown) => {
   return typeof projectId === "string" ? projectId : undefined;
 };
 
-// RBAC denials surface as a CASL ForbiddenError or PermissionBoundaryError, and onError hooks run
-// before the error handler, so this one hook sees them all. ForbiddenRequestError is skipped on
-// purpose: most of its throw sites are auth-mode mismatches, plan gating, admin-only checks and
-// ownership checks that carry no action or subject, so recording them would bury real denials.
-// The few services that evaluate permission.can() by hand and throw ForbiddenRequestError are
-// not captured here; move them onto throwUnlessCan to record them.
+// RBAC denials are CASL ForbiddenError or PermissionBoundaryError, and onError runs before the
+// error handler, so this hook catches all of them. ForbiddenRequestError is skipped: it's mostly
+// auth-mode, plan, admin-only and ownership checks with no action/subject, so it'd just be noise.
+// Services that call permission.can() by hand and throw ForbiddenRequestError aren't captured,
+// switch them to throwUnlessCan if you want them recorded.
 export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvider) => {
   server.addHook("onError", async (req, _reply, error) => {
     const isCaslDenial = error instanceof ForbiddenError;
