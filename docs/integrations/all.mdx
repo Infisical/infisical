@@ -5,8 +5,17 @@ icon: search
 description: "Search every framework, infrastructure platform, and sync destination that Infisical delivers secrets to."
 ---
 
-import { IntegrationsBrowser } from "/snippets/IntegrationsBrowser.jsx";
+import { CatalogBrowser } from "/snippets/CatalogBrowser.jsx";
+import { integrations, integrationTypes, integrationBadges } from "/snippets/catalogs/integrations.jsx";
 
 Filter by type or search by name. For what separates the three types, see the [integrations overview](/integrations/overview).
 
-<IntegrationsBrowser />
+<CatalogBrowser
+  id="integrations"
+  items={integrations}
+  categories={integrationTypes}
+  filterKey="type"
+  noun="integration"
+  badges={integrationBadges}
+  urlParam="type"
+/>

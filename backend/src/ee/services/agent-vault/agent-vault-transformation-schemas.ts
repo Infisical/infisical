@@ -9,6 +9,12 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "./agent-vault-credential-schemas";
 import { AgentVaultSubstitutionSurface } from "./agent-vault-enums";
+import {
+  AGENT_VAULT_MALFORMED_REFERENCE_MESSAGE,
+  AGENT_VAULT_TOO_MANY_REFERENCES_MESSAGE,
+  hasMalformedVariableReference,
+  hasTooManyVariableReferences
+} from "./agent-vault-variable-fns";
 
 export const AGENT_VAULT_MAX_CUSTOM_HEADERS = 20;
 export const AGENT_VAULT_MAX_SUBSTITUTIONS = 20;
@@ -40,25 +46,39 @@ export const agentVaultHeaderNameSchema = z
   .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE)
   .refine((name) => !RESERVED_HEADER_NAMES.has(name.toLowerCase()), AGENT_VAULT_RESERVED_HEADER_MESSAGE);
 
-const headerPrefixSchema = z
+const hasNoDoubleBraces = (text: string) => !text.includes("{{") && !text.includes("}}");
+
+// Shared with the bearer credential's own prefix. A prefix is sent as typed, so double braces in one would read
+// as a variable reference the proxy never fills in.
+export const agentVaultHeaderPrefixSchema = z
   .string()
   .trim()
   .max(64)
-  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
+  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  .refine(hasNoDoubleBraces, "A prefix can't contain {{ or }}. Put a variable reference in the value instead.");
 
-const secretValueSchema = z
-  .string()
-  .min(1)
-  .max(8192)
-  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
+// For every field a variable can be used in, so a mistyped reference fails the save, not the request.
+export const acceptsVariableReferences = (schema: z.ZodString) =>
+  schema
+    .refine((value) => !hasMalformedVariableReference(value), AGENT_VAULT_MALFORMED_REFERENCE_MESSAGE)
+    .refine((value) => !hasTooManyVariableReferences(value), AGENT_VAULT_TOO_MANY_REFERENCES_MESSAGE);
 
-// No minimum length: a short placeholder over-matches, but that is the author's own doing.
+const secretValueSchema = acceptsVariableReferences(
+  z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+);
+
+// No minimum length: a short placeholder over-matches, but that is the author's own doing. No double braces,
+// which would read as a variable reference to anyone looking at the service.
 const placeholderSchema = z
   .string()
   .trim()
   .min(1)
   .max(255)
-  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
+  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  .refine(
+    hasNoDoubleBraces,
+    "A placeholder can't contain {{ or }}. Double braces are reserved for variable references."
+  );
 
 const surfacesSchema = z
   .array(z.nativeEnum(AgentVaultSubstitutionSurface))
@@ -70,14 +90,14 @@ const surfacesSchema = z
 // fetching the service first. `value` is optional on update because omitting it keeps what is sealed.
 export const AgentVaultCustomHeaderInputSchema = z.object({
   name: agentVaultHeaderNameSchema.describe(AGENT_VAULT.SERVICE.customHeaderName),
-  prefix: headerPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.customHeaderPrefix),
+  prefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.customHeaderPrefix),
   value: secretValueSchema.describe(AGENT_VAULT.SERVICE.customHeaderValue)
 });
 
 export const AgentVaultCustomHeaderUpdateSchema = z.object({
   id: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.customHeaderId),
   name: agentVaultHeaderNameSchema.describe(AGENT_VAULT.SERVICE.customHeaderName),
-  prefix: headerPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.updateCustomHeaderPrefix),
+  prefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.updateCustomHeaderPrefix),
   value: secretValueSchema.optional().describe(AGENT_VAULT.SERVICE.updateCustomHeaderValue)
 });
 

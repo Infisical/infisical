@@ -1,8 +1,10 @@
-import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
+import { TGenericPermission } from "@app/lib/types";
+
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
-  AgentVaultSubstitutionSurface
+  AgentVaultSubstitutionSurface,
+  AgentVaultVariableReferenceField
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultAccessBundleOrderBy } from "./agent-vault-access-bundle-dal";
 
@@ -21,7 +23,13 @@ export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.Basic }
   | { type: AgentVaultCredentialType.Passthrough };
 
-export type TAgentVaultProjectScoped = { projectId: string; ctx: TAgentVaultActorContext };
+export type TAgentVaultVariableReferenceSummary = { variableId: string; key: string } & (
+  | { field: AgentVaultVariableReferenceField.CredentialValue | AgentVaultVariableReferenceField.CredentialUsername }
+  | { field: AgentVaultVariableReferenceField.CustomHeader; customHeaderId: string }
+  | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
+);
+
+export type TAgentVaultProjectScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TListAccessBundlesDTO = TAgentVaultProjectScoped & {
   search?: string;
@@ -92,6 +100,25 @@ export type TDeleteServiceDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
   serviceId: string;
 };
+
+export type TListVariablesDTO = TAgentVaultProjectScoped & { accessBundleId: string };
+
+export type TCreateVariableDTO = TAgentVaultProjectScoped & {
+  accessBundleId: string;
+  key: string;
+  value: string;
+  isSecret: boolean;
+};
+
+export type TUpdateVariableDTO = TAgentVaultProjectScoped & {
+  accessBundleId: string;
+  variableId: string;
+  key?: string;
+  value?: string;
+  isSecret?: boolean;
+};
+
+export type TVariableByIdDTO = TAgentVaultProjectScoped & { accessBundleId: string; variableId: string };
 
 export type TListMembersDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;

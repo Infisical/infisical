@@ -268,7 +268,8 @@ function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
     AuthMethod.OKTA_SAML,
     AuthMethod.JUMPCLOUD_SAML,
     AuthMethod.GOOGLE_SAML,
-    AuthMethod.KEYCLOAK_SAML
+    AuthMethod.KEYCLOAK_SAML,
+    AuthMethod.AUTH0_SAML
   ].includes(actorAuthMethod);
 }
 

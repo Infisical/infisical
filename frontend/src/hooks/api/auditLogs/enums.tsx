@@ -433,6 +433,8 @@ export enum EventType {
 
   // Gateway
   GATEWAY_CREATE = "gateway-create",
+  GATEWAY_UPDATE = "gateway-update",
+  GATEWAY_DELETE = "gateway-delete",
   GATEWAY_ENROLL = "gateway-enroll",
   GATEWAY_CONNECT = "gateway-connect",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
@@ -465,6 +467,10 @@ export enum EventType {
   AGENT_VAULT_SERVICE_CREATE = "agent-vault-service-create",
   AGENT_VAULT_SERVICE_UPDATE = "agent-vault-service-update",
   AGENT_VAULT_SERVICE_DELETE = "agent-vault-service-delete",
+  AGENT_VAULT_VARIABLE_CREATE = "agent-vault-variable-create",
+  AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
+  AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
+  AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
@@ -477,5 +483,6 @@ export enum EventType {
   AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
-  AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete"
+  AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
+  AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE = "agent-vault-session-log-settings-update"
 }

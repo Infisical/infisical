@@ -777,6 +777,10 @@ export enum EventType {
   AGENT_VAULT_SERVICE_CREATE = "agent-vault-service-create",
   AGENT_VAULT_SERVICE_UPDATE = "agent-vault-service-update",
   AGENT_VAULT_SERVICE_DELETE = "agent-vault-service-delete",
+  AGENT_VAULT_VARIABLE_CREATE = "agent-vault-variable-create",
+  AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
+  AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
+  AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
@@ -790,6 +794,7 @@ export enum EventType {
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
   AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
+  AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE = "agent-vault-session-log-settings-update",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -905,6 +910,8 @@ export enum EventType {
 
   // Gateway Enrollment Tokens
   GATEWAY_CREATE = "gateway-create",
+  GATEWAY_UPDATE = "gateway-update",
+  GATEWAY_DELETE = "gateway-delete",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   GATEWAY_ENROLL = "gateway-enroll",
   GATEWAY_CONNECT = "gateway-connect",
@@ -2954,6 +2961,7 @@ interface CreateCa {
     dn?: string;
     keySource?: string;
     hsmConnectorId?: string;
+    isOcspEnabled?: boolean;
   };
 }
 
@@ -2980,6 +2988,7 @@ interface UpdateCa {
     name: string;
     dn?: string;
     status: CaStatus;
+    isOcspEnabled?: boolean;
   };
 }
 
@@ -6300,6 +6309,18 @@ interface AgentVaultProxyDeleteEvent {
   };
 }
 
+interface AgentVaultSessionLogSettingsUpdateEvent {
+  type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE;
+  metadata: {
+    enabled: boolean;
+    appConnectionId: string | null;
+    appConnectionName: string | null;
+    bucket: string | null;
+    region: string | null;
+    keyPrefix: string | null;
+  };
+}
+
 interface AgentVaultAccessBundleCreateEvent {
   type: EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE;
   metadata: {
@@ -6330,6 +6351,7 @@ interface AgentVaultServiceCreateEvent {
   type: EventType.AGENT_VAULT_SERVICE_CREATE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     serviceId: string;
     name: string;
     hostPattern: string;
@@ -6341,6 +6363,7 @@ interface AgentVaultServiceCreateEvent {
     // Names and placeholders only. A sealed value must never reach an audit row.
     customHeaderNames?: string[];
     substitutionPlaceholders?: string[];
+    variableKeys?: string[];
   };
 }
 
@@ -6348,6 +6371,7 @@ interface AgentVaultServiceUpdateEvent {
   type: EventType.AGENT_VAULT_SERVICE_UPDATE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     serviceId: string;
     name?: string;
     hostPattern?: string;
@@ -6361,6 +6385,8 @@ interface AgentVaultServiceUpdateEvent {
     substitutionPlaceholders?: string[];
     substitutionsReplaced?: string[];
     credentialReplaced: boolean;
+    // Every key the service uses after the update, present when the update wrote a value that can hold one.
+    variableKeys?: string[];
   };
 }
 
@@ -6368,8 +6394,56 @@ interface AgentVaultServiceDeleteEvent {
   type: EventType.AGENT_VAULT_SERVICE_DELETE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     serviceId: string;
     name: string;
+  };
+}
+
+// Keys and flags only. A variable's value never reaches an audit row, secret or not.
+interface AgentVaultVariableCreateEvent {
+  type: EventType.AGENT_VAULT_VARIABLE_CREATE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    variableId: string;
+    key: string;
+    isSecret: boolean;
+  };
+}
+
+interface AgentVaultVariableUpdateEvent {
+  type: EventType.AGENT_VAULT_VARIABLE_UPDATE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    variableId: string;
+    key: string;
+    // The previous* fields are present only when the update changed them.
+    previousKey?: string;
+    isSecret: boolean;
+    previousIsSecret?: boolean;
+    valueReplaced: boolean;
+  };
+}
+
+interface AgentVaultVariableDeleteEvent {
+  type: EventType.AGENT_VAULT_VARIABLE_DELETE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    variableId: string;
+    key: string;
+  };
+}
+
+interface AgentVaultVariableValueViewEvent {
+  type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    variableId: string;
+    key: string;
   };
 }
 
@@ -6586,7 +6660,11 @@ interface PamAccessRequestCreateEvent {
   metadata: {
     requestId: string;
     accountId: string;
+    accountName?: string;
     folderId: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     duration: string;
     accessType: string;
     reason?: string;
@@ -6598,7 +6676,11 @@ interface PamAccessRequestReviewEvent {
   metadata: {
     requestId: string;
     accountId?: string;
+    accountName?: string;
     folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     status: string;
     comment?: string;
   };
@@ -6610,7 +6692,11 @@ interface PamAccessGrantRevokeEvent {
     requestId: string;
     grantId: string;
     accountId?: string;
+    accountName?: string;
     folderId?: string;
+    folderName?: string;
+    granteeName?: string;
+    granteeEmail?: string;
   };
 }
 
@@ -7432,6 +7518,23 @@ interface GatewayCreateEvent {
   };
 }
 
+interface GatewayUpdateEvent {
+  type: EventType.GATEWAY_UPDATE;
+  metadata: {
+    gatewayId: string;
+    name: string;
+    previousName: string;
+  };
+}
+
+interface GatewayDeleteEvent {
+  type: EventType.GATEWAY_DELETE;
+  metadata: {
+    gatewayId: string;
+    name: string;
+  };
+}
+
 interface GatewayEnrollmentTokenCreateEvent {
   type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE;
   metadata: {
@@ -7506,7 +7609,6 @@ interface ResourceAuthMethodConfigMetadata {
   resourceName?: string;
   method: ResourceAuthMethodType;
   methodConfigId: string;
-  stsEndpoint?: string;
   allowedPrincipalArns?: string;
   allowedAccountIds?: string;
   kubernetesHost?: string;
@@ -8311,6 +8413,10 @@ export type Event =
   | AgentVaultServiceCreateEvent
   | AgentVaultServiceUpdateEvent
   | AgentVaultServiceDeleteEvent
+  | AgentVaultVariableCreateEvent
+  | AgentVaultVariableUpdateEvent
+  | AgentVaultVariableDeleteEvent
+  | AgentVaultVariableValueViewEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent
   | AgentVaultProductMemberRemoveEvent
@@ -8324,6 +8430,7 @@ export type Event =
   | AgentVaultProxyUpdateEvent
   | AgentVaultProxyRevokeEvent
   | AgentVaultProxyDeleteEvent
+  | AgentVaultSessionLogSettingsUpdateEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
@@ -8419,6 +8526,8 @@ export type Event =
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent
   | GatewayCreateEvent
+  | GatewayUpdateEvent
+  | GatewayDeleteEvent
   | GatewayEnrollmentTokenCreateEvent
   | GatewayEnrollEvent
   | GatewayConnectEvent

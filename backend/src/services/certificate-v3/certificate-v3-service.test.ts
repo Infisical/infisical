@@ -228,7 +228,8 @@ describe("CertificateV3Service", () => {
   };
 
   const mockApprovalPolicyService = {
-    createRequestFromPolicy: vi.fn()
+    createRequestFromPolicy: vi.fn(),
+    matchPolicy: vi.fn()
   };
 
   const mockActor = {
@@ -283,6 +284,7 @@ describe("CertificateV3Service", () => {
     mockCertificateRequestDAL.create.mockResolvedValue({ id: "cert-req-123", createdAt: new Date() });
     mockCertificateRequestDAL.transitionFromPending.mockResolvedValue({ id: "cert-req-123" });
     mockCertificateRequestDAL.attachCertificate.mockResolvedValue({ id: "cert-req-123" });
+    mockApprovalPolicyService.matchPolicy.mockResolvedValue(null);
     mockApprovalPolicyService.createRequestFromPolicy.mockResolvedValue({
       request: { id: "approval-req-123", steps: [{ id: "step-1", stepNumber: 1, approvers: [] }] }
     });
@@ -447,7 +449,9 @@ describe("CertificateV3Service", () => {
           activeCaCertId: "cert-123",
           caId: "ca-123",
           crlDistributionPointUrls: [],
-          disableManagedCrlDistributionPointUrl: false
+          disableManagedCrlDistributionPointUrl: false,
+          isOcspEnabled: false,
+          ocspGeneration: 0
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -511,7 +515,9 @@ describe("CertificateV3Service", () => {
             activeCaCertId: "cert-123",
             caId: "ca-123",
             crlDistributionPointUrls: [],
-            disableManagedCrlDistributionPointUrl: false
+            disableManagedCrlDistributionPointUrl: false,
+            isOcspEnabled: false,
+            ocspGeneration: 0
           }
         }
       };
@@ -621,7 +627,9 @@ describe("CertificateV3Service", () => {
           activeCaCertId: "cert-123",
           caId: "ca-123",
           crlDistributionPointUrls: [],
-          disableManagedCrlDistributionPointUrl: false
+          disableManagedCrlDistributionPointUrl: false,
+          isOcspEnabled: false,
+          ocspGeneration: 0
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -965,7 +973,9 @@ describe("CertificateV3Service", () => {
           activeCaCertId: "cert-123",
           caId: "ca-123",
           crlDistributionPointUrls: [],
-          disableManagedCrlDistributionPointUrl: false
+          disableManagedCrlDistributionPointUrl: false,
+          isOcspEnabled: false,
+          ocspGeneration: 0
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -1080,7 +1090,9 @@ describe("CertificateV3Service", () => {
             activeCaCertId: "cert-123",
             caId: "ca-123",
             crlDistributionPointUrls: [],
-            disableManagedCrlDistributionPointUrl: false
+            disableManagedCrlDistributionPointUrl: false,
+            isOcspEnabled: false,
+            ocspGeneration: 0
           }
         }
       };
@@ -1250,7 +1262,9 @@ describe("CertificateV3Service", () => {
           activeCaCertId: "cert-123",
           caId: "ca-123",
           crlDistributionPointUrls: [],
-          disableManagedCrlDistributionPointUrl: false
+          disableManagedCrlDistributionPointUrl: false,
+          isOcspEnabled: false,
+          ocspGeneration: 0
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -1297,7 +1311,9 @@ describe("CertificateV3Service", () => {
             activeCaCertId: "cert-123",
             caId: "ca-123",
             crlDistributionPointUrls: [],
-            disableManagedCrlDistributionPointUrl: false
+            disableManagedCrlDistributionPointUrl: false,
+            isOcspEnabled: false,
+            ocspGeneration: 0
           }
         }
       };
@@ -1620,17 +1636,15 @@ describe("CertificateV3Service", () => {
       // The approval branch writes its own request row, and issuance later reads it back.
       it("persists basicConstraints on the request row when an approval policy applies", async () => {
         setupCa(CaType.AWS_PCA);
-        vi.mocked(mockApprovalPolicyDAL.findByProjectId).mockResolvedValue([
-          {
-            id: "approval-policy-1",
-            isActive: true,
-            scopeType: null,
-            scopeId: null,
-            bypassForMachineIdentities: false,
-            maxRequestTtl: null,
-            conditions: { conditions: [{ profileNames: [mockProfile.slug] }] }
-          }
-        ] as any);
+        vi.mocked(mockApprovalPolicyService.matchPolicy).mockResolvedValue({
+          id: "approval-policy-1",
+          isActive: true,
+          scopeType: null,
+          scopeId: null,
+          bypassForMachineIdentities: false,
+          maxRequestTtl: null,
+          conditions: { conditions: [{ profileNames: [mockProfile.slug] }] }
+        } as any);
 
         await service.orderCertificate({ profileId, certificateOrder: caOrder, ...mockActor });
 
@@ -1724,7 +1738,9 @@ describe("CertificateV3Service", () => {
           activeCaCertId: "cert-123",
           caId: "ca-1",
           crlDistributionPointUrls: [],
-          disableManagedCrlDistributionPointUrl: false
+          disableManagedCrlDistributionPointUrl: false,
+          isOcspEnabled: false,
+          ocspGeneration: 0
         }
       };
 
@@ -1897,7 +1913,9 @@ describe("CertificateV3Service", () => {
           activeCaCertId: "cert-123",
           caId: "ca-1",
           crlDistributionPointUrls: [],
-          disableManagedCrlDistributionPointUrl: false
+          disableManagedCrlDistributionPointUrl: false,
+          isOcspEnabled: false,
+          ocspGeneration: 0
         }
       };
 
@@ -2070,7 +2088,9 @@ describe("CertificateV3Service", () => {
           activeCaCertId: "cert-123",
           caId: "ca-1",
           crlDistributionPointUrls: [],
-          disableManagedCrlDistributionPointUrl: false
+          disableManagedCrlDistributionPointUrl: false,
+          isOcspEnabled: false,
+          ocspGeneration: 0
         }
       };
 
@@ -2243,7 +2263,9 @@ describe("CertificateV3Service", () => {
           activeCaCertId: "cert-123",
           caId: "ca-1",
           crlDistributionPointUrls: [],
-          disableManagedCrlDistributionPointUrl: false
+          disableManagedCrlDistributionPointUrl: false,
+          isOcspEnabled: false,
+          ocspGeneration: 0
         }
       };
 
@@ -2484,7 +2506,9 @@ describe("CertificateV3Service", () => {
         dn: "CN=Test CA,O=Test Org,OU=Test OU,C=US",
         serialNumber: "123456789",
         crlDistributionPointUrls: [],
-        disableManagedCrlDistributionPointUrl: false
+        disableManagedCrlDistributionPointUrl: false,
+        isOcspEnabled: false,
+        ocspGeneration: 0
       }
     };
 

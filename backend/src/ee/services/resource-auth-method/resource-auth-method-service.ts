@@ -370,7 +370,6 @@ export const resourceAuthMethodServiceFactory = ({
         method: ResourceAuthMethodType.Aws,
         config: {
           id: config.id,
-          stsEndpoint: config.stsEndpoint,
           allowedPrincipalArns: config.allowedPrincipalArns,
           allowedAccountIds: config.allowedAccountIds,
           createdAt: config.createdAt,
@@ -778,7 +777,6 @@ export const resourceAuthMethodServiceFactory = ({
       await resourceAwsAuthDAL.create(
         {
           authMethodId: registry.id,
-          stsEndpoint: authMethod.config.stsEndpoint,
           allowedPrincipalArns: authMethod.config.allowedPrincipalArns,
           allowedAccountIds: authMethod.config.allowedAccountIds
         },
@@ -965,7 +963,6 @@ export const resourceAuthMethodServiceFactory = ({
           await resourceAwsAuthDAL.updateById(
             existingAws.id,
             {
-              stsEndpoint: authMethod.stsEndpoint,
               allowedPrincipalArns: authMethod.allowedPrincipalArns,
               allowedAccountIds: authMethod.allowedAccountIds
             },
@@ -975,7 +972,6 @@ export const resourceAuthMethodServiceFactory = ({
           await resourceAwsAuthDAL.create(
             {
               authMethodId: registryRow.id,
-              stsEndpoint: authMethod.stsEndpoint,
               allowedPrincipalArns: authMethod.allowedPrincipalArns,
               allowedAccountIds: authMethod.allowedAccountIds
             },
@@ -1163,7 +1159,6 @@ export const resourceAuthMethodServiceFactory = ({
       iamHttpRequestMethod,
       iamRequestBody,
       iamRequestHeaders,
-      defaultStsEndpoint: config.stsEndpoint,
       errorContext
     });
 

@@ -61,6 +61,7 @@ type TOauthClientServiceFactoryDep = {
     | "getUserTokenSession"
     | "getUserTokenSessionById"
     | "validateRefreshToken"
+    | "validateRefreshTokenAccess"
     | "rotateRefreshToken"
     | "revokeSessionsByUserAgent"
   >;
@@ -911,6 +912,8 @@ export const oauthClientServiceFactory = ({
     if (!decodedToken.organizationId) {
       throw new UnauthorizedError({ message: "Invalid refresh token" });
     }
+
+    await tokenService.validateRefreshTokenAccess(decodedToken);
 
     const { accessTokenExpiresIn, refreshTokenExpiresIn } = await getTokenLifetimes(
       client,

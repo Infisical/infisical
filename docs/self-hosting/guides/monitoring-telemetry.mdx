@@ -778,7 +778,7 @@ These metrics give per-queue visibility into BullMQ worker health: throughput, l
 
     **Attributes**:
       - `queue.name`, `job.name`
-      - `error.type` (string): one of `validation`, `auth`, `permission`, `not_found`, `rate_limit`, `db`, `timeout`, `network`, `cryptography`, `policy`, `scim`, `oidc`, `internal`, `unknown`
+      - `error.type` (string): one of `validation`, `auth`, `permission`, `not_found`, `rate_limit`, `db`, `timeout`, `network`, `client_closed`, `cryptography`, `policy`, `scim`, `oidc`, `internal`, `unknown`
       - `attempts.exhausted` (string): `"true"` or `"false"`
   </Accordion>
 

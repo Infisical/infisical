@@ -251,6 +251,10 @@ const certManagerMappings: TFeatureMapping[] = [
     v1Field: "caCrl"
   },
   {
+    v2Key: "pki_ocsp",
+    v1Field: "pkiOcsp"
+  },
+  {
     v2Key: "pki_est",
     v1Field: "pkiEst"
   },
@@ -359,11 +363,20 @@ const pamMappings: TFeatureMapping[] = [
   }
 ];
 
+// Agent Vault: session logs written to the customer's own bucket.
+const agentVaultMappings: TFeatureMapping[] = [
+  {
+    v2Key: "agent_vault_byo_s3",
+    v1Field: "agentVaultByoS3"
+  }
+];
+
 export const FEATURE_MAPPINGS: TFeatureMapping[] = [
   ...platformMappings,
   ...secretManagerMappings,
   ...certManagerMappings,
-  ...pamMappings
+  ...pamMappings,
+  ...agentVaultMappings
 ];
 
 // v1 TFeatureSet keys intentionally not compared: live usage counters, plan metadata, and v1 fields

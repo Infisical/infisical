@@ -123,12 +123,12 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
     return (
       <Comp
         ref={ref}
-        data-slot="icon-button"
         type={type}
         className={cn(iconButtonVariants({ variant, size, isPending }), className)}
         aria-busy={isPending || undefined}
         disabled={isPending || disabled || isDisabled}
         {...props}
+        data-slot="icon-button"
       >
         {content}
       </Comp>

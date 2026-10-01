@@ -4,10 +4,10 @@ This document captures the v3 visual language and product voice used across
 Infisical. It is the single reference for engineers, designers, and AI coding
 agents producing new UI or user-visible copy.
 
-**Source of truth for tokens:** [`frontend/src/index.css`](frontend/src/index.css) (`@theme` block).
+**Source of truth for tokens and themes:** [`frontend/src/index.css`](frontend/src/index.css) (`@theme` blocks and theme overrides).
 **Canonical semantic reference:** [`Badge.stories.tsx`](frontend/src/components/v3/generic/Badge/Badge.stories.tsx).
 **Canonical page references:** [`OverviewPage`](frontend/src/pages/secret-manager/OverviewPage) and [`AccessControlPage`](frontend/src/pages/project/AccessControlPage).
-**Component usage reference:** Every v3 generic component has a sibling `<Name>.stories.tsx` at `frontend/src/components/v3/generic/<Name>/`. Read it before producing UI with that component — the stories carry the variants, compositions, and use-when guidance the source does not.
+**Component usage reference:** Start with the sibling story in [`v3/generic`](frontend/src/components/v3/generic) or [`v3/platform`](frontend/src/components/v3/platform) when one exists, then check source and consumers. Some exports, including `CopyButton`, `DataGrid`, and `Sidebar`, have no sibling story; the [generic](frontend/src/components/v3/generic/index.ts) and [platform](frontend/src/components/v3/platform/index.ts) barrels are the complete export catalogs.
 
 ---
 
@@ -16,8 +16,10 @@ agents producing new UI or user-visible copy.
 Infisical is a security tool for operators. The interface reads like
 infrastructure: dense, calm, and legible. Decorative treatments are reserved
 for brand-forward surfaces such as authentication and onboarding; the core
-product remains utilitarian. Dark is the native medium; the page canvas is
-`--color-page`, and light themes are not part of the system yet.
+product remains utilitarian. Dark is the default medium; the page canvas is
+`--color-page`. Light mode is implemented through semantic token overrides and
+the theme provider (with intentionally forced-dark authentication paths).
+Check shared surfaces in both themes rather than hard-coding dark contrast.
 
 Color carries **meaning before brand**. A danger badge is red because the
 action is destructive, not because red is the accent. A project-colored button
@@ -25,15 +27,17 @@ signals project scope, not visual variety. Designers pick intent; hex values
 follow.
 
 Depth is drawn primarily with borders and surface tones; the shared v3 `Card`
-adds a subtle `shadow-xs`. Motion is restrained — 200ms ease-in-out, no springs,
-no decorative animation. Secret values are masked by default; revealing one
-is an intentional act.
+adds a subtle `shadow-xs`. Motion is restrained and clarifies state changes;
+control and collapse transitions often use 200ms, while overlays own their
+entry/exit timing. Respect reduced-motion behavior rather than assuming all
+animations share one implementation. Secret values are masked by default;
+revealing one is an intentional act.
 
 **Key characteristics:**
 
-- Dark-native; `--color-page` page canvas
+- Dark default with light semantic overrides; `--color-page` page canvas
 - Semantic-first color (danger / success / warning / info / neutral)
-- Scope-aware (org / sub-org / project / admin)
+- Scope- and product-aware (org / sub-org / project / admin / PAM / Agent Vault)
 - Border-first depth with the shared `Card`'s `shadow-xs`; overlapping labels
   retain the shared Badge styling
 - Inter for product UI, Alliance for display typography, and distinct
@@ -57,6 +61,13 @@ Used to signal the scope a surface, badge, or action belongs to.
 | Sub-Organization | `--color-sub-org` |
 | Project          | `--color-project` |
 | Admin            | `--color-admin`   |
+
+PAM and Agent Vault are product identities rather than additional levels in
+the org/project hierarchy. Use `--color-product-pam` and `--color-product-av`
+when the current product calls for them; `PageHeader` maps the PAM and Agent
+Vault project types to these accents, while `Button` exposes `pam` and `av`
+variants. Check each component's supported variants instead of treating all
+scope and product variants as interchangeable.
 
 ### Semantic colors
 
@@ -97,15 +108,20 @@ Reserved for resource types in the secret management product:
 `--color-proxied-service`.
 Do not repurpose these for generic UI.
 
-### Tint pattern
+### Variant treatments
 
-Colored variants always layer as tinted backgrounds with matching borders —
-never as solid fills. The two canonical recipes:
+Choose the component variant by semantic intent or actual scope/product, not
+by a preferred hue. Named semantic and scope tints commonly use these recipes:
 
 - **Badge** — `bg-<c>/15 border-<c>/10 text-<c>`, hover `bg-<c>/35`
   (see [`Badge.tsx`](frontend/src/components/v3/generic/Badge/Badge.tsx))
 - **Button** — `bg-<c>/10 border-<c>/25 text-foreground`, hover `bg-<c>/15 border-<c>/30`
   (see [`Button.tsx`](frontend/src/components/v3/generic/Button/Button.tsx))
+
+`Button` product variants (`pam`, `av`, `product`) use `/25` backgrounds and
+`/30` borders. Neutral/default, outline, ghost, shaded, and link treatments
+have their own contracts; the tint recipes are not universal. Read the source
+for exact classes and supported variants.
 
 ## 3. Typography
 
@@ -149,32 +165,38 @@ labels, and dropdown menu items. See §8 for voice rules on copy itself.
 
 ## 4. Component Stylings
 
-New UI must use v3 components from [`frontend/src/components/v3/`](frontend/src/components/v3).
-The v2 library is legacy; only fall back when no v3 equivalent exists.
+Prefer v3 components from [`frontend/src/components/v3/`](frontend/src/components/v3)
+for new UI. The v2 library is legacy; use it for new work only when v3 does not
+cover the required behavior. Existing v2 consumers marked blocked in the
+[lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) need
+consumer-specific parity checks before replacement, even on mixed pages.
 
-For exact tokens, class lists, and every variant, read the component source
-and its `*.stories.tsx` — this doc cites them rather than duplicating them.
+For exact tokens, classes, and supported variants, read component source and
+the story when present; stories may not enumerate every implemented variant.
 
 ### Reading the stories
 
-Every component's `.stories.tsx` follows the same shape:
+Where present, stories may use these conventions:
 
 - **`Variant: X`** stories — one per prop-driven variant (e.g. `Variant: Outline`).
 - **`Example: X`** stories — composition recipes (e.g. `Example: With Header`,
   `Example: Inside Card / Sheet / Dialog`).
-- Each story's `parameters.docs.description.story` is the use-when guidance.
+- Story descriptions or component-level metadata may explain when to use a composition.
 
-When picking a component, find the `Example:` story closest to your need and
-mirror it. When picking a variant, the `Variant:` story descriptions are the
-canonical "use this when..." guidance.
+Use the closest example as a starting point, not a mandatory composition.
+Some stories use other names or omit descriptions; check component props,
+exports, and representative consumers when guidance is absent.
 
 Run Storybook with `cd frontend && npm run storybook` (port 6006) to preview.
 
 ### Component inventory
 
 Use these tables to find the component for a given intent. For props,
-variants, sizes, and class lists, open the source or its `*.stories.tsx`
-— the stories are canonical.
+variants, sizes, and class lists, open the source and any available story.
+The [generic](frontend/src/components/v3/generic/index.ts) and
+[platform](frontend/src/components/v3/platform/index.ts) barrels also expose
+specialized primitives not listed here (for example `CodeBlock`, `CopyButton`,
+`RadioGroup`, `TagsInput`, `FileDropzone`, `DurationInput`, `ColorPicker`).
 
 #### Actions
 
@@ -190,25 +212,25 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 
 | Component                                                                                                                                 | Reach for this when…                                                                                        |
 | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| [`Field`](frontend/src/components/v3/generic/Field/Field.tsx)                                                                             | Wrap every form control — label + control + description + error. **Never render a bare control in a form.** |
+| [`Field`](frontend/src/components/v3/generic/Field/Field.tsx)                                                                             | Compose labeled or validated form controls with the slots they need. `FieldContent`, description, and error are optional; a standalone filter/search control need not be a form field. |
 | [`Label`](frontend/src/components/v3/generic/Label/Label.tsx)                                                                             | Standalone form label outside a `Field`.                                                                    |
 | [`Input`](frontend/src/components/v3/generic/Input/Input.tsx) / [`TextArea`](frontend/src/components/v3/generic/TextArea/TextArea.tsx)    | Single-line / multi-line text entry.                                                                        |
 | [`InputGroup`](frontend/src/components/v3/generic/InputGroup/InputGroup.tsx)                                                              | Input with left/right addons — search bars, prefixed values.                                                |
 | [`Select`](frontend/src/components/v3/generic/Select/Select.tsx)                                                                          | Non-searchable single-select with a short, known option list.                                               |
-| [`Combobox`](frontend/src/components/v3/generic/Combobox/Combobox.tsx)                                                                    | Searchable single- or multi-select with chips, rich rows, and viewport-aware positioning.                   |
-| [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts)                                                                  | Sunsetting compatibility path for creatable, grouped, or advanced custom-rendering behavior.                |
+| [`Combobox`](frontend/src/components/v3/generic/Combobox/Combobox.tsx)                                                                    | Searchable single- or multi-select, including grouped/rich rows and inline or dialog creation when its contract fits. |
+| [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts)                                                                  | Deprecated compatibility for consumers needing react-select-specific overrides; see the lifecycle ledger. |
 | [`Toggle`](frontend/src/components/v3/generic/Toggle/Toggle.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
 | [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                    | Date / multi-date / range picker primitive.                                                                 |
-| [`DateRangeFilter`](frontend/src/components/v3/generic/DateRangeFilter/DateRangeFilter.tsx)                                               | Date-range filter with presets — for filter bars.                                                           |
-| [`SecretInput`](frontend/src/components/v3/generic/SecretInput/SecretInput.tsx)                                                           | Secret-value editor with mask toggle and `${var}` highlighting.                                             |
-| [`PasswordGenerator`](frontend/src/components/v3/generic/PasswordGenerator/PasswordGenerator.tsx)                                         | Generate a password against project secret-validation rules.                                                |
+| [`DateRangeFilter`](frontend/src/components/v3/platform/DateRangeFilter/DateRangeFilter.tsx)                                               | Platform date-range filter with presets — for filter bars.                                                  |
+| [`SecretInput`](frontend/src/components/v3/platform/SecretInput/SecretInput.tsx)                                                           | Platform secret-value editor with mask toggle and `${var}` highlighting.                                    |
+| [`PasswordGenerator`](frontend/src/components/v3/platform/PasswordGenerator/PasswordGenerator.tsx)                                         | Platform password generator against project secret-validation rules.                                        |
 
 #### Containers & overlays
 
 | Component                                                                       | Reach for this when…                                                                                                         |
 | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | [`Card`](frontend/src/components/v3/generic/Card/Card.tsx)                      | Default section container — tables, filters, forms, empty states all live in a Card.                                         |
-| [`Sheet`](frontend/src/components/v3/generic/Sheet/Sheet.tsx)                   | Right-side panel — **use for large create/edit forms** (multiple fields, multi-step, scrollable detail).                     |
+| [`Sheet`](frontend/src/components/v3/generic/Sheet/Sheet.tsx)                   | Panel for larger forms or workspaces; right is the usual side. Choose `size="form"`, `"wide"`, or `"workspace"` by content, using the [size examples](frontend/src/components/v3/generic/Sheet/Sheet.stories.tsx); other sides serve specific flows. |
 | [`Dialog`](frontend/src/components/v3/generic/Dialog/Dialog.tsx)                | Centered modal — **use for small create/edit forms** (1–2 fields, single confirmation prompt) and short interactive prompts. |
 | [`AlertDialog`](frontend/src/components/v3/generic/AlertDialog/AlertDialog.tsx) | Confirm an action (destructive included). Replaces `confirm()`.                                                              |
 | [`Popover`](frontend/src/components/v3/generic/Popover/Popover.tsx)             | Anchored floating panel — filters, pickers, contextual UI.                                                                   |
@@ -225,6 +247,7 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 | [`Item`](frontend/src/components/v3/generic/Item/Item.tsx)                   | Vertically-stacked list rows with shared spacing — when a `Table` is too heavy.                                       |
 | [`Detail`](frontend/src/components/v3/generic/Detail/Detail.tsx)             | Read-only label/value pairs in a detail view.                                                                         |
 | [`Badge`](frontend/src/components/v3/generic/Badge/Badge.tsx)                | Small label or chip — status, scope tag, key/value pair.                                                              |
+| [`SelectedActionBar`](frontend/src/components/v3/generic/SelectedActionBar/SelectedActionBar.tsx) | Floating batch actions for a selected set of records. |
 
 #### Navigation & search
 
@@ -233,6 +256,8 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 | [`Sidebar`](frontend/src/components/v3/generic/Sidebar/Sidebar.tsx)          | Scope-aware product navigation panel.             |
 | [`Breadcrumb`](frontend/src/components/v3/generic/Breadcrumb/Breadcrumb.tsx) | Hierarchical location trail at the top of a page. |
 | [`Command`](frontend/src/components/v3/generic/Command/Command.tsx)          | Search-driven command palette / typeahead list.   |
+| [`Tabs`](frontend/src/components/v3/generic/Tabs/Tabs.tsx)                   | Switch between related views in the same context. |
+| [`Stepper`](frontend/src/components/v3/generic/Stepper/Stepper.tsx)          | Show progress through a staged workflow.          |
 
 #### Feedback & loading
 
@@ -242,7 +267,7 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 | [`Toast`](frontend/src/components/v3/generic/Toast/Toast.tsx)                 | Transient post-action feedback. Replaces `alert()`.              |
 | [`Empty`](frontend/src/components/v3/generic/Empty/Empty.tsx)                 | Zero-state placeholder — pair with Table, list, or empty filter. |
 | [`Skeleton`](frontend/src/components/v3/generic/Skeleton/Skeleton.tsx)        | Shimmer placeholder while data is loading.                       |
-| [`Spinner`](frontend/src/components/v3/generic/Spinner/Spinner.tsx)           | Neutral circle for compact inline refreshes.                     |
+| [`Spinner`](frontend/src/components/v3/generic/Spinner/Spinner.tsx)           | Project-accented spinner by default; choose `xs`/`sm` for compact waits. |
 | [`Loader`](frontend/src/components/v3/generic/Loader/Loader.tsx)              | Branded loading animation — pending controls and page waits.     |
 | [`PageLoader`](frontend/src/components/v3/platform/PageLoader/PageLoader.tsx) | Centered Lottie spinner for full-page loading.                   |
 
@@ -257,7 +282,8 @@ states, so the wait is still announced.
 | Component                                                                                                         | Reach for this when…                                                                  |
 | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | [`Separator`](frontend/src/components/v3/generic/Separator/Separator.tsx)                                         | Horizontal/vertical divider.                                                          |
-| [`AccessRestrictedBanner`](frontend/src/components/v3/platform/AccessRestrictedBanner.tsx)                       | Dedicated full-surface state for content blocked by the user's current permissions.  |
+| [`AccessRestrictedNotice`](frontend/src/components/v3/platform/AccessRestricted/AccessRestrictedNotice.tsx) | Inline restriction for a section. |
+| [`AccessRestrictedDialog`](frontend/src/components/v3/platform/AccessRestricted/AccessRestrictedDialog.tsx) | Page/tab access gate rendered in document flow, despite its name. |
 | [`ScopeIcons`](frontend/src/components/v3/platform/ScopeIcons.tsx)                                                | `OrgIcon` / `SubOrgIcon` / `ProjectIcon` / `InstanceIcon` — use when intent is scope. |
 | [`SecretManagerResources`](frontend/src/components/v3/platform/SecretManagerResources/SecretManagerResources.ts) | Canonical Secret Manager resource catalog (icon, color classes, name, slug, permission subject). |
 | [`ProjectPermissionSubjects`](frontend/src/components/v3/platform/ProjectPermissionSubjects/ProjectPermissionSubjects.ts) | Icon and tile color for every project policy subject (`ProjectPermissionSub`). |
@@ -270,7 +296,7 @@ host component; don't override unless necessary.
 ## 5. Layout Principles
 
 - **Page container** — `max-w-8xl` (88rem) centered, `bg-page`.
-- **Page header** — v3 `PageHeader` with scope icon + underlined `h1` + description. Import it from `@app/components/v3` and always set `scope` to the correct hierarchy level. See [`PageHeader.tsx`](frontend/src/components/v3/platform/PageHeader/PageHeader.tsx).
+- **Page header** — v3 `PageHeader` with scope/product icon + underlined `h1` + description. Import it from `@app/components/v3` and set `scope` to `org`, `namespace`, `instance`, or the applicable `ProjectType`. See [`PageHeader.tsx`](frontend/src/components/v3/platform/PageHeader/PageHeader.tsx).
 - **Section** — one `Card` per logical section. Title + optional `DocumentationLinkBadge` in `CardHeader`; primary action in `CardAction` (top-right).
 - **Tables inside Cards** — filters and search sit in the `CardHeader` above the table; pagination sits in the `CardFooter` or bottom of `CardContent`. **Empty state** — when the table has no rows (and isn't loading), hide the `Table` entirely and render `Empty` in its place; never leave a column header floating above a blank body. Add `className="border"` to `Empty` whenever it's nested in a `Card`, `Sheet`, or `Dialog` so the dashed frame is visible against the parent surface (the component ships dashed-but-borderless on purpose for page-level use).
 - **Forms inside Sheets/Dialog** — create / edit flows open in a Sheet or Dialog, never inline, never as a full-page route. **Pick by form size:** small forms (1–2 fields, e.g. "Add domain", "Rename") go in a centered `Dialog`; large or multi-step forms (multiple fields, scrollable detail, file uploads, wizard steps) go in a right-side `Sheet`. When in doubt, default to Dialog — Sheet is for cases where Dialog feels cramped.
@@ -287,10 +313,12 @@ elements that float (Popover, DropdownMenu, Sheet, SelectedActionBar).
 | --------------- | ---------------------------------------- | ----------------------------------- |
 | Page            | `bg-background`                          | —                                   |
 | Card            | `bg-card`                                | `border-border`                     |
-| Popover / Sheet | `bg-popover`                             | `border-border` + `shadow-lg`       |
+| Popover / Dropdown main menu | `bg-popover`               | `border-border` + `shadow-md`       |
+| Dropdown submenu | `bg-popover`                           | `border-border` + `shadow-lg`       |
+| Sheet           | `bg-popover`                             | `border-border` + `shadow-lg`       |
 | Floating bar    | `bg-popover`                             | `border-border` + `shadow-floating` |
 | Row hover       | `bg-container-hover`                     | —                                   |
-| Focus           | —                                        | 3px ring, `--color-ring`            |
+| Focus           | —                                        | Component-owned focus-visible treatment (Button/IconButton use `ring-2`; default Input uses `ring-[3px]`) |
 | Disabled        | `opacity-50 / 75`, `pointer-events-none` | —                                   |
 
 Do not add a shadow to a Card beyond its shared `shadow-xs` default, or to a
@@ -303,14 +331,14 @@ remain legible across the control edge.
 - **DO** choose Badge and Button variants by **intent** (danger / success /
   warning / info / neutral), not by color preference.
 - **DO** use scope colors (`org`, `sub-org`, `project`, `admin`) to reinforce
-  hierarchy — the scope of a page, a primary button, a scope-link badge.
+  hierarchy, and product colors (`pam`, `av`) for their own product surfaces.
 - **DO** mask secret values by default. Reveal must be an explicit user
   action and should be logged.
 - **DO** put large create / edit forms in a right-side Sheet; smaller forms can be in Dialogs.
 - **DO** pair destructive confirmations with the resource name and the
   consequence (see §9).
 - **DO** cite tokens (`bg-card`) over hex (`#xxxxxx`) in new code.
-- **DON'T** use v2 components when a v3 equivalent exists unless the existing scope is v2.
+- **DON'T** replace existing blocked v2 consumers based on matching component names alone; check the lifecycle ledger and interaction parity first.
 - **DON'T** add ad hoc box-shadows as a depth cue — borders and surface tones do
   that work. The shared `Card` already has `shadow-xs`; floating elements
   (Popover, DropdownMenu, Sheet, SelectedActionBar) include stronger shadows.
@@ -376,17 +404,16 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 
 **Before generating UI for any component:**
 
-1. Open `frontend/src/components/v3/generic/<Name>/<Name>.stories.tsx`.
-2. Pick the `Example:` story closest to your need; mirror its composition exactly.
-3. Pick the variant by reading the matching `Variant:` story's description —
-   not by color preference.
+1. Find the export in the v3 generic or platform barrel and read its source.
+2. If a sibling story exists, consult its examples and use-when guidance.
+3. Pick a supported variant by intent and current scope/product, not color preference.
 
 **Adding a section to an existing page:**
 
 > Wrap the section in a `Card` from `@app/components/v3`. Use `CardHeader`
 > with `CardTitle` + optional `CardDescription` + `CardAction` for the
-> top-right primary button (variant `project` on a project page). Put the
-> table or content in `CardContent`.
+> top-right primary button (the variant for the current scope or product,
+> when supported). Put the table or content in `CardContent`.
 
 **A new create/edit form:**
 
@@ -397,9 +424,10 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 > scrollable detail, wizards):** right-side `Sheet` (`Sheet`, `SheetContent`,
 > `SheetHeader` with `SheetTitle` + `SheetDescription`, `SheetFooter` with
 > the action buttons). Use `react-hook-form` with a Zod resolver in both
-> cases. Each input is wrapped in `Field` + `FieldLabel` + `FieldContent` +
-> `FieldError`. Primary button variant is scope dependent (`project` /
-> `org` / `sub-org`), cancel is `ghost`.
+> cases. Compose labeled/validated inputs in `Field` with `FieldLabel` and
+> only the description, content layout, or feedback slots needed. Primary
+> button variant follows the current scope/product (`project`, `org`,
+> `sub-org`, `pam`, or `av`, when supported); cancel is `ghost`.
 
 **A status indicator:**
 
@@ -431,7 +459,7 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 **Refer to:**
 
 - [`Badge.stories.tsx`](frontend/src/components/v3/generic/Badge/Badge.stories.tsx) — canonical semantic reference for variant choice.
-- [`OverviewPage`](frontend/src/pages/secret-manager/OverviewPage) — full-page composition reference (Card-with-table, Create Secret Sheet, filters, DropdownMenu + ButtonGroup). Use the v3 `PageHeader` documented above rather than mirroring its legacy header import.
+- [`OverviewPage`](frontend/src/pages/secret-manager/OverviewPage) — full-page composition reference (v3 PageHeader, Card-with-table, Create Secret Sheet, filters, DropdownMenu + ButtonGroup).
 - [`AccessControlPage`](frontend/src/pages/project/AccessControlPage) — full-page reference (permission-gated actions, `DocumentationLinkBadge`, role badges with `ClockAlertIcon` for expired access).
 - §8 above for any user-visible copy.
 
@@ -441,12 +469,12 @@ Pasteable prompt fragments for AI coding agents producing new UI.
    Badge, Button, Card, Table, Sheet first.
 2. **Read the two reference pages** — `OverviewPage` and `AccessControlPage`
    render the full v3 vocabulary in production.
-3. **Tokens live in `index.css`** — `@theme` block, lines 56–214. Never
+3. **Tokens live in `index.css`** — `@theme` blocks and theme overrides. Never
    introduce a hex that is not here.
 4. **Adding a variant** — extend the `cva()` block in the component and add
-   a story. Keep the tint pattern (`bg-<c>/15 border-<c>/10` for Badge,
-   `bg-<c>/10 border-<c>/25` for Button).
-5. **Never use v2 for new code** — unless no v3 equivalent exists. Use the v3
-   `PageHeader` for new page headings; existing v2 consumers migrate separately.
+   a story when appropriate. Match the existing variant family rather than
+   imposing a tint recipe on neutral, outline, or product variants.
+5. **Prefer v3 for new code** — use v2 only where needed for behavior not covered
+   by v3. Existing blocked v2 consumers migrate after lifecycle parity review.
 6. **Before merging** — `make reviewable-ui` (lint + type-check).
 7. **When in doubt** — mirror `OverviewPage`.
