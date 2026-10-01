@@ -37,10 +37,12 @@ const readProjectId = (source: unknown) => {
   return typeof projectId === "string" ? projectId : undefined;
 };
 
-// Every RBAC denial is a CASL ForbiddenError or PermissionBoundaryError, and onError hooks run
-// before the error handler, so this one hook sees all of them. ForbiddenRequestError is skipped
-// on purpose: it's used for auth-mode mismatches, plan gating and admin-only checks, none of
-// which are permission decisions.
+// RBAC denials surface as a CASL ForbiddenError or PermissionBoundaryError, and onError hooks run
+// before the error handler, so this one hook sees them all. ForbiddenRequestError is skipped on
+// purpose: most of its throw sites are auth-mode mismatches, plan gating, admin-only checks and
+// ownership checks that carry no action or subject, so recording them would bury real denials.
+// The few services that evaluate permission.can() by hand and throw ForbiddenRequestError are
+// not captured here; move them onto throwUnlessCan to record them.
 export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvider) => {
   server.addHook("onError", async (req, _reply, error) => {
     const isCaslDenial = error instanceof ForbiddenError;
@@ -52,11 +54,13 @@ export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvid
 
     const caslError = isCaslDenial ? (error as unknown as ForbiddenError<AnyAbility>) : undefined;
     const missing = isCaslDenial ? undefined : readMissingPermission((error as PermissionBoundaryError).details);
+
+    const { schema } = req.routeOptions;
     const projectId =
       requestContext.get(RequestContextKey.ProjectDetails)?.id ??
       readProjectId(req.params) ??
-      readProjectId(req.body) ??
-      readProjectId(req.query);
+      (schema?.body ? readProjectId(req.body) : undefined) ??
+      (schema?.querystring ? readProjectId(req.query) : undefined);
 
     void server.services.auditLog.recordPermissionDenied({
       ...req.auditLogInfo,

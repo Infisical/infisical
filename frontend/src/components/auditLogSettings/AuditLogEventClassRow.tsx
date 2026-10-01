@@ -57,16 +57,14 @@ export const AuditLogEventClassRow = ({
   return (
     <Field orientation="horizontal" className="gap-8 px-6 py-6">
       <FieldContent>
-        <FieldTitle className="text-base leading-5">
+        <FieldTitle>
           <label htmlFor={id}>{auditLogEventClassToNameMap[eventClass]}</label>
         </FieldTitle>
-        <FieldDescription className="max-w-2xl text-sm text-accent">
+        <FieldDescription className="max-w-2xl">
           {auditLogEventClassToDescriptionMap[eventClass]}
         </FieldDescription>
         {descriptionExtra && (
-          <FieldDescription className="max-w-2xl text-sm text-accent">
-            {descriptionExtra}
-          </FieldDescription>
+          <FieldDescription className="max-w-2xl">{descriptionExtra}</FieldDescription>
         )}
         {warning && (
           <Alert variant="warning" className="mt-2 max-w-2xl">

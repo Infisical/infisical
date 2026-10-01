@@ -6017,7 +6017,6 @@ interface UpdateAuditLogSettingsEvent {
   type: EventType.UPDATE_AUDIT_LOG_SETTINGS;
   metadata: {
     scope: "organization" | "project";
-    projectId?: string;
     eventClasses: { eventClass: string; isEnabled: boolean }[];
   };
 }

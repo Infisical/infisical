@@ -737,7 +737,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.AuditLogs],
       description: "Get which audit log event classes the project records",
       params: z.object({
-        projectId: z.string().trim().describe(AUDIT_LOG_SETTINGS.GET_PROJECT.projectId)
+        projectId: z.string().uuid().describe(AUDIT_LOG_SETTINGS.GET_PROJECT.projectId)
       }),
       response: {
         200: AuditLogSettingsResponseSchema
@@ -768,7 +768,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.AuditLogs],
       description: "Update which audit log event classes the project records",
       params: z.object({
-        projectId: z.string().trim().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.projectId)
+        projectId: z.string().uuid().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.projectId)
       }),
       body: updateAuditLogSettingsBodySchema(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.isEnabled),
       response: {
@@ -794,7 +794,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
           metadata: {
             scope: "project",
-            projectId: req.params.projectId,
             eventClasses: req.body.eventClasses
           }
         }
