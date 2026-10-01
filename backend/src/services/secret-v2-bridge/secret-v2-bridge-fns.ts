@@ -1970,19 +1970,20 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     );
 
     // carry the source secrets' reminders over to the destination secrets so the schedule
-    // (message, repeatDays, nextReminderDate, fromDate, recipients) survives the move.
+    // (message, repeatDays, nextReminderDate, fromDate) survives the move, and the reminder's alert
+    // (who gets notified and how) follows it.
     const remindersToCreate = sourceReminders
       .map((rem) => {
         const key = rem.secretId ? sourceSecretIdToKey[rem.secretId] : undefined;
         const destinationSecretId = key ? destinationSecretIdByKey[key] : undefined;
-        if (!destinationSecretId) return null;
+        if (!rem.secretId || !destinationSecretId) return null;
         return {
+          sourceSecretId: rem.secretId,
           secretId: destinationSecretId,
           message: rem.message,
           repeatDays: rem.repeatDays,
           nextReminderDate: rem.nextReminderDate,
           fromDate: rem.fromDate,
-          recipients: rem.recipients,
           projectId
         };
       })
@@ -1992,7 +1993,14 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       // we can delete the reminders in this case, because if it gets in this step,
       //  it means that the move is a overwrite move or there is no existing reminder for the secret.
       await reminderDAL.delete({ $in: { secretId: remindersToCreate.map((r) => r.secretId) } }, tx);
-      await reminderService.batchCreateReminders(remindersToCreate, tx);
+      await reminderService.batchCreateReminders(
+        remindersToCreate.map(({ sourceSecretId, ...reminder }) => reminder),
+        tx
+      );
+      await reminderService.moveReminderAlerts(
+        remindersToCreate.map((r) => ({ fromSecretId: r.sourceSecretId, toSecretId: r.secretId })),
+        tx
+      );
     }
 
     isDestinationUpdated = true;

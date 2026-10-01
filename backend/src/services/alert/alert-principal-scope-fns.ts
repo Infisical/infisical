@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { OrgMembershipStatus } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -30,18 +32,21 @@ export type TInScopePrincipals = { userIds: Set<string>; groupIds: Set<string> }
  */
 export const resolvePrincipalsInScope = async (
   { orgDAL, projectDAL, groupDAL }: TPrincipalScopeDALs,
-  { orgId, projectId, userIds, groupIds }: TPrincipalScope & { userIds: string[]; groupIds: string[] }
+  { orgId, projectId, userIds, groupIds, tx }: TPrincipalScope & { userIds: string[]; groupIds: string[]; tx?: Knex }
 ): Promise<TInScopePrincipals> => {
   if (userIds.length === 0 && groupIds.length === 0) return { userIds: new Set(), groupIds: new Set() };
 
   const activeOrgUserIds = new Set<string>();
   if (userIds.length) {
-    const memberships = await orgDAL.findMembership({
-      $in: { actorUserId: userIds },
-      scopeOrgId: orgId,
-      isActive: true,
-      status: OrgMembershipStatus.Accepted
-    });
+    const memberships = await orgDAL.findMembership(
+      {
+        $in: { actorUserId: userIds },
+        scopeOrgId: orgId,
+        isActive: true,
+        status: OrgMembershipStatus.Accepted
+      },
+      { tx }
+    );
     memberships.forEach((membership) => {
       if (membership.actorUserId) activeOrgUserIds.add(membership.actorUserId);
     });
@@ -52,7 +57,8 @@ export const resolvePrincipalsInScope = async (
       orgId,
       projectId,
       userIds: [...activeOrgUserIds],
-      groupIds
+      groupIds,
+      tx
     });
     return { userIds: new Set(effectiveUserIds), groupIds: new Set(effectiveGroupIds) };
   }
@@ -61,6 +67,6 @@ export const resolvePrincipalsInScope = async (
 
   if (!groupDAL || groupIds.length === 0) return { userIds: inScopeUserIds, groupIds: new Set(groupIds) };
 
-  const orgGroups = await groupDAL.find({ $in: { id: groupIds }, orgId });
+  const orgGroups = await groupDAL.find({ $in: { id: groupIds }, orgId }, { tx });
   return { userIds: inScopeUserIds, groupIds: new Set(orgGroups.map((group) => group.id)) };
 };

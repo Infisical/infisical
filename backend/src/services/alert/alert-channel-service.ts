@@ -46,7 +46,7 @@ export type TCreateChannelInTxInput = {
   recipients?: TChannelRecipientInput[];
   orgId: string;
   projectId?: string | null;
-  createdByActorId: string;
+  createdByActorId: string | null;
   createdByActorType: string;
 };
 
@@ -68,24 +68,44 @@ export const alertChannelServiceFactory = ({
   projectDAL,
   groupDAL
 }: TAlertChannelServiceFactoryDep) => {
+  const $recipientIdsByType = (recipients: TChannelRecipientInput[]) => ({
+    userIds: [
+      ...new Set(recipients.filter((r) => r.principalType === AlertPrincipalType.USER).map((r) => r.principalId))
+    ],
+    groupIds: [
+      ...new Set(recipients.filter((r) => r.principalType === AlertPrincipalType.GROUP).map((r) => r.principalId))
+    ]
+  });
+
+  const $assertProjectMembersRecipients = (
+    projectId: string | null | undefined,
+    recipients: TChannelRecipientInput[]
+  ) => {
+    const projectMembers = recipients.filter((r) => r.principalType === AlertPrincipalType.PROJECT_MEMBERS);
+    if (projectMembers.length === 0) return;
+    if (!projectId) {
+      throw new BadRequestError({ message: "All project members can only be notified by a project alert" });
+    }
+    if (projectMembers.some((r) => r.principalId !== projectId)) {
+      throw new BadRequestError({ message: "All project members must refer to the alert's own project" });
+    }
+  };
+
   // Confirms every recipient principal (user/group) actually belongs to the channel's scope so an
   // alert can't be made to notify a foreign principal.
   const $validateRecipients = async (
     orgId: string,
     projectId: string | null | undefined,
-    recipients: TChannelRecipientInput[]
+    recipients: TChannelRecipientInput[],
+    tx?: Knex
   ) => {
-    const userIds = [
-      ...new Set(recipients.filter((r) => r.principalType === AlertPrincipalType.USER).map((r) => r.principalId))
-    ];
-    const groupIds = [
-      ...new Set(recipients.filter((r) => r.principalType === AlertPrincipalType.GROUP).map((r) => r.principalId))
-    ];
+    $assertProjectMembersRecipients(projectId, recipients);
+    const { userIds, groupIds } = $recipientIdsByType(recipients);
     if (userIds.length === 0 && groupIds.length === 0) return;
 
     const inScope = await resolvePrincipalsInScope(
       { orgDAL, projectDAL, groupDAL },
-      { orgId, projectId, userIds, groupIds }
+      { orgId, projectId, userIds, groupIds, tx }
     );
     const scopeLabel = projectId ? "project" : "organization";
 
@@ -139,7 +159,7 @@ export const alertChannelServiceFactory = ({
     const recipients = input.recipients ?? [];
     $assertRecipientRules(definition, input.channelType, recipients);
     assertChannelConfigValid(definition, input.channelType, input.config);
-    await $validateRecipients(input.orgId, input.projectId, recipients);
+    await $validateRecipients(input.orgId, input.projectId, recipients, tx);
 
     const created = await alertChannelDAL.create(
       {
@@ -188,7 +208,7 @@ export const alertChannelServiceFactory = ({
 
     if (input.recipients !== undefined) {
       $assertRecipientRules(definition, channel.channelType, input.recipients);
-      await $validateRecipients(channel.orgId, channel.projectId, input.recipients);
+      await $validateRecipients(channel.orgId, channel.projectId, input.recipients, tx);
     }
 
     await alertChannelDAL.updateById(
@@ -214,6 +234,33 @@ export const alertChannelServiceFactory = ({
         );
       }
     }
+  };
+
+  // For callers that carry recipient lists from outside the alert module (eg reminder recipients that
+  // were never pruned when someone left the project), where an out-of-scope id should be dropped
+  // rather than fail the whole write.
+  const filterRecipientsInScope = async (
+    scope: { orgId: string; projectId?: string | null },
+    recipients: TChannelRecipientInput[],
+    tx?: Knex
+  ): Promise<TChannelRecipientInput[]> => {
+    const { userIds, groupIds } = $recipientIdsByType(recipients);
+    const inScope =
+      userIds.length || groupIds.length
+        ? await resolvePrincipalsInScope(
+            { orgDAL, projectDAL, groupDAL },
+            { orgId: scope.orgId, projectId: scope.projectId, userIds, groupIds, tx }
+          )
+        : { userIds: new Set<string>(), groupIds: new Set<string>() };
+
+    return recipients.filter((r) => {
+      if (r.principalType === AlertPrincipalType.USER) return inScope.userIds.has(r.principalId);
+      if (r.principalType === AlertPrincipalType.GROUP) return inScope.groupIds.has(r.principalId);
+      if (r.principalType === AlertPrincipalType.PROJECT_MEMBERS) {
+        return Boolean(scope.projectId) && r.principalId === scope.projectId;
+      }
+      return false;
+    });
   };
 
   const deleteChannelInTx = async (channelId: string, tx: Knex): Promise<void> => {
@@ -255,6 +302,7 @@ export const alertChannelServiceFactory = ({
     createChannelInTx,
     updateChannelInTx,
     deleteChannelInTx,
-    getDetailsForChannels
+    getDetailsForChannels,
+    filterRecipientsInScope
   };
 };

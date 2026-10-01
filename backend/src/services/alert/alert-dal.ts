@@ -187,8 +187,43 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Principals on a resource's alert channels of one type, without loading or decrypting the channels.
+  const findRecipientsForResources = async (
+    {
+      resourceType,
+      resourceIds,
+      channelType,
+      principalType
+    }: { resourceType: string; resourceIds: string[]; channelType: string; principalType: string },
+    tx?: Knex
+  ): Promise<{ resourceId: string; principalId: string }[]> => {
+    if (resourceIds.length === 0) return [];
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.Alert)
+        .where(`${TableName.Alert}.resourceType`, resourceType)
+        .whereIn(`${TableName.Alert}.resourceId`, resourceIds)
+        .join(TableName.AlertChannelMembership, `${TableName.Alert}.id`, `${TableName.AlertChannelMembership}.alertId`)
+        .join(TableName.AlertChannel, `${TableName.AlertChannelMembership}.channelId`, `${TableName.AlertChannel}.id`)
+        .where(`${TableName.AlertChannel}.channelType`, channelType)
+        .join(
+          TableName.AlertChannelRecipient,
+          `${TableName.AlertChannel}.id`,
+          `${TableName.AlertChannelRecipient}.channelId`
+        )
+        .where(`${TableName.AlertChannelRecipient}.principalType`, principalType)
+        .distinct(
+          db.ref("resourceId").withSchema(TableName.Alert).as("resourceId"),
+          db.ref("principalId").withSchema(TableName.AlertChannelRecipient).as("principalId")
+        );
+      return rows as { resourceId: string; principalId: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindRecipientsForResources" });
+    }
+  };
+
   return {
     ...alertOrm,
+    findRecipientsForResources,
     findEnabledByResourceType,
     findEnabledForEvent,
     findActiveById,

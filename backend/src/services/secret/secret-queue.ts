@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop */
+import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 import { randomUUID } from "crypto";
 import { Knex } from "knex";
@@ -124,7 +125,7 @@ type TSecretQueueFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
-  reminderService: Pick<TReminderServiceFactory, "createReminderInternal" | "deleteReminderBySecretId">;
+  reminderService: Pick<TReminderServiceFactory, "createReminder" | "deleteReminderBySecretId">;
   projectEventsService: TProjectEventsService;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -276,7 +277,7 @@ export const secretQueueFactory = ({
   const addSecretReminder = async ({
     oldSecret,
     newSecret,
-    projectId,
+    actor,
     secretReminderRecipients
   }: TCreateSecretReminderDTO) => {
     try {
@@ -294,15 +295,18 @@ export const secretQueueFactory = ({
         });
       }
 
-      await reminderService.createReminderInternal({
-        secretId: newSecret.id,
-        message: newSecret.secretReminderNote,
-        repeatDays: newSecret.secretReminderRepeatDays,
-        recipients: secretReminderRecipients,
-        projectId
+      await reminderService.createReminder({
+        ...actor,
+        reminder: {
+          secretId: newSecret.id,
+          message: newSecret.secretReminderNote,
+          repeatDays: newSecret.secretReminderRepeatDays,
+          recipients: secretReminderRecipients
+        }
       });
     } catch (err) {
       logger.error(err, "Failed to create secret reminder.");
+      if (err instanceof BadRequestError || err instanceof ForbiddenError) throw err;
       throw new BadRequestError({
         name: "SecretReminderCreateFailed",
         message: "Failed to create secret reminder."
@@ -310,7 +314,7 @@ export const secretQueueFactory = ({
     }
   };
 
-  const handleSecretReminder = async ({ newSecret, oldSecret, projectId }: THandleReminderDTO) => {
+  const handleSecretReminder = async ({ newSecret, oldSecret, projectId, actor }: THandleReminderDTO) => {
     const { secretReminderRepeatDays, secretReminderNote, secretReminderRecipients } = newSecret;
 
     if (newSecret.type !== SecretType.Personal && secretReminderRepeatDays !== undefined) {
@@ -322,6 +326,7 @@ export const secretQueueFactory = ({
           oldSecret,
           newSecret,
           projectId,
+          actor,
           secretReminderRecipients: secretReminderRecipients ?? [],
           deleteRecipients: false
         });

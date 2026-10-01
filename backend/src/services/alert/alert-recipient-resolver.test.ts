@@ -13,6 +13,8 @@ const buildResolver = (opts: {
   invitedUserIds?: string[]; // users invited to the org who never accepted
   effectiveProjectUserIds?: string[]; // users currently effective in the project
   effectiveProjectGroupIds?: string[]; // groups currently holding a project membership
+  projectMemberUserIds?: string[]; // users a project member listing returns
+  projectGroupMemberUserIds?: string[]; // users a project group member listing returns
 }) => {
   const usersById = new Map(opts.users.map((u) => [u.id, u]));
   return alertRecipientResolverFactory({
@@ -55,6 +57,12 @@ const buildResolver = (opts: {
         effectiveUserIds: userIds.filter((id) => (opts.effectiveProjectUserIds ?? []).includes(id)),
         effectiveGroupIds: groupIds.filter((id) => (opts.effectiveProjectGroupIds ?? []).includes(id))
       })
+    } as never,
+    projectMembershipDAL: {
+      findAllProjectMembers: async () => (opts.projectMemberUserIds ?? []).map((id) => ({ user: { id } }))
+    } as never,
+    groupProjectDAL: {
+      findAllProjectGroupMembers: async () => (opts.projectGroupMemberUserIds ?? []).map((id) => ({ user: { id } }))
     } as never
   });
 };
@@ -225,5 +233,103 @@ describe("alert recipient resolver — send-time scope re-check", () => {
 
     const emails = (result.get("c1") ?? []).map((r) => r.email);
     expect(emails).toEqual(["u1@example.com"]);
+  });
+});
+
+describe("alert recipient resolver — all project members", () => {
+  test("expands to the project's current members", async () => {
+    const resolver = buildResolver({
+      users: [user("u1"), user("u2")],
+      projectMemberUserIds: ["u1", "u2"],
+      effectiveProjectUserIds: ["u1", "u2"]
+    });
+
+    const result = await resolver.resolveMany(
+      new Map([["c1", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]]]),
+      { orgId: "org-1", projectId: "proj-1" }
+    );
+
+    expect(
+      result
+        .get("c1")
+        ?.map((r) => r.email)
+        .sort()
+    ).toEqual(["u1@example.com", "u2@example.com"]);
+  });
+
+  test("includes members who are in the project only through a group", async () => {
+    const resolver = buildResolver({
+      users: [user("u1"), user("u2")],
+      projectMemberUserIds: ["u1"],
+      projectGroupMemberUserIds: ["u1", "u2"],
+      effectiveProjectUserIds: ["u1", "u2"]
+    });
+
+    const result = await resolver.resolveMany(
+      new Map([["c1", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]]]),
+      { orgId: "org-1", projectId: "proj-1" }
+    );
+
+    expect(
+      result
+        .get("c1")
+        ?.map((r) => r.email)
+        .sort()
+    ).toEqual(["u1@example.com", "u2@example.com"]);
+  });
+
+  test("still drops members whose org membership was deactivated", async () => {
+    const resolver = buildResolver({
+      users: [user("u1"), user("u2")],
+      orgUserIds: ["u1"],
+      deactivatedUserIds: ["u2"],
+      projectMemberUserIds: ["u1", "u2"],
+      effectiveProjectUserIds: ["u1", "u2"]
+    });
+
+    const result = await resolver.resolveMany(
+      new Map([["c1", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]]]),
+      { orgId: "org-1", projectId: "proj-1" }
+    );
+
+    expect(result.get("c1")?.map((r) => r.email)).toEqual(["u1@example.com"]);
+  });
+
+  test("ignores a project members recipient that names another project", async () => {
+    const resolver = buildResolver({
+      users: [user("u1")],
+      projectMemberUserIds: ["u1"],
+      effectiveProjectUserIds: ["u1"]
+    });
+
+    const result = await resolver.resolveMany(
+      new Map([["c1", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "other-project" }]]]),
+      { orgId: "org-1", projectId: "proj-1" }
+    );
+
+    expect(result.get("c1")).toEqual([]);
+  });
+
+  test("emails a user once when listed directly and through project members", async () => {
+    const resolver = buildResolver({
+      users: [user("u1")],
+      projectMemberUserIds: ["u1"],
+      effectiveProjectUserIds: ["u1"]
+    });
+
+    const result = await resolver.resolveMany(
+      new Map([
+        [
+          "c1",
+          [
+            { principalType: AlertPrincipalType.USER, principalId: "u1" },
+            { principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }
+          ]
+        ]
+      ]),
+      { orgId: "org-1", projectId: "proj-1" }
+    );
+
+    expect(result.get("c1")).toHaveLength(1);
   });
 });

@@ -6,7 +6,9 @@ import { TAlertPayload } from "./alert-channel-types";
 
 export enum AlertPrincipalType {
   USER = "user",
-  GROUP = "group"
+  GROUP = "group",
+  // Everyone in the channel's project at send time. principalId is the project id.
+  PROJECT_MEMBERS = "project-members"
 }
 
 export enum AlertTriggerType {

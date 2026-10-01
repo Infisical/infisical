@@ -24,6 +24,13 @@ export type TUpdateAlertDTO = TGenericPermission & {
   channels?: TAlertChannelInput[];
 };
 
+// What a create writes once the caller has been authorized and the input validated.
+export type TNewAlertRows = Omit<TCreateAlertDTO, keyof TGenericPermission | "projectId"> & {
+  orgId: string;
+  projectId: string | null;
+  createdBy: { actorType: string; actorId: string };
+};
+
 export type TGetAlertDTO = TGenericPermission & { alertId: string };
 
 export type TDeleteAlertDTO = TGenericPermission & { alertId: string };

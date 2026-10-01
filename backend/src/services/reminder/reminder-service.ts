@@ -6,24 +6,44 @@ import { ActionProjectType, TableName } from "@app/db/schemas";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TGenericPermission } from "@app/lib/types";
 
+import { TAlertChannelInput } from "../alert/alert-channel-service-types";
+import { AlertChannelType } from "../alert/alert-channel-types";
+import { TAlertServiceFactory } from "../alert/alert-service";
+import { AlertPrincipalType, MAX_RECIPIENTS_PER_CHANNEL } from "../alert/alert-types";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TReminderRecipientDALFactory } from "../reminder-recipients/reminder-recipient-dal";
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TReminderDALFactory } from "./reminder-dal";
+import { emitSecretReminderDue, SECRET_REMINDER_DUE_EVENT, SECRET_REMINDER_RESOURCE_TYPE } from "./reminder-events";
+import { advanceReminderDate, getReminderDueWindow, toUtcDateString } from "./reminder-fns";
 import { TBatchCreateReminderDTO, TCreateReminderDTO, TReminderServiceFactory } from "./reminder-types";
+
+const ORPHAN_REAP_BATCH_SIZE = 500;
+const MAX_ORPHAN_REAP_BATCHES = 20;
+const MAX_ALERT_NAME_LENGTH = 255;
+
+const reminderAlertName = (secretKey: string) => `Reminder for ${secretKey}`.slice(0, MAX_ALERT_NAME_LENGTH);
 
 type TReminderServiceFactoryDep = {
   reminderDAL: TReminderDALFactory;
-  reminderRecipientDAL: TReminderRecipientDALFactory;
-  smtpService: TSmtpService;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  eventEmitter: TEventEmitter;
+  alertService: Pick<
+    TAlertServiceFactory,
+    | "createAlert"
+    | "updateAlert"
+    | "findAlertsForResources"
+    | "findRecipientsForResources"
+    | "deleteAlertsForDeletedResources"
+    | "repointAlertsForResource"
+    | "filterRecipientsInScope"
+  >;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "findOneWithTags">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
@@ -31,9 +51,9 @@ type TReminderServiceFactoryDep = {
 
 export const reminderServiceFactory = ({
   reminderDAL,
-  reminderRecipientDAL,
-  smtpService,
-  projectMembershipDAL,
+  eventEmitter,
+  alertService,
+  projectDAL,
   permissionService,
   secretV2BridgeDAL,
   folderDAL
@@ -44,38 +64,118 @@ export const reminderServiceFactory = ({
     return result;
   };
 
-  const $manageReminderRecipients = async (reminderId: string, newRecipients?: string[] | null): Promise<void> => {
-    if (!newRecipients || newRecipients.length === 0) {
-      // If no recipients provided, remove all existing recipients
-      await reminderRecipientDAL.delete({ reminderId });
+  const $findReminderRecipientIds = async (secretIds: string[], tx?: Knex): Promise<Map<string, string[]>> => {
+    const rows = await alertService.findRecipientsForResources(
+      {
+        resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+        resourceIds: secretIds,
+        channelType: AlertChannelType.EMAIL,
+        principalType: AlertPrincipalType.USER
+      },
+      tx
+    );
+    const bySecret = new Map<string, string[]>();
+    rows.forEach(({ resourceId, principalId }) => {
+      bySecret.set(resourceId, [...(bySecret.get(resourceId) ?? []), principalId]);
+    });
+    return bySecret;
+  };
+
+  // Given `channels`, they are the alert's complete channel list. Otherwise the reminder API only knows
+  // user ids, so it owns the alert's email channels and leaves every other channel (Slack, webhook,
+  // PagerDuty) as the user configured it. An empty list keeps the reminder's original meaning: everyone
+  // in the project. The alert is written as the caller, so the reminder provider checks they can edit
+  // the secret.
+  const $syncReminderAlert = async ({
+    secretId,
+    secretKey,
+    projectId,
+    recipients,
+    channels,
+    actor
+  }: {
+    secretId: string;
+    secretKey: string;
+    projectId: string;
+    recipients?: string[] | null;
+    channels?: TAlertChannelInput[];
+    actor: TGenericPermission;
+  }) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const [existing] = await alertService.findAlertsForResources({
+      resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+      resourceIds: [secretId]
+    });
+
+    const $writeAlert = async (alertChannels: TAlertChannelInput[]) => {
+      if (existing) {
+        await alertService.updateAlert({
+          alertId: existing.id,
+          name: reminderAlertName(secretKey),
+          channels: alertChannels,
+          ...actor
+        });
+        return;
+      }
+      await alertService.createAlert({
+        name: reminderAlertName(secretKey),
+        resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+        resourceId: secretId,
+        eventType: SECRET_REMINDER_DUE_EVENT,
+        condition: null,
+        projectId,
+        channels: alertChannels,
+        ...actor
+      });
+    };
+
+    if (channels) {
+      await $writeAlert(channels);
       return;
     }
 
-    // Remove duplicates from input
-    const uniqueRecipients = [...new Set(newRecipients)];
+    // Reminder recipients were never pruned when someone left the project, so drop them rather than fail.
+    const requested = [...new Set(recipients ?? [])];
+    const inScope = await alertService.filterRecipientsInScope(
+      { orgId: project.orgId, projectId },
+      requested.map((principalId) => ({ principalType: AlertPrincipalType.USER, principalId }))
+    );
+    // Falling back to the whole project here would send the secret's key, path and note to people nobody
+    // chose, so a list with nobody left in it is refused instead.
+    if (requested.length && !inScope.length) {
+      throw new BadRequestError({
+        message: "None of the selected reminder recipients are members of this project. Choose recipients again."
+      });
+    }
+    const emailRecipients = inScope.length
+      ? inScope
+      : [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: projectId }];
+    const existingEmailChannels =
+      existing?.channels.filter((channel) => channel.channelType === AlertChannelType.EMAIL) ?? [];
 
-    // Get existing recipients
-    const existingRecipients = await reminderRecipientDAL.find({ reminderId });
-    const existingUserIds = new Set(existingRecipients.map((r) => r.userId));
-    const newUserIds = new Set(uniqueRecipients);
-
-    // Find recipients to add and remove
-    const recipientsToAdd = uniqueRecipients.filter((userId) => !existingUserIds.has(userId));
-    const recipientsToRemove = existingRecipients.filter((r) => !newUserIds.has(r.userId));
-
-    // Perform database operations
-    if (recipientsToRemove.length > 0) {
-      await reminderRecipientDAL.delete({ $in: { id: recipientsToRemove.map((r) => r.id) } });
+    const emailChannels: TAlertChannelInput[] = [];
+    for (let i = 0; i < emailRecipients.length; i += MAX_RECIPIENTS_PER_CHANNEL) {
+      const index = emailChannels.length;
+      emailChannels.push({
+        ...(existingEmailChannels[index] ? { id: existingEmailChannels[index].id } : {}),
+        name: existingEmailChannels[index]?.name ?? (index === 0 ? "Email" : `Email ${index + 1}`),
+        channelType: AlertChannelType.EMAIL,
+        recipients: emailRecipients.slice(i, i + MAX_RECIPIENTS_PER_CHANNEL)
+      });
     }
 
-    if (recipientsToAdd.length > 0) {
-      await reminderRecipientDAL.insertMany(
-        recipientsToAdd.map((userId) => ({
-          reminderId,
-          userId
-        }))
-      );
-    }
+    const otherChannels: TAlertChannelInput[] = (existing?.channels ?? [])
+      .filter((channel) => channel.channelType !== AlertChannelType.EMAIL)
+      .map((channel) => ({
+        id: channel.id,
+        name: channel.name,
+        channelType: channel.channelType as AlertChannelType,
+        enabled: channel.enabled
+      }));
+
+    await $writeAlert([...emailChannels, ...otherChannels]);
   };
 
   const $getSecretForPermissionCheck = async (secretId: string) => {
@@ -102,26 +202,29 @@ export const reminderServiceFactory = ({
     };
   };
 
-  const createReminderInternal: TReminderServiceFactory["createReminderInternal"] = async ({
+  const $saveReminder = async ({
     secretId,
+    secretKey,
     message,
     repeatDays,
     nextReminderDate: nextReminderDateInput,
     recipients,
+    channels,
     projectId,
-    fromDate: fromDateInput
+    fromDate: fromDateInput,
+    actor
   }: {
-    secretId?: string;
+    secretId: string;
+    secretKey: string;
     message?: string | null;
     repeatDays?: number | null;
     nextReminderDate?: string | null;
     recipients?: string[] | null;
+    channels?: TAlertChannelInput[];
     fromDate?: string | null;
     projectId: string;
+    actor: TGenericPermission;
   }) => {
-    if (!secretId) {
-      throw new BadRequestError({ message: "secretId is required" });
-    }
     let nextReminderDate;
     let fromDate;
     if (nextReminderDateInput) {
@@ -141,11 +244,14 @@ export const reminderServiceFactory = ({
       throw new BadRequestError({ message: "repeatDays must be a positive number" });
     }
 
+    // The alert goes first, outside any transaction because encrypting channel config can call out to
+    // KMS. If the reminder write then fails, an alert with no reminder never fires and is reused next time.
+    await $syncReminderAlert({ secretId, secretKey, projectId, recipients, channels, actor });
+
     const existingReminder = await reminderDAL.findOne({ secretId });
     let reminderId: string;
 
     if (existingReminder) {
-      // Update existing reminder
       await reminderDAL.updateById(existingReminder.id, {
         message,
         repeatDays,
@@ -154,7 +260,6 @@ export const reminderServiceFactory = ({
       });
       reminderId = existingReminder.id;
     } else {
-      // Create new reminder
       const newReminder = await reminderDAL.create({
         secretId,
         message,
@@ -165,8 +270,6 @@ export const reminderServiceFactory = ({
       reminderId = newReminder.id;
     }
 
-    // Manage recipients (add/update/delete as needed)
-    await $manageReminderRecipients(reminderId, recipients);
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return { id: reminderId, created: !existingReminder };
   };
@@ -192,11 +295,13 @@ export const reminderServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, subjectFields)
     );
 
-    const response = await createReminderInternal({
+    return $saveReminder({
       ...reminder,
-      projectId: secret.projectId
+      secretId: secret.id,
+      secretKey: secret.key,
+      projectId: secret.projectId,
+      actor: { actor, actorId, actorOrgId, actorAuthMethod }
     });
-    return response;
   };
 
   const getReminder: TReminderServiceFactory["getReminder"] = async ({
@@ -227,87 +332,72 @@ export const reminderServiceFactory = ({
       subjectFields
     );
     const reminder = await reminderDAL.findSecretReminder(secretId);
-    return reminder;
+    if (!reminder) return null;
+    const recipientIds = await $findReminderRecipientIds([secretId]);
+    return { ...reminder, recipients: recipientIds.get(secretId) ?? [] };
   };
 
-  const sendDailyReminders: TReminderServiceFactory["sendDailyReminders"] = async () => {
-    const appCfg = getConfig();
-    const remindersToSend = await reminderDAL.findSecretDailyReminders();
+  const dispatchDueReminders: TReminderServiceFactory["dispatchDueReminders"] = async ({ now = new Date() } = {}) => {
+    const dueReminders = await reminderDAL.findDueReminders(getReminderDueWindow(now));
 
-    // Resolve the human-readable folder path for each reminder's secret, batched per project.
-    const folderIdsByProjectId = new Map<string, Set<string>>();
-    for (const reminder of remindersToSend) {
-      if (reminder.projectId && reminder.folderId) {
-        const folderIds = folderIdsByProjectId.get(reminder.projectId) ?? new Set<string>();
-        folderIds.add(reminder.folderId);
-        folderIdsByProjectId.set(reminder.projectId, folderIds);
-      }
-    }
-
-    const folderPathById = new Map<string, string>();
-    for (const [projectId, folderIdSet] of folderIdsByProjectId) {
-      const folderIds = [...folderIdSet];
-      // Resolving folder paths only enriches the email. A failure here must not abort the whole
-      // daily reminder batch, so degrade gracefully and let the email send without the path/link.
+    for (const reminder of dueReminders) {
+      const { secretId } = reminder;
+      // eslint-disable-next-line no-continue
+      if (!secretId) continue;
       try {
-        const folders = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
-        folders.forEach((folder, idx) => {
-          if (folder?.path) folderPathById.set(folderIds[idx], folder.path);
-        });
-      } catch (error) {
-        logger.error(error, `Failed to resolve secret paths for reminder emails [projectId=${projectId}]`);
-      }
-    }
-
-    for (const reminder of remindersToSend) {
-      try {
+        // Delivery happens in the alert module after commit, so nothing slow runs in this transaction.
         await reminderDAL.transaction(async (tx) => {
-          const recipients: string[] = reminder.recipients
-            .map((r) => r.email)
-            .filter((email): email is string => Boolean(email));
-          if (recipients.length === 0) {
-            const members = await projectMembershipDAL.findAllProjectMembers(reminder.projectId);
-            recipients.push(...members.map((m) => m.user.email).filter((email): email is string => Boolean(email)));
-          }
+          // The due list was read before this transaction, so a reminder cancelled or rescheduled since
+          // must not fire on its old date or have its new one overwritten.
+          const current = await reminderDAL.findByIdForUpdate(reminder.id, tx);
+          if (!current || current.nextReminderDate.getTime() !== reminder.nextReminderDate.getTime()) return;
 
-          const secretPath = reminder.folderId ? folderPathById.get(reminder.folderId) : undefined;
-          let secretUrl: string | undefined;
-          if (reminder.organizationId && reminder.projectId && reminder.envSlug) {
-            const query = new URLSearchParams({
-              secretPath: secretPath || "/",
-              environments: JSON.stringify([reminder.envSlug])
-            });
-            if (reminder.secretKey) query.set("search", reminder.secretKey);
-            secretUrl = `${appCfg.SITE_URL}/organizations/${reminder.organizationId}/projects/secret-management/${reminder.projectId}/overview?${query.toString()}`;
-          }
-
-          await smtpService.sendMail({
-            template: SmtpTemplates.SecretReminder,
-            subjectLine: "Infisical secret reminder",
-            recipients,
-            substitutions: {
-              reminderNote: reminder.message || "",
-              projectName: reminder.projectName || "",
-              organizationName: reminder.organizationName || "",
-              secretKey: reminder.secretKey || "",
-              environment: reminder.envName || reminder.envSlug || "",
-              secretPath: secretPath || "",
-              secretUrl: secretUrl || ""
-            }
-          });
-          if (reminder.repeatDays) {
-            await reminderDAL.updateById(reminder.id, { nextReminderDate: $addDays(reminder.repeatDays) }, tx);
+          await emitSecretReminderDue(
+            eventEmitter,
+            {
+              orgId: reminder.orgId,
+              projectId: reminder.projectId,
+              reminderId: reminder.id,
+              secretId,
+              note: current.message,
+              repeatDays: current.repeatDays,
+              occurrenceDate: toUtcDateString(current.nextReminderDate)
+            },
+            tx
+          );
+          if (current.repeatDays) {
+            await reminderDAL.updateById(
+              reminder.id,
+              { nextReminderDate: advanceReminderDate(current.nextReminderDate, current.repeatDays, now) },
+              tx
+            );
           } else {
             await reminderDAL.deleteById(reminder.id, tx);
           }
         });
       } catch (error) {
-        logger.error(
-          error,
-          `Failed to send reminder to recipients ${reminder.recipients.map((r) => r.email).join(", ")}`
-        );
+        logger.error(error, `Failed to dispatch secret reminder [reminderId=${reminder.id}] [secretId=${secretId}]`);
       }
     }
+  };
+
+  const reapOrphanedReminderAlerts: TReminderServiceFactory["reapOrphanedReminderAlerts"] = async () => {
+    for (let batch = 0; batch < MAX_ORPHAN_REAP_BATCHES; batch += 1) {
+      // eslint-disable-next-line no-await-in-loop -- each batch is its own short transaction
+      const orphanedSecretIds = await reminderDAL.findOrphanedReminderAlertResourceIds({
+        resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+        limit: ORPHAN_REAP_BATCH_SIZE
+      });
+      if (orphanedSecretIds.length === 0) return;
+
+      // eslint-disable-next-line no-await-in-loop
+      await alertService.deleteAlertsForDeletedResources({
+        resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+        resourceIds: orphanedSecretIds
+      });
+      if (orphanedSecretIds.length < ORPHAN_REAP_BATCH_SIZE) return;
+    }
+    logger.warn(`Stopped reaping orphaned secret reminder alerts after ${MAX_ORPHAN_REAP_BATCHES} batches`);
   };
 
   const deleteReminder: TReminderServiceFactory["deleteReminder"] = async ({
@@ -338,6 +428,10 @@ export const reminderServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, subjectFields)
     );
     await reminderDAL.delete({ secretId });
+    await alertService.deleteAlertsForDeletedResources({
+      resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+      resourceIds: [secretId]
+    });
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(secret.projectId);
   };
 
@@ -347,6 +441,10 @@ export const reminderServiceFactory = ({
     tx?: Knex
   ) => {
     await reminderDAL.delete({ secretId }, tx);
+    await alertService.deleteAlertsForDeletedResources(
+      { resourceType: SECRET_REMINDER_RESOURCE_TYPE, resourceIds: [secretId] },
+      tx
+    );
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
   };
 
@@ -364,7 +462,6 @@ export const reminderServiceFactory = ({
         message,
         repeatDays,
         nextReminderDate: nextReminderDateInput,
-        recipients,
         projectId,
         fromDate: fromDateInput
       }) => {
@@ -393,7 +490,6 @@ export const reminderServiceFactory = ({
           message,
           repeatDays,
           nextReminderDate,
-          recipients: recipients ? [...new Set(recipients)] : [],
           projectId,
           fromDate
         };
@@ -411,24 +507,6 @@ export const reminderServiceFactory = ({
       tx
     );
 
-    const allRecipientInserts: Array<{ reminderId: string; userId: string }> = [];
-
-    newReminders.forEach((reminder, index) => {
-      const { recipients } = processedReminders[index];
-      if (recipients && recipients.length > 0) {
-        recipients.forEach((userId) => {
-          allRecipientInserts.push({
-            reminderId: reminder.id,
-            userId
-          });
-        });
-      }
-    });
-
-    if (allRecipientInserts.length > 0) {
-      await reminderRecipientDAL.insertMany(allRecipientInserts, tx);
-    }
-
     const projectIds = new Set(processedReminders.map((r) => r.projectId).filter((id): id is string => Boolean(id)));
     for (const projectId of projectIds) {
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
@@ -440,16 +518,41 @@ export const reminderServiceFactory = ({
     };
   };
 
+  // Alerts are copied by moving them rather than rebuilding them, so channel secrets (webhook signing
+  // keys, PagerDuty integration keys) and send history follow the secret to its new id.
+  const moveReminderAlerts: TReminderServiceFactory["moveReminderAlerts"] = async (moves, tx) => {
+    if (moves.length === 0) return;
+    await alertService.deleteAlertsForDeletedResources(
+      { resourceType: SECRET_REMINDER_RESOURCE_TYPE, resourceIds: moves.map((move) => move.toSecretId) },
+      tx
+    );
+    for (const move of moves) {
+      await alertService.repointAlertsForResource(
+        {
+          resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+          fromResourceId: move.fromSecretId,
+          toResourceId: move.toSecretId
+        },
+        tx
+      );
+    }
+  };
+
   const getRemindersForDashboard: TReminderServiceFactory["getRemindersForDashboard"] = async (secretIds) => {
     // scott we don't need to check permissions/secret existence because these are the
     // secrets from the dashboard that have already gone through these checks
 
     const reminders = await reminderDAL.findSecretReminders(secretIds);
+    const recipientIds = await $findReminderRecipientIds(
+      reminders.map((reminder) => reminder.secretId).filter((id): id is string => Boolean(id))
+    );
 
-    const reminderMap: Record<string, (typeof reminders)[number]> = {};
+    const reminderMap: Record<string, (typeof reminders)[number] & { recipients: string[] }> = {};
 
     reminders.forEach((reminder) => {
-      if (reminder.secretId) reminderMap[reminder.secretId] = reminder;
+      if (reminder.secretId) {
+        reminderMap[reminder.secretId] = { ...reminder, recipients: recipientIds.get(reminder.secretId) ?? [] };
+      }
     });
 
     return reminderMap;
@@ -458,11 +561,12 @@ export const reminderServiceFactory = ({
   return {
     createReminder,
     getReminder,
-    sendDailyReminders,
+    dispatchDueReminders,
+    reapOrphanedReminderAlerts,
     deleteReminder,
     deleteReminderBySecretId,
     batchCreateReminders,
-    createReminderInternal,
+    moveReminderAlerts,
     getRemindersForDashboard
   };
 };

@@ -9,7 +9,7 @@ export const alertKeys = {
   list: (filters: TListAlertsDTO) => [...alertKeys.all, "list", filters] as const
 };
 
-const fetchAlerts = async (filters: TListAlertsDTO) => {
+export const fetchAlerts = async (filters: TListAlertsDTO) => {
   const { data } = await apiRequest.get<{ alerts: TAlert[] }>("/api/v1/alerts", {
     params: filters
   });

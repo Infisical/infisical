@@ -4,34 +4,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AlertChannelType } from "@app/services/alert/alert-channel-types";
-import {
-  AlertPrincipalType,
-  MAX_CHANNELS_PER_ALERT,
-  MAX_RECIPIENTS_PER_CHANNEL
-} from "@app/services/alert/alert-types";
+import { MAX_CHANNELS_PER_ALERT, MAX_RECIPIENTS_PER_CHANNEL } from "@app/services/alert/alert-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const ChannelRecipientSchema = z.object({
-  principalType: z.nativeEnum(AlertPrincipalType),
-  principalId: z.string().min(1)
-});
-
-const CreateChannelInputSchema = z.object({
-  name: z.string().min(1).max(255),
-  channelType: z.nativeEnum(AlertChannelType),
-  config: z.record(z.unknown()).default({}),
-  enabled: z.boolean().optional(),
-  recipients: z.array(ChannelRecipientSchema).max(MAX_RECIPIENTS_PER_CHANNEL).optional()
-});
-
-const UpdateChannelInputSchema = z.object({
-  id: z.string().uuid().optional(),
-  name: z.string().min(1).max(255),
-  channelType: z.nativeEnum(AlertChannelType),
-  config: z.record(z.unknown()).optional(),
-  enabled: z.boolean().optional(),
-  recipients: z.array(ChannelRecipientSchema).max(MAX_RECIPIENTS_PER_CHANNEL).optional()
-});
+import { ChannelRecipientSchema, CreateChannelInputSchema, UpdateChannelInputSchema } from "./alert-channel-schemas";
 
 const AlertResponseSchema = z.object({
   id: z.string().uuid(),
