@@ -79,7 +79,10 @@ export const AuditLogEventClassesForm = ({
   const onSubmit = async (form: TForm) => {
     const eventClasses = CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({
       eventClass,
-      isEnabled: form[eventClass]
+      isEnabled:
+        eventClass === AuditLogEventClass.Authorization && !shouldUseNewPrivilegeSystem
+          ? false
+          : form[eventClass]
     }));
 
     try {

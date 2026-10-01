@@ -1024,7 +1024,11 @@ inserts the new set, so there is no merge with what was stored before.
 `PermissionBoundaryError` (not `ForbiddenRequestError`, which verifyAuth and plan gates also throw),
 only for orgs on the new privilege system whose plan has audit log retention, and collapsed per
 actor, project, action, subject, route and method for one minute. `recordPermissionDenied` on the
-audit log service never throws to the request.
+audit log service never throws to the request. Because a legacy org can never record a denial, the
+settings update methods reject a request that turns the authorization class on for one
+(`assertAuthorizationClassAllowed`), and the UI locks the toggle with a link to the upgrade, so the
+restriction is surfaced in the API error, the response's `shouldUseNewPrivilegeSystem`, the UI, and
+the docs rather than stored as a setting that does nothing.
 
 The collapse itself is generic. `createCollapsedAuditLog` on the audit log service takes any
 `TCreateAuditLogDTO` plus `collapseKeyParts` (the event type is always part of the key) and an

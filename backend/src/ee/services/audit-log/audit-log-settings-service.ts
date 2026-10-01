@@ -95,6 +95,20 @@ const toFullOverrides = (eventClasses: TAuditLogEventClassSetting[]): TFullOverr
   return Object.fromEntries(eventClasses.map((el) => [el.eventClass, el.isEnabled])) as TFullOverrides;
 };
 
+// Denials are never recorded on the legacy privilege system, so accepting the toggle would store a
+// setting that silently does nothing.
+const assertAuthorizationClassAllowed = (
+  org: { shouldUseNewPrivilegeSystem?: boolean | null },
+  overrides: TFullOverrides
+) => {
+  if (overrides[AuditLogEventClass.Authorization] && !org.shouldUseNewPrivilegeSystem) {
+    throw new BadRequestError({
+      message:
+        "Permission denials are only recorded for organizations on the new privilege system. Upgrade the privilege system under Access Control before turning on the authorization class."
+    });
+  }
+};
+
 export const auditLogSettingsServiceFactory = ({
   auditLogSettingsDAL,
   orgDAL,
@@ -205,6 +219,7 @@ export const auditLogSettingsServiceFactory = ({
     await assertOrgSettingsPermission(actor, OrgPermissionActions.Edit);
     const org = await findOrgOrThrow(actor.orgId);
     const overrides = toFullOverrides(eventClasses);
+    assertAuthorizationClassAllowed(org, overrides);
     await writeScopeSettings({ orgId: org.id, projectId: null }, overrides);
     return toResponse(overrides, org);
   };
@@ -250,6 +265,7 @@ export const auditLogSettingsServiceFactory = ({
     const project = await findProjectOrThrow(dto.projectId);
     const org = await findOrgOrThrow(project.orgId);
     const overrides = toFullOverrides(eventClasses);
+    assertAuthorizationClassAllowed(org, overrides);
     await writeScopeSettings({ orgId: org.id, projectId: project.id }, overrides);
     return toResponse(overrides, org);
   };

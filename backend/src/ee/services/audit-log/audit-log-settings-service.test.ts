@@ -57,9 +57,9 @@ const orgActor = {
   parentOrgId: "org-1"
 } as never;
 
-const createHarness = ({ rows = [] as TRow[] } = {}) => {
+const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true } = {}) => {
   const orgDAL = {
-    findById: vi.fn(async (id: string) => ({ id, shouldUseNewPrivilegeSystem: true }))
+    findById: vi.fn(async (id: string) => ({ id, shouldUseNewPrivilegeSystem }))
   };
   const auditLogSettingsDAL = {
     find: vi.fn(async (filter: { orgId: string; projectId?: string | null }) =>
@@ -174,6 +174,38 @@ describe("updateOrgSettings", () => {
       })
     ).rejects.toThrow("Event class 'data-access' appears more than once");
     expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("refuses to turn on authorization for an org on the legacy privilege system", async () => {
+    const { service, auditLogSettingsDAL } = createHarness({ shouldUseNewPrivilegeSystem: false });
+
+    await expect(
+      service.updateOrgSettings({
+        actor: orgActor,
+        eventClasses: [
+          { eventClass: AuditLogEventClass.DataAccess, isEnabled: true },
+          { eventClass: AuditLogEventClass.Authentication, isEnabled: true },
+          { eventClass: AuditLogEventClass.Authorization, isEnabled: true }
+        ]
+      })
+    ).rejects.toThrow("Permission denials are only recorded for organizations on the new privilege system");
+    expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("still lets an org on the legacy privilege system save with authorization off", async () => {
+    const { service, auditLogSettingsDAL } = createHarness({ shouldUseNewPrivilegeSystem: false });
+
+    const result = await service.updateOrgSettings({
+      actor: orgActor,
+      eventClasses: [
+        { eventClass: AuditLogEventClass.DataAccess, isEnabled: false },
+        { eventClass: AuditLogEventClass.Authentication, isEnabled: true },
+        { eventClass: AuditLogEventClass.Authorization, isEnabled: false }
+      ]
+    });
+
+    expect(auditLogSettingsDAL.transaction).toHaveBeenCalledTimes(1);
+    expect(result.shouldUseNewPrivilegeSystem).toBe(false);
   });
 
   test("replaces the scope's rows and answers from the request, without re-reading", async () => {
