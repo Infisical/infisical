@@ -243,12 +243,13 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
         className="pointer-events-none invisible absolute flex items-center gap-1.5 whitespace-nowrap sm:gap-3"
         aria-hidden="true"
       >
-        <span
-          data-measure="root"
-          className="inline-flex max-w-48 items-center gap-4 pr-1.5 pl-3 text-sm"
-        >
-          <HomeIcon className="size-4" />
-          <span>/</span>
+        <span data-measure="root" className="inline-flex items-center gap-1.5 text-sm">
+          <span className="inline-flex min-h-7 max-w-48 items-center pr-1.5 pl-3">
+            <HomeIcon className="size-4" />
+          </span>
+          <span className="inline-flex items-center text-muted [&>svg]:size-3">
+            <SlashIcon className="size-3 -rotate-12" />
+          </span>
         </span>
         <span data-measure="separator" className="inline-flex items-center">
           <SlashIcon className="size-3 -rotate-12" />
@@ -276,7 +277,7 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
           <BreadcrumbItem>
             <BreadcrumbLink
               asChild
-              className="inline-flex min-h-7 max-w-48 items-center gap-4 pr-1.5 pl-3 hover:no-underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              className="inline-flex min-h-7 max-w-48 items-center pr-1.5 pl-3 hover:no-underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             >
               <Link
                 from="/organizations/$orgId/projects/secret-management/$projectId/overview"
@@ -286,10 +287,12 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
                 title="/"
               >
                 <HomeIcon className="size-4 shrink-0 text-accent" aria-hidden="true" />
-                <span>/</span>
               </Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
+          <BreadcrumbSeparator>
+            <SlashIcon className="size-3 -rotate-12" />
+          </BreadcrumbSeparator>
 
           {/* Start segments */}
           {startSegments.map((path, index) => (
