@@ -22,7 +22,7 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
         ref={ref}
         variant={variant}
         size={size}
-        aria-label={ariaLabel}
+        aria-label={isCopying ? "Copied to clipboard" : ariaLabel}
         onClick={(event) => {
           navigator.clipboard.writeText(value);
           setCopyText("Copied");
