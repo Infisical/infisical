@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { SparklesIcon } from "lucide-react";
 
 import { Badge } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
@@ -75,7 +76,8 @@ export const ProductPlanBadge = ({ type }: { type: ProjectType }) => {
   if (!label) return null;
 
   return (
-    <Badge variant="info" className="shrink-0">
+    <Badge variant="info" iconPosition="left" className="shrink-0">
+      <SparklesIcon aria-hidden="true" />
       {label}
       {hasActiveTrial ? " Trial" : ""}
     </Badge>
