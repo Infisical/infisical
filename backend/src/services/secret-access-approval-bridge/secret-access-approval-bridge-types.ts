@@ -60,12 +60,12 @@ export type TSecretAccessApprovalBridgeServiceFactoryDep = {
   >;
   approvalRequestDAL: Pick<
     TApprovalRequestDALFactory,
-    "create" | "transaction" | "findOne" | "findByIdForUpdate" | "updateById"
+    "create" | "transaction" | "find" | "findOne" | "findByIdForUpdate" | "update" | "updateById"
   >;
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create" | "find" | "updateById">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create" | "find">;
   approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "create" | "find">;
-  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "updateById" | "findByIdForUpdate">;
+  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "update" | "updateById" | "findByIdForUpdate">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   secretAccessApprovalBridgeDAL: Pick<
     TSecretAccessApprovalBridgeDALFactory,

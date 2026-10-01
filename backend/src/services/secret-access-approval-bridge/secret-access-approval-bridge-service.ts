@@ -558,7 +558,32 @@ export const secretAccessApprovalBridgeServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
 
-    await approvalPolicyDAL.deleteById(policy.id);
+    await approvalPolicyDAL.transaction(async (tx) => {
+      await approvalRequestDAL.update(
+        { policyId: policy.id, status: ApprovalRequestStatus.Pending },
+        { status: ApprovalRequestStatus.Cancelled },
+        tx
+      );
+
+      const requests = await approvalRequestDAL.find({ policyId: policy.id }, { tx });
+      if (requests.length) {
+        const revokedGrants = await approvalRequestGrantsDAL.update(
+          { $in: { requestId: requests.map((request) => request.id) }, status: ApprovalRequestGrantStatus.Active },
+          {
+            status: ApprovalRequestGrantStatus.Revoked,
+            revokedAt: new Date(),
+            revokedByUserId: actor === ActorType.USER ? actorId : null
+          },
+          tx
+        );
+
+        if (revokedGrants.length) {
+          await additionalPrivilegeDAL.delete({ $in: { grantId: revokedGrants.map((grant) => grant.id) } }, tx);
+        }
+      }
+
+      await approvalPolicyDAL.deleteById(policy.id, tx);
+    });
 
     return policy;
   };
