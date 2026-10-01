@@ -598,7 +598,7 @@ const CopySecretsSession = ({
                   <div className="flex flex-col gap-2">
                     <h3
                       id="copy-source-contents-heading"
-                      className="text-sm font-medium text-foreground"
+                      className="text-sm font-normal text-foreground"
                     >
                       Source
                     </h3>
@@ -683,7 +683,7 @@ const CopySecretsSession = ({
                   <div className="flex flex-col gap-2">
                     <h3
                       id="copy-destination-contents-heading"
-                      className="text-sm font-medium text-foreground"
+                      className="text-sm font-normal text-foreground"
                     >
                       Destination
                     </h3>

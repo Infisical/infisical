@@ -51,7 +51,7 @@ export const RecoveryOptionsCard = () => {
     <section className="grid gap-4" aria-labelledby="recovery-options-title">
       <CardHeader>
         <div className="flex items-center gap-4">
-          <h3 id="recovery-options-title" className="shrink-0 font-alliance text-sm font-semibold">
+          <h3 id="recovery-options-title" className="shrink-0 font-alliance text-sm font-normal">
             Recovery options
           </h3>
           <Separator className="flex-1" />
