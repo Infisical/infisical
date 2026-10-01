@@ -18,7 +18,7 @@ import {
   TOrgWithSubOrgs
 } from "@app/hooks/api/organization/queries";
 import { onRequestError, setAuthToken } from "@app/hooks/api/reactQuery";
-import { fetchUserDetails, logoutUser } from "@app/hooks/api/users/queries";
+import { clearSession, fetchUserDetails, logoutUser } from "@app/hooks/api/users/queries";
 import { userKeys } from "@app/hooks/api/users/query-keys";
 
 import { getSsoEnforcementError } from "./SelectOrg.utils";
@@ -225,14 +225,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
           response?.data?.error === "UserLocked" || response?.data?.message === "Account is locked";
         if (response?.data?.error === "SmtpError" || isLockError) {
           onRequestError(error);
-          // We can't use the useLogoutUser hook here (beforeLoad runs outside React),
-          // so we replicate its mutationFn manually:
-          // - setAuthToken("") stops outgoing requests from carrying the stale token.
-          // - removeQueries drops the cached auth token so the restrict-login-signup
-          //   middleware doesn't find it and redirect back to select-organization.
-          // - logoutUser() invalidates the session on the server.
-          setAuthToken("");
-          context.queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+          clearSession();
           await logoutUser().catch(() => {}); // best-effort — redirect must always fire
           throw redirect({ to: "/login" });
         }
