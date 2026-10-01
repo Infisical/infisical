@@ -1030,7 +1030,8 @@ The collapse itself is generic. `createCollapsedAuditLog` on the audit log servi
 `TCreateAuditLogDTO` plus `collapseKeyParts` (the event type is always part of the key) and an
 optional `collapseWindowSeconds` (default 60). The first event per key is written at once and
 schedules a delayed `AuditLogCollapsedFlush` job; repeats inside the window only bump a keystore
-counter, and the job writes one summary event with `suppressedRepeats`, `suppressedFrom` and
+counter scoped to that window's start (which the window key holds as its value, so consecutive
+windows and a late flush never share a counter), and the job writes one summary event with `suppressedRepeats`, `suppressedFrom` and
 `suppressedUntil` in its metadata when the window closes, so a burst that stops is still accounted
 for. To collapse another event, call it instead of `createAuditLog` and add
 `TAuditLogCollapseSummary` to that event's metadata type so the summary fields are typed.

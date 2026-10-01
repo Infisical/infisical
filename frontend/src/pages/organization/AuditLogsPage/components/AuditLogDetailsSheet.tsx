@@ -40,7 +40,7 @@ export const AuditLogDetailsSheet = ({ isOpen, onOpenChange, auditLog, timezone 
                 {formatDateTime({ timestamp: displayedLog.createdAt, timezone })}
               </SheetDescription>
               <div>
-                <Badge variant="neutral">{displayedLog.eventClass}</Badge>
+                <Badge variant="neutral">{displayedLog.event.class}</Badge>
               </div>
             </SheetHeader>
             <div className="min-h-0 flex-1 p-4">

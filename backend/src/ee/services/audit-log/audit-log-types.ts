@@ -173,9 +173,9 @@ export type TAuditLogServiceFactory = {
     {
       event: {
         type: string;
+        class: AuditLogEventClass;
         metadata: unknown;
       };
-      eventClass: AuditLogEventClass;
       actor: {
         type: string;
         metadata: unknown;
@@ -6008,7 +6008,6 @@ interface PermissionDeniedEvent {
     permissionSubject?: string;
     permissionSubjectDetails?: Record<string, unknown>;
     errorName: string;
-    message: string;
     route?: string;
     method: string;
   };

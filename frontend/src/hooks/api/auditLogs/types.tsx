@@ -1130,8 +1130,7 @@ export type AuditLog = {
   organization: string;
   workspace: string;
   ipAddress: string;
-  event: Event;
-  eventClass: AuditLogEventClass;
+  event: Event & { class: AuditLogEventClass };
   userAgent: string;
   userAgentType: UserAgentType;
   createdAt: string;

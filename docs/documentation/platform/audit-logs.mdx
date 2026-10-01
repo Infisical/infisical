@@ -142,14 +142,13 @@ Each log contains the following fields:
     <ResponseField name="type" type="string">
       The event type (for example, `create-secret`). See [Event types](#event-types) for the full catalog.
     </ResponseField>
+    <ResponseField name="class" type="string">
+      The [event class](#event-classes) the event type belongs to: `management`, `authentication`, `authorization`, or `data-access`.
+    </ResponseField>
     <ResponseField name="metadata" type="object">
       Context specific to the event. The shape depends on `event.type`; a `get-secret` event carries `environment`, `secretPath`, `secretKey`, and `secretVersion`, while a batch event like `create-secrets` carries a `secrets` array.
     </ResponseField>
   </Expandable>
-</ResponseField>
-
-<ResponseField name="eventClass" type="string">
-  The [event class](#event-classes) the event type belongs to: `management`, `authentication`, `authorization`, or `data-access`.
 </ResponseField>
 
 <ResponseField name="actor" type="object">
@@ -202,6 +201,7 @@ Each log contains the following fields:
    "projectName": "[PROJECT_NAME]",
    "event": {
        "type": "get-secret",
+       "class": "data-access",
        "metadata": {
            "environment": "prod",
            "secretPath": "/db",

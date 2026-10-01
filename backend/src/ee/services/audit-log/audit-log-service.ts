@@ -30,12 +30,16 @@ import {
   EventType,
   TAuditLogCollapsedFlushJobData,
   TAuditLogCollapseSummary,
-  TAuditLogServiceFactory
+  TAuditLogServiceFactory,
+  TCreateAuditLogDTO
 } from "./audit-log-types";
 
 const AUDIT_LOG_ROW_WARNING_THRESHOLD = 350_000_000;
 const AUDIT_LOG_ALERT_ROW_INCREMENT = 10_000_000;
 const DEFAULT_COLLAPSE_WINDOW_SECONDS = 60;
+// The flush runs after the window key has expired, so every repeat it counts was made while
+// that window was open.
+const COLLAPSE_FLUSH_GRACE_MS = 2_000;
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
@@ -45,10 +49,7 @@ type TAuditLogServiceFactoryDep = {
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
-  keyStore: Pick<
-    TKeyStoreFactory,
-    "getItem" | "setItemWithExpiry" | "setItemWithExpiryNX" | "incrementByWithExpiry" | "deleteItem"
-  >;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "setItemWithExpiryNX" | "incrementByWithExpiry">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "getUsersByFilter">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -175,8 +176,7 @@ export const auditLogServiceFactory = ({
       ...el,
       updatedAt: el.createdAt,
       expiresAt: el.expiresAt,
-      event: { type: logEventType, metadata: eventMetadata },
-      eventClass: getAuditLogEventClass(logEventType),
+      event: { type: logEventType, class: getAuditLogEventClass(logEventType), metadata: eventMetadata },
       actor: { type: eActor, metadata: actorMetadata }
     }));
   };
@@ -207,10 +207,9 @@ export const auditLogServiceFactory = ({
     windowEnd,
     ...auditLog
   }: TAuditLogCollapsedFlushJobData) => {
-    const countKey = KeyStorePrefixes.AuditLogCollapseCount(collapseKey);
-    const suppressedRepeats = Number(await keyStore.getItem(countKey)) || 0;
+    const suppressedRepeats =
+      Number(await keyStore.getItem(KeyStorePrefixes.AuditLogCollapseCount(collapseKey, windowStart))) || 0;
     if (!suppressedRepeats) return;
-    await keyStore.deleteItem(countKey);
 
     const summary: TAuditLogCollapseSummary = {
       suppressedRepeats,
@@ -227,8 +226,49 @@ export const auditLogServiceFactory = ({
     await flushCollapsedRepeats(job.data);
   });
 
-  // First event per key is written and opens a window. Repeats inside it only bump a counter
-  // that the flush job turns into one summary event.
+  // First event per key is written and opens a window. The window key holds its own start, and
+  // repeats bump a counter scoped to that start, so a late flush never reads the next window's
+  // repeats and consecutive windows never share a counter.
+  const collapseAuditLog = async (
+    data: TCreateAuditLogDTO,
+    collapseKey: string,
+    collapseWindowSeconds: number,
+    isRetry = false
+  ): Promise<void> => {
+    const windowKey = KeyStorePrefixes.AuditLogCollapseWindow(collapseKey);
+    const windowStart = new Date().toISOString();
+    const acquired = await keyStore.setItemWithExpiryNX(windowKey, collapseWindowSeconds, windowStart);
+    if (!acquired) {
+      const openWindowStart = await keyStore.getItem(windowKey);
+      if (!openWindowStart) {
+        if (!isRetry) return collapseAuditLog(data, collapseKey, collapseWindowSeconds, true);
+        await createAuditLog(data);
+        return;
+      }
+      await keyStore.incrementByWithExpiry(
+        KeyStorePrefixes.AuditLogCollapseCount(collapseKey, openWindowStart),
+        1,
+        collapseWindowSeconds * 10
+      );
+      return;
+    }
+
+    await createAuditLog(data);
+
+    const windowEnd = new Date(Date.parse(windowStart) + collapseWindowSeconds * 1000).toISOString();
+    await queueService.queue(
+      QueueName.AuditLogCollapsedFlush,
+      QueueJobs.AuditLogCollapsedFlush,
+      { ...data, collapseKey, windowStart, windowEnd },
+      {
+        jobId: `audit-log-collapse-${collapseKey}-${Date.parse(windowStart)}`,
+        delay: collapseWindowSeconds * 1000 + COLLAPSE_FLUSH_GRACE_MS,
+        removeOnComplete: true,
+        removeOnFail: true
+      }
+    );
+  };
+
   const createCollapsedAuditLog: TAuditLogServiceFactory["createCollapsedAuditLog"] = async ({
     collapseKeyParts,
     collapseWindowSeconds = DEFAULT_COLLAPSE_WINDOW_SECONDS,
@@ -238,35 +278,7 @@ export const auditLogServiceFactory = ({
     if (appCfg.DISABLE_AUDIT_LOG_GENERATION) return;
 
     const collapseKey = generateCacheKeyFromData([data.event.type, ...collapseKeyParts]);
-    const acquired = await keyStore.setItemWithExpiryNX(
-      KeyStorePrefixes.AuditLogCollapseWindow(collapseKey),
-      collapseWindowSeconds,
-      "1"
-    );
-    if (!acquired) {
-      await keyStore.incrementByWithExpiry(
-        KeyStorePrefixes.AuditLogCollapseCount(collapseKey),
-        1,
-        collapseWindowSeconds * 10
-      );
-      return;
-    }
-
-    await createAuditLog(data);
-
-    const windowStart = new Date();
-    const windowEnd = new Date(windowStart.getTime() + collapseWindowSeconds * 1000);
-    await queueService.queue(
-      QueueName.AuditLogCollapsedFlush,
-      QueueJobs.AuditLogCollapsedFlush,
-      { ...data, collapseKey, windowStart: windowStart.toISOString(), windowEnd: windowEnd.toISOString() },
-      {
-        jobId: `audit-log-collapse-${collapseKey}-${windowStart.getTime()}`,
-        delay: collapseWindowSeconds * 1000,
-        removeOnComplete: true,
-        removeOnFail: true
-      }
-    );
+    await collapseAuditLog(data, collapseKey, collapseWindowSeconds);
   };
 
   // Called from the onError hook, so it must never throw or slow the response.

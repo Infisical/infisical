@@ -20,6 +20,17 @@ const pickSubjectDetails = (subject: unknown) => {
   return Object.keys(details).length ? details : undefined;
 };
 
+const readMissingPermission = (details: unknown) => {
+  if (!details || typeof details !== "object") return undefined;
+  const { missingPermissions } = details as { missingPermissions?: { action?: unknown; subject?: unknown }[] };
+  const first = Array.isArray(missingPermissions) ? missingPermissions[0] : undefined;
+  if (!first) return undefined;
+  return {
+    action: typeof first.action === "string" ? first.action : undefined,
+    subject: typeof first.subject === "string" ? first.subject : undefined
+  };
+};
+
 const readProjectId = (source: unknown) => {
   if (!source || typeof source !== "object") return undefined;
   const { projectId } = source as { projectId?: unknown };
@@ -40,6 +51,7 @@ export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvid
     if (!orgId) return;
 
     const caslError = isCaslDenial ? (error as unknown as ForbiddenError<AnyAbility>) : undefined;
+    const missing = isCaslDenial ? undefined : readMissingPermission((error as PermissionBoundaryError).details);
     const projectId =
       requestContext.get(RequestContextKey.ProjectDetails)?.id ??
       readProjectId(req.params) ??
@@ -51,11 +63,10 @@ export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvid
       orgId,
       projectId,
       metadata: {
-        permissionAction: caslError?.action ? String(caslError.action) : undefined,
-        permissionSubject: caslError?.subjectType ? String(caslError.subjectType) : undefined,
+        permissionAction: caslError?.action ? String(caslError.action) : missing?.action,
+        permissionSubject: caslError?.subjectType ? String(caslError.subjectType) : missing?.subject,
         permissionSubjectDetails: pickSubjectDetails(caslError?.subject),
         errorName: error.name,
-        message: error.message,
         route: req.routeOptions.url,
         method: req.method
       }

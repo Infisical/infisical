@@ -30,7 +30,6 @@ const denial = (overrides: Partial<TRecordPermissionDeniedDTO> = {}): TRecordPer
     permissionAction: "create",
     permissionSubject: "secrets",
     errorName: "ForbiddenError",
-    message: "denied",
     route: "/api/v3/secrets/raw/:secretName",
     method: "POST"
   },
@@ -108,21 +107,51 @@ describe("recordPermissionDenied", () => {
     const [queueName, jobName, payload, opts] = queueService.queue.mock.calls[0];
     expect(queueName).toBe(QueueName.AuditLogCollapsedFlush);
     expect(jobName).toBe(QueueJobs.AuditLogCollapsedFlush);
-    expect(opts.delay).toBe(60_000);
+    expect(opts.delay).toBe(62_000);
     expect(opts.jobId).toContain(payload.collapseKey);
     expect(payload.orgId).toBe("org-1");
     expect(new Date(payload.windowEnd).getTime() - new Date(payload.windowStart).getTime()).toBe(60_000);
     expect(keyStore.setItemWithExpiryNX.mock.calls[0][0]).toContain(payload.collapseKey);
+    expect(keyStore.setItemWithExpiryNX.mock.calls[0][2]).toBe(payload.windowStart);
   });
 
-  test("a repeat inside the window only bumps the counter", async () => {
-    const { service, queueService, keyStore, auditLogQueue } = createHarness({ windowAcquired: false });
+  test("a repeat inside the window only bumps that window's counter", async () => {
+    const openWindowStart = "2026-09-30T10:00:00.000Z";
+    const { service, queueService, keyStore, auditLogQueue } = createHarness({
+      windowAcquired: false,
+      storedCount: openWindowStart
+    });
 
     await service.recordPermissionDenied(denial());
 
     expect(auditLogQueue.pushToLog).not.toHaveBeenCalled();
     expect(queueService.queue).not.toHaveBeenCalled();
     expect(keyStore.incrementByWithExpiry).toHaveBeenCalledTimes(1);
+    expect(keyStore.incrementByWithExpiry.mock.calls[0][0]).toContain(openWindowStart);
+  });
+
+  test("a repeat that finds the window already closed opens the next one", async () => {
+    const { service, queueService, keyStore, auditLogQueue } = createHarness({ windowAcquired: false });
+    keyStore.getItem.mockResolvedValueOnce(null);
+    keyStore.setItemWithExpiryNX.mockResolvedValueOnce(null).mockResolvedValueOnce("OK");
+
+    await service.recordPermissionDenied(denial());
+
+    expect(keyStore.incrementByWithExpiry).not.toHaveBeenCalled();
+    expect(auditLogQueue.pushToLog).toHaveBeenCalledTimes(1);
+    expect(queueService.queue).toHaveBeenCalledTimes(1);
+  });
+
+  test("a repeat that loses the race twice is recorded instead of dropped", async () => {
+    const { service, queueService, keyStore, auditLogQueue } = createHarness({ windowAcquired: false });
+    keyStore.getItem.mockResolvedValue(null);
+
+    await service.recordPermissionDenied(denial());
+
+    expect(keyStore.setItemWithExpiryNX).toHaveBeenCalledTimes(2);
+    expect(keyStore.incrementByWithExpiry).not.toHaveBeenCalled();
+    expect(auditLogQueue.pushToLog).toHaveBeenCalledTimes(1);
+    expect(queueService.queue).not.toHaveBeenCalled();
   });
 
   test("the method is part of the collapse key", async () => {
@@ -198,7 +227,7 @@ describe("createCollapsedAuditLog", () => {
     await service.createCollapsedAuditLog({ ...collapsed(EventType.GET_SECRETS), collapseWindowSeconds: 300 });
 
     expect(keyStore.setItemWithExpiryNX.mock.calls[0][1]).toBe(300);
-    expect(queueService.queue.mock.calls[0][3].delay).toBe(300_000);
+    expect(queueService.queue.mock.calls[0][3].delay).toBe(302_000);
   });
 });
 
@@ -221,7 +250,10 @@ describe("collapsed audit log flush job", () => {
 
     await flush({ data: jobData });
 
-    expect(keyStore.deleteItem).toHaveBeenCalledTimes(1);
+    expect(keyStore.getItem).toHaveBeenCalledTimes(1);
+    expect(keyStore.getItem.mock.calls[0][0]).toContain(jobData.collapseKey);
+    expect(keyStore.getItem.mock.calls[0][0]).toContain(jobData.windowStart);
+    expect(keyStore.deleteItem).not.toHaveBeenCalled();
     expect(auditLogQueue.pushToLog).toHaveBeenCalledTimes(1);
     expect(auditLogQueue.pushToLog.mock.calls[0][0]).toMatchObject({
       orgId: "org-1",
@@ -240,11 +272,10 @@ describe("collapsed audit log flush job", () => {
   });
 
   test("writes nothing when no repeat was counted", async () => {
-    const { flush, keyStore, auditLogQueue } = createHarness({ storedCount: "0" });
+    const { flush, auditLogQueue } = createHarness({ storedCount: "0" });
 
     await flush({ data: jobData });
 
-    expect(keyStore.deleteItem).not.toHaveBeenCalled();
     expect(auditLogQueue.pushToLog).not.toHaveBeenCalled();
   });
 });
