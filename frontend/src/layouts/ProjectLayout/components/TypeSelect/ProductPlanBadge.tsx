@@ -76,7 +76,7 @@ export const ProductPlanBadge = ({ type }: { type: ProjectType }) => {
   if (!label) return null;
 
   return (
-    <Badge variant="info" iconPosition="left" className="shrink-0">
+    <Badge variant="info" iconPosition="left" className="shrink-0 max-sm:hidden">
       <SparklesIcon aria-hidden="true" />
       {label}
       {hasActiveTrial ? " Trial" : ""}
