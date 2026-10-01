@@ -6,6 +6,7 @@ import {
   useRef,
   useState
 } from "react";
+import { motion, useReducedMotion } from "motion/react";
 
 import { cn } from "../../utils";
 
@@ -30,6 +31,7 @@ export const VerificationCodeInput = ({
   value = ""
 }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const prefersReducedMotion = useReducedMotion();
   const pointerAnchorRef = useRef<number | undefined>(undefined);
   const [isFocused, setIsFocused] = useState(false);
   const [selection, setSelection] = useState<Selection>({ start: 0, end: 0 });
@@ -52,7 +54,7 @@ export const VerificationCodeInput = ({
     if (!isError) return;
 
     inputRef.current?.focus();
-    inputRef.current?.select();
+    inputRef.current?.setSelectionRange(0, 0);
     syncSelection();
   }, [isError, syncSelection]);
 
@@ -170,6 +172,8 @@ export const VerificationCodeInput = ({
 
   return (
     <div
+      data-slot="verification-code-input"
+      aria-invalid={isError}
       className="group relative w-full"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -183,9 +187,9 @@ export const VerificationCodeInput = ({
             <div
               aria-hidden
               className={cn(
-                "relative flex h-[68px] min-w-0 items-center justify-center rounded-md border border-border bg-container font-jetbrains-mono text-xl text-foreground outline outline-1 outline-offset-4 outline-transparent transition-colors max-sm:aspect-square max-sm:h-auto",
+                "relative flex h-[68px] min-w-0 items-center justify-center rounded-md border border-border bg-container font-jetbrains-mono text-xl text-foreground transition-colors max-sm:aspect-square max-sm:h-auto",
                 "group-hover:border-foreground/20",
-                isActive && "border-project/45 outline-project/45",
+                isActive && "border-project/45",
                 isError && "border-danger/55"
               )}
               key={index}
@@ -207,20 +211,25 @@ export const VerificationCodeInput = ({
           );
         })}
       </div>
-      {hasSelection && (
-        <div
-          aria-hidden
-          className={cn("pointer-events-none absolute inset-0 z-[1]", gridClassName)}
-        >
-          <div
-            className={cn(
-              "rounded-md outline outline-1 outline-offset-4",
-              isError ? "outline-danger/55" : "outline-project/45"
-            )}
-            style={{ gridColumn: `${selection.start + 1} / ${selection.end + 1}` }}
-          />
-        </div>
-      )}
+      <div aria-hidden className={cn("pointer-events-none absolute inset-0 z-[1]", gridClassName)}>
+        <motion.div
+          layout
+          initial={false}
+          animate={{ opacity: isFocused ? 1 : 0 }}
+          transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: [0.23, 1, 0.32, 1] }}
+          data-slot="verification-code-indicator"
+          className={cn(
+            "rounded-md outline outline-1 outline-offset-4",
+            isError ? "outline-danger/55" : "outline-project/45"
+          )}
+          style={{
+            gridColumn: hasSelection
+              ? `${selection.start + 1} / ${selection.end + 1}`
+              : `${activeSlot + 1} / ${activeSlot + 2}`,
+            borderRadius: 6
+          }}
+        />
+      </div>
       <input
         ref={inputRef}
         aria-invalid={isError}

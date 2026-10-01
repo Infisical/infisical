@@ -74,15 +74,18 @@ export const VerificationCodeForm = ({
   const [hasAttemptedVerification, setHasAttemptedVerification] = useState(false);
   const [hasFailedVerification, setHasFailedVerification] = useState(false);
   const onSubmitRef = useRef(onSubmit);
+  const onChangeRef = useRef(onChange);
 
   useEffect(() => {
     onSubmitRef.current = onSubmit;
-  }, [onSubmit]);
+    onChangeRef.current = onChange;
+  }, [onChange, onSubmit]);
 
   useEffect(() => {
     if (hasError && !isPending) {
       setHasChangedSinceError(false);
       setHasFailedVerification(true);
+      onChangeRef.current("");
     }
   }, [hasError, isPending]);
 
@@ -115,7 +118,7 @@ export const VerificationCodeForm = ({
           fields={fields}
           onChange={handleChange}
           value={value}
-          isError={hasError && !hasChangedSinceError}
+          isError={hasError && !isPending && !hasChangedSinceError}
         />
         {error && <FieldError className="mt-0">{error}</FieldError>}
       </div>
