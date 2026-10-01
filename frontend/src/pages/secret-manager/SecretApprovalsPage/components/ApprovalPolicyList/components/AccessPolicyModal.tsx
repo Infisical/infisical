@@ -204,6 +204,7 @@ const Form = ({
     resetField,
     setError,
     setValue,
+    trigger,
     formState: { isDirty, isSubmitting, errors }
   } = useForm<TApprovalPolicyFormSchema>({
     resolver: zodResolver(approvalPolicyFormSchema),
@@ -495,11 +496,9 @@ const Form = ({
   ].map(resolveApproverOption);
   const updatePolicyApprovers = (newValue: readonly ApproverOptionData[]) => {
     const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
-    setValue("userApprovers", users, { shouldDirty: true, shouldValidate: true });
-    setValue("groupApprovers", selectedGroups, {
-      shouldDirty: true,
-      shouldValidate: true
-    });
+    setValue("userApprovers", users, { shouldDirty: true });
+    setValue("groupApprovers", selectedGroups, { shouldDirty: true });
+    trigger(["userApprovers", "groupApprovers"]);
   };
 
   const selectedPolicyBypassers: ApproverOptionData[] = [
@@ -508,11 +507,9 @@ const Form = ({
   ].map(resolveApproverOption);
   const updatePolicyBypassers = (newValue: readonly ApproverOptionData[]) => {
     const { users, groups: selectedGroups } = splitSelectedBypassers(newValue);
-    setValue("userBypassers", users, { shouldDirty: true, shouldValidate: true });
-    setValue("groupBypassers", selectedGroups, {
-      shouldDirty: true,
-      shouldValidate: true
-    });
+    setValue("userBypassers", users, { shouldDirty: true });
+    setValue("groupBypassers", selectedGroups, { shouldDirty: true });
+    trigger(["userBypassers", "groupBypassers"]);
   };
 
   const handleDragStart = (_: React.DragEvent, index: number) => {
@@ -567,10 +564,8 @@ const Form = ({
         shouldDirty: true,
         shouldValidate: true
       });
-      setValue(`sequenceApprovers.${index}.group`, selectedGroups, {
-        shouldDirty: true,
-        shouldValidate: true
-      });
+      setValue(`sequenceApprovers.${index}.group`, selectedGroups, { shouldDirty: true });
+      trigger([`sequenceApprovers.${index}.user`, `sequenceApprovers.${index}.group`]);
     };
 
     return (
