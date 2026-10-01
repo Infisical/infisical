@@ -59,6 +59,7 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = t
                       name: data.group.name,
                       slug: data.group.slug,
                       role: data.group.roleId || data.group.role
+                      customRole: data.group.customRole
                     });
                   }}
                   size="xs"
