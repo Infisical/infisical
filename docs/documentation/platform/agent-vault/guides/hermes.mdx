@@ -4,33 +4,40 @@ sidebarTitle: "Hermes Agent"
 description: "Run the Hermes Agent gateway through an Agent Vault proxy so Hermes can call its model provider, messaging platform, and other APIs without holding their credentials."
 ---
 
-[Hermes Agent](https://hermes-agent.nousresearch.com/docs/) is an AI agent that runs continuously on its own machine. You talk to Hermes through its [gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging), a long-running process that connects Hermes to a messaging platform such as Slack, Telegram, or Discord. Hermes keeps the API keys for its model provider, its messaging platform, and its other tools in a `.env` file on that machine.
+This guide walks you through running the [Hermes Agent](https://hermes-agent.nousresearch.com/docs/) [gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) through Agent Vault, so Hermes can make authenticated API calls without holding any real credentials.
 
-This guide shows you how to replace every API key in that file with a placeholder, so the only credential left on the Hermes machine is a session token you can revoke. You'll create an [access bundle](/documentation/platform/agent-vault/access-bundles) with a [service](/documentation/platform/agent-vault/services) for each API key, enroll a [proxy](/documentation/platform/agent-vault/proxies) on a second machine, create a [session](/documentation/platform/agent-vault/sessions), and then point the Hermes gateway at the proxy. The steps are the same for every messaging platform the gateway supports.
+To set this up, you'll create an [access bundle](/documentation/platform/agent-vault/access-bundles) with a [service](/documentation/platform/agent-vault/services) for each API key Hermes uses, enroll the proxy, create a [session](/documentation/platform/agent-vault/sessions), and then point the gateway at the proxy. These steps are the same for every messaging platform the gateway supports.
 
-```mermaid
-flowchart LR
-  subgraph network["Private network"]
-    subgraph hermes["Hermes machine"]
-      subgraph gateway["Hermes gateway"]
-        agent["Hermes agent"]
+
+<Accordion title="How it works">
+  Hermes is an AI agent that runs continuously on its own machine. You talk to Hermes through its gateway, a long-running process that connects Hermes to a messaging platform such as Slack, Telegram, or Discord. Hermes keeps the API keys for its model provider, its messaging platform, and its other tools in a `.env` file on that machine.
+
+  Once you finish this guide, that file holds placeholders instead of API keys, and the only credential left on the Hermes machine is a session token you can revoke. Every request the gateway makes goes through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) on a second machine, which attaches the real credential before forwarding the request to the API.
+
+  ```mermaid
+  flowchart LR
+    subgraph network["Private network"]
+      subgraph hermes["Hermes machine"]
+        subgraph gateway["Hermes gateway"]
+          agent["Hermes agent"]
+        end
+      end
+      subgraph av["Agent Vault machine"]
+        proxy["Agent Vault proxy"]
       end
     end
-    subgraph av["Agent Vault machine"]
-      proxy["Agent Vault proxy"]
-    end
-  end
-  gateway -- "Requests with placeholders" --> proxy
-  proxy -- "Requests with real credentials" --> apis["Model provider, messaging platform, and other APIs"]
-  style network fill:#ffffde,stroke:#aaaa33,color:#000
-  style hermes fill:#ffffff,stroke:#757575,color:#000
-  style av fill:#ffffff,stroke:#757575,color:#000
-  style gateway fill:#e1f5fe,stroke:#01579b,color:#000
-  style agent fill:#ececff,stroke:#9370db,color:#000
-  style proxy fill:#ececff,stroke:#9370db,color:#000
-  style apis fill:#ececff,stroke:#9370db,color:#000
-  linkStyle default stroke:#757575
-```
+    gateway -- "Requests with placeholders" --> proxy
+    proxy -- "Requests with real credentials" --> apis["Model provider, messaging platform, and other APIs"]
+    style network fill:#ffffde,stroke:#aaaa33,color:#000
+    style hermes fill:#ffffff,stroke:#757575,color:#000
+    style av fill:#ffffff,stroke:#757575,color:#000
+    style gateway fill:#e1f5fe,stroke:#01579b,color:#000
+    style agent fill:#ececff,stroke:#9370db,color:#000
+    style proxy fill:#ececff,stroke:#9370db,color:#000
+    style apis fill:#ececff,stroke:#9370db,color:#000
+    linkStyle default stroke:#757575
+  ```
+</Accordion>
 
 ## Prerequisites
 
@@ -41,7 +48,9 @@ flowchart LR
 - `curl` and `jq` installed on the Hermes machine
 
 <Note>
-  You can run Hermes and the proxy on one machine, but separate machines keep the shell commands Hermes runs away from the proxy and its [state directory](/documentation/platform/agent-vault/proxies#state-directory). Keep the two machines on the same private network, because every request Hermes makes goes through the proxy, and a round trip between networks adds latency to every request.
+  You can technically run Hermes and the proxy on one machine, but we recommend using two separate machines. This keeps the shell commands Hermes runs away from the proxy and its [state directory](/documentation/platform/agent-vault/proxies#state-directory).
+  
+  We also recommend keeping both machines on the same private network. This is because every request Hermes makes goes through the proxy, and a round trip between networks adds latency to every request.
 </Note>
 
 ## Step 1: List the API keys Hermes uses
@@ -52,7 +61,11 @@ Hermes reads its API keys from `~/.hermes/.env`, or from `$HERMES_HOME/.env` if 
 grep -o '^[A-Za-z_][A-Za-z0-9_]*=' ~/.hermes/.env | tr -d '='
 ```
 
-Each key that holds a credential for an API needs a service in [Step 2](#step-2-set-up-agent-vault). Keys that hold settings rather than credentials, such as allowed user IDs and channel IDs, stay as they are.
+Take note of each key that holds a credential for an API. For each of these keys, you'll create a corresponding [service](/documentation/platform/agent-vault/services) in [Step 2](#step-2-set-up-agent-vault).
+
+<Note>
+If your `~/.hermes/.env` contains any keys that hold non-sensitive information, those keys don't need services in Agent Vault. This includes settings like allowed user IDs and channel IDs.
+</Note>
 
 Agent Vault has service templates for many of the APIs Hermes uses, such as **OpenRouter**, **Anthropic**, **OpenAI**, **Slack**, **Discord**, and **GitHub**. If an API doesn't have a template, you'll add a **Custom** service for its host.
 
@@ -60,7 +73,7 @@ Agent Vault has service templates for many of the APIs Hermes uses, such as **Op
 
 ### Create an access bundle
 
-First, create an access bundle that holds a service for each API key from [Step 1](#step-1-list-the-api-keys-hermes-uses).
+First, create an [access bundle](/documentation/platform/agent-vault/access-bundles) that holds a service for each API key from [Step 1](#step-1-list-the-api-keys-hermes-uses).
 
 <Steps>
   <Step>
@@ -92,7 +105,7 @@ First, create an access bundle that holds a service for each API key from [Step 
 
 ### Enroll a proxy
 
-Next, enroll a proxy on the Agent Vault machine. The Hermes gateway runs all the time, so run the proxy as a service that starts again when the machine restarts.
+Next, enroll a proxy on the Agent Vault machine. The Hermes gateway runs all the time, so you'll need to run the proxy as a service that starts again when the machine restarts.
 
 <Steps>
   <Step>
@@ -102,9 +115,40 @@ Next, enroll a proxy on the Agent Vault machine. The Hermes gateway runs all the
     Give the proxy a **Name**, then select **Create**.
   </Step>
   <Step>
-    In the **Enrollment Token** dialog, open the **systemd** or **Docker** tab and follow its instructions on the Agent Vault machine. The enrollment token expires in an hour.
+    In the **Enrollment Token** dialog, open the **systemd** or **Docker** tab and copy what it shows. The enrollment token expires in an hour.
   </Step>
 </Steps>
+
+Then, on the Agent Vault machine, set up the proxy to start with the machine:
+
+<Tabs>
+  <Tab title="systemd">
+    Save the unit from the dialog as `/etc/systemd/system/agent-vault-proxy.service`. The unit runs `/usr/local/bin/infisical`, so if `which infisical` prints a different path, change `ExecStart` to match.
+
+    Then enable and start the proxy:
+
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now agent-vault-proxy
+    ```
+
+    `enable` starts the proxy every time the machine boots, and `--now` also starts it right away.
+  </Tab>
+  <Tab title="Docker">
+    Add `--restart unless-stopped` after `docker run -d` in the command from the dialog, then run the command. For example:
+
+    ```bash
+    docker run -d --restart unless-stopped --name agent-vault-proxy \
+      -p 17323:17323 \
+      -v agent-vault-proxy:/etc/infisical/agent-vault \
+      infisical/cli agent-vault proxy \
+      --enrollment-token <enrollment-token> \
+      --domain <your-instance-url>
+    ```
+
+    With `--restart unless-stopped`, Docker starts the proxy again whenever Docker itself starts, unless you stopped the container yourself. Docker must also start at boot, which you can turn on with `sudo systemctl enable docker` on most Linux machines.
+  </Tab>
+</Tabs>
 
 The proxy listens on port `17323`. Make sure the Hermes machine can reach that port on the Agent Vault machine's private address, and that nothing outside your private network can.
 
@@ -114,7 +158,7 @@ The proxy listens on port `17323`. Make sure the Hermes machine can reach that p
 
 ### Create a session
 
-Finally, create a session for the gateway.
+Finally, create a [session](/documentation/platform/agent-vault/sessions) for the gateway.
 
 <Steps>
   <Step>
@@ -155,7 +199,7 @@ curl -s http://<proxy-host>:17323/_agent-vault/ca | jq -r .certificate > ~/.herm
 
 ### Replace the API keys with placeholders
 
-Open `~/.hermes/.env` and replace the value of each API key you added a service for:
+Open `~/.hermes/.env` and replace the value of each API key you added a service for in [Step 1](#step-1-list-the-api-keys-hermes-uses).:
 
 - **For a service that attaches the credential to a header:** use any value Hermes accepts as a key (the proxy replaces the header with the real credential)
 - **For a service with a substitution:** use the exact placeholder you entered in **Replace**
@@ -175,7 +219,7 @@ The real values are now stored in Infisical, so you don't need to keep them on t
 
 ### Add the proxy settings
 
-Add these lines to `~/.hermes/.env`. Replace `<session-token>` with the token from [Step 2](#create-a-session), and `<path-to-ca.pem>` with the absolute path of the certificate you downloaded, such as `/home/hermes/.hermes/agent-vault/ca.pem`. Hermes doesn't expand `~` in this file.
+Add these lines to `~/.hermes/.env`:
 
 ```bash
 HTTPS_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
@@ -186,6 +230,8 @@ REQUESTS_CA_BUNDLE=<path-to-ca.pem>
 CURL_CA_BUNDLE=<path-to-ca.pem>
 NODE_EXTRA_CA_CERTS=<path-to-ca.pem>
 ```
+
+Replace `<session-token>` with the token from [Step 2](#create-a-session), and `<path-to-ca.pem>` with the absolute path of the certificate you downloaded, such as `/home/hermes/.hermes/agent-vault/ca.pem`. Hermes doesn't expand `~` in this file.
 
 With `NO_PROXY`, requests to the Hermes machine itself skip the proxy, such as requests to a local model server.
 
@@ -203,7 +249,11 @@ Restart the gateway so it loads the new settings:
 hermes gateway restart
 ```
 
-If you haven't installed the gateway as a service yet, run `hermes gateway install` instead. To start the gateway when the machine boots rather than when you log in, run `sudo hermes gateway install --system` on Linux. For details, see [running the gateway as a service](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) in the Hermes documentation.
+If you haven't installed the gateway as a service yet, run `hermes gateway install` instead.
+
+<Tip>
+To start the gateway when the machine boots rather than when you log in, run `sudo hermes gateway install --system` on Linux. For details, see [running the gateway as a service](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) in the Hermes documentation.
+</Tip>
 
 ## Step 4: Verify it works
 
@@ -222,7 +272,7 @@ On the Agent Vault machine, follow the proxy's logs:
   </Tab>
 </Tabs>
 
-Then send Hermes a message through your messaging platform. If Hermes replies, both the messaging platform and the model provider received the real credentials, and the proxy logs those requests as `brokered`.
+Then send Hermes a message through your messaging platform. If Hermes replies, both the messaging platform and the model provider received the real credentials, and the proxy [logs those requests as `brokered`](/documentation/platform/agent-vault/session-logs#what-gets-recorded).
 
 To check a tool's credential, ask Hermes to call that API. For example, if your access bundle has a GitHub service:
 
@@ -236,7 +286,7 @@ GitHub returns your account. If you run the same request on the Hermes machine w
 
 ## Revoke or replace the session
 
-To stop Hermes from using the real credentials, go to **Sessions**, open the session's menu, and select **Revoke Session**. The proxy stops attaching credentials within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval), and Hermes stops replying because its requests to the model provider fail.
+To stop Hermes from using the real credentials, open **Agent Vault** in Infisical and go to **Sessions**. Open the session's menu and select **Revoke Session**. The proxy stops attaching credentials within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval), and Hermes stops replying because its requests to the model provider fail.
 
 To give the gateway a new session, [create a session](#create-a-session), replace the token in both `HTTPS_PROXY` and `HTTP_PROXY` in `~/.hermes/.env`, then run `hermes gateway restart`.
 
