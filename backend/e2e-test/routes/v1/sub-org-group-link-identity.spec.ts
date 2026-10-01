@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -157,6 +159,40 @@ describe("Linking root groups to a sub-organization with a machine identity", ()
     const cleanupRes = await testServer.inject({ method: "DELETE", url: linkUrl(), headers: adminHeaders });
     expect(cleanupRes.statusCode).toBe(200);
     expect(await subOrgLinkRows()).toHaveLength(0);
+  });
+
+  test("answers a group from an unrelated organization the same as a missing one", async () => {
+    const suffix = alphaNumericNanoId(8).toLowerCase();
+    const [otherOrg] = await testDb(TableName.Organization)
+      .insert({ name: `group-link-other-${suffix}`, slug: `group-link-other-${suffix}` })
+      .returning("*");
+    const [otherGroup] = await testDb(TableName.Groups)
+      .insert({ orgId: otherOrg.id, name: `other-grp-${suffix}`, slug: `other-grp-${suffix}` })
+      .returning("*");
+
+    try {
+      const headers = { authorization: `Bearer ${adminSubOrgToken}` };
+      for (const id of [otherGroup.id, crypto.randomUUID()]) {
+        const url = `/api/v1/organizations/memberships/groups/${id}`;
+        // eslint-disable-next-line no-await-in-loop
+        const updateRes = await testServer.inject({
+          method: "PATCH",
+          url,
+          headers,
+          body: { roles: [{ role: OrgMembershipRole.Member }] }
+        });
+        expect(updateRes.statusCode).toBe(400);
+        expect(updateRes.json().message).toBe(`Group with ID '${id}' not found`);
+
+        // eslint-disable-next-line no-await-in-loop
+        const deleteRes = await testServer.inject({ method: "DELETE", url, headers });
+        expect(deleteRes.statusCode).toBe(400);
+        expect(deleteRes.json().message).toBe(`Group with ID '${id}' not found`);
+      }
+    } finally {
+      await testDb(TableName.Groups).where({ id: otherGroup.id }).del();
+      await testDb(TableName.Organization).where({ id: otherOrg.id }).del();
+    }
   });
 
   test("links, updates, and unlinks a root group", async () => {

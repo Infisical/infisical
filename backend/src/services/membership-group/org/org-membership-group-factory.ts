@@ -74,6 +74,14 @@ export const newOrgMembershipGroupFactory = ({
     );
   };
 
+  const $getGroupInActorScope = async (actor: OrgServiceActor, groupId: string) => {
+    const group = await groupDAL.findById(groupId);
+    if (!group || (group.orgId !== actor.orgId && group.orgId !== actor.rootOrgId)) {
+      throw new BadRequestError({ message: `Group with ID '${groupId}' not found` });
+    }
+    return group;
+  };
+
   const onCreateMembershipGroupGuard: TMembershipGroupScopeFactory["onCreateMembershipGroupGuard"] = async (dto) => {
     const isSubOrg = dto.permission.orgId !== dto.permission.rootOrgId;
     if (!isSubOrg) {
@@ -132,13 +140,6 @@ export const newOrgMembershipGroupFactory = ({
   };
 
   const onUpdateMembershipGroupGuard: TMembershipGroupScopeFactory["onUpdateMembershipGroupGuard"] = async (dto) => {
-    const groupDetails = await groupDAL.findById(dto.selector.groupId);
-    if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
-
-    if (isGroupLinkedFromRootOrg(dto.permission, groupDetails.orgId)) {
-      await $assertCanLinkRootGroup(dto.permission);
-    }
-
     const { permission } = await permissionService.getOrgPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
@@ -148,6 +149,11 @@ export const newOrgMembershipGroupFactory = ({
       scope: OrganizationActionScope.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+
+    const groupDetails = await $getGroupInActorScope(dto.permission, dto.selector.groupId);
+    if (isGroupLinkedFromRootOrg(dto.permission, groupDetails.orgId)) {
+      await $assertCanLinkRootGroup(dto.permission);
+    }
 
     const permissionRoles = await permissionService.getOrgPermissionByRoles(
       filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
@@ -201,15 +207,6 @@ export const newOrgMembershipGroupFactory = ({
   };
 
   const onDeleteMembershipGroupGuard: TMembershipGroupScopeFactory["onDeleteMembershipGroupGuard"] = async (dto) => {
-    const group = await groupDAL.findById(dto.selector.groupId);
-    if (!group) {
-      throw new BadRequestError({ message: "Group not found" });
-    }
-
-    if (isGroupLinkedFromRootOrg(dto.permission, group.orgId)) {
-      await $assertCanLinkRootGroup(dto.permission);
-    }
-
     const { permission } = await permissionService.getOrgPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
@@ -219,6 +216,11 @@ export const newOrgMembershipGroupFactory = ({
       scope: OrganizationActionScope.ChildOrganization
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
+
+    const group = await $getGroupInActorScope(dto.permission, dto.selector.groupId);
+    if (isGroupLinkedFromRootOrg(dto.permission, group.orgId)) {
+      await $assertCanLinkRootGroup(dto.permission);
+    }
 
     const targetMembership = await membershipGroupDAL.getGroupById({
       scopeData: dto.scopeData,
