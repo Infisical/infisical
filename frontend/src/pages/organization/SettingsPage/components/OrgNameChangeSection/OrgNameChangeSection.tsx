@@ -13,12 +13,16 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CopyButton,
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Select,
   SelectContent,
   SelectItem,
@@ -133,7 +137,16 @@ export const OrgNameChangeSection = (): JSX.Element => {
               />
               <Field>
                 <FieldLabel htmlFor="org-id">Organization ID</FieldLabel>
-                <Input id="org-id" value={currentOrg.id} disabled />
+                <InputGroup>
+                  <InputGroupInput id="org-id" value={currentOrg.id} readOnly />
+                  <InputGroupAddon align="inline-end">
+                    <CopyButton
+                      value={currentOrg.id}
+                      ariaLabel="Copy organization ID"
+                      type="button"
+                    />
+                  </InputGroupAddon>
+                </InputGroup>
               </Field>
               <Controller
                 defaultValue=""
