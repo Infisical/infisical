@@ -59,7 +59,8 @@ type Props = {
   onContact: (prod: BillingV2CatalogProduct) => void;
   onCompleteTrialPayment: () => void;
   isCompletingTrialPayment: boolean;
-  trialApprovalUrl: string | null;
+  hasTrialApproval: boolean;
+  onOpenTrialApproval: () => void;
 };
 
 // A running upgrade trial is rendered on the product's own card, not here. This is only the
@@ -73,7 +74,8 @@ export const TrialBanners = ({
   onContact,
   onCompleteTrialPayment,
   isCompletingTrialPayment,
-  trialApprovalUrl
+  hasTrialApproval,
+  onOpenTrialApproval
 }: Props) => {
   const canAct = overview.selfServe && !readOnly;
   // The trial history is a permanent log, so an unpaid end is stale news once the org has moved on:
@@ -104,12 +106,8 @@ export const TrialBanners = ({
             {overview.trialPaymentDue.dueAt}.
             {canAct && (
               <div className="mt-3 flex flex-wrap gap-2">
-                {trialApprovalUrl ? (
-                  <Button
-                    variant="warning"
-                    size="xs"
-                    onClick={() => window.open(trialApprovalUrl, "_blank", "noopener,noreferrer")}
-                  >
+                {hasTrialApproval ? (
+                  <Button variant="warning" size="xs" onClick={onOpenTrialApproval}>
                     <ExternalLink />
                     Approve Payment
                   </Button>

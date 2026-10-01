@@ -206,6 +206,16 @@ export const BillingV2Page = () => {
     );
   };
 
+  // One use per link, so another trial still awaiting payment gets a fresh one on the next click.
+  const onOpenTrialApproval = () => {
+    if (!trialApprovalUrl) {
+      return;
+    }
+    window.open(trialApprovalUrl, "_blank", "noopener,noreferrer");
+    setTrialApproval(null);
+    refetch();
+  };
+
   // Billing name/email and address are edited in the Stripe billing portal.
   const onEditDetails = () => {
     redirectToPortal();
@@ -269,7 +279,8 @@ export const BillingV2Page = () => {
               onContact={onContact}
               onCompleteTrialPayment={onCompleteTrialPayment}
               isCompletingTrialPayment={confirmTrialPayment.isPending}
-              trialApprovalUrl={trialApprovalUrl}
+              hasTrialApproval={Boolean(trialApprovalUrl)}
+              onOpenTrialApproval={onOpenTrialApproval}
               onRetry={onRetry}
               canManageBilling={canManageBilling}
             />
