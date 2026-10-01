@@ -65,6 +65,7 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
+import { getOrganizationSwitchDestination } from "@app/helpers/organizationSwitch";
 import { getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
 import { useImplicitProduct } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrganizationsWithSubOrgs } from "@app/hooks/api";
@@ -208,6 +209,7 @@ const useEntityCommandGroups = ({
   currentOrganizationName?: string;
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const projectsQuery = useGetAccessibleProjectsWithSubOrgs(currentOrganizationId ?? "");
   const organizationsQuery = useGetOrganizationsWithSubOrgs();
   const { data: projects = [] } = projectsQuery;
@@ -269,11 +271,12 @@ const useEntityCommandGroups = ({
       ...(organization.isSubOrganization ? ["sub", "sub-org", "sub-organization"] : [])
     ],
     priority: organization.id === currentOrganizationId ? 20 : 0,
-    onSelect: () =>
-      navigate({
-        to: "/organizations/$orgId/projects",
-        params: { orgId: organization.id }
-      })
+    onSelect: () => {
+      if (organization.id === currentOrganizationId) return;
+      navigate(
+        getOrganizationSwitchDestination(location, organization.id, organization.isSubOrganization)
+      );
+    }
   }));
 
   const teamItems: GlobalCommandMenuItem[] = teams.map((team) => ({

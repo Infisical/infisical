@@ -64,6 +64,8 @@ When adding new queries, consider whether the default 60s staleTime is appropria
 
 Organization switching resets the query cache centrally in `pages/middlewares/inject-org-details.tsx`, after authentication succeeds and before tenant data loads. `hooks/api/organization/cache.ts` tracks the active organization per `QueryClient` and removes all queries except the exact auth-token, user-profile, server-config, and session-announcement keys. Removing queries also cancels pending query results, including queries whose keys omit the organization. Same-organization navigation keeps the cache, and the organization layout remounts on organization changes to reset local UI state. Keep tenant cache cleanup at this boundary rather than adding feature-specific removal lists to individual organization selectors. Logout paths must use `clearSession` to remove user-specific cache entries while preserving public server configuration for the login page.
 
+Organization switchers use `helpers/organizationSwitch.ts` to retain safe sections and tabs while dropping resource IDs, action parameters, and legacy suborganization search state. Pass the current location through `navigateUserToOrg` only for organization switches; initial login keeps its Projects landing page. Explicit destinations take precedence, and MFA route handoffs retain the requested destination through `redirect_to`.
+
 ### Product Analytics
 
 Use `@app/lib/analytics` for new frontend product analytics. Define the event and its typed properties in the shared catalog, then capture it through the method matching its scope so required grouping is applied automatically. Do not call the legacy `Telemetry` wrapper directly from new code or define event names as local strings.

@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, stripSearchParams } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, redirect, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { addSeconds, formatISO } from "date-fns";
 import { z } from "zod";
@@ -30,6 +30,7 @@ export const SelectOrganizationPageQueryParams = z.object({
   is_admin_login: z.boolean().optional().catch(false),
   force: z.boolean().optional(),
   mfa_method: z.string().optional().catch(undefined),
+  redirect_to: z.string().startsWith("/organizations/").optional().catch(undefined),
   // set by the provider-verified OAuth signup redirect so this page can fire the GTM conversion
   // event that the bypassed signup page would have pushed
   signup_completed: z.boolean().optional().catch(false)
@@ -166,7 +167,8 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
             search: {
               mfa_method: result.mfaMethod,
               org_id: targetOrgId,
-              callback_port: search.callback_port
+              callback_port: search.callback_port,
+              redirect_to: search.redirect_to
             }
           });
         }
@@ -198,6 +200,10 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
 
         createNotification({ text: "Successfully logged in", type: "success" });
 
+        if (search.redirect_to?.startsWith(`/organizations/${targetOrgId}/`)) {
+          throw redirect({ href: search.redirect_to });
+        }
+
         // Check for a stored redirect URL from before login (e.g., deep links like /pam/access)
         const loginRedirectUrl = consumeLoginRedirectUrl();
         if (loginRedirectUrl) {
@@ -212,9 +218,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
       }
     } catch (error) {
       // If it's a redirect, re-throw it
-      if (error instanceof Error && error.message === "REDIRECT") throw error;
-      // For redirect objects from TanStack Router
-      if (typeof error === "object" && error !== null && "to" in error) throw error;
+      if (isRedirect(error)) throw error;
       // selectOrganization is called directly (not via mutation hook), so MutationCache.onError
       // never fires for it — surface SMTP and lockout errors manually and log the user out.
       if (typeof error === "object" && error !== null && "response" in error) {

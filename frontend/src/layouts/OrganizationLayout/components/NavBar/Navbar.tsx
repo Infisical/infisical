@@ -203,10 +203,12 @@ export const Navbar = () => {
   const handleOrgSelection = async ({
     organizationId,
     navigateTo,
+    isSubOrganization: targetIsSubOrganization = false,
     onSuccess
   }: {
     organizationId?: string;
     navigateTo?: string;
+    isSubOrganization?: boolean;
     onSuccess?: () => void | Promise<void>;
   }) => {
     if (!organizationId) return;
@@ -222,7 +224,12 @@ export const Navbar = () => {
       }
       toggleShowMfa.on();
       setMfaSuccessCallback(() => async () => {
-        await handleOrgSelection({ organizationId, onSuccess });
+        await handleOrgSelection({
+          organizationId,
+          navigateTo,
+          isSubOrganization: targetIsSubOrganization,
+          onSuccess
+        });
       });
       return;
     }
@@ -234,7 +241,13 @@ export const Navbar = () => {
       staleTime: 0
     });
 
-    await navigateUserToOrg({ navigate, organizationId, navigateTo });
+    await navigateUserToOrg({
+      navigate,
+      organizationId,
+      navigateTo,
+      switchFrom: location,
+      isSubOrganization: targetIsSubOrganization
+    });
 
     if (onSuccess) {
       await onSuccess();
@@ -254,7 +267,11 @@ export const Navbar = () => {
     };
 
     if (isSubOrganization) {
-      await handleOrgSelection({ organizationId: rootOrg.id, onSuccess });
+      await handleOrgSelection({
+        organizationId: rootOrg.id,
+        navigateTo: "/organizations/$orgId/billing",
+        onSuccess
+      });
     } else {
       await navigateToBilling();
     }
@@ -524,7 +541,10 @@ export const Navbar = () => {
                                 keywords={[subOrg.name]}
                                 onSelect={() => {
                                   setIsOrgSelectOpen(false);
-                                  handleOrgSelection({ organizationId: subOrg.id });
+                                  handleOrgSelection({
+                                    organizationId: subOrg.id,
+                                    isSubOrganization: true
+                                  });
                                 }}
                               >
                                 <Check
@@ -854,7 +874,7 @@ export const Navbar = () => {
       <NewSubOrganizationModal
         isOpen={showSubOrgForm}
         onOpenChange={setShowSubOrgForm}
-        onCreated={({ id }) => handleOrgSelection({ organizationId: id })}
+        onCreated={({ id }) => handleOrgSelection({ organizationId: id, isSubOrganization: true })}
       />
       <Dialog open={showAdminsModal} onOpenChange={setShowAdminsModal}>
         <DialogContent>

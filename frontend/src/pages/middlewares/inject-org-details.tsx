@@ -10,7 +10,7 @@ import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subs
 
 // Route context to fill in organization's data like details, subscription etc
 export const Route = createFileRoute("/_authenticate/_inject-org-details")({
-  beforeLoad: async ({ context, params }) => {
+  beforeLoad: async ({ context, params, location }) => {
     let organizationId: string;
 
     if ((params as { orgId?: string })?.orgId) {
@@ -32,7 +32,11 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details")({
           sessionStorage.setItem(SessionStorageKeys.MFA_TEMP_TOKEN, token);
           throw redirect({
             to: "/login/select-organization",
-            search: { org_id: urlOrgId, mfa_method: mfaMethod }
+            search: {
+              org_id: urlOrgId,
+              mfa_method: mfaMethod,
+              redirect_to: location.href
+            }
           });
         }
 
