@@ -11,6 +11,7 @@ import {
   useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { DiscriminativePick } from "@app/types";
 
 import { OnePassConnectionForm } from "./1PasswordConnectionForm";
@@ -166,12 +167,13 @@ type FormProps = {
 type CreateFormProps = FormProps & {
   app: AppConnection;
   projectId?: string;
+  projectType?: ProjectType;
 };
 type UpdateFormProps = FormProps & {
   appConnection: TAppConnection;
 };
 
-const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
+const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps) => {
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
   const createAppConnection = useCreateAppConnection();
@@ -200,7 +202,7 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
   const renderForm = () => {
     switch (app) {
       case AppConnection.AWS:
-        return <AwsConnectionForm onSubmit={onSubmit} />;
+        return <AwsConnectionForm onSubmit={onSubmit} projectType={projectType} />;
       case AppConnection.GitHub:
         return <GitHubConnectionForm projectId={projectId} onSubmit={onSubmit} />;
       case AppConnection.GitHubRadar:
@@ -436,7 +438,13 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
   const renderForm = () => {
     switch (appConnection.app) {
       case AppConnection.AWS:
-        return <AwsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
+        return (
+          <AwsConnectionForm
+            appConnection={appConnection}
+            onSubmit={onSubmit}
+            projectType={appConnection.project?.type}
+          />
+        );
       case AppConnection.GitHub:
         return (
           <GitHubConnectionForm
@@ -702,12 +710,19 @@ type Props = {
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
   projectId?: string;
+  projectType?: ProjectType;
 } & Pick<FormProps, "onComplete"> &
   (
     | { app: AppConnection; appConnection?: undefined }
     | { app?: undefined; appConnection: TAppConnection }
   );
-export const AppConnectionForm = ({ onCancel, onDirtyChange, projectId, ...props }: Props) => {
+export const AppConnectionForm = ({
+  onCancel,
+  onDirtyChange,
+  projectId,
+  projectType,
+  ...props
+}: Props) => {
   const { app, appConnection } = props;
 
   const contextValue = useMemo(() => ({ onCancel, onDirtyChange }), [onCancel, onDirtyChange]);
@@ -717,7 +732,7 @@ export const AppConnectionForm = ({ onCancel, onDirtyChange, projectId, ...props
       {appConnection ? (
         <UpdateForm {...props} appConnection={appConnection} />
       ) : (
-        <CreateForm {...props} app={app} projectId={projectId} />
+        <CreateForm {...props} app={app} projectId={projectId} projectType={projectType} />
       )}
     </AppConnectionFormProvider>
   );

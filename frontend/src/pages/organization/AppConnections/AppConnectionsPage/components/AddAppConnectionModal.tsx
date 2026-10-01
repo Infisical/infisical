@@ -123,6 +123,7 @@ export const AddAppConnectionModal = ({
               <AppConnectionForm
                 app={selectedApp}
                 projectId={projectId}
+                projectType={projectType}
                 onComplete={handleComplete}
                 onCancel={() => requestDiscardAction(closeSheet)}
                 onDirtyChange={setIsDirty}
