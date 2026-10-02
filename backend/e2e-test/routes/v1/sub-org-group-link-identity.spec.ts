@@ -204,6 +204,34 @@ describe("Linking root groups to a sub-organization with a machine identity", ()
     }
   });
 
+  test("refuses to unlink a group owned by the sub-organization", async () => {
+    const suffix = alphaNumericNanoId(8).toLowerCase();
+    const [ownedGroup] = await testDb(TableName.Groups)
+      .insert({ orgId: subOrgId, name: `owned-grp-${suffix}`, slug: `owned-grp-${suffix}` })
+      .returning("*");
+    const [homeMembership] = await testDb(TableName.Membership)
+      .insert({ isActive: true, scope: AccessScope.Organization, scopeOrgId: subOrgId, actorGroupId: ownedGroup.id })
+      .returning("*");
+    await testDb(TableName.MembershipRole).insert({
+      membershipId: homeMembership.id,
+      role: OrgMembershipRole.NoAccess
+    });
+
+    try {
+      const deleteRes = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v1/organizations/memberships/groups/${ownedGroup.id}`,
+        headers: { authorization: `Bearer ${adminSubOrgToken}` }
+      });
+      expect(deleteRes.statusCode).toBe(400);
+      expect(await testDb(TableName.Membership).where({ id: homeMembership.id })).toHaveLength(1);
+    } finally {
+      await testDb(TableName.MembershipRole).where({ membershipId: homeMembership.id }).del();
+      await testDb(TableName.Membership).where({ id: homeMembership.id }).del();
+      await testDb(TableName.Groups).where({ id: ownedGroup.id }).del();
+    }
+  });
+
   test("links, updates, and unlinks a root group", async () => {
     const headers = { authorization: `Bearer ${adminSubOrgToken}` };
 

@@ -218,9 +218,12 @@ export const newOrgMembershipGroupFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
 
     const group = await $getGroupInActorScope(dto.permission, dto.selector.groupId);
-    if (isGroupLinkedFromRootOrg(dto.permission, group.orgId)) {
-      await $assertCanLinkRootGroup(dto.permission);
+    if (group.orgId === dto.permission.orgId) {
+      throw new BadRequestError({
+        message: `Group '${group.name}' belongs to this organization and can't be unlinked from it. Delete the group instead.`
+      });
     }
+    await $assertCanLinkRootGroup(dto.permission);
 
     const targetMembership = await membershipGroupDAL.getGroupById({
       scopeData: dto.scopeData,
