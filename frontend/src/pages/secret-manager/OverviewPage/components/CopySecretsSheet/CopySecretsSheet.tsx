@@ -198,6 +198,7 @@ const CopySecretsSession = ({
     includeValues
   });
   const secretSyncWarning = useSecretSyncMoveWarning(
+    projectId,
     sourceEnvironmentSlug &&
       destinationEnvironmentSlug &&
       isSourcePathSettled &&
@@ -205,7 +206,6 @@ const CopySecretsSession = ({
       (requestGroups.length || selectedFolderPaths.length)
       ? [
           {
-            projectId,
             sourceEnvironment: sourceEnvironmentSlug,
             sourceSecretPath: normalizedSourcePath,
             destinationEnvironment: destinationEnvironmentSlug,

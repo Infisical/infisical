@@ -1,23 +1,50 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon, TriangleAlertIcon } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle, Checkbox, Label } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization } from "@app/context";
+import { ProjectPermissionSub, useOrganization, useProjectPermission } from "@app/context";
+import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  getSecretSyncsNewlyCoveringPaths,
+  TMoveWarningsCheck
+} from "@app/helpers/secretSyncCoverage";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
-import { useGetMoveWarnings } from "@app/hooks/api/dashboard/queries";
-import { TMoveWarningsCheck } from "@app/hooks/api/dashboard/types";
+import { useListSecretSyncs } from "@app/hooks/api/secretSyncs";
 
 // the acknowledgement is tied to the checks and the warning it was given for, and cleared whenever
 // either changes, so a yes never carries over to a destination or a set of syncs the user has not seen.
-export const useSecretSyncMoveWarning = (checks: TMoveWarningsCheck[]) => {
-  const warnings = useGetMoveWarnings(checks);
+// like the synced indicator on the dashboard, syncs the user cannot read are left out entirely.
+export const useSecretSyncMoveWarning = (projectId: string, checks: TMoveWarningsCheck[]) => {
+  const { permission } = useProjectPermission();
+  const canReadSecretSyncs = permission.can(
+    ProjectPermissionSecretSyncActions.Read,
+    ProjectPermissionSub.SecretSyncs
+  );
+  const isEnabled = canReadSecretSyncs && checks.length > 0;
+
+  // never served from cache, so a sync created since the list was last loaded is not missed
+  const {
+    data: projectSyncs,
+    isLoading,
+    isError
+  } = useListSecretSyncs(projectId, {
+    enabled: isEnabled,
+    staleTime: 0
+  });
+
+  const secretSyncs = useMemo(
+    () => (isEnabled && projectSyncs ? getSecretSyncsNewlyCoveringPaths(projectSyncs, checks) : []),
+    [isEnabled, projectSyncs, checks]
+  );
+  const isChecking = isEnabled && isLoading;
+  const hasError = isEnabled && isError;
+
   const warningKey = JSON.stringify({
     checks,
-    syncIds: warnings.secretSyncs.map(({ id }) => id),
-    hasHiddenSecretSyncs: warnings.hasHiddenSecretSyncs,
-    hasError: warnings.hasError
+    syncIds: secretSyncs.map(({ id }) => id),
+    hasError
   });
   const [acknowledgedWarningKey, setAcknowledgedWarningKey] = useState<string | null>(null);
 
@@ -26,15 +53,16 @@ export const useSecretSyncMoveWarning = (checks: TMoveWarningsCheck[]) => {
   }, [warningKey]);
 
   const isAcknowledged = acknowledgedWarningKey === warningKey;
-  const needsAcknowledgement =
-    warnings.hasError || warnings.hasHiddenSecretSyncs || warnings.secretSyncs.length > 0;
+  const needsAcknowledgement = hasError || secretSyncs.length > 0;
 
   return {
-    ...warnings,
+    secretSyncs,
+    isChecking,
+    hasError,
     needsAcknowledgement,
     isAcknowledged,
     setIsAcknowledged: (value: boolean) => setAcknowledgedWarningKey(value ? warningKey : null),
-    isBlockingSubmit: warnings.isChecking || (needsAcknowledgement && !isAcknowledged)
+    isBlockingSubmit: isChecking || (needsAcknowledgement && !isAcknowledged)
   };
 };
 
@@ -47,23 +75,20 @@ type Props = {
 
 const getTitle = ({
   subject,
-  visibleCount,
-  hasHidden,
+  count,
   hasError
 }: {
   subject: string;
-  visibleCount: number;
-  hasHidden: boolean;
+  count: number;
   hasError: boolean;
 }) => {
   if (hasError) return "Could not check the destination for secret syncs";
-  if (hasHidden) return `${subject} here will be synced to external destinations`;
-  return `${subject} here will be synced to ${visibleCount} external destination${visibleCount === 1 ? "" : "s"}`;
+  return `${subject} here will be synced to ${count} external destination${count === 1 ? "" : "s"}`;
 };
 
 export const SecretSyncMoveWarning = ({ warning, projectId, noun, verb }: Props) => {
   const { currentOrg } = useOrganization();
-  const { needsAcknowledgement, isChecking, hasError, hasHiddenSecretSyncs, secretSyncs } = warning;
+  const { needsAcknowledgement, isChecking, hasError, secretSyncs } = warning;
 
   if (isChecking || !needsAcknowledgement) return null;
 
@@ -73,8 +98,7 @@ export const SecretSyncMoveWarning = ({ warning, projectId, noun, verb }: Props)
       <AlertTitle>
         {getTitle({
           subject: `${noun.charAt(0).toUpperCase()}${noun.slice(1)} ${verb}`,
-          visibleCount: secretSyncs.length,
-          hasHidden: hasHiddenSecretSyncs,
+          count: secretSyncs.length,
           hasError
         })}
       </AlertTitle>
@@ -86,8 +110,8 @@ export const SecretSyncMoveWarning = ({ warning, projectId, noun, verb }: Props)
               <li key={sync.id}>
                 <span className="font-medium text-foreground">{sync.name}</span>
                 {` (${SECRET_SYNC_MAP[sync.destination].name}) syncs `}
-                <code>{sync.secretPath ?? "/"}</code>
-                {sync.includeAllSubFolders ? " and all its subfolders." : "."}
+                <code>{sync.folder?.path ?? "/"}</code>
+                {sync.syncOptions.includeAllSubFolders ? " and all its subfolders." : "."}
                 {!sync.isAutoSyncEnabled &&
                   " Auto-sync is off, so it sends them on its next manual sync."}{" "}
                 <Link
@@ -108,13 +132,6 @@ export const SecretSyncMoveWarning = ({ warning, projectId, noun, verb }: Props)
               </li>
             ))}
           </ul>
-        )}
-        {hasHiddenSecretSyncs && (
-          <p>
-            {secretSyncs.length
-              ? "Other secret syncs you don't have access to also cover the destination."
-              : "Secret syncs you don't have access to cover the destination."}
-          </p>
         )}
         <div className="mt-2 flex items-center gap-2">
           <Checkbox

@@ -7,7 +7,6 @@ import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { SecretV3Raw, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
-import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
 export type DashboardProjectSecretsOverviewResponse = {
   folders?: (TSecretFolder & { environment: string })[];
@@ -284,28 +283,6 @@ export type FolderMoveEligibilityResponse = {
   destinationPolicyName?: string;
   // warning, never a block: the subtree carries folder-scoped access policies that will follow the move
   hasRbacPolicies?: boolean;
-};
-
-export type TMoveWarningsCheck = {
-  projectId: string;
-  sourceEnvironment: string;
-  sourceSecretPath: string;
-  destinationEnvironment: string;
-  destinationSecretPath: string;
-};
-
-export type TMoveWarningSecretSync = {
-  id: string;
-  name: string;
-  destination: SecretSync;
-  secretPath: string | null;
-  includeAllSubFolders: boolean;
-  isAutoSyncEnabled: boolean;
-};
-
-export type TMoveWarningsResponse = {
-  secretSyncs: TMoveWarningSecretSync[];
-  hasHiddenSecretSyncs: boolean;
 };
 
 export type TFolderMoveDestinationCheck = {

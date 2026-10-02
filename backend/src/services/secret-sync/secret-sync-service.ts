@@ -34,13 +34,7 @@ import {
   preSaveTransformDestinationConfig,
   preSaveTransformSyncOptions
 } from "@app/services/secret-sync/secret-sync-fns";
-import {
-  buildSyncPayload,
-  getSyncedFolders,
-  isPathCoveredBySecretSync,
-  isPathOrDescendantCoveredBySecretSync,
-  toSyncsNewlyCoveringPath
-} from "@app/services/secret-sync/secret-sync-recursive-fns";
+import { buildSyncPayload, getSyncedFolders } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncStatus,
   TCheckDuplicateDestinationDTO,
@@ -51,7 +45,6 @@ import {
   TFindSecretSyncByNameDTO,
   TListSecretSyncsByFolderId,
   TListSecretSyncsByProjectId,
-  TListSecretSyncsNewlyCoveringPathDTO,
   TSecretSync,
   TTriggerSecretSyncImportSecretsByIdDTO,
   TTriggerSecretSyncRemoveSecretsByIdDTO,
@@ -436,53 +429,6 @@ export const secretSyncServiceFactory = ({
     return secretSyncs.filter((sync) =>
       permission.can(ProjectPermissionSecretSyncActions.Read, getSecretSyncSubject(sync))
     ) as TSecretSync[];
-  };
-
-  // The syncs that would start sending items to their destination if they were moved or copied from the
-  // source path to the destination path. Any project member gets the warning, so it still reaches an actor
-  // who cannot read the syncs themselves.
-  const listSecretSyncsNewlyCoveringPath = async (
-    {
-      projectId,
-      sourceEnvironment,
-      sourceSecretPath,
-      destinationEnvironment,
-      destinationSecretPath
-    }: TListSecretSyncsNewlyCoveringPathDTO,
-    actor: OrgServiceActor
-  ) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-
-    const [sourceEnv, destinationEnv] = await Promise.all([
-      projectEnvDAL.findOne({ projectId, slug: sourceEnvironment }),
-      projectEnvDAL.findOne({ projectId, slug: destinationEnvironment })
-    ]);
-
-    if (!sourceEnv) throw new NotFoundError({ message: `Could not find environment with slug "${sourceEnvironment}"` });
-    if (!destinationEnv)
-      throw new NotFoundError({ message: `Could not find environment with slug "${destinationEnvironment}"` });
-
-    const projectSyncs = await secretSyncDAL.find({ projectId });
-
-    const sourceSyncs = projectSyncs.filter((sync) =>
-      isPathCoveredBySecretSync(sync, { envId: sourceEnv.id, secretPath: sourceSecretPath })
-    );
-    const destinationSyncs = projectSyncs.filter((sync) =>
-      isPathOrDescendantCoveredBySecretSync(sync, { envId: destinationEnv.id, secretPath: destinationSecretPath })
-    );
-
-    return toSyncsNewlyCoveringPath({
-      sourceSyncs,
-      destinationSyncs,
-      canRead: (sync) => permission.can(ProjectPermissionSecretSyncActions.Read, getSecretSyncSubject(sync))
-    });
   };
 
   const findSecretSyncById = async ({ destination, syncId }: TFindSecretSyncByIdDTO, actor: OrgServiceActor) => {
@@ -1291,7 +1237,6 @@ export const secretSyncServiceFactory = ({
     triggerSecretSyncImportSecretsById,
     triggerSecretSyncRemoveSecretsById,
     checkDuplicateDestination,
-    findRecursiveConflicts,
-    listSecretSyncsNewlyCoveringPath
+    findRecursiveConflicts
   };
 };

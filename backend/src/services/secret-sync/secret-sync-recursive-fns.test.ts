@@ -1,10 +1,8 @@
 import {
   buildSyncPayload,
+  getAncestorPaths,
   getSyncedFolders,
-  isPathCoveredBySecretSync,
-  isPathOrDescendantCoveredBySecretSync,
-  mergeImportedSecrets,
-  toSyncsNewlyCoveringPath
+  mergeImportedSecrets
 } from "./secret-sync-recursive-fns";
 
 const deps = {
@@ -45,160 +43,58 @@ describe("getSyncedFolders", () => {
   });
 });
 
-describe("isPathCoveredBySecretSync", () => {
-  const sync = (path: string, includeAllSubFolders?: boolean, envId = "env-1") => ({
-    environment: { id: envId },
-    folder: { path },
-    syncOptions: includeAllSubFolders === undefined ? {} : { includeAllSubFolders }
+describe("getAncestorPaths", () => {
+  test("returns the root for a top-level path", () => {
+    expect(getAncestorPaths("/")).toEqual([]);
   });
 
-  const covers = (entry: ReturnType<typeof sync>, secretPath: string, envId = "env-1") =>
-    isPathCoveredBySecretSync(entry, { envId, secretPath });
-
-  test("covers its own path whether or not it includes subfolders", () => {
-    expect(covers(sync("/apps", false), "/apps")).toBe(true);
-    expect(covers(sync("/apps", true), "/apps")).toBe(true);
-    expect(covers(sync("/apps"), "/apps")).toBe(true);
+  test("returns every ancestor, closest last", () => {
+    expect(getAncestorPaths("/backend/api/v2")).toEqual(["/", "/backend", "/backend/api"]);
   });
 
-  test("covers a descendant path only when it includes subfolders", () => {
-    expect(covers(sync("/apps", true), "/apps/payments/new")).toBe(true);
-    expect(covers(sync("/apps", false), "/apps/payments")).toBe(false);
-    expect(covers(sync("/apps"), "/apps/payments")).toBe(false);
+  test("never includes the path itself", () => {
+    for (const path of ["/", "/backend", "/backend/api", "/backend/api/v2"]) {
+      expect(getAncestorPaths(path)).not.toContain(path);
+    }
   });
 
-  test("covers everything from the root when it includes subfolders", () => {
-    expect(covers(sync("/", true), "/apps/payments")).toBe(true);
-    expect(covers(sync("/", false), "/apps")).toBe(false);
-    expect(covers(sync("/", false), "/")).toBe(true);
+  test("returns one fewer entry than the path has segments", () => {
+    expect(getAncestorPaths("/a")).toHaveLength(1);
+    expect(getAncestorPaths("/a/b")).toHaveLength(2);
+    expect(getAncestorPaths("/a/b/c")).toHaveLength(3);
+    expect(getAncestorPaths("/a/b/c/d")).toHaveLength(4);
   });
 
-  test("never covers an ancestor or a sibling sharing a name prefix", () => {
-    expect(covers(sync("/apps/payments", true), "/apps")).toBe(false);
-    expect(covers(sync("/apps", true), "/apps-legacy")).toBe(false);
+  test("treats a trailing slash as the same path", () => {
+    expect(getAncestorPaths("/backend/api/")).toEqual(getAncestorPaths("/backend/api"));
   });
 
-  test("never covers a path in another environment", () => {
-    expect(covers(sync("/apps", true, "env-2"), "/apps")).toBe(false);
+  test("tolerates repeated separators", () => {
+    expect(getAncestorPaths("/backend//api")).toEqual(getAncestorPaths("/backend/api"));
   });
 
-  test("never covers anything without a folder", () => {
-    expect(
-      isPathCoveredBySecretSync({ environment: { id: "env-1" }, folder: null }, { envId: "env-1", secretPath: "/" })
-    ).toBe(false);
+  test("returns an empty list for inputs that name no folder", () => {
+    // The queue passes whatever path the write carried. An empty result must mean
+    // "no ancestors to consider", never a lookup for a folder that cannot exist.
+    expect(getAncestorPaths("")).toEqual([]);
+    expect(getAncestorPaths("//")).toEqual([]);
   });
 
-  test("treats trailing and repeated slashes as the same path", () => {
-    expect(covers(sync("/apps"), "/apps/")).toBe(true);
-    expect(covers(sync("/apps/payments"), "/apps//payments")).toBe(true);
-  });
-});
-
-describe("isPathOrDescendantCoveredBySecretSync", () => {
-  const sync = (path: string, includeAllSubFolders = false, envId = "env-1") => ({
-    environment: { id: envId },
-    folder: { path },
-    syncOptions: { includeAllSubFolders }
+  test("every returned path is absolute and free of a trailing slash", () => {
+    for (const ancestor of getAncestorPaths("/a/b/c/d")) {
+      expect(ancestor.startsWith("/")).toBe(true);
+      if (ancestor !== "/") expect(ancestor.endsWith("/")).toBe(false);
+    }
   });
 
-  const covers = (entry: ReturnType<typeof sync>, secretPath: string, envId = "env-1") =>
-    isPathOrDescendantCoveredBySecretSync(entry, { envId, secretPath });
-
-  test("covers whatever the path itself is covered by", () => {
-    expect(covers(sync("/apps"), "/apps")).toBe(true);
-    expect(covers(sync("/", true), "/apps")).toBe(true);
+  test("returns the root exactly once, and only as the first entry", () => {
+    const ancestors = getAncestorPaths("/a/b/c");
+    expect(ancestors.filter((entry) => entry === "/")).toHaveLength(1);
+    expect(ancestors[0]).toBe("/");
   });
 
-  test("covers a sync rooted anywhere beneath the path, recursive or not", () => {
-    expect(covers(sync("/apps/payments"), "/apps")).toBe(true);
-    expect(covers(sync("/apps/payments/api", true), "/apps")).toBe(true);
-    expect(covers(sync("/apps"), "/")).toBe(true);
-  });
-
-  test("never covers a non-recursive ancestor, a sibling, or another environment", () => {
-    expect(covers(sync("/"), "/apps")).toBe(false);
-    expect(covers(sync("/apps-legacy/api"), "/apps")).toBe(false);
-    expect(covers(sync("/apps/payments", false, "env-2"), "/apps")).toBe(false);
-  });
-});
-
-describe("toSyncsNewlyCoveringPath", () => {
-  const sync = (id: string, overrides: Record<string, unknown> = {}) => ({
-    id,
-    name: id,
-    destination: "aws-parameter-store",
-    folder: { path: "/apps" },
-    syncOptions: { includeAllSubFolders: true },
-    isAutoSyncEnabled: true,
-    ...overrides
-  });
-
-  const canReadAll = () => true;
-
-  test("leaves out a sync that already covers the source", () => {
-    const result = toSyncsNewlyCoveringPath({
-      sourceSyncs: [sync("shared")],
-      destinationSyncs: [sync("shared"), sync("new")],
-      canRead: canReadAll
-    });
-
-    expect(result.secretSyncs.map((entry) => entry.id)).toEqual(["new"]);
-  });
-
-  test("returns nothing when the destination is covered only by the source's syncs", () => {
-    expect(
-      toSyncsNewlyCoveringPath({ sourceSyncs: [sync("a")], destinationSyncs: [sync("a")], canRead: canReadAll })
-    ).toEqual({ secretSyncs: [], hasHiddenSecretSyncs: false });
-  });
-
-  test("orders syncs by name", () => {
-    const result = toSyncsNewlyCoveringPath({
-      sourceSyncs: [],
-      destinationSyncs: [sync("b", { name: "zeta" }), sync("a", { name: "alpha" })],
-      canRead: canReadAll
-    });
-
-    expect(result.secretSyncs.map((entry) => entry.name)).toEqual(["alpha", "zeta"]);
-  });
-
-  test("returns the details of a sync the actor can read", () => {
-    const { secretSyncs } = toSyncsNewlyCoveringPath({
-      sourceSyncs: [],
-      destinationSyncs: [sync("a", { folder: { path: "/flat" }, syncOptions: {}, isAutoSyncEnabled: false })],
-      canRead: canReadAll
-    });
-
-    expect(secretSyncs).toEqual([
-      {
-        id: "a",
-        name: "a",
-        destination: "aws-parameter-store",
-        secretPath: "/flat",
-        includeAllSubFolders: false,
-        isAutoSyncEnabled: false
-      }
-    ]);
-  });
-
-  test("reports syncs the actor cannot read only as a flag, however many there are", () => {
-    const result = toSyncsNewlyCoveringPath({
-      sourceSyncs: [],
-      destinationSyncs: [sync("visible"), sync("hidden-1"), sync("hidden-2")],
-      canRead: (entry) => entry.id === "visible"
-    });
-
-    expect(result.secretSyncs.map((entry) => entry.id)).toEqual(["visible"]);
-    expect(result.hasHiddenSecretSyncs).toBe(true);
-  });
-
-  test("does not flag a hidden sync that already covers the source", () => {
-    const result = toSyncsNewlyCoveringPath({
-      sourceSyncs: [sync("hidden")],
-      destinationSyncs: [sync("hidden")],
-      canRead: () => false
-    });
-
-    expect(result.hasHiddenSecretSyncs).toBe(false);
+  test("returns the root for a single-segment path", () => {
+    expect(getAncestorPaths("/backend")).toEqual(["/"]);
   });
 });
 

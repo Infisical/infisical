@@ -12,7 +12,6 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -36,7 +35,6 @@ import {
   SecretImportReferencesBehavior,
   SecretsOrderBy
 } from "@app/services/secret/secret-types";
-import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SecretMetadataQuerySchema, SecretMetadataResponseSchema } from "./dashboard-secret-metadata-schemas";
@@ -2169,69 +2167,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       });
 
       return { value: secretVersion.secretValue };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/move-warnings",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      operationId: "listMoveWarnings",
-      description:
-        "List what a user should know before moving or copying items from one path to another, such as secret syncs that would start sending them to an external service",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
-      querystring: z.object({
-        projectId: z.string().trim().uuid().describe(DASHBOARD.MOVE_WARNINGS.projectId),
-        sourceEnvironment: slugSchema({ field: "Source environment" }).describe(
-          DASHBOARD.MOVE_WARNINGS.sourceEnvironment
-        ),
-        sourceSecretPath: z
-          .string()
-          .trim()
-          .max(1000)
-          .default("/")
-          .transform(prefixWithSlash)
-          .transform(removeTrailingSlash)
-          .describe(DASHBOARD.MOVE_WARNINGS.sourceSecretPath),
-        destinationEnvironment: slugSchema({ field: "Destination environment" }).describe(
-          DASHBOARD.MOVE_WARNINGS.destinationEnvironment
-        ),
-        destinationSecretPath: z
-          .string()
-          .trim()
-          .max(1000)
-          .default("/")
-          .transform(prefixWithSlash)
-          .transform(removeTrailingSlash)
-          .describe(DASHBOARD.MOVE_WARNINGS.destinationSecretPath)
-      }),
-      response: {
-        200: z.object({
-          secretSyncs: z
-            .object({
-              id: z.string().describe(DASHBOARD.MOVE_WARNINGS.syncId),
-              name: z.string().describe(DASHBOARD.MOVE_WARNINGS.syncName),
-              destination: z.nativeEnum(SecretSync).describe(DASHBOARD.MOVE_WARNINGS.syncDestination),
-              secretPath: z.string().nullable().describe(DASHBOARD.MOVE_WARNINGS.syncSecretPath),
-              includeAllSubFolders: z.boolean().describe(DASHBOARD.MOVE_WARNINGS.includeAllSubFolders),
-              isAutoSyncEnabled: z.boolean().describe(DASHBOARD.MOVE_WARNINGS.isAutoSyncEnabled)
-            })
-            .array()
-            .describe(DASHBOARD.MOVE_WARNINGS.secretSyncs),
-          hasHiddenSecretSyncs: z.boolean().describe(DASHBOARD.MOVE_WARNINGS.hasHiddenSecretSyncs)
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
-    handler: async (req) => {
-      return server.services.secretSync.listSecretSyncsNewlyCoveringPath(req.query, req.permission);
     }
   });
 

@@ -44,7 +44,7 @@ import {
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_DAILY_RETRY_DESTINATIONS, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
-import { buildSyncPayload, isPathCoveredBySecretSync } from "@app/services/secret-sync/secret-sync-recursive-fns";
+import { buildSyncPayload, getAncestorPaths } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncAction,
   SecretSyncStatus,
@@ -1052,8 +1052,27 @@ export const secretSyncQueueFactory = ({
     const environment = await projectEnvDAL.findOne({ projectId, slug: environmentSlug });
     if (!environment) return;
 
-    const secretSyncs = (await secretSyncDAL.find({ projectId, isAutoSyncEnabled: true })).filter((sync) =>
-      isPathCoveredBySecretSync(sync, { envId: environment.id, secretPath })
+    const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, secretPath);
+
+    const ancestorFolders = (
+      await folderDAL.findByManySecretPath(
+        getAncestorPaths(secretPath).map((path) => ({ envId: environment.id, secretPath: path }))
+      )
+    ).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+    const candidateSyncs = await secretSyncDAL.find({
+      $in: { folderId: [...ancestorFolders.map((entry) => entry.id), ...(folder ? [folder.id] : [])] },
+      isAutoSyncEnabled: true
+    });
+
+    // A sync on the path itself always matches, whether or not it includes subfolders. A sync on an
+    // ancestor folder only matches when it includes them, so a sync rooted above this path that does
+    // not is never triggered by a change it was never configured to cover.
+    // The move and copy warnings in frontend/src/helpers/secretSyncCoverage.ts mirror this rule.
+    const secretSyncs = candidateSyncs.filter(
+      (sync) =>
+        (folder && sync.folderId === folder.id) ||
+        Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders)
     );
 
     await secretSyncDAL.update(

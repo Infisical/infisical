@@ -23,9 +23,6 @@ import {
   TGetDashboardProjectSecretsQuickSearchDTO,
   TGetSecretMetadataDTO,
   TGetSecretValueDTO,
-  TMoveWarningsCheck,
-  TMoveWarningSecretSync,
-  TMoveWarningsResponse,
   TSearchSecretsByMetadataDTO,
   TSearchSecretsByMetadataResponse,
   TSecretMetadataPage
@@ -117,9 +114,7 @@ export const dashboardKeys = {
       folderId,
       destinationEnvironment,
       destinationPath
-    ] as const,
-  getMoveWarnings: (check: TMoveWarningsCheck) =>
-    [...dashboardKeys.all(), "move-warnings", check] as const
+    ] as const
 };
 
 export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?: AbortSignal) => {
@@ -776,38 +771,5 @@ export const useGetFoldersMoveDestinationEligibility = (checks: TFolderMoveDesti
       const isDestinationBlocked = hasError || blockedDestinations.length > 0;
 
       return { isChecking, isDestinationBlocked, blockedDestinations, hasError };
-    }
-  });
-
-// one check per environment pair, since a sync covers one path in one environment. the result is never
-// served from cache, so a sync created since the last check is not missed when the dialog reopens.
-export const useGetMoveWarnings = (checks: TMoveWarningsCheck[]) =>
-  useQueries({
-    queries: checks.map((check) => ({
-      queryKey: dashboardKeys.getMoveWarnings(check),
-      queryFn: async () => {
-        const { data } = await apiRequest.get<TMoveWarningsResponse>(
-          "/api/v1/dashboard/move-warnings",
-          { params: check }
-        );
-        return data;
-      },
-      enabled: Boolean(check.projectId && check.sourceEnvironment && check.destinationEnvironment),
-      staleTime: 0,
-      gcTime: 0
-    })),
-    combine: (results) => {
-      const secretSyncs = new Map<string, TMoveWarningSecretSync>();
-
-      results.forEach(({ data }) =>
-        data?.secretSyncs.forEach((sync) => secretSyncs.set(sync.id, sync))
-      );
-
-      return {
-        isChecking: results.some((result) => result.isLoading),
-        hasError: results.some((result) => result.isError),
-        secretSyncs: [...secretSyncs.values()],
-        hasHiddenSecretSyncs: results.some(({ data }) => data?.hasHiddenSecretSyncs)
-      };
     }
   });
