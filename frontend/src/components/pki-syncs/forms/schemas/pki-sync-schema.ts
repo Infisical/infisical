@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
+import { isKeystoreExportFormat, PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
 import { GCP_MAX_CERTIFICATES_PER_MAP_ENTRY } from "@app/hooks/api/pkiSyncs/types/gcp-certificate-manager-sync";
 
 import {
@@ -20,6 +20,11 @@ import {
   AzureKeyVaultPkiSyncDestinationSchema,
   UpdateAzureKeyVaultPkiSyncDestinationSchema
 } from "./azure-key-vault-pki-sync-destination-schema";
+import {
+  ExportPasswordSchema,
+  KEYSTORE_PASSWORD_REQUIRED_MESSAGE,
+  KeystoreAliasSchema
+} from "./base-pki-sync-schema";
 import {
   ChefPkiSyncDestinationSchema,
   UpdateChefPkiSyncDestinationSchema
@@ -115,6 +120,78 @@ const refineTargetHost = (data: unknown, ctx: z.RefinementCtx) => {
   }
 };
 
+const isServerDestination = (destination: PkiSync) =>
+  destination === PkiSync.WindowsServer || destination === PkiSync.LinuxServer;
+
+const isServerSyncForm = <T extends { destination: PkiSync }>(
+  data: T
+): data is Extract<T, { destination: PkiSync.WindowsServer | PkiSync.LinuxServer }> =>
+  isServerDestination(data.destination);
+
+// Only keystore formats use the password, so a value left behind after switching to PEM is ignored.
+const refineExportPassword = (
+  data: { destination: PkiSync; syncOptions?: unknown; credentials?: unknown },
+  ctx: z.RefinementCtx
+) => {
+  const password = (data.credentials as { exportPassword?: string } | undefined)?.exportPassword;
+  const exportFormat = (data.syncOptions as { exportFormat?: PkiSyncExportFormat } | undefined)
+    ?.exportFormat;
+  if (!isServerDestination(data.destination) || !password || !isKeystoreExportFormat(exportFormat))
+    return;
+  const result = ExportPasswordSchema.safeParse(password);
+  if (!result.success) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["credentials", "exportPassword"],
+      message: result.error.issues[0]?.message ?? "Invalid export password"
+    });
+  }
+};
+
+// The alias is kept while switching formats, so it is only validated when a keystore format uses it.
+const refineKeystoreAlias = (
+  data: { destination: PkiSync; syncOptions?: unknown },
+  ctx: z.RefinementCtx
+) => {
+  const { exportFormat, keystoreAlias } = (data.syncOptions ?? {}) as {
+    exportFormat?: PkiSyncExportFormat;
+    keystoreAlias?: string;
+  };
+  if (
+    !isServerDestination(data.destination) ||
+    !keystoreAlias ||
+    !isKeystoreExportFormat(exportFormat)
+  )
+    return;
+  const result = KeystoreAliasSchema.safeParse(keystoreAlias);
+  if (!result.success) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["syncOptions", "keystoreAlias"],
+      message: result.error.issues[0]?.message ?? "Invalid keystore alias"
+    });
+  }
+};
+
+// Drops keystore options the chosen format does not use, since the API rejects them.
+export const removeUnusedKeystoreOptions = <
+  T extends { syncOptions?: unknown; credentials?: unknown }
+>(
+  data: T
+): T => {
+  if (!data.syncOptions) return data;
+  const syncOptions = { ...(data.syncOptions as Record<string, unknown>) };
+  const alias =
+    typeof syncOptions.keystoreAlias === "string" ? syncOptions.keystoreAlias.trim() : "";
+  const exportFormat = syncOptions.exportFormat as PkiSyncExportFormat | undefined;
+  if (!isKeystoreExportFormat(exportFormat) || !alias) delete syncOptions.keystoreAlias;
+  else syncOptions.keystoreAlias = alias;
+  if (exportFormat !== PkiSyncExportFormat.Jks) delete syncOptions.includeTruststore;
+  if (!isKeystoreExportFormat(exportFormat))
+    return { ...data, syncOptions, credentials: undefined };
+  return { ...data, syncOptions };
+};
+
 export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
   if (
     data.destination === PkiSync.GcpCertificateManager &&
@@ -129,21 +206,27 @@ export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
   }
 
   if (
-    (data.destination === PkiSync.WindowsServer || data.destination === PkiSync.LinuxServer) &&
-    data.syncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&
+    isServerSyncForm(data) &&
+    isKeystoreExportFormat(data.syncOptions?.exportFormat) &&
     !data.credentials?.exportPassword
   ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["credentials", "exportPassword"],
-      message: "A password is required for PKCS#12 exports"
+      message: KEYSTORE_PASSWORD_REQUIRED_MESSAGE
     });
   }
 
+  refineExportPassword(data, ctx);
+  refineKeystoreAlias(data, ctx);
   refineTargetHost(data, ctx);
 });
 
-export const UpdatePkiSyncFormSchema = UpdatePkiSyncUnionSchema.superRefine(refineTargetHost);
+export const UpdatePkiSyncFormSchema = UpdatePkiSyncUnionSchema.superRefine((data, ctx) => {
+  refineExportPassword(data, ctx);
+  refineKeystoreAlias(data, ctx);
+  refineTargetHost(data, ctx);
+});
 
 export type TPkiSyncForm = z.infer<typeof PkiSyncFormSchema>;
 

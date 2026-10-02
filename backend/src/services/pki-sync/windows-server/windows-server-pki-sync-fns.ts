@@ -17,7 +17,18 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 import { PkiSyncError } from "../pki-sync-errors";
-import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
+import {
+  buildFileCollisionMessage,
+  buildStaleFileWarning,
+  exportCertificateForSync,
+  isExportFormatBlockedByFips,
+  isKeystoreExportFormat,
+  JKS_FIPS_UNSUPPORTED_MESSAGE,
+  JKS_TRUSTSTORE_SUFFIX,
+  PemCertificateExtension,
+  PkiSyncExportFormat,
+  planStaleCertificateFileCleanup
+} from "../pki-sync-export-fns";
 import {
   buildHealthCheckCommandFailureMessage,
   buildHealthCheckCommandPlan,
@@ -55,6 +66,8 @@ type TWindowsServerSyncOptions = {
   exportFormat?: PkiSyncExportFormat;
   pemCertificateExtension?: PemCertificateExtension;
   combineCertificateChain?: boolean;
+  keystoreAlias?: string;
+  includeTruststore?: boolean;
   includePrivateKey?: boolean;
   canRemoveCertificates?: boolean;
   fileAccessRules?: Array<{ identity: string; access: string }>;
@@ -66,7 +79,8 @@ const resolveWindowsExportOptions = (options: TWindowsServerSyncOptions) => ({
   format: options.exportFormat ?? PkiSyncExportFormat.Pkcs12,
   includePrivateKey: options.includePrivateKey ?? true,
   pemCertificateExtension: options.pemCertificateExtension,
-  combineCertificateChain: options.combineCertificateChain
+  combineCertificateChain: options.combineCertificateChain,
+  includeTruststore: options.includeTruststore
 });
 
 const TRAILING_BACKSLASH = new RE2("\\\\+$");
@@ -260,8 +274,7 @@ const runWindowsServerHealthCheckCommand = async ({
     certificateMap,
     exportOptions,
     joinPath: joinWindowsPath,
-    pkcs12Password:
-      exportOptions.format === PkiSyncExportFormat.Pkcs12 ? pkiSync.syncCredentials?.exportPassword : undefined
+    pkcs12Password: isKeystoreExportFormat(exportOptions.format) ? pkiSync.syncCredentials?.exportPassword : undefined
   });
   if (!plan) return undefined;
 
@@ -314,8 +327,13 @@ export const windowsServerPkiSyncFactory = ({
     const canRemoveCertificates = options.canRemoveCertificates ?? false;
     const exportPassword = pkiSync.syncCredentials?.exportPassword;
 
+    if (isExportFormatBlockedByFips(format)) {
+      throw new PkiSyncError({ shouldRetry: false, message: JKS_FIPS_UNSUPPORTED_MESSAGE });
+    }
+
     const failedUploads: Array<{ name: string; error: string }> = [];
     const failedRemovals: Array<{ name: string; error: string }> = [];
+    const staleFileFailures: Array<{ path: string; error: string }> = [];
     const skippedCertificates: Array<{ name: string; reason: string }> = [];
     // Paths confirmed on the host this run. Keeps the removal pass from deleting a file a renewal
     // just rewrote under the same name, and tells the post-sync command what landed.
@@ -344,7 +362,7 @@ export const windowsServerPkiSyncFactory = ({
     // Deliver each certificate over its own gateway operation so one certificate's failure is
     // recorded against that certificate only, rather than failing the whole batch.
     for (const [baseName, certData] of Object.entries(certificateMap)) {
-      const { cert, privateKey, certificateChain, certificateId } = certData;
+      const { cert, privateKey, certificateChain, fullCertificateChain, caCertificate, certificateId } = certData;
 
       if (!cert) {
         skippedCertificates.push({ name: baseName, reason: "Missing certificate data" });
@@ -352,7 +370,7 @@ export const windowsServerPkiSyncFactory = ({
         continue;
       }
 
-      const keyRequired = format === PkiSyncExportFormat.Pkcs12 || includePrivateKey;
+      const keyRequired = isKeystoreExportFormat(format) || includePrivateKey;
       if (keyRequired && !privateKey) {
         failedUploads.push({
           name: baseName,
@@ -368,17 +386,28 @@ export const windowsServerPkiSyncFactory = ({
           ...exportOptions,
           certificate: cert,
           certificateChain,
+          fullCertificateChain,
+          caCertificate,
           privateKey,
           password: exportPassword,
-          alias: baseName
+          alias: options.keystoreAlias || baseName
         });
 
         const paths: string[] = [];
+        const truststorePaths: string[] = [];
         const files: Array<{ path: string; contentBase64: string }> = [];
         for (const file of exported) {
           const fullPath = joinWindowsPath(config.destinationPath, `${baseName}${file.suffix}`);
           files.push({ path: fullPath, contentBase64: file.content.toString("base64") });
           paths.push(fullPath);
+          if (file.suffix === JKS_TRUSTSTORE_SUFFIX) truststorePaths.push(fullPath);
+        }
+
+        // Windows paths are case-insensitive, so compare them folded.
+        const deliveredLower = new Set([...deliveredPaths].map((deliveredPath) => deliveredPath.toLowerCase()));
+        const collidingPath = paths.find((deliveredPath) => deliveredLower.has(deliveredPath.toLowerCase()));
+        if (collidingPath) {
+          throw new PkiSyncError({ message: buildFileCollisionMessage(collidingPath) });
         }
 
         await executeWinRMGatewayOperation(
@@ -400,9 +429,33 @@ export const windowsServerPkiSyncFactory = ({
             ]);
           }
           if (record) {
+            const { filesToRemove, buildSyncMetadata } = planStaleCertificateFileCleanup({
+              previousMetadata: record.syncMetadata as TSyncMetadata,
+              previousExternalIdentifier: record.externalIdentifier,
+              writtenPaths: paths,
+              writtenTruststorePaths: truststorePaths,
+              deliveredPaths,
+              currentHost: target.credentials.host,
+              canRemoveCertificates,
+              caseInsensitive: true
+            });
+            let staleFilesToRetry: string[] = [];
+            if (filesToRemove.length > 0) {
+              try {
+                await executeWinRMGatewayOperation(
+                  { ...target, endpoint: WinRmRpcEndpoint.RemoveFiles, params: { paths: filesToRemove } },
+                  gatewayDeps
+                );
+              } catch (removeErr) {
+                // Keep tracking them so a later run can retry the delete.
+                staleFilesToRetry = filesToRemove;
+                const error = describeFailure(removeErr);
+                filesToRemove.forEach((staleFile) => staleFileFailures.push({ path: staleFile, error }));
+              }
+            }
             await certificateSyncDAL.updateById(record.id, {
               externalIdentifier: paths[0],
-              syncMetadata: { files: paths }
+              syncMetadata: buildSyncMetadata(staleFilesToRetry)
             });
           }
         }
@@ -436,7 +489,7 @@ export const windowsServerPkiSyncFactory = ({
       destinationDirectory: config.destinationPath,
       deliveredPaths,
       deliveredCertificates,
-      pkcs12Password: format === PkiSyncExportFormat.Pkcs12 ? exportPassword : undefined
+      pkcs12Password: isKeystoreExportFormat(format) ? exportPassword : undefined
     });
     const postSyncCommand = postSyncCommandPlan
       ? await runWindowsServerPostSyncCommand({
@@ -454,6 +507,7 @@ export const windowsServerPkiSyncFactory = ({
       skipped: skippedCertificates.length,
       healthCheck,
       postSyncCommand,
+      warningMessage: buildStaleFileWarning(staleFileFailures),
       details: {
         failedUploads: failedUploads.length > 0 ? failedUploads : undefined,
         failedRemovals: failedRemovals.length > 0 ? failedRemovals : undefined,

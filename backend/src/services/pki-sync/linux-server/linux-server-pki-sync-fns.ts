@@ -26,7 +26,18 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 import { PkiSyncError } from "../pki-sync-errors";
-import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
+import {
+  buildFileCollisionMessage,
+  buildStaleFileWarning,
+  exportCertificateForSync,
+  isExportFormatBlockedByFips,
+  isKeystoreExportFormat,
+  JKS_FIPS_UNSUPPORTED_MESSAGE,
+  JKS_TRUSTSTORE_SUFFIX,
+  PemCertificateExtension,
+  PkiSyncExportFormat,
+  planStaleCertificateFileCleanup
+} from "../pki-sync-export-fns";
 import {
   buildHealthCheckCommandFailureMessage,
   buildHealthCheckCommandPlan,
@@ -63,6 +74,8 @@ type TLinuxServerSyncOptions = {
   exportFormat?: PkiSyncExportFormat;
   pemCertificateExtension?: PemCertificateExtension;
   combineCertificateChain?: boolean;
+  keystoreAlias?: string;
+  includeTruststore?: boolean;
   includePrivateKey?: boolean;
   canRemoveCertificates?: boolean;
   fileMode?: string;
@@ -231,6 +244,20 @@ const unlinkIfExists = (sftp: SFTPWrapper, filePath: string): Promise<void> =>
     sftp.unlink(filePath, () => resolve());
   });
 
+// SFTP status code for a missing file. ssh2 is CommonJS, so its "utils" export can't be imported by name.
+const SFTP_STATUS_NO_SUCH_FILE = 2;
+
+const unlinkOrThrow = (sftp: SFTPWrapper, filePath: string): Promise<void> =>
+  new Promise<void>((resolve, reject) => {
+    sftp.unlink(filePath, (err) => {
+      if (!err || (err as { code?: number }).code === SFTP_STATUS_NO_SUCH_FILE) {
+        resolve();
+        return;
+      }
+      reject(err);
+    });
+  });
+
 const TEMP_FILE_MARKER = ".infisical.tmp";
 // A write completes in seconds, so any temp file older than this was left by an interrupted run
 // (dropped connection between write and rename) and is safe to remove even if another sync shares
@@ -322,7 +349,8 @@ const resolveLinuxExportOptions = (options: TLinuxServerSyncOptions) => ({
   format: options.exportFormat ?? PkiSyncExportFormat.Pem,
   includePrivateKey: options.includePrivateKey ?? true,
   pemCertificateExtension: options.pemCertificateExtension,
-  combineCertificateChain: options.combineCertificateChain
+  combineCertificateChain: options.combineCertificateChain,
+  includeTruststore: options.includeTruststore
 });
 
 const executeLinuxServerHostCommand = (
@@ -363,8 +391,7 @@ const runLinuxServerHealthCheckCommand = async ({
     certificateMap,
     exportOptions,
     joinPath: (directory, fileName) => path.posix.join(directory, fileName),
-    pkcs12Password:
-      exportOptions.format === PkiSyncExportFormat.Pkcs12 ? pkiSync.syncCredentials?.exportPassword : undefined
+    pkcs12Password: isKeystoreExportFormat(exportOptions.format) ? pkiSync.syncCredentials?.exportPassword : undefined
   });
   if (!plan) return undefined;
 
@@ -425,8 +452,13 @@ export const linuxServerPkiSyncFactory = ({
     const certificateMode = parseFileMode(options.fileMode, CERTIFICATE_FILE_MODE);
     const exportPassword = pkiSync.syncCredentials?.exportPassword;
 
+    if (isExportFormatBlockedByFips(format)) {
+      throw new PkiSyncError({ shouldRetry: false, message: JKS_FIPS_UNSUPPORTED_MESSAGE });
+    }
+
     const failedUploads: Array<{ name: string; error: string }> = [];
     const failedRemovals: Array<{ name: string; error: string }> = [];
+    const staleFileFailures: Array<{ path: string; error: string }> = [];
     const skippedCertificates: Array<{ name: string; reason: string }> = [];
     // Paths confirmed on the host this run. Keeps the removal pass from deleting a file a renewal
     // just rewrote under the same name, and tells the post-sync command what landed.
@@ -437,10 +469,11 @@ export const linuxServerPkiSyncFactory = ({
 
     const sshConfig = await buildSshConfig(pkiSync, { gatewayV2Service, gatewayPoolService, keyStore });
     const gatewayLabel = await resolveGatewayLabel(gatewayV2Service, sshConfig.gatewayId);
+    const targetHost = sshConfig.credentials.host;
     const describeFailure = (error: unknown) =>
       describeHostFailure({
         error,
-        host: (pkiSync.destinationConfig as TLinuxServerPkiSyncConfig).host,
+        host: targetHost,
         gatewayLabel,
         transport: "SSH"
       });
@@ -466,7 +499,7 @@ export const linuxServerPkiSyncFactory = ({
         await removeStaleTempFiles(sftp, config.destinationPath);
 
         for (const [baseName, certData] of Object.entries(certificateMap)) {
-          const { cert, privateKey, certificateChain, certificateId } = certData;
+          const { cert, privateKey, certificateChain, fullCertificateChain, caCertificate, certificateId } = certData;
 
           if (!cert) {
             skippedCertificates.push({ name: baseName, reason: "Missing certificate data" });
@@ -474,9 +507,9 @@ export const linuxServerPkiSyncFactory = ({
             continue;
           }
 
-          // Private key is required for PKCS#12, and for PEM when the operator asked to include it.
+          // Private key is required for PKCS#12 and JKS, and for PEM when the operator asked to include it.
           // If the key is not available (external CSR or HSM key), fail rather than deliver a keyless file.
-          const keyRequired = format === PkiSyncExportFormat.Pkcs12 || includePrivateKey;
+          const keyRequired = isKeystoreExportFormat(format) || includePrivateKey;
           if (keyRequired && !privateKey) {
             failedUploads.push({
               name: baseName,
@@ -492,12 +525,22 @@ export const linuxServerPkiSyncFactory = ({
               ...exportOptions,
               certificate: cert,
               certificateChain,
+              fullCertificateChain,
+              caCertificate,
               privateKey,
               password: exportPassword,
-              alias: baseName
+              alias: options.keystoreAlias || baseName
             });
 
+            const collidingPath = files
+              .map((file) => path.posix.join(config.destinationPath, `${baseName}${file.suffix}`))
+              .find((filePath) => deliveredPaths.has(filePath));
+            if (collidingPath) {
+              throw new PkiSyncError({ message: buildFileCollisionMessage(collidingPath) });
+            }
+
             const writtenPaths: string[] = [];
+            const writtenTruststorePaths: string[] = [];
             for (const file of files) {
               const filePath = path.posix.join(config.destinationPath, `${baseName}${file.suffix}`);
               try {
@@ -518,6 +561,7 @@ export const linuxServerPkiSyncFactory = ({
               }
               await applyOwnership(client, options.owner, options.group, filePath);
               writtenPaths.push(filePath);
+              if (file.suffix === JKS_TRUSTSTORE_SUFFIX) writtenTruststorePaths.push(filePath);
               deliveredPaths.add(filePath);
             }
 
@@ -531,9 +575,33 @@ export const linuxServerPkiSyncFactory = ({
                 ]);
               }
               if (record) {
+                const { filesToRemove, buildSyncMetadata } = planStaleCertificateFileCleanup({
+                  previousMetadata: record.syncMetadata as TSyncMetadata,
+                  previousExternalIdentifier: record.externalIdentifier,
+                  writtenPaths,
+                  writtenTruststorePaths,
+                  deliveredPaths,
+                  currentHost: targetHost,
+                  canRemoveCertificates
+                });
+                const staleFilesToRetry: string[] = [];
+                for (const staleFile of filesToRemove) {
+                  try {
+                    await unlinkOrThrow(sftp, staleFile);
+                  } catch (removeErr) {
+                    staleFilesToRetry.push(staleFile);
+                    staleFileFailures.push({ path: staleFile, error: describeFailure(removeErr) });
+                  }
+                }
+                const removedCount = filesToRemove.length - staleFilesToRetry.length;
+                if (removedCount > 0) {
+                  logger.info(
+                    `Linux Server PKI sync [syncId=${pkiSync.id}]: removed ${removedCount} file(s) "${baseName}" no longer uses`
+                  );
+                }
                 await certificateSyncDAL.updateById(record.id, {
                   externalIdentifier: primaryPath,
-                  syncMetadata: { files: writtenPaths }
+                  syncMetadata: buildSyncMetadata(staleFilesToRetry)
                 });
               }
             }
@@ -573,7 +641,7 @@ export const linuxServerPkiSyncFactory = ({
       destinationDirectory: config.destinationPath,
       deliveredPaths,
       deliveredCertificates,
-      pkcs12Password: format === PkiSyncExportFormat.Pkcs12 ? exportPassword : undefined
+      pkcs12Password: isKeystoreExportFormat(format) ? exportPassword : undefined
     });
     const postSyncCommand = postSyncCommandPlan
       ? await runLinuxServerPostSyncCommand({
@@ -592,6 +660,7 @@ export const linuxServerPkiSyncFactory = ({
       skipped: skippedCertificates.length,
       healthCheck,
       postSyncCommand,
+      warningMessage: buildStaleFileWarning(staleFileFailures),
       details: {
         failedUploads: failedUploads.length > 0 ? failedUploads : undefined,
         failedRemovals: failedRemovals.length > 0 ? failedRemovals : undefined,

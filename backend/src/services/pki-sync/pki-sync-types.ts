@@ -127,6 +127,8 @@ export type TCertificateMap = Record<
     cert: string;
     privateKey: string;
     certificateChain?: string;
+    // The stored chain before includeRootCa is applied.
+    fullCertificateChain?: string;
     caCertificate?: string;
     alternativeNames?: string[];
     certificateId?: string;
@@ -149,6 +151,7 @@ export type TPkiSyncSyncResult = {
     validationErrors?: Array<{ name: string; error: string }>;
   };
   partialFailureMessage?: string;
+  warningMessage?: string;
 };
 
 export type TCreatePkiSyncDTO = {

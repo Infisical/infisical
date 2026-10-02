@@ -153,6 +153,7 @@ export const BOOLEAN_SYNC_OPTION_FIELDS = [
   { key: "preserveItemOnRenewal", label: "Preserve Item on Renewal" },
   { key: "updateExistingCertificates", label: "Update Existing Certificates" },
   { key: "combineCertificateChain", label: "Combine Certificate and Chain" },
+  { key: "includeTruststore", label: "Include Truststore" },
   { key: "includePrivateKey", label: "Include Private Key" }
 ] as const;
 
@@ -176,6 +177,7 @@ export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "caCertificateNameSchema", label: "CA Certificate Name Schema" },
   { key: "exportFormat", label: "Export Format" },
   { key: "pemCertificateExtension", label: "Certificate File Extension" },
+  { key: "keystoreAlias", label: "Keystore Alias" },
   { key: "fileMode", label: "File Permissions" },
   { key: "privateKeyFileMode", label: "Private Key Permissions" },
   { key: "owner", label: "Owner" },
@@ -187,7 +189,9 @@ export const POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS: Record<HostCommandVariable
   [HostCommandVariable.CertificateDirectory]: "The destination directory",
   [HostCommandVariable.CertificateFiles]: "Every path written this run, one per line",
   [HostCommandVariable.CommonName]: "The certificate's common name",
-  [HostCommandVariable.Pkcs12Password]: "The PKCS#12 export password"
+  [HostCommandVariable.ExportPassword]: "The PKCS#12 or JKS export password",
+  [HostCommandVariable.Pkcs12Password]:
+    "The PKCS#12 or JKS export password (older name for exportPassword)"
 };
 
 export const HEALTH_CHECK_COMMAND_VARIABLE_DESCRIPTIONS: Record<HostCommandVariable, string> = {
@@ -195,7 +199,9 @@ export const HEALTH_CHECK_COMMAND_VARIABLE_DESCRIPTIONS: Record<HostCommandVaria
   [HostCommandVariable.CertificateDirectory]: "The directory the sync is about to write to",
   [HostCommandVariable.CertificateFiles]: "Every path this run will write, one per line",
   [HostCommandVariable.CommonName]: "The certificate's common name",
-  [HostCommandVariable.Pkcs12Password]: "The PKCS#12 export password"
+  [HostCommandVariable.ExportPassword]: "The PKCS#12 or JKS export password",
+  [HostCommandVariable.Pkcs12Password]:
+    "The PKCS#12 or JKS export password (older name for exportPassword)"
 };
 
 const SINGLE_CERTIFICATE_HOST_COMMAND_VARIABLES = [
@@ -227,3 +233,9 @@ export const getPkiSyncFailureMessage = (
     return message;
   }
 };
+
+// A sync that succeeded can still carry a message, such as files it could not clean up.
+export const getPkiSyncWarningMessage = (
+  status: PkiSyncStatus | null | undefined,
+  message: string | null | undefined
+): string | null => (status === PkiSyncStatus.Succeeded && message ? message : null);
