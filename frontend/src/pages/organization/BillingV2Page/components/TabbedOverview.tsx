@@ -1,5 +1,5 @@
 import { CSSProperties, ReactNode, useEffect } from "react";
-import { EllipsisVerticalIcon, RefreshCw } from "lucide-react";
+import { EllipsisVerticalIcon, InfoIcon, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -7,6 +7,8 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  Alert,
+  AlertDescription,
   Badge,
   Button,
   Card,
@@ -511,9 +513,6 @@ export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode })
       </div>
       <div className="col-start-1 row-start-1 xl:sticky xl:top-6 xl:col-start-2">
         <Card>
-          <CardHeader>
-            <CardTitle>Billing</CardTitle>
-          </CardHeader>
           <CardContent className="flex flex-col gap-5">
             {SKELETON_PRODUCTS.map((key) => (
               <div key={key} className="flex flex-col gap-2">
@@ -592,7 +591,7 @@ export const TabbedOverview = ({
         </TabsList>
       )}
 
-      <TabsContent value="overview">
+      <TabsContent value="overview" tabIndex={-1}>
         <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="row-start-2 flex min-w-0 flex-col gap-5 xl:row-start-1">
             {visible.length === 0 && (
@@ -638,100 +637,105 @@ export const TabbedOverview = ({
             })}
           </div>
           <aside
-            className="col-start-1 row-start-1 xl:sticky xl:top-6 xl:col-start-2"
+            className="col-start-1 row-start-1 flex flex-col gap-4 xl:sticky xl:top-6 xl:col-start-2"
             aria-label="Billing summary"
           >
             <Card>
-              <CardHeader>
-                <CardTitle className="row-span-2">Billing</CardTitle>
-                {!readOnly && (
-                  <CardAction>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <IconButton
-                          aria-label="Refresh entitlements"
-                          variant="ghost-muted"
-                          size="xs"
-                          isDisabled={refreshEntitlements.isPending}
-                          onClick={handleRefresh}
-                        >
-                          <RefreshCw />
-                        </IconButton>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Plan changes may take a few minutes to take effect.
-                      </TooltipContent>
-                    </Tooltip>
-                  </CardAction>
-                )}
-              </CardHeader>
-              <CardContent className="flex flex-col gap-5">
-                {isManaged && (
-                  <>
-                    <Metric label="Billing Method" value="By contract" note="Set by your license" />
+              <CardContent className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-1 flex-col gap-5">
+                  {isManaged && (
+                    <>
+                      <Metric label="Billing Method" value="Contract" note="Set by your license" />
+                      <Metric
+                        label="Active Products"
+                        value={billing.activeProductCount.toLocaleString()}
+                      />
+                    </>
+                  )}
+                  {!isManaged && !isSubscribed && (
                     <Metric
-                      label="Active Products"
-                      value={billing.activeProductCount.toLocaleString()}
-                    />
-                    <p className="text-sm text-muted">
-                      Your plan is managed by your account team. Products and limits on this
-                      organization are set by contract; contact your account manager to make
-                      changes.
-                    </p>
-                  </>
-                )}
-                {!isManaged && !isSubscribed && (
-                  <Metric
-                    label="Subscription"
-                    value="None"
-                    note={
-                      visible.some(
-                        (prod) =>
-                          !entitlements[prod.id]?.entitled ||
-                          entitlements[prod.id]?.status === "churned"
-                      )
-                        ? "Activate a product to start one"
-                        : "No products to activate"
-                    }
-                  />
-                )}
-                {!isManaged && isSubscribed && (
-                  <>
-                    <Metric
-                      label="Next Charge"
-                      value={billing.nextCharge ? fmtMoney(billing.nextCharge.amount) : "—"}
+                      label="Subscription"
+                      value="None"
                       note={
-                        billing.nextCharge
-                          ? `${billing.nextCharge.at}${billing.nextCharge.hasUsage ? " · includes usage" : ""}`
-                          : "Nothing due"
+                        visible.some(
+                          (prod) =>
+                            !entitlements[prod.id]?.entitled ||
+                            entitlements[prod.id]?.status === "churned"
+                        )
+                          ? "Activate a product to start one"
+                          : "No products to activate"
                       }
                     />
-                    <Metric
-                      label="Monthly Recurring"
-                      value={fmtMoney(billing.monthlyRecurring)}
-                      note="per month"
-                    />
-                    <Metric
-                      label="Annual Committed"
-                      value={fmtMoney(billing.annualCommitted)}
-                      note="per year"
-                    />
-                  </>
+                  )}
+                  {!isManaged && isSubscribed && (
+                    <>
+                      <Metric
+                        label="Next Charge"
+                        value={billing.nextCharge ? fmtMoney(billing.nextCharge.amount) : "—"}
+                        note={
+                          billing.nextCharge
+                            ? `${billing.nextCharge.at}${billing.nextCharge.hasUsage ? " · includes usage" : ""}`
+                            : "Nothing due"
+                        }
+                      />
+                      <Metric
+                        label="Monthly Recurring"
+                        value={fmtMoney(billing.monthlyRecurring)}
+                        note="per month"
+                      />
+                      <Metric
+                        label="Annual Committed"
+                        value={fmtMoney(billing.annualCommitted)}
+                        note="per year"
+                      />
+                    </>
+                  )}
+                </div>
+                {!readOnly && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <IconButton
+                        aria-label="Refresh entitlements"
+                        variant="ghost-muted"
+                        size="xs"
+                        isDisabled={refreshEntitlements.isPending}
+                        onClick={handleRefresh}
+                      >
+                        <RefreshCw />
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Plan changes may take a few minutes to take effect.
+                    </TooltipContent>
+                  </Tooltip>
                 )}
               </CardContent>
             </Card>
+            {isManaged && (
+              <Alert variant="info">
+                <InfoIcon />
+                <AlertDescription>
+                  Your plan is managed by your account team. Products and limits on this
+                  organization are set by contract; contact your account manager to make changes.
+                </AlertDescription>
+              </Alert>
+            )}
           </aside>
         </div>
       </TabsContent>
 
       {showInvoicesTab && (
-        <TabsContent value="invoices">
+        <TabsContent value="invoices" tabIndex={-1}>
           <InvoicesCard invoices={overview.invoices} />
         </TabsContent>
       )}
 
       {showPaymentTab && (
-        <TabsContent value="payment" className="grid items-start gap-6 xl:grid-cols-2">
+        <TabsContent
+          value="payment"
+          tabIndex={-1}
+          className="grid items-start gap-6 xl:grid-cols-2"
+        >
           {showPayment && (
             <PaymentCard
               overview={overview}
