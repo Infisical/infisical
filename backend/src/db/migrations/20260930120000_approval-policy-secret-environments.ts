@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("secretPath").notNullable();
 
       t.timestamps(true, true, true);
-      t.unique(["policyId", "envId"]);
+      t.unique(["policyId", "envId", "secretPath"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.ApprovalPolicySecretEnvironment);

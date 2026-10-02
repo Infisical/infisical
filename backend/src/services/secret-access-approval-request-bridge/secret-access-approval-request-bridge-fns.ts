@@ -125,13 +125,17 @@ export const notifySecretAccessStepApprovers = async (
     request,
     project,
     requestedByUser,
-    data
+    data,
+    environment,
+    secretPath
   }: {
     step: ApprovalPolicyStep;
     request: TSecretAccessRequestRow;
     project: { id: string; name: string; orgId: string };
     requestedByUser: { firstName?: string | null; lastName?: string | null; email?: string | null };
     data: TSecretAccessRequestData;
+    environment: { slug: string };
+    secretPath: string;
   },
   {
     userDAL,
@@ -168,8 +172,8 @@ export const notifySecretAccessStepApprovers = async (
             requesterFullName,
             isTemporary: data.isTemporary,
             requesterEmail: request.requesterEmail,
-            secretPath: data.secretPath,
-            environment: data.envSlug,
+            secretPath,
+            environment: environment.slug,
             permissions: accessTypes,
             approvalUrl,
             note: request.justification ?? undefined
@@ -192,7 +196,7 @@ export const notifySecretAccessStepApprovers = async (
         orgId: request.organizationId,
         type: NotificationType.ACCESS_APPROVAL_REQUEST,
         title: "Access Approval Request",
-        body: `**${requesterFullName}** (${requestedByUser.email}) has requested ${data.isTemporary ? "temporary" : "permanent"} access to **${data.secretPath}** in the **${data.envSlug}** environment for project **${project.name}**.`,
+        body: `**${requesterFullName}** (${requestedByUser.email}) has requested ${data.isTemporary ? "temporary" : "permanent"} access to **${secretPath}** in the **${environment.slug}** environment for project **${project.name}**.`,
         link: approvalPath
       }))
     );
@@ -208,8 +212,8 @@ export const notifySecretAccessStepApprovers = async (
           requesterEmail: requestedByUser.email,
           isTemporary: data.isTemporary,
           ...(data.isTemporary && data.temporaryRange && { expiresIn: msFn(ms(data.temporaryRange), { long: true }) }),
-          secretPath: data.secretPath,
-          environment: data.envSlug,
+          secretPath,
+          environment: environment.slug,
           permissions: accessTypes,
           approvalUrl,
           note: request.justification ?? undefined

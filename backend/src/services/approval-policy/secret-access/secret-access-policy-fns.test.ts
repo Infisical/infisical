@@ -2,14 +2,12 @@ import {
   getSecretAccessGrantWindow,
   hasSameAccessCriteria,
   isSecretAccessBreakGlassEligible,
+  parseSecretAccessRequestData,
   validateSecretAccessConstraints
 } from "./secret-access-policy-fns";
 import { TSecretAccessRequestData } from "./secret-access-policy-types";
 
 const storedRequest: TSecretAccessRequestData = {
-  envId: "7b8f3a52-91c4-4d0e-9a6b-2f1c5e8d4a73",
-  envSlug: "dev",
-  secretPath: "/app",
   permissions: [["read", "secrets", { environment: "dev", secretPath: { $glob: "/app" } }]],
   isTemporary: false,
   temporaryRange: null

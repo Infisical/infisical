@@ -11,19 +11,16 @@ export const SecretAccessPolicyConstraintsSchema = z.object({
 });
 
 export const SecretAccessPolicyRequestDataSchema = z.object({
-  envId: z.string().uuid(),
-  envSlug: z.string(),
-  secretPath: z.string(),
   permissions: z.unknown(),
   isTemporary: z.boolean(),
   temporaryRange: z.string().nullable()
 });
 
-export const SecretAccessPolicyInputsSchema = SecretAccessPolicyRequestDataSchema.pick({
-  envId: true,
-  secretPath: true,
-  permissions: true,
-  isTemporary: true
+export const SecretAccessPolicyInputsSchema = z.object({
+  envId: z.string().uuid(),
+  secretPath: z.string(),
+  permissions: z.unknown(),
+  isTemporary: z.boolean()
 });
 
 export const SecretAccessPolicySchema = BaseApprovalPolicySchema.extend({

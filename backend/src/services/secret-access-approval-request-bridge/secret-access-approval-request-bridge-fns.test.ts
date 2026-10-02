@@ -32,9 +32,6 @@ const updatedAt = new Date("2026-01-02T00:00:00.000Z");
 const storedRequestData = (overrides: Partial<{ isTemporary: boolean; temporaryRange: string | null }> = {}) => ({
   version: 1,
   requestData: {
-    envId: ENV_ID,
-    envSlug: "dev",
-    secretPath: "/app",
     permissions: PERMISSIONS,
     isTemporary: false,
     temporaryRange: null,

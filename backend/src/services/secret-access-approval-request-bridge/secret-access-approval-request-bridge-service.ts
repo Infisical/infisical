@@ -280,9 +280,6 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
     note
   }: TCreateSecretAccessApprovalRequestDTO) => {
     const requestData: TSecretAccessRequestData = {
-      envId,
-      envSlug,
-      secretPath,
       permissions,
       isTemporary,
       temporaryRange: temporaryRange || null
@@ -351,7 +348,15 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
 
     const request = await $findRequestById(created.id);
     await notifySecretAccessStepApprovers(
-      { step: policy.steps[0], request, project, requestedByUser, data: requestData },
+      {
+        step: policy.steps[0],
+        request,
+        project,
+        requestedByUser,
+        data: requestData,
+        environment: { slug: envSlug },
+        secretPath
+      },
       {
         userDAL,
         userGroupMembershipDAL,
@@ -533,7 +538,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
             project,
             policy,
             actingUser,
-            environmentName: policy.environment?.name ?? data.envSlug,
+            environmentName: policy.environment.name,
             bypassReason: trimmedBypassReason
           },
           { userDAL, userGroupMembershipDAL, notificationService, smtpService }
@@ -641,7 +646,15 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
       const requestedByUser = await userDAL.findById(request.requesterId);
       if (requestedByUser) {
         await notifySecretAccessStepApprovers(
-          { step: nextStep, request, project, requestedByUser, data },
+          {
+            step: nextStep,
+            request,
+            project,
+            requestedByUser,
+            data,
+            environment: policy.environment,
+            secretPath: policy.secretPath
+          },
           {
             userDAL,
             userGroupMembershipDAL,
