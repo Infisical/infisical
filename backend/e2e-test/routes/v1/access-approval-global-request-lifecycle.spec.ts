@@ -351,26 +351,17 @@ describe("Access approval request lifecycle on the global system", () => {
     expect(privilege?.temporaryAccessEndTime).toBeTruthy();
   });
 
-  test("A temporary request without a range fails only on the approval that would grant it", async () => {
+  test("A temporary request without a range is rejected and saves nothing", async () => {
     const db = getDb();
     const secretPath = "/lifecycle-missing-range";
-    await createGlobalPolicy({ name: "lifecycle-missing-range", secretPath });
+    const policy = await createGlobalPolicy({ name: "lifecycle-missing-range", secretPath });
 
     const createRes = await createAccessRequest(secretPath, { isTemporary: true });
-    expect(createRes.statusCode).toBe(200);
-    const requestId = createRes.json().approval.id as string;
+    expect(createRes.statusCode).toBe(400);
+    expect(createRes.json().message).toBe("A temporary range is required for temporary requests");
 
-    const approveRes = await reviewAccessRequest(requestId, { status: "approved" });
-    expect(approveRes.statusCode).toBe(400);
-    expect(approveRes.json().message).toBe("Temporary range is required for temporary access");
-
-    const request = await db(TableName.ApprovalRequests).where({ id: requestId }).first();
-    expect(request?.status).toBe("pending");
-    const grants = await db(TableName.ApprovalRequestGrants).where({ requestId });
-    expect(grants).toHaveLength(0);
-
-    const rejectRes = await reviewAccessRequest(requestId, { status: "rejected" });
-    expect(rejectRes.statusCode).toBe(200);
+    const requests = await db(TableName.ApprovalRequests).where({ policyId: policy.id });
+    expect(requests).toHaveLength(0);
   });
 
   test("An expired request cannot be approved or rejected and is marked expired", async () => {
