@@ -1,5 +1,5 @@
-// eslint-disable-next-line
-import "ts-node/register";
+// knex loads the .ts migrations and seeds with require(), which bypasses vitest's transformer.
+import "tsx/cjs";
 
 import dotenv from "dotenv";
 import { crypto } from "@app/lib/crypto/cryptography";

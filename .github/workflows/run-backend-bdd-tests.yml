@@ -36,11 +36,11 @@ jobs:
         name: Install `docker compose` for local simulations
         with:
           version: "2.14.2"
-      - name: 🔧 Setup Node 22
+      - name: 🔧 Setup Node 26
         id: setup-node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "22"
+          node-version: "26"
       - name: Setup Python 3.11
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
