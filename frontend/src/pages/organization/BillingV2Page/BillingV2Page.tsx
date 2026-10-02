@@ -17,6 +17,7 @@ import { useDebounce } from "@app/hooks";
 import {
   BillingV2BreakdownScopeKind,
   useAddBillingV2PaymentMethod,
+  useConfirmBillingV2TrialPayment,
   useCreateBillingV2PortalSession,
   useGetBillingV2Catalog,
   useGetBillingV2Organizations,
@@ -84,6 +85,7 @@ export const BillingV2Page = () => {
   const { data: catalog = [] } = useGetBillingV2Catalog(selectedOrgId);
   const createPortalSession = useCreateBillingV2PortalSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
+  const confirmTrialPayment = useConfirmBillingV2TrialPayment();
 
   // More than one organization means the server decided this caller may switch: an instance admin on
   // self-hosted, where one licence spans every org on the box. Cloud is bounded to the logged-in root
@@ -95,6 +97,8 @@ export const BillingV2Page = () => {
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
   const openedUpgradeProduct = useRef(false);
   const [removeProdId, setRemoveProdId] = useState<string | null>(null);
+  const [trialApproval, setTrialApproval] = useState<{ orgId: string; url: string } | null>(null);
+  const trialApprovalUrl = trialApproval?.orgId === selectedOrgId ? trialApproval.url : null;
   const deepLinkSearch = new URLSearchParams(window.location.search);
   const upgradeProduct = deepLinkSearch.get("upgradeProduct");
   const upgradeReturnPath = getSafeUpgradeReturnPath(
@@ -217,6 +221,42 @@ export const BillingV2Page = () => {
     );
   };
 
+  const onCompleteTrialPayment = () => {
+    const orgIdAtRequest = selectedOrgId;
+    confirmTrialPayment.mutate(
+      {
+        orgId: orgIdAtRequest,
+        returnPath: window.location.pathname
+      },
+      {
+        onSuccess: (result) => {
+          if (result.outcome === "upgraded") {
+            createNotification({
+              type: "success",
+              text: "Payment confirmed. It may take a moment for your plan to update here."
+            });
+            return;
+          }
+          if (result.outcome === "payment_action_required") {
+            setTrialApproval({ orgId: orgIdAtRequest, url: result.redirectUrl });
+            return;
+          }
+          window.location.href = result.redirectUrl;
+        }
+      }
+    );
+  };
+
+  // One use per link, so another trial still awaiting payment gets a fresh one on the next click.
+  const onOpenTrialApproval = () => {
+    if (!trialApprovalUrl) {
+      return;
+    }
+    window.open(trialApprovalUrl, "_blank", "noopener,noreferrer");
+    setTrialApproval(null);
+    refetch();
+  };
+
   // Billing name/email and address are edited in the Stripe billing portal.
   const onEditDetails = () => {
     redirectToPortal();
@@ -278,6 +318,10 @@ export const BillingV2Page = () => {
               onUpdatePayment={onUpdatePayment}
               onEditDetails={onEditDetails}
               onContact={onContact}
+              onCompleteTrialPayment={onCompleteTrialPayment}
+              isCompletingTrialPayment={confirmTrialPayment.isPending}
+              hasTrialApproval={Boolean(trialApprovalUrl)}
+              onOpenTrialApproval={onOpenTrialApproval}
               onRetry={onRetry}
               canManageBilling={canManageBilling}
             />

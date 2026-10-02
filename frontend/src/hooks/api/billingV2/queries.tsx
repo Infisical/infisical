@@ -38,7 +38,8 @@ export const useGetBillingV2Overview = (
     },
     enabled: Boolean(orgId) && (options?.enabled ?? true),
     ...(options?.staleTime !== undefined ? { staleTime: options.staleTime } : {}),
-    placeholderData: keepPreviousData
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: "always"
   });
 };
 
