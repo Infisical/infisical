@@ -202,6 +202,7 @@ import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret
 import { secretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { secretChangePolicyBridgeServiceFactory } from "@app/ee/services/secret-change-policy-bridge/secret-change-policy-bridge-service";
+import { secretChangeRequestBridgeServiceFactory } from "@app/ee/services/secret-change-request-bridge/secret-change-request-bridge-service";
 import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { secretRotationV2QueueServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-queue";
@@ -2377,6 +2378,8 @@ export const registerRoutes = async (
     orgDAL
   });
 
+  const secretChangeRequestBridgeService = secretChangeRequestBridgeServiceFactory({ approvalRequestDAL });
+
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
     permissionService,
     projectBotService,
@@ -2408,7 +2411,9 @@ export const registerRoutes = async (
     notificationService,
     telemetryService,
     queueService,
-    secretValidationRuleService
+    secretValidationRuleService,
+    secretChangePolicyBridgeService,
+    secretChangeRequestBridgeService
   });
 
   const secretService = secretServiceFactory({

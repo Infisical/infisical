@@ -97,6 +97,8 @@ import {
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { getCommitterIds } from "../secret-approval-policy/secret-approval-policy-fns";
+import { TSecretChangePolicyBridgeServiceFactory } from "../secret-change-policy-bridge/secret-change-policy-bridge-service";
+import { TSecretChangeRequestBridgeServiceFactory } from "../secret-change-request-bridge/secret-change-request-bridge-service";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
 import { hasSecretUpdateCommitConflict, sendApprovalEmailsFn } from "./secret-approval-request-fns";
@@ -175,6 +177,16 @@ type TSecretApprovalRequestServiceFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   queueService: Pick<TQueueServiceFactory, "queue">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
+  secretChangePolicyBridgeService: Pick<TSecretChangePolicyBridgeServiceFactory, "findSecretChangePolicy">;
+  secretChangeRequestBridgeService: Pick<
+    TSecretChangeRequestBridgeServiceFactory,
+    | "findSecretChangeRequest"
+    | "generateSecretChangeRequest"
+    | "mergeSecretChangeRequest"
+    | "reviewSecretChangeRequest"
+    | "updateSecretChangeRequestStatus"
+    | "getSecretChangeRequestById"
+  >;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -210,7 +222,9 @@ export const secretApprovalRequestServiceFactory = ({
   notificationService,
   telemetryService,
   queueService,
-  secretValidationRuleService
+  secretValidationRuleService,
+  secretChangePolicyBridgeService,
+  secretChangeRequestBridgeService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   // Which secret already holds a duplicated value is only named to a writer who may read there, so the
   // message is resolved against their permission rather than formatted inside validation.
@@ -234,6 +248,9 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
   };
+
+  const $useSecretChangeRequestBridge = async (requestId: string) =>
+    Boolean(await secretChangeRequestBridgeService.findSecretChangeRequest(requestId));
 
   const requestCount = async ({
     projectId,
@@ -334,13 +351,12 @@ export const secretApprovalRequestServiceFactory = ({
     });
   };
 
-  const getSecretApprovalDetails = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    id
-  }: TSecretApprovalDetailsDTO) => {
+  const getSecretApprovalDetails = async (dto: TSecretApprovalDetailsDTO) => {
+    if (await $useSecretChangeRequestBridge(dto.id)) {
+      return secretChangeRequestBridgeService.getSecretChangeRequestById(dto);
+    }
+
+    const { actor, actorId, actorOrgId, actorAuthMethod, id } = dto;
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(id);
@@ -602,15 +618,12 @@ export const secretApprovalRequestServiceFactory = ({
     );
   };
 
-  const reviewApproval = async ({
-    approvalId,
-    actor,
-    status,
-    comment,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TReviewRequestDTO) => {
+  const reviewApproval = async (dto: TReviewRequestDTO) => {
+    if (await $useSecretChangeRequestBridge(dto.approvalId)) {
+      return secretChangeRequestBridgeService.reviewSecretChangeRequest(dto);
+    }
+
+    const { approvalId, actor, status, comment, actorId, actorAuthMethod, actorOrgId } = dto;
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.secretApproval) {
       throw new BadRequestError({
@@ -709,14 +722,12 @@ export const secretApprovalRequestServiceFactory = ({
     return { ...reviewStatus, projectId: secretApprovalRequest.projectId };
   };
 
-  const updateApprovalStatus = async ({
-    actorId,
-    status,
-    approvalId,
-    actor,
-    actorOrgId,
-    actorAuthMethod
-  }: TStatusChangeDTO) => {
+  const updateApprovalStatus = async (dto: TStatusChangeDTO) => {
+    if (await $useSecretChangeRequestBridge(dto.approvalId)) {
+      return secretChangeRequestBridgeService.updateSecretChangeRequestStatus(dto);
+    }
+
+    const { actorId, status, approvalId, actor, actorOrgId, actorAuthMethod } = dto;
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) {
       throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
@@ -798,14 +809,12 @@ export const secretApprovalRequestServiceFactory = ({
     return { ...secretApprovalRequest, ...updatedRequest };
   };
 
-  const mergeSecretApprovalRequest = async ({
-    approvalId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    bypassReason
-  }: TMergeSecretApprovalRequestDTO) => {
+  const mergeSecretApprovalRequest = async (dto: TMergeSecretApprovalRequestDTO) => {
+    if (await $useSecretChangeRequestBridge(dto.approvalId)) {
+      return secretChangeRequestBridgeService.mergeSecretChangeRequest(dto);
+    }
+
+    const { approvalId, actor, actorId, actorOrgId, actorAuthMethod, bypassReason } = dto;
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest)
       throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
@@ -2149,22 +2158,29 @@ export const secretApprovalRequestServiceFactory = ({
       .catch(() => {});
   };
 
-  const generateSecretApprovalRequestV2Bridge = async ({
-    data,
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    policy,
-    projectId,
-    secretPath,
-    environment,
-    folder: providedFolder,
-    commitMessage,
-    updateMode = SecretUpdateMode.FailOnNotFound,
-    trx: providedTx,
-    skipPostProcessing
-  }: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex; skipPostProcessing?: boolean }) => {
+  const generateSecretApprovalRequestV2Bridge = async (
+    dto: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex; skipPostProcessing?: boolean }
+  ) => {
+    if (await secretChangePolicyBridgeService.findSecretChangePolicy(dto.policy.id, dto.trx)) {
+      return secretChangeRequestBridgeService.generateSecretChangeRequest(dto);
+    }
+
+    const {
+      data,
+      actorId,
+      actor,
+      actorOrgId,
+      actorAuthMethod,
+      policy,
+      projectId,
+      secretPath,
+      environment,
+      folder: providedFolder,
+      commitMessage,
+      updateMode = SecretUpdateMode.FailOnNotFound,
+      trx: providedTx,
+      skipPostProcessing
+    } = dto;
     if (actor === ActorType.SERVICE)
       throw new BadRequestError({ message: "Cannot use service token over protected branches" });
 
