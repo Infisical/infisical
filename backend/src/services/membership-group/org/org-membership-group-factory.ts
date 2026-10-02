@@ -101,10 +101,10 @@ export const newOrgMembershipGroupFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
 
-    const group = await groupDAL.findById(dto.data.groupId);
-    if (!group || group.orgId !== dto.permission.rootOrgId) {
+    const group = await $getGroupInActorScope(dto.permission, dto.data.groupId);
+    if (group.orgId === dto.permission.orgId) {
       throw new BadRequestError({
-        message: "Only groups from parent organization can be linked to this sub-organization"
+        message: `Group '${group.name}' belongs to this organization. Only groups from the parent organization can be linked to it.`
       });
     }
 

@@ -182,6 +182,16 @@ describe("Linking root groups to a sub-organization with a machine identity", ()
       for (const id of [otherGroup.id, crypto.randomUUID()]) {
         const url = `/api/v1/organizations/memberships/groups/${id}`;
         // eslint-disable-next-line no-await-in-loop
+        const createRes = await testServer.inject({
+          method: "POST",
+          url,
+          headers,
+          body: { roles: [{ role: OrgMembershipRole.NoAccess }] }
+        });
+        expect(createRes.statusCode).toBe(404);
+        expect(createRes.json().message).toBe(`Group with ID '${id}' not found`);
+
+        // eslint-disable-next-line no-await-in-loop
         const updateRes = await testServer.inject({
           method: "PATCH",
           url,
@@ -204,7 +214,7 @@ describe("Linking root groups to a sub-organization with a machine identity", ()
     }
   });
 
-  test("refuses to unlink a group owned by the sub-organization", async () => {
+  test("refuses to link or unlink a group owned by the sub-organization", async () => {
     const suffix = alphaNumericNanoId(8).toLowerCase();
     const [ownedGroup] = await testDb(TableName.Groups)
       .insert({ orgId: subOrgId, name: `owned-grp-${suffix}`, slug: `owned-grp-${suffix}` })
@@ -218,11 +228,18 @@ describe("Linking root groups to a sub-organization with a machine identity", ()
     });
 
     try {
-      const deleteRes = await testServer.inject({
-        method: "DELETE",
-        url: `/api/v1/organizations/memberships/groups/${ownedGroup.id}`,
-        headers: { authorization: `Bearer ${adminSubOrgToken}` }
+      const url = `/api/v1/organizations/memberships/groups/${ownedGroup.id}`;
+      const headers = { authorization: `Bearer ${adminSubOrgToken}` };
+
+      const createRes = await testServer.inject({
+        method: "POST",
+        url,
+        headers,
+        body: { roles: [{ role: OrgMembershipRole.NoAccess }] }
       });
+      expect(createRes.statusCode).toBe(400);
+
+      const deleteRes = await testServer.inject({ method: "DELETE", url, headers });
       expect(deleteRes.statusCode).toBe(400);
       expect(await testDb(TableName.Membership).where({ id: homeMembership.id })).toHaveLength(1);
     } finally {
