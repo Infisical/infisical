@@ -52,7 +52,8 @@ export default defineConfig({
     // AWS Parameter Store, the AWS IAM user secret rotation provider and the AWS app connection
     // are replaced by fakes for the whole e2e run, so the secret sync and secret rotation specs
     // can assert what Infisical hands a destination or a rotation provider without reaching AWS.
-    // Nothing under src/ knows the fakes exist (see e2e-test/fakes/).
+    // Nothing under src/ knows the fakes exist (see e2e-test/fakes/). The license functions are
+    // replaced the same way, so a spec can turn plan features on with fakeLicense.setFeatures.
     //
     // Entries match the *import specifier*, which is what keeps this surgical rather than
     // sweeping: "./aws-parameter-store-sync-fns" is imported only by its own barrel,
@@ -67,7 +68,7 @@ export default defineConfig({
     alias: [
       {
         find: "./license-fns",
-        replacement: path.resolve(__dirname, "./src/ee/services/license/__mocks__/license-fns")
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/license-fns")
       },
       {
         find: "./aws-parameter-store-sync-fns",
