@@ -246,11 +246,11 @@ const ProductSummaryRow = ({
         <div className="flex min-w-0 items-center gap-3">
           <ProductIcon product={prod} size={32} />
           <div className="flex min-w-0 flex-col">
-            <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
+            <CardTitle>
               {prod.name}
               {ent.isTrialing && <Badge variant="info">Trial</Badge>}
               {prod.addon && <Badge variant="neutral">Add-on</Badge>}
-            </span>
+            </CardTitle>
             <span className="truncate text-xs text-muted">{planLine(ent)}</span>
           </div>
         </div>
@@ -287,7 +287,7 @@ const ProductSummaryRow = ({
           the trial ends.
         </p>
       )}
-      <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5 xl:grid-cols-4">
         {!isManaged && (
           <Metric
             label="Charge"
@@ -391,7 +391,7 @@ const UsageMeterSources = ({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-medium text-foreground">{dim.label}</h3>
+        <h3 className="text-sm text-foreground">{dim.label}</h3>
         <Button
           variant="outline"
           size="xs"
@@ -487,9 +487,9 @@ const UsageSources = ({
             <AccordionItem key={prod.id} value={prod.id}>
               <AccordionTrigger>
                 <ProductIcon product={prod} size={32} />
-                <span className="min-w-0 text-sm font-medium text-foreground">{prod.name}</span>
+                <CardTitle>{prod.name}</CardTitle>
               </AccordionTrigger>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4 pb-5 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 pb-5 xl:grid-cols-4">
                 {(ent.dimensions ?? []).map((dim) => (
                   <Metric
                     key={dim.key}
@@ -564,10 +564,10 @@ const AvailableProducts = ({
         <div key={prod.id} className="flex flex-wrap items-center gap-3 py-4 first:pt-0 last:pb-0">
           <ProductIcon product={prod} size={32} />
           <div className="flex min-w-0 flex-1 flex-col">
-            <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <CardTitle>
               {prod.name}
               {prod.addon && <Badge variant="neutral">Add-on</Badge>}
-            </span>
+            </CardTitle>
             {prod.tagline && <span className="text-xs text-muted">{prod.tagline}</span>}
           </div>
           {action}
@@ -617,7 +617,7 @@ export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode })
                   <Skeleton className="h-3 w-56" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-6 xl:grid-cols-4">
                 {SKELETON_PRODUCTS.concat("product-c").map((metric) => (
                   <div key={metric} className="flex flex-col gap-2">
                     <Skeleton className="h-3 w-16" />
@@ -825,7 +825,7 @@ export const TabbedOverview = ({
             </div>
             {products.length > 0 && readOnly && available.length > 0 && (
               <div className="mt-5 flex flex-col gap-4 border-t border-border pt-5">
-                <h3 className="text-sm font-medium text-foreground">Available Products</h3>
+                <h3 className="text-sm text-foreground">Available Products</h3>
                 <AvailableProducts
                   products={available}
                   readOnly
