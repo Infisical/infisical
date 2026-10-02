@@ -285,7 +285,7 @@ const getAcmeChallengeRecord = async (
   keyAuthorization: string
 ): Promise<{ recordName: string; recordValue: string }> => {
   let recordName: string;
-  if (provider === AcmeDnsProvider.DNSMadeEasy || provider === AcmeDnsProvider.AzureDNS) {
+  if (provider === AcmeDnsProvider.DNSMadeEasy) {
     // For DNS Made Easy, we don't need to provide the domain name in the record name.
     recordName = "_acme-challenge";
   } else {
@@ -517,8 +517,7 @@ export const executeAcmeOrder = async (
       }
 
       const lookupName =
-        acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy ||
-        acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS
+        acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy
           ? recordName
           : `_acme-challenge.${authz.identifier.value}`;
       await reportProgress(`Waiting for DNS records to propagate for ${authz.identifier.value}`);
