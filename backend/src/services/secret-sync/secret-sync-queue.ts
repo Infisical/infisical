@@ -44,7 +44,7 @@ import {
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_DAILY_RETRY_DESTINATIONS, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
-import { buildSyncPayload, findSecretSyncsCoveringPath } from "@app/services/secret-sync/secret-sync-recursive-fns";
+import { buildSyncPayload, isPathCoveredBySecretSync } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncAction,
   SecretSyncStatus,
@@ -1052,12 +1052,9 @@ export const secretSyncQueueFactory = ({
     const environment = await projectEnvDAL.findOne({ projectId, slug: environmentSlug });
     if (!environment) return;
 
-    const secretSyncs = (
-      await findSecretSyncsCoveringPath(
-        { projectId, environment: { id: environment.id, slug: environmentSlug }, secretPath },
-        { folderDAL, secretSyncDAL }
-      )
-    ).filter((sync) => sync.isAutoSyncEnabled);
+    const secretSyncs = (await secretSyncDAL.find({ projectId, isAutoSyncEnabled: true })).filter((sync) =>
+      isPathCoveredBySecretSync(sync, { envId: environment.id, secretPath })
+    );
 
     await secretSyncDAL.update(
       {

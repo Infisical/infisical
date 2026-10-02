@@ -6,7 +6,6 @@ import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-gran
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
-import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
@@ -30,47 +29,47 @@ export type TFnSecretsV2FromImportsDeps = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
-export const getAncestorPaths = (path: string): string[] => {
-  const segments = path.split("/").filter(Boolean);
-
-  return segments.map((_, index) => (index === 0 ? "/" : `/${segments.slice(0, index).join("/")}`));
-};
+const toPathSegments = (path: string) => path.split("/").filter(Boolean);
 
 // A sync on the path itself always covers it, whether or not it includes subfolders. A sync on an
 // ancestor folder only covers it when it includes them. The path need not exist yet: a folder being
 // moved has no folder at its landing path, and only the recursive syncs above it can cover it there.
-export const findSecretSyncsCoveringPath = async (
-  {
-    projectId,
-    environment,
-    secretPath
-  }: { projectId: string; environment: { id: string; slug: string }; secretPath: string },
-  {
-    folderDAL,
-    secretSyncDAL
-  }: {
-    folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findByManySecretPath">;
-    secretSyncDAL: Pick<TSecretSyncDALFactory, "find">;
-  }
+export const isPathCoveredBySecretSync = (
+  sync: {
+    environment?: { id: string } | null;
+    folder?: { path: string } | null;
+    syncOptions?: unknown;
+  },
+  { envId, secretPath }: { envId: string; secretPath: string }
 ) => {
-  const folder = await folderDAL.findBySecretPath(projectId, environment.slug, secretPath);
+  if (!sync.folder || sync.environment?.id !== envId) return false;
 
-  const ancestorFolders = (
-    await folderDAL.findByManySecretPath(
-      getAncestorPaths(secretPath).map((path) => ({ envId: environment.id, secretPath: path }))
-    )
-  ).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+  const syncSegments = toPathSegments(sync.folder.path);
+  const pathSegments = toPathSegments(secretPath);
 
-  const folderIds = [...ancestorFolders.map((entry) => entry.id), ...(folder ? [folder.id] : [])];
-  if (!folderIds.length) return [];
+  if (syncSegments.length > pathSegments.length) return false;
+  if (syncSegments.some((segment, index) => segment !== pathSegments[index])) return false;
 
-  const candidateSyncs = await secretSyncDAL.find({ $in: { folderId: folderIds } });
-
-  return candidateSyncs.filter(
-    (sync) =>
-      (folder && sync.folderId === folder.id) ||
-      Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders)
+  return (
+    syncSegments.length === pathSegments.length ||
+    Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders)
   );
+};
+
+// A move or copy can land items anywhere beneath its destination, so a sync rooted below the destination
+// counts as well as one covering it. This can warn about a sync that nothing ends up under, which is
+// safer for a warning than missing one.
+export const isPathOrDescendantCoveredBySecretSync = (
+  sync: Parameters<typeof isPathCoveredBySecretSync>[0],
+  { envId, secretPath }: { envId: string; secretPath: string }
+) => {
+  if (isPathCoveredBySecretSync(sync, { envId, secretPath })) return true;
+  if (!sync.folder || sync.environment?.id !== envId) return false;
+
+  const syncSegments = toPathSegments(sync.folder.path);
+  const pathSegments = toPathSegments(secretPath);
+
+  return pathSegments.every((segment, index) => syncSegments[index] === segment);
 };
 
 type TCoveringSync = {
@@ -82,8 +81,9 @@ type TCoveringSync = {
   isAutoSyncEnabled: boolean;
 };
 
-// A sync that already covers the source is left out, since the item already reaches it. A sync the
-// actor cannot read is still reported, so the warning reaches them, but with every detail withheld.
+// A sync that already covers the source is left out, since the items already reach it. Syncs the actor
+// cannot read collapse into one flag, so the warning still reaches them without revealing how many
+// there are or what they cover.
 export const toSyncsNewlyCoveringPath = <T extends TCoveringSync>({
   sourceSyncs,
   destinationSyncs,
@@ -94,31 +94,22 @@ export const toSyncsNewlyCoveringPath = <T extends TCoveringSync>({
   canRead: (sync: T) => boolean;
 }) => {
   const sourceSyncIds = new Set(sourceSyncs.map((sync) => sync.id));
+  const newSyncs = destinationSyncs.filter((sync) => !sourceSyncIds.has(sync.id));
+  const readableSyncs = newSyncs.filter(canRead);
 
-  return destinationSyncs
-    .filter((sync) => !sourceSyncIds.has(sync.id))
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((sync) => {
-      if (!canRead(sync)) {
-        return {
-          id: null,
-          name: null,
-          destination: null,
-          secretPath: null,
-          includeAllSubFolders: null,
-          isAutoSyncEnabled: null
-        };
-      }
-
-      return {
+  return {
+    secretSyncs: readableSyncs
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((sync) => ({
         id: sync.id,
         name: sync.name,
         destination: sync.destination as SecretSync,
         secretPath: sync.folder?.path ?? null,
         includeAllSubFolders: Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders),
         isAutoSyncEnabled: sync.isAutoSyncEnabled
-      };
-    });
+      })),
+    hasHiddenSecretSyncs: readableSyncs.length < newSyncs.length
+  };
 };
 
 export const getSyncedFolders = async ({

@@ -12,6 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -2187,8 +2188,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        projectId: z.string().trim().min(1).max(64).describe(DASHBOARD.MOVE_WARNINGS.projectId),
-        sourceEnvironment: z.string().trim().min(1).max(64).describe(DASHBOARD.MOVE_WARNINGS.sourceEnvironment),
+        projectId: z.string().trim().uuid().describe(DASHBOARD.MOVE_WARNINGS.projectId),
+        sourceEnvironment: slugSchema({ field: "Source environment" }).describe(
+          DASHBOARD.MOVE_WARNINGS.sourceEnvironment
+        ),
         sourceSecretPath: z
           .string()
           .trim()
@@ -2197,12 +2200,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .transform(prefixWithSlash)
           .transform(removeTrailingSlash)
           .describe(DASHBOARD.MOVE_WARNINGS.sourceSecretPath),
-        destinationEnvironment: z
-          .string()
-          .trim()
-          .min(1)
-          .max(64)
-          .describe(DASHBOARD.MOVE_WARNINGS.destinationEnvironment),
+        destinationEnvironment: slugSchema({ field: "Destination environment" }).describe(
+          DASHBOARD.MOVE_WARNINGS.destinationEnvironment
+        ),
         destinationSecretPath: z
           .string()
           .trim()
@@ -2216,23 +2216,22 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           secretSyncs: z
             .object({
-              id: z.string().nullable().describe(DASHBOARD.MOVE_WARNINGS.syncId),
-              name: z.string().nullable().describe(DASHBOARD.MOVE_WARNINGS.syncName),
-              destination: z.nativeEnum(SecretSync).nullable().describe(DASHBOARD.MOVE_WARNINGS.syncDestination),
+              id: z.string().describe(DASHBOARD.MOVE_WARNINGS.syncId),
+              name: z.string().describe(DASHBOARD.MOVE_WARNINGS.syncName),
+              destination: z.nativeEnum(SecretSync).describe(DASHBOARD.MOVE_WARNINGS.syncDestination),
               secretPath: z.string().nullable().describe(DASHBOARD.MOVE_WARNINGS.syncSecretPath),
-              includeAllSubFolders: z.boolean().nullable().describe(DASHBOARD.MOVE_WARNINGS.includeAllSubFolders),
-              isAutoSyncEnabled: z.boolean().nullable().describe(DASHBOARD.MOVE_WARNINGS.isAutoSyncEnabled)
+              includeAllSubFolders: z.boolean().describe(DASHBOARD.MOVE_WARNINGS.includeAllSubFolders),
+              isAutoSyncEnabled: z.boolean().describe(DASHBOARD.MOVE_WARNINGS.isAutoSyncEnabled)
             })
             .array()
-            .describe(DASHBOARD.MOVE_WARNINGS.secretSyncs)
+            .describe(DASHBOARD.MOVE_WARNINGS.secretSyncs),
+          hasHiddenSecretSyncs: z.boolean().describe(DASHBOARD.MOVE_WARNINGS.hasHiddenSecretSyncs)
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const secretSyncs = await server.services.secretSync.listSecretSyncsNewlyCoveringPath(req.query, req.permission);
-
-      return { secretSyncs };
+      return server.services.secretSync.listSecretSyncsNewlyCoveringPath(req.query, req.permission);
     }
   });
 

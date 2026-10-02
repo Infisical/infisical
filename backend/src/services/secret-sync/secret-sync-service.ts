@@ -36,8 +36,9 @@ import {
 } from "@app/services/secret-sync/secret-sync-fns";
 import {
   buildSyncPayload,
-  findSecretSyncsCoveringPath,
   getSyncedFolders,
+  isPathCoveredBySecretSync,
+  isPathOrDescendantCoveredBySecretSync,
   toSyncsNewlyCoveringPath
 } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
@@ -437,9 +438,9 @@ export const secretSyncServiceFactory = ({
     ) as TSecretSync[];
   };
 
-  // The syncs that would start sending an item to their destination if it were moved or copied from the
-  // source path to the destination path. Any project member gets the list, so the warning still reaches
-  // an actor who cannot read the syncs themselves.
+  // The syncs that would start sending items to their destination if they were moved or copied from the
+  // source path to the destination path. Any project member gets the warning, so it still reaches an actor
+  // who cannot read the syncs themselves.
   const listSecretSyncsNewlyCoveringPath = async (
     {
       projectId,
@@ -468,16 +469,14 @@ export const secretSyncServiceFactory = ({
     if (!destinationEnv)
       throw new NotFoundError({ message: `Could not find environment with slug "${destinationEnvironment}"` });
 
-    const [sourceSyncs, destinationSyncs] = await Promise.all([
-      findSecretSyncsCoveringPath(
-        { projectId, environment: sourceEnv, secretPath: sourceSecretPath },
-        { folderDAL, secretSyncDAL }
-      ),
-      findSecretSyncsCoveringPath(
-        { projectId, environment: destinationEnv, secretPath: destinationSecretPath },
-        { folderDAL, secretSyncDAL }
-      )
-    ]);
+    const projectSyncs = await secretSyncDAL.find({ projectId });
+
+    const sourceSyncs = projectSyncs.filter((sync) =>
+      isPathCoveredBySecretSync(sync, { envId: sourceEnv.id, secretPath: sourceSecretPath })
+    );
+    const destinationSyncs = projectSyncs.filter((sync) =>
+      isPathOrDescendantCoveredBySecretSync(sync, { envId: destinationEnv.id, secretPath: destinationSecretPath })
+    );
 
     return toSyncsNewlyCoveringPath({
       sourceSyncs,

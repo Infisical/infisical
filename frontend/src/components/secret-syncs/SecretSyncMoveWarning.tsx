@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon, TriangleAlertIcon } from "lucide-react";
 
@@ -9,14 +9,23 @@ import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { useGetMoveWarnings } from "@app/hooks/api/dashboard/queries";
 import { TMoveWarningsCheck } from "@app/hooks/api/dashboard/types";
 
-// the acknowledgement is tied to the checks it was given for, so changing the destination clears it
-// and a user never carries a yes over to a path they have not seen the warning for.
+// the acknowledgement is tied to the checks and the warning it was given for, and cleared whenever
+// either changes, so a yes never carries over to a destination or a set of syncs the user has not seen.
 export const useSecretSyncMoveWarning = (checks: TMoveWarningsCheck[]) => {
   const warnings = useGetMoveWarnings(checks);
-  const checksKey = JSON.stringify(checks);
-  const [acknowledgedChecksKey, setAcknowledgedChecksKey] = useState<string | null>(null);
+  const warningKey = JSON.stringify({
+    checks,
+    syncIds: warnings.secretSyncs.map(({ id }) => id),
+    hasHiddenSecretSyncs: warnings.hasHiddenSecretSyncs,
+    hasError: warnings.hasError
+  });
+  const [acknowledgedWarningKey, setAcknowledgedWarningKey] = useState<string | null>(null);
 
-  const isAcknowledged = acknowledgedChecksKey === checksKey;
+  useEffect(() => {
+    setAcknowledgedWarningKey(null);
+  }, [warningKey]);
+
+  const isAcknowledged = acknowledgedWarningKey === warningKey;
   const needsAcknowledgement =
     warnings.hasError || warnings.hasHiddenSecretSyncs || warnings.secretSyncs.length > 0;
 
@@ -24,7 +33,7 @@ export const useSecretSyncMoveWarning = (checks: TMoveWarningsCheck[]) => {
     ...warnings,
     needsAcknowledgement,
     isAcknowledged,
-    setIsAcknowledged: (value: boolean) => setAcknowledgedChecksKey(value ? checksKey : null),
+    setIsAcknowledged: (value: boolean) => setAcknowledgedWarningKey(value ? warningKey : null),
     isBlockingSubmit: warnings.isChecking || (needsAcknowledgement && !isAcknowledged)
   };
 };
@@ -72,7 +81,7 @@ export const SecretSyncMoveWarning = ({ warning, projectId, noun, verb }: Props)
       <AlertDescription>
         {hasError && <p>Secret syncs may send these {noun} to external destinations.</p>}
         {secretSyncs.length > 0 && (
-          <ul className="list-disc pl-4">
+          <ul className="max-h-40 list-disc overflow-y-auto pl-4">
             {secretSyncs.map((sync) => (
               <li key={sync.id}>
                 <span className="font-medium text-foreground">{sync.name}</span>

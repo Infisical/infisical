@@ -286,7 +286,6 @@ export type FolderMoveEligibilityResponse = {
   hasRbacPolicies?: boolean;
 };
 
-// for a folder, the paths are the folder's own path and the path it will have once moved
 export type TMoveWarningsCheck = {
   projectId: string;
   sourceEnvironment: string;
@@ -295,18 +294,18 @@ export type TMoveWarningsCheck = {
   destinationSecretPath: string;
 };
 
-// every field is null when the actor cannot read the sync
 export type TMoveWarningSecretSync = {
-  id: string | null;
-  name: string | null;
-  destination: SecretSync | null;
+  id: string;
+  name: string;
+  destination: SecretSync;
   secretPath: string | null;
-  includeAllSubFolders: boolean | null;
-  isAutoSyncEnabled: boolean | null;
+  includeAllSubFolders: boolean;
+  isAutoSyncEnabled: boolean;
 };
 
 export type TMoveWarningsResponse = {
   secretSyncs: TMoveWarningSecretSync[];
+  hasHiddenSecretSyncs: boolean;
 };
 
 export type TFolderMoveDestinationCheck = {

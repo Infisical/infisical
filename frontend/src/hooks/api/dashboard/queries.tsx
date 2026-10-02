@@ -779,15 +779,8 @@ export const useGetFoldersMoveDestinationEligibility = (checks: TFolderMoveDesti
     }
   });
 
-export type TVisibleMoveWarningSecretSync = TMoveWarningSecretSync & {
-  id: string;
-  name: string;
-  destination: NonNullable<TMoveWarningSecretSync["destination"]>;
-};
-
-// fans out one check per (source, destination) pair, since a copy or multi-environment move writes to
-// several destinations. syncs the actor cannot read come back without an id, so they cannot be deduped
-// across checks and are only reported as present.
+// one check per environment pair, since a sync covers one path in one environment. the result is never
+// served from cache, so a sync created since the last check is not missed when the dialog reopens.
 export const useGetMoveWarnings = (checks: TMoveWarningsCheck[]) =>
   useQueries({
     queries: checks.map((check) => ({
@@ -799,30 +792,22 @@ export const useGetMoveWarnings = (checks: TMoveWarningsCheck[]) =>
         );
         return data;
       },
-      enabled: Boolean(check.projectId && check.sourceEnvironment && check.destinationEnvironment)
+      enabled: Boolean(check.projectId && check.sourceEnvironment && check.destinationEnvironment),
+      staleTime: 0,
+      gcTime: 0
     })),
     combine: (results) => {
-      const seen = new Set<string>();
-      const secretSyncs: TVisibleMoveWarningSecretSync[] = [];
-      let hasHiddenSecretSyncs = false;
+      const secretSyncs = new Map<string, TMoveWarningSecretSync>();
 
-      results.forEach(({ data }) => {
-        data?.secretSyncs.forEach((sync) => {
-          if (!sync.id || !sync.name || !sync.destination) {
-            hasHiddenSecretSyncs = true;
-            return;
-          }
-          if (seen.has(sync.id)) return;
-          seen.add(sync.id);
-          secretSyncs.push(sync as TVisibleMoveWarningSecretSync);
-        });
-      });
+      results.forEach(({ data }) =>
+        data?.secretSyncs.forEach((sync) => secretSyncs.set(sync.id, sync))
+      );
 
       return {
         isChecking: results.some((result) => result.isLoading),
         hasError: results.some((result) => result.isError),
-        secretSyncs,
-        hasHiddenSecretSyncs
+        secretSyncs: [...secretSyncs.values()],
+        hasHiddenSecretSyncs: results.some(({ data }) => data?.hasHiddenSecretSyncs)
       };
     }
   });

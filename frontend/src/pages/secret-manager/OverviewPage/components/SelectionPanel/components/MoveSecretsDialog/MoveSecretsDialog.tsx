@@ -545,9 +545,8 @@ const buildDestinationTargets = ({
   return { checks: isSelfMove ? [] : checks, isSelfMove };
 };
 
-// a secret lands in the destination folder itself, a folder at the destination folder plus its own name.
-// each secret environment and each moved folder gets its own check, since a sync covers one path in one
-// environment.
+// one check per environment pair that has something to move. the backend counts syncs beneath the
+// destination too, so a moved folder needs no check of its own.
 const buildMoveWarningChecks = ({
   projectId,
   sourceSecretPath,
@@ -563,25 +562,20 @@ const buildMoveWarningChecks = ({
 }): TMoveWarningsCheck[] => {
   if (!destinationPath) return [];
 
-  const destination = removeTrailingSlash(destinationPath);
-  const base = removeTrailingSlash(sourceSecretPath);
+  const environmentPairs = new Map(
+    [...secretEnvironments, ...movedFolders].map(({ sourceEnv, destinationEnvironment }) => [
+      `${sourceEnv}:${destinationEnvironment}`,
+      { sourceEnv, destinationEnvironment }
+    ])
+  );
 
-  return [
-    ...secretEnvironments.map(({ sourceEnv, destinationEnvironment }) => ({
-      projectId,
-      sourceEnvironment: sourceEnv,
-      sourceSecretPath: base,
-      destinationEnvironment,
-      destinationSecretPath: destination
-    })),
-    ...movedFolders.map(({ folderName, sourceEnv, destinationEnvironment }) => ({
-      projectId,
-      sourceEnvironment: sourceEnv,
-      sourceSecretPath: joinSecretPath(base, folderName),
-      destinationEnvironment,
-      destinationSecretPath: joinSecretPath(destination, folderName)
-    }))
-  ];
+  return [...environmentPairs.values()].map(({ sourceEnv, destinationEnvironment }) => ({
+    projectId,
+    sourceEnvironment: sourceEnv,
+    sourceSecretPath: removeTrailingSlash(sourceSecretPath),
+    destinationEnvironment,
+    destinationSecretPath: removeTrailingSlash(destinationPath)
+  }));
 };
 
 // memoizes the destination checks for the moved folders and runs the destination approval-policy eligibility

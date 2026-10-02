@@ -1509,13 +1509,13 @@ export const DASHBOARD = {
   MOVE_WARNINGS: {
     projectId: "The ID of the project containing the items being moved or copied.",
     sourceEnvironment: "The slug of the environment the items are moved or copied from.",
-    sourceSecretPath:
-      "The path the items live at now. For secrets, the folder holding them. For a folder, the folder's own path.",
+    sourceSecretPath: "The folder the items are moved or copied from.",
     destinationEnvironment: "The slug of the environment the items are moved or copied to.",
-    destinationSecretPath:
-      "The path the items will live at. For secrets, the destination folder. For a folder, the destination folder followed by the moved folder's name.",
+    destinationSecretPath: "The folder the items are moved or copied into.",
     secretSyncs:
-      "The secret syncs that cover the destination path but not the source path, so would start sending the items to their destination. Details of a sync you cannot read are null.",
+      "The secret syncs you can read that cover the destination folder or a folder beneath it, but not the source folder, so may start sending the items to their destination.",
+    hasHiddenSecretSyncs:
+      "Whether secret syncs you cannot read would also start sending the items to their destination.",
     syncId: "The ID of the secret sync.",
     syncName: "The name of the secret sync.",
     syncDestination: "The external service the secret sync sends secrets to.",
