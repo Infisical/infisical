@@ -121,10 +121,6 @@ The template's **Command Blocking** policy applies to ClickHouse as well: a stat
 
 On an account with command blocking, an HTTP request body over 1 MB is refused, as is one compressed with anything other than `gzip` or `deflate`. Send large inserts in smaller batches.
 
-<Note>
-  Over the native protocol, inserting into a table with one of these column types is refused: `Tuple`, `JSON`, `Nested`, `Point`, `LowCardinality(Nullable(...))`, a `Map` other than `Map(String, String)`, nested arrays, and a `FixedString` whose length isn't 8, 16, 32, 64, 128, 256 or 512. Use the HTTP interface for those tables. Reading those columns works, but later statements on that connection are recorded without their outcome. Batches over 64 MB are refused too.
-</Note>
-
 ## Servers with HTTP turned off
 
 Set the **Native Port** and leave **HTTP Port** empty. Native clients work as usual. Web Access and HTTP clients such as JDBC tools, `clickhouse-connect` and ODBC need an HTTP port, so Web Access is greyed out on such an account.
