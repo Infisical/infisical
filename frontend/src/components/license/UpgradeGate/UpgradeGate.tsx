@@ -15,8 +15,6 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogOverlay,
-  DialogPortal,
   DialogTitle,
   Label,
   Loader,
@@ -462,13 +460,16 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
 
   if (overview.isPending || catalog.isPending || checkingBillingReturn) {
     return (
-      <Dialog open>
-        <DialogPortal>
-          <DialogOverlay />
-          <div className="pointer-events-none fixed inset-0 z-[var(--z-index-modal)] flex items-center justify-center">
-            <Loader size="md" label={`Loading plan details for ${productName}`} />
-          </div>
-        </DialogPortal>
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent
+          key="loading"
+          showCloseButton={false}
+          className="w-auto gap-0 border-0 bg-transparent p-0 shadow-none"
+          aria-describedby={undefined}
+        >
+          <DialogTitle className="sr-only">Loading {productName} plans</DialogTitle>
+          <Loader size="md" label={`Loading plan details for ${productName}`} />
+        </DialogContent>
       </Dialog>
     );
   }
@@ -506,6 +507,50 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
               }}
             >
               Try Again
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (returnedFromBilling) {
+    const dismissBillingReturn = (open: boolean) => {
+      if (!open) {
+        window.history.replaceState(window.history.state, "", returnPath);
+      }
+      onOpenChange(open);
+    };
+
+    return (
+      <Dialog open onOpenChange={dismissBillingReturn}>
+        <DialogContent
+          onOpenAutoFocus={focusUpgradeContinuation}
+          showCloseButton={false}
+          className="sm:max-w-xl"
+        >
+          <DialogHeader>
+            <DialogTitle>Check Billing Status</DialogTitle>
+            <DialogDescription>
+              Your billing return has not confirmed access to {productName} yet. Refresh to check
+              again, or close this dialog and return later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => dismissBillingReturn(false)}>
+              Close
+            </Button>
+            <Button
+              data-upgrade-cta
+              variant="org"
+              isPending={overview.isFetching || catalog.isFetching}
+              isDisabled={overview.isFetching || catalog.isFetching}
+              onClick={() => {
+                overview.refetch();
+                catalog.refetch();
+              }}
+            >
+              Refresh Status
             </Button>
           </DialogFooter>
         </DialogContent>

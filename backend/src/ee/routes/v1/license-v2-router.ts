@@ -700,8 +700,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
-        productId: z.string().trim(),
-        plan: z.string().trim(),
+        productId: z.string().trim().min(1).max(255),
+        plan: z.string().trim().min(1).max(255),
         returnPath: ReturnPathSchema
       }),
       response: {
