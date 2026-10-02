@@ -1,7 +1,8 @@
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 
-const DNS_RECORD_LOCK_RETRY = { retryCount: 50, retryDelay: 2_000, retryJitter: 300 };
+const DNS_RECORD_LOCK_RETRY_DELAY_MS = 2_000;
+const DNS_RECORD_LOCK_RETRY_JITTER_MS = 300;
 
 export const withDnsRecordLock = async <T>(
   {
@@ -15,7 +16,11 @@ export const withDnsRecordLock = async <T>(
   operation: () => Promise<T>
 ): Promise<T> => {
   const lock = await keyStore
-    .acquireLock([KeyStorePrefixes.AcmeDnsRecordLock(connectionId, zoneId, name)], lockTtlMs, DNS_RECORD_LOCK_RETRY)
+    .acquireLock([KeyStorePrefixes.AcmeDnsRecordLock(connectionId, zoneId, name)], lockTtlMs, {
+      retryCount: Math.ceil(lockTtlMs / DNS_RECORD_LOCK_RETRY_DELAY_MS) + 5,
+      retryDelay: DNS_RECORD_LOCK_RETRY_DELAY_MS,
+      retryJitter: DNS_RECORD_LOCK_RETRY_JITTER_MS
+    })
     .catch(() => null);
 
   if (!lock) {

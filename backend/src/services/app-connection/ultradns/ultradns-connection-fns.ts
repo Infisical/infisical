@@ -1,4 +1,4 @@
-import { AxiosError, isAxiosError } from "axios";
+import { AxiosError, AxiosInstance, isAxiosError } from "axios";
 
 import { createRequestClient } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
@@ -19,7 +19,12 @@ const MAX_ZONE_PAGES = 100;
 
 export const ULTRADNS_REQUEST_TIMEOUT_MS = 10_000;
 
-export const ultraDNSRequest = createRequestClient({ timeout: ULTRADNS_REQUEST_TIMEOUT_MS }, { retries: 0 });
+export const ultraDNSRequest = createRequestClient({ timeout: ULTRADNS_REQUEST_TIMEOUT_MS });
+
+export const ultraDNSSingleAttemptRequest = createRequestClient(
+  { timeout: ULTRADNS_REQUEST_TIMEOUT_MS },
+  { retries: 0 }
+);
 
 export const getUltraDNSUrl = (environment: UltraDNSEnvironment, path: string) => {
   const baseUrl =
@@ -39,8 +44,13 @@ export const getUltraDNSErrorMessage = (error: unknown) => {
   return error instanceof Error ? error.message : "Unknown error";
 };
 
-export const getUltraDNSAccessToken = async (environment: UltraDNSEnvironment, username: string, password: string) => {
-  const { data } = await ultraDNSRequest.post<{ accessToken: string }>(
+export const getUltraDNSAccessToken = async (
+  environment: UltraDNSEnvironment,
+  username: string,
+  password: string,
+  client: AxiosInstance = ultraDNSRequest
+) => {
+  const { data } = await client.post<{ accessToken: string }>(
     getUltraDNSUrl(environment, "/v1/authorization/token"),
     new URLSearchParams({ grant_type: "password", username, password }).toString(),
     {
