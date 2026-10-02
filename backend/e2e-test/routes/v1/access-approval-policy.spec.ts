@@ -1,10 +1,15 @@
 import crypto from "node:crypto";
 
+import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { AccessScope, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { getConfig, initEnvConfig } from "@app/lib/config/env";
+import { initLogger, logger } from "@app/lib/logger";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 
@@ -125,7 +130,98 @@ const cleanupGroup = async (db: Knex, groupId: string) => {
   await db(TableName.Groups).where({ id: groupId }).del();
 };
 
+type TProjectMember = { userId: string; token: string };
+
+const seedProjectMember = async (db: Knex): Promise<TProjectMember> => {
+  const username = `aap-member-${alphaNumericNanoId(8)}@example.com`.toLowerCase();
+  const [user] = await db(TableName.Users)
+    .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
+    .returning("*");
+
+  const [orgMembership] = await db(TableName.Membership)
+    .insert({
+      scope: AccessScope.Organization,
+      scopeOrgId: seedData1.organization.id,
+      actorUserId: user.id,
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
+    })
+    .returning("*");
+  await db(TableName.MembershipRole).insert({ membershipId: orgMembership.id, role: OrgMembershipRole.Member });
+
+  const [projectMembership] = await db(TableName.Membership)
+    .insert({
+      scope: AccessScope.Project,
+      scopeOrgId: seedData1.organization.id,
+      scopeProjectId: seedData1.project.id,
+      actorUserId: user.id
+    })
+    .returning("*");
+  await db(TableName.MembershipRole).insert({
+    membershipId: projectMembership.id,
+    role: ProjectMembershipRole.Member
+  });
+
+  const [session] = await db(TableName.AuthTokenSession)
+    .insert({
+      userId: user.id,
+      ip: "127.0.0.1",
+      userAgent: "e2e-access-approval-policy",
+      accessVersion: 1,
+      refreshVersion: 1,
+      lastUsed: new Date()
+    } as never)
+    .returning("*");
+
+  return {
+    userId: user.id,
+    token: jwt.sign(
+      {
+        authTokenType: AuthTokenType.ACCESS_TOKEN,
+        userId: user.id,
+        tokenVersionId: session.id,
+        authMethod: AuthMethod.EMAIL,
+        organizationId: seedData1.organization.id,
+        accessVersion: 1
+      },
+      getConfig().AUTH_SECRET,
+      { expiresIn: 3600 }
+    )
+  };
+};
+
+const cleanupProjectMember = async (db: Knex, userId: string) => {
+  const memberships = await db(TableName.Membership).where({ actorUserId: userId }).select("id");
+  if (memberships.length) {
+    await db(TableName.MembershipRole)
+      .whereIn(
+        "membershipId",
+        memberships.map((m) => m.id)
+      )
+      .del();
+    await db(TableName.Membership).where({ actorUserId: userId }).del();
+  }
+  await db(TableName.AuthTokenSession).where({ userId }).del();
+  await db(TableName.Users).where({ id: userId }).del();
+};
+
+// Secret access policies have no generic router of their own, so a caller can only reach
+// the shared delete handler with one of their ids through another registered type's route.
+const deletePolicyThroughGenericEndpoint = (policyId: string, token: string) =>
+  testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/approval-policies/pam-access/${policyId}`,
+    headers: {
+      authorization: `Bearer ${token}`
+    }
+  });
+
 describe("Access approval policy router", async () => {
+  beforeAll(async () => {
+    initLogger();
+    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+  });
+
   afterEach(async () => {
     const ids = createdPolicyIds.splice(0);
     await Promise.all(ids.map(deletePolicy));
@@ -206,6 +302,33 @@ describe("Access approval policy router", async () => {
       expect(updateRes.json().message).toContain(nonMemberGroupId);
     } finally {
       await cleanupGroup(db, group.id);
+    }
+  });
+
+  test("Generic delete endpoint checks permission before revealing the policy type", async () => {
+    const db = getDb();
+    const member = await seedProjectMember(db);
+
+    try {
+      const policy = await createPolicy({
+        secretPath: "/generic-delete",
+        approvals: 1,
+        approvers: [{ id: seedData1.id, type: ApproverType.User }],
+        name: "test-access-policy-generic-delete"
+      });
+
+      const asMember = await deletePolicyThroughGenericEndpoint(policy.id, member.token);
+      expect(asMember.statusCode).toBe(403);
+      expect(asMember.json().message).not.toContain("secret access policy");
+
+      const asAdmin = await deletePolicyThroughGenericEndpoint(policy.id, jwtAuthToken);
+      expect(asAdmin.statusCode).toBe(400);
+      expect(asAdmin.json().message).toContain("secret access policy");
+
+      const stillThere = await db(TableName.ApprovalPolicies).where({ id: policy.id }).first();
+      expect(stillThere).toBeDefined();
+    } finally {
+      await cleanupProjectMember(db, member.userId);
     }
   });
 });

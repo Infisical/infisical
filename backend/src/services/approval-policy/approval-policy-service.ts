@@ -934,12 +934,6 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Policy not found" });
     }
 
-    if (policy.type === ApprovalPolicyType.SecretAccess) {
-      throw new BadRequestError({
-        message: "This is a secret access policy. Delete it from the access approval policies instead."
-      });
-    }
-
     await $assertCanManagePolicy(
       policy.projectId,
       policy.scopeType ?? null,
@@ -948,6 +942,12 @@ export const approvalPolicyServiceFactory = ({
       ResourcePermissionApprovalPolicyActions.Delete,
       policy.type as ApprovalPolicyType
     );
+
+    if (policy.type === ApprovalPolicyType.SecretAccess) {
+      throw new BadRequestError({
+        message: "This is a secret access policy. Delete it from the access approval policies instead."
+      });
+    }
 
     const cancelled = await approvalPolicyDAL.transaction(async (tx) => {
       const rows = await approvalRequestDAL.update(

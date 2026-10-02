@@ -250,20 +250,20 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
    * on any step. The subject is identified by `userId` OR `groupId` (not both). Used to block
    * removing a member from an application while they're still wired up as a reviewer.
    */
-  const findPoliciesWhereSubjectIsApprover = async (args: {
-    projectId: string;
-    type?: ApprovalPolicyType;
-    scopeType?: string;
-    scopeId?: string;
-    userId?: string;
-    userIds?: string[];
-    groupId?: string;
-  }) => {
+  const findPoliciesWhereSubjectIsApprover = async (
+    args: {
+      type?: ApprovalPolicyType;
+      scopeType?: string;
+      scopeId?: string;
+      userId?: string;
+      userIds?: string[];
+      groupId?: string;
+    } & ({ projectId: string; organizationId?: undefined } | { projectId?: undefined; organizationId: string })
+  ) => {
     try {
       const dbInstance = db.replicaNode();
 
       const baseQuery = dbInstance(TableName.ApprovalPolicies)
-        .where({ projectId: args.projectId })
         .innerJoin(
           TableName.ApprovalPolicySteps,
           `${TableName.ApprovalPolicySteps}.policyId`,
@@ -274,6 +274,14 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
           `${TableName.ApprovalPolicyStepApprovers}.policyStepId`,
           `${TableName.ApprovalPolicySteps}.id`
         );
+
+      if (args.projectId) {
+        void baseQuery.where(`${TableName.ApprovalPolicies}.projectId`, args.projectId);
+      } else if (args.organizationId) {
+        void baseQuery.where(`${TableName.ApprovalPolicies}.organizationId`, args.organizationId);
+      } else {
+        return [];
+      }
 
       if (args.type) {
         void baseQuery.where(`${TableName.ApprovalPolicies}.type`, args.type);
