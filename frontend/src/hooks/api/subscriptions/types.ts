@@ -11,6 +11,13 @@ export enum SubscriptionPlanTypes {
 }
 
 export type SubscriptionPlan = {
+  productPlans?: {
+    productKey: string;
+    planKey: string | null;
+    status: string | null;
+    trialPlanKey: string | null;
+    trialEndsAt: string | null;
+  }[];
   id: string;
   memberLimit: number;
   identityLimit: number;
