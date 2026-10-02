@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -119,6 +120,10 @@ export const UltraDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel htmlFor="username">Username</FieldLabel>
+              <FieldDescription>
+                An UltraDNS user without Two Factor Mobile Authentication, which the UltraDNS REST
+                API doesn&apos;t support.
+              </FieldDescription>
               <Input
                 id="username"
                 value={value}
@@ -137,8 +142,14 @@ export const UltraDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel htmlFor="password">Password</FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-              <FieldError errors={[error]} />
+              <SecretInput
+                aria-describedby={error ? "password-error" : undefined}
+                isError={Boolean(error)}
+                id="password"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              <FieldError id="password-error" errors={[error]} />
             </Field>
           )}
         />

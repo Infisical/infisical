@@ -30,18 +30,18 @@ export const registerUltraDNSConnectionRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "listUltraDnsZones",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().uuid().describe("The ID of the UltraDNS Connection to list zones from.")
       }),
       response: {
         200: z
           .object({
-            id: z.string(),
-            name: z.string()
+            id: z.string().describe("The fully qualified name of the UltraDNS zone, used as its ID."),
+            name: z.string().describe("The fully qualified name of the UltraDNS zone.")
           })
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const zones = await server.services.appConnection.ultraDNS.listZones(connectionId, req.permission);

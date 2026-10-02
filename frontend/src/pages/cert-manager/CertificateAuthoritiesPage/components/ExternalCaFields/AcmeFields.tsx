@@ -125,7 +125,9 @@ export const AcmeFields = ({
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field className="mb-4">
-            <FieldLabel>Zone</FieldLabel>
+            <FieldLabel>
+              Zone <span className="text-danger">*</span>
+            </FieldLabel>
             <FilterableSelect
               isLoading={isZonesPending && !!dnsAppConnection.id}
               isDisabled={!dnsAppConnection.id}

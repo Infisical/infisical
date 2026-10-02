@@ -2467,6 +2467,18 @@
                         ]
                       },
                       {
+                        "group": "UltraDNS",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/ultradns/list",
+                          "api-reference/endpoints/app-connections/ultradns/available",
+                          "api-reference/endpoints/app-connections/ultradns/get-by-id",
+                          "api-reference/endpoints/app-connections/ultradns/get-by-name",
+                          "api-reference/endpoints/app-connections/ultradns/create",
+                          "api-reference/endpoints/app-connections/ultradns/update",
+                          "api-reference/endpoints/app-connections/ultradns/delete"
+                        ]
+                      },
+                      {
                         "group": "Venafi",
                         "pages": [
                           "api-reference/endpoints/app-connections/venafi/list",

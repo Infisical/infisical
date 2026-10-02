@@ -2,6 +2,7 @@
 
 import { isAxiosError } from "axios";
 
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { request } from "@app/lib/config/request";
 import { delay } from "@app/lib/delay";
 import { logger } from "@app/lib/logger";
@@ -13,10 +14,18 @@ import {
 } from "@app/services/app-connection/ultradns/ultradns-connection-fns";
 import { TUltraDNSConnection } from "@app/services/app-connection/ultradns/ultradns-connection-types";
 
+import { withDnsRecordLock } from "./dns-record-lock";
+
 const TXT_RECORD_TTL = 60;
 const MAX_WRITE_ATTEMPTS = 3;
 const WRITE_RETRY_DELAY_MS = 3000;
 const APPLY_PENDING_STATUS = 202;
+const NON_RETRYABLE_WRITE_STATUSES = [401, 403, 404];
+const RECORD_LOCK_TTL_MS = 120_000;
+
+export type TUltraDNSProviderDeps = {
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+};
 
 const toFullyQualifiedName = (name: string) => (name.endsWith(".") ? name : `${name}.`);
 
@@ -85,6 +94,7 @@ const applyToTxtRecordSet = async (
       hasWritten = true;
       shouldWaitBeforeRetry = status === APPLY_PENDING_STATUS;
     } catch (error) {
+      if (isAxiosError(error) && NON_RETRYABLE_WRITE_STATUSES.includes(error.response?.status ?? 0)) throw error;
       lastWriteError = error instanceof Error ? error : new Error(String(error));
       shouldWaitBeforeRetry = true;
     }
@@ -100,29 +110,41 @@ export const ultraDNSInsertTxtRecord = async (
   connection: TUltraDNSConnection,
   zoneName: string,
   recordName: string,
-  value: string
+  value: string,
+  { keyStore }: TUltraDNSProviderDeps
 ) => {
   const {
     credentials: { username, password, environment }
   } = connection;
+  const zoneId = toFullyQualifiedName(zoneName);
+  const name = toFullyQualifiedName(recordName);
 
   try {
-    const accessToken = await getUltraDNSAccessToken(environment, username, password);
-    const { isConfirmed, lastWriteError } = await applyToTxtRecordSet(
-      getTxtRrSetUrl(environment, zoneName, recordName),
-      accessToken,
-      (currentValues) =>
-        currentValues.some((current) => unquote(current) === unquote(value)) ? null : [...currentValues, value]
-    );
+    await withDnsRecordLock(
+      { providerName: "UltraDNS", connectionId: connection.id, zoneId, name, lockTtlMs: RECORD_LOCK_TTL_MS },
+      keyStore,
+      async () => {
+        const accessToken = await getUltraDNSAccessToken(environment, username, password);
+        const { isConfirmed, lastWriteError } = await applyToTxtRecordSet(
+          getTxtRrSetUrl(environment, zoneId, name),
+          accessToken,
+          (currentValues) =>
+            currentValues.some((current) => unquote(current) === unquote(value)) ? null : [...currentValues, value]
+        );
 
-    if (!isConfirmed) {
-      logger.warn(
-        { zoneName, recordName, err: lastWriteError },
-        "UltraDNS has not confirmed the ACME challenge TXT record as published"
-      );
-    }
+        if (!isConfirmed) {
+          logger.warn(
+            { zoneName: zoneId, recordName: name, err: lastWriteError },
+            "UltraDNS has not confirmed the ACME challenge TXT record as published"
+          );
+        }
+      }
+    );
   } catch (error) {
-    throw new Error(getUltraDNSErrorMessage(error));
+    throw new Error(
+      `Failed to create UltraDNS TXT record '${name}' in zone '${zoneId}': ${getUltraDNSErrorMessage(error)}`,
+      { cause: error }
+    );
   }
 };
 
@@ -130,30 +152,42 @@ export const ultraDNSDeleteTxtRecord = async (
   connection: TUltraDNSConnection,
   zoneName: string,
   recordName: string,
-  value: string
+  value: string,
+  { keyStore }: TUltraDNSProviderDeps
 ) => {
   const {
     credentials: { username, password, environment }
   } = connection;
+  const zoneId = toFullyQualifiedName(zoneName);
+  const name = toFullyQualifiedName(recordName);
 
   try {
-    const accessToken = await getUltraDNSAccessToken(environment, username, password);
-    const { isConfirmed, lastWriteError } = await applyToTxtRecordSet(
-      getTxtRrSetUrl(environment, zoneName, recordName),
-      accessToken,
-      (currentValues) => {
-        const remainingValues = currentValues.filter((current) => unquote(current) !== unquote(value));
-        return remainingValues.length === currentValues.length ? null : remainingValues;
+    await withDnsRecordLock(
+      { providerName: "UltraDNS", connectionId: connection.id, zoneId, name, lockTtlMs: RECORD_LOCK_TTL_MS },
+      keyStore,
+      async () => {
+        const accessToken = await getUltraDNSAccessToken(environment, username, password);
+        const { isConfirmed, lastWriteError } = await applyToTxtRecordSet(
+          getTxtRrSetUrl(environment, zoneId, name),
+          accessToken,
+          (currentValues) => {
+            const remainingValues = currentValues.filter((current) => unquote(current) !== unquote(value));
+            return remainingValues.length === currentValues.length ? null : remainingValues;
+          }
+        );
+
+        if (!isConfirmed) {
+          logger.warn(
+            { zoneName: zoneId, recordName: name, err: lastWriteError },
+            "Could not remove the UltraDNS TXT record for the ACME challenge"
+          );
+        }
       }
     );
-
-    if (!isConfirmed) {
-      logger.warn(
-        { zoneName, recordName, err: lastWriteError },
-        "Could not remove the UltraDNS TXT record for the ACME challenge"
-      );
-    }
   } catch (error) {
-    throw new Error(getUltraDNSErrorMessage(error));
+    throw new Error(
+      `Failed to delete UltraDNS TXT record '${name}' in zone '${zoneId}': ${getUltraDNSErrorMessage(error)}`,
+      { cause: error }
+    );
   }
 };
