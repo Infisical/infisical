@@ -37,7 +37,7 @@ export const SignupDisabledBanner = () => {
   if (!shouldShow || isDismissed) return null;
 
   return (
-    <Alert variant="warning" className="relative mb-6 pr-10">
+    <Alert variant="warning" className="relative rounded-none border-x-0 border-t-0 pr-10">
       <UserXIcon />
       <AlertTitle>Public user signups are disabled</AlertTitle>
       <AlertDescription>
