@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Control, Controller } from "react-hook-form";
 import { SingleValue } from "react-select";
+import { AxiosError } from "axios";
 
 import { Field, FieldError, FieldLabel, FilterableSelect } from "@app/components/v3";
 import {
@@ -32,10 +33,25 @@ const GcpCloudDnsZoneSelect = ({
   onChange: (value: string) => void;
   error?: { message?: string };
 }) => {
-  const { data: zones = [], isPending: isZonesPending } = useGcpConnectionListCloudDnsZones(
+  const {
+    data: zones = [],
+    isPending: isZonesPending,
+    isError: isZonesError,
+    error: zonesError
+  } = useGcpConnectionListCloudDnsZones(
     { connectionId, gcpProjectId },
     { enabled: Boolean(connectionId) && Boolean(gcpProjectId) }
   );
+
+  const displayedError =
+    error ??
+    (isZonesError
+      ? {
+          message:
+            (zonesError as AxiosError<{ message?: string }>)?.response?.data?.message ??
+            "Failed to list Cloud DNS zones for this project."
+        }
+      : undefined);
 
   return (
     <Field className="mb-4">
@@ -59,9 +75,9 @@ const GcpCloudDnsZoneSelect = ({
           option.dnsName ? `${option.dnsName} (${option.name})` : option.name
         }
         getOptionValue={(option) => option.id}
-        isError={Boolean(error)}
+        isError={Boolean(displayedError)}
       />
-      <FieldError errors={[error]} />
+      <FieldError errors={[displayedError]} />
     </Field>
   );
 };
