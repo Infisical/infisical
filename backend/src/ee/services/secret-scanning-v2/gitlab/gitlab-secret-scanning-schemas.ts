@@ -1,10 +1,7 @@
 import { z } from "zod";
 
 import { GitLabDataSourceScope } from "@app/ee/services/secret-scanning-v2/gitlab/gitlab-secret-scanning-enums";
-import {
-  SecretScanningDataSource,
-  SecretScanningResource
-} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   BaseCreateSecretScanningDataSourceSchema,
   BaseSecretScanningDataSourceSchema,
@@ -90,7 +87,6 @@ export const GitLabDataSourceListItemSchema = z
   );
 
 export const GitLabFindingSchema = BaseSecretScanningFindingSchema.extend({
-  resourceType: z.literal(SecretScanningResource.Project),
   dataSourceType: z.literal(SecretScanningDataSource.GitLab),
   details: GitRepositoryScanFindingDetailsSchema
 });

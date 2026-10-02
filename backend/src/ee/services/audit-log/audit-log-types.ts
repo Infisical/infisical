@@ -5658,8 +5658,9 @@ interface SecretScanningDataSourceScanEvent {
   metadata: {
     scanId: string;
     resourceId: string;
-    resourceType: string;
+    resourceName: string;
     dataSourceId: string;
+    dataSourceName: string;
     dataSourceType: string;
     scanStatus: SecretScanningScanStatus;
     scanType: SecretScanningScanType;

@@ -466,7 +466,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         // time so they're reaped too.
         .whereRaw(`COALESCE(??, ??, ??) < ?`, [
           `${TableName.SecretScanningScan}.progressUpdatedAt`,
-          `${TableName.SecretScanningScan}.scanningStartedAt`,
+          `${TableName.SecretScanningScan}.startedAt`,
           `${TableName.SecretScanningScan}.createdAt`,
           startedBefore
         ])
@@ -478,7 +478,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.SecretScanningScan))
         .select(
           db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName"),
-          db.ref("type").withSchema(TableName.SecretScanningResource).as("resourceType"),
           db.ref("dataSourceId").withSchema(TableName.SecretScanningResource)
         )
         .orderBy(`${TableName.SecretScanningScan}.createdAt`, "asc")
@@ -499,12 +498,78 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `${TableName.SecretScanningScan}.resourceId`
         )
         .where(`${TableName.SecretScanningResource}.dataSourceId`, dataSourceId)
-
         .select(selectAllTableCols(TableName.SecretScanningScan));
 
       return scans;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find By Data Source ID - Secret Scanning Scan" });
+    }
+  };
+
+  const baseFindingQuery = (tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.SecretScanningFinding)
+      .join(
+        TableName.SecretScanningResource,
+        `${TableName.SecretScanningResource}.id`,
+        `${TableName.SecretScanningFinding}.resourceId`
+      )
+      .join(
+        TableName.SecretScanningDataSource,
+        `${TableName.SecretScanningDataSource}.id`,
+        `${TableName.SecretScanningResource}.dataSourceId`
+      );
+
+  const findingWithDetailsQuery = (tx?: Knex) =>
+    baseFindingQuery(tx)
+      .select(selectAllTableCols(TableName.SecretScanningFinding))
+      .select(
+        db.ref("projectId").withSchema(TableName.SecretScanningDataSource),
+        db.ref("id").withSchema(TableName.SecretScanningDataSource).as("dataSourceId"),
+        db.ref("name").withSchema(TableName.SecretScanningDataSource).as("dataSourceName"),
+        db.ref("type").withSchema(TableName.SecretScanningDataSource).as("dataSourceType"),
+        db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName")
+      );
+
+  const findFindingsByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const findings = await findingWithDetailsQuery(tx).where(
+        `${TableName.SecretScanningDataSource}.projectId`,
+        projectId
+      );
+
+      return findings;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find By Project ID - Secret Scanning Finding" });
+    }
+  };
+
+  const findFindingByIdWithDetails = async (findingId: string, tx?: Knex) => {
+    try {
+      const finding = await findingWithDetailsQuery(tx)
+        .where(`${TableName.SecretScanningFinding}.id`, findingId)
+        .first();
+
+      return finding;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find By ID - Secret Scanning Finding" });
+    }
+  };
+
+  const countFindingsByProjectId = async (
+    projectId: string,
+    filter: { status?: SecretScanningFindingStatus } = {},
+    tx?: Knex
+  ) => {
+    try {
+      const query = baseFindingQuery(tx).where(`${TableName.SecretScanningDataSource}.projectId`, projectId);
+
+      if (filter.status) void query.where(`${TableName.SecretScanningFinding}.status`, filter.status);
+
+      const result = await query.count({ count: `${TableName.SecretScanningFinding}.id` }).first();
+
+      return Number(result?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count By Project ID - Secret Scanning Finding" });
     }
   };
 
@@ -528,7 +593,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  const primaryNode = () => db.primaryNode();
+
   return {
+    primaryNode,
     dataSources: {
       ...dataSourceOrm,
       find: findDataSource,
@@ -552,7 +620,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     findings: {
       ...findingOrm,
       upsert: upsertFindings,
-      countByScanId: countFindingsByScanId
+      countByScanId: countFindingsByScanId,
+      findByProjectId: findFindingsByProjectId,
+      findByIdWithDetails: findFindingByIdWithDetails,
+      countByProjectId: countFindingsByProjectId
     },
     configs: configOrm
   };
