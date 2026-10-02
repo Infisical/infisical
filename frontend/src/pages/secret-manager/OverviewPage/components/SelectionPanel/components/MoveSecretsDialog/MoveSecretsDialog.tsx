@@ -931,9 +931,14 @@ const SingleEnvContent = ({
         secretMoveSucceeded = true;
       } catch (error) {
         if (!foldersToMove.length && !rotationsToMove.length) throw error;
+        let message = (error as Error)?.message ?? "Failed to move selected secrets";
+        if (axios.isAxiosError(error)) {
+          const responseMessage = (error?.response?.data as { message?: string })?.message;
+          if (responseMessage) message = responseMessage;
+        }
         createNotification({
           type: "error",
-          text: "Failed to move selected secrets"
+          text: `Failed to move selected secrets: ${message}`
         });
       }
     }

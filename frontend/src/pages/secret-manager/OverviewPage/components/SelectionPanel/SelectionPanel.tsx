@@ -333,11 +333,13 @@ export const SelectionPanel = ({
 
   const canMoveSelectedFolders = Object.values(selectedEntries[EntryType.FOLDER]).some(
     (folderRecord) =>
-      Object.keys(folderRecord).some((environment) =>
-        permission.can(
-          ProjectPermissionActions.Delete,
-          subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
-        )
+      Object.keys(folderRecord).some(
+        (environment) =>
+          (visibleEnvs.length !== 1 || visibleEnvs[0].slug === environment) &&
+          permission.can(
+            ProjectPermissionActions.Delete,
+            subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
+          )
       )
   );
   const shouldShowMove =
