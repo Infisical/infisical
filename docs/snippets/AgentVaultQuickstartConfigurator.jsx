@@ -12,6 +12,7 @@ export const AgentVaultQuickstartPicker = () => {
   const AGENT_IMAGES = {
     "claude-code": { dark: "claude-code.svg" },
     codex: { light: "OpenAI.png", dark: "OpenAIWhite.png" },
+    hermes: { light: "hermes.png", dark: "hermes.on-dark.png" },
     opencode: { light: "opencode.svg", dark: "opencode.on-dark.svg" }
   };
 
@@ -187,8 +188,8 @@ export const AgentVaultQuickstartPicker = () => {
   const AGENTS = [
     { id: "claude-code", label: "Claude Code", chip: "Claude Code" },
     { id: "codex", label: "Codex", chip: "Codex" },
-    { id: "hermes", label: "Hermes Agent", chip: "Hermes Agent" },
     { id: "opencode", label: "OpenCode", chip: "OpenCode" },
+    { id: "hermes", label: "Hermes Agent", chip: "Hermes Agent" },
   ];
 
   const SELECTION_EVENT = "av-quickstart-selection-change";
