@@ -22,7 +22,7 @@ export const registerPamProjectRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     // injectPamProjectId (preValidation) has already resolved/bootstrapped the project by now.
     handler: async (req) => ({ projectId: req.internalPamProjectId })
   });

@@ -34,8 +34,6 @@ export const AlertNotificationTemplate = ({
 }: AlertNotificationTemplateProps) => {
   const title = `${resourceKind} ${eventLabel} Notice`;
   const sev = SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.info;
-  const resourceNoun = resourceKind.toLowerCase();
-  const resourceLabel = items.length === 1 ? resourceNoun : `${resourceNoun}s`;
 
   return (
     <BaseEmailWrapper title={title} preview={summary} siteUrl={siteUrl}>
@@ -60,10 +58,7 @@ export const AlertNotificationTemplate = ({
 
       <Heading className="text-black text-[20px] leading-[28px] text-center font-semibold p-0 mx-0">{title}</Heading>
 
-      <Text className="text-gray-600 text-[14px] leading-[22px] mt-[16px] mb-[0px]">
-        {summary}. Review the {resourceLabel} below and take action before {eventLabel.toLowerCase()} to avoid
-        disruption.
-      </Text>
+      <Text className="text-gray-600 text-[14px] leading-[22px] mt-[16px] mb-[0px]">{summary}.</Text>
 
       <Section className="mt-[28px] mb-[8px]">
         {items.map((item) => (
@@ -130,11 +125,11 @@ AlertNotificationTemplate.PreviewProps = {
       ]
     },
     {
-      id: "ua-client-secret:2b9d4f7c-2222-4e83-b6a1-5c4e3d2b1a09",
+      id: "token-auth-token:2b9d4f7c-2222-4e83-b6a1-5c4e3d2b1a09",
       title: "deploy-bot",
       fields: [
         { label: "Secret Name", value: "release-token" },
-        { label: "Secret Type", value: "Universal Auth Client Secret" },
+        { label: "Secret Type", value: "Token Auth Access Token" },
         { label: "Expires", value: "November 10, 2025, 09:00 AM UTC" }
       ]
     }

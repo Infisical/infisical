@@ -37,7 +37,12 @@ export const PamAccountsSchema = z.object({
   credentialConfigured: z.boolean().default(false),
   rotationAccountId: z.string().uuid().nullable().optional(),
   nextRotationAt: z.date().nullable().optional(),
-  encryptedPendingCredentials: zodBuffer.nullable().optional()
+  encryptedPendingCredentials: zodBuffer.nullable().optional(),
+  heartbeatStatus: z.string().nullable().optional(),
+  lastHeartbeatAt: z.date().nullable().optional(),
+  lastHeartbeatHealthyAt: z.date().nullable().optional(),
+  encryptedLastHeartbeatMessage: zodBuffer.nullable().optional(),
+  nextHeartbeatAt: z.date().nullable().optional()
 });
 
 export type TPamAccounts = z.infer<typeof PamAccountsSchema>;

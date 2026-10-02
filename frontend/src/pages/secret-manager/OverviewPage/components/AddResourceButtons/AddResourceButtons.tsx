@@ -1,3 +1,4 @@
+import { cloneElement, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronsLeftRightEllipsisIcon,
@@ -6,6 +7,8 @@ import {
   FolderIcon,
   HexagonIcon,
   ImportIcon,
+  KeyIcon,
+  ListPlusIcon,
   PlusIcon,
   RefreshCwIcon,
   UploadIcon
@@ -14,22 +17,56 @@ import {
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  ButtonGroup,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   IconButton,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionProxiedServiceActions } from "@app/context/ProjectPermissionContext/types";
+import type {
+  SecretsAddResourceAction,
+  SecretsAddResourceMenuLevel,
+  SecretsAddResourceMenuSource
+} from "@app/lib/analytics";
 
-type Props = {
+type MenuItemTooltipProps = {
+  children: ReactElement<ComponentProps<typeof DropdownMenuItem>>;
+  content: ReactNode;
+  isDisabled: boolean;
+};
+
+function MenuItemTooltip({ children, content, isDisabled }: MenuItemTooltipProps) {
+  const trigger = isDisabled
+    ? cloneElement(children, {
+        isDisabled: true,
+        isDisabledFocusable: true
+      })
+    : children;
+
+  return (
+    <Tooltip open={isDisabled ? undefined : false}>
+      <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+      <TooltipContent side="left">{content}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+export type AddResourceButtonsProps = {
+  onMenuOpen: (
+    source: SecretsAddResourceMenuSource,
+    menuLevel: SecretsAddResourceMenuLevel
+  ) => void;
+  onActionSelect: (action: SecretsAddResourceAction, source: SecretsAddResourceMenuSource) => void;
   onAddSecret: () => void;
   onAddFolder: () => void;
   onAddDyanamicSecret: () => void;
@@ -37,21 +74,32 @@ type Props = {
   onAddHoneyToken: () => void;
   onAddProxiedService: () => void;
   onAddSecretImport: () => void;
+  onAddSecretSync: () => void;
   onImportSecrets: () => void;
-  onReplicateSecrets: () => void;
+  onCopySecrets: () => void;
+  canCopySecrets: boolean;
+  isCopySecretsDisabled: boolean;
+  copySecretsDisabledReason?: string;
   onImportFromVault: () => void;
   onImportFromDoppler: () => void;
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
   isHoneyTokenAvailable: boolean;
-  isReplicateSecretsAvailable: boolean;
   isSecretImportAvailable: boolean;
   isSingleEnvSelected: boolean;
   hasVaultConnection: boolean;
   hasDopplerConnection: boolean;
+  isDisabled?: boolean;
+  variant?: "toolbar" | "object-type";
+  canCreateSecrets: boolean;
+  canCreateFolders: boolean;
+  canCreateHoneyTokens: boolean;
+  canCreateSecretSyncs: boolean;
 };
 
 export function AddResourceButtons({
+  onMenuOpen,
+  onActionSelect,
   onAddSecret,
   onAddFolder,
   onAddDyanamicSecret,
@@ -59,282 +107,245 @@ export function AddResourceButtons({
   onAddHoneyToken,
   onAddProxiedService,
   onAddSecretImport,
+  onAddSecretSync,
   onImportSecrets,
-  onReplicateSecrets,
+  onCopySecrets,
+  canCopySecrets,
+  isCopySecretsDisabled,
+  copySecretsDisabledReason,
   onImportFromVault,
   onImportFromDoppler,
   isDyanmicSecretAvailable,
   isSecretRotationAvailable,
   isHoneyTokenAvailable,
-  isReplicateSecretsAvailable,
   isSecretImportAvailable,
   isSingleEnvSelected,
   hasVaultConnection,
-  hasDopplerConnection
-}: Props) {
+  hasDopplerConnection,
+  isDisabled,
+  variant = "toolbar",
+  canCreateSecrets,
+  canCreateFolders,
+  canCreateHoneyTokens,
+  canCreateSecretSyncs
+}: AddResourceButtonsProps) {
+  const selectAction = (action: SecretsAddResourceAction, callback: () => void) => () => {
+    onActionSelect(action, variant);
+    callback();
+  };
+
   return (
-    <ButtonGroup>
-      <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Secrets}>
-        {(isAllowed) => (
-          <Tooltip open={!isAllowed ? undefined : false}>
-            <TooltipTrigger>
-              <Button
-                className="rounded-r-none"
-                isDisabled={!isAllowed}
-                variant="project"
-                onClick={onAddSecret}
-              >
-                <PlusIcon />
-                Add Secret
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Access Denied</TooltipContent>
-          </Tooltip>
-        )}
-      </ProjectPermissionCan>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <IconButton variant="project">
-            <ChevronDown />
+    <DropdownMenu onOpenChange={(isOpen) => isOpen && onMenuOpen(variant, "root")}>
+      <DropdownMenuTrigger asChild>
+        {variant === "object-type" ? (
+          <IconButton
+            aria-label={isDisabled ? "Secret draft in progress" : "Add another resource type"}
+            className="mx-auto border-0 [&>svg]:!size-4"
+            isDisabled={isDisabled}
+            size="2xs"
+            variant="ghost-muted"
+          >
+            {isDisabled ? <KeyIcon className="text-secret" /> : <PlusIcon />}
           </IconButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>New</DropdownMenuLabel>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.SecretFolders}
+        ) : (
+          <Button variant="project">
+            <ChevronDown />
+            Add New
+          </Button>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={variant === "object-type" ? "start" : "end"}>
+        <DropdownMenuLabel>Basic</DropdownMenuLabel>
+        {variant === "toolbar" && (
+          <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
+            <DropdownMenuItem
+              onClick={selectAction("secret", onAddSecret)}
+              isDisabled={!canCreateSecrets}
+            >
+              <KeyIcon className="text-secret" />
+              Add Secret
+            </DropdownMenuItem>
+          </MenuItemTooltip>
+        )}
+        <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
+          <DropdownMenuItem
+            onClick={selectAction("upload-secrets", onImportSecrets)}
+            isDisabled={!canCreateSecrets}
           >
-            {(isAllowed) => (
-              <Tooltip open={!isAllowed ? undefined : false}>
-                <TooltipTrigger className="block w-full">
-                  <DropdownMenuItem onClick={onAddFolder} isDisabled={!isAllowed}>
-                    <FolderIcon className="text-folder" />
-                    Add Folder
-                  </DropdownMenuItem>
-                </TooltipTrigger>
-                <TooltipContent side="left">Access Restricted</TooltipContent>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
-          <Tooltip open={!isDyanmicSecretAvailable ? undefined : false}>
-            <TooltipTrigger className="block w-full">
+            <UploadIcon className="text-accent" />
+            Upload Secrets
+          </DropdownMenuItem>
+        </MenuItemTooltip>
+        <MenuItemTooltip isDisabled={!canCreateFolders} content="Access Restricted">
+          <DropdownMenuItem
+            onClick={selectAction("folder", onAddFolder)}
+            isDisabled={!canCreateFolders}
+          >
+            <FolderIcon className="text-folder" />
+            Add Folder
+          </DropdownMenuItem>
+        </MenuItemTooltip>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Advanced</DropdownMenuLabel>
+        <MenuItemTooltip isDisabled={!isDyanmicSecretAvailable} content="Access Restricted">
+          <DropdownMenuItem
+            onClick={selectAction("dynamic-secret", onAddDyanamicSecret)}
+            isDisabled={!isDyanmicSecretAvailable}
+          >
+            <FingerprintIcon className="text-dynamic-secret" />
+            Add Dynamic Secret
+          </DropdownMenuItem>
+        </MenuItemTooltip>
+        <MenuItemTooltip isDisabled={!isSecretRotationAvailable} content="Access Restricted">
+          <DropdownMenuItem
+            onClick={selectAction("secret-rotation", onAddSecretRotation)}
+            isDisabled={!isSecretRotationAvailable}
+          >
+            <RefreshCwIcon className="text-secret-rotation" />
+            Add Secret Rotation
+          </DropdownMenuItem>
+        </MenuItemTooltip>
+        <MenuItemTooltip
+          isDisabled={!isHoneyTokenAvailable || !canCreateHoneyTokens}
+          content="Access Restricted"
+        >
+          <DropdownMenuItem
+            onClick={selectAction("honey-token", onAddHoneyToken)}
+            isDisabled={!isHoneyTokenAvailable || !canCreateHoneyTokens}
+          >
+            <HexagonIcon className="text-warning" />
+            Add Honey Token
+          </DropdownMenuItem>
+        </MenuItemTooltip>
+        <ProjectPermissionCan
+          I={ProjectPermissionProxiedServiceActions.Create}
+          a={ProjectPermissionSub.ProxiedServices}
+        >
+          {(isAllowed) => (
+            <MenuItemTooltip
+              isDisabled={!isSingleEnvSelected || !isAllowed}
+              content={
+                !isAllowed
+                  ? "Access Restricted"
+                  : "Select a single environment to add a proxied service"
+              }
+            >
               <DropdownMenuItem
-                onClick={onAddDyanamicSecret}
-                isDisabled={!isDyanmicSecretAvailable}
+                onClick={selectAction("proxied-service", onAddProxiedService)}
+                isDisabled={!isSingleEnvSelected || !isAllowed}
               >
-                <FingerprintIcon className="text-dynamic-secret" />
-                Add Dynamic Secret
+                <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
+                Add Proxied Service
               </DropdownMenuItem>
-            </TooltipTrigger>
-            <TooltipContent side="left">Access restricted</TooltipContent>
-          </Tooltip>
-          <Tooltip open={!isSecretRotationAvailable ? undefined : false}>
-            <TooltipTrigger className="block w-full">
+            </MenuItemTooltip>
+          )}
+        </ProjectPermissionCan>
+        <DropdownMenuSub onOpenChange={(isOpen) => isOpen && onMenuOpen(variant, "more")}>
+          <DropdownMenuSubTrigger>
+            <ListPlusIcon />
+            Add More
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <MenuItemTooltip
+              isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
+              content={
+                !isSecretImportAvailable
+                  ? "Access Restricted"
+                  : "Select a single environment to add a secret import"
+              }
+            >
               <DropdownMenuItem
-                onClick={onAddSecretRotation}
-                isDisabled={!isSecretRotationAvailable}
-              >
-                <RefreshCwIcon className="text-secret-rotation" />
-                Add Secret Rotation
-              </DropdownMenuItem>
-            </TooltipTrigger>
-            <TooltipContent side="left">Access restricted</TooltipContent>
-          </Tooltip>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.HoneyTokens}
-          >
-            {(isAllowed) => (
-              <Tooltip open={!isHoneyTokenAvailable || !isAllowed ? undefined : false}>
-                <TooltipTrigger className="block w-full">
-                  <DropdownMenuItem
-                    onClick={onAddHoneyToken}
-                    isDisabled={!isHoneyTokenAvailable || !isAllowed}
-                  >
-                    <HexagonIcon className="text-yellow" />
-                    Add Honey Token
-                  </DropdownMenuItem>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  {!isAllowed ? "Access Restricted" : "Access restricted"}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
-          <ProjectPermissionCan
-            I={ProjectPermissionProxiedServiceActions.Create}
-            a={ProjectPermissionSub.ProxiedServices}
-          >
-            {(isAllowed) => (
-              <Tooltip open={!isSingleEnvSelected || !isAllowed ? undefined : false}>
-                <TooltipTrigger className="block w-full">
-                  <DropdownMenuItem
-                    onClick={onAddProxiedService}
-                    isDisabled={!isSingleEnvSelected || !isAllowed}
-                  >
-                    <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
-                    Add Proxied Service
-                  </DropdownMenuItem>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  {!isAllowed
-                    ? "Access Restricted"
-                    : "Select a single environment to add a proxied service"}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
-          <DropdownMenuSeparator />
-          <DropdownMenuLabel>Bulk</DropdownMenuLabel>
-          <Tooltip open={!isSecretImportAvailable || !isSingleEnvSelected ? undefined : false}>
-            <TooltipTrigger className="block w-full">
-              <DropdownMenuItem
-                onClick={onAddSecretImport}
+                onSelect={selectAction("secret-import", onAddSecretImport)}
                 isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
               >
                 <ImportIcon className="text-import" />
                 Add Secret Import
               </DropdownMenuItem>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              {!isSecretImportAvailable
-                ? "Access restricted"
-                : "Select a single environment to add a secret import"}
-            </TooltipContent>
-          </Tooltip>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.Secrets}
-          >
-            {(isAllowed) => (
-              <Tooltip open={!isAllowed ? undefined : false}>
-                <TooltipTrigger className="block w-full">
-                  <DropdownMenuItem onClick={onImportSecrets} isDisabled={!isAllowed}>
-                    <UploadIcon className="text-accent" />
-                    Upload Secrets
-                  </DropdownMenuItem>
-                </TooltipTrigger>
-                <TooltipContent side="left">Access Restricted</TooltipContent>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.SecretFolders}
-          >
-            {(isAllowed) => (
-              <Tooltip open={!isReplicateSecretsAvailable || !isAllowed ? undefined : false}>
-                <TooltipTrigger className="block w-full">
-                  <DropdownMenuItem
-                    onClick={onReplicateSecrets}
-                    isDisabled={!isReplicateSecretsAvailable || !isAllowed}
-                  >
-                    <ClipboardPasteIcon className="text-accent" />
-                    Replicate Secrets
-                  </DropdownMenuItem>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  {!isReplicateSecretsAvailable
-                    ? "Select a single environment to replicate secrets"
-                    : "Access Denied"}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
-          {(hasVaultConnection || hasDopplerConnection) && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>IMPORT FROM</DropdownMenuLabel>
-            </>
-          )}
-          {hasVaultConnection && (
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Create}
-              a={ProjectPermissionSub.Secrets}
+            </MenuItemTooltip>
+            <MenuItemTooltip
+              isDisabled={isCopySecretsDisabled || !canCopySecrets}
+              content={
+                !canCopySecrets
+                  ? "Access Restricted"
+                  : (copySecretsDisabledReason ?? "Copy secrets is unavailable")
+              }
             >
-              {(isAllowed) => {
-                let vaultImportTooltip: string;
-                if (!hasVaultConnection) {
-                  vaultImportTooltip = "No HashiCorp Vault connection found";
-                } else if (!isSingleEnvSelected) {
-                  vaultImportTooltip = "Select a single environment to import from Vault";
-                } else {
-                  vaultImportTooltip = "Access Restricted";
-                }
-
-                return (
-                  <Tooltip
-                    open={
-                      !isAllowed || !isSingleEnvSelected || !hasVaultConnection ? undefined : false
-                    }
-                  >
-                    <TooltipTrigger className="block w-full">
-                      <DropdownMenuItem
-                        onClick={onImportFromVault}
-                        isDisabled={!isAllowed || !isSingleEnvSelected || !hasVaultConnection}
-                      >
-                        <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
-                          <img
-                            src="/images/integrations/Vault.png"
-                            alt="HashiCorp Vault"
-                            className="mt-0.5 h-4 w-4"
-                          />
-                        </div>
-                        Add from HashiCorp Vault
-                      </DropdownMenuItem>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">{vaultImportTooltip}</TooltipContent>
-                  </Tooltip>
-                );
-              }}
-            </ProjectPermissionCan>
-          )}
-          {hasDopplerConnection && (
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Create}
-              a={ProjectPermissionSub.Secrets}
+              <DropdownMenuItem
+                onSelect={selectAction("copy-secrets", onCopySecrets)}
+                isDisabled={isCopySecretsDisabled || !canCopySecrets}
+              >
+                <ClipboardPasteIcon className="text-accent" />
+                Copy Secrets
+              </DropdownMenuItem>
+            </MenuItemTooltip>
+            <MenuItemTooltip
+              isDisabled={!canCreateSecretSyncs || !isSingleEnvSelected}
+              content={
+                !canCreateSecretSyncs
+                  ? "Access Restricted"
+                  : "Select a single environment to add a secret sync"
+              }
             >
-              {(isAllowed) => {
-                let dopplerImportTooltip: string;
-                if (!hasDopplerConnection) {
-                  dopplerImportTooltip = "No Doppler connection found";
-                } else if (!isSingleEnvSelected) {
-                  dopplerImportTooltip = "Select a single environment to import from Doppler";
-                } else {
-                  dopplerImportTooltip = "Access Restricted";
+              <DropdownMenuItem
+                onSelect={selectAction("secret-sync", onAddSecretSync)}
+                isDisabled={!canCreateSecretSyncs || !isSingleEnvSelected}
+              >
+                <RefreshCwIcon className="text-accent" />
+                Add Secret Sync
+              </DropdownMenuItem>
+            </MenuItemTooltip>
+            {(hasVaultConnection || hasDopplerConnection) && <DropdownMenuSeparator />}
+            {hasVaultConnection && (
+              <MenuItemTooltip
+                isDisabled={!canCreateSecrets || !isSingleEnvSelected}
+                content={
+                  isSingleEnvSelected
+                    ? "Access Restricted"
+                    : "Select a single environment to import from Vault"
                 }
-
-                return (
-                  <Tooltip
-                    open={
-                      !isAllowed || !isSingleEnvSelected || !hasDopplerConnection
-                        ? undefined
-                        : false
-                    }
-                  >
-                    <TooltipTrigger className="block w-full">
-                      <DropdownMenuItem
-                        onClick={onImportFromDoppler}
-                        isDisabled={!isAllowed || !isSingleEnvSelected || !hasDopplerConnection}
-                      >
-                        <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
-                          <img
-                            src="/images/integrations/Doppler.png"
-                            alt="Doppler"
-                            className="mt-0.5 h-4 w-4"
-                          />
-                        </div>
-                        Add from Doppler
-                      </DropdownMenuItem>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">{dopplerImportTooltip}</TooltipContent>
-                  </Tooltip>
-                );
-              }}
-            </ProjectPermissionCan>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </ButtonGroup>
+              >
+                <DropdownMenuItem
+                  onSelect={selectAction("import-from-vault", onImportFromVault)}
+                  isDisabled={!canCreateSecrets || !isSingleEnvSelected}
+                >
+                  <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
+                    <img
+                      src="/images/integrations/Vault.png"
+                      alt="HashiCorp Vault"
+                      className="mt-0.5 h-4 w-4"
+                    />
+                  </div>
+                  Add from HashiCorp Vault
+                </DropdownMenuItem>
+              </MenuItemTooltip>
+            )}
+            {hasDopplerConnection && (
+              <MenuItemTooltip
+                isDisabled={!canCreateSecrets || !isSingleEnvSelected}
+                content={
+                  isSingleEnvSelected
+                    ? "Access Restricted"
+                    : "Select a single environment to import from Doppler"
+                }
+              >
+                <DropdownMenuItem
+                  onSelect={selectAction("import-from-doppler", onImportFromDoppler)}
+                  isDisabled={!canCreateSecrets || !isSingleEnvSelected}
+                >
+                  <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
+                    <img
+                      src="/images/integrations/Doppler.png"
+                      alt="Doppler"
+                      className="mt-0.5 h-4 w-4"
+                    />
+                  </div>
+                  Add from Doppler
+                </DropdownMenuItem>
+              </MenuItemTooltip>
+            )}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

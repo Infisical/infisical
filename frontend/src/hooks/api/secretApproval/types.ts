@@ -12,6 +12,7 @@ export type TSecretApprovalPolicy = {
   updatedAt: Date;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
+  bypassForMachineIdentities: boolean;
 };
 
 export enum ApproverType {
@@ -35,6 +36,28 @@ export type Bypasser = {
   type: BypasserType;
 };
 
+export type TSecretApprovalPolicyApproverInput =
+  | {
+      type: "user";
+      id?: string;
+      username?: string;
+    }
+  | {
+      type: "group";
+      id: string;
+    };
+
+export type TSecretApprovalPolicyBypasserInput =
+  | {
+      type: "user";
+      id?: string;
+      username?: string;
+    }
+  | {
+      type: "group";
+      id: string;
+    };
+
 export type TGetSecretApprovalPoliciesDTO = {
   projectId: string;
 };
@@ -50,21 +73,23 @@ export type TCreateSecretPolicyDTO = {
   name?: string;
   environments: string[];
   secretPath: string;
-  approvers?: Omit<Approver, "isOrgMembershipActive">[];
-  bypassers?: Bypasser[];
+  approvers?: TSecretApprovalPolicyApproverInput[];
+  bypassers?: TSecretApprovalPolicyBypasserInput[];
   approvals?: number;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
+  bypassForMachineIdentities?: boolean;
 };
 
 export type TUpdateSecretPolicyDTO = {
   id: string;
   name?: string;
-  approvers?: Omit<Approver, "isOrgMembershipActive">[];
-  bypassers?: Bypasser[];
+  approvers?: TSecretApprovalPolicyApproverInput[];
+  bypassers?: TSecretApprovalPolicyBypasserInput[];
   secretPath?: string;
   approvals?: number;
   allowedSelfApprovals?: boolean;
+  bypassForMachineIdentities?: boolean;
   enforcementLevel?: EnforcementLevel;
   // for invalidating list
   projectId: string;

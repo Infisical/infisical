@@ -35,6 +35,27 @@ export type DashboardProjectSecretsOverviewResponse = {
   totalUniqueSecretRotationsInPage: number;
 };
 
+export type TGetSecretMetadataDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  cursor?: string;
+  limit: number;
+};
+
+export type TSecretMetadataPage = {
+  secrets: {
+    id: string;
+    secretKey: string;
+    secretPath: string;
+    type: "shared";
+    secretValueHidden: boolean;
+    isHoneyTokenSecret: boolean;
+    isRotatedSecret: boolean;
+  }[];
+  nextCursor: string | null;
+};
+
 export type UsedBySecretSyncs = {
   name: string;
   destination: string;
@@ -104,7 +125,9 @@ export type DashboardProjectSecretsDetails = Omit<
 };
 
 export enum DashboardSecretsOrderBy {
-  Name = "name"
+  Name = "name",
+  CreatedAt = "createdAt",
+  UpdatedAt = "updatedAt"
 }
 
 export type TGetDashboardProjectSecretsOverviewDTO = {
@@ -114,6 +137,7 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
   limit?: number;
   orderBy?: DashboardSecretsOrderBy;
   orderDirection?: OrderByDirection;
+  sortEnvironment?: string;
   search?: string;
   tags?: Record<string, boolean>;
   includeSecrets?: boolean;
@@ -128,21 +152,34 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
 
 export type TGetDashboardProjectSecretsDetailsDTO = Omit<
   TGetDashboardProjectSecretsOverviewDTO,
-  "environments"
+  "environments" | "orderBy" | "sortEnvironment"
 > & {
   environment: string;
+  orderBy?: DashboardSecretsOrderBy.Name;
   includeImports?: boolean;
   tags: Record<string, boolean>;
 };
 
-export type TDashboardProjectSecretsQuickSearchResponse = {
-  folders: (TSecretFolder & { envId: string; path: string })[];
-  dynamicSecrets: (TDynamicSecret & { environment: string; path: string })[];
-  secretRotations: TSecretRotationV2[];
-  secrets: SecretV3Raw[];
+export type TDashboardProjectSecretsQuickSearchCounts = {
+  totalFolderCount: number;
+  totalDynamicSecretCount: number;
+  totalSecretCount: number;
+  totalSecretRotationCount: number;
+  totalCount: number;
+  // matches are scanned up to this many per resource type; counts are a lower bound once it is reached
+  searchLimit: number;
+  isSearchLimitReached: boolean;
 };
 
-export type TDashboardProjectSecretsQuickSearch = {
+export type TDashboardProjectSecretsQuickSearchResponse =
+  TDashboardProjectSecretsQuickSearchCounts & {
+    folders: (TSecretFolder & { envId: string; path: string })[];
+    dynamicSecrets: (TDynamicSecret & { environment: string; path: string })[];
+    secretRotations: TSecretRotationV2[];
+    secrets: SecretV3Raw[];
+  };
+
+export type TDashboardProjectSecretsQuickSearch = TDashboardProjectSecretsQuickSearchCounts & {
   folders: Record<string, TDashboardProjectSecretsQuickSearchResponse["folders"]>;
   secrets: Record<string, SecretV3RawSanitized[]>;
   dynamicSecrets: Record<string, TDashboardProjectSecretsQuickSearchResponse["dynamicSecrets"]>;
@@ -155,6 +192,8 @@ export type TGetDashboardProjectSecretsQuickSearchDTO = {
   tags: Record<string, boolean>;
   search: string;
   environments: string[];
+  limit?: number;
+  offset?: number;
 };
 
 // per-condition match operator; only exact-match ("is") is supported today (mirrors the backend)
@@ -198,6 +237,7 @@ export type TGetDashboardProjectSecretsByKeys = {
   secretPath: string;
   environment: string;
   keys: string[];
+  viewSecretValue?: boolean;
 };
 
 export type TGetAccessibleSecretsDTO = {
@@ -245,6 +285,8 @@ export type FolderMoveEligibilityResponse = {
   // the destination policy's path/name are disclosed only when the actor may read that path
   destinationBlockingPath?: string;
   destinationPolicyName?: string;
+  // warning, never a block: the subtree carries folder-scoped access policies that will follow the move
+  hasRbacPolicies?: boolean;
 };
 
 export type TFolderMoveDestinationCheck = {

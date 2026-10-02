@@ -1,9 +1,14 @@
 import { Helmet } from "react-helmet";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageHeader } from "@app/components/v2";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
+import {
+  LookingForOrgPageLink,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 
@@ -42,30 +47,20 @@ export const AuditLogsPage = () => {
   };
 
   return (
-    <div className="h-full bg-bunker-800">
+    <div className="h-full bg-page">
       <Helmet>
         <title>Infisical | Audit Logs</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="flex w-full justify-center bg-bunker-800 pb-6 text-white">
+      <div className="flex w-full justify-center bg-page pb-6 text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
             title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Audit Logs`}
             description="Audit logs for security and compliance teams to monitor information access."
           >
-            {isSubOrganization && (
-              <Link
-                to="/organizations/$orgId/audit-logs"
-                params={{
-                  orgId: currentOrg.rootOrgId ?? ""
-                }}
-                className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
-              >
-                <InfoIcon size={12} /> Looking for root organization audit logs?
-              </Link>
-            )}
+            <LookingForOrgPageLink page="auditLogs" target="root" />
           </PageHeader>
           <Tabs value={activeTab} onValueChange={updateSelectedTab}>
             <TabsList variant={isSubOrganization ? "sub-org" : "org"}>

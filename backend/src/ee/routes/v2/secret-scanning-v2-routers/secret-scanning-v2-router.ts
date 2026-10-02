@@ -39,7 +39,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listSecretScanningDataSourceOptions",
       tags: [ApiDocsTags.SecretScanning],
       description: "List the available Secret Scanning Data Source Options.",
@@ -49,7 +49,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: () => {
       const dataSourceOptions = server.services.secretScanningV2.listSecretScanningDataSourceOptions();
       return { dataSourceOptions };
@@ -63,7 +63,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listSecretScanningDataSources",
       tags: [ApiDocsTags.SecretScanning],
       description: "List all the Secret Scanning Data Sources for the specified project.",
@@ -74,7 +74,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ dataSources: SecretScanningDataSourceSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },
@@ -109,7 +109,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listSecretScanningFindings",
       tags: [ApiDocsTags.SecretScanning],
       description: "List all the Secret Scanning Findings for the specified project.",
@@ -120,7 +120,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ findings: SecretScanningFindingSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },
@@ -155,7 +155,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "updateSecretScanningFinding",
       tags: [ApiDocsTags.SecretScanning],
       description: "Update the specified Secret Scanning Finding.",
@@ -170,7 +170,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ finding: SecretScanningFindingSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         params: { findingId },
@@ -217,7 +217,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "updateSecretScanningFindingsBatch",
       tags: [ApiDocsTags.SecretScanning],
       description: "Update one or more Secret Scanning Findings in a batch.",
@@ -233,7 +233,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ findings: SecretScanningFindingSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { body, permission } = req;
 
@@ -268,7 +268,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "getSecretScanningConfig",
       tags: [ApiDocsTags.SecretScanning],
       description: "Get the Secret Scanning Config for the specified project.",
@@ -285,7 +285,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },
@@ -313,7 +313,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "updateSecretScanningConfig",
       tags: [ApiDocsTags.SecretScanning],
       description: "Update the specified Secret Scanning Configuration.",
@@ -381,7 +381,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },
@@ -425,7 +425,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ unresolvedFindings: z.number() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },

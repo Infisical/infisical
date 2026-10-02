@@ -25,7 +25,8 @@ export const registerKempLoadMasterPkiSyncRouter = async (
     updateSchema: UpdateKempLoadMasterPkiSyncSchema,
     syncOptions: {
       canImportCertificates: KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });
@@ -57,7 +58,7 @@ export const registerKempLoadMasterPkiSyncRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.query;
 

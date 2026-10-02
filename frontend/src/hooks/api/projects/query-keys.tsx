@@ -13,6 +13,8 @@ export const projectKeys = {
   getProjectAuthorization: (projectId: string) => [{ projectId }, "project-authorizations"],
   getProjectIntegrations: (projectId: string) => [{ projectId }, "project-integrations"],
   getAllUserProjects: () => [...projectKeys.allProjectQueries()] as const,
+  getAccessibleProjectsWithSubOrgs: (orgId: string) =>
+    [...projectKeys.getAllUserProjects(), "with-sub-orgs", { orgId }] as const,
   getMyPendingProjectAccessRequests: () =>
     [...projectKeys.allProjectQueries(), "my-pending-access-requests"] as const,
   getProjectAuditLogs: (projectId: string) => [{ projectId }, "project-audit-logs"] as const,
@@ -23,10 +25,27 @@ export const projectKeys = {
   ) => [{ projectId, includeGroupMembers, roles }, "project-users"] as const,
   getProjectUserDetails: (projectId: string, membershipId: string) =>
     [{ projectId, membershipId }, "project-user-details"] as const,
-  getMembershipPermissionAudit: (projectId: string, membershipId: string) =>
-    [{ projectId, membershipId }, "membership-permission-audit"] as const,
-  getIdentityPermissionAudit: (projectId: string, identityId: string) =>
-    [{ projectId, identityId }, "identity-permission-audit"] as const,
+  // the flag is a trailing element so two-argument calls prefix-match both variants
+  getMembershipPermissionAudit: (
+    projectId: string,
+    membershipId: string,
+    includeFolderPermissions?: boolean
+  ) =>
+    [
+      { projectId, membershipId },
+      "membership-permission-audit",
+      ...(includeFolderPermissions !== undefined ? [{ includeFolderPermissions }] : [])
+    ] as const,
+  getIdentityPermissionAudit: (
+    projectId: string,
+    identityId: string,
+    includeFolderPermissions?: boolean
+  ) =>
+    [
+      { projectId, identityId },
+      "identity-permission-audit",
+      ...(includeFolderPermissions !== undefined ? [{ includeFolderPermissions }] : [])
+    ] as const,
   getProjectIdentityMemberships: (projectId: string) =>
     [{ projectId }, "project-identity-memberships"] as const,
   getProjectIdentityMembershipDetails: (projectId: string, identityId: string) =>

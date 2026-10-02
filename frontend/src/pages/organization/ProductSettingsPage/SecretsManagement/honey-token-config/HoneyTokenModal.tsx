@@ -334,19 +334,19 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
 
             {hasSavedConfig && (
               <div className="mt-4 rounded-md border border-border bg-container p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm text-mineshaft-300">
-                  <Terminal className="size-4 text-mineshaft-400" />
+                <div className="mb-3 flex items-center gap-2 text-sm text-foreground">
+                  <Terminal className="size-4 text-muted" />
                   <span className="font-medium tracking-wide uppercase">
                     Deploy CloudFormation Stack
                   </span>
                 </div>
-                <p className="mb-3 text-sm text-mineshaft-400">
+                <p className="mb-3 text-sm text-muted">
                   Run this command to create the CloudFormation stack that provisions the decoy IAM
                   user and wires CloudTrail alerts back to Infisical.
                 </p>
                 <div className="relative">
-                  <pre className="rounded-md border border-border bg-card p-4 pr-12 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-mineshaft-300">
-                    <span className="text-mineshaft-400 select-none">$ </span>
+                  <pre className="rounded-md border border-border bg-card p-4 pr-12 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-foreground">
+                    <span className="text-muted select-none">$ </span>
                     {cfCommand}
                   </pre>
                   <IconButton

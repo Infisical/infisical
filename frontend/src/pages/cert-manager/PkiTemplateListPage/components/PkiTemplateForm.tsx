@@ -181,7 +181,7 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
     <form onSubmit={handleSubmit(onFormSubmit)}>
       {certTemplate && (
         <FormControl label="Certificate Template ID">
-          <Input value={certTemplate.id} isDisabled className="bg-white/[0.07]" />
+          <Input value={certTemplate.id} isDisabled className="bg-foreground-inverse/[0.07]" />
         </FormControl>
       )}
       <Controller
@@ -195,7 +195,12 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
             errorText={error?.message}
             isRequired
           >
-            <Input {...field} placeholder="my-template" />
+            <Input
+              {...field}
+              placeholder="my-template"
+              autoComplete="off"
+              name="pki-template-name"
+            />
           </FormControl>
         )}
       />

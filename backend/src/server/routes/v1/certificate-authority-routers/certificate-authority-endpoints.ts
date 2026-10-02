@@ -59,7 +59,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema.array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.query.projectId ?? req.internalCertManagerProjectId;
 
@@ -100,7 +100,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id } = req.params;
 
@@ -140,12 +140,13 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const body = req.body as {
         projectId?: string;
         configuration?: { keySource?: string; hsmConnectorId?: string };
       };
+      const createdOcspSetting = (body as { configuration?: { isOcspEnabled?: boolean } }).configuration?.isOcspEnabled;
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
         { ...req.body, projectId: body.projectId ?? req.internalCertManagerProjectId, type: caType },
         req.permission
@@ -160,7 +161,8 @@ export const registerCertificateAuthorityEndpoints = <
             name: certificateAuthority.name,
             caId: certificateAuthority.id,
             keySource: body.configuration?.keySource,
-            hsmConnectorId: body.configuration?.hsmConnectorId
+            hsmConnectorId: body.configuration?.hsmConnectorId,
+            ...(typeof createdOcspSetting === "boolean" && { isOcspEnabled: createdOcspSetting })
           }
         }
       });
@@ -198,9 +200,11 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id } = req.params;
+      const updatedOcspSetting = (req.body as { configuration?: { isOcspEnabled?: boolean } }).configuration
+        ?.isOcspEnabled;
 
       const certificateAuthority = (await server.services.certificateAuthority.updateCertificateAuthority(
         {
@@ -219,7 +223,8 @@ export const registerCertificateAuthorityEndpoints = <
           metadata: {
             name: certificateAuthority.name,
             caId: certificateAuthority.id,
-            status: certificateAuthority.status
+            status: certificateAuthority.status,
+            ...(typeof updatedOcspSetting === "boolean" && { isOcspEnabled: updatedOcspSetting })
           }
         }
       });
@@ -257,7 +262,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id } = req.params;
 

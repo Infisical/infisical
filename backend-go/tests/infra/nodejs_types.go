@@ -18,6 +18,7 @@ type BootstrapResponse struct {
 		ID string `json:"id"`
 	} `json:"organization"`
 	Identity struct {
+		ID          string `json:"id"`
 		Credentials struct {
 			Token string `json:"token"`
 		} `json:"credentials"`
@@ -26,6 +27,16 @@ type BootstrapResponse struct {
 		ID    string `json:"id"`
 		Email string `json:"email"`
 	} `json:"user"`
+}
+
+// CreateTokenAuthTokenRequest is the request body for POST /api/v1/auth/token-auth/identities/{id}/tokens.
+type CreateTokenAuthTokenRequest struct {
+	Name string `json:"name,omitempty"`
+}
+
+// CreateTokenAuthTokenResponse is the response from POST /api/v1/auth/token-auth/identities/{id}/tokens.
+type CreateTokenAuthTokenResponse struct {
+	AccessToken string `json:"accessToken"`
 }
 
 // LoginRequest is the request body for POST /api/v3/auth/login.

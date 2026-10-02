@@ -7,6 +7,7 @@ import {
   ItemDescription,
   ItemMedia,
   ItemTitle,
+  ProviderIcon,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -27,13 +28,13 @@ type Props = {
 
 const EXTERNAL_KMS_LIST = [
   {
-    icon: "/images/integrations/Amazon Web Services.png",
+    icon: "Amazon Web Services.png",
     provider: ExternalKmsProvider.Aws,
     title: "AWS KMS",
     description: "Use an AWS KMS key to encrypt organization data."
   },
   {
-    icon: "/images/integrations/Google Cloud Platform.png",
+    icon: "Google Cloud Platform.png",
     provider: ExternalKmsProvider.Gcp,
     title: "GCP KMS",
     description: "Use a Google Cloud KMS key to encrypt organization data."
@@ -85,7 +86,7 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
                 >
                   <button type="button" onClick={() => setSelectedProvider(provider)}>
                     <ItemMedia variant="image">
-                      <img src={icon} alt="" />
+                      <ProviderIcon icon={icon} alt="" />
                     </ItemMedia>
                     <ItemContent>
                       <ItemTitle>{title}</ItemTitle>

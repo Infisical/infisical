@@ -268,7 +268,7 @@ export const projectTemplateServiceFactory = ({
     roles.forEach((role) => {
       validateHandlebarTemplate("Project Template Role", JSON.stringify(role.permissions || []), {
         allowedExpressions: (val) => val.includes("identity."),
-        allowedHelpers: ["stripPrefix"],
+        allowedHelpers: ["stripPrefix", "trimSuffix"],
         rejectUnescaped: true
       });
     });
@@ -520,7 +520,7 @@ export const projectTemplateServiceFactory = ({
       roles.forEach((role) => {
         validateHandlebarTemplate("Project Template Role", JSON.stringify(role.permissions || []), {
           allowedExpressions: (val) => val.includes("identity."),
-          allowedHelpers: ["stripPrefix"],
+          allowedHelpers: ["stripPrefix", "trimSuffix"],
           rejectUnescaped: true
         });
       });

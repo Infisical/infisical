@@ -8,6 +8,8 @@ import {
   AdminGetOrganizationsFilters,
   AdminGetUsersFilters,
   AdminIntegrationsConfig,
+  TEncryptionKeyRotationsPage,
+  TEncryptionRootKey,
   TGetEmailDomainsResponse,
   TGetEnvOverrides,
   TGetIdentitiesResponse,
@@ -34,6 +36,9 @@ export const adminQueryKeys = {
     [adminStandaloneKeys.getIdentities, { filters }] as const,
   getAdminSlackConfig: () => ["admin-slack-config"] as const,
   getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const,
+  getEncryptionRootKey: () => ["server-encryption-root-key"] as const,
+  getEncryptionKeyRotations: (filters: { offset: number; limit: number }) =>
+    ["server-encryption-key-rotations", filters] as const,
   getInvalidateCache: () => ["admin-invalidate-cache"] as const,
   getAdminIntegrationsConfig: () => ["admin-integrations-config"] as const,
   getEnvOverrides: () => ["env-overrides"] as const,
@@ -140,6 +145,39 @@ export const useGetServerRootKmsEncryptionDetails = () => {
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetServerRootKmsEncryptionDetails>(
         "/api/v1/admin/encryption-strategies"
+      );
+
+      return data;
+    }
+  });
+};
+
+export const useGetEncryptionRootKey = () => {
+  return useQuery({
+    queryKey: adminQueryKeys.getEncryptionRootKey(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ rootKey: TEncryptionRootKey }>(
+        "/api/v1/admin/encryption/root-key"
+      );
+
+      return data.rootKey;
+    }
+  });
+};
+
+export const useGetEncryptionKeyRotations = ({
+  offset,
+  limit
+}: {
+  offset: number;
+  limit: number;
+}) => {
+  return useQuery({
+    queryKey: adminQueryKeys.getEncryptionKeyRotations({ offset, limit }),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TEncryptionKeyRotationsPage>(
+        "/api/v1/admin/encryption/root-key/rotations",
+        { params: { offset, limit } }
       );
 
       return data;

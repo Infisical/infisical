@@ -35,7 +35,7 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const environment = await server.services.projectEnv.getEnvironmentById({
         actorId: req.permission.id,
@@ -84,7 +84,7 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const environment = await server.services.projectEnv.getEnvironmentById({
         actorId: req.permission.id,

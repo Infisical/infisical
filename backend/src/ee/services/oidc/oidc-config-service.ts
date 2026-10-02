@@ -9,12 +9,13 @@ import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/a
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
+import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -34,6 +35,7 @@ import {
   sanitizeEmail,
   validateEmail
 } from "@app/lib/validator";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
@@ -56,7 +58,13 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
-import { ensureSsoAccountVerified, isStaleSsoAlias } from "@app/services/user-alias/user-alias-fns";
+import {
+  adoptProvisionedShadowUser,
+  ensureSsoAccountVerified,
+  isStaleSsoAlias,
+  resolveAssertedProfileName,
+  syncSsoUserProfile
+} from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
@@ -86,14 +94,15 @@ type TOidcConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   orgDAL: Pick<
     TOrgDALFactory,
-    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
+    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "find" | "updateById"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
   groupDAL: Pick<TGroupDALFactory, "findByOrgId">;
   userGroupMembershipDAL: Pick<
@@ -124,6 +133,7 @@ export const oidcConfigServiceFactory = ({
   userDAL,
   userAliasDAL,
   licenseService,
+  additionalPrivilegeDAL,
   permissionService,
   tokenService,
   smtpService,
@@ -294,6 +304,8 @@ export const oidcConfigServiceFactory = ({
       });
     } else {
       let isNewUser = false;
+      let adoptedFromUsername: string | null = null;
+      const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
@@ -303,6 +315,27 @@ export const oidcConfigServiceFactory = ({
           },
           tx
         );
+
+        // Provisioning may have already made a placeholder for this person keyed on their IdP
+        // identifier instead of their mailbox. Adopt it rather than creating a second account and
+        // stranding whatever it was granted on one nobody can log into.
+        if (!newUser) {
+          const adoption = await adoptProvisionedShadowUser({
+            externalId,
+            assertedEmail: sanitizedEmail,
+            orgId,
+            rootOrgId: organization.rootOrgId,
+            userDAL,
+            userAliasDAL,
+            orgDAL,
+            tx
+          });
+
+          if (adoption) {
+            newUser = adoption.user;
+            adoptedFromUsername = adoption.adoptedFromUsername;
+          }
+        }
 
         if (!newUser) {
           newUser = await userDAL.create(
@@ -345,7 +378,13 @@ export const oidcConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.OIDC);
+          await throwOnPlanSeatLimitReached({
+            licenseService,
+            orgId,
+            identityLimit,
+            tx,
+            aliasType: UserAliasType.OIDC
+          });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
@@ -372,6 +411,30 @@ export const oidcConfigServiceFactory = ({
 
         return newUser;
       });
+
+      if (adoptedFromUsername) {
+        logger.info(
+          { userId: user.id, orgId, externalId },
+          "Adopted provisioned placeholder account on first OIDC login"
+        );
+
+        await auditLogService.createAuditLog({
+          actor: {
+            type: ActorType.PLATFORM,
+            metadata: {}
+          },
+          orgId,
+          event: {
+            type: EventType.OIDC_PROVISIONED_PLACEHOLDER_ADOPTED,
+            metadata: {
+              userId: user.id,
+              externalId,
+              previousUsername: adoptedFromUsername,
+              newUsername: sanitizedEmail
+            }
+          }
+        });
+      }
 
       if (isNewUser) {
         void telemetryService.sendPostHogEvents({
@@ -439,6 +502,7 @@ export const oidcConfigServiceFactory = ({
           userGroupMembershipDAL,
           membershipGroupDAL,
           projectKeyDAL,
+          additionalPrivilegeDAL,
           usageMeteringService,
           alertChannelRecipientDAL
         });
@@ -478,6 +542,22 @@ export const oidcConfigServiceFactory = ({
         userAliasDAL
       }));
     }
+
+    // The IdP is authoritative for identity in an org that enforces SSO, so a mailbox or name
+    // changed there is carried onto the account rather than left to go stale.
+    user = await syncSsoUserProfile({
+      user,
+      userAlias,
+      assertedEmail: sanitizedEmail,
+      assertedFirstName: firstName,
+      assertedLastName: lastName,
+      orgId,
+      isAuthEnforced: Boolean(organization.authEnforced),
+      userDAL,
+      userAliasDAL,
+      emailDomainDAL,
+      auditLogService
+    });
 
     if (user.email && (!userAlias.isEmailVerified || !user.isAccepted)) {
       const token = await tokenService.createTokenForUser({
@@ -578,7 +658,7 @@ export const oidcConfigServiceFactory = ({
       if (!isSmtpConnected) {
         throw new BadRequestError({
           message:
-            "Cannot enable OIDC when there are issues with the instance's SMTP configuration. Bypass this by turning on trust for OIDC emails in the server admin console."
+            "Cannot enable OIDC when there are issues with the instance's SMTP configuration. Verify the instance's SMTP settings and try again."
         });
       }
     }
@@ -818,8 +898,12 @@ export const oidcConfigServiceFactory = ({
           });
         }
 
-        const name = claims?.given_name || claims?.name;
-        if (!name) {
+        const assertedName = resolveAssertedProfileName({
+          givenName: claims?.given_name,
+          familyName: claims?.family_name,
+          displayName: claims?.name
+        });
+        if (!assertedName) {
           throw new BadRequestError({
             message: "Invalid request. Missing name claim."
           });
@@ -830,8 +914,8 @@ export const oidcConfigServiceFactory = ({
         oidcLogin({
           email: claims.email.toLowerCase(),
           externalId: claims.sub,
-          firstName: name,
-          lastName: claims.family_name ?? "",
+          firstName: assertedName.firstName,
+          lastName: assertedName.lastName,
           orgId: org.id,
           ip: requestContext.get("ip") || "",
           userAgent: requestContext.get("userAgent") || "",

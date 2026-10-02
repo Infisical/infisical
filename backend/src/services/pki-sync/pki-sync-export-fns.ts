@@ -33,6 +33,36 @@ export type TExportCertificateForSyncParams = {
   combineCertificateChain?: boolean;
 };
 
+export type TExportedCertificateFileShape = {
+  format: PkiSyncExportFormat;
+  includePrivateKey: boolean;
+  hasCertificateChain: boolean;
+  hasPrivateKey: boolean;
+  pemCertificateExtension?: PemCertificateExtension;
+  combineCertificateChain?: boolean;
+};
+
+export const getExportedCertificateFileSuffixes = ({
+  format,
+  includePrivateKey,
+  hasCertificateChain,
+  hasPrivateKey,
+  pemCertificateExtension,
+  combineCertificateChain
+}: TExportedCertificateFileShape): string[] => {
+  if (format === PkiSyncExportFormat.Pkcs12) return [".pfx"];
+
+  const certExtension = pemCertificateExtension ?? PemCertificateExtension.Pem;
+  const suffixes = [`.${certExtension}`];
+
+  if (hasCertificateChain && !combineCertificateChain) {
+    suffixes.push(`.chain.${certExtension}`);
+  }
+  if (includePrivateKey && hasPrivateKey) suffixes.push(".key");
+
+  return suffixes;
+};
+
 /**
  * Packages a certificate for delivery to a server. The extension is decided here from the format,
  * never from the caller's name schema (the schema only provides the base name):

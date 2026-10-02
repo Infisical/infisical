@@ -20,6 +20,7 @@ import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { CustomLogger } from "./lib/logger/logger";
 import { registerInfrastructureMetrics } from "./lib/telemetry/metrics";
+import { registerSegfaultHandler } from "./lib/telemetry/segfault-handler";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
@@ -35,6 +36,7 @@ const setupAxiosResponseInterceptor = (logger: CustomLogger) => {
 
 const run = async () => {
   const logger = initLogger();
+  await registerSegfaultHandler();
   await removeTemporaryBaseDirectory();
 
   setupAxiosResponseInterceptor(logger);

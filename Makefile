@@ -1,3 +1,9 @@
+# Canonical versions pinned across multiple Dockerfiles. The Dockerfiles carry
+# matching ARG defaults so external builders work unaided; this exports the value
+# so compose overrides them from one place. Export only this, not every variable.
+include build-versions.env
+export INFISICAL_CLI_VERSION
+
 build:
 	docker-compose -f docker-compose.yml build
 
@@ -16,6 +22,16 @@ up-prod:
 down:
 	docker compose -f docker-compose.dev.yml down
 
+# Wipes the persisted Vite dep-prebundle cache. Reach for this when the dev server serves
+# stale or broken /node_modules/.vite/deps chunks; it re-optimizes on the next `make up-dev`.
+COMPOSE_PROJECT_NAME ?= $(notdir $(CURDIR))
+# docker compose normalizes the project name (lowercased, chars outside [a-z0-9_-] dropped)
+# before prefixing volume names, so normalize it the same way to match dirs like PLATFOR-532.
+COMPOSE_VOLUME_PREFIX = $(shell echo '$(COMPOSE_PROJECT_NAME)' | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')
+clear-frontend-cache:
+	docker compose -f docker-compose.dev.yml rm -sf frontend
+	docker volume rm -f $(COMPOSE_VOLUME_PREFIX)_frontend_vite_cache
+
 reviewable-ui:
 	cd frontend && \
 	npm run lint:fix && \
@@ -27,6 +43,47 @@ reviewable-api:
 	npm run type:check
 
 reviewable: reviewable-ui reviewable-api
+
+# The API suites run against the throwaway stack in docker-compose.test.yml, never the dev one.
+# That is not a preference: the e2e harness runs `DROP SCHEMA public CASCADE` on whatever
+# database it is pointed at, so aiming it at the dev database takes your data with it.
+# Everything else (image, environment, mounts, service dependencies) is declared there.
+TEST_SUITE_COMPOSE = docker compose -f docker-compose.test.yml --profile runner
+# The secret rotation specs reach these by service name on the shared test network, which is why
+# docker-compose.e2e-dbs.yml pins the same compose project. A full suite run needs them up; the
+# rest of the specs do not, and the Oracle image is large, so they are a separate target.
+ROTATION_DB_COMPOSE = docker compose -f docker-compose.e2e-dbs.yml
+
+build-test-suite-image:
+	$(TEST_SUITE_COMPOSE) build api-tests
+
+# Only needed to run a suite from the host, against the published ports in .env.test.
+# `make test-api-e2e` starts them itself and waits for them to report healthy.
+up-test-suite-containers:
+	$(TEST_SUITE_COMPOSE) up -d --wait db redis
+
+# Needed only for a full suite run, and only for the secret rotation specs.
+up-rotation-databases:
+	$(ROTATION_DB_COMPOSE) up -d --wait --wait-timeout 300
+
+# Shares a compose project with the test stack, so this removes the rotation databases too.
+down-test-suite-containers:
+	$(TEST_SUITE_COMPOSE) down -v
+
+# Narrow a run with SPEC=<pattern>, e.g. `make test-api-e2e SPEC=secret-sync`.
+test-api-unit: build-test-suite-image
+	$(TEST_SUITE_COMPOSE) run --rm api-tests npm run test:unit -- $(SPEC)
+
+test-api-e2e: build-test-suite-image
+	$(TEST_SUITE_COMPOSE) run --rm api-tests npm run test:e2e -- $(SPEC)
+
+test-api: test-api-unit test-api-e2e
+
+lint-docs:
+	@./docs/scripts/lint-docs.sh --all
+
+lint-docs-branch:
+	@./docs/scripts/lint-docs.sh --changed
 
 up-dev-oidc:
 	docker compose -f docker-compose.dev.yml --profile oidc up --build
@@ -70,7 +127,7 @@ seed-dev-ldap:
 	docker compose -f docker-compose.dev.yml exec -T backend npx tsx ./src/db/seed-ldap.ts $(ORG_ID)
 
 seed-dev-oidc:
-	# Sets up the Infisical side for OIDC SSO testing: an oidc@infisical.com admin, a verified
+	# Sets up the Infisical side for OIDC SSO testing: an admin@oidc.com admin, a verified
 	# domain, and an active OIDC config. With ORG_ID=<uuid> it configures that existing org;
 	# otherwise it bootstraps a dedicated `oidc` org. Needs the stack up (`make up-dev-oidc`).
 	docker compose -f docker-compose.dev.yml exec -T backend npx tsx ./src/db/seed-oidc.ts $(ORG_ID)

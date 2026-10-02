@@ -1,10 +1,10 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { TEnvConfig } from "@app/lib/config/env";
 import { applyJitter } from "@app/lib/dates";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import { TLicenseClientFactory } from "../license-client";
 import { METERED_DIMENSION_KEYS } from "./usage-counters";
 
 export type TUsageMeteringServiceFactory = ReturnType<typeof usageMeteringServiceFactory>;
@@ -13,7 +13,7 @@ type TUsageMeteringServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE">;
+  licenseClient: Pick<TLicenseClientFactory, "isEnabled">;
 };
 
 const DEBOUNCE_MS = 5000;
@@ -22,7 +22,7 @@ export const usageMeteringServiceFactory = ({
   queueService,
   projectDAL,
   keyStore,
-  envConfig
+  licenseClient
 }: TUsageMeteringServiceFactoryDep) => {
   const enqueue = async (orgId: string, dimensionKey: string) => {
     await queueService.queue(
@@ -43,9 +43,9 @@ export const usageMeteringServiceFactory = ({
   };
 
   // Fire-and-forget signal from a metered create/delete on an org-scoped meter. Never awaited and
-  // never throws into the request path; inert until the v2 license server is enabled.
+  // never throws into the request path; inert while no license server is configured.
   const emit = (orgId: string, dimensionKey: string) => {
-    if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
+    if (!licenseClient.isEnabled()) {
       return;
     }
 
@@ -60,7 +60,7 @@ export const usageMeteringServiceFactory = ({
   // Project-scoped meters sum across an org's projects, so the event is keyed by org. The org is
   // resolved in the background to keep the request path free of an extra read.
   const emitForProject = (projectId: string, dimensionKey: string) => {
-    if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
+    if (!licenseClient.isEnabled()) {
       return;
     }
 
@@ -84,7 +84,7 @@ export const usageMeteringServiceFactory = ({
   // marker throttles it to once per org per interval (and coalesces concurrent callers). The emits reuse
   // the normal pipeline, so the slug gate and lastReported dedup still apply downstream.
   const reconcile = (orgId: string) => {
-    if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
+    if (!licenseClient.isEnabled()) {
       return;
     }
 

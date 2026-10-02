@@ -5,7 +5,12 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { BasePkiSyncOptionsSchema, PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import {
+  BasePkiSyncOptionsSchema,
+  PkiSyncFiltersField,
+  PkiSyncSchema,
+  UpdatePkiSyncFiltersField
+} from "@app/services/pki-sync/pki-sync-schemas";
 
 import { CHEF_PKI_SYNC_CERTIFICATE_NAMING, CHEF_PKI_SYNC_DATA_BAG_NAMING } from "./chef-pki-sync-constants";
 
@@ -83,7 +88,8 @@ export const CreateChefPkiSyncSchema = z.object({
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
   applicationId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).optional()
+  certificateIds: z.array(z.string().uuid()).optional(),
+  filters: PkiSyncFiltersField
 });
 
 export const UpdateChefPkiSyncSchema = z.object({
@@ -93,7 +99,8 @@ export const UpdateChefPkiSyncSchema = z.object({
   destinationConfig: ChefPkiSyncConfigSchema.optional(),
   syncOptions: ChefPkiSyncOptionsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const ChefPkiSyncListItemSchema = z.object({

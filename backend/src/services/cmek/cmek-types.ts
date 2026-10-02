@@ -15,6 +15,7 @@ export type TCreateCmekDTO = {
   encryptionAlgorithm: TCmekKeyEncryptionAlgorithm;
   keyUsage: KmsKeyUsage;
   isExportable?: boolean;
+  hasDeleteProtection?: boolean;
 };
 
 export type TUpdabteCmekByIdDTO = {
@@ -22,6 +23,7 @@ export type TUpdabteCmekByIdDTO = {
   name?: string;
   isDisabled?: boolean;
   description?: string;
+  hasDeleteProtection?: boolean;
 };
 
 export type TListCmeksByProjectIdDTO = {
@@ -69,6 +71,7 @@ export type TCmekBulkImportKeyEntry = {
   keyUsage: KmsKeyUsage;
   keyMaterial: string;
   isExportable?: boolean;
+  hasDeleteProtection?: boolean;
 };
 
 export type TCmekBulkImportKeysDTO = {

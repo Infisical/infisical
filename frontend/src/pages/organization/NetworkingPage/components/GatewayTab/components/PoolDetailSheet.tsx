@@ -12,7 +12,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -24,10 +23,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Field,
   FilterableSelect,
   IconButton,
-  Input,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -38,10 +35,7 @@ import {
   TableHead,
   TableHeader,
   TableHeadLabel,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import {
   OrgGatewayPoolPermissionActions,
@@ -76,7 +70,6 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
   const removeGateway = useRemoveGatewayFromPool();
   const triggerHealthCheck = useTriggerGatewayV2Heartbeat();
   const [selectedGateways, setSelectedGateways] = useState<GatewayOption[]>([]);
-  const [removeConfirmation, setRemoveConfirmation] = useState("");
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["removeGateway"] as const);
 
@@ -86,7 +79,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
   );
 
   const availableGateways = useMemo(
-    () => allGateways?.filter((g) => !g.isV1 && !pool?.memberGatewayIds.includes(g.id)) ?? [],
+    () => allGateways?.filter((g) => !pool?.memberGatewayIds.includes(g.id)) ?? [],
     [allGateways, pool?.memberGatewayIds]
   );
 
@@ -174,7 +167,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
 
           <div>
             <div className="mb-3 flex items-start justify-between gap-3">
-              <h4 className="pt-2 text-sm font-medium text-foreground">Member Gateways</h4>
+              <h4 className="pt-2 text-sm font-normal text-foreground">Member Gateways</h4>
               <OrgPermissionCan
                 I={OrgGatewayPoolPermissionActions.EditGatewayPools}
                 a={OrgPermissionSubjects.GatewayPool}
@@ -211,16 +204,16 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
               </OrgPermissionCan>
             </div>
 
-            <Table className="table-fixed">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>
                     <TableHeadLabel>Name</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-36">
+                  <TableHead>
                     <TableHeadLabel>Status</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -239,16 +232,6 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                       <TableCell>
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="min-w-0 flex-1 truncate">{gw.name}</span>
-                          {gw.isV1 && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge variant="neutral" className="shrink-0">
-                                  V1
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>Legacy</TooltipContent>
-                            </Tooltip>
-                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -256,7 +239,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                           {isOnline ? "Healthy" : "Unreachable"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton
@@ -269,12 +252,10 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="z-[60] min-w-[180px]">
-                            {!gw.isV1 && (
-                              <DropdownMenuItem onSelect={() => handleHealthCheck(gw.id)}>
-                                <FontAwesomeIcon icon={faHeartPulse} />
-                                Trigger health check
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem onSelect={() => handleHealthCheck(gw.id)}>
+                              <FontAwesomeIcon icon={faHeartPulse} />
+                              Trigger health check
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="danger"
                               onSelect={() =>
@@ -297,33 +278,18 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
 
         <AlertDialog
           open={popUp.removeGateway.isOpen}
-          onOpenChange={(open) => {
-            if (!open) setRemoveConfirmation("");
-            handlePopUpToggle("removeGateway", open);
-          }}
+          confirmationValue={(popUp.removeGateway.data as { name: string } | undefined)?.name}
+          onOpenChange={(open) => handlePopUpToggle("removeGateway", open)}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Remove Gateway from Gateway Pool?</AlertDialogTitle>
             </AlertDialogHeader>
-            <AlertDialogConfirmationField>
-              <Field>
-                <AlertDialogConfirmationLabel
-                  htmlFor="remove-gateway-confirmation"
-                  confirmationValue={
-                    (popUp.removeGateway.data as { name: string } | undefined)?.name
-                  }
-                />
-                <Input
-                  id="remove-gateway-confirmation"
-                  value={removeConfirmation}
-                  onChange={(event) => setRemoveConfirmation(event.target.value)}
-                  placeholder={(popUp.removeGateway.data as { name: string } | undefined)?.name}
-                  autoComplete="off"
-                  autoFocus
-                />
-              </Field>
-            </AlertDialogConfirmationField>
+            <AlertDialogConfirmationField
+              inputProps={{
+                placeholder: (popUp.removeGateway.data as { name: string } | undefined)?.name
+              }}
+            />
             <AlertDialogDescription asChild>
               <Alert variant="warning" appearance="borderless">
                 <AlertDescription>
@@ -337,10 +303,6 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
               <AlertDialogAction
                 variant="danger"
                 isPending={removeGateway.isPending}
-                isDisabled={
-                  removeConfirmation !==
-                  (popUp.removeGateway.data as { name: string } | undefined)?.name
-                }
                 onClick={(event) => {
                   event.preventDefault();
                   handleRemove();

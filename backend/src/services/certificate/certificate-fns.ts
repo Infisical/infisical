@@ -1,17 +1,31 @@
 import * as x509 from "@peculiar/x509";
+import { Knex } from "knex";
 import forge from "node-forge";
 import RE2 from "re2";
 
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { SUPPORTED_GENERAL_NAME_TYPES } from "@app/services/certificate-common/certificate-constants";
+import {
+  parseExternallyIssuedCustomExtensions,
+  parseIssuedCustomExtensions,
+  TResolvedCustomExtension
+} from "@app/services/certificate-common/certificate-extension-fns";
+import { TCertificateSource, toX509Certificate } from "@app/services/certificate-common/certificate-parse-utils";
 
 import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
+import type { TCertificateDALFactory } from "./certificate-dal";
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
+  CertificateDeletionEligibility,
   CertKeyAlgorithm,
   CertKeyUsage,
+  CertSignatureAlgorithm,
+  CertStatus,
   CrlReason,
   TCertificateFingerprints,
   TCertificateSubject,
@@ -159,10 +173,19 @@ export const generatePkcs12FromCertificate = async ({
       throw new BadRequestError({ message: "Password is required for PKCS12 keystore generation" });
     }
 
-    // node-forge doesn't support PQC keys
+    // node-forge only builds keystores from RSA keys, and cannot read PQC keys at all
+    let keyType: string | undefined;
     try {
-      crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "pem", type: "pkcs8" });
+      keyType = crypto.nativeCrypto.createPrivateKey({
+        key: privateKey,
+        format: "pem",
+        type: "pkcs8"
+      }).asymmetricKeyType;
     } catch {
+      keyType = undefined;
+    }
+
+    if (keyType !== "rsa") {
       throw new BadRequestError({
         message: "PKCS#12 export is not supported for this key type. Use PEM format instead."
       });
@@ -239,9 +262,9 @@ export const normalizeThumbprint = (thumbprint: string) => {
  * Parse and extract subject, fingerprints, and basicConstraints from a decrypted certificate.
  * Returns empty object on failure (graceful degradation).
  */
-export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCertificateBody => {
+export const parseCertificateBody = (source: TCertificateSource): TParsedCertificateBody => {
   try {
-    const certObj = new x509.X509Certificate(decryptedCertificate);
+    const certObj = toX509Certificate(source);
 
     // Extract subject DN attributes directly from the x509 Name object
     const parsedDn = extractDnParts(certObj.subjectName);
@@ -296,12 +319,79 @@ export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCerti
   }
 };
 
+const KEY_ALGORITHM_VALUES = new Set<string>(Object.values(CertKeyAlgorithm));
+const SIGNATURE_ALGORITHM_VALUES = new Set<string>(Object.values(CertSignatureAlgorithm));
+
+const EC_CURVE_KEY_ALGORITHMS: Record<string, CertKeyAlgorithm> = {
+  "P-256": CertKeyAlgorithm.ECDSA_P256,
+  "P-384": CertKeyAlgorithm.ECDSA_P384,
+  "P-521": CertKeyAlgorithm.ECDSA_P521
+};
+
+const RSA_KEY_ALGORITHMS: Record<number, CertKeyAlgorithm> = {
+  2048: CertKeyAlgorithm.RSA_2048,
+  3072: CertKeyAlgorithm.RSA_3072,
+  4096: CertKeyAlgorithm.RSA_4096
+};
+
+const RSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
+  "SHA-256": CertSignatureAlgorithm.RSA_SHA256,
+  "SHA-384": CertSignatureAlgorithm.RSA_SHA384,
+  "SHA-512": CertSignatureAlgorithm.RSA_SHA512
+};
+
+const ECDSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
+  "SHA-256": CertSignatureAlgorithm.ECDSA_SHA256,
+  "SHA-384": CertSignatureAlgorithm.ECDSA_SHA384,
+  "SHA-512": CertSignatureAlgorithm.ECDSA_SHA512
+};
+
+// Import accepts certificates the issuance enums do not cover, such as Ed25519 and secp256k1, so an
+// unrecognised algorithm is recorded under its own name rather than rejected. The UI falls back to
+// the raw value when it is not one it has a label for.
+export const extractCertificateAlgorithms = (source: TCertificateSource) => {
+  let certObj: x509.X509Certificate;
+  try {
+    certObj = toX509Certificate(source);
+  } catch {
+    return {};
+  }
+
+  const publicKeyAlgorithm = certObj.publicKey.algorithm as {
+    name: string;
+    modulusLength?: number;
+    namedCurve?: string;
+  };
+  const signature = certObj.signatureAlgorithm as unknown as { name: string; hash?: { name: string } };
+  const hashName = signature.hash?.name ?? "";
+
+  let keyAlgorithm: string = publicKeyAlgorithm.name;
+  if (publicKeyAlgorithm.name.startsWith("RSA")) {
+    const bits = publicKeyAlgorithm.modulusLength;
+    keyAlgorithm = (bits && RSA_KEY_ALGORITHMS[bits]) || (bits ? `RSA_${bits}` : "RSA");
+  } else if (publicKeyAlgorithm.name === "ECDSA") {
+    const curve = publicKeyAlgorithm.namedCurve ?? "";
+    keyAlgorithm = EC_CURVE_KEY_ALGORITHMS[curve] ?? (curve ? `EC_${curve}` : "EC");
+  }
+
+  let signatureAlgorithm: string = signature.name;
+  if (signature.name === "RSASSA-PKCS1-v1_5") {
+    signatureAlgorithm = RSA_SIGNATURE_ALGORITHMS[hashName] ?? `RSA-${hashName || "UNKNOWN"}`;
+  } else if (signature.name === "ECDSA") {
+    signatureAlgorithm = ECDSA_SIGNATURE_ALGORITHMS[hashName] ?? `ECDSA-${hashName || "UNKNOWN"}`;
+  }
+
+  return { keyAlgorithm, signatureAlgorithm };
+};
+
 /**
  * Extract certificate fields including subject attributes, fingerprints, and basic constraints.
  * Returns all parsed fields as separate properties.
  */
-export const extractCertificateFields = (decryptedCertificate: Buffer) => {
-  const parsed = parseCertificateBody(decryptedCertificate);
+export const extractCertificateFields = (source: TCertificateSource, resolved?: TResolvedCustomExtension[]) => {
+  const parsed = parseCertificateBody(source);
+
+  const issuedCustomExtensions = parseIssuedCustomExtensions(source, resolved);
 
   return {
     // Subject attributes
@@ -323,9 +413,114 @@ export const extractCertificateFields = (decryptedCertificate: Buffer) => {
     isCA: parsed.basicConstraints?.isCA ?? null,
     pathLength: parsed.basicConstraints?.pathLength ?? null,
 
-    // Callers spread these last so the issued usages win over the requested ones. Absent when the
-    // certificate carries no such extension, leaving the requested values in place.
+    customExtensions: issuedCustomExtensions.length ? JSON.stringify(issuedCustomExtensions) : null,
+
+    // Callers spread these last so the issued values win over the requested ones. Absent when the
+    // certificate does not carry them, leaving the requested values in place.
+    ...(parsed.subject?.commonName && { commonName: parsed.subject.commonName }),
     ...(parsed.keyUsages && { keyUsages: parsed.keyUsages }),
     ...(parsed.extendedKeyUsages && { extendedKeyUsages: parsed.extendedKeyUsages })
   };
+};
+
+const extractIssuedAltNames = (issued: x509.X509Certificate): string | null => {
+  try {
+    const sanExtension = issued.getExtension("2.5.29.17");
+    if (!sanExtension) return null;
+
+    const { items } = new x509.GeneralNames(sanExtension.value);
+    const values = [
+      ...new Set(items.filter((item) => SUPPORTED_GENERAL_NAME_TYPES.has(item.type)).map((item) => item.value))
+    ];
+
+    if (items.length > values.length) {
+      logger?.warn(
+        `Issued certificate carries ${items.length - values.length} subject alternative name(s) of a kind this column cannot hold, so they were not recorded [serialNumber=${issued.serialNumber}]`
+      );
+    }
+
+    return values.length ? values.join(",") : null;
+  } catch (err) {
+    logger?.warn(
+      err,
+      `Could not read the subject alternative names off an issued certificate [serialNumber=${issued.serialNumber}]`
+    );
+    return null;
+  }
+};
+
+const safeExtractCertificateAlgorithms = (issued: x509.X509Certificate) => {
+  try {
+    const algorithms = extractCertificateAlgorithms(issued);
+
+    const offEnum = [
+      !!algorithms.keyAlgorithm && !KEY_ALGORITHM_VALUES.has(algorithms.keyAlgorithm) && algorithms.keyAlgorithm,
+      !!algorithms.signatureAlgorithm &&
+        !SIGNATURE_ALGORITHM_VALUES.has(algorithms.signatureAlgorithm) &&
+        algorithms.signatureAlgorithm
+    ].filter(Boolean);
+
+    if (offEnum.length) {
+      logger?.warn(
+        `Issued certificate uses ${offEnum.join(" and ")}, which is outside the algorithms this platform can request, so a renewal cannot ask for it again [serialNumber=${issued.serialNumber}]`
+      );
+    }
+
+    return algorithms;
+  } catch (err) {
+    logger?.warn(
+      err,
+      `Could not name the algorithms on an issued certificate, so the requested ones stand [serialNumber=${issued.serialNumber}]`
+    );
+    return {};
+  }
+};
+
+export const extractExternallyIssuedCertificateFields = (
+  issued: x509.X509Certificate,
+  requestedCustomExtensions?: TResolvedCustomExtension[]
+) => {
+  const issuedCustomExtensions = parseExternallyIssuedCustomExtensions(issued, requestedCustomExtensions);
+  const altNames = extractIssuedAltNames(issued);
+
+  return {
+    ...extractCertificateFields(issued),
+    ...safeExtractCertificateAlgorithms(issued),
+    ...(altNames !== null && { altNames }),
+    serialNumber: issued.serialNumber,
+    notBefore: issued.notBefore,
+    notAfter: issued.notAfter,
+    customExtensions: issuedCustomExtensions.length ? JSON.stringify(issuedCustomExtensions) : null
+  };
+};
+
+export const linkRenewedCertificate = async (
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">,
+  originalCertificateId: string,
+  renewedCertificateId: string,
+  tx?: Knex
+) => {
+  const originalCertificate = await certificateDAL.findById(originalCertificateId, tx);
+
+  if (originalCertificate?.orderId) {
+    await certificateDAL.updateById(renewedCertificateId, { orderId: originalCertificate.orderId }, tx);
+  }
+
+  await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
+};
+
+export const resolveCertificateDeletionEligibility = (certificate: {
+  status: string;
+  notAfter: Date;
+  source?: string | null;
+}): CertificateDeletionEligibility | null => {
+  const hasExpired = new Date(certificate.notAfter).getTime() <= Date.now();
+
+  if (!hasExpired && certificate.status === CertStatus.REVOKED) return null;
+
+  if (certificate.source === CertificateSource.Discovered) return CertificateDeletionEligibility.Discovered;
+  if (certificate.source === CertificateSource.Imported) return CertificateDeletionEligibility.Imported;
+  if (hasExpired) return CertificateDeletionEligibility.Expired;
+
+  return null;
 };

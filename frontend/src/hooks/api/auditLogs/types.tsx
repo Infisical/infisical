@@ -1,4 +1,5 @@
 import { CaStatus } from "../ca";
+import { CrlReason } from "../certificates/enums";
 import { IdentityTrustedIp } from "../identities/types";
 import { PkiItemType } from "../pkiCollections/constants";
 import { WorkflowIntegration } from "../workflowIntegrations/types";
@@ -29,6 +30,7 @@ export type TGetAuditLogsFilter = {
 interface UserActorMetadata {
   userId: string;
   email: string;
+  oauthClientId?: string;
 }
 
 interface ServiceActorMetadata {
@@ -99,6 +101,11 @@ export interface EstAccountActor {
   metadata: EstAccountActorMetadata;
 }
 
+export interface AgentVaultProxyActor {
+  type: ActorType.AGENT_VAULT_PROXY;
+  metadata: { agentVaultProxyId: string };
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -108,7 +115,8 @@ export type Actor =
   | KmipClientActor
   | AcmeProfileActor
   | AcmeAccountActor
-  | EstAccountActor;
+  | EstAccountActor
+  | AgentVaultProxyActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -688,7 +696,13 @@ interface DeleteCert {
   metadata: {
     certId: string;
     cn: string;
+    friendlyName?: string | null;
     serialNumber: string;
+    notAfter: string;
+    source: string;
+    deletionAllowedReason: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -698,6 +712,7 @@ interface RevokeCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    revocationReason?: CrlReason;
   };
 }
 
@@ -944,9 +959,15 @@ interface PamAccessPolicyBypassedEvent {
   metadata: {
     policyType: string;
     policyId: string | null;
+    policyName?: string;
     requestId: string;
     grantId: string;
     granteeUserId: string;
+    granteeName?: string;
+    granteeEmail?: string;
+    accountId?: string;
+    folderId?: string;
+    folderName?: string;
     resourceName?: string;
     accountName?: string;
     accessDuration: string;
@@ -973,6 +994,36 @@ interface DeleteProjectFolderGrantEvent {
     sourceProjectId: string;
     targetProjectId: string;
   };
+}
+
+interface SecretFolderAccessEventMetadata {
+  folderAccessId: string;
+  folderId: string;
+  environment: string;
+  secretPath: string;
+  permission: string;
+  userId?: string;
+  identityId?: string;
+  isTemporary: boolean;
+  temporaryMode?: string;
+  temporaryRange?: string;
+  temporaryAccessStartTime?: string;
+  temporaryAccessEndTime?: string;
+}
+
+interface CreateSecretFolderAccessEvent {
+  type: EventType.CREATE_SECRET_FOLDER_ACCESS;
+  metadata: SecretFolderAccessEventMetadata;
+}
+
+interface UpdateSecretFolderAccessEvent {
+  type: EventType.UPDATE_SECRET_FOLDER_ACCESS;
+  metadata: SecretFolderAccessEventMetadata;
+}
+
+interface DeleteSecretFolderAccessEvent {
+  type: EventType.DELETE_SECRET_FOLDER_ACCESS;
+  metadata: SecretFolderAccessEventMetadata;
 }
 
 export type Event =
@@ -1066,7 +1117,10 @@ export type Event =
   | ClearIdentityLdapAuthLockoutsEvent
   | PamAccessPolicyBypassedEvent
   | CreateProjectFolderGrantEvent
-  | DeleteProjectFolderGrantEvent;
+  | DeleteProjectFolderGrantEvent
+  | CreateSecretFolderAccessEvent
+  | UpdateSecretFolderAccessEvent
+  | DeleteSecretFolderAccessEvent;
 
 export type AuditLog = {
   id: string;

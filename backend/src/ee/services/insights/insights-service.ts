@@ -45,6 +45,7 @@ import {
   buildStaticSecretUsageWindow,
   collapseAccessVolumeDays,
   resolveUserDisplayNames,
+  reviveDates,
   STALE_SECRET_THRESHOLD_DAYS,
   toUtcDateString,
   VALUE_EVENT_TYPES
@@ -236,6 +237,10 @@ export const insightsServiceFactory = ({
           })),
           reminders
         };
+      },
+      reviver: (parsed) => {
+        reviveDates(parsed.rotations, "nextRotationAt");
+        reviveDates(parsed.reminders, "nextReminderDate");
       }
     });
   };
@@ -327,6 +332,7 @@ export const insightsServiceFactory = ({
           "jumpcloud-saml": "JumpCloud SAML",
           "google-saml": "Google SAML",
           "keycloak-saml": "Keycloak SAML",
+          "auth0-saml": "Auth0 SAML",
           ldap: "LDAP",
           oidc: "OIDC"
         };
@@ -463,6 +469,13 @@ export const insightsServiceFactory = ({
           staleSecrets,
           totalStaleCount
         };
+      },
+      reviver: (parsed) => {
+        reviveDates(parsed.upcomingRotations, "nextRotationAt");
+        reviveDates(parsed.failedRotations, "nextRotationAt");
+        reviveDates(parsed.upcomingReminders, "nextReminderDate");
+        reviveDates(parsed.overdueReminders, "nextReminderDate");
+        reviveDates(parsed.staleSecrets, "updatedAt");
       }
     });
   };

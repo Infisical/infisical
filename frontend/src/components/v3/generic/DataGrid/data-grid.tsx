@@ -116,7 +116,7 @@ export function DataGrid<TData>({
           role="rowgroup"
           data-slot="grid-header"
           ref={headerRef}
-          className="sticky top-0 z-10 grid border-b border-border bg-container"
+          className="sticky top-0 z-[var(--z-index-sticky)] grid border-b border-border bg-container"
         >
           {table.getHeaderGroups().map((headerGroup, rowIndex) => (
             <div
@@ -231,7 +231,7 @@ export function DataGrid<TData>({
             role="rowgroup"
             data-slot="grid-footer"
             ref={footerRef}
-            className="sticky bottom-0 z-10 grid border-t border-border bg-container"
+            className="sticky bottom-0 z-[var(--z-index-sticky)] grid border-t border-border bg-container"
           >
             <div
               role="row"

@@ -1,6 +1,7 @@
 export enum PamDiscoveryType {
   ActiveDirectory = "active-directory",
-  Unix = "unix"
+  Unix = "unix",
+  Postgres = "postgres"
 }
 
 export enum PamDiscoverySchedule {

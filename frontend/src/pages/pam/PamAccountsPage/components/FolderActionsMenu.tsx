@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { MoreHorizontal, Plus, Settings, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -43,6 +43,10 @@ export const FolderActionsMenu = ({ folder, onOpenTab, onAddAccount, onDelete }:
   // a permission problem until the fetch settles.
   const showReason = !isLoading;
 
+  const availableTabs = PAM_FOLDER_TABS.filter((tab) => !tab.action || allowed(tab.action));
+  const configureTab =
+    availableTabs.find((tab) => tab.value === PamSheetTab.Configuration) ?? availableTabs[0];
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
@@ -57,29 +61,24 @@ export const FolderActionsMenu = ({ folder, onOpenTab, onAddAccount, onDelete }:
         </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        {PAM_FOLDER_TABS.map((tab) => {
-          const hasPermission = !tab.action || allowed(tab.action);
-          return (
-            <Tooltip key={tab.value}>
-              <TooltipTrigger asChild>
-                <div>
-                  <DropdownMenuItem
-                    isDisabled={!hasPermission}
-                    onClick={() => onOpenTab(tab.value)}
-                  >
-                    <tab.icon />
-                    {tab.label}
-                  </DropdownMenuItem>
-                </div>
-              </TooltipTrigger>
-              {!hasPermission && showReason && (
-                <TooltipContent side="left">
-                  You don&apos;t have permission to access {tab.label.toLowerCase()}
-                </TooltipContent>
-              )}
-            </Tooltip>
-          );
-        })}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <DropdownMenuItem
+                isDisabled={!configureTab}
+                onClick={() => configureTab && onOpenTab(configureTab.value)}
+              >
+                <Settings />
+                Configure
+              </DropdownMenuItem>
+            </div>
+          </TooltipTrigger>
+          {!configureTab && showReason && (
+            <TooltipContent side="left">
+              You don&apos;t have permission to configure this folder
+            </TooltipContent>
+          )}
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <div>

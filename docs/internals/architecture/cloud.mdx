@@ -15,13 +15,13 @@ Infisical Cloud operates on AWS infrastructure using containerized services depl
 
 A typical Infisical Cloud deployment consists of the following components:
 
-### Application Services
+### Application services
 
 - **Infisical Core**: Main application server running the Infisical backend API
 - **License API**: Dedicated API service for license management with separate RDS instance (shared between US/EU)
 - **Application Load Balancer**: Routes incoming traffic to application containers with SSL termination and host-based routing
 
-### Data Layer
+### Data layer
 
 - **Amazon RDS (PostgreSQL)**:
   - **Main RDS Instance**: Primary database for secrets, users, and metadata (Multi-AZ, encryption enabled)
@@ -39,9 +39,9 @@ A typical Infisical Cloud deployment consists of the following components:
 - **AWS SSM Parameter Store**: Stores application configuration and secrets
 - **CloudWatch**: Centralized logging and monitoring
 
-## System Layout
+## System layout
 
-### Service Architecture
+### Service architecture
 
 The Infisical application runs as multiple containerized services on ECS:
 
@@ -51,7 +51,7 @@ The Infisical application runs as multiple containerized services on ECS:
 
 Container images are pulled from Docker Hub and managed via GitHub Actions for deployments.
 
-### Network Configuration
+### Network configuration
 
 Services are deployed in private subnets with the following connectivity:
 
@@ -60,7 +60,7 @@ Services are deployed in private subnets with the following connectivity:
 - License API exposes port 4000 (portal.infisical.com, license.infisical.com)
 - Service-to-service communication via AWS Service Connect
 
-### Data Flow
+### Data flow
 
 1. **DNS resolution** via Cloudflare routes traffic to AWS Global Accelerator
 2. **Global Accelerator** optimizes routing to the nearest AWS region
@@ -70,27 +70,27 @@ Services are deployed in private subnets with the following connectivity:
 6. **Caching** utilizes ElastiCache for performance optimization
 7. **Configuration** is retrieved from AWS SSM Parameter Store
 
-## Regional Deployments
+## Regional deployments
 
 Each region operates in a separate AWS account, providing strong isolation boundaries for security, compliance, and operational independence.
 
-### US Cloud (us.infisical.com or app.infisical.com)
+### US cloud (us.infisical.com or app.infisical.com)
 
 - **AWS Account**: Dedicated US AWS account
 - **Infrastructure**: ECS-based containerized deployment
 - **Monitoring**: Integrated with Datadog for observability and security monitoring
 
-### EU Cloud (eu.infisical.com)
+### EU cloud (eu.infisical.com)
 
 - **AWS Account**: Dedicated EU AWS account
 - **Infrastructure**: ECS-based containerized deployment
 - **Monitoring**: Integrated with Datadog for observability and security monitoring
 
-## Configuration Management
+## Configuration management
 
 Application configuration and secrets are managed through AWS SSM Parameter Store, with deployment automation handled via GitHub Actions.
 
-## Monitoring and Observability
+## Monitoring and observability
 
 ### Logging
 
@@ -102,23 +102,23 @@ Application configuration and secrets are managed through AWS SSM Parameter Stor
 - **AWS OTel Collector**: Prometheus metrics collection
 - **Datadog Agent**: Application performance monitoring and infrastructure metrics
 
-## Container Management
+## Container management
 
 - **Images**: `infisical/staging_infisical` and `infisical/license-api` from Docker Hub
 - **Deployment**: Automated via GitHub Actions updating SSM parameter for image tags
 - **Registry Access**: Docker Hub credentials stored in AWS Secrets Manager
 - **Platform**: ECS Fargate serverless container platform
 
-## Security Overview
+## Security overview
 
-### Data Protection
+### Data protection
 
 - **Encryption**: All secrets encrypted at rest and in transit
 - **Network Isolation**: Services deployed in private subnets with controlled access
 - **Authentication**: API tokens and service accounts for secure access
 - **Audit Logging**: Comprehensive audit trails for all secret operations
 
-### Network Architecture
+### Network architecture
 
 - **VPC Design**: Dedicated VPC with public and private subnets across multiple Availability Zones
 - **NAT Gateway**: Controlled outbound connectivity from private subnets

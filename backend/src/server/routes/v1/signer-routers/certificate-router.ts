@@ -59,7 +59,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
         }),
       response: { 200: PkiSignersSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const signer = await server.services.pkiSigner.reissueCertificate({
         signerId: req.params.signerId,
@@ -110,7 +110,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { certificatePem, serialNumber, signerName, projectId } = await server.services.pkiSigner.exportCertificate(
         {

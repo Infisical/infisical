@@ -1,19 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import {
-  TLaravelForgeOrganization,
-  TLaravelForgeServer,
-  TLaravelForgeSite,
   useLaravelForgeConnectionListOrganizations,
   useLaravelForgeConnectionListServers,
   useLaravelForgeConnectionListSites
@@ -71,14 +67,23 @@ export const LaravelForgeSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Organization</FieldLabel>
+            <FieldLabel
+              id="secret-sync-laravel-forge-org-slug-label"
+              htmlFor="secret-sync-laravel-forge-org-slug"
+            >
+              Organization
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-laravel-forge-org-slug-label"
+                aria-describedby={error ? "secret-sync-laravel-forge-org-slug-error" : undefined}
+                id="secret-sync-laravel-forge-org-slug"
+                isError={Boolean(error)}
                 isLoading={isOrganizationsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={organizations?.find((org) => org.slug === value) ?? null}
-                onChange={(option) => {
-                  const selectedOrg = option as SingleValue<TLaravelForgeOrganization>;
+                onValueChange={(option) => {
+                  const selectedOrg = option;
                   onChange(selectedOrg?.slug ?? "");
                   setValue("destinationConfig.orgName", selectedOrg?.name ?? "");
                   setValue("destinationConfig.serverId", "");
@@ -88,8 +93,10 @@ export const LaravelForgeSyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id, option.slug]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-laravel-forge-org-slug-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -100,14 +107,23 @@ export const LaravelForgeSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Server</FieldLabel>
+            <FieldLabel
+              id="secret-sync-laravel-forge-server-id-label"
+              htmlFor="secret-sync-laravel-forge-server-id"
+            >
+              Server
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-laravel-forge-server-id-label"
+                aria-describedby={error ? "secret-sync-laravel-forge-server-id-error" : undefined}
+                id="secret-sync-laravel-forge-server-id"
+                isError={Boolean(error)}
                 isLoading={isServersLoading && Boolean(connectionId && orgSlug)}
                 isDisabled={!connectionId || !orgSlug}
                 value={servers?.find((server) => server.id === value) ?? null}
-                onChange={(option) => {
-                  const selectedServer = option as SingleValue<TLaravelForgeServer>;
+                onValueChange={(option) => {
+                  const selectedServer = option;
                   onChange(selectedServer?.id ?? "");
                   setValue("destinationConfig.serverName", selectedServer?.name ?? "");
                   setValue("destinationConfig.siteId", "");
@@ -116,8 +132,10 @@ export const LaravelForgeSyncFields = () => {
                 placeholder="Select a server..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-laravel-forge-server-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -128,14 +146,23 @@ export const LaravelForgeSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Site</FieldLabel>
+            <FieldLabel
+              id="secret-sync-laravel-forge-site-id-label"
+              htmlFor="secret-sync-laravel-forge-site-id"
+            >
+              Site
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-laravel-forge-site-id-label"
+                aria-describedby={error ? "secret-sync-laravel-forge-site-id-error" : undefined}
+                id="secret-sync-laravel-forge-site-id"
+                isError={Boolean(error)}
                 isLoading={isSitesLoading && Boolean(connectionId && orgSlug && serverId)}
                 isDisabled={!connectionId || !orgSlug || !serverId}
                 value={sites?.find((site) => site.id === value) ?? null}
-                onChange={(option) => {
-                  const selectedSite = option as SingleValue<TLaravelForgeSite>;
+                onValueChange={(option) => {
+                  const selectedSite = option;
                   onChange(selectedSite?.id ?? "");
                   setValue("destinationConfig.siteName", selectedSite?.name ?? "");
                 }}
@@ -143,8 +170,10 @@ export const LaravelForgeSyncFields = () => {
                 placeholder="Select a site..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-laravel-forge-site-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

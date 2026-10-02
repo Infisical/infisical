@@ -4,9 +4,15 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import {
+  CODE_SIGNING_SCOPE_API_DESCRIPTION,
+  CodeSigningRequestScopeInputSchema,
+  CodeSigningScopeInputSchema,
+  SigningWindowDurationSchema
+} from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { SignerIdParamsSchema } from "./schemas";
+import { SignerIdParamsSchema, SignerRequestParamsSchema } from "./schemas";
 
 export const registerSignerRequestsRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -37,7 +43,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         limit: z.coerce.number().int().min(1).max(100).default(25)
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.signerPolicy.listRequests({
         signerId: req.params.signerId,
@@ -65,11 +71,13 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       body: z.object({
         justification: z.string().trim().min(1).max(2048),
         requestedSignings: z.number().int().min(1).optional(),
-        requestedWindowStart: z.string().datetime().optional(),
-        requestedWindowEnd: z.string().datetime().optional()
+        requestedWindowDuration: SigningWindowDurationSchema.optional().describe(
+          "How long the approval stays usable once it is granted, for example '4h'. The window starts when the request is approved."
+        ),
+        scope: CodeSigningRequestScopeInputSchema.optional().describe(CODE_SIGNING_SCOPE_API_DESCRIPTION)
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const request = await server.services.signerPolicy.requestToSign({
         signerId: req.params.signerId,
@@ -77,15 +85,18 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        ipAddress: req.realIp
       });
+
+      const signer = await server.services.pkiSigner.getSignerAuditContext(req.params.signerId);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: await server.services.pkiSigner.getProjectIdForSigner(req.params.signerId),
+        projectId: signer.projectId,
         event: {
           type: EventType.PKI_SIGNER_REQUEST_TO_SIGN,
-          metadata: { signerId: req.params.signerId, requestId: request?.id }
+          metadata: { signerId: req.params.signerId, name: signer.name, approvalRequestId: request?.id }
         }
       });
 
@@ -108,11 +119,13 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         granteeIdentityId: z.string().uuid().optional(),
         justification: z.string().trim().min(1).max(2048),
         requestedSignings: z.number().int().min(1).optional(),
-        requestedWindowStart: z.string().datetime().optional(),
-        requestedWindowEnd: z.string().datetime().optional()
+        requestedWindowDuration: SigningWindowDurationSchema.optional().describe(
+          "How long the approval stays usable once it is granted, for example '4h'. The window starts when the request is approved."
+        ),
+        scope: CodeSigningScopeInputSchema.optional().describe(CODE_SIGNING_SCOPE_API_DESCRIPTION)
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.signerPolicy.preApproveSigning({
         signerId: req.params.signerId,
@@ -123,14 +136,17 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         actorOrgId: req.permission.orgId
       });
 
+      const signer = await server.services.pkiSigner.getSignerAuditContext(req.params.signerId);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: await server.services.pkiSigner.getProjectIdForSigner(req.params.signerId),
+        projectId: signer.projectId,
         event: {
           type: EventType.PKI_SIGNER_PRE_APPROVE_SIGNING,
           metadata: {
             signerId: req.params.signerId,
-            requestId: result?.request?.id,
+            name: signer.name,
+            approvalRequestId: result?.request?.id,
             granteeUserId: req.body.granteeUserId,
             granteeIdentityId: req.body.granteeIdentityId
           }
@@ -150,9 +166,9 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       operationId: "revokeSignerRequest",
       tags: [ApiDocsTags.PkiSigners],
       description: "Revoke a pending or active signing request",
-      params: z.object({ signerId: z.string().uuid(), requestId: z.string().uuid() })
+      params: SignerRequestParamsSchema
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.signerPolicy.revokeRequest({
         signerId: req.params.signerId,
@@ -163,12 +179,14 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         actorOrgId: req.permission.orgId
       });
 
+      const signer = await server.services.pkiSigner.getSignerAuditContext(req.params.signerId);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: await server.services.pkiSigner.getProjectIdForSigner(req.params.signerId),
+        projectId: signer.projectId,
         event: {
           type: EventType.PKI_SIGNER_REVOKE_REQUEST,
-          metadata: { signerId: req.params.signerId, requestId: req.params.requestId }
+          metadata: { signerId: req.params.signerId, name: signer.name, approvalRequestId: req.params.requestId }
         }
       });
 

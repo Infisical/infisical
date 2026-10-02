@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
 
 import {
   Button,
@@ -9,7 +8,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -29,11 +28,7 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<IdentityAuthMethod | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { projectId } = useParams({ strict: false });
-  const { isSubOrganization } = useOrganization();
-
-  // eslint-disable-next-line no-nested-ternary
-  const primaryVariant = projectId ? "project" : isSubOrganization ? "sub-org" : "org";
+  const primaryVariant = useScopeVariant();
 
   const initialAuthMethod = popUp?.identityAuthMethod?.data?.authMethod;
 

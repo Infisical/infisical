@@ -194,7 +194,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
         <FormProvider {...formMethods}>
           <form>
             <Tab.Group selectedIndex={selectedStepIndex} onChange={setSelectedStepIndex}>
-              <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
+              <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-border-control">
                 {FORM_STEPS.map((step, index) => (
                   <Tab
                     onClick={async (e) => {
@@ -205,8 +205,8 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
                     className={({ selected }) =>
                       `-mb-[0.14rem] whitespace-nowrap ${index > selectedStepIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
                         selected
-                          ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                          : "text-bunker-300"
+                          ? "border-b-2 border-border-bright text-foreground-secondary"
+                          : "text-label-secondary"
                       }`
                     }
                     key={step.key}
@@ -228,7 +228,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
               </Tab.Panels>
             </Tab.Group>
 
-            <div className="mt-6 flex justify-between border-t border-mineshaft-600 pt-4">
+            <div className="mt-6 flex justify-between border-t border-border-control pt-4">
               <Button type="button" variant="outline_bg" onClick={handlePrev}>
                 {selectedStepIndex === 0 ? "Cancel" : "Back"}
               </Button>

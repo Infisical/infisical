@@ -40,6 +40,7 @@ import {
   CloudflareWorkersSyncSchema
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
+import { DaytonaSyncListItemSchema, DaytonaSyncSchema } from "@app/services/secret-sync/daytona";
 import { DevinSyncListItemSchema, DevinSyncSchema } from "@app/services/secret-sync/devin";
 import {
   DigitalOceanAppPlatformSyncListItemSchema,
@@ -129,7 +130,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   HasuraCloudSyncSchema,
   QoverySyncSchema,
   Cloud66SyncSchema,
-  SpaceliftSyncSchema
+  SpaceliftSyncSchema,
+  DaytonaSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -180,7 +182,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   HasuraCloudSyncListItemSchema,
   QoverySyncListItemSchema,
   Cloud66SyncListItemSchema,
-  SpaceliftSyncListItemSchema
+  SpaceliftSyncListItemSchema,
+  DaytonaSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
@@ -201,7 +204,7 @@ export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: () => {
       const secretSyncOptions = server.services.secretSync.listSecretSyncOptions();
       return { secretSyncOptions };
@@ -226,7 +229,7 @@ export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
         200: z.object({ secretSyncs: SecretSyncSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
@@ -10,6 +10,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Card,
   CardContent,
   CardDescription,
@@ -20,6 +21,7 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldTitle,
   GatewayPicker,
   Input,
   Select,
@@ -27,8 +29,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useProject } from "@app/context";
@@ -36,8 +38,11 @@ import { AppConnection, useListAvailableAppConnections } from "@app/hooks/api/ap
 import {
   accountTypeRequiresRecording,
   isRotatablePamAccountType,
+  maxGeneratedPasswordLength,
   PAM_ROTATION_INTERVAL_OPTIONS,
   PamAccountType,
+  pamAccountTypeSupportsSessionLogMasking,
+  PamPolicyType,
   useGetPamAccountTemplate,
   usePamAccountTypeMap,
   useUpdatePamAccountTemplate
@@ -58,87 +63,91 @@ const configSchema = z.object({
 
 type ConfigForm = z.infer<typeof configSchema>;
 
-const settingsSchema = z
-  .object({
-    gatewayId: z.string().nullable(),
-    gatewayPoolId: z.string().nullable(),
-    recordingStorageBackend: z.enum(["postgres", "aws-s3"]),
-    recordingConnectionId: z.string().nullable(),
-    s3Bucket: z.string().optional(),
-    s3Region: z.string().optional(),
-    s3KeyPrefix: z.string().optional(),
-    policies: z.record(z.unknown()),
-    settings: z.object({
-      sessionLogMaskingPatterns: z.string().optional(),
-      rotationEnabled: z.boolean().optional(),
-      rotationIntervalSeconds: z.number().nullable().optional(),
-      pwLength: z.coerce.number().optional(),
-      pwUppercase: z.coerce.number().optional(),
-      pwLowercase: z.coerce.number().optional(),
-      pwDigits: z.coerce.number().optional(),
-      pwSymbols: z.coerce.number().optional(),
-      pwAllowedSymbols: z.string().optional()
+const buildSettingsSchema = (maxPwLength: number) =>
+  z
+    .object({
+      gatewayId: z.string().nullable(),
+      gatewayPoolId: z.string().nullable(),
+      recordingStorageBackend: z.enum(["postgres", "aws-s3"]),
+      recordingConnectionId: z.string().nullable(),
+      s3Bucket: z.string().optional(),
+      s3Region: z.string().optional(),
+      s3KeyPrefix: z.string().optional(),
+      policies: z.record(z.unknown()),
+      settings: z.object({
+        sessionLogMaskingPatterns: z.string().optional(),
+        sessionLogMaskingBuiltInDetection: z.boolean().optional(),
+        rotationEnabled: z.boolean().optional(),
+        heartbeatEnabled: z.boolean().optional(),
+        heartbeatIntervalSeconds: z.number().optional(),
+        rotationIntervalSeconds: z.number().nullable().optional(),
+        pwLength: z.coerce.number().optional(),
+        pwUppercase: z.coerce.number().optional(),
+        pwLowercase: z.coerce.number().optional(),
+        pwDigits: z.coerce.number().optional(),
+        pwSymbols: z.coerce.number().optional(),
+        pwAllowedSymbols: z.string().optional()
+      })
     })
-  })
-  .superRefine((data, ctx) => {
-    if (data.recordingStorageBackend === "aws-s3") {
-      if (!data.recordingConnectionId) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["recordingConnectionId"],
-          message: "Select an AWS connection"
-        });
+    .superRefine((data, ctx) => {
+      if (data.recordingStorageBackend === "aws-s3") {
+        if (!data.recordingConnectionId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["recordingConnectionId"],
+            message: "Select an AWS connection"
+          });
+        }
+        if (!data.s3Bucket?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["s3Bucket"],
+            message: "Bucket is required"
+          });
+        }
       }
-      if (!data.s3Bucket?.trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["s3Bucket"],
-          message: "Bucket is required"
-        });
-      }
-    }
 
-    const length = data.settings.pwLength ?? 32;
-    const mins = {
-      uppercase: data.settings.pwUppercase ?? 0,
-      lowercase: data.settings.pwLowercase ?? 0,
-      digits: data.settings.pwDigits ?? 0,
-      symbols: data.settings.pwSymbols ?? 0
-    };
-    if (length < 1 || length > 250) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["settings", "pwLength"],
-        message: "Length must be between 1 and 250"
-      });
-    }
-    (["pwUppercase", "pwLowercase", "pwDigits", "pwSymbols"] as const).forEach((key) => {
-      const value = data.settings[key];
-      if (value !== undefined && value < 0) {
+      const length = data.settings.pwLength ?? Math.min(32, maxPwLength);
+      const mins = {
+        uppercase: data.settings.pwUppercase ?? 0,
+        lowercase: data.settings.pwLowercase ?? 0,
+        digits: data.settings.pwDigits ?? 0,
+        symbols: data.settings.pwSymbols ?? 0
+      };
+      if (length < 1 || length > maxPwLength) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["settings", key],
-          message: "Cannot be negative"
+          path: ["settings", "pwLength"],
+          message: `Length must be between 1 and ${maxPwLength}`
+        });
+      }
+      (["pwUppercase", "pwLowercase", "pwDigits", "pwSymbols"] as const).forEach((key) => {
+        const value = data.settings[key];
+        if (value !== undefined && value < 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["settings", key],
+            message: "Cannot be negative"
+          });
+        }
+      });
+      const totalRequired = mins.uppercase + mins.lowercase + mins.digits + mins.symbols;
+      if (totalRequired === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["settings", "pwLength"],
+          message: "Require at least one character type"
+        });
+      } else if (totalRequired > length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["settings", "pwLength"],
+          message: "Length must be at least the sum of the minimums"
         });
       }
     });
-    const totalRequired = mins.uppercase + mins.lowercase + mins.digits + mins.symbols;
-    if (totalRequired === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["settings", "pwLength"],
-        message: "Require at least one character type"
-      });
-    } else if (totalRequired > length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["settings", "pwLength"],
-        message: "Length must be at least the sum of the minimums"
-      });
-    }
-  });
 
-type SettingsForm = z.infer<typeof settingsSchema>;
+type SettingsForm = z.infer<ReturnType<typeof buildSettingsSchema>>;
 
 type Props = {
   isOpen: boolean;
@@ -222,7 +231,12 @@ const ConfigurationTab = ({
                   Name<span className="text-product-pam">*</span>
                 </FieldLabel>
                 <FieldContent>
-                  <Input {...field} isError={!!fieldState.error} />
+                  <Input
+                    {...field}
+                    isError={!!fieldState.error}
+                    autoComplete="off"
+                    name="pam-template-name"
+                  />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>
@@ -267,6 +281,10 @@ const SettingsTab = ({
   );
   const { map: accountTypeMap } = usePamAccountTypeMap();
 
+  const maxPwLength = maxGeneratedPasswordLength(template?.type);
+  const defaultPwLength = Math.min(32, maxPwLength);
+  const settingsSchema = useMemo(() => buildSettingsSchema(maxPwLength), [maxPwLength]);
+
   const {
     control,
     handleSubmit,
@@ -288,9 +306,12 @@ const SettingsTab = ({
       policies: {},
       settings: {
         sessionLogMaskingPatterns: "",
+        sessionLogMaskingBuiltInDetection: false,
         rotationEnabled: false,
+        heartbeatEnabled: false,
+        heartbeatIntervalSeconds: 86400,
         rotationIntervalSeconds: 86400,
-        pwLength: 32,
+        pwLength: defaultPwLength,
         pwUppercase: 1,
         pwLowercase: 1,
         pwDigits: 1,
@@ -321,8 +342,14 @@ const SettingsTab = ({
         policies: (template.policies as Record<string, unknown>) ?? {},
         settings: {
           sessionLogMaskingPatterns: (settings.sessionLogMaskingPatterns as string) ?? "",
+          sessionLogMaskingBuiltInDetection:
+            (settings.sessionLogMaskingBuiltInDetection as boolean) ?? false,
           ...(() => {
             const rotation = (settings.rotation ?? {}) as {
+              enabled?: boolean;
+              intervalSeconds?: number | null;
+            };
+            const heartbeat = (settings.heartbeat ?? {}) as {
               enabled?: boolean;
               intervalSeconds?: number | null;
             };
@@ -338,9 +365,11 @@ const SettingsTab = ({
             };
             return {
               rotationEnabled: rotation.enabled ?? false,
+              heartbeatEnabled: heartbeat.enabled ?? false,
+              heartbeatIntervalSeconds: heartbeat.intervalSeconds ?? 86400,
               rotationIntervalSeconds:
                 rotation.intervalSeconds !== undefined ? rotation.intervalSeconds : 86400,
-              pwLength: pw.length ?? 32,
+              pwLength: pw.length ?? defaultPwLength,
               pwUppercase: pw.required?.uppercase ?? 1,
               pwLowercase: pw.required?.lowercase ?? 1,
               pwDigits: pw.required?.digits ?? 1,
@@ -370,12 +399,16 @@ const SettingsTab = ({
   const policies = watch("policies");
   const storageBackend = watch("recordingStorageBackend");
   const rotationEnabled = watch("settings.rotationEnabled");
+  const heartbeatEnabled = watch("settings.heartbeatEnabled");
   const requiresRecording = accountTypeRequiresRecording(template.type);
   const showGatewaySettings = accountTypeMap[template.type]?.requiresGateway !== false;
+  const supportsSessionLogMasking = pamAccountTypeSupportsSessionLogMasking(template.type);
+
   const typeName = accountTypeMap[template.type]?.name ?? template.type;
   const isRotatableTemplateType = isRotatablePamAccountType(template.type);
+  const requiresApproval = policies[PamPolicyType.RequiresApproval] === true;
   const applicablePolicies = (accountTypeMap[template.type]?.applicablePolicies ?? []).filter(
-    (p) => POLICY_EDITORS[p.key]
+    (p) => POLICY_EDITORS[p.key] && (p.key !== PamPolicyType.AllowBreakGlass || requiresApproval)
   );
 
   const onSubmit = (data: SettingsForm) => {
@@ -401,6 +434,17 @@ const SettingsTab = ({
       delete settings.sessionLogMaskingPatterns;
     }
 
+    // Never deleted when false: an absent key means "never configured", which is a different thing.
+    settings.sessionLogMaskingBuiltInDetection = Boolean(
+      data.settings.sessionLogMaskingBuiltInDetection
+    );
+
+    const isHeartbeatOn = Boolean(data.settings.heartbeatEnabled);
+    settings.heartbeat = {
+      enabled: isHeartbeatOn,
+      intervalSeconds: isHeartbeatOn ? (data.settings.heartbeatIntervalSeconds ?? 86400) : null
+    };
+
     if (isRotatableTemplateType) {
       const isRotationOn = Boolean(data.settings.rotationEnabled);
       settings.rotation = {
@@ -408,7 +452,7 @@ const SettingsTab = ({
         intervalSeconds: isRotationOn ? (data.settings.rotationIntervalSeconds ?? 86400) : null
       };
       settings.passwordRequirements = {
-        length: data.settings.pwLength ?? 32,
+        length: data.settings.pwLength ?? defaultPwLength,
         required: {
           uppercase: data.settings.pwUppercase ?? 0,
           lowercase: data.settings.pwLowercase ?? 0,
@@ -512,6 +556,7 @@ const SettingsTab = ({
             return (
               <Editor
                 key={p.key}
+                accountType={template.type as PamAccountType}
                 label={p.label}
                 description={p.description}
                 value={policies[p.key]}
@@ -519,6 +564,9 @@ const SettingsTab = ({
                   const next = { ...policies };
                   if (value === null || value === undefined) delete next[p.key];
                   else next[p.key] = value;
+                  if (p.key === PamPolicyType.RequiresApproval && value !== true) {
+                    delete next[PamPolicyType.AllowBreakGlass];
+                  }
                   setValue("policies", next, { shouldDirty: true });
                 }}
               />
@@ -565,10 +613,14 @@ const SettingsTab = ({
                       <FieldLabel>{label}</FieldLabel>
                       <Input
                         type="number"
+                        max={name === "settings.pwLength" ? maxPwLength : undefined}
                         value={field.value ?? 0}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                         onWheel={(e) => e.currentTarget.blur()}
                       />
+                      {name === "settings.pwLength" && !fieldState.error && (
+                        <FieldDescription>1 to {maxPwLength} characters</FieldDescription>
+                      )}
                       {fieldState.error && <FieldError>{fieldState.error.message}</FieldError>}
                     </Field>
                   )}
@@ -604,7 +656,7 @@ const SettingsTab = ({
                         rotate only when triggered manually.
                       </p>
                     </div>
-                    <Switch
+                    <Toggle
                       variant="pam"
                       checked={field.value ?? false}
                       onCheckedChange={field.onChange}
@@ -686,6 +738,63 @@ const SettingsTab = ({
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Credential Health</CardTitle>
+          <CardDescription>
+            Infisical checks that stored credentials still work, and shows the result on each
+            account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4">
+            <Controller
+              control={control}
+              name="settings.heartbeatEnabled"
+              render={({ field }) => (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-foreground">Check credentials</p>
+                  <Toggle
+                    variant="pam"
+                    checked={field.value ?? false}
+                    onCheckedChange={field.onChange}
+                  />
+                </div>
+              )}
+            />
+            {heartbeatEnabled && (
+              <Controller
+                control={control}
+                name="settings.heartbeatIntervalSeconds"
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Check every</FieldLabel>
+                    <Select
+                      value={String(field.value ?? 86400)}
+                      onValueChange={(value) => field.onChange(Number(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {PAM_ROTATION_INTERVAL_OPTIONS.map((option) => (
+                          <SelectItem key={option.seconds} value={String(option.seconds)}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>
+                      How often accounts using this template are checked.
+                    </FieldDescription>
+                  </Field>
+                )}
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {showGatewaySettings && (
         <Card>
@@ -852,31 +961,64 @@ const SettingsTab = ({
               </>
             )}
 
-            <Controller
-              control={control}
-              name="settings.sessionLogMaskingPatterns"
-              render={({ field, fieldState }) => (
-                <Field>
-                  <FieldLabel>Session Log Masking</FieldLabel>
-                  <FieldContent>
-                    <TextArea
-                      rows={5}
-                      placeholder={"rm\\s+-rf.*\npassword\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b"}
-                      value={field.value ?? ""}
-                      isError={!!fieldState.error}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        field.onChange(val.trim() ? val : "");
-                      }}
-                    />
-                    <FieldDescription>
-                      Matching content in session recordings will be masked (one regex per line).
-                    </FieldDescription>
-                    <FieldError>{fieldState.error?.message}</FieldError>
-                  </FieldContent>
-                </Field>
-              )}
-            />
+            {supportsSessionLogMasking && (
+              <div className="flex flex-col gap-4 border-t border-border pt-6">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Session Log Masking</p>
+                  <p className="text-xs text-muted">
+                    What gets masked in recordings for accounts using this template.
+                  </p>
+                </div>
+
+                <Controller
+                  control={control}
+                  name="settings.sessionLogMaskingBuiltInDetection"
+                  render={({ field }) => (
+                    <Field orientation="horizontal">
+                      <FieldContent>
+                        <FieldTitle>
+                          Built-in Detection
+                          <Badge variant="success">Recommended</Badge>
+                        </FieldTitle>
+                        <FieldDescription>
+                          API keys and tokens from known providers, and the account&apos;s own
+                          credentials, are masked automatically.
+                        </FieldDescription>
+                      </FieldContent>
+                      <Toggle
+                        variant="pam"
+                        checked={field.value ?? false}
+                        onCheckedChange={field.onChange}
+                      />
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name="settings.sessionLogMaskingPatterns"
+                  render={({ field, fieldState }) => (
+                    <Field>
+                      <FieldLabel>Custom patterns</FieldLabel>
+                      <FieldContent>
+                        <TextArea
+                          rows={5}
+                          placeholder={"acme_[a-z0-9]{24}\ninternal-vault://\\S+"}
+                          value={field.value ?? ""}
+                          isError={!!fieldState.error}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val.trim() ? val : "");
+                          }}
+                        />
+                        <FieldDescription>One regex per line.</FieldDescription>
+                        <FieldError>{fieldState.error?.message}</FieldError>
+                      </FieldContent>
+                    </Field>
+                  )}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

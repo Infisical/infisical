@@ -9,7 +9,7 @@ const SignerDetailSearchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId/"
 )({
   component: SignerDetailPage,
   validateSearch: zodValidator(SignerDetailSearchSchema),

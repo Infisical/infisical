@@ -12,8 +12,8 @@ import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-conne
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { PamSessionStatus } from "../pam/pam-enums";
-import { checkAccountAccess, TActorContext } from "../pam/pam-permission";
+import { PamProductRole, PamSessionStatus } from "../pam/pam-enums";
+import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
   PamRecordingS3ConfigSchema,
@@ -32,7 +32,7 @@ type TPamSessionChunkServiceFactoryDep = {
   pamSessionDAL: TPamSessionDALFactory;
   pamSessionEventChunkDAL: TPamSessionEventChunkDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
-  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
@@ -103,21 +103,27 @@ export const pamSessionChunkServiceFactory = ({
     session: { accountId?: string | null; projectId: string },
     actor: OrgServiceActor
   ) => {
-    if (!session.accountId) {
-      throw new NotFoundError({ message: "Session has no associated account" });
-    }
-
-    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
-    if (!account) {
-      throw new NotFoundError({ message: "Account not found" });
-    }
-
     const ctx: TActorContext = {
       actorId: actor.id,
       actor: actor.type,
       actorOrgId: actor.orgId,
       actorAuthMethod: actor.authMethod
     };
+
+    if (!session.accountId) {
+      const { hasRole } = await verifyProductMembership(permissionService, session.projectId, ctx);
+      if (!hasRole(PamProductRole.Admin)) {
+        throw new ForbiddenRequestError({
+          message: "Only a project admin can access a session whose account has been deleted"
+        });
+      }
+      return;
+    }
+
+    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+    if (!account) {
+      throw new NotFoundError({ message: "Account not found" });
+    }
 
     await checkAccountAccess(
       permissionService,

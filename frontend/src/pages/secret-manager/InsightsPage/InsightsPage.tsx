@@ -88,7 +88,7 @@ export const InsightsPage = withProjectPermission(
                 {
                   label: "honey tokens",
                   value: counts.honeyTokenCount,
-                  icon: <HexagonIcon className="size-3.5 text-yellow-700" />
+                  icon: <HexagonIcon className="size-3.5 text-warning" />
                 }
               ]
             : [])
@@ -141,6 +141,7 @@ export const InsightsPage = withProjectPermission(
           </div>
         </div>
         <UpgradePlanModal
+          paywallKey="secret-manager.insights"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => {
             handlePopUpToggle("upgradePlan", isOpen);
@@ -152,6 +153,7 @@ export const InsightsPage = withProjectPermission(
   },
   {
     action: ProjectPermissionInsightsActions.Read,
-    subject: ProjectPermissionSub.Insights
+    subject: ProjectPermissionSub.Insights,
+    accessRestrictedMode: "dialog"
   }
 );

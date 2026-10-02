@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { RESOURCE_SCOPE, TableName, TMemberships } from "@app/db/schemas";
+import { AccessScope, RESOURCE_SCOPE, TableName, TMemberships } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -159,5 +159,29 @@ export const membershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findResourceMembershipsForActor, findResourceMembershipsForActors, findResourceMembershipsForGroup };
+  // Locks the row so a concurrent deactivation or removal of the same membership serializes behind the
+  // caller. Always reads the primary, so it also bypasses the cached permission blob.
+  const lockOrgMembershipForUser = async (
+    orgId: string,
+    userId: string,
+    tx: Knex
+  ): Promise<TMemberships | undefined> => {
+    try {
+      return await tx(TableName.Membership)
+        .where({ scope: AccessScope.Organization, scopeOrgId: orgId, actorUserId: userId })
+        .select(selectAllTableCols(TableName.Membership))
+        .forUpdate()
+        .first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "LockOrgMembershipForUser" });
+    }
+  };
+
+  return {
+    ...orm,
+    findResourceMembershipsForActor,
+    findResourceMembershipsForActors,
+    findResourceMembershipsForGroup,
+    lockOrgMembershipForUser
+  };
 };

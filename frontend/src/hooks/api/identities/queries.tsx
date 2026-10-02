@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { useOrganization } from "@app/context";
 import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import {
@@ -58,7 +59,11 @@ export const identitiesKeys = {
   getIdentityTokensTokenAuth: (identityId: string) =>
     [{ identityId }, "identity-tokens-token-auth"] as const,
   getIdentityProjectMemberships: (identityId: string) =>
-    [{ identityId }, "identity-project-memberships"] as const
+    [{ identityId }, "identity-project-memberships"] as const,
+  // The membership list is filtered to the viewing org (Membership.scopeOrgId),
+  // so a sub-org and its parent must not share this cache entry.
+  getIdentityProjectMembershipsForOrg: (orgId: string, identityId: string) =>
+    [...identitiesKeys.getIdentityProjectMemberships(identityId), orgId] as const
 };
 
 export const useGetOrgIdentityMembershipById = (identityId: string) => {
@@ -114,9 +119,12 @@ export const useCountOrgIdentityMemberships = (dto: TCountIdentitiesDTO) => {
 };
 
 export const useGetIdentityProjectMemberships = (identityId: string) => {
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg?.id || "";
+
   return useQuery({
     enabled: Boolean(identityId),
-    queryKey: identitiesKeys.getIdentityProjectMemberships(identityId),
+    queryKey: identitiesKeys.getIdentityProjectMembershipsForOrg(orgId, identityId),
     queryFn: async () => {
       const {
         data: { identityMemberships }

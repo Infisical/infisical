@@ -1,5 +1,5 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 
 export enum GcpSyncScope {

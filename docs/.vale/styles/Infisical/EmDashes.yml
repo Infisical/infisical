@@ -1,0 +1,7 @@
+extends: occurrence
+message: "%d em dashes in one paragraph. Reach for a comma, colon, parentheses, or a full stop."
+level: warning
+link: https://github.com/Infisical/infisical/blob/main/docs/STYLE_GUIDE.md#dont-overuse-em-dashes
+scope: paragraph
+token: '—'
+max: 2

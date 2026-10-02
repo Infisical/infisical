@@ -1,17 +1,27 @@
 import { z } from "zod";
 
+import { Event as TAuditEvent } from "@app/ee/services/audit-log/audit-log-types";
 import { TGenericPermission } from "@app/lib/types";
+import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
 import { TAlertPayload } from "./alert-channel-types";
 
 export enum AlertPrincipalType {
   USER = "user",
-  GROUP = "group"
+  GROUP = "group",
+  EMAIL = "email"
 }
 
 export enum AlertTriggerType {
-  Scheduled = "scheduled"
+  Scheduled = "scheduled",
+  Event = "event"
 }
+
+export type TAlertEventDefinition = {
+  key: string;
+  triggerType: AlertTriggerType;
+  conditionSchema: z.ZodTypeAny;
+};
 
 export enum AlertRunStatus {
   SUCCESS = "success",
@@ -41,6 +51,16 @@ export const toAlertActor = (dto: TGenericPermission): TGenericPermission => ({
   actorOrgId: dto.actorOrgId
 });
 
+type TAlertRecipientPolicy = {
+  atOrgScope?: boolean;
+  allowEmailAddresses?: boolean;
+};
+
+export type TAlertRecipientScope = {
+  projectId: string | null;
+  allowEmailAddresses: boolean;
+};
+
 export const DEFAULT_DEDUP_WINDOW_HOURS = 24;
 
 // Providers scan this many days ahead of `alertBefore` so alerts fire at LEAST `alertBefore` before
@@ -49,6 +69,7 @@ export const ALERT_SCAN_LEAD_DAYS = 1;
 export const ALERT_SCAN_LEAD_INTERVAL = "1 day";
 
 export const MAX_CHANNELS_PER_ALERT = 10;
+export const MAX_TARGET_IDS_PER_EVENT = 25;
 export const MAX_RECIPIENTS_PER_CHANNEL = 20;
 
 export const ALERT_HISTORY_RETENTION_DAYS = 90;
@@ -66,29 +87,106 @@ export type TAlertContext = {
   condition: unknown;
 };
 
-export type TFindDueTargetsInput = {
+export type TFindEventTargetsInput = {
+  orgId: string;
+  projectId?: string | null;
+  resourceId?: string | null;
+  eventType: string;
+  condition: unknown;
+  targetIds: string[];
+  payload: Record<string, unknown>;
+};
+
+export type TFindScheduledTargetsInput = {
   orgId: string;
   projectId?: string | null;
   resourceId?: string | null;
   eventType: string;
   condition: unknown;
   asOf: Date;
+  alreadyAlerted?: { alertId: string; channelIds: string[]; since: Date };
 };
+
+// Lets a provider factory declare which discovery method it guarantees.
+export type IScheduledAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
+  Required<Pick<IResourceAlertProvider<TTarget>, "findScheduledTargets">>;
+
+export type IEventAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
+  Required<Pick<IResourceAlertProvider<TTarget>, "findEventTargets">>;
+
+export enum AlertAuditAction {
+  Create = "create",
+  Update = "update",
+  Delete = "delete",
+  TestChannel = "test-channel"
+}
+
+type TAlertAuditAlert = {
+  id: string;
+  name: string;
+  resourceType: string;
+  resourceId: string | null;
+  resourceName?: string | null;
+  eventType: string;
+};
+
+type TAlertChannelTestAudit = {
+  resourceType: string;
+  resourceId?: string | null;
+  resourceName?: string | null;
+  alertId?: string;
+  alertName?: string | null;
+  channelId?: string;
+  channelName?: string | null;
+  channelType: string;
+  success: boolean;
+  deliveredTo?: number;
+  error?: string;
+};
+
+export type TAlertAuditInput =
+  | { action: AlertAuditAction.Create | AlertAuditAction.Update | AlertAuditAction.Delete; alert: TAlertAuditAlert }
+  | { action: AlertAuditAction.TestChannel; test: TAlertChannelTestAudit };
+
+export enum AlertTelemetryAction {
+  Create = "create",
+  Update = "update",
+  Delete = "delete"
+}
+
+export type TAlertTelemetryInput = {
+  action: AlertTelemetryAction;
+  orgId: string;
+  projectId: string | null;
+  resourceId: string | null;
+  eventType: string;
+};
+
+type TPostHogEventBody<T> = T extends unknown
+  ? Omit<T, "distinctId" | "organizationId" | "organizationName" | "anonymous" | "dedup">
+  : never;
+
+export type TAlertTelemetryEvent = TPostHogEventBody<TPostHogEvent>;
 
 export interface IResourceAlertProvider<TTarget = unknown> {
   // Dot-namespaced, e.g. "pki.certificate", "identity.ua-secret".
   resourceType: string;
-  // Event keys this provider understands, e.g. ["pki.certificate.expiration"].
-  eventTypes: string[];
-  // Validates an alert's `condition` (the "when"), e.g. { alertBefore: "30d" }.
-  conditionSchema: z.ZodTypeAny;
+  // Each event declares how it fires and what its condition looks like.
+  events: TAlertEventDefinition[];
 
   // Resources currently due to alert for this alert's scope + condition. The engine handles dedup
   // afterwards, so this returns all current matches in the window (not minus already-alerted).
   // Must be ordered most-urgent-first (soonest expiry): the engine's per-channel maxTargetsPerRun cap
   // keeps the head of this list and defers the tail, so urgency ordering ensures the targets closest
   // to expiry are never the ones dropped.
-  findDueTargets(input: TFindDueTargetsInput): Promise<TTarget[]>;
+  // Required for any Scheduled event; the registry enforces that at boot.
+  findScheduledTargets?(input: TFindScheduledTargetsInput): Promise<TTarget[]>;
+
+  // Loads the targets an event named. A missing row was deleted between emit and dispatch, so drop it,
+  // don't throw. Must read the primary: the target usually commits in the same tx as the event, and an
+  // empty result is terminal.
+  // Required for any Event-triggered event; the registry enforces that at boot.
+  findEventTargets?(input: TFindEventTargetsInput): Promise<TTarget[]>;
 
   // Deep link to the alert's resource, honouring its scope (org- vs project-scoped). Resolved once
   // per run by the engine and passed into buildPayload, so it may perform async lookups.
@@ -108,6 +206,22 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // denied. The alert module owns no CASL subject of its own: each provider reuses its resource's
   // existing permissions (e.g. PKI reuses the `pki-alerts` subject, project- or application-scoped).
   assertPermission(input: TAlertPermissionInput): Promise<void>;
+
+  assertChannelTypesAllowed?(input: { orgId: string; channelTypes: string[] }): Promise<void>;
+
+  recipientPolicy?: TAlertRecipientPolicy;
+
+  includeLastRun?: boolean;
+
+  getWebhookSource?: (input: { alertId: string; resourceId?: string | null }) => string | undefined;
+
+  getAuditEvent?(input: TAlertAuditInput): TAuditEvent;
+
+  getResourceNames?(input: { orgId: string; resourceIds: string[] }): Promise<Map<string, string>>;
+
+  resolveProjectId?(input: { orgId: string; resourceId: string }): Promise<string>;
+
+  getTelemetryEvent?(input: TAlertTelemetryInput): TAlertTelemetryEvent | undefined;
 
   // Assert that a resource-bound alert's resource belongs to the alert's scope (org, and project
   // when project-scoped). Called at create. Throws if the resource is out of scope, so an alert

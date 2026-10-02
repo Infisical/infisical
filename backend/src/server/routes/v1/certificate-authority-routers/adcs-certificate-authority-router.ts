@@ -46,7 +46,7 @@ export const registerADCSCertificateAuthorityRouter = async (server: FastifyZodP
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const templates = await server.services.certificateAuthority.getADCSTemplates({

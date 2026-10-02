@@ -42,10 +42,15 @@ description: "Learn how to configure PingOne OIDC for Infisical SSO."
 
       1.6 Map the following attributes:
       - `email` -> `Email Address`
-      - `name` -> `Username`
+      - `given_name` -> `Given Name`
+      - `family_name` -> `Family Name`
       ![OIDC PingOne Edit Attribute Mappings](../../../images/sso/pingone-oidc/pingone-edit-application-attribute-mappings-2.png)
 
       Once done, press the "Save" button.
+
+      <Note>
+         Infisical takes a user's name from the `given_name` and `family_name` claims. If you map `name` in place of `given_name`, Infisical falls back to it and removes `family_name` from the end of it, so the surname isn't stored twice. See [General OIDC](/documentation/platform/sso/general-oidc/overview) for the exact fallback rules.
+      </Note>
 
    </Step>
    <Step title="Retrieve Identity Provider (IdP) Information from PingOne">
@@ -59,7 +64,7 @@ description: "Learn how to configure PingOne OIDC for Infisical SSO."
 
    </Step>
    <Step title="Finish configuring OIDC in Infisical">
-      3.1. Back in Infisical, head to the **Single Sign-On (SSO)** page and select the **General** tab. Click **Connect** for **OIDC**.
+      3.1. Back in Infisical, head to the **Single Sign-On (SSO)** page and select the **General** tab. Select **Connect** for **OIDC**.
       ![OIDC SSO Connect](../../../images/sso/connect-oidc.png)
 
       3.2. For configuration type, select **Discovery URL**. Then, set **Discovery Document URL**, **Client ID**, and **Client Secret** from step 2.1 and 2.2.
@@ -97,7 +102,7 @@ description: "Learn how to configure PingOne OIDC for Infisical SSO."
 </Steps>
 
 <Tip>
-    If you are only using one organization on your Infisical instance, you can configure a default organization in the [Server Admin Console](../admin-panel/server-admin#default-organization) to expedite OIDC login.
+    If you're only using one organization on your Infisical instance, you can configure a default organization in the [Server Admin Console](../admin-panel/server-admin#default-organization) to expedite OIDC login.
 </Tip>
 
 <Note>

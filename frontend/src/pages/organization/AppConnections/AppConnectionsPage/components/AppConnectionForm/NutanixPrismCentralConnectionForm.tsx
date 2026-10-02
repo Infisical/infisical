@@ -19,12 +19,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -276,11 +276,13 @@ export const NutanixPrismCentralConnectionForm = ({ appConnection, onSubmit }: P
                       </Tooltip>
                     </FieldLabel>
                     <SecretInput
+                      aria-describedby={error ? "api-key-error" : undefined}
+                      isError={Boolean(error)}
                       id="api-key"
                       value={value}
                       onChange={(e) => onChange(e.target.value)}
                     />
-                    <FieldError errors={[error]} />
+                    <FieldError id="api-key-error" errors={[error]} />
                   </Field>
                 )}
               />
@@ -311,11 +313,13 @@ export const NutanixPrismCentralConnectionForm = ({ appConnection, onSubmit }: P
                     <Field className="mb-4">
                       <FieldLabel htmlFor="password">Password</FieldLabel>
                       <SecretInput
+                        aria-describedby={error ? "password-error" : undefined}
+                        isError={Boolean(error)}
                         id="password"
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
                       />
-                      <FieldError errors={[error]} />
+                      <FieldError id="password-error" errors={[error]} />
                     </Field>
                   )}
                 />
@@ -356,7 +360,8 @@ export const NutanixPrismCentralConnectionForm = ({ appConnection, onSubmit }: P
                         provide a CA certificate above.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
+                      aria-invalid={Boolean(error)}
                       id="ssl-reject-unauthorized"
                       variant={scopeVariant}
                       checked={value}

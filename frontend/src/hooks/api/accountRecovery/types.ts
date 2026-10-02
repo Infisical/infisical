@@ -2,6 +2,7 @@ import { UserEncryptionVersion } from "../auth/types";
 
 export type TSendAccountRecoveryEmailDTO = {
   email: string;
+  captchaToken?: string;
 };
 
 export type TVerifyAccountRecoveryEmailDTO = {

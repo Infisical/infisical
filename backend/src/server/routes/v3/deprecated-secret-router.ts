@@ -8,6 +8,7 @@ import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getClientDisconnectSignal } from "@app/server/lib/client-disconnect";
 import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
@@ -60,9 +61,10 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use PATCH /api/v4/secrets/:secretName and set tagIds instead.",
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Attach tags to a secret",
       security: [
         {
           bearerAuth: []
@@ -91,7 +93,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const secret = await server.services.secret.attachTags({
         secretName: req.params.secretName,
@@ -117,9 +119,10 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use PATCH /api/v4/secrets/:secretName and set tagIds instead.",
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Detach tags from a secret",
       security: [
         {
           bearerAuth: []
@@ -174,9 +177,10 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use GET /api/v4/secrets instead.",
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "List secrets",
       security: [
         {
           bearerAuth: []
@@ -336,7 +340,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         includeImports: req.query.include_imports,
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs,
-        ifNoneMatch: req.headers["if-none-match"]
+        ifNoneMatch: req.headers["if-none-match"],
+        abortSignal: getClientDisconnectSignal(reply)
       });
 
       const { secrets, imports, etag, notModified } = result;
@@ -393,6 +398,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
+      deprecated: true,
+      description: "Deprecated. Use GET /api/v4/secrets/id/:secretId instead.",
       params: z.object({
         secretId: z.string()
       }),
@@ -430,7 +437,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Get a secret by name",
+      deprecated: true,
+      description: "Deprecated. Use GET /api/v4/secrets/:secretName instead.",
       security: [
         {
           bearerAuth: []
@@ -563,7 +571,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Create secret",
+      deprecated: true,
+      description: "Deprecated. Use POST /api/v4/secrets/:secretName instead.",
       security: [
         {
           bearerAuth: []
@@ -612,7 +621,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const projectId = await server.services.project.extractProjectIdFromSlug({
         projectSlug: req.body.projectSlug,
@@ -712,7 +727,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Update secret",
+      deprecated: true,
+      description: "Deprecated. Use PATCH /api/v4/secrets/:secretName instead.",
       security: [
         {
           bearerAuth: []
@@ -767,7 +783,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const projectId = await server.services.project.extractProjectIdFromSlug({
         projectSlug: req.body.projectSlug,
@@ -870,7 +892,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Delete secret",
+      deprecated: true,
+      description: "Deprecated. Use DELETE /api/v4/secrets/:secretName instead.",
       security: [
         {
           bearerAuth: []
@@ -902,7 +925,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const projectId = await server.services.project.extractProjectIdFromSlug({
         projectSlug: req.body.projectSlug,
@@ -988,6 +1017,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use GET /api/v4/secrets instead.",
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -1032,7 +1063,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { secrets, imports } = await server.services.secret.getSecrets({
         actorId: req.permission.id,
@@ -1099,6 +1136,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use GET /api/v4/secrets/:secretName instead.",
       params: z.object({
         secretName: z.string().trim()
       }),
@@ -1121,7 +1160,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secret = await server.services.secret.getSecretByName({
         actorId: req.permission.id,
@@ -1179,6 +1224,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use POST /api/v4/secrets/:secretName instead.",
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -1214,7 +1261,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const {
         workspaceId: projectId,
@@ -1355,6 +1408,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use PATCH /api/v4/secrets/:secretName instead.",
       params: z.object({
         secretName: z.string()
       }),
@@ -1397,7 +1452,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const {
         secretValueCiphertext,
@@ -1549,6 +1610,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use DELETE /api/v4/secrets/:secretName instead.",
       params: z.object({
         secretName: z.string()
       }),
@@ -1573,7 +1636,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { secretPath, type, workspaceId: projectId, secretId, environment } = req.body;
       if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
@@ -1678,6 +1747,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use POST /api/v4/secrets/move instead.",
       hide: false,
       tags: [ApiDocsTags.Secrets],
       body: z.object({
@@ -1696,7 +1767,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId, isSourceUpdated, isDestinationUpdated } = await server.services.secret.moveSecrets({
         actorId: req.permission.id,
@@ -1735,6 +1806,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use POST /api/v4/secrets/batch instead.",
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -1766,7 +1839,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
@@ -1866,6 +1945,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use PATCH /api/v4/secrets/batch instead.",
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -1898,7 +1979,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
@@ -2000,6 +2087,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       rateLimit: secretsLimit
     },
     schema: {
+      deprecated: true,
+      description: "Deprecated. Use DELETE /api/v4/secrets/batch instead.",
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -2025,7 +2114,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
@@ -2128,7 +2223,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Create many secrets",
+      deprecated: true,
+      description: "Deprecated. Use POST /api/v4/secrets/batch instead.",
       security: [
         {
           bearerAuth: []
@@ -2169,7 +2265,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { environment, projectSlug, secretPath, secrets: inputSecrets } = req.body;
 
@@ -2261,7 +2363,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Update many secrets",
+      deprecated: true,
+      description: "Deprecated. Use PATCH /api/v4/secrets/batch instead.",
       security: [
         {
           bearerAuth: []
@@ -2325,7 +2428,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { environment, projectSlug, secretPath, secrets: inputSecrets } = req.body;
       const secretOperation = await server.services.secret.updateManySecretsRaw({
@@ -2467,7 +2576,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.Secrets],
-      description: "Delete many secrets",
+      deprecated: true,
+      description: "Deprecated. Use DELETE /api/v4/secrets/batch instead.",
       security: [
         {
           bearerAuth: []
@@ -2504,7 +2614,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { environment, projectSlug, secretPath, secrets: inputSecrets } = req.body;
       const secretOperation = await server.services.secret.deleteManySecretsRaw({

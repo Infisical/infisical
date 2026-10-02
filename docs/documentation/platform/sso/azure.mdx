@@ -1,12 +1,12 @@
 ---
-title: "Entra ID / Azure AD SAML"
+title: "Entra ID SAML"
 description: "Learn how to configure Microsoft Entra ID for Infisical SSO."
 ---
 
 <Info>
    Azure SAML SSO is a paid feature.
 
-   If you're using Infisical Cloud, then it is available under the **Pro Tier**. If you're self-hosting Infisical,
+   If you're using Infisical Cloud, then it's available under the **Pro Tier**. If you're self-hosting Infisical,
    then you should contact sales@infisical.com to purchase an enterprise license to use it.
 </Info>
 
@@ -17,7 +17,7 @@ description: "Learn how to configure Microsoft Entra ID for Infisical SSO."
 
 <Steps>
    <Step title="Prepare the SAML SSO configuration in Infisical">
-      In Infisical, head to the **Single Sign-On (SSO)** page and select the **General** tab. Click **Connect** for **SAML** under the Connect to an Identity Provider section. Select **Azure / Entra**, then click **Connect** again.
+      In Infisical, head to the **Single Sign-On (SSO)** page and select the **General** tab. Select **Connect** for **SAML** under the Connect to an Identity Provider section. Select **Azure / Entra**, then select **Connect** again.
 
       ![SSO connect section](../../../images/sso/connect-saml.png)
 
@@ -26,7 +26,7 @@ description: "Learn how to configure Microsoft Entra ID for Infisical SSO."
       ![Azure SAML initial configuration](../../../images/sso/azure/init-config.png)
    </Step>
    <Step title="Create a SAML application in Azure">
-      In the Azure Portal, navigate to the Azure Active Directory and select **Enterprise applications**. On this screen, select **+ New application**.
+      In the Azure Portal, navigate to **Microsoft Entra ID** and select **Enterprise applications**. On this screen, select **+ New application**.
 
       ![Azure SAML enterprise applications](../../../images/sso/azure/enterprise-applications.png)
 
@@ -120,7 +120,7 @@ description: "Learn how to configure Microsoft Entra ID for Infisical SSO."
 </Steps>
 
 <Tip>
-    If you are only using one organization on your Infisical instance, you can configure a default organization in the [Server Admin Console](../admin-panel/server-admin#default-organization) to expedite SAML login.
+    If you're only using one organization on your Infisical instance, you can configure a default organization in the [Server Admin Console](../admin-panel/server-admin#default-organization) to expedite SAML login.
 </Tip>
 
 <Note>
@@ -136,5 +136,5 @@ description: "Learn how to configure Microsoft Entra ID for Infisical SSO."
 </Note>
 
 <Note>
-   If you'd like to require Multi-factor Authentication for your team members to access Infisical check out our [Entra ID / Azure AD MFA](../mfa#entra-id-azure-ad-mfa) guide.
+   If you'd like to require Multi-factor Authentication for your team members to access Infisical check out our [Entra ID MFA](../mfa#entra-id-mfa) guide.
 </Note>

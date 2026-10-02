@@ -1,6 +1,7 @@
 ---
 title: "Infisical Node.js SDK"
 sidebarTitle: "Node.js"
+description: "Fetch and manage secrets in a Node.js application with the official Infisical Node.js SDK."
 icon: "/images/sdks/languages/node.svg"
 ---
 
@@ -15,7 +16,7 @@ Starting from **v5**, the Node.js SDK requires **Node.js 20 or higher**.
 | `>= v5`     | `>= 20`         |
 | `<= v4`     | `>= 14`         |
 
-## Deprecation Notice
+## Deprecation notice
 
 Please be aware that all versions prior to `4.0.0` are officially fully unsupported.
 Please upgrade to version 4.0.0 or newer in order to receive the latest updates.
@@ -26,7 +27,7 @@ Please upgrade to version 4.0.0 or newer in order to receive the latest updates.
 npm install @infisical/sdk
 ```
 
-## Getting Started
+## Getting started
 
 ```typescript
 import { InfisicalSDK } from '@infisical/sdk'
@@ -49,7 +50,7 @@ const allSecrets = await client.secrets().listSecrets({
 console.log("Fetched secrets", allSecrets)
 ```
 
-## Core Methods
+## Core methods
 
 The SDK methods are organized into the following high-level categories:
 
@@ -65,7 +66,7 @@ The SDK methods are organized into the following high-level categories:
 
 The `Auth` component provides methods for authentication:
 
-#### Universal Auth
+#### Universal auth
 
 #### Authenticating
 ```typescript
@@ -125,7 +126,7 @@ await client.auth().awsIamAuth.renew();
 
 This sub-class handles operations related to secrets:
 
-#### List Secrets
+#### List secrets
 
 ```typescript
 const allSecrets = await client.secrets().listSecrets({
@@ -135,7 +136,7 @@ const allSecrets = await client.secrets().listSecrets({
   viewSecretValue: true,
   includeImports: false,
   recursive: false,
-  secretPath: "/foo/bar",
+  secretPath: "/prod/backend",
 });
 ```
 
@@ -163,7 +164,7 @@ const allSecrets = await client.secrets().listSecretsWithImports({
   expandSecretReferences: true,
   viewSecretValue: true,
   recursive: false,
-  secretPath: "/foo/bar"
+  secretPath: "/prod/backend"
 });
 ```
 
@@ -181,7 +182,7 @@ const allSecrets = await client.secrets().listSecretsWithImports({
 
 
 
-#### Create Secret
+#### Create secret
 
 ```typescript
 	const newSecret = await client.secrets().createSecret("SECRET_NAME", {
@@ -189,7 +190,7 @@ const allSecrets = await client.secrets().listSecretsWithImports({
 		projectId: "<your-project-id>",
 		secretValue: "SECRET_VALUE",
 		secretComment: "This is a new secret",          // Optional
-		secretPath: "/foo/bar",                         // Optional
+		secretPath: "/prod/backend",                         // Optional
 		secretReminderNote: "This is a reminder note",  // Optional
 		secretReminderRepeatDays: 7,                    // Optional
 		skipMultilineEncoding: false,                   // Optional
@@ -215,7 +216,7 @@ const allSecrets = await client.secrets().listSecretsWithImports({
 **Returns:**
 - `CreateSecretResponse`: The response after creating the secret.
 
-#### Update Secret
+#### Update secret
 
 ```typescript
 const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
@@ -224,7 +225,7 @@ const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
   secretValue: "UPDATED_SECRET_VALUE",                    
   newSecretName: "NEW_SECRET_NAME2",                      // Optional
   secretComment: "This is an updated secret",             // Optional
-  secretPath: "/foo/bar",                                 // Optional
+  secretPath: "/prod/backend",                                 // Optional
   secretReminderNote: "This is an updated reminder note", // Optional
   secretReminderRepeatDays: 14,                           // Optional
   skipMultilineEncoding: false,                           // Optional
@@ -255,7 +256,7 @@ const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
 **Returns:**
 - `UpdateSecretResponse`: The response after updating the secret.
 
-#### Get Secret by Name
+#### Get secret by name
 
 ```typescript
 	const singleSecret = await client.secrets().getSecret({
@@ -265,7 +266,7 @@ const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
 		expandSecretReferences: true, // Optional
     viewSecretValue: true,        // Optional
 		includeImports: true,         // Optional
-		secretPath: "/foo/bar",       // Optional
+		secretPath: "/prod/backend",       // Optional
 		type: "shared",               // Optional
 		version: 1                    // Optional
 	});
@@ -286,13 +287,13 @@ const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
 **Returns:**
 - `Secret`: Returns the secret object.
 
-#### Delete Secret by Name
+#### Delete secret by name
 
 ```typescript
 const deletedSecret = await client.secrets().deleteSecret("SECRET_TO_DELETE", {
   environment: "dev",
   projectId: "<your-project-id>",
-  secretPath: "/foo/bar", // Optional
+  secretPath: "/prod/backend", // Optional
   type: "personal"        // Optional
 });
 ```
@@ -390,7 +391,7 @@ const lease = await client.dynamicSecrets().leases.create({
   dynamicSecretName: "dynamic-secret-name",
   environmentSlug: "dev",
   projectSlug: "your-project-slug",
-  path: "/foo/bar",
+  path: "/prod/backend",
   ttl: "5m" // Optional
 });
 
@@ -415,7 +416,7 @@ console.log(lease);
 const deletedLease = await client.dynamicSecrets().leases.delete(newLease.lease.id, {
   environmentSlug: "dev",
   projectSlug: "test-zb-3a",
-  path: "/foo/bar",
+  path: "/prod/backend",
   isForced: false // Whether or not to forcefully delete the lease. This can't guarantee that the lease will be deleted from the external provider.
 });
 ```
@@ -439,7 +440,7 @@ Please note that renewals must happen **before** the lease has fully expired. Af
 const renewedLease = await client.dynamicSecrets().leases.renew(newLease.lease.id, {
 		environmentSlug: "dev",
 		projectSlug: "project-slug",
-		path: "/foo/bar", // Optional
+		path: "/prod/backend", // Optional
 		ttl: "10m" // Optional
 	});
 ```
@@ -554,7 +555,7 @@ const folder = await client.folders().create({
 const folders = await client.folders().listFolders({
   environment: "dev",
   projectId: "<your-project-id>",
-  path: "/foo/bar", // Optional
+  path: "/prod/backend", // Optional
   recursive: false // Optional
 });
 ```

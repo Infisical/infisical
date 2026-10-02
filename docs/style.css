@@ -1,70 +1,128 @@
+/* ==========================================================================
+   Global reset and design tokens
+
+   Every custom rule below reads its colors from these tokens. Most alias
+   Mintlify's theme variables, so they follow the colors set in docs.json.
+   ========================================================================== */
+
 * {
   border-radius: 0 !important;
 }
 
+:root {
+  --ifx-page: rgb(var(--background-light, 255 255 255));
+  /* Mintlify's heading color is Tailwind Typography's --tw-prose-headings, which exists only
+     inside .prose; our pages render outside it, so the value is copied here. */
+  --ifx-text: #101828;
+  --ifx-text-dim: rgb(var(--gray-900, 23 23 24));
+  --ifx-text-soft: rgb(var(--gray-700, 63 63 63));
+  --ifx-strong: rgb(var(--primary, 38 39 43));
+  --ifx-muted: rgb(var(--gray-500, 113 113 113));
+  --ifx-surface: #fbfbfa;
+  --ifx-surface-soft: #f7f7f6;
+  --ifx-line: rgb(var(--gray-200, 223 223 223) / 0.7);
+  --ifx-green: #56a600;
+  --ifx-accent: rgb(var(--primary-light, 219 245 48));
+  --ifx-accent-ink: rgb(var(--primary, 38 39 43));
+  --ifx-accent-soft: rgb(var(--primary, 38 39 43) / 0.05);
+  --ifx-card-title: rgb(var(--gray-800, 38 38 38));
+  --ifx-card-body: rgb(var(--gray-600, 81 81 81));
+  --ifx-card-hover-line: rgb(var(--primary, 38 39 43));
+  --ifx-selected-bg: rgb(var(--primary, 38 39 43));
+  --ifx-selected-fg: #ffffff;
+  --ifx-hover-fill: rgb(var(--gray-950, 11 11 11) / 0.03);
+  --ifx-control-line: rgb(var(--gray-950, 11 11 11) / 0.1);
+  --ifx-control-text: rgb(var(--gray-700, 63 63 63));
+  --ifx-control-text-hover: rgb(var(--gray-900, 23 23 24));
+  --ifx-input-line: rgb(var(--gray-200, 223 223 223));
+  --ifx-input-line-focus: rgb(var(--gray-300, 207 207 207));
+  --ifx-hover-line: rgb(var(--gray-300, 207 207 207));
+  --ifx-input-text: rgb(var(--gray-900, 23 23 24));
+  --ifx-placeholder: rgb(var(--gray-600, 81 81 81) / 0.7);
+  --ifx-card-bg: var(--ifx-surface);
+  --ifx-card-line: var(--ifx-line);
+  --ifx-trigger-fill: rgb(var(--gray-600, 81 81 81) / 0.05);
+  --ifx-cat-secrets: var(--ifx-green);
+  --ifx-cat-scanning: #8b2fd0;
+  --ifx-cat-certificates: #a16207;
+  --ifx-cat-kms: #109e7a;
+  --ifx-cat-pam: #dc2626;
+  --ifx-cat-agent-vault: #5f7000;
+}
+
+.dark {
+  --ifx-page: rgb(var(--background-dark, 8 9 11));
+  --ifx-text: #ffffff;
+  --ifx-text-dim: rgb(var(--gray-200, 223 223 223));
+  --ifx-text-soft: rgb(var(--gray-400, 159 159 159));
+  --ifx-strong: rgb(var(--gray-100, 239 239 239));
+  --ifx-muted: rgb(var(--gray-400, 159 159 159));
+  --ifx-surface: #101114;
+  --ifx-surface-soft: #101114;
+  --ifx-line: rgb(255 255 255 / 0.1);
+  --ifx-green: #9ee067;
+  --ifx-accent-ink: rgb(var(--primary-light, 219 245 48));
+  --ifx-accent-soft: rgb(var(--primary-light, 219 245 48) / 0.1);
+  --ifx-card-title: #ffffff;
+  --ifx-card-body: rgb(var(--gray-400, 159 159 159));
+  --ifx-card-hover-line: rgb(var(--primary-light, 219 245 48));
+  --ifx-selected-bg: rgb(var(--primary-light, 219 245 48));
+  --ifx-selected-fg: rgb(var(--gray-950, 11 11 11));
+  --ifx-hover-fill: rgb(255 255 255 / 0.03);
+  --ifx-control-line: rgb(255 255 255 / 0.1);
+  --ifx-control-text: rgb(var(--gray-300, 207 207 207));
+  --ifx-control-text-hover: rgb(var(--gray-100, 239 239 239));
+  --ifx-input-line: rgb(var(--gray-800, 38 38 38));
+  --ifx-input-line-focus: rgb(var(--gray-700, 63 63 63));
+  --ifx-hover-line: rgb(var(--gray-700, 63 63 63));
+  --ifx-input-text: rgb(var(--gray-100, 239 239 239));
+  --ifx-placeholder: rgb(var(--gray-400, 159 159 159) / 0.7);
+  --ifx-trigger-fill: rgb(var(--gray-200, 223 223 223) / 0.05);
+  --ifx-cat-scanning: #b056f0;
+  --ifx-cat-certificates: #f5c451;
+  --ifx-cat-kms: #34edbf;
+  --ifx-cat-pam: #ff8a85;
+  --ifx-cat-agent-vault: #a1d434;
+}
+
+/* ==========================================================================
+   Mintlify overrides
+
+   Restyles of Mintlify's own layout, navigation, and components. These
+   depend on Mintlify's markup, so recheck them after a Mintlify upgrade.
+   ========================================================================== */
+
 .chat-assistant-floating-input {
-  display: none !important;
+  visibility: hidden !important;
 }
 
-#navbar .max-w-8xl {
-  max-width: 100%;
-  border-bottom: 1px solid #f0f0f0;
-  background-color: #ffffff;
+#content-container {
+  margin-top: 2rem;
 }
 
-.max-w-8xl {
-  /* background-color: #f5f5f5; */
+#content-area h1,
+#content-area h2,
+#content-area h3,
+#content-area h4,
+#content-area h5,
+#content-area h6 {
+  font-weight: 600 !important;
 }
 
-#sidebar {
-  left: 0;
-  padding-right: 30px;
-  background-color: #ffffff;
-  border-right: 1px solid #f0f0f0;
+#content-area div.my-4{
+  border-width: 1px;
 }
 
-#sidebar-content {
-  padding-left: 2rem;
+#content-area div.card {
+  background-color: var(--ifx-card-bg);
+  border-color: var(--ifx-card-line);
 }
-
-#sidebar .relative .sticky {
-  opacity: 0;
-}
-
-#sidebar li > div.mt-2 {
-  padding: 5px;
-}
-
-#sidebar li > a.text-primary {
-  background-color: #f7f7f6;
-  border-left: 2px solid #dbf530;
-  padding: 5px;
-}
-
-#sidebar li > a.mt-2 {
-  padding: 5px;
-}
-
-#sidebar li > a.leading-6 {
-  padding: 0px;
-}
-
-/* #sidebar ul > div.mt-12 {
-  padding-top: 30px;
-  position: relative;
-}
-
-#sidebar ul > div.mt-12 h5 {
-  position: absolute;
-  left: -12px;
-  top: -0px;
-} */
 
 #header {
-  border-left: 2px solid #dbf530;
+  border-left: 2px solid var(--ifx-accent);
   padding-left: 16px;
   padding-right: 16px;
-  background-color: #f7f7f6;
+  background-color: var(--ifx-surface-soft);
   padding-bottom: 10px;
   padding-top: 10px;
 }
@@ -73,45 +131,8 @@
   background-color: #F3F4F6;
 }
 
-#content-area .mt-8 .block{
-  border-width: 1px;
-  background-color: #fbfbfa;
-  border-color: #ebebeb;
-}
-
-/* #content-area:hover .mt-8 .block:hover{
-  
-  border-width: 1px;
-  background-color: #FDFFE5;
-  border-color: #EFFF33;
-} */
-
-#content-area div.my-4{
-  border-width: 1px;
-}
-
-/* #content-area div.flex-1 {
-  opacity: 0.8;
-  font-weight: 400;
-} */
-
-/* .eyebrow {
-  text-transform: uppercase;
-  font-weight: 400;
-  color: red;
-} */
-
-#content-container {
-  /* background-color: #f5f5f5; */
-  margin-top: 2rem;
-}
-
-#topbar-cta-button .group .absolute {
-  background-color: black;
-}
-
-.flex-1 .flex .items-center {
-  /* background-color: #f5f5f5; */
+.dark #page-context-menu button:hover {
+  background-color: var(--ifx-accent-soft);
 }
 
 .dark #navbar .max-w-8xl {
@@ -119,51 +140,19 @@
   background-color: #08090b;
 }
 
-.dark #sidebar {
-  border-right-color: #1e1f24;
-  background-color: #08090b;
+#topbar-cta-button .group .absolute {
+  background-color: black;
 }
 
-.dark #sidebar li > a.text-primary {
-  background-color: #1b1d0d;
-  border-left-color: #dbf530;
-  color: #dbf530;
+.dark #topbar-cta-button .group,
+.dark #topbar-cta-button .group .absolute,
+.dark #topbar-cta-button .group .flex {
+  background-color: #ffffff !important;
 }
 
-.dark #header {
-  background-color: #101114;
-  border-left-color: #dbf530;
-}
-
-.dark #page-context-menu button:hover {
-  background-color: #1b1d0d;
-}
-
-.dark #content-area .mt-8 .block {
-  border-color: #1e1f24;
-  background-color: #101114;
-}
-
-.dark #topbar-cta-button .group .absolute {
-  background-color: white;
-}
-
+.dark #topbar-cta-button .group .flex,
 .dark #topbar-cta-button .group .flex > * {
-  color: #0e1014;
-}
-
-@media (min-width: 1024px) {
-  #navbar.is-not-custom.is-not-center + div:has(> #sidebar) {
-    max-width: none !important;
-    margin-inline: 0 !important;
-    padding-left: 0 !important;
-  }
-
-  #content-container {
-    width: 100%;
-    max-width: 70rem;
-    margin-inline: auto;
-  }
+  color: #0e1014 !important;
 }
 
 html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"] {
@@ -195,15 +184,155 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   background-color: #3f3f3f;
 }
 
+::selection {
+  background-color: #f7fe62;
+  color: #000000;
+}
+
+.dark ::selection {
+  background-color: #f4f73f;
+  color: #000000;
+}
+
 #sidebar-content .sidebar-title {
   font-weight: inherit;
 }
+
+/* Section header in the sidebar.
+   Each dropdown item hoists its landing page above every group in docs.json, so
+   it renders as the first <ul class="sidebar-group"> with a single <li> and no
+   collapse <button>. It reads as a section label; when the reader is actually on
+   that page it takes the #header treatment from doc pages, so the yellow rule
+   keeps meaning "you are here". Depends on Mintlify's sidebar markup; recheck
+   after an upgrade. */
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) {
+  margin-bottom: 1rem;
+}
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a {
+  /* transparent rule reserves the 2px so nothing shifts when it becomes active */
+  border-left: 2px solid transparent;
+  padding: 10px 16px !important;
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #101114;
+}
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
+  border-left-color: var(--ifx-accent);
+  background-color: var(--ifx-surface-soft);
+}
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a svg {
+  width: 1.0625rem;
+  height: 1.0625rem;
+  color: #101114;
+}
+
+.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a {
+  color: #f3f3f4;
+}
+
+.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
+  color: #f3f3f4;
+}
+
+.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a svg {
+  color: #f3f3f4;
+}
+
+/* Mintlify honors `tag` only on sidebar groups, so a navbar dropdown item has no
+   way to flag Agent Vault as preview. Both nav items are flex rows, so ::after
+   lands after the label. The mobile item appends a checkmark when it is the
+   current page; `order` keeps that trailing the pill. Depends on Mintlify's
+   navbar markup; recheck after a CLI upgrade. */
+
+.nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
+  content: "PREVIEW";
+  flex: none;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.25;
+  background-color: rgb(var(--primary) / 0.1);
+  color: rgb(var(--primary));
+}
+
+.dark .nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
+.dark .mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
+  color: rgb(var(--primary-light));
+}
+
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"] {
+  justify-content: flex-start;
+}
+
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"] > svg {
+  order: 1;
+  margin-left: auto;
+}
+
+[data-component-part="field-name"] {
+  position: relative;
+}
+
+[data-component-part="field-name"]::after {
+  content: "Click to copy";
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  z-index: 50;
+  transform: translateX(-50%);
+  visibility: hidden;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  background: #18181b;
+  color: #ffffff;
+  font: 500 0.75rem/1 system-ui, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+[data-component-part="field-name"]:hover::after,
+[data-component-part="field-name"]:focus-visible::after {
+  visibility: visible;
+}
+
+[data-component-part="field-name"][data-copy-state="copied"]::after {
+  content: "Copied";
+  visibility: visible;
+}
+
+/* ==========================================================================
+   Shared
+   ========================================================================== */
+
+.ifx-mark {
+  background-color: #f7fe62;
+  color: #000000;
+  padding: 0 0.15em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.dark .ifx-mark {
+  background-color: #f4f73f;
+}
+
+/* ==========================================================================
+   Home page (snippets/home.jsx)
+   ========================================================================== */
 
 .ifx-home {
   width: 100%;
   max-width: 70rem;
   margin-inline: auto;
-  padding: 0 1.5rem 6rem;
+  padding: 3rem 1.5rem 6rem;
 }
 
 .ifx-home__hero {
@@ -212,12 +341,14 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   gap: 2.5rem;
 }
 
-@media (min-width: 1024px) {
-  .ifx-home__hero {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 27rem);
-    column-gap: 5rem;
-    align-items: center;
-  }
+.ifx-home__hero-aside {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ifx-home__hero-aside > .ifx-steps {
+  margin-bottom: 0;
 }
 
 .ifx-steps__list {
@@ -262,7 +393,7 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   background-color: #f4f4f4;
   font-size: 12px;
   font-weight: 600;
-  color: #171718;
+  color: var(--ifx-text);
 }
 
 .ifx-steps__label {
@@ -270,18 +401,18 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   width: fit-content;
   padding-top: 4px;
   font-size: 0.9375rem;
-  color: #171718;
+  color: var(--ifx-text-dim);
   text-decoration: none;
 }
 
+/* Mintlify thickens a link's underline to 2px on hover. On inline text that moves nothing, but
+   these are block-level, so the second pixel is a shadow below the border instead. */
 a.ifx-steps__label {
-  border-bottom: 1px solid #e2e2e2;
-  transition: color 0.2s, border-color 0.2s;
+  border-bottom: 1px solid var(--ifx-accent-ink);
 }
 
 a.ifx-steps__label:hover {
-  color: #56a600;
-  border-bottom-color: #56a600;
+  box-shadow: 0 1px 0 var(--ifx-accent-ink);
 }
 
 .ifx-steps__num + .ifx-steps__tabs,
@@ -304,27 +435,27 @@ a.ifx-steps__label:hover {
   border: 0;
   background: none;
   font-size: 0.75rem;
-  color: #6f6f6f;
+  color: var(--ifx-text-dim);
   cursor: pointer;
   border-bottom: 1px solid transparent;
-  transition: color 0.2s, border-color 0.2s;
 }
 
 .ifx-steps__tab:hover {
-  color: #171718;
+  border-bottom-color: var(--ifx-hover-line);
 }
 
-.ifx-steps__tab--active {
-  color: #171718;
-  border-bottom-color: #56a600;
+.ifx-steps__tab--active,
+.ifx-steps__tab--active:hover {
+  color: var(--ifx-accent-ink);
+  border-bottom-color: currentColor;
 }
 
 .ifx-steps__cmd {
   display: flex;
   align-items: stretch;
   margin-top: 0.5rem;
-  background-color: #fbfbfa;
-  border: 1px solid #ebebeb;
+  background-color: var(--ifx-surface);
+  border: 1px solid var(--ifx-line);
 }
 
 .ifx-steps__code {
@@ -347,15 +478,15 @@ a.ifx-steps__label:hover {
   width: 30px;
   padding: 0;
   border: 0;
-  border-left: 1px solid #ebebeb;
+  border-left: 1px solid var(--ifx-line);
   background: none;
-  color: #6f6f6f;
+  color: var(--ifx-muted);
   cursor: pointer;
   transition: color 0.2s, background-color 0.2s;
 }
 
 .ifx-steps__copy:hover {
-  color: #171718;
+  color: var(--ifx-text-dim);
   background-color: #f4f4f4;
 }
 
@@ -365,61 +496,15 @@ a.ifx-steps__label:hover {
 
 .dark .ifx-steps__num {
   background-color: rgba(255, 255, 255, 0.1);
-  color: #f4f4f4;
 }
 
-.dark .ifx-steps__label {
-  color: #dfdfdf;
-}
-
-.dark a.ifx-steps__label {
-  border-bottom-color: #26272b;
-}
-
-.dark a.ifx-steps__label:hover {
-  color: #9ee067;
-  border-bottom-color: #9ee067;
-}
-
-.dark .ifx-steps__tab {
-  color: #707174;
-}
-
-.dark .ifx-steps__tab:hover,
-.dark .ifx-steps__tab--active {
-  color: #dfdfdf;
-}
-
-.dark .ifx-steps__tab--active {
-  border-bottom-color: #9ee067;
-}
-
-.dark .ifx-steps__cmd {
-  background-color: #101114;
-  border-color: #1e1f24;
-}
 
 .dark .ifx-steps__code {
   color: #adaeb0;
 }
 
-.dark .ifx-steps__copy {
-  border-left-color: #1e1f24;
-  color: #707174;
-}
-
 .dark .ifx-steps__copy:hover {
-  color: #dfdfdf;
   background-color: #1e1f24;
-}
-
-.dark .ifx-home__eyebrow {
-  margin: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #6f6f6f;
 }
 
 .ifx-home__title {
@@ -429,28 +514,16 @@ a.ifx-steps__label:hover {
   font-weight: 400;
   line-height: 1.08;
   letter-spacing: -0.015em;
-  color: #101114;
+  color: var(--ifx-text);
 }
 
-.ifx-home__lede {font-family: var(--font-family-headings-custom, inherit);
+.ifx-home__lede {
   font-family: var(--font-family-headings-custom, inherit);
   margin: 1.25rem 0 0;
   max-width: 40rem;
   font-size: 1.0625rem;
   line-height: 1.6;
-  color: #555555;
-}
-
-.ifx-mark {
-  background-color: #f7fe62;
-  color: #000000;
-  padding: 0 0.15em;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-}
-
-.dark .ifx-mark {
-  background-color: #f4f73f;
+  color: var(--ifx-text-soft);
 }
 
 .ifx-home__actions {
@@ -480,13 +553,22 @@ a.ifx-steps__label:hover {
   background-color: #000000;
 }
 
+.dark .ifx-btn--primary {
+  background-color: #ffffff;
+  color: #0e1014;
+}
+
+.dark .ifx-btn--primary:hover {
+  background-color: #ebebeb;
+}
+
 .ifx-btn--secondary {
-  border: 1px solid #ebebeb;
-  color: #26272b;
+  border: 1px solid var(--ifx-line);
+  color: var(--ifx-strong);
 }
 
 .ifx-btn--secondary:hover {
-  background-color: #f7f7f6;
+  background-color: var(--ifx-surface-soft);
 }
 
 .ifx-home__section {
@@ -497,7 +579,7 @@ a.ifx-steps__label:hover {
   margin: 0 0 0.875rem;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #6f6f6f;
+  color: var(--ifx-muted);
 }
 
 .ifx-stack {
@@ -511,7 +593,6 @@ a.ifx-steps__label:hover {
   gap: 0.625rem;
   padding: 0.625rem 0;
   text-decoration: none;
-  transition: background-color 0.2s, box-shadow 0.2s;
 }
 
 .ifx-card__main + .ifx-stack {
@@ -519,8 +600,7 @@ a.ifx-steps__label:hover {
 }
 
 .ifx-stack__tile:hover {
-  background-color: color-mix(in srgb, #56a600 7%, #ffffff);
-  box-shadow: inset 0 0 0 1px #56a600;
+  background-color: var(--ifx-hover-fill);
 }
 
 .ifx-stack__logo {
@@ -530,70 +610,73 @@ a.ifx-steps__label:hover {
   object-fit: contain;
 }
 
+.ifx-stack__logo--adapt-light {
+  filter: invert(1);
+}
+
+.ifx-stack__logo--adapt-mono {
+  filter: brightness(0);
+}
+
+.dark .ifx-stack__logo--adapt-light,
+.dark .ifx-stack__logo--adapt-mono {
+  filter: none;
+}
+
+.dark .ifx-stack__logo--adapt-dark {
+  filter: invert(1);
+}
+
 .ifx-stack__glyph {
-  color: #6f6f6f;
+  color: var(--ifx-muted);
 }
 
 .ifx-stack__label {
   font-family: var(--font-family-headings-custom, inherit);
   font-size: 0.875rem;
-  color: #101114;
-}
-
-@media (min-width: 640px) {
-  .ifx-stack {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1024px) {
-  .ifx-stack {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
+  color: var(--ifx-text);
 }
 
 .ifx-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1px;
-  border: 1px solid #ebebeb;
-  background-color: #ebebeb;
 }
 
 .ifx-card {
-  --ifx-ink: #6f6f6f;
-  --ifx-accent: #dbf530;
+  --ifx-ink: var(--ifx-muted);
+  position: relative;
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
-  background-color: #fbfbfa;
+  background-color: var(--ifx-card-bg);
+  outline: 1px solid var(--ifx-card-line);
   text-decoration: none;
   transition: background-color 0.2s, box-shadow 0.2s;
 }
 
 .ifx-card--secrets {
-  --ifx-ink: #56a600;
-  --ifx-accent: #56a600;
+  --ifx-ink: var(--ifx-cat-secrets);
 }
 
 .ifx-card--scanning {
-  --ifx-ink: #8b2fd0;
-  --ifx-accent: #8b2fd0;
+  --ifx-ink: var(--ifx-cat-scanning);
 }
 
 .ifx-card--certificates {
-  --ifx-ink: #a16207;
-  --ifx-accent: #a16207;
+  --ifx-ink: var(--ifx-cat-certificates);
 }
 
 .ifx-card--pam {
-  --ifx-ink: #dc2626;
-  --ifx-accent: #dc2626;
+  --ifx-ink: var(--ifx-cat-pam);
 }
 
 .ifx-card--kms {
-  --ifx-ink: #109e7a;
-  --ifx-accent: #109e7a;
+  --ifx-ink: var(--ifx-cat-kms);
+}
+
+.ifx-card--agent-vault {
+  --ifx-ink: var(--ifx-cat-agent-vault);
 }
 
 .ifx-card__links {
@@ -610,7 +693,7 @@ a.ifx-steps__label:hover {
   gap: 1rem;
   padding: 0.4375rem 0;
   font-size: 0.875rem;
-  color: #26272b;
+  color: var(--ifx-strong);
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -653,12 +736,23 @@ a.ifx-card:hover .ifx-card__icon {
   font-family: var(--font-family-headings-custom, inherit);
   font-weight: var(--font-weight-headings-custom, 400);
   font-size: 0.9375rem;
-  color: #101114;
+  color: var(--ifx-card-title);
 }
 
 a.ifx-card__title {
   align-self: flex-start;
   text-decoration: none;
+}
+
+div.ifx-card a.ifx-card__title::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+div.ifx-card a:not(.ifx-card__title) {
+  position: relative;
+  z-index: 1;
 }
 
 .ifx-card__chevron {
@@ -678,129 +772,14 @@ a.ifx-card__title:hover .ifx-card__chevron {
   margin-top: 0.5rem;
   font-size: 0.875rem;
   line-height: 1.6;
-  color: #555555;
-}
-
-.dark .ifx-home__hero {
-  border-bottom-color: #1e1f24;
-}
-
-.dark .ifx-home__eyebrow {
-  color: #707174;
-}
-
-.dark .ifx-home__title {
-  color: #ebebeb;
-}
-
-.dark .ifx-home__lede {
-  color: #adaeb0;
-}
-
-.dark .ifx-btn--primary {
-  background-color: #ffffff;
-  color: #0e1014;
-}
-
-.dark .ifx-btn--primary:hover {
-  background-color: #ebebeb;
-}
-
-.dark .ifx-btn--secondary {
-  border-color: #1e1f24;
-  color: #ebebeb;
-}
-
-.dark .ifx-btn--secondary:hover {
-  background-color: #101114;
-}
-
-.dark .ifx-home__section-title {
-  color: #707174;
-}
-
-.dark .ifx-grid {
-  border-color: #1e1f24;
-  background-color: #1e1f24;
-}
-
-.dark .ifx-card {
-  --ifx-ink: #707174;
-  background-color: #101114;
-}
-
-.dark .ifx-card--secrets {
-  --ifx-ink: #9ee067;
-  --ifx-accent: #9ee067;
-}
-
-.dark .ifx-card--scanning {
-  --ifx-ink: #b056f0;
-  --ifx-accent: #b056f0;
-}
-
-.dark .ifx-card--certificates {
-  --ifx-ink: #f5c451;
-  --ifx-accent: #f5c451;
-}
-
-.dark .ifx-card--pam {
-  --ifx-ink: #ff8a85;
-  --ifx-accent: #ff8a85;
-}
-
-.dark .ifx-card--kms {
-  --ifx-ink: #34edbf;
-  --ifx-accent: #34edbf;
-}
-
-.dark .ifx-card__title {
-  color: #ebebeb;
-}
-
-.dark .ifx-card__body {
-  color: #adaeb0;
-}
-
-.dark .ifx-stack__glyph {
-  color: #707174;
-}
-
-.dark .ifx-stack__tile:hover {
-  background-color: color-mix(in srgb, #9ee067 10%, #101114);
-  box-shadow: inset 0 0 0 1px #9ee067;
-}
-
-.dark .ifx-stack__label {
-  color: #ebebeb;
-}
-
-.ifx-stack__logo--adapt-light {
-  filter: invert(1);
-}
-
-.ifx-stack__logo--adapt-mono {
-  filter: brightness(0);
-}
-
-.dark .ifx-stack__logo--adapt-light,
-.dark .ifx-stack__logo--adapt-mono {
-  filter: none;
-}
-
-.dark .ifx-stack__logo--adapt-dark {
-  filter: invert(1);
-}
-
-.dark .ifx-card__link {
-  color: #ebebeb;
-}
-
-.dark .ifx-card__link:hover {
-  color: var(--ifx-ink);
+  color: var(--ifx-card-body);
 }
 
 @media (min-width: 640px) {
+  .ifx-stack {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .ifx-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -817,7 +796,18 @@ a.ifx-card__title:hover .ifx-card__chevron {
   }
 
   .ifx-home__hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 27rem);
+    column-gap: 5rem;
+    align-items: center;
     padding: 1.5rem 0;
+  }
+
+  .ifx-home__hero-aside {
+    align-self: stretch;
+  }
+
+  .ifx-stack {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .ifx-grid--2 {
@@ -851,4 +841,1228 @@ a.ifx-card__title:hover .ifx-card__chevron {
     grid-auto-rows: 1fr;
     height: 100%;
   }
+}
+
+/* ==========================================================================
+   Quickstarts index (documentation/getting-started/quickstarts.mdx)
+   ========================================================================== */
+
+.qs-index {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 4rem;
+  --qs-accent: var(--ifx-accent-ink);
+  --qs-row-line: rgb(var(--gray-100, 239 239 239));
+  --qs-head-line: rgb(var(--gray-200, 223 223 223));
+}
+
+.qs-index__hero {
+  margin-bottom: 2rem;
+}
+
+.qs-index__title {
+  font-size: 2.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ifx-text);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.15;
+}
+
+.qs-index__description {
+  font-size: 1.0625rem;
+  color: var(--ifx-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.qs-index__jump {
+  margin-bottom: 2.5rem;
+}
+
+.qs-index__jump-label {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: var(--ifx-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.qs-index__jump-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.qs-index__jump-links + .qs-index__jump-links {
+  margin-top: 0.5rem;
+}
+
+.qs-index__jump-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--ifx-line);
+  background: var(--ifx-surface);
+  color: var(--ifx-text-soft);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.5;
+  text-decoration: none;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.qs-index__jump-chip::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--qs-chip-color, #cfcfcf);
+  flex-shrink: 0;
+}
+
+.qs-index__jump-chip--secrets { --qs-chip-color: var(--ifx-cat-secrets); }
+.qs-index__jump-chip--scanning { --qs-chip-color: var(--ifx-cat-scanning); }
+.qs-index__jump-chip--certificates { --qs-chip-color: var(--ifx-cat-certificates); }
+.qs-index__jump-chip--kms { --qs-chip-color: var(--ifx-cat-kms); }
+.qs-index__jump-chip--pam { --qs-chip-color: var(--ifx-cat-pam); }
+.qs-index__jump-chip--agent-vault { --qs-chip-color: var(--ifx-cat-agent-vault); }
+
+.qs-index__jump-chip:hover {
+  border-color: var(--qs-chip-color, #cfcfcf);
+  background-color: color-mix(in srgb, var(--qs-chip-color, #cfcfcf) 7%, #fbfbfa);
+}
+
+.qs-index__jump-chip:focus-visible {
+  outline: 2px solid var(--qs-chip-color, #5f7000);
+  outline-offset: 3px;
+}
+
+.dark .qs-index__jump-chip--identity,
+.dark .qs-index__jump-chip--networking,
+.dark .qs-index__jump-chip--self-hosting,
+.dark .qs-index__jump-chip--api {
+  --qs-chip-color: #3a3f47;
+}
+
+.dark .qs-index__jump-chip:hover {
+  border-color: var(--qs-chip-color, #3a3f47);
+  background-color: color-mix(in srgb, var(--qs-chip-color, #3a3f47) 10%, #101114);
+}
+
+.qs-index__section {
+  margin: 2.5rem 0;
+}
+
+.qs-index__section--secrets { --qs-accent: var(--ifx-cat-secrets); }
+.qs-index__section--scanning { --qs-accent: var(--ifx-cat-scanning); }
+.qs-index__section--certificates { --qs-accent: var(--ifx-cat-certificates); }
+.qs-index__section--kms { --qs-accent: var(--ifx-cat-kms); }
+.qs-index__section--pam { --qs-accent: var(--ifx-cat-pam); }
+.qs-index__section--agent-vault { --qs-accent: var(--ifx-cat-agent-vault); }
+.qs-index__section--identity,
+.qs-index__section--networking,
+.qs-index__section--self-hosting,
+.qs-index__section--api {
+  --qs-accent: #5c5c5c;
+}
+
+.qs-index__section h2 {
+  scroll-margin-top: 9rem;
+  font-size: 1.1875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ifx-text);
+  margin: 0 0 0.375rem;
+  padding: 0 0 0 0.75rem;
+  border: 0;
+  border-left: 3px solid var(--qs-accent);
+  line-height: 1.3;
+}
+
+.qs-index__section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.qs-index__section-link:hover {
+  color: var(--qs-accent);
+}
+
+.qs-index__section-arrow {
+  flex: none;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.qs-index__section-link:hover .qs-index__section-arrow,
+.qs-index__section-link:focus-visible .qs-index__section-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.qs-index__section-link:focus-visible {
+  outline: 2px solid var(--qs-accent);
+  outline-offset: 3px;
+}
+
+.qs-index__section-desc {
+  font-size: 0.875rem;
+  color: var(--ifx-muted);
+  margin: 0 0 0.875rem 0;
+  padding-left: 0.75rem;
+  line-height: 1.55;
+}
+
+.qs-index table {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.qs-index th,
+.qs-index td {
+  padding: 0.875rem 1rem;
+  border: 0;
+  border-bottom: 1px solid var(--qs-row-line);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.qs-index th:first-child,
+.qs-index td:first-child {
+  width: 42%;
+}
+
+.qs-index th {
+  background: transparent;
+  color: var(--ifx-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-bottom-color: var(--qs-head-line);
+}
+
+.qs-index td {
+  color: var(--ifx-text-soft);
+}
+
+.qs-index td a {
+  color: var(--ifx-text);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid rgb(var(--primary));
+  word-wrap: break-word;
+}
+
+.qs-index td a:hover {
+  box-shadow: 0 1px 0 var(--ifx-accent-ink);
+}
+
+.qs-index td a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
+
+.dark .qs-index__section--identity,
+.dark .qs-index__section--networking,
+.dark .qs-index__section--self-hosting,
+.dark .qs-index__section--api {
+  --qs-accent: #cfcfcf;
+}
+
+.dark .qs-index {
+  --qs-row-line: rgb(var(--gray-800, 38 38 38) / 0.5);
+  --qs-head-line: rgb(var(--gray-700, 63 63 63) / 0.5);
+}
+
+.dark .qs-index td a {
+  border-bottom-color: rgb(var(--primary-light));
+}
+
+@media (max-width: 640px) {
+  .qs-index {
+    padding: 2rem 1rem 3rem;
+  }
+
+  .qs-index__title {
+    font-size: 1.875rem;
+  }
+
+  .qs-index th,
+  .qs-index td {
+    padding: 0.75rem 0.5rem;
+  }
+}
+
+/* ==========================================================================
+   Catalog browser (snippets/CatalogBrowser.jsx)
+
+   Each control copies the Mintlify component it stands in for: the text
+   input, a neutral pill that fills with the brand color when selected, and
+   Card. Brand color marks selection only; rest and hover states stay neutral.
+   ========================================================================== */
+
+.ifx-catalog__search {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.ifx-catalog__search-icon {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  color: var(--ifx-placeholder);
+  pointer-events: none;
+}
+
+.ifx-catalog__input {
+  display: block;
+  width: 100%;
+  padding: 0.625rem 1rem 0.625rem 2.25rem;
+  border: 1px solid var(--ifx-input-line);
+  background-color: transparent;
+  color: var(--ifx-input-text);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: 0;
+}
+
+.ifx-catalog__input::placeholder {
+  color: var(--ifx-placeholder);
+}
+
+.ifx-catalog__input:focus {
+  border-color: var(--ifx-input-line-focus);
+}
+
+.ifx-catalog__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.ifx-catalog__filter {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--ifx-control-line);
+  background-color: transparent;
+  color: var(--ifx-control-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  cursor: pointer;
+}
+
+.ifx-catalog__filter:hover {
+  background-color: var(--ifx-hover-fill);
+  color: var(--ifx-control-text-hover);
+}
+
+.ifx-catalog__filter[aria-pressed="true"] {
+  border-color: var(--ifx-selected-bg);
+  background-color: var(--ifx-selected-bg);
+  color: var(--ifx-selected-fg);
+}
+
+/* No color on the focus rings: Mintlify's global :focus-visible supplies --primary, or
+   --primary-light in dark, as it does for its own controls. */
+.ifx-catalog__filter:focus-visible {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-offset: 2px;
+}
+
+.ifx-catalog__count {
+  margin: 0 0 1rem;
+  color: var(--ifx-muted);
+  font-size: 0.875rem;
+}
+
+.ifx-catalog__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .ifx-catalog__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Mintlify tags every content anchor with .link, and `.dark .link` recolors its bottom
+   border, so the dark rules need the extra class to win. */
+.ifx-catalog__card,
+.dark .ifx-catalog__card.link {
+  display: block;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--ifx-card-line);
+  background-color: var(--ifx-card-bg);
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.ifx-catalog__card:hover,
+.dark .ifx-catalog__card.link:hover {
+  border-color: var(--ifx-card-hover-line);
+}
+
+.ifx-catalog__card:focus-visible {
+  outline-style: solid;
+  outline-width: 2px;
+}
+
+.ifx-catalog__title {
+  margin: 0 0 0.5rem;
+  color: var(--ifx-card-title);
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  letter-spacing: normal;
+}
+
+.ifx-catalog__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.ifx-catalog__desc {
+  margin: 0;
+  color: var(--ifx-card-body);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.625;
+}
+
+.ifx-catalog__empty {
+  padding: 2rem 1rem;
+  border: 1px solid var(--ifx-line);
+  color: var(--ifx-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+/* ==========================================================================
+   Agent Vault quickstart configurator
+   (snippets/AgentVaultQuickstartConfigurator.jsx)
+
+   The container is a Card, the sentence chips are Mintlify's borderless
+   dropdown triggers, the menu is its dropdown panel, the search is its text
+   input, and the tiles are neutral options that take the brand color when
+   chosen.
+   ========================================================================== */
+
+.ifx-avqs {
+  margin: 0 0 1.75rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--ifx-card-line);
+  background-color: var(--ifx-card-bg);
+  /* Matches Mintlify's heading scroll margin, so a link to the picker clears the sticky navbar. */
+  scroll-margin-top: 136px;
+}
+
+.ifx-avqs__sentence {
+  margin: 0;
+  color: var(--ifx-card-title);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+.ifx-avqs__slot {
+  position: relative;
+  display: inline-block;
+}
+
+.ifx-avqs__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 1.6em;
+  padding: 0 0.4em;
+  border: 0;
+  background: transparent;
+  color: var(--ifx-muted);
+  font: inherit;
+  font-weight: 500;
+  line-height: 1;
+  vertical-align: top;
+  cursor: pointer;
+}
+
+.ifx-avqs__chip--filled {
+  color: inherit;
+}
+
+.ifx-avqs__chip:hover,
+.ifx-avqs__chip[aria-expanded="true"] {
+  background-color: var(--ifx-trigger-fill);
+}
+
+.ifx-avqs__chip:focus-visible {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-offset: 2px;
+}
+
+.ifx-avqs__chip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1em;
+  max-height: 1em;
+  overflow: hidden;
+  margin-right: 0.25rem;
+  color: currentColor;
+  vertical-align: -0.15em;
+}
+
+.ifx-avqs__chip-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ifx-avqs__chip-icon img {
+  width: auto;
+  height: 1em;
+  max-height: 1em;
+  max-width: 1.2em;
+  object-fit: contain;
+}
+
+.ifx-avqs__chevron {
+  display: inline-block;
+  margin-left: 0.2rem;
+  color: var(--ifx-muted);
+  vertical-align: 0.05em;
+}
+
+@keyframes ifx-avqs-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.ifx-avqs__menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  z-index: 30;
+  width: 22rem;
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: 0.5rem;
+  border: 1px solid var(--ifx-control-line);
+  background-color: var(--ifx-page);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.08), 0 2px 6px rgb(0 0 0 / 0.04);
+  transform-origin: top left;
+  animation: ifx-avqs-pop-in 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ifx-avqs__slot--service .ifx-avqs__menu {
+  left: auto;
+  right: 0;
+  transform-origin: top right;
+}
+
+.dark .ifx-avqs__menu {
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.35);
+}
+
+.ifx-avqs__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.ifx-avqs__search-icon {
+  position: absolute;
+  left: 0.75rem;
+  color: var(--ifx-placeholder);
+  pointer-events: none;
+}
+
+.ifx-avqs__search-input {
+  flex: 1;
+  width: 100%;
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  border: 1px solid var(--ifx-input-line);
+  background-color: transparent;
+  color: var(--ifx-input-text);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ifx-avqs__search-input::placeholder {
+  color: var(--ifx-placeholder);
+}
+
+.ifx-avqs__search-input:focus {
+  border-color: var(--ifx-input-line-focus);
+}
+
+.ifx-avqs__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.375rem;
+  max-height: 15rem;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+  scrollbar-width: thin;
+}
+
+.ifx-avqs__grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ifx-avqs__grid::-webkit-scrollbar-thumb {
+  background-color: var(--ifx-control-line);
+}
+
+.ifx-avqs__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.4rem;
+  padding: 0.85rem 0.5rem;
+  border: 1px solid var(--ifx-control-line);
+  background-color: transparent;
+  color: var(--ifx-control-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+}
+
+.ifx-avqs__tile:hover {
+  background-color: var(--ifx-hover-fill);
+  color: var(--ifx-control-text-hover);
+}
+
+.ifx-avqs__tile--active,
+.ifx-avqs__tile--active:hover {
+  border-color: var(--ifx-accent-ink);
+  color: var(--ifx-accent-ink);
+}
+
+.ifx-avqs__tile:focus-visible {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-offset: 2px;
+}
+
+.ifx-avqs__tile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  min-height: 32px;
+  color: var(--ifx-muted);
+}
+
+.ifx-avqs__tile:hover .ifx-avqs__tile-icon,
+.ifx-avqs__tile--active .ifx-avqs__tile-icon {
+  color: currentColor;
+}
+
+.ifx-avqs__tile-icon img,
+.ifx-avqs__tile-icon svg {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.ifx-avqs__img--dark-only,
+.dark .ifx-avqs__img--light-only {
+  display: none;
+}
+
+.ifx-avqs__img--light-only,
+.dark .ifx-avqs__img--dark-only {
+  display: block;
+}
+
+.ifx-avqs__tile-label {
+  line-height: 1.2;
+}
+
+.ifx-avqs__empty {
+  padding: 1.25rem 0.5rem;
+  color: var(--ifx-muted);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.ifx-avqs__clear {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.55rem;
+  border: 0;
+  border-top: 1px solid var(--ifx-line);
+  background: transparent;
+  color: var(--ifx-muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ifx-avqs__clear:hover {
+  color: var(--ifx-control-text-hover);
+}
+
+.ifx-avqs__hint {
+  margin: 0.6rem 0 0;
+  color: var(--ifx-muted);
+  font-size: 0.8125rem;
+}
+
+
+.ifx-avqs__reset {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ifx-text);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--ifx-accent-ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+  cursor: pointer;
+}
+
+.ifx-avqs__reset:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* ==========================================================================
+   Use case picker (snippets/UseCasePicker.jsx)
+   Reuses the .ifx-avqs chip and menu; these classes add the multi-select list.
+   ========================================================================== */
+
+.ifx-ucp__menu {
+  width: 20rem;
+  max-width: min(20rem, calc(100vw - 2rem));
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.ifx-ucp__group {
+  margin: 0;
+  padding: 0.25rem 0 0.5rem;
+  border: 0;
+}
+
+.ifx-ucp__group + .ifx-ucp__group {
+  border-top: 1px solid var(--ifx-control-line);
+  padding-top: 0.5rem;
+}
+
+.ifx-ucp__legend {
+  padding: 0 0.5rem 0.25rem;
+  color: var(--ifx-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ifx-ucp__option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  color: var(--ifx-control-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ifx-ucp__option:hover {
+  background-color: var(--ifx-hover-fill);
+  color: var(--ifx-control-text-hover);
+}
+
+.ifx-ucp__checkbox {
+  flex-shrink: 0;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin: 0;
+  accent-color: var(--ifx-accent-ink);
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Combined IAM policy (snippets/AwsIamPolicy.jsx)
+   ========================================================================== */
+
+.ifx-iamp__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+
+.ifx-iamp__option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ifx-text-soft);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.ifx-iamp__empty {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--ifx-control-line);
+  color: var(--ifx-muted);
+  font-size: 0.875rem;
+}
+
+/* ==========================================================================
+   CLI reference (snippets/CLIPage.jsx)
+   ========================================================================== */
+
+.cli-ref {
+  --cli-top: 64px;
+  --cli-page: var(--ifx-page);
+  --cli-ink: var(--ifx-text);
+  --cli-text: var(--ifx-text-soft);
+  --cli-muted: var(--ifx-muted);
+  --cli-line: var(--ifx-line);
+  --cli-soft: var(--ifx-surface-soft);
+  --cli-accent-ink: var(--ifx-accent-ink);
+  --cli-accent-soft: var(--ifx-accent-soft);
+  --cli-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  width: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 2.5rem 6rem;
+  container-type: inline-size;
+}
+
+@media (max-width: 767px) {
+  .cli-ref {
+    padding: 0 1rem 4rem;
+  }
+}
+
+.cli-ref__hero {
+  padding: 3rem 0 2.5rem;
+  border-bottom: 1px solid var(--cli-line);
+}
+
+.cli-ref__title {
+  margin: 0;
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 2.25rem;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--cli-ink);
+}
+
+.cli-ref__description {
+  margin-top: 0.75rem;
+  max-width: 42rem;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--cli-muted);
+}
+
+.cli-cmd {
+  --cli-head: 3.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem 2rem;
+  padding: 2rem 0 0;
+  border-bottom: 1px solid var(--cli-line);
+  scroll-margin-top: var(--cli-top);
+}
+
+@container (min-width: 720px) {
+  .cli-cmd {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 21rem);
+    column-gap: 2.5rem;
+  }
+
+  .cli-cmd__body,
+  .cli-cmd__examples {
+    padding-bottom: 3rem;
+  }
+
+  .cli-cmd__examples-inner {
+    position: sticky;
+    top: calc(var(--cli-top) + var(--cli-head) + 1.5rem);
+  }
+}
+
+.cli-cmd__title {
+  grid-column: 1 / -1;
+  position: sticky;
+  top: var(--cli-top);
+  z-index: 2;
+  margin: 0 -2.5rem;
+  padding: 0.75rem 2.5rem;
+  background-color: var(--cli-page);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease-in-out;
+  font-family: var(--cli-mono);
+  font-size: 1.125rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--cli-muted);
+  overflow-wrap: anywhere;
+}
+
+/* With room for two columns, keep each flag and argument on one line so "[--" never ends a
+   line. On narrow screens a single token can be wider than the screen, so any break is allowed. */
+@container (min-width: 720px) {
+  .cli-ref .cli-cmd__title a {
+    white-space: nowrap;
+  }
+}
+
+.cli-cmd__title--text {
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--cli-ink);
+}
+
+.cli-cmd--stuck .cli-cmd__title {
+  border-bottom-color: var(--cli-line);
+}
+
+@media (max-width: 767px) {
+  .cli-cmd__title {
+    margin: 0 -1rem;
+    padding: 0.75rem 1rem;
+  }
+}
+
+.cli-usage__bin {
+  font-weight: 400;
+  color: var(--cli-muted);
+}
+
+.cli-ref .cli-cmd__title a {
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.cli-ref .cli-cmd__title a:hover {
+  color: var(--cli-accent-ink);
+  border-bottom-color: currentColor;
+}
+
+.cli-usage__cmd {
+  font-weight: 600;
+  color: var(--cli-ink);
+}
+
+.cli-usage__arg {
+  font-weight: 400;
+  color: var(--cli-ink);
+}
+
+.cli-usage__flag {
+  font-weight: 400;
+  color: var(--cli-text);
+}
+
+/* Mintlify raises its anchors with z-index: 10; isolating the columns keeps them under the
+   sticky heading. The bottom spacing lives here rather than on .cli-cmd because a sticky
+   heading stops at its section's padding edge, and it should ride down to the divider. */
+.cli-cmd__body,
+.cli-cmd__examples {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+/* Flag names and help text can hold long unbroken strings that are wider than a phone. */
+.cli-cmd__body {
+  overflow-wrap: anywhere;
+}
+
+.cli-cmd > :last-child {
+  padding-bottom: 3rem;
+}
+
+.cli-cmd__description {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--cli-text);
+}
+
+.cli-cmd__description [data-as="p"],
+.cli-cmd__description p {
+  display: block;
+  margin: 0;
+}
+
+.cli-cmd__description [data-as="p"] + [data-as="p"],
+.cli-cmd__description p + p {
+  margin-top: 0.875rem;
+}
+
+.cli-cmd__table {
+  margin-top: 2rem;
+  scroll-margin-top: calc(var(--cli-top) + var(--cli-head) + 1rem);
+}
+
+.cli-cmd__table-title {
+  margin: 0 0 0.25rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--cli-line);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--cli-ink);
+}
+
+.cli-subs {
+  margin-top: 2rem;
+  scroll-margin-top: calc(var(--cli-top) + var(--cli-head) + 1rem);
+}
+
+.cli-subs__list {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--cli-muted);
+}
+
+.cli-row {
+  padding: 0.875rem 0.75rem;
+  margin: 0 -0.75rem;
+  border-bottom: 1px solid var(--cli-line);
+  scroll-margin-top: calc(var(--cli-top) + var(--cli-head) + 1rem);
+}
+
+.cli-row:last-child {
+  border-bottom: 0;
+}
+
+.cli-row:target,
+.cli-row--flash {
+  animation: cli-row-flash 1.6s ease-in-out;
+}
+
+@keyframes cli-row-flash {
+  0%,
+  40% {
+    background-color: var(--cli-accent-soft);
+    box-shadow: inset 2px 0 0 var(--cli-accent-ink);
+  }
+
+  100% {
+    background-color: transparent;
+    box-shadow: inset 2px 0 0 transparent;
+  }
+}
+
+.cli-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.cli-row__name {
+  font-family: var(--cli-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--cli-ink);
+  text-decoration: none;
+}
+
+.cli-row__name:hover {
+  color: var(--cli-accent-ink);
+}
+
+.cli-row__value {
+  font-weight: 400;
+  color: var(--cli-muted);
+}
+
+.cli-row__meta {
+  font-size: 0.75rem;
+  color: var(--cli-muted);
+}
+
+.cli-row__meta--required {
+  color: #dc2626;
+}
+
+.cli-row__meta--deprecated {
+  color: #a16207;
+}
+
+.cli-row__doc,
+.cli-row__default {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--cli-text);
+}
+
+.cli-row__default {
+  color: var(--cli-muted);
+}
+
+.cli-ref .cli-cmd code:not(.cli-code code) {
+  padding: 0.0625rem 0.3125rem;
+  font-family: var(--cli-mono);
+  font-size: 0.85em;
+  color: var(--cli-ink);
+  background-color: var(--cli-soft);
+  border: 1px solid var(--cli-line);
+}
+
+.cli-row__doc a,
+.cli-cmd__description a,
+.cli-subs__list a {
+  color: var(--cli-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cli-example {
+  margin: 0;
+  background-color: #101114;
+  border: 1px solid #1e1f24;
+}
+
+.cli-example + .cli-example {
+  margin-top: 1rem;
+}
+
+.cli-example__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.875rem;
+  border-bottom: 1px solid #1e1f24;
+  font-size: 0.75rem;
+  color: #adaeb0;
+}
+
+.cli-example__copy {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.75rem;
+  color: #707174;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.cli-example__copy:hover {
+  color: rgb(var(--primary-light));
+}
+
+.cli-code {
+  margin: 0;
+  padding: 0.875rem;
+  overflow-x: auto;
+  background: transparent;
+  font-family: var(--cli-mono);
+  font-size: 0.75rem;
+  line-height: 1.7;
+  color: #dfdfdf;
+  white-space: pre;
+}
+
+.cli-code code {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+.cli-code--output {
+  border-top: 1px dashed #26272b;
+  color: #8b8c8f;
+}
+
+.cli-code__bin {
+  color: rgb(var(--primary-light));
+}
+
+.cli-code__flag {
+  color: #9ee067;
+}
+
+.cli-code__string {
+  color: #f7c97e;
+}
+
+@container (min-width: 960px) {
+  .cli-cmd {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 24rem);
+    column-gap: 3rem;
+  }
+}
+
+.cli-code__comment,
+.cli-code__muted {
+  color: #707174;
+}
+
+/* CLI command stubs in the sidebar (cli-reference-nav.js) link to headings on /cli/reference.
+   Mintlify marks them as external links; they are not. */
+#sidebar-content a[href*="/cli/reference#"] > div > div + div {
+  display: none;
+}
+
+#sidebar-content li > a.cli-nav-active {
+  background-color: rgb(38 39 43 / 0.1);
+  color: #26272b;
+  text-shadow: -0.2px 0 0 currentColor, 0.2px 0 0 currentColor;
+}
+
+.dark #sidebar-content li > a.cli-nav-active {
+  background-color: var(--ifx-accent-soft);
+  color: rgb(var(--primary-light));
+}
+
+html[data-cli-nav] #sidebar-content li > a[aria-current="page"] {
+  background-color: transparent;
+  color: #3f3f3f;
+  text-shadow: none;
+}
+
+html.dark[data-cli-nav] #sidebar-content li > a[aria-current="page"] {
+  color: #9f9f9f;
 }

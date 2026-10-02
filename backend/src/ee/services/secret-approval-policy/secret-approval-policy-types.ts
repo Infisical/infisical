@@ -16,6 +16,7 @@ export type TCreateSapDTO = {
   name: string;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
+  bypassForMachineIdentities: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateSapDTO = {
@@ -30,6 +31,7 @@ export type TUpdateSapDTO = {
   name?: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals?: boolean;
+  bypassForMachineIdentities?: boolean;
   environments?: string[];
 } & Omit<TProjectPermission, "projectId">;
 

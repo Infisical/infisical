@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Control, Controller, UseFormSetValue, UseFormWatch } from "react-hook-form";
 import { FileBadge, Plus, Trash2 } from "lucide-react";
 
@@ -20,13 +20,18 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   EXTENDED_KEY_USAGES_OPTIONS,
+  getCaSignatureIncompatibilityReason,
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import {
+  CertExtensionCriticality,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
   formatSANType,
@@ -34,6 +39,8 @@ import {
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import type { FormData } from "../CreateProfileModal";
+import { CustomExtensionDefaults } from "./CustomExtensionDefaults";
+import { SectionHeading } from "./SectionHeading";
 
 export type PolicyConstraints = {
   allowedKeyUsages: string[];
@@ -46,6 +53,11 @@ export type PolicyConstraints = {
   shouldShowSubjectSection: boolean;
   allowedSanTypes: CertSubjectAlternativeNameType[];
   shouldShowSanSection: boolean;
+  allowedCustomExtensions: Array<{
+    oid: string;
+    label?: string;
+    critical?: CertExtensionCriticality;
+  }> | null;
   policyAllowsCA: boolean;
   maxPathLength: number | undefined;
 };
@@ -75,13 +87,6 @@ const subjectAttrPlaceholder = (type: CertSubjectAttributeType): string => {
       return "";
   }
 };
-
-const SectionHeading = ({ title, description }: { title: string; description: string }) => (
-  <div>
-    <p className="text-sm font-medium text-foreground">{title}</p>
-    <p className="mt-0.5 text-xs text-muted">{description}</p>
-  </div>
-);
 
 type EditableEntry<T extends string> = { type: T; value: string };
 
@@ -234,6 +239,8 @@ type Props = {
   policyConstraints: PolicyConstraints;
   isAwsAcmPublicCa: boolean;
   isExternalAdcsCa: boolean;
+  caSupportsCustomExtensions: boolean;
+  caKeyAlgorithm?: string | null;
 };
 
 const EXTERNAL_ADCS_HINT =
@@ -245,15 +252,27 @@ export const ProfileDefaultsStep = ({
   setValue,
   policyConstraints,
   isAwsAcmPublicCa,
-  isExternalAdcsCa
+  isExternalAdcsCa,
+  caSupportsCustomExtensions,
+  caKeyAlgorithm
 }: Props) => {
   const watchedPolicyId = watch("certificatePolicyId");
   const watchedDefaultsIsCA = watch("defaults.basicConstraints.isCA") || false;
   const watchedDefaultSubjectAttrs = watch("defaults.subjectAttributes") || [];
   const watchedDefaultSans = watch("defaults.subjectAltNames") || [];
+  const watchedCustomExtensions = watch("defaults.customExtensions") || [];
   const watchedDefaultSigAlg = watch("defaults.signatureAlgorithm") ?? null;
   const watchedDefaultKeyAlg = watch("defaults.keyAlgorithm") ?? null;
   const watchedDefaultKeyUsages = watch("defaults.keyUsages") || {};
+
+  // A default the issuing CA cannot sign would fail every request that relies on it, so drop it
+  // rather than persist a value that is guaranteed to break issuance.
+  useEffect(() => {
+    if (!watchedDefaultSigAlg) return;
+    if (getCaSignatureIncompatibilityReason(watchedDefaultSigAlg, caKeyAlgorithm)) {
+      setValue("defaults.signatureAlgorithm", null);
+    }
+  }, [watchedDefaultSigAlg, caKeyAlgorithm, setValue]);
   const watchedDefaultExtKeyUsages = watch("defaults.extendedKeyUsages") || {};
 
   const filteredKeyUsages = useMemo(
@@ -407,11 +426,39 @@ export const ProfileDefaultsStep = ({
                     </SelectTrigger>
                     <SelectContent position="popper">
                       <SelectItem value={NO_DEFAULT}>No default</SelectItem>
-                      {policyConstraints.allowedSignatureAlgorithms.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
+                      {policyConstraints.allowedSignatureAlgorithms.map((option) => {
+                        const incompatibilityReason = getCaSignatureIncompatibilityReason(
+                          option.value,
+                          caKeyAlgorithm
+                        );
+
+                        const item = (
+                          <SelectItem
+                            key={option.value}
+                            value={option.value}
+                            disabled={Boolean(incompatibilityReason)}
+                          >
+                            {option.label}
+                          </SelectItem>
+                        );
+
+                        if (!incompatibilityReason) return item;
+
+                        return (
+                          <Tooltip key={option.value}>
+                            <TooltipTrigger asChild>
+                              {/* The disabled item drops pointer events, so the wrapper carries the hover. */}
+                              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                              <span tabIndex={0} className="block">
+                                {item}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-64">
+                              {incompatibilityReason}
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </FieldContent>
@@ -539,6 +586,13 @@ export const ProfileDefaultsStep = ({
             )}
           </div>
         </div>
+      )}
+      {caSupportsCustomExtensions && (
+        <CustomExtensionDefaults
+          allowedCustomExtensions={policyConstraints.allowedCustomExtensions}
+          extensions={watchedCustomExtensions}
+          onChange={(next) => setValue("defaults.customExtensions", next)}
+        />
       )}
     </div>
   );

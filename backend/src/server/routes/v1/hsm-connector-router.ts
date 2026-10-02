@@ -75,7 +75,7 @@ export const createHsmConnectorRouter =
         tags: [ApiDocsTags.HsmConnectors],
         response: { 200: z.object({ hsmConnectors: HsmConnectorSanitizedSchema.array() }) }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         const hsmConnectors = await server.services.hsmConnector.listHsmConnectors(
           { projectId: resolveProjectId(req) },
@@ -96,7 +96,7 @@ export const createHsmConnectorRouter =
         params: HsmConnectorIdParamSchema,
         response: { 200: z.object({ hsmConnector: HsmConnectorSanitizedSchema }) }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         const hsmConnector = await server.services.hsmConnector.getHsmConnectorById(
           { connectorId: req.params.connectorId },
@@ -223,7 +223,7 @@ export const createHsmConnectorRouter =
         querystring: HsmConnectorLinkedResourcesQuerySchema,
         response: { 200: HsmConnectorLinkedResourcesResponseSchema }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         return server.services.hsmConnector.listLinkedResources(
           {

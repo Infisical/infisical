@@ -27,6 +27,7 @@ import { RedisCredentialsRotationListItemSchema } from "@app/ee/services/secret-
 import { SalesforceOauthCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/salesforce-oauth-credentials";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
 import { SnowflakeUserKeyPairRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/snowflake-user-key-pair";
+import { StripeApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/stripe-api-key";
 import { SupabaseApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/supabase-api-key";
 import { UnixLinuxLocalAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
@@ -63,7 +64,8 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   FireworksApiKeyRotationListItemSchema,
   SnowflakeUserKeyPairRotationListItemSchema,
   CloudflareApiTokenRotationListItemSchema,
-  CloudflareR2AccessKeyRotationListItemSchema
+  CloudflareR2AccessKeyRotationListItemSchema,
+  StripeApiKeyRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {
@@ -84,7 +86,7 @@ export const registerSecretRotationV2Router = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: () => {
       const secretRotationOptions = server.services.secretRotationV2.listSecretRotationOptions();
       return { secretRotationOptions };
@@ -109,7 +111,7 @@ export const registerSecretRotationV2Router = async (server: FastifyZodProvider)
         200: z.object({ secretRotations: SecretRotationV2Schema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },

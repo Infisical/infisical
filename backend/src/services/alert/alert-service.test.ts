@@ -4,7 +4,13 @@ import { TAlertChannelInput } from "./alert-channel-service-types";
 import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
 import { alertProviderRegistryFactory } from "./alert-provider-registry";
 import { alertServiceFactory, TAlertServiceFactoryDep } from "./alert-service";
-import { AlertPrincipalType, IResourceAlertProvider, TAlertPermissionInput } from "./alert-types";
+import {
+  AlertAuditAction,
+  AlertPrincipalType,
+  AlertTriggerType,
+  IResourceAlertProvider,
+  TAlertPermissionInput
+} from "./alert-types";
 
 const RESOURCE_TYPE = "test.resource";
 
@@ -24,16 +30,32 @@ const buildService = (opts?: {
   assertPermission?: (input: TAlertPermissionInput) => Promise<void>;
   resourceScopeThrows?: boolean;
   duplicateExists?: boolean;
+  resolvedProjectId?: string;
+  atOrgScope?: boolean;
   // Runs right after a find() has taken its snapshot, to stand in for a concurrent transaction
   // committing between two statements of ours.
   afterFindAlerts?: (alerts: Map<string, Record<string, unknown>>) => void;
 }) => {
   const permissionCalls: TAlertPermissionInput[] = [];
+  const gatedChannelTypeCalls: string[][] = [];
+  const recipientProjectIds: (string | null)[] = [];
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
-    eventTypes: ["test.resource.expiration"],
-    conditionSchema: z.object({ alertBefore: z.string() }),
-    findDueTargets: async () => [],
+    events: [
+      {
+        key: "test.resource.expiration",
+        triggerType: AlertTriggerType.Scheduled,
+        conditionSchema: z.object({ alertBefore: z.string() })
+      },
+      {
+        key: "test.resource.opened",
+        triggerType: AlertTriggerType.Event,
+        conditionSchema: z.object({}).strict().nullish()
+      }
+    ],
+    findScheduledTargets: async () => [],
+    findEventTargets: async () => [],
+    ...(opts?.atOrgScope ? { recipientPolicy: { atOrgScope: true } } : {}),
     buildViewUrl: async () => "https://app.infisical.com/x",
     buildPayload: () => ({}) as TAlertPayload,
     targetId: () => "t",
@@ -43,7 +65,11 @@ const buildService = (opts?: {
     },
     assertResourceInScope: async (input) => {
       if (input.resourceId && opts?.resourceScopeThrows) throw new Error("resource out of scope");
-    }
+    },
+    assertChannelTypesAllowed: async ({ channelTypes }) => {
+      gatedChannelTypeCalls.push(channelTypes);
+    },
+    ...(opts?.resolvedProjectId ? { resolveProjectId: async () => opts.resolvedProjectId as string } : {})
   };
   const registry = alertProviderRegistryFactory();
   registry.register(provider);
@@ -64,6 +90,7 @@ const buildService = (opts?: {
   };
 
   const service = alertServiceFactory({
+    alertHistoryDAL: { findLatestByAlertIds: async () => [] },
     alertDAL: {
       transaction: async (cb: (tx: unknown) => unknown) => cb({}),
       create: async (data: Record<string, unknown>) => {
@@ -145,7 +172,9 @@ const buildService = (opts?: {
         recipients?: { principalType: string; principalId: string }[];
         orgId: string;
         projectId?: string | null;
+        recipientScope: { projectId: string | null };
       }) => {
+        recipientProjectIds.push(input.recipientScope.projectId);
         channelSeq += 1;
         const row: TChannelRow = {
           id: `ch-${channelSeq}`,
@@ -199,7 +228,16 @@ const buildService = (opts?: {
     alertProviderRegistry: registry
   } as unknown as TAlertServiceFactoryDep);
 
-  return { service, permissionCalls, alerts, memberships, channels, findFilters };
+  return {
+    service,
+    permissionCalls,
+    gatedChannelTypeCalls,
+    recipientProjectIds,
+    alerts,
+    memberships,
+    channels,
+    findFilters
+  };
 };
 
 const actor = {
@@ -246,6 +284,65 @@ describe("alert service", () => {
     expect(permissionCalls[0].action).toBe("create");
   });
 
+  test("validates channel recipients at org scope when the provider asks for it", async () => {
+    const projectScoped = buildService({ resolvedProjectId: "proj-resolved" });
+    await projectScoped.service.createAlert({ ...validCreate, projectId: undefined });
+    expect(projectScoped.recipientProjectIds).toEqual(["proj-resolved", "proj-resolved"]);
+
+    const orgScoped = buildService({ resolvedProjectId: "proj-resolved", atOrgScope: true });
+    await orgScoped.service.createAlert({ ...validCreate, projectId: undefined });
+    expect(orgScoped.recipientProjectIds).toEqual([null, null]);
+  });
+
+  test("falls back to the generic alert audit events when the provider defines none", () => {
+    const { service } = buildService();
+    const alert = {
+      id: "alert-1",
+      name: "expiry",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "resource-1",
+      resourceName: "Resource One",
+      eventType: "test.resource.expiration"
+    };
+
+    expect(service.getAuditEvent({ action: AlertAuditAction.Create, alert })).toEqual({
+      type: "create-alert",
+      metadata: {
+        alertId: "alert-1",
+        name: "expiry",
+        resourceType: RESOURCE_TYPE,
+        resourceId: "resource-1",
+        eventType: "test.resource.expiration"
+      }
+    });
+    expect(service.getAuditEvent({ action: AlertAuditAction.Delete, alert })).toEqual({
+      type: "delete-alert",
+      metadata: {
+        alertId: "alert-1",
+        name: "expiry",
+        resourceType: RESOURCE_TYPE,
+        eventType: "test.resource.expiration"
+      }
+    });
+    expect(
+      service.getAuditEvent({
+        action: AlertAuditAction.TestChannel,
+        test: { resourceType: RESOURCE_TYPE, resourceId: "resource-1", channelType: "slack", success: true }
+      })
+    ).toEqual({
+      type: "test-alert-channel",
+      metadata: {
+        channelId: undefined,
+        channelType: "slack",
+        resourceType: RESOURCE_TYPE,
+        resourceId: "resource-1",
+        success: true,
+        deliveredTo: undefined,
+        error: undefined
+      }
+    });
+  });
+
   test("rejects an unknown resource type", async () => {
     const { service } = buildService();
     await expect(service.createAlert({ ...validCreate, resourceType: "nope.unknown" })).rejects.toThrow();
@@ -263,6 +360,27 @@ describe("alert service", () => {
     );
   });
 
+  // triggerType comes from the provider's event definition, never the request. That's what keeps
+  // event-triggered alerts out of the daily scan.
+  test("stores the trigger type its event declares", async () => {
+    const { service, alerts } = buildService();
+
+    await service.createAlert(validCreate);
+    expect([...alerts.values()][0].triggerType).toBe("scheduled");
+
+    const { service: eventService, alerts: eventAlerts } = buildService();
+    await eventService.createAlert({ ...validCreate, eventType: "test.resource.opened", condition: null });
+    expect([...eventAlerts.values()][0].triggerType).toBe("event");
+  });
+
+  test("returns the trigger type so a client can tell a scheduled alert from an event one", async () => {
+    const { service } = buildService();
+
+    const created = await service.createAlert(validCreate);
+
+    expect(created.triggerType).toBe("scheduled");
+  });
+
   test("rejects a resource-less (scope-wide) alert as unsupported", async () => {
     const { service } = buildService();
     await expect(service.createAlert({ ...validCreate, resourceId: undefined })).rejects.toThrow(/not supported yet/);
@@ -278,6 +396,31 @@ describe("alert service", () => {
     await expect(service.createAlert({ ...validCreate, condition: undefined })).rejects.toThrow(
       /Invalid alert condition/
     );
+  });
+
+  test("validates the condition against the event's own schema, not a provider-wide one", async () => {
+    const { service } = buildService();
+    await expect(
+      service.createAlert({ ...validCreate, eventType: "test.resource.opened", condition: { alertBefore: "30d" } })
+    ).rejects.toThrow(/Invalid alert condition/);
+    const created = await service.createAlert({
+      ...validCreate,
+      resourceId: "resource-2",
+      eventType: "test.resource.opened",
+      condition: null
+    });
+    expect(created.condition).toBeNull();
+  });
+
+  test("update validates the condition against the stored event's schema", async () => {
+    const { service } = buildService();
+    await service.createAlert(validCreate);
+    await expect(service.updateAlert({ alertId: "alert-1", condition: { alertBefore: 5 }, ...actor })).rejects.toThrow(
+      /Invalid alert condition/
+    );
+    await expect(
+      service.updateAlert({ alertId: "alert-1", condition: { alertBefore: "5d" }, ...actor })
+    ).resolves.toBeDefined();
   });
 
   test("rejects an event type the provider does not support", async () => {
@@ -323,6 +466,17 @@ describe("alert service", () => {
     expect(findFilters[0]).toMatchObject({ projectId: null });
   });
 
+  test("create and list resolve the project from the resource when projectId is omitted", async () => {
+    const { service, permissionCalls, findFilters } = buildService({ resolvedProjectId: "proj-resolved" });
+
+    const created = await service.createAlert(validCreate);
+    expect(created.projectId).toBe("proj-resolved");
+
+    await service.listAlerts({ resourceType: RESOURCE_TYPE, resourceId: "resource-1", ...actor });
+    expect(findFilters.at(-1)).toMatchObject({ projectId: "proj-resolved" });
+    expect(permissionCalls.every((call) => call.projectId === "proj-resolved")).toBe(true);
+  });
+
   test("project-scoped list filters to the requested project", async () => {
     const { service, alerts, findFilters } = buildService();
     alerts.set("org-alert", { id: "org-alert", name: "org", projectId: null, ...listBase });
@@ -355,6 +509,40 @@ describe("alert service", () => {
     ]);
     expect(memberships.get("alert-1")).toContain(keep.id);
     expect(memberships.get("alert-1")).toHaveLength(2);
+  });
+
+  test("update gates every new channel, even when the alert already has one of that type", async () => {
+    const { service, gatedChannelTypeCalls } = buildService();
+    const created = await service.createAlert(validCreate);
+    const existingWebhook = created.channels.find((c) => c.channelType === AlertChannelType.WEBHOOK)!;
+
+    await service.updateAlert({
+      alertId: "alert-1",
+      channels: [
+        { id: existingWebhook.id, name: existingWebhook.name, channelType: AlertChannelType.WEBHOOK },
+        { name: "second-webhook", channelType: AlertChannelType.WEBHOOK, config: { url: "https://example.com/2" } }
+      ],
+      ...actor
+    });
+
+    expect(gatedChannelTypeCalls.at(-1)).toEqual([AlertChannelType.WEBHOOK]);
+  });
+
+  test("update does not gate channels the alert already has", async () => {
+    const { service, gatedChannelTypeCalls } = buildService();
+    const created = await service.createAlert(validCreate);
+
+    await service.updateAlert({
+      alertId: "alert-1",
+      channels: created.channels.map((c) => ({
+        id: c.id,
+        name: c.name,
+        channelType: c.channelType as AlertChannelType
+      })),
+      ...actor
+    });
+
+    expect(gatedChannelTypeCalls.at(-1)).toEqual([]);
   });
 
   test("update rejects a channel id that does not belong to the alert", async () => {

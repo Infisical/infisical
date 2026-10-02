@@ -28,7 +28,10 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     },
     schema: {
       hide: false,
+      deprecated: true,
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.GET.certificateTemplateId)
       }),
@@ -36,7 +39,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
         200: sanitizedCertificateTemplate
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.certificateTemplate.getCertTemplate({
         id: req.params.certificateTemplateId,
@@ -58,7 +61,10 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     },
     schema: {
       hide: false,
+      deprecated: true,
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       body: z.object({
         caId: z.string().describe(CERTIFICATE_TEMPLATES.CREATE.caId),
         pkiCollectionId: z.string().optional().describe(CERTIFICATE_TEMPLATES.CREATE.pkiCollectionId),
@@ -88,7 +94,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
         200: sanitizedCertificateTemplate
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.certificateTemplate.createCertTemplate({
         actor: req.permission.type,
@@ -110,7 +116,10 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     },
     schema: {
       hide: false,
+      deprecated: true,
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       body: z.object({
         caId: z.string().optional().describe(CERTIFICATE_TEMPLATES.UPDATE.caId),
         pkiCollectionId: z.string().optional().describe(CERTIFICATE_TEMPLATES.UPDATE.pkiCollectionId),
@@ -138,7 +147,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
         200: sanitizedCertificateTemplate
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.certificateTemplate.updateCertTemplate({
         ...req.body,
@@ -161,7 +170,10 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     },
     schema: {
       hide: false,
+      deprecated: true,
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.DELETE.certificateTemplateId)
       }),
@@ -169,7 +181,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
         200: sanitizedCertificateTemplate
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.certificateTemplate.deleteCertTemplate({
         id: req.params.certificateTemplateId,
@@ -189,11 +201,13 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       tags: [ApiDocsTags.PkiCertificateTemplates],
-      description: "Create Certificate Template EST configuration",
+      description:
+        "Create Certificate Template EST configuration. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         certificateTemplateId: z.string().trim()
       }),
@@ -245,11 +259,13 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       tags: [ApiDocsTags.PkiCertificateTemplates],
-      description: "Update Certificate Template EST configuration",
+      description:
+        "Update Certificate Template EST configuration. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         certificateTemplateId: z.string().trim()
       }),
@@ -295,11 +311,13 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       tags: [ApiDocsTags.PkiCertificateTemplates],
-      description: "Get Certificate Template EST configuration",
+      description:
+        "Get Certificate Template EST configuration. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         certificateTemplateId: z.string().trim()
       }),

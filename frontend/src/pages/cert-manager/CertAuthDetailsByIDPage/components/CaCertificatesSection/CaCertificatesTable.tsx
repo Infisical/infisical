@@ -5,7 +5,6 @@ import FileSaver from "file-saver";
 import { EllipsisIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Lottie } from "@app/components/v2";
 import {
   Badge,
   DropdownMenu,
@@ -17,6 +16,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  Loader,
   Table,
   TableBody,
   TableCell,
@@ -43,7 +43,7 @@ export const CaCertificatesTable = ({ caId, caName }: Props) => {
   if (isPending) {
     return (
       <div className="flex h-40 w-full items-center justify-center">
-        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+        <Loader />
       </div>
     );
   }

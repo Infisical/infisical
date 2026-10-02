@@ -12,6 +12,7 @@ import {
   InputGroupAddon,
   InputGroupInput
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   SECRET_ROTATION_CONNECTION_MAP,
@@ -35,11 +36,7 @@ const ProviderCard = ({ type, onSelect }: { type: SecretRotation; onSelect: () =
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex size-9 items-center justify-center rounded-md bg-container">
-          <img
-            src={`/images/integrations/${image}`}
-            alt={`${name} logo`}
-            className="size-6 object-contain"
-          />
+          <ProviderIcon icon={image} alt={`${name} logo`} className="size-6 object-contain" />
         </div>
         <span className="text-xs font-medium text-muted">{connectionName}</span>
       </div>

@@ -4,28 +4,38 @@ import { ChevronRightIcon, FingerprintIcon } from "lucide-react";
 import { TableCell, TableRow, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
+import { QuickSearchSelection } from "./quickSearchTypes";
+
 type Props = {
   dynamicSecret: TDynamicSecret & { environment: string; path: string };
   envSlug: string;
-  onClose: () => void;
+  onClose: (clearSearch?: boolean) => void;
+  onSelectResult: (selection: QuickSearchSelection) => void;
 };
 
-export const QuickSearchDynamicSecretItem = ({ dynamicSecret, envSlug, onClose }: Props) => {
+export const QuickSearchDynamicSecretItem = ({
+  dynamicSecret,
+  envSlug,
+  onClose,
+  onSelectResult
+}: Props) => {
   const navigate = useNavigate({
     from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
   });
 
   const handleNavigate = () => {
+    onSelectResult({ search: dynamicSecret.name });
     navigate({
       search: (prev) => ({
         ...prev,
         secretPath: dynamicSecret.path,
-        search: dynamicSecret.name,
+        search: undefined,
+        tags: undefined,
         filterBy: "dynamic",
         environments: [envSlug]
       })
     });
-    onClose();
+    onClose(false);
   };
 
   return (

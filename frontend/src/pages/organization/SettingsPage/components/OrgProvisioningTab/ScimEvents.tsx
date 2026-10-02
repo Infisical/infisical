@@ -50,13 +50,13 @@ export const ScimEvents = () => {
       if (event.eventType === ScimEvent.LIST_USERS)
         return `Number of users: ${event.event?.numberOfUsers}`;
 
-      return event.event?.email;
+      return event.event?.email ?? event.event?.detail;
     }
     if (event.eventType.includes("group")) {
       if (event.eventType === ScimEvent.LIST_GROUPS)
         return `Number of groups: ${event.event?.numberOfGroups}`;
 
-      return event.event?.groupName;
+      return event.event?.groupName ?? event.event?.detail;
     }
     return "";
   };
@@ -125,7 +125,7 @@ export const ScimEvents = () => {
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xl">
-                                  <div className="my-1 max-h-96 thin-scrollbar overflow-auto rounded-sm border border-border bg-bunker-800 p-2 font-mono leading-6 whitespace-pre-wrap">
+                                  <div className="my-1 max-h-96 thin-scrollbar overflow-auto rounded-sm border border-border bg-page p-2 font-mono leading-6 whitespace-pre-wrap">
                                     {JSON.stringify(scimEvent, null, 4)}
                                   </div>
                                 </TooltipContent>

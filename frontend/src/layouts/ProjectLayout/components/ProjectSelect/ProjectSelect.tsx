@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Link, linkOptions, useLocation, useParams } from "@tanstack/react-router";
-import { Check, ChevronsUpDown, Plus, Star } from "lucide-react";
+import { Link, linkOptions, useParams } from "@tanstack/react-router";
+import { Check, Plus, Star } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -14,10 +14,6 @@ import {
   CommandItem,
   CommandList,
   IconButton,
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-  PopoverTrigger,
   ProjectIcon
 } from "@app/components/v3";
 import {
@@ -28,12 +24,17 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { getProjectHomePage } from "@app/helpers/project";
-import { usePopUp } from "@app/hooks";
+import { getProjectHomePage, isOrgScopedProduct } from "@app/helpers/project";
+import { useImplicitProduct, usePopUp } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+import {
+  NavbarSwitcher,
+  NavbarSwitcherContent,
+  NavbarSwitcherTrigger
+} from "@app/layouts/NavbarSwitcher";
 
 // Modified and middle clicks belong to the browser: it opens the row's href in a new tab
 // or window, so we neither preventDefault nor navigate programmatically on those paths.
@@ -125,14 +126,14 @@ const ProjectSelectInner = () => {
 
   if (
     currentWorkspace.type === ProjectType.CertificateManager ||
-    currentWorkspace.type === ProjectType.PAM
+    isOrgScopedProduct(currentWorkspace.type)
   ) {
     return null;
   }
 
   return (
     <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
-      <Popover
+      <NavbarSwitcher
         open={open}
         onOpenChange={(nextOpen) => {
           // Clearing on open lets cmdk pick the first row again, as it did while its
@@ -142,14 +143,13 @@ const ProjectSelectInner = () => {
           setOpen(nextOpen);
         }}
       >
-        <PopoverAnchor className="absolute left-18" />
         <Link
           to={getProjectHomePage(currentWorkspace.type, currentWorkspace.environments)}
           params={{
             projectId: currentWorkspace.id,
             orgId: currentWorkspace.orgId
           }}
-          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
+          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
         >
           <ProjectIcon className="size-[14px] shrink-0 text-project" />
           <span className="truncate">{currentWorkspace?.name}</span>
@@ -157,12 +157,8 @@ const ProjectSelectInner = () => {
             Project
           </Badge>
         </Link>
-        <PopoverTrigger asChild>
-          <IconButton variant="ghost" size="xs" aria-label="switch-project">
-            <ChevronsUpDown />
-          </IconButton>
-        </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
+        <NavbarSwitcherTrigger aria-label="switch-project" />
+        <NavbarSwitcherContent className="w-96">
           <Command value={selectedValue} onValueChange={setSelectedValue}>
             <CommandInput aria-label="Search projects" placeholder="Search projects..." />
             <CommandList>
@@ -222,9 +218,7 @@ const ProjectSelectInner = () => {
                     >
                       <Star
                         className={
-                          workspace.isFavorite
-                            ? "fill-yellow-600 text-yellow-600"
-                            : "text-yellow-600"
+                          workspace.isFavorite ? "fill-warning text-warning" : "text-warning"
                         }
                       />
                     </IconButton>
@@ -232,7 +226,7 @@ const ProjectSelectInner = () => {
                 ))}
               </CommandGroup>
             </CommandList>
-            <div className="border-t border-border p-1">
+            <div className="border-t border-border-soft p-1">
               <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
                 {(isOldProjectPermissionAllowed) => (
                   <OrgPermissionCan
@@ -258,9 +252,10 @@ const ProjectSelectInner = () => {
               </OrgPermissionCan>
             </div>
           </Command>
-        </PopoverContent>
-      </Popover>
+        </NavbarSwitcherContent>
+      </NavbarSwitcher>
       <UpgradePlanModal
+        paywallKey="project.limit"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You've reached the maximum number of projects available on the Free plan. Upgrade to the Infisical Pro plan to create more projects."
@@ -276,11 +271,9 @@ const ProjectSelectInner = () => {
 
 export const ProjectSelect = () => {
   const params = useParams({ strict: false });
-  const { pathname } = useLocation();
+  const orgScopedProduct = useImplicitProduct();
 
-  const isPamRoute = pathname.includes("/pam/");
-
-  if (!params.projectId && !isPamRoute) {
+  if (!params.projectId && !orgScopedProduct) {
     return null;
   }
 

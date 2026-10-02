@@ -1,3 +1,5 @@
+/* eslint-disable no-restricted-syntax -- Historical: predates kms_legacy_encryption_keys, has already
+   run everywhere, and on a fresh install runs against empty tables before a rotation is possible. */
 import { Knex } from "knex";
 
 import { inMemoryKeyStore } from "@app/keystore/memory";

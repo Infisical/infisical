@@ -5,13 +5,15 @@ import {
   SecretScanningResourcesSchema,
   SecretScanningScansSchema,
   TableName,
-  TSecretScanningDataSources
+  TSecretScanningDataSources,
+  TSecretScanningFindings
 } from "@app/db/schemas";
 import {
   SecretScanningFindingStatus,
   SecretScanningScanStatus
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { DatabaseError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import {
   buildFindFilter,
   ormify,
@@ -127,6 +129,26 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   const scanOrm = ormify(db, TableName.SecretScanningScan);
   const findingOrm = ormify(db, TableName.SecretScanningFinding);
   const configOrm = ormify(db, TableName.SecretScanningConfig);
+
+  // Postgres has a hard limit of how many itens can be upserted, so to prevent
+  // issues in very large repositories with lots of findings, we should batch
+  // the inserts to prevent the worker from exiting and failing the scan.
+  const FINDINGS_UPSERT_CHUNK_SIZE = 1000;
+
+  const upsertFindings: typeof findingOrm.upsert = async (data, onConflictField, tx, mergeColumns) => {
+    const upsertInChunks = async (trx: Knex) => {
+      const upserted: TSecretScanningFindings[] = [];
+      for (const chunk of chunkArray(data, FINDINGS_UPSERT_CHUNK_SIZE)) {
+        // eslint-disable-next-line no-await-in-loop
+        upserted.push(...(await findingOrm.upsert(chunk, onConflictField, trx, mergeColumns)));
+      }
+      return upserted;
+    };
+
+    if (data.length <= FINDINGS_UPSERT_CHUNK_SIZE) return findingOrm.upsert(data, onConflictField, tx, mergeColumns);
+
+    return tx ? upsertInChunks(tx) : db.transaction(upsertInChunks);
+  };
 
   const findDataSource = async (filter: Parameters<(typeof dataSourceOrm)["find"]>[0], tx?: Knex) => {
     try {
@@ -437,17 +459,17 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     try {
       const scans = await (tx || db)(TableName.SecretScanningScan)
         .where(`${TableName.SecretScanningScan}.status`, SecretScanningScanStatus.Scanning)
-        .where((qb) => {
-          void qb
-            .where(`${TableName.SecretScanningScan}.scanningStartedAt`, "<", startedBefore)
-            // Rows written before `scanningStartedAt` existed, or by a pod still running an older
-            // image mid-deploy, fall back to their creation time so they're reaped too.
-            .orWhere((nullStartedAt) => {
-              void nullStartedAt
-                .whereNull(`${TableName.SecretScanningScan}.scanningStartedAt`)
-                .andWhere(`${TableName.SecretScanningScan}.createdAt`, "<", startedBefore);
-            });
-        })
+        // A batched full scan outlives any single scan timeout, so what is being measured is time
+        // since the scan last made progress, not time since it started. `progressUpdatedAt` is
+        // stamped as each commit batch is persisted; rows written before it existed, or by a pod
+        // still running an older image mid-deploy, fall back to the start and then the creation
+        // time so they're reaped too.
+        .whereRaw(`COALESCE(??, ??, ??) < ?`, [
+          `${TableName.SecretScanningScan}.progressUpdatedAt`,
+          `${TableName.SecretScanningScan}.scanningStartedAt`,
+          `${TableName.SecretScanningScan}.createdAt`,
+          startedBefore
+        ])
         .join(
           TableName.SecretScanningResource,
           `${TableName.SecretScanningResource}.id`,
@@ -486,6 +508,26 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * Counts the findings this scan was the first to discover, which is the number the scan's own
+   * detail view shows. It is read back from the database rather than accumulated in the handler
+   * because a full scan persists its findings batch by batch and can be retried or resumed by
+   * another worker: whatever an in-memory counter holds covers only the batches that one attempt
+   * happened to run.
+   *
+   * Read from the primary, not a replica: the caller counts immediately after writing the last
+   * batch, so replication lag would report a total short of what it just stored.
+   */
+  const countFindingsByScanId = async (scanId: string, tx?: Knex) => {
+    try {
+      const [result] = await (tx || db)(TableName.SecretScanningFinding).where({ scanId }).count({ count: "*" });
+
+      return Number(result?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count By Scan ID - Secret Scanning Finding" });
+    }
+  };
+
   return {
     dataSources: {
       ...dataSourceOrm,
@@ -507,7 +549,11 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       findByDataSourceId: findScansByDataSourceId,
       findStuck: findStuckScans
     },
-    findings: findingOrm,
+    findings: {
+      ...findingOrm,
+      upsert: upsertFindings,
+      countByScanId: countFindingsByScanId
+    },
     configs: configOrm
   };
 };

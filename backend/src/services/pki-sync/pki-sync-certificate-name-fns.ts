@@ -36,6 +36,7 @@ const NAME_VALUE_DISALLOWED_CHARS: Partial<Record<PkiSync, RE2>> = {
   [PkiSync.AzureKeyVault]: new RE2("[^a-zA-Z0-9-]", "g"),
   [PkiSync.CloudflareCustomCertificate]: new RE2("[^a-zA-Z0-9_-]", "g"),
   [PkiSync.Chef]: new RE2("[^a-zA-Z0-9_-]", "g"),
+  [PkiSync.GcpCertificateManager]: new RE2("[^a-zA-Z0-9-]", "g"),
   [PkiSync.AwsCertificateManager]: new RE2("[^a-zA-Z0-9 _-]", "g"),
   [PkiSync.AwsElasticLoadBalancer]: new RE2("[^a-zA-Z0-9 _-]", "g"),
   [PkiSync.AwsSecretsManager]: new RE2("[^a-zA-Z0-9_-]", "g"),

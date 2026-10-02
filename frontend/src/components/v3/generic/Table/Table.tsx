@@ -4,20 +4,21 @@ import { cn } from "@app/components/v3/utils";
 
 const Table = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"table"> & { containerClassName?: string }
->(({ className, containerClassName, ...props }, ref) => {
+  React.ComponentProps<"table"> & { containerClassName?: string; hasAttachedFooter?: boolean }
+>(({ className, containerClassName, hasAttachedFooter = false, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-slot="table-container"
       className={cn(
-        "relative thin-scrollbar w-full overflow-x-auto rounded-md border border-border bg-container",
+        "relative thin-scrollbar w-full min-w-0 overflow-x-auto rounded-md border border-border bg-container",
+        hasAttachedFooter && "rounded-b-none",
         containerClassName
       )}
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn("w-max min-w-full caption-bottom text-start text-sm", className)}
         {...props}
       />
     </div>
@@ -26,11 +27,35 @@ const Table = React.forwardRef<
 
 Table.displayName = "Table";
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
+function TableAttachedFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="table-attached-footer"
+      className={cn(
+        "flex min-h-10 items-center justify-center overflow-hidden rounded-b-md border border-t-0 border-border bg-container",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+function TableHeader({
+  className,
+  sticky = false,
+  ...props
+}: React.ComponentProps<"thead"> & { sticky?: boolean }) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
+      className={cn(
+        "text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent",
+        // collapsed borders are painted by the table and scroll away under a sticky header,
+        // so the header draws its bottom border as an inset shadow that moves with it
+        sticky &&
+          "sticky top-0 z-10 bg-container [&_th]:border-b-0 [&_th]:shadow-[inset_0_-1px_0_var(--color-border)] [&_tr]:border-b-0",
+        className
+      )}
       {...props}
     />
   );
@@ -68,7 +93,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr"
         data-slot="table-row"
         className={cn(
           "border-b border-border transition-colors duration-75 hover:bg-container-hover data-[state=selected]:bg-container-hover",
-          props.onClick && "cursor-pointer",
+          props.onClick && "cursor-pointer select-none",
           className
         )}
         {...props}
@@ -80,6 +105,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr"
 TableRow.displayName = "TableRow";
 
 type TableSortDirection = "ascending" | "descending" | "none";
+type TableColumnVariant = "default" | "action";
 
 const nextTableSortDirection: Record<TableSortDirection, TableSortDirection> = {
   none: "ascending",
@@ -91,6 +117,7 @@ function TableHead({
   className,
   children,
   isTruncatable,
+  variant = "default",
   "aria-sort": ariaSort,
   onSortChange,
   sortDirection = "none",
@@ -99,15 +126,18 @@ function TableHead({
   isTruncatable?: boolean;
   onSortChange?: (direction: TableSortDirection) => void;
   sortDirection?: TableSortDirection;
+  variant?: TableColumnVariant;
 }) {
   return (
     <th
       data-slot="table-head"
+      data-variant={variant}
       className={cn(
         "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent select-none [&:has([role=checkbox])]:pr-0",
         "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg:not([class*='size-'])]:size-4",
         onSortChange && "p-0",
         isTruncatable && "truncate",
+        variant === "action" && "min-w-12 pr-1.5 text-end",
         className
       )}
       aria-sort={onSortChange ? sortDirection : ariaSort}
@@ -150,14 +180,20 @@ function TableHeadLabel({
 function TableCell({
   className,
   isTruncatable,
+  variant = "default",
   ...props
-}: React.ComponentProps<"td"> & { isTruncatable?: boolean }) {
+}: React.ComponentProps<"td"> & {
+  isTruncatable?: boolean;
+  variant?: TableColumnVariant;
+}) {
   return (
     <td
       data-slot="table-cell"
+      data-variant={variant}
       className={cn(
-        "h-[40px] border-b border-border px-3 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
+        "h-10 border-b border-border px-3 py-1.5 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
         isTruncatable && "max-w-0 truncate",
+        variant === "action" && "min-w-12 pr-1.5 text-end",
         className
       )}
       {...props}
@@ -180,9 +216,11 @@ function TableCaption({ className, ...props }: React.ComponentProps<"caption">) 
 
 export {
   Table,
+  TableAttachedFooter,
   TableBody,
   TableCaption,
   TableCell,
+  type TableColumnVariant,
   TableFooter,
   TableHead,
   TableHeader,

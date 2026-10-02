@@ -5,6 +5,7 @@ export * from "./argv";
 export * from "./array";
 export * from "./dates";
 export * from "./object";
+export * from "./scan-window";
 export * from "./string";
 export * from "./time";
 export * from "./undefined";

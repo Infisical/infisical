@@ -1,21 +1,13 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useCallback, useMemo, useState } from "react";
+import { components, MenuListProps } from "react-select";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
-import {
-  CircleStopIcon,
-  EyeIcon,
-  InfoIcon,
-  MoreHorizontalIcon,
-  PencilIcon,
-  PlayIcon,
-  PlusIcon,
-  Settings2Icon,
-  Trash2Icon
-} from "lucide-react";
+import { MoreHorizontalIcon, PencilIcon, PlusIcon, Settings2Icon, Trash2Icon } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
@@ -55,6 +47,11 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProjectPermission, useSubscription } from "@app/context";
+import {
+  ProjectPermissionCertificateProfileActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   approvalPolicyQuery,
@@ -66,13 +63,6 @@ import {
 } from "@app/hooks/api/approvalPolicies";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
-  PkiAlertEventTypeV2,
-  TPkiAlertV2,
-  useDeletePkiAlertV2,
-  useGetPkiAlertsV2,
-  useUpdatePkiAlertV2
-} from "@app/hooks/api/pkiAlertsV2";
-import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub,
   TPkiApplication,
@@ -82,14 +72,11 @@ import {
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
-import { CreatePkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/CreatePkiAlertV2Modal";
-import { ViewPkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/ViewPkiAlertV2Modal";
-import {
-  formatAlertBefore,
-  formatEventType
-} from "@app/views/PkiAlertsV2Page/utils/pki-alert-formatters";
+import { CreateProfileModal } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/CreateProfileModal";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
+import { ApplicationAlertsCard } from "./ApplicationAlerts/ApplicationAlertsCard";
+import { LegacyApplicationAlertsCard } from "./ApplicationAlerts/LegacyApplicationAlertsCard";
 import {
   ConfigureEnrollmentModal,
   EnrollmentMethod,
@@ -97,6 +84,8 @@ import {
 } from "./ConfigureEnrollmentModal";
 
 type Props = { application: TPkiApplication; profiles: TPkiApplicationProfile[] };
+
+type TProfileOption = { value: string; label: string };
 
 const methodBadges = (p: TPkiApplicationProfile) => {
   const methods: EnrollmentMethod[] = [];
@@ -242,119 +231,6 @@ const ApplicationPoliciesTable = ({
   );
 };
 
-type AlertRowProps = {
-  alert: TPkiAlertV2;
-  onView: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  canEdit: boolean;
-  canDelete: boolean;
-};
-
-const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: AlertRowProps) => {
-  const { mutateAsync: updateAlert } = useUpdatePkiAlertV2();
-
-  const handleToggleAlert = async () => {
-    try {
-      await updateAlert({ alertId: alert.id, enabled: !alert.enabled });
-      createNotification({
-        text: `Alert ${!alert.enabled ? "enabled" : "disabled"} successfully`,
-        type: "success"
-      });
-    } catch {
-      createNotification({ text: "Failed to update alert status", type: "error" });
-    }
-  };
-
-  return (
-    <TableRow>
-      <TableCell isTruncatable>
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-foreground">{alert.name}</span>
-          {alert.description ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <InfoIcon className="size-3.5 shrink-0 text-accent" />
-              </TooltipTrigger>
-              <TooltipContent side="right" className="max-w-xs">
-                {alert.description}
-              </TooltipContent>
-            </Tooltip>
-          ) : null}
-        </div>
-      </TableCell>
-      <TableCell className="whitespace-nowrap text-accent">
-        {formatEventType(alert.eventType)}
-      </TableCell>
-      <TableCell className="whitespace-nowrap">
-        <Badge variant={alert.enabled ? "success" : "neutral"}>
-          {alert.enabled ? "Enabled" : "Disabled"}
-        </Badge>
-      </TableCell>
-      <TableCell className="whitespace-nowrap text-accent">
-        {alert.eventType === PkiAlertEventTypeV2.EXPIRATION ? (
-          formatAlertBefore(alert.alertBefore)
-        ) : (
-          <span className="text-mineshaft-500">—</span>
-        )}
-      </TableCell>
-      <TableCell className="whitespace-nowrap">
-        {alert.lastRun ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant={alert.lastRun.status === "success" ? "success" : "danger"}>
-                {alert.lastRun.status === "success" ? "Success" : "Failed"}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="max-w-sm">
-              <div className="text-xs text-mineshaft-300">
-                {new Date(alert.lastRun.timestamp)
-                  .toISOString()
-                  .replace("T", " ")
-                  .replace("Z", " UTC")}
-              </div>
-              {alert.lastRun.error ? (
-                <div className="mt-1 max-h-32 thin-scrollbar overflow-y-auto text-xs break-words text-red-400">
-                  {alert.lastRun.error}
-                </div>
-              ) : null}
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <span className="text-mineshaft-500">—</span>
-        )}
-      </TableCell>
-      <TableCell className="text-right">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton variant="ghost" size="xs" aria-label="Alert actions">
-              <MoreHorizontalIcon />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-44" align="end" sideOffset={2}>
-            <DropdownMenuItem onClick={onView}>
-              <EyeIcon />
-              View details
-            </DropdownMenuItem>
-            <DropdownMenuItem isDisabled={!canEdit} onClick={onEdit}>
-              <PencilIcon />
-              Edit alert
-            </DropdownMenuItem>
-            <DropdownMenuItem isDisabled={!canEdit} onClick={handleToggleAlert}>
-              {alert.enabled ? <CircleStopIcon /> : <PlayIcon />}
-              {alert.enabled ? "Disable" : "Enable"} alert
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="danger" isDisabled={!canDelete} onClick={onDelete}>
-              <Trash2Icon />
-              Delete alert
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </TableCell>
-    </TableRow>
-  );
-};
-
 export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const { orgId, projectId } = useParams({ strict: false }) as {
     orgId?: string;
@@ -389,7 +265,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const canEditPolicies = Boolean(
     appAbility?.can(PkiApplicationResourceActions.Edit, PkiApplicationResourceSub.ApprovalPolicies)
   );
-  const canManageAlerts = Boolean(
+  const canCreateAlerts = Boolean(
     appAbility?.can(PkiApplicationResourceActions.Create, PkiApplicationResourceSub.PkiAlerts)
   );
   const canEditAlerts = Boolean(
@@ -399,7 +275,8 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     appAbility?.can(PkiApplicationResourceActions.Delete, PkiApplicationResourceSub.PkiAlerts)
   );
   const [isAttachOpen, setIsAttachOpen] = useState(false);
-  const [profilesToAttach, setProfilesToAttach] = useState<{ value: string; label: string }[]>([]);
+  const [isCreateProfileOpen, setIsCreateProfileOpen] = useState(false);
+  const [profilesToAttach, setProfilesToAttach] = useState<TProfileOption[]>([]);
   const [profileToDetach, setProfileToDetach] = useState<TPkiApplicationProfile | null>(null);
   const [profileToConfigure, setProfileToConfigure] = useState<TPkiApplicationProfile | null>(null);
   const [enrollmentMethodToOpen, setEnrollmentMethodToOpen] = useState<EnrollmentMethod>();
@@ -409,50 +286,36 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     setProfileToConfigure(profile);
   };
 
+  const { permission } = useProjectPermission();
+  const canCreateProfile = permission.can(
+    ProjectPermissionCertificateProfileActions.Create,
+    ProjectPermissionSub.CertificateProfiles
+  );
+
   const { data: profileList } = useListCertificateProfiles({ limit: 100 });
   const attachMutation = useAttachPkiApplicationProfiles();
   const detachMutation = useDetachPkiApplicationProfile();
 
+  const { subscription } = useSubscription();
+
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "policy",
-    "deletePolicy"
+    "deletePolicy",
+    "upgradePlan"
   ] as const);
-  const deletePolicy = useDeleteApprovalPolicy();
 
-  const { data: alertsData, isLoading: isAlertsLoading } = useGetPkiAlertsV2({
-    applicationId: application.id,
-    limit: 100
-  });
-  const alerts = alertsData?.alerts ?? [];
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; alertId?: string }>({
-    isOpen: false
-  });
-  const [viewAlertModal, setViewAlertModal] = useState<{ isOpen: boolean; alertId?: string }>({
-    isOpen: false
-  });
-  const [deleteAlertModal, setDeleteAlertModal] = useState<{
-    isOpen: boolean;
-    alertId?: string;
-    name?: string;
-  }>({ isOpen: false });
-  const { mutateAsync: deleteAlert } = useDeletePkiAlertV2();
-
-  const handleDeleteAlert = async () => {
-    if (!deleteAlertModal.alertId) return;
-    try {
-      await deleteAlert({
-        alertId: deleteAlertModal.alertId,
-        applicationId: application.id
+  // Creation only; existing policies keep enforcing and their requests can still be approved.
+  const handleCreatePolicy = () => {
+    if (!subscription.pkiApprovals) {
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true,
+        text: "Certificate approval policies are available on Infisical's Enterprise plan."
       });
-      setDeleteAlertModal({ isOpen: false });
-      createNotification({ type: "success", text: "Alert deleted" });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to delete alert"
-      });
+      return;
     }
+    handlePopUpOpen("policy");
   };
+  const deletePolicy = useDeleteApprovalPolicy();
 
   const handleDeletePolicy = async () => {
     const p = popUp.deletePolicy.data as { policyId: string } | undefined;
@@ -480,26 +343,41 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         .map((p) => ({ value: p.id, label: p.slug })),
     [profileList, attachedIds]
   );
-  const totalProfileCount = profileList?.certificateProfiles?.length ?? 0;
+  // Project-wide count, not the length of the fetched page. The list is paginated, so a page whose
+  // profiles happen to all be attached says nothing about whether the project has others left.
+  const totalProfileCount = profileList?.totalCount ?? 0;
+  const hasAttachableProfiles = totalProfileCount > profiles.length;
   let attachDisabledReason: ReactNode | null = null;
-  if (availableProfiles.length === 0) {
+  if (!hasAttachableProfiles && !canCreateProfile) {
     attachDisabledReason =
-      totalProfileCount === 0 ? (
-        <span>
-          No certificate profiles exist yet. Create one in{" "}
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
-            params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-            className="text-primary underline hover:text-primary/80"
-          >
-            Certificate Profiles
-          </Link>{" "}
-          first.
-        </span>
-      ) : (
-        "All certificate profiles are already attached."
-      );
+      totalProfileCount === 0
+        ? "No certificate profiles exist yet, and you do not have permission to create one."
+        : "All certificate profiles are already attached.";
   }
+
+  // Pinned above the scrolling option list, so creating a profile is not a selectable option
+  // masquerading as one.
+  const ProfileMenuList = useCallback(
+    (menuProps: MenuListProps<TProfileOption, true>) => (
+      <>
+        {canCreateProfile ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            isFullWidth
+            className="justify-start"
+            onClick={() => setIsCreateProfileOpen(true)}
+          >
+            <PlusIcon />
+            Add Certificate Profile
+          </Button>
+        ) : null}
+        <components.MenuList {...menuProps} />
+      </>
+    ),
+    [canCreateProfile]
+  );
 
   const handleAttach = async () => {
     if (profilesToAttach.length === 0) return;
@@ -566,9 +444,14 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <Button variant="outline" onClick={() => setIsAttachOpen(true)}>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    hasAttachableProfiles ? setIsAttachOpen(true) : setIsCreateProfileOpen(true)
+                  }
+                >
                   <PlusIcon />
-                  Attach Profile
+                  {hasAttachableProfiles ? "Attach Profile" : "Create Profile"}
                 </Button>
               )}
             </CardAction>
@@ -580,8 +463,9 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
               <EmptyHeader>
                 <EmptyTitle>No profiles attached</EmptyTitle>
                 <EmptyDescription>
-                  Attach a certificate profile, then configure how this application enrolls against
-                  it.
+                  {totalProfileCount === 0
+                    ? "Create a certificate profile, then configure how this application enrolls against it."
+                    : "Attach a certificate profile, then configure how this application enrolls against it."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -707,7 +591,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                 <span tabIndex={0}>
                   <Button
                     variant="outline"
-                    onClick={() => handlePopUpOpen("policy")}
+                    onClick={handleCreatePolicy}
                     isDisabled={!canManagePolicies}
                   >
                     <FontAwesomeIcon icon={faPlus} />
@@ -734,93 +618,26 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Alerting
-            <DocumentationLinkBadge href={PkiDocsUrls.applications.alerting.overview} />
-          </CardTitle>
-          <CardDescription>Get notified about certificate events.</CardDescription>
-          <CardAction>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip surfaces on keyboard focus despite the inner button being disabled */}
-                <span tabIndex={0}>
-                  <Button
-                    variant="outline"
-                    onClick={() => setAlertModal({ isOpen: true })}
-                    isDisabled={!canManageAlerts}
-                  >
-                    <FontAwesomeIcon icon={faPlus} />
-                    Create Alert
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {!canManageAlerts && (
-                <TooltipContent side="left">
-                  You don&apos;t have permission to create alerts
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          {!isAlertsLoading && alerts.length === 0 ? (
-            <Empty className="border">
-              <EmptyHeader>
-                <EmptyTitle>No alerts configured</EmptyTitle>
-                <EmptyDescription>
-                  Create one to get notified about certificate events for this application.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-1/3">Name</TableHead>
-                  <TableHead className="whitespace-nowrap">Event Type</TableHead>
-                  <TableHead className="whitespace-nowrap">Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Alert Before</TableHead>
-                  <TableHead className="whitespace-nowrap">Last Run</TableHead>
-                  <TableHead className="w-5 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isAlertsLoading &&
-                  Array.from({ length: 3 }, (_, idx) => (
-                    <TableRow key={`alert-skeleton-${idx + 1}`}>
-                      {Array.from({ length: 6 }, (__, cellIdx) => (
-                        <TableCell key={`alert-skeleton-cell-${cellIdx + 1}`}>
-                          <Skeleton className="h-4 w-24" />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                {!isAlertsLoading &&
-                  alerts.map((a: TPkiAlertV2) => (
-                    <AlertRow
-                      key={a.id}
-                      alert={a}
-                      onView={() => setViewAlertModal({ isOpen: true, alertId: a.id })}
-                      onEdit={() => setAlertModal({ isOpen: true, alertId: a.id })}
-                      onDelete={() =>
-                        setDeleteAlertModal({ isOpen: true, alertId: a.id, name: a.name })
-                      }
-                      canEdit={canEditAlerts}
-                      canDelete={canDeleteAlerts}
-                    />
-                  ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <ApplicationAlertsCard
+        projectId={application.projectId}
+        applicationId={application.id}
+        applicationName={application.name}
+        canCreate={canCreateAlerts}
+        canEdit={canEditAlerts}
+        canDelete={canDeleteAlerts}
+      />
+      <LegacyApplicationAlertsCard applicationId={application.id} canDelete={canDeleteAlerts} />
 
       <PolicyModal
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
         applicationId={application.id}
+      />
+      <UpgradePlanModal
+        paywallKey="cert-manager.application-settings"
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text={(popUp.upgradePlan?.data as { text: string })?.text}
       />
       <DeleteActionModal
         isOpen={popUp.deletePolicy.isOpen}
@@ -828,24 +645,6 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         title={`Delete approval policy ${(popUp.deletePolicy.data as TApprovalPolicy | undefined)?.name ?? ""}?`}
         onChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
         onDeleteApproved={handleDeletePolicy}
-      />
-      <CreatePkiAlertV2Modal
-        isOpen={alertModal.isOpen}
-        onOpenChange={(isOpen) => setAlertModal({ isOpen, alertId: undefined })}
-        applicationId={application.id}
-        alertId={alertModal.alertId}
-      />
-      <ViewPkiAlertV2Modal
-        isOpen={viewAlertModal.isOpen}
-        onOpenChange={(isOpen) => setViewAlertModal({ isOpen, alertId: undefined })}
-        alertId={viewAlertModal.alertId}
-      />
-      <DeleteActionModal
-        isOpen={deleteAlertModal.isOpen}
-        deleteKey="delete"
-        title={`Delete PKI Alert "${deleteAlertModal.name ?? ""}"`}
-        onChange={(isOpen) => setDeleteAlertModal({ isOpen, alertId: undefined, name: undefined })}
-        onDeleteApproved={handleDeleteAlert}
       />
 
       <Dialog
@@ -866,10 +665,9 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
             <FilterableSelect
               isMulti
               value={profilesToAttach}
-              onChange={(val) =>
-                setProfilesToAttach((val ?? []) as { value: string; label: string }[])
-              }
+              onChange={(val) => setProfilesToAttach((val ?? []) as TProfileOption[])}
               options={availableProfiles}
+              components={{ MenuList: ProfileMenuList }}
               placeholder="Select profiles..."
             />
           </div>
@@ -898,6 +696,28 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
           if (!open) setProfileToDetach(null);
         }}
         onDeleteApproved={handleDetach}
+      />
+
+      <CreateProfileModal
+        isOpen={isCreateProfileOpen}
+        onClose={() => setIsCreateProfileOpen(false)}
+        onComplete={(createdProfile) => {
+          setIsCreateProfileOpen(false);
+          // Created from inside the attach dialog: add it to the pending selection so it is
+          // attached alongside whatever else was picked. Created straight from the card, there is
+          // no selection to submit, so attach it now.
+          if (isAttachOpen) {
+            setProfilesToAttach((prev) => [
+              ...prev,
+              { value: createdProfile.id, label: createdProfile.slug }
+            ]);
+            return;
+          }
+          attachMutation.mutate({
+            applicationId: application.id,
+            profileIds: [createdProfile.id]
+          });
+        }}
       />
 
       <ConfigureEnrollmentModal

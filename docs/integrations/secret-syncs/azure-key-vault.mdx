@@ -1,5 +1,6 @@
 ---
-title: "Azure Key Vault Sync"
+title: "Azure Key Vault sync"
+sidebarTitle: "Azure Key Vault"
 description: "Learn how to configure a Azure Key Vault Sync for Infisical."
 ---
 
@@ -17,7 +18,7 @@ description: "Learn how to configure a Azure Key Vault Sync for Infisical."
 </Note>
 
 <Note>
-  Secrets in Infisical that contain an underscore (`_`) will be converted to a hyphen (`-`) when synced to Azure Key Vault.
+  Azure Key Vault secret names can contain hyphens (`-`) but they can't contain underscores (`_`). Infisical converts each underscore in a secret name to a hyphen when syncing to Azure Key Vault, so If two or more secret names become the same vault name, the sync will stop and reports those names.
 </Note>
 
 
@@ -27,7 +28,7 @@ description: "Learn how to configure a Azure Key Vault Sync for Infisical."
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+        1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Select the **Add Sync** button.
         ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
 
         2. Select the **Azure Key Vault** option.

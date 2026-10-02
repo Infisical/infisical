@@ -14,6 +14,12 @@ const DEFAULT_RESOURCE_ROLES = [
     description: "Full control of accounts, folders, sessions, and memberships"
   },
   {
+    slug: PamResourceRole.Operator,
+    name: "Operator",
+    isDefault: true,
+    description: "Launch sessions and view account credentials"
+  },
+  {
     slug: PamResourceRole.Connector,
     name: "Connector",
     isDefault: true,
@@ -45,7 +51,7 @@ export const registerPamResourceRoleRouter = async (server: FastifyZodProvider) 
       response: { 200: z.object({ roles: z.array(ResourceRoleSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async () => {
       return { roles: DEFAULT_RESOURCE_ROLES };
     }

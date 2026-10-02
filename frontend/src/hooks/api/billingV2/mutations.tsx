@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -10,6 +10,7 @@ import {
   BillingV2Preview,
   BillingV2TrialCancelResult,
   BillingV2TrialResult,
+  BillingV2UpgradeResult,
   TAddBillingV2PaymentMethodDTO,
   TBillingV2LifecycleDTO,
   TBuyBillingV2ProductDTO,
@@ -18,8 +19,17 @@ import {
   TCreateBillingV2PortalSessionDTO,
   TPreviewBillingV2ChangeDTO,
   TRemoveBillingV2ProductDTO,
-  TStartBillingV2TrialDTO
+  TStartBillingV2TrialDTO,
+  TUpgradeBillingV2ProductDTO
 } from "./types";
+
+// The catalog's trialable/upgradeable flags are org-aware, so any mutation that changes what the org
+// holds invalidates it alongside the overview; otherwise both CTAs stay stale after the action that
+// changed them.
+const invalidateBillingV2 = (queryClient: QueryClient, orgId: string) => {
+  queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+  queryClient.invalidateQueries({ queryKey: billingV2Keys.catalog(orgId) });
+};
 
 export const useCreateBillingV2PortalSession = () => {
   return useMutation({
@@ -57,7 +67,7 @@ export const useBuyBillingV2Product = () => {
       return data;
     },
     onSuccess: (_data, { orgId }) => {
-      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      invalidateBillingV2(queryClient, orgId);
     }
   });
 };
@@ -88,16 +98,52 @@ export const usePreviewBillingV2Change = () => {
       cadence,
       quantities,
       removeProductId,
-      commitmentChanges
+      commitmentChanges,
+      upgradeProductId,
+      upgradePlan
     }: TPreviewBillingV2ChangeDTO) => {
       const {
         data: { preview }
       } = await apiRequest.post<{ preview: BillingV2Preview }>(
         `/api/v1/organizations/${orgId}/billing/v2/subscription/preview`,
-        { addProductId, plan, cadence, quantities, removeProductId, commitmentChanges }
+        {
+          addProductId,
+          plan,
+          cadence,
+          quantities,
+          removeProductId,
+          commitmentChanges,
+          upgradeProductId,
+          upgradePlan
+        }
       );
 
       return preview;
+    }
+  });
+};
+
+// Move a held product onto a higher plan. expectedPlanVersionId comes from the preview and is what
+// turns a price published in between into a clean conflict instead of an unexpected charge.
+export const useUpgradeBillingV2Product = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      orgId,
+      productId,
+      plan,
+      expectedPlanVersionId,
+      prorationDate
+    }: TUpgradeBillingV2ProductDTO) => {
+      const { data } = await apiRequest.post<BillingV2UpgradeResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/upgrade`,
+        { productId, plan, expectedPlanVersionId, prorationDate }
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      invalidateBillingV2(queryClient, orgId);
     }
   });
 };
@@ -115,7 +161,7 @@ export const useChangeBillingV2Commitment = () => {
       return data;
     },
     onSuccess: (_data, { orgId }) => {
-      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      invalidateBillingV2(queryClient, orgId);
     }
   });
 };
@@ -134,7 +180,7 @@ export const useStartBillingV2Trial = () => {
       return data;
     },
     onSuccess: (_data, { orgId }) => {
-      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      invalidateBillingV2(queryClient, orgId);
     }
   });
 };
@@ -152,7 +198,7 @@ export const useCancelBillingV2Trial = () => {
       return data;
     },
     onSuccess: (_data, { orgId }) => {
-      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      invalidateBillingV2(queryClient, orgId);
     }
   });
 };
@@ -168,7 +214,7 @@ export const useRemoveBillingV2Product = () => {
       return data;
     },
     onSuccess: (_data, { orgId }) => {
-      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      invalidateBillingV2(queryClient, orgId);
     }
   });
 };
@@ -184,7 +230,7 @@ export const useCancelBillingV2Subscription = () => {
       return data;
     },
     onSuccess: (_data, { orgId }) => {
-      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      invalidateBillingV2(queryClient, orgId);
     }
   });
 };
@@ -200,7 +246,7 @@ export const useResumeBillingV2Subscription = () => {
       return data;
     },
     onSuccess: (_data, { orgId }) => {
-      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      invalidateBillingV2(queryClient, orgId);
     }
   });
 };

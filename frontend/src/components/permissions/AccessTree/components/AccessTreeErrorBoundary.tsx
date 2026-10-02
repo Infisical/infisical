@@ -1,9 +1,8 @@
 import React, { ErrorInfo, ReactNode } from "react";
 import { MongoAbility, MongoQuery } from "@casl/ability";
-import { faCheck, faCopy, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CheckIcon, CopyIcon, TriangleAlertIcon } from "lucide-react";
 
-import { IconButton } from "@app/components/v2";
+import { IconButton } from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { useTimedReset } from "@app/hooks";
@@ -39,12 +38,12 @@ const ErrorDisplay = ({
 
   return (
     <div className="flex h-full w-full flex-col gap-2">
-      <div className="flex items-center gap-2 text-mineshaft-100">
-        <FontAwesomeIcon icon={faExclamationTriangle} className="text-red" />
+      <div className="flex items-center gap-2 text-foreground">
+        <TriangleAlertIcon className="size-4 shrink-0 text-danger" />
         <p>
           Error displaying access tree. Please contact{" "}
           <a
-            className="inline cursor-pointer text-mineshaft-200 underline decoration-primary-500 underline-offset-4 duration-200 hover:text-mineshaft-100"
+            className="inline text-accent underline decoration-accent underline-offset-4 transition-colors hover:text-foreground"
             target="_blank"
             rel="noopener noreferrer"
             href="mailto:support@infisical.com"
@@ -55,17 +54,17 @@ const ErrorDisplay = ({
         </p>
       </div>
       <div className="relative flex flex-1 flex-col overflow-hidden">
-        <pre className="thin-scrollbar w-full flex-1 overflow-y-auto rounded-sm bg-mineshaft-700 p-2 text-xs whitespace-pre-wrap text-mineshaft-100">
+        <pre className="thin-scrollbar w-full flex-1 overflow-y-auto rounded-sm border border-border bg-container p-2 text-xs whitespace-pre-wrap text-foreground">
           {display}
         </pre>
         <IconButton
-          variant="plain"
-          colorSchema="secondary"
+          variant="ghost"
+          size="sm"
           className="absolute top-2 right-4"
-          ariaLabel="Copy secret value"
+          aria-label="Copy access tree error details"
           onClick={copyToClipboard}
         >
-          <FontAwesomeIcon icon={isCopied ? faCheck : faCopy} />
+          {isCopied ? <CheckIcon /> : <CopyIcon />}
         </IconButton>
       </div>
     </div>

@@ -23,13 +23,11 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  Badge,
   Button,
   Card,
   CardAction,
@@ -37,10 +35,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -50,9 +44,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  Field,
   IconButton,
-  Input,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -83,11 +75,12 @@ import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
-import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways";
 import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
+import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 
+import { RenameGatewayModal } from "../RenameGatewayModal";
 import { CreateGatewayPoolModal } from "./components/CreateGatewayPoolModal";
-import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
 import { GatewayHealthStatus } from "./components/GatewayHealthStatus";
 import { GatewayPoolsContent } from "./components/GatewayPoolsContent";
@@ -106,9 +99,8 @@ export const GatewayTab = withPermission(
     const [search, setSearch] = useState("");
     const [poolSearch, setPoolSearch] = useState("");
     const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
-    const [deleteConfirmation, setDeleteConfirmation] = useState("");
     const { data: gateways, isPending: isGatewaysLoading } = useQuery({
-      ...gatewaysQueryKeys.listWithTokens(),
+      ...gatewaysQueryKeys.listAll(),
       refetchInterval: 15_000
     });
     const { data: pools } = useListGatewayPools({ enabled: Boolean(showPoolsTab) });
@@ -129,12 +121,11 @@ export const GatewayTab = withPermission(
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deployGateway",
       "deleteGateway",
-      "editDetails",
+      "renameGateway",
       "createPool",
       "upgradePlan"
     ] as const);
 
-    const deleteGatewayById = useDeleteGatewayById();
     const deleteGatewayV2ById = useDeleteGatewayV2ById();
     const triggerGatewayV2Heartbeat = useTriggerGatewayV2Heartbeat();
 
@@ -151,13 +142,9 @@ export const GatewayTab = withPermission(
     };
 
     const handleDeleteGateway = async () => {
-      const data = popUp.deleteGateway.data as { id: string; isV1: boolean };
+      const data = popUp.deleteGateway.data as { id: string };
       try {
-        if (data.isV1) {
-          await deleteGatewayById.mutateAsync(data.id);
-        } else {
-          await deleteGatewayV2ById.mutateAsync(data.id);
-        }
+        await deleteGatewayV2ById.mutateAsync(data.id);
         handlePopUpToggle("deleteGateway", false);
         createNotification({ type: "success", text: "Successfully deleted gateway" });
       } catch {
@@ -282,21 +269,21 @@ export const GatewayTab = withPermission(
                   </EmptyHeader>
                 </Empty>
               ) : (
-                <Table className="min-w-[57rem] table-fixed">
+                <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-80 min-w-80">
+                      <TableHead>
                         <TableHeadLabel>Name</TableHeadLabel>
                       </TableHead>
                       {showPoolsTab && (
-                        <TableHead className="w-[28%]">
+                        <TableHead>
                           <TableHeadLabel>Pools</TableHeadLabel>
                         </TableHead>
                       )}
-                      <TableHead className="w-36">
+                      <TableHead>
                         <TableHeadLabel>Connected</TableHeadLabel>
                       </TableHead>
-                      <TableHead className="w-40">
+                      <TableHead>
                         <TableHeadLabel
                           trailing={
                             <Tooltip>
@@ -312,7 +299,7 @@ export const GatewayTab = withPermission(
                           Health Check
                         </TableHeadLabel>
                       </TableHead>
-                      <TableHead className="w-12" />
+                      <TableHead variant="action" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -329,22 +316,18 @@ export const GatewayTab = withPermission(
                         </TableRow>
                       ))}
                     {filteredGateway?.map((el) => {
-                      const canNavigate = !el.isV1;
                       return (
                         <TableRow
                           key={el.id}
-                          className={canNavigate ? "cursor-pointer" : undefined}
-                          onClick={
-                            canNavigate
-                              ? () =>
-                                  navigate({
-                                    to: "/organizations/$orgId/networking/gateways/$gatewayId",
-                                    params: { orgId, gatewayId: el.id }
-                                  })
-                              : undefined
+                          className="cursor-pointer"
+                          onClick={() =>
+                            navigate({
+                              to: "/organizations/$orgId/networking/gateways/$gatewayId",
+                              params: { orgId, gatewayId: el.id }
+                            })
                           }
                         >
-                          <TableCell className="min-w-80">
+                          <TableCell>
                             <div className="flex min-w-0 items-center gap-2">
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -352,20 +335,10 @@ export const GatewayTab = withPermission(
                                 </TooltipTrigger>
                                 <TooltipContent>{el.name}</TooltipContent>
                               </Tooltip>
-                              {el.isV1 && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge variant="neutral" className="shrink-0">
-                                      V1
-                                    </Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Legacy</TooltipContent>
-                                </Tooltip>
-                              )}
                             </div>
                           </TableCell>
                           {showPoolsTab && (
-                            <TableCell className="min-w-0">
+                            <TableCell>
                               {(gatewayPoolMap.get(el.id) ?? []).length > 0 ? (
                                 <OverflowBadgeList
                                   items={gatewayPoolMap.get(el.id) ?? []}
@@ -381,7 +354,7 @@ export const GatewayTab = withPermission(
                             </TableCell>
                           )}
                           <TableCell className="whitespace-nowrap">
-                            {!el.isV1 && el.connectedResourcesCount > 0 ? (
+                            {el.connectedResourcesCount > 0 ? (
                               <span>
                                 {el.connectedResourcesCount} resource
                                 {el.connectedResourcesCount !== 1 ? "s" : ""}
@@ -393,10 +366,13 @@ export const GatewayTab = withPermission(
                           <TableCell className="whitespace-nowrap">
                             <GatewayHealthStatus
                               heartbeat={"heartbeat" in el ? el.heartbeat : null}
+                              relayId={"relayId" in el ? el.relayId : null}
+                              directAddress={"directAddress" in el ? el.directAddress : null}
+                              directHeartbeat={"directHeartbeat" in el ? el.directHeartbeat : null}
                               heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
                             />
                           </TableCell>
-                          <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
+                          <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <IconButton aria-label="Gateway options" variant="ghost" size="sm">
@@ -410,28 +386,29 @@ export const GatewayTab = withPermission(
                                   <CopyIcon />
                                   Copy ID
                                 </DropdownMenuItem>
-                                {!el.isV1 && (!!el.heartbeat || !!el.heartbeatTTL) && (
+                                {(!!el.directAddress ||
+                                  !!el.relayId ||
+                                  !!el.heartbeat ||
+                                  el.heartbeatTTL !== null) && (
                                   <DropdownMenuItem onClick={() => handleTriggerHealthCheck(el.id)}>
                                     <HeartPulseIcon />
                                     Trigger Health Check
                                   </DropdownMenuItem>
                                 )}
-                                {el.isV1 && (
-                                  <OrgPermissionCan
-                                    I={OrgGatewayPermissionActions.EditGateways}
-                                    a={OrgPermissionSubjects.Gateway}
-                                  >
-                                    {(isAllowed: boolean) => (
-                                      <DropdownMenuItem
-                                        isDisabled={!isAllowed}
-                                        onClick={() => handlePopUpOpen("editDetails", el)}
-                                      >
-                                        <PencilIcon />
-                                        Edit Details
-                                      </DropdownMenuItem>
-                                    )}
-                                  </OrgPermissionCan>
-                                )}
+                                <OrgPermissionCan
+                                  I={OrgGatewayPermissionActions.EditGateways}
+                                  a={OrgPermissionSubjects.Gateway}
+                                >
+                                  {(isAllowed: boolean) => (
+                                    <DropdownMenuItem
+                                      isDisabled={!isAllowed}
+                                      onClick={() => handlePopUpOpen("renameGateway", el)}
+                                    >
+                                      <PencilIcon />
+                                      Rename Gateway
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
                                 <OrgPermissionCan
                                   I={OrgGatewayPermissionActions.DeleteGateways}
                                   a={OrgPermissionSubjects.Gateway}
@@ -456,26 +433,19 @@ export const GatewayTab = withPermission(
                   </TableBody>
                 </Table>
               )}
-              <Dialog
-                open={popUp.editDetails.isOpen}
-                onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
-              >
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Edit Gateway</DialogTitle>
-                  </DialogHeader>
-                  <EditGatewayDetailsModal
-                    gatewayDetails={popUp.editDetails.data}
-                    onClose={() => handlePopUpToggle("editDetails")}
-                  />
-                </DialogContent>
-              </Dialog>
+              {Boolean(popUp.renameGateway.data) && (
+                <RenameGatewayModal
+                  isOpen={popUp.renameGateway.isOpen}
+                  onToggle={(isOpen) => handlePopUpToggle("renameGateway", isOpen)}
+                  gateway={popUp.renameGateway.data as TGatewayV2}
+                />
+              )}
               <AlertDialog
                 open={popUp.deleteGateway.isOpen}
-                onOpenChange={(open) => {
-                  if (!open) setDeleteConfirmation("");
-                  handlePopUpToggle("deleteGateway", open);
-                }}
+                confirmationValue={
+                  (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
+                }
+                onOpenChange={(open) => handlePopUpToggle("deleteGateway", open)}
               >
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -484,42 +454,22 @@ export const GatewayTab = withPermission(
                       This permanently removes the gateway from your organization.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogConfirmationField>
-                    <Field>
-                      <AlertDialogConfirmationLabel
-                        htmlFor="delete-gateway-confirmation"
-                        confirmationValue={
-                          (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
-                        }
-                      />
-                      <Input
-                        id="delete-gateway-confirmation"
-                        value={deleteConfirmation}
-                        onChange={(event) => setDeleteConfirmation(event.target.value)}
-                        placeholder={
-                          (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
-                        }
-                        autoComplete="off"
-                        autoFocus
-                      />
-                    </Field>
-                  </AlertDialogConfirmationField>
+                  <AlertDialogConfirmationField
+                    inputProps={{
+                      placeholder:
+                        (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
+                    }}
+                  />
                   <Alert variant="danger" appearance="borderless">
                     <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
                   </Alert>
                   <AlertDialogFooter>
-                    <AlertDialogCancel
-                      isDisabled={deleteGatewayById.isPending || deleteGatewayV2ById.isPending}
-                    >
+                    <AlertDialogCancel isDisabled={deleteGatewayV2ById.isPending}>
                       Cancel
                     </AlertDialogCancel>
                     <AlertDialogAction
                       variant="danger"
-                      isPending={deleteGatewayById.isPending || deleteGatewayV2ById.isPending}
-                      isDisabled={
-                        deleteConfirmation !==
-                        ((popUp.deleteGateway.data as { name?: string })?.name || "gateway")
-                      }
+                      isPending={deleteGatewayV2ById.isPending}
                       onClick={(event) => {
                         event.preventDefault();
                         handleDeleteGateway();
@@ -549,6 +499,7 @@ export const GatewayTab = withPermission(
           onToggle={(isOpen) => handlePopUpToggle("createPool", isOpen)}
         />
         <UpgradePlanModal
+          paywallKey="organization.gateway"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="Your current plan does not include access to gateway pools. To unlock this feature, please upgrade to Infisical Enterprise plan."
@@ -557,5 +508,9 @@ export const GatewayTab = withPermission(
       </Card>
     );
   },
-  { action: OrgGatewayPermissionActions.ListGateways, subject: OrgPermissionSubjects.Gateway }
+  {
+    action: OrgGatewayPermissionActions.ListGateways,
+    subject: OrgPermissionSubjects.Gateway,
+    accessRestrictedMode: "dialog"
+  }
 );

@@ -167,14 +167,14 @@ export const AuditReportsCard = () => {
         )}
         {!isPending && totalCount > 0 && (
           <>
-            <Table containerClassName="overflow-x-hidden" className="table-fixed">
+            <Table containerClassName="overflow-x-hidden">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[30%]">Reports</TableHead>
                   <TableHead className="w-[28%]">Recipients</TableHead>
                   <TableHead className="w-[14%]">Status</TableHead>
                   <TableHead>Requested</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -237,7 +237,7 @@ export const AuditReportsCard = () => {
                     <TableCell>
                       <span>{formatRelative(new Date(report.createdAt), new Date())}</span>
                     </TableCell>
-                    <TableCell className="pr-5">
+                    <TableCell variant="action">
                       <ProjectPermissionCan
                         I={ProjectPermissionInsightsActions.DeleteReport}
                         a={ProjectPermissionSub.Insights}

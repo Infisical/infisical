@@ -1,0 +1,11 @@
+extends: capitalization
+message: "Use sentence case in frontmatter titles: '%s' should be '%s'."
+level: error
+link: https://github.com/Infisical/infisical/blob/main/docs/STYLE_GUIDE.md#use-sentence-case-for-titles-and-headings
+scope:
+  - text.frontmatter.title
+  - text.frontmatter.sidebarTitle
+match: $sentence
+threshold: 1.0
+indicators:
+  - ':'

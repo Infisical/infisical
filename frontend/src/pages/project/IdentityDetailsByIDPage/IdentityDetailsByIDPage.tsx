@@ -4,12 +4,20 @@ import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { ChevronLeftIcon, EllipsisIcon, InfoIcon, ShieldIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  CopyIcon,
+  EllipsisIcon,
+  InfoIcon,
+  ShieldIcon,
+  TrashIcon,
+  UserRoundXIcon,
+  VenetianMaskIcon
+} from "lucide-react";
 
-import { AssumePrivilegesModal } from "@app/components/assume-privileges";
+import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, EmptyState, PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -24,7 +32,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   OrgIcon,
+  PageHeader,
   PageLoader,
   SubOrgIcon,
   Tooltip,
@@ -38,22 +51,27 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useOrganization,
-  useProject
+  useProject,
+  useSubscription
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, supportsAssumePrivileges } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteProjectIdentityMembership,
   useGetProjectIdentityMembershipV2
 } from "@app/hooks/api";
+import { useRevokeAgentVaultMembers } from "@app/hooks/api/agentVault";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
 import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { AdditionalPrivilegesRemovedSection } from "@app/pages/project/components/AdditionalPrivilegesRemovedSection";
+import { FolderAccessSection } from "@app/pages/project/components/FolderAccessSection";
 import { ProjectIdentityAuthenticationSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityAuthSection";
 import { ProjectIdentityDetailsSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityDetailsSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
+import { IdentityActionConfirmationDialog } from "./components/IdentityActionConfirmationDialog";
 import { IdentityPermissionAuditSheet } from "./components/IdentityPermissionAuditSheet";
 import { IdentityProjectAdditionalPrivilegeSection } from "./components/IdentityProjectAdditionalPrivilegeSection";
 import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSection";
@@ -67,24 +85,32 @@ const Page = () => {
   });
   const { currentProject, projectId } = useProject();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { subscription } = useSubscription();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
     useGetProjectIdentityMembershipV2(projectId, identityId, currentProject?.type);
 
   const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
   const { mutateAsync: removePamIdentityMutateAsync } = useRemovePamProductIdentityMember();
+  const { mutateAsync: revokeAgentVaultMembers } = useRevokeAgentVaultMembers();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const isPam = currentProject?.type === ProjectType.PAM;
+  const isAgentVault = currentProject?.type === ProjectType.AgentVault;
   // Products where the underlying project is an internal detail the user never sees
-  const isStandaloneProduct = isCertManager || isPam;
+  const isSecretManager = currentProject?.type === ProjectType.SecretManager;
+  const hasFolderRbacPlan = Boolean(subscription?.secretsFolderRbac);
+  const isStandaloneProduct = isCertManager || isPam || isAgentVault;
+  const canAssumePrivileges = supportsAssumePrivileges(currentProject.type);
 
   let removeMenuItemLabel = "Remove From Project";
   if (isProjectIdentity) {
     removeMenuItemLabel = "Delete Machine Identity";
   } else if (isPam) {
     removeMenuItemLabel = "Remove From PAM";
+  } else if (isAgentVault) {
+    removeMenuItemLabel = "Remove From Agent Vault";
   }
 
   let accessControlLabel = "project";
@@ -92,6 +118,8 @@ const Page = () => {
     accessControlLabel = "certificate manager";
   } else if (isPam) {
     accessControlLabel = "PAM";
+  } else if (isAgentVault) {
+    accessControlLabel = "Agent Vault";
   }
   const pageDescription = `Configure and manage${
     isProjectIdentity ? " machine identity and " : " "
@@ -126,6 +154,10 @@ const Page = () => {
         identityId,
         projectId
       });
+    } else if (isAgentVault) {
+      // Same reason as PAM: the product route keeps the last-admin guard, emits the Agent Vault event
+      // and reaps the identity's bundle grants, none of which the generic route does.
+      await revokeAgentVaultMembers({ machineIdentityIds: [identityId] });
     } else {
       await removeIdentityMutateAsync({
         identityId,
@@ -133,7 +165,7 @@ const Page = () => {
       });
     }
     createNotification({
-      text: `Successfully removed machine identity from ${isPam ? "PAM" : "project"}`,
+      text: `Successfully removed machine identity from ${isStandaloneProduct ? accessControlLabel : "project"}`,
       type: "success"
     });
     handlePopUpClose("removeIdentity");
@@ -183,40 +215,38 @@ const Page = () => {
     currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
       {identityMembershipDetails ? (
         <>
-          <Link
-            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-            params={{
-              projectId,
-              orgId: currentOrg.id
-            }}
-            search={{
-              selectedTab: ProjectAccessControlTabs.Identities
-            }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-          >
-            <ChevronLeftIcon size={16} />
-            {isStandaloneProduct ? "Machine Identities" : "Project Machine Identities"}
-          </Link>
           <PageHeader
             scope={currentProject.type}
             description={pageDescription}
             title={identityMembershipDetails.identity.name}
+            backLink={
+              <Link
+                to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+                params={{
+                  projectId,
+                  orgId: currentOrg.id
+                }}
+                search={{
+                  selectedTab: ProjectAccessControlTabs.Identities
+                }}
+              >
+                <ChevronLeftIcon aria-hidden className="size-4" />
+                {isStandaloneProduct ? "Machine Identities" : "Project Machine Identities"}
+              </Link>
+            }
           >
             <div className="flex items-center gap-2">
               {isProjectIdentity ? (
                 <ProjectIdentityAlertAction
                   identityId={identityMembershipDetails.identity.id}
-                  identityName={identityMembershipDetails.identity.name}
                   projectId={currentProject.id}
-                  projectName={currentProject.name}
                 />
               ) : (
                 <ProjectIdentityAlertAction
                   identityId={identityMembershipDetails.identity.id}
-                  identityName={identityMembershipDetails.identity.name}
                   readOnly
                 />
               )}
@@ -243,34 +273,38 @@ const Page = () => {
                       });
                     }}
                   >
+                    <CopyIcon />
                     Copy Machine Identity ID
                   </DropdownMenuItem>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionIdentityActions.AssumePrivileges}
-                    a={subject(ProjectPermissionSub.Identity, {
-                      identityId: identityMembershipDetails?.identity.id
-                    })}
-                  >
-                    {(isAllowed) => (
-                      <Tooltip>
-                        <TooltipTrigger className="block w-full">
-                          <DropdownMenuItem
-                            isDisabled={!isAllowed}
-                            onClick={() => handlePopUpOpen("assumePrivileges")}
-                          >
-                            Assume Privileges
-                            {isAllowed && <InfoIcon className="text-muted" />}
-                          </DropdownMenuItem>
-                        </TooltipTrigger>
-                        {isAllowed && (
-                          <TooltipContent className="max-w-80" side="left">
-                            Assume the privileges of this machine identity, allowing you to
-                            replicate their access behavior.
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    )}
-                  </ProjectPermissionCan>
+                  {canAssumePrivileges && (
+                    <ProjectPermissionCan
+                      I={ProjectPermissionIdentityActions.AssumePrivileges}
+                      a={subject(ProjectPermissionSub.Identity, {
+                        identityId: identityMembershipDetails?.identity.id
+                      })}
+                    >
+                      {(isAllowed) => (
+                        <Tooltip>
+                          <TooltipTrigger className="block w-full">
+                            <DropdownMenuItem
+                              isDisabled={!isAllowed}
+                              onClick={() => handlePopUpOpen("assumePrivileges")}
+                            >
+                              <VenetianMaskIcon />
+                              Assume Privileges
+                              {isAllowed && <InfoIcon className="text-muted" />}
+                            </DropdownMenuItem>
+                          </TooltipTrigger>
+                          {isAllowed && (
+                            <TooltipContent className="max-w-80" side="left">
+                              Assume the privileges of this machine identity, allowing you to
+                              replicate their access behavior.
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      )}
+                    </ProjectPermissionCan>
+                  )}
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Delete}
                     a={subject(ProjectPermissionSub.Identity, {
@@ -287,6 +321,7 @@ const Page = () => {
                             : handlePopUpOpen("removeIdentity")
                         }
                       >
+                        {isProjectIdentity ? <TrashIcon /> : <UserRoundXIcon />}
                         {removeMenuItemLabel}
                       </DropdownMenuItem>
                     )}
@@ -295,7 +330,7 @@ const Page = () => {
               </DropdownMenu>
             </div>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <ProjectIdentityDetailsSection
               identity={identity || { ...identityMembershipDetails?.identity, projectId: "" }}
               isOrgIdentity={isOrgIdentity}
@@ -303,7 +338,7 @@ const Page = () => {
               membership={identityMembershipDetails!}
             />
 
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               {identity ? (
                 <ProjectIdentityAuthenticationSection
                   identity={identity}
@@ -357,42 +392,63 @@ const Page = () => {
                   </CardContent>
                 </Card>
               )}
-              <IdentityRoleDetailsSection
-                identityMembershipDetails={identityMembershipDetails}
-                isMembershipDetailsLoading={isMembershipDetailsLoading}
-              />
-              {!isStandaloneProduct && (
+              {!isAgentVault && (
+                <IdentityRoleDetailsSection
+                  identityMembershipDetails={identityMembershipDetails}
+                  isMembershipDetailsLoading={isMembershipDetailsLoading}
+                />
+              )}
+              {!isStandaloneProduct && currentProject.isLegacyAdditionalPrivilegesEnabled && (
                 <IdentityProjectAdditionalPrivilegeSection
                   identityMembershipDetails={identityMembershipDetails}
                 />
               )}
+              {isSecretManager &&
+                !hasFolderRbacPlan &&
+                !currentProject.isLegacyAdditionalPrivilegesEnabled && (
+                  <AdditionalPrivilegesRemovedSection />
+                )}
+              {isSecretManager && hasFolderRbacPlan && (
+                <FolderAccessSection
+                  actor={{
+                    type: "identity",
+                    id: identityMembershipDetails.identity.id,
+                    name: identityMembershipDetails.identity.name
+                  }}
+                />
+              )}
             </div>
           </div>
-          <DeleteActionModal
-            isOpen={popUp.removeIdentity.isOpen}
-            title={`Are you sure you want to remove ${identityMembershipDetails?.identity?.name} from ${isPam ? "PAM" : "the project"}?`}
-            subTitle={
-              isPam
-                ? "The identity will lose its PAM access but remain available in your organization."
-                : undefined
-            }
-            onChange={(isOpen) => handlePopUpToggle("removeIdentity", isOpen)}
-            deleteKey="remove"
-            buttonText={isPam ? "Remove" : undefined}
-            onDeleteApproved={() => onRemoveIdentitySubmit()}
+          <IdentityActionConfirmationDialog
+            open={popUp.removeIdentity.isOpen}
+            title={`Remove ${identityMembershipDetails.identity.name} from ${
+              isStandaloneProduct ? accessControlLabel : "the project"
+            }?`}
+            description={`The machine identity will lose access to ${
+              isStandaloneProduct ? accessControlLabel : "this project"
+            } but remain available in its organization.`}
+            descriptionAsAlert
+            confirmationText="remove"
+            actionLabel="Remove"
+            onOpenChange={(isOpen) => handlePopUpToggle("removeIdentity", isOpen)}
+            onConfirm={onRemoveIdentitySubmit}
           />
-          <AssumePrivilegesModal
+          <AssumePrivilegesDialog
             isOpen={popUp.assumePrivileges.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
             actorType={ActorType.IDENTITY}
             actorId={identityId}
           />
-          <DeleteActionModal
-            isOpen={popUp.deleteIdentity.isOpen}
-            title={`Are you sure you want to delete ${identity?.name}?`}
-            onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
-            deleteKey="confirm"
-            onDeleteApproved={handleDeleteIdentity}
+          <IdentityActionConfirmationDialog
+            open={popUp.deleteIdentity.isOpen}
+            title={`Delete ${identity?.name || "machine identity"}?`}
+            description="This permanently deletes the project machine identity and revokes its access. This cannot be undone."
+            descriptionAsAlert
+            descriptionAlertVariant="danger"
+            confirmationText="confirm"
+            actionLabel="Delete"
+            onOpenChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
+            onConfirm={handleDeleteIdentity}
           />
           {isPermissionAuditOpen && (
             <IdentityPermissionAuditSheet
@@ -404,7 +460,14 @@ const Page = () => {
           )}
         </>
       ) : (
-        <EmptyState title="Error: Unable to find the machine identity." className="py-12" />
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>Machine identity not found</EmptyTitle>
+            <EmptyDescription>
+              The machine identity may have been removed or you may not have access to it.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
     </div>
   );
@@ -412,11 +475,17 @@ const Page = () => {
 
 export const IdentityDetailsByIDPage = () => {
   const { t } = useTranslation();
+  const { currentProject } = useProject();
+  const isAgentVault = currentProject?.type === ProjectType.AgentVault;
 
   return (
     <>
       <Helmet>
-        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+        <title>
+          {t("common.head-title", {
+            title: isAgentVault ? "Machine Identity" : t("settings.members.title")
+          })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <ProjectPermissionCan

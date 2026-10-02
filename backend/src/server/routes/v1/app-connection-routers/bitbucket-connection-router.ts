@@ -43,7 +43,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         params: { connectionId },
@@ -81,7 +81,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         params: { connectionId },
@@ -119,7 +119,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         params: { connectionId },

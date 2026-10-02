@@ -256,7 +256,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getMachineIdentityById",
@@ -315,7 +315,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listMachineIdentities",
@@ -366,7 +366,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "searchMachineIdentities",
@@ -467,7 +467,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "getMachineIdentityMemberships",
       description: "List project memberships that machine identity with id is part of",
@@ -530,7 +530,16 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
       operationId: "getMachineIdentityDetails",
+      tags: [ApiDocsTags.Identities],
+      description:
+        "Get details for the calling machine identity, including the organization it belongs to. Called with the identity's own access token.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       response: {
         200: z.object({
           identityDetails: z.object({

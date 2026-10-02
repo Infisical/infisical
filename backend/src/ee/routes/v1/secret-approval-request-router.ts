@@ -2,7 +2,12 @@ import { z } from "zod";
 
 import { SecretApprovalRequestsReviewersSchema, SecretApprovalRequestsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import {
+  ApprovalStatus,
+  RequestState,
+  SecretApprovalRequestOrderBy
+} from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -35,7 +40,9 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         search: z.string().trim().optional(),
         status: z.nativeEnum(RequestState).optional(),
         limit: z.coerce.number().default(20),
-        offset: z.coerce.number().default(0)
+        offset: z.coerce.number().default(0),
+        orderBy: z.nativeEnum(SecretApprovalRequestOrderBy).optional().describe("Field to order change requests by"),
+        orderDirection: z.nativeEnum(OrderByDirection).optional().describe("Change request order direction")
       }),
       response: {
         200: z.object({
@@ -61,6 +68,12 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               allowedSelfApprovals: z.boolean()
             }),
             committerUser: approvalRequestUser.nullish(),
+            committerIdentity: z
+              .object({
+                identityId: z.string(),
+                name: z.string()
+              })
+              .nullish(),
             commits: z.object({ op: z.string(), secretId: z.string().nullable().optional() }).array(),
             environment: z.string(),
             reviewers: z.object({ userId: z.string(), status: z.string() }).array(),
@@ -74,7 +87,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { approvals, totalCount } = await server.services.secretApprovalRequest.getSecretApprovals({
         actor: req.permission.type,
@@ -108,7 +121,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const approvals = await server.services.secretApprovalRequest.requestCount({
         actor: req.permission.type,
@@ -359,6 +372,12 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               environment: z.string(),
               statusChangedByUser: approvalRequestUser.optional(),
               committerUser: approvalRequestUser.nullish(),
+              committerIdentity: z
+                .object({
+                  identityId: z.string(),
+                  name: z.string()
+                })
+                .nullish(),
               reviewers: approvalRequestUser
                 .extend({
                   status: z.string(),
@@ -418,7 +437,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalRequest.getSecretApprovalDetails({
         actor: req.permission.type,

@@ -1,377 +1,101 @@
 ---
 title: "Quickstart"
-description: "Manage secrets with Infisical CLI"
+description: "Get started with the Infisical CLI."
 ---
 
-The CLI is designed for a variety of secret management applications ranging from local development to CI/CD and production scenarios.
+import InstallCli from "/snippets/cli/install-cli.mdx";
+import LogIn from "/snippets/cli/local-development/log-in.mdx";
 
-<Tabs>
-  <Tab title="Local development">
-    In the following steps, we explore how to use the Infisical CLI to fetch back environment variables from Infisical
-    and inject them into your local development process.
-    
-    <Note>
-    If you prefer learning by watching, you can follow along our step-by-step video tutorial [here](https://www.youtube.com/watch?v=zYCeELjcgQ4).
-    </Note>
+Every Infisical product that has a CLI workflow starts the same way: install the CLI, log in, and check that the CLI can reach your Infisical instance. This page covers those steps, then links to the command reference.
 
-    <Steps>
-      <Step title="Log in with the CLI">
-        Start by running the `infisical login` command to authenticate with Infisical.
+## Prerequisites
 
-        ```bash
-        infisical login
-        ```
-        <Note>
-          If you are in a containerized environment such as WSL 2 or Codespaces, run `infisical login -i` to avoid browser based login
-        </Note>
-      </Step>
-      <Step title="Initialize Infisical for your project">
-        Next, navigate to your project and initialize Infisical.
+- An Infisical account on [Infisical Cloud](https://app.infisical.com) or on a [self-hosted instance](/self-hosting/overview)
 
-        ```bash
-        # navigate to your project
-        cd /path/to/project
+## Step 1: Install the CLI
 
-        # initialize infisical
-        infisical init
-        ```
+Install the CLI with the package manager for your operating system.
 
-        The `infisical init` command creates a `.infisical.json` file, containing [local project settings](./project-config), at the location where the command is executed.
+<InstallCli />
 
-        <Note>
-          The `.infisical.json` file does not contain any sensitive data, so you may commit it to your git repository.
-        </Note>
-      </Step>
-      <Step title="Inject environment variables">
-        Finally, pass environment variables from Infisical into your application.
-
-        <Tabs>
-          <Tab title="Feed secrets to your application">
-            ```bash
-            infisical run --env=dev --path=/apps/firefly -- [your application start command] # e.g. npm run dev
-
-            # example with node (nodemon)
-            infisical run --env=staging --path=/apps/spotify -- nodemon index.js
-
-            # example with flask
-            infisical run --env=prod --path=/apps/backend -- flask run
-
-            # example with spring boot - maven
-            infisical run --env=dev --path=/apps/ -- ./mvnw spring-boot:run --quiet
-            ```
-
-          </Tab>
-          <Tab title="Feed secrets via custom aliases (advanced)">
-            Custom aliases can utilize secrets from Infisical. Suppose there is a custom alias `yd` in `custom.sh` that runs `yarn dev` and needs the secrets provided by Infisical.
-            ```bash
-            #!/bin/sh
-
-            yd() {
-              yarn dev
-            }
-            ```
-
-            To make the secrets available from Infisical to `yd`, you can run the following command:
-
-            ```bash
-            infisical run --env=prod --path=/apps/reddit --command="source custom.sh && yd"
-            ```
-          </Tab>
-        </Tabs>
-
-        View all available options for `run` command [here](./commands/run)
-      </Step>
-    </Steps>
-
-  </Tab>
-
-  <Tab title="Docker containers">
-    Install the Infisical CLI into your Docker image and start your application with it to inject secrets at runtime.
-
-    <Steps>
-      <Step title="Install the Infisical CLI in your Dockerfile">
-        Install the CLI with the package manager of your base image. The example below targets Alpine; find the commands for other distributions [here](/cli/overview).
-
-        ```dockerfile
-        RUN apk add --no-cache bash wget && \
-            wget -qO- 'https://artifacts-cli.infisical.com/setup.apk.sh' | sh && \
-            apk update && apk add infisical
-        ```
-      </Step>
-      <Step title="Start your application with the CLI">
-        Set your container start command to run your application through `infisical run`. The CLI fetches your secrets from Infisical and injects them as environment variables.
-
-        ```dockerfile
-        CMD ["infisical", "run", "--projectId", "<your-project-id>", "--env", "prod", "--", "npm", "run", "start"]
-        ```
-      </Step>
-      <Step title="Authenticate the container">
-        Create a [machine identity](/documentation/platform/identities/machine-identities) and pass its access token to the container through the `INFISICAL_TOKEN` environment variable.
-
-        ```bash
-        docker run --env INFISICAL_TOKEN=$INFISICAL_TOKEN <your-image>
-        ```
-      </Step>
-    </Steps>
-
-    For Docker Compose and `--env-file` workflows, see the [Docker guide](/integrations/platforms/docker).
-
-  </Tab>
-
-  <Tab title="Staging, production & all other use cases">
-    In the following steps, we explore how to use the Infisical CLI in a non-local development scenario
-    to fetch back environment variables and export them to a file.
-    <Steps>
-      <Step title="Create a machine identity and obtain credentials for it">
-        Follow the steps listed [here](/documentation/platform/identities/universal-auth) to create a machine identity and obtain a **client ID** and **client secret** for it.
-      </Step>
-      <Step title="Obtain a machine identity access token">
-        Run the following command to authenticate with Infisical using the **client ID** and **client secret** credentials from step 1 and set the `INFISICAL_TOKEN` environment variable to the retrieved access token.
-        
-        ```bash
-        export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<identity-client-id> --client-secret=<identity-client-secret> --silent --plain) # --plain flag will output only the token, so it can be fed to an environment variable. --silent will disable any update messages.
-        ```
-
-        The CLI is configured to look out for the `INFISICAL_TOKEN` environment variable, so going forward any command used will be authenticated.
-
-        Alternatively, assuming you have an access token on hand, you can also pass it directly to the CLI using the `--token` flag in conjunction with other CLI commands.
-
-        <Info>
-        Keep in mind that the machine identity access token has a limited lifetime. It is recommended to use it only for the duration of the task at hand.
-        You can [refresh the token](./commands/token) if needed.
-        </Info>
-      </Step>
-      <Step title="Export environment variables back into a file">
-        Finally, export the environment variables from Infisical to a file of choice.
-
-        ```bash
-        # export variables to a .env file (with export keyword)
-        infisical export --format=dotenv-export > .env
-
-        # export variables to a YAML file
-        infisical export --format=yaml > secrets.yaml
-        ```
-      </Step>
-    </Steps>
-
-  </Tab>
-</Tabs>
-
-<Note>
-  Starting with CLI version v0.4.0, you can now choose to log in via Infisical Cloud (US/EU) or your own self-hosted instance by simply running `infisical login` and following the on-screen instructions — no need to manually set the `INFISICAL_API_URL` environment variable.
-
-For versions prior to v0.4.0, the CLI defaults to US Cloud. To connect to EU Cloud or a self-hosted instance, set the `INFISICAL_API_URL` environment variable to `https://eu.infisical.com` or your custom URL.
-
-</Note>
-
-<Warning>
-  ## Domain Configuration
-
-**Important:** If you're not using interactive login, you must configure the domain for **all CLI commands**.
-
-The CLI defaults to US Cloud (https://app.infisical.com). To connect to **EU Cloud (https://eu.infisical.com)** or a **self-hosted instance**, you must configure the domain in one of the following ways:
-
-- Use the `INFISICAL_DOMAIN` environment variable
-- Use the `--domain` flag on every command
-- Set the `domain` field in your project's [`.infisical.json`](/cli/project-config)
-
-When more than one is set, the CLI uses this order of precedence: `--domain` flag, then `INFISICAL_DOMAIN`, then the `domain` field in `.infisical.json`, then the default. The legacy `INFISICAL_API_URL` environment variable is still honored, but `INFISICAL_DOMAIN` takes precedence when both are set.
-
-<Tabs>
-  <Tab title='Use Environment Variable (Recommended)'>
-    The easiest way to ensure all CLI commands use the correct domain is to set
-    the `INFISICAL_DOMAIN` environment variable. This applies the domain
-    setting globally to all commands:
-
-    ```bash
-    # Linux/MacOS
-    export INFISICAL_DOMAIN="https://your-domain.infisical.com"
-
-    # Windows PowerShell
-    setx INFISICAL_DOMAIN "https://your-domain.infisical.com"
-    ```
-
-    Once set, all subsequent CLI commands will automatically use this domain:
-
-    ```bash
-    # Login with the domain
-    infisical login --method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --silent --plain
-
-    # All other commands will also use the same domain automatically
-    infisical secrets --projectId <id> --env dev
-    ```
-
-  </Tab>
-  <Tab title='Use --domain Flag'>
-    The `--domain` flag can be used to set the domain for a single command. This
-    applies the domain setting to the command only:
-
-    ```bash
-    # Login with domain
-    infisical login --domain="https://your-domain.infisical.com" --method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --silent --plain
-
-    # All subsequent commands must also include --domain
-    infisical secrets --domain="https://your-domain.infisical.com" --projectId=<id> --env=dev
-    ```
-
-    <Note>
-      If you use `--domain` during login but forget to include it on subsequent commands, you may encounter authentication errors.
-    </Note>
-
-  </Tab>
-  <Tab title='Use .infisical.json'>
-    If your project has a [`.infisical.json`](/cli/project-config) file, you can pin the
-    domain to the project by adding a `domain` field. Every CLI command run from the
-    project then uses it automatically, with no flag or environment variable needed:
-
-    ```json .infisical.json
-    {
-      "workspaceId": "<workspace-id>",
-      "defaultEnvironment": "dev",
-      "domain": "https://your-domain.infisical.com"
-    }
-    ```
-
-    <Note>
-      Since `.infisical.json` is usually committed to your repository, the CLI prints a warning naming the host whenever the domain is read from the file, since all requests and credentials are sent there. Only set `domain` to an instance you trust.
-    </Note>
-
-  </Tab>
-</Tabs>
-
-</Warning>
-
-<Tip>
-  ## Custom Request Headers
-
-The Infisical CLI supports custom HTTP headers for requests to servers protected by authentication services such as Cloudflare Access. Configure these headers using the `INFISICAL_CUSTOM_HEADERS` environment variable:
+Check that the installation worked:
 
 ```bash
-# Syntax: headername1=headervalue1 headername2=headervalue2
-export INFISICAL_CUSTOM_HEADERS="Access-Client-Id=your-client-id Access-Client-Secret=your-client-secret"
-
-# Execute Infisical commands after setting the environment variable
-infisical secrets
+infisical --version
 ```
 
-This functionality enables secure interaction with Infisical instances that require specific authentication headers.
+## Step 2: Log in
 
-</Tip>
+Log in with your own account when you run the CLI yourself, such as on your laptop during local development. Log in as a [machine identity](/documentation/platform/identities/machine-identities) when the CLI runs without you, such as in a CI/CD pipeline, a container, a scheduled job, or a script on a shared server.
 
-## History
+<Note>
+If your Infisical instance is behind a service that requires its own headers, such as Cloudflare Access, [ set those up first](/cli/faq#how-do-i-use-custom-headers-with-the-infisical-cli).
+</Note>
 
-Your terminal keeps a history with the commands you run. When you create Infisical secrets directly from your terminal, they'll stay there for a while.
+<Tabs>
+  <Tab title="Your own account">
+    <LogIn />
 
-For security and privacy concerns, we recommend you to configure your terminal to ignore those specific Infisical commands.
+    The CLI saves the instance you select with your login, so later commands use it without asking again.
+  </Tab>
+  <Tab title="Machine identity">
+    <Steps>
+      <Step>
+        Follow the [Universal Auth guide](/documentation/platform/identities/universal-auth) to create a machine identity and get a **Client ID** and **Client Secret** for it.
+      </Step>
+      <Step>
+        If you use EU Cloud, a dedicated instance, or a self-hosted instance, set `INFISICAL_DOMAIN` to the address of your instance. A machine identity login doesn't save the instance, so without `INFISICAL_DOMAIN` every command goes to US Cloud (`https://app.infisical.com`).
 
-<Accordion title="Ignore commands">
-  <Tabs>
-    <Tab title="Unix/Linux">
-        <Tip>
-          `$HOME/.profile` is pretty common but, you could place it under `$HOME/.profile.d/infisical.sh` or any profile file run at login 
-        </Tip>
+        <CodeGroup>
+          ```bash macOS/Linux
+          export INFISICAL_DOMAIN="https://your-domain.infisical.com"
+          ```
+
+          ```powershell Windows (PowerShell)
+          setx INFISICAL_DOMAIN "https://your-domain.infisical.com"
+          ```
+        </CodeGroup>
+
+        On Windows, `setx` saves the variable for new sessions only, so restart PowerShell before you run the next command.
+
+        To set the instance another way, such as with the `--domain` flag or in `.infisical.json`, see [Set the Infisical instance](/cli/project-config#set-the-infisical-instance).
+      </Step>
+      <Step>
+        Log in with the client ID and client secret, and store the access token in the `INFISICAL_TOKEN` environment variable:
 
         ```bash
-        cat <<EOF >> $HOME/.profile && source $HOME/.profile
-
-        # Ignoring specific Infisical CLI commands
-        DEFAULT_HISTIGNORE=$HISTIGNORE
-        export HISTIGNORE="*infisical secrets set*:$DEFAULT_HISTIGNORE"
-        EOF
+        export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<identity-client-id> --client-secret=<identity-client-secret> --silent --plain)
         ```
 
-    </Tab>
-    <Tab title="Windows">
-        If you're on WSL, then you can use the Unix/Linux method.
+        `--plain` prints only the token, and `--silent` hides update and tip messages, so the command's output is just the token. The CLI reads `INFISICAL_TOKEN` automatically, so every later command in the same shell is authenticated.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
 
-        <Tip>
-          Here's some [documentation](https://superuser.com/a/1658331) about how to clear the terminal history, in PowerShell and CMD
-        </Tip>
+## Step 3: Check that you're logged in
 
-    </Tab>
+```bash
+infisical login status
+```
 
-  </Tabs>
-</Accordion>
+The CLI asks your Infisical instance whether your login is valid. If it is, the output starts with the account or machine identity you're logged in as, followed by the instance the CLI connected to:
 
-## FAQ
+```text
+✓ Authenticated as <your-email-or-identity-name>
+  - Domain: https://app.infisical.com
+```
 
-<AccordionGroup>
-  <Accordion title="Can I connect the CLI to my self-hosted or non-US Cloud Infisical instance?">
-    Yes. The CLI is set to connect to Infisical US Cloud by default, but if you're using EU Cloud or a self-hosted instance you can configure the domain for **all CLI commands**.
+The lines after `Domain` include when your login expires and which organization it belongs to. If the output says `You are not authenticated`, log in again. If it says `Failed to authenticate`, check that the `Domain` line shows your instance, then log in again.
 
-    #### Method 1: Use the updated CLI (v0.4.0+)
+<Check>
+You successfully installed and logged into the Infisical CLI.
+</Check>
 
-    Beginning with CLI version V0.4.0, you can choose between logging in through Infisical US Cloud, EU Cloud, or your own self-hosted instance. Simply execute the `infisical login` command and follow the on-screen instructions.
+## Next steps
 
-     #### Method 2: Export environment variable
+Now that you've installed the CLI and logged in, you can start using its commands.
 
-    You can point the CLI to the self-hosted Infisical instance by exporting the environment variable `INFISICAL_DOMAIN` in your terminal. (The legacy `INFISICAL_API_URL` variable still works.)
-
-    <Tabs>
-    <Tab title="Linux/MacOs">
-      ```bash
-      # Set the domain
-      export INFISICAL_DOMAIN="https://your-self-hosted-infisical.com"
-
-      # For EU Cloud
-      export INFISICAL_DOMAIN="https://eu.infisical.com"
-
-      # Remove the setting
-      unset INFISICAL_DOMAIN
-      ```
-
-    </Tab>
-    <Tab title="Windows Powershell">
-      ```bash
-      # Set the domain
-      setx INFISICAL_DOMAIN "https://your-self-hosted-infisical.com"
-
-      # For EU Cloud
-      setx INFISICAL_DOMAIN "https://eu.infisical.com"
-
-      # Remove the setting
-      setx INFISICAL_DOMAIN ""
-
-      # NOTE: Once set, please restart powershell for the change to take effect
-      ```
-
-    </Tab>
-
-  </Tabs>
-
-    #### Method 3: Set manually on every command
-
-    If you prefer not to use an environment variable, you must include the `--domain` flag on **every CLI command** you run:
-
-    ```bash
-    # Login with domain
-    infisical login --domain="https://your-domain.infisical.com" --method=oidc-auth --jwt $JWT
-
-    # All subsequent commands must also include --domain
-    infisical secrets --domain="https://your-self-hosted-infisical.com" --projectId <id> --env dev
-    infisical export --domain="https://your-self-hosted-infisical.com" --format=dotenv-export
-    ```
-
-    <Tip>
-      **Best Practice:** Use `INFISICAL_DOMAIN` environment variable (Method 2) to avoid having to remember the `--domain` flag on every command. This is especially important in CI/CD pipelines and automation scripts.
-    </Tip>
-
-  </Accordion>
-  <Accordion title="Can I use the CLI with service tokens?">
-    To use Infisical for non local development scenarios, please create a service token. The service token will allow you to authenticate and interact with Infisical. Once you have created a service token with the required permissions, you’ll need to feed the token to the CLI.
-
-    ```bash
-      infisical export --token=<service-token>
-      infisical secrets --token=<service-token>
-      infisical run --token=<service-token> -- npm run dev
-    ```
-
-    #### Pass via shell environment variable
-    The CLI is configured to look for an environment variable named `INFISICAL_TOKEN`. If set, it’ll attempt to use it for authentication.
-
-    ```bash
-      export INFISICAL_TOKEN=<service-token>
-    ```
-
-  </Accordion>
-</AccordionGroup>
+<Card title="Command reference" icon="square-terminal" href="/cli/reference" horizontal>
+  See every CLI command, with its arguments, flags, and examples
+</Card>

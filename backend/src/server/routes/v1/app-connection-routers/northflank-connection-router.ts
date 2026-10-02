@@ -44,7 +44,7 @@ export const registerNorthflankConnectionRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const projects = await server.services.appConnection.northflank.listProjects(connectionId, req.permission);
@@ -75,7 +75,7 @@ export const registerNorthflankConnectionRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId, projectId } = req.params;
       const secretGroups = await server.services.appConnection.northflank.listSecretGroups(

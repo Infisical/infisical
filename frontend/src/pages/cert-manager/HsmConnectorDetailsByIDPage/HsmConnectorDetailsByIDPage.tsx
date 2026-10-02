@@ -5,7 +5,7 @@ import { ChevronLeftIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { AccessRestrictedBanner, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -71,25 +71,27 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {connector && (
         <ProjectPermissionCan
+          renderGuardBanner
           I={ProjectPermissionHsmConnectorActions.Read}
           a={ProjectPermissionSub.HsmConnectors}
         >
           {(isAllowed) =>
             isAllowed ? (
-              <div className="mx-auto mb-6 w-full max-w-8xl">
-                <Link
-                  to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
-                  params={{ orgId: currentOrg.id, projectId }}
-                  search={{ selectedTab: "hsm-connectors" }}
-                  className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                >
-                  <ChevronLeftIcon className="size-4" />
-                  HSM Connectors
-                </Link>
+              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
                 <PageHeader
+                  backLink={
+                    <Link
+                      to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+                      params={{ orgId: currentOrg.id, projectId }}
+                      search={{ selectedTab: "hsm-connectors" }}
+                    >
+                      <ChevronLeftIcon className="size-4" />
+                      HSM Connectors
+                    </Link>
+                  }
                   scope={ProjectType.CertificateManager}
                   description={connector.description || "Hardware security module connector"}
                   title={connector.name}
@@ -120,11 +122,7 @@ const Page = () => {
                   onDeleted={navigateBackToList}
                 />
               </div>
-            ) : (
-              <div className="container mx-auto flex h-full items-center justify-center">
-                <AccessRestrictedBanner />
-              </div>
-            )
+            ) : null
           }
         </ProjectPermissionCan>
       )}

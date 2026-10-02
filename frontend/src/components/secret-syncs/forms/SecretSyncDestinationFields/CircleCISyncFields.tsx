@@ -1,21 +1,16 @@
 import { useMemo } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
-import {
-  TCircleCIOrganization,
-  TCircleCIProject,
-  useCircleCIConnectionListOrganizations
-} from "@app/hooks/api/appConnections/circleci";
+import { useCircleCIConnectionListOrganizations } from "@app/hooks/api/appConnections/circleci";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -55,14 +50,23 @@ export const CircleCISyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Organization</FieldLabel>
+            <FieldLabel
+              id="secret-sync-circle-ci-org-name-label"
+              htmlFor="secret-sync-circle-ci-org-name"
+            >
+              Organization
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-circle-ci-org-name-label"
+                aria-describedby={error ? "secret-sync-circle-ci-org-name-error" : undefined}
+                id="secret-sync-circle-ci-org-name"
+                isError={Boolean(error)}
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={organizations.find((org) => org.name === value) ?? null}
-                onChange={(option) => {
-                  const selectedOrg = option as SingleValue<TCircleCIOrganization>;
+                onValueChange={(option) => {
+                  const selectedOrg = option;
                   onChange(selectedOrg?.name ?? "");
                   setValue("destinationConfig.projectId", "");
                   setValue("destinationConfig.projectName", "");
@@ -71,8 +75,9 @@ export const CircleCISyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.name}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-circle-ci-org-name-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -83,17 +88,26 @@ export const CircleCISyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Project</FieldLabel>
+            <FieldLabel
+              id="secret-sync-circle-ci-project-id-label"
+              htmlFor="secret-sync-circle-ci-project-id"
+            >
+              Project
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
-                noOptionsMessage={() =>
+              <Combobox
+                aria-labelledby="secret-sync-circle-ci-project-id-label"
+                aria-describedby={error ? "secret-sync-circle-ci-project-id-error" : undefined}
+                id="secret-sync-circle-ci-project-id"
+                isError={Boolean(error)}
+                emptyMessage={() =>
                   "No projects found. Please create a project in your selected organization."
                 }
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!selectedOrgName}
                 value={projects.find((project) => project.id === value) ?? null}
-                onChange={(option) => {
-                  const selectedProject = option as SingleValue<TCircleCIProject>;
+                onValueChange={(option) => {
+                  const selectedProject = option;
                   onChange(selectedProject?.id ?? "");
                   setValue("destinationConfig.projectName", selectedProject?.name ?? "");
                 }}
@@ -101,8 +115,10 @@ export const CircleCISyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-circle-ci-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

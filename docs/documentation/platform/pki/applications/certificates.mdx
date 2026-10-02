@@ -12,9 +12,9 @@ The certificate inventory shows all certificates issued within your Application.
 
 ![Application Certificates](/images/pki/applications/certificates.png)
 
-## Certificate Details
+## Certificate details
 
-Click any certificate to view its details:
+Select any certificate to view its details:
 
 | Section | What's Included |
 |---------|-----------------|
@@ -34,14 +34,14 @@ From the certificate details page, use the **Options** menu:
 |--------|-------------|
 | **Export** | Download as PEM (individual files) or PKCS12 (single encrypted bundle) |
 | **Enable Auto-Renewal** | Infisical renews automatically before expiration |
-| **Renew Now** | Manually trigger renewal |
+| **Renew Now** | [Renew the certificate](/documentation/platform/pki/applications/certificate-renewal), optionally changing its subject, names, validity, or key pair |
 | **Manage Syncs** | Push to cloud destinations (ACM, Key Vault, etc.) |
 | **Revoke** | Revoke with a reason code; certificate appears in CRL |
 | **Delete** | Remove from inventory |
 
-## Issuing Certificates
+## Issuing certificates
 
-Go to the **Certificate Requests** tab and click **Request Certificate**. Select a certificate profile and choose a request method:
+Go to the **Certificate Requests** tab and select **Request Certificate**. Select a certificate profile and choose a request method:
 
 | Method | Description |
 |--------|-------------|
@@ -54,20 +54,79 @@ For automated issuance, configure an [enrollment method](/documentation/platform
 - [EST](/documentation/platform/pki/applications/enrollment-methods/est) — RFC 7030 enrollment
 - [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) — Mobile device management (Jamf, Intune)
 
+## Importing certificates
+
+Select **Import** on the Certificates tab to bring in a certificate you already hold, either as PEM files or as a `.p12` / `.pfx` keystore with its password.
+
+A keystore can hold several certificates. Infisical lists what is inside so you can pick which ones to import.
+
+### Managing an imported certificate
+
+An imported certificate is tracked for visibility and expiry alerts. Renewal, reissue and revocation stay wherever it was issued.
+
+To hand the rest of its lifecycle to Infisical, pick a **Certificate Profile** during import. The profile determines which authority signs the replacement when the certificate is renewed.
+
+Renewal also needs [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api) turned on for that profile in this Application.
+
+<Note>
+  You can pick a profile when you import into an Application, from either PEM files or a keystore. Importing from the organization-wide Inventory tracks the certificate without one.
+</Note>
+
+### Which profile to attach
+
+Attaching a profile backed by the authority that issued the certificate keeps the whole lifecycle in Infisical.
+
+The certificate has to satisfy the profile's certificate policy, because that policy is what constrains the replacement issued at renewal. Infisical checks it during import and refuses a profile the certificate doesn't meet, naming the attributes that failed, so the problem surfaces then rather than at renewal. Import without a profile if you only need visibility and expiry alerts.
+
+You can also attach one backed by a different authority, including a self-signed profile. The certificate you already hold stays in service, and its replacement is issued by the authority you're moving to. Renewal works in both cases, because a renewal is a new certificate signed by the profile's authority.
+
+Revocation behaves differently. It only takes effect through the issuing authority, because that authority publishes the revocation list clients check. Infisical therefore refuses to revoke an imported certificate whose profile is backed by a different authority. Revoke those certificates with their original issuer instead.
+
+### What each external CA needs
+
+A profile backed by an external certificate authority needs the identifier the certificate already has at that provider, so Infisical can act on it there.
+
+<Tabs>
+  <Tab title="DigiCert">
+  The CertCentral **order ID**. Infisical lists the orders under the authority's DigiCert organization and product, so you can search for the right one instead of typing a number.
+
+  Renewal places a renewal order against it, and revocation revokes it in CertCentral. Infisical checks the order before saving it and rejects one that was issued for a different certificate.
+  </Tab>
+</Tabs>
+
+## Certificate orders
+
+A certificate id belongs to one certificate. When you renew, you don't get that certificate back with a later expiry, you get a second certificate with its own id. The old one is marked **Renewed**, the new one becomes **Active**, and both stay in the inventory.
+
+The order id is the part that stays put. It's stamped on the first certificate you issue, and every renewal of that certificate inherits it:
+
+| `app.example.com` | Certificate id | Status |
+|-------------------|----------------|--------|
+| Issued in January | `a1b2c3d4` | Renewed |
+| Renewed in April | `e5f6a7b8` | Renewed |
+| Renewed in July | `c9d0e1f2` | Active |
+
+Three certificates, one order. The order always points at the newest active one, `c9d0e1f2` here.
+
+You'll find the order id on the certificate details page. It matters most over the API, where it lets you ask for whatever is current instead of chasing a new id after every renewal.
+
 ## Renewal
 
 | Type | How It Works |
 |------|--------------|
 | **Client-driven** | The client (Certbot, cert-manager, Infisical Agent) monitors expiration and requests renewal |
 | **Server-driven** | Infisical automatically renews before expiration and pushes to [syncs](/documentation/platform/pki/applications/certificate-syncs/overview) |
+| **Manual** | You renew on demand from the certificate, and can change its properties as part of the renewal |
 
 Server-driven renewal requires [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api) with Infisical-managed keys. Enable it on the [enrollment method](/documentation/platform/pki/applications/enrollment-methods/api) or toggle it per-certificate.
 
-## Export Formats
+Both automatic types reissue the certificate exactly as it is. To change the subject, the names it covers, its validity, or how its key pair is handled, [renew it manually](/documentation/platform/pki/applications/certificate-renewal).
+
+## Export formats
 
 | Format | Use Case |
 |--------|----------|
-| **PEM** | Nginx, Apache, Docker, load balancers — separate files for cert, chain, and key |
+| **PEM** | NGINX, Apache, Docker, load balancers — separate files for cert, chain, and key |
 | **PKCS12** | Java apps, Windows IIS, mobile apps — single encrypted file with password |
 
 ## Revocation
@@ -80,19 +139,22 @@ Revoked certificates are added to the issuing CA's [CRL](/documentation/platform
 openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
 ```
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificate-renewal">
+    Renew a certificate and change its properties at the same time.
+  </Card>
+  <Card title="Certificate Syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     Push certificates to AWS ACM, Azure Key Vault, and other destinations.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified before certificates expire.
   </Card>
-  <Card title="Approvals" icon="check-double" href="/documentation/platform/pki/applications/approvals">
+  <Card title="Approvals" icon="check-check" href="/documentation/platform/pki/applications/approvals">
     Require human review before issuance.
   </Card>
-  <Card title="Enrollment Methods" icon="plug" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+  <Card title="Enrollment Methods" icon="log-in" href="/documentation/platform/pki/applications/enrollment-methods/overview">
     Configure how certificates are requested.
   </Card>
 </CardGroup>

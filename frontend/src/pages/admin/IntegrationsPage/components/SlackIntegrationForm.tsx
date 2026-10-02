@@ -110,7 +110,7 @@ export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
               <div className="text-[15px] font-medium">Slack</div>
             </div>
           </AccordionTrigger>
-          <AccordionContent>
+          <AccordionContent className="p-6">
             <div className="flex w-full flex-col gap-4">
               <div className="max-w-lg text-sm text-label">
                 Step 1: Create your Infisical Slack App

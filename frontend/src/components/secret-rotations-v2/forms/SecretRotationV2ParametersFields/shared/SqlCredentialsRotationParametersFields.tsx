@@ -17,7 +17,7 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
 import {
-  SecretRotationRuleProvider,
+  SECRET_ROTATION_TO_RULE_PROVIDER,
   SecretValidationRuleType
 } from "@app/hooks/api/secretValidationRules";
 
@@ -35,6 +35,7 @@ export const SqlCredentialsRotationParametersFields = () => {
     TSecretRotationV2Form & {
       type:
         | SecretRotation.PostgresCredentials
+        | SecretRotation.MySqlCredentials
         | SecretRotation.MsSqlCredentials
         | SecretRotation.OracleDBCredentials;
     }
@@ -130,10 +131,10 @@ export const SqlCredentialsRotationParametersFields = () => {
             </Field>
           )}
         />
-        {type === SecretRotation.PostgresCredentials && (
+        {SECRET_ROTATION_TO_RULE_PROVIDER[type] && (
           <ValidationRuleOverrideNotice
             type={SecretValidationRuleType.SecretRotations}
-            provider={SecretRotationRuleProvider.PostgresCredentials}
+            provider={SECRET_ROTATION_TO_RULE_PROVIDER[type]}
             environmentSlug={environmentSlug}
             secretPath={secretPath}
           />

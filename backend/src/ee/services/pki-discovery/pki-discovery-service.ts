@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -49,6 +50,7 @@ type TPkiDiscoveryServiceFactoryDep = {
     "findLatestByDiscoveryId" | "findByDiscoveryId" | "countByDiscoveryId"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
@@ -75,6 +77,7 @@ export const pkiDiscoveryServiceFactory = ({
   pkiDiscoveryConfigDAL,
   pkiDiscoveryScanHistoryDAL,
   permissionService,
+  licenseService,
   gatewayV2DAL,
   gatewayPoolDAL,
   gatewayPoolService,
@@ -112,6 +115,15 @@ export const pkiDiscoveryServiceFactory = ({
       ProjectPermissionPkiDiscoveryActions.Create,
       ProjectPermissionSub.PkiDiscovery
     );
+
+    // Creation only; existing discoveries keep scanning and stay editable.
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.pkiDiscovery) {
+      throw new BadRequestError({
+        message:
+          "Failed to create certificate discovery due to plan restriction. Upgrade plan to use certificate discovery."
+      });
+    }
 
     const appCfg = getConfig();
     if (appCfg.isCloud) {

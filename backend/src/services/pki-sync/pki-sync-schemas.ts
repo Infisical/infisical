@@ -1,15 +1,37 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { buildCertificateNameSchemaTestName } from "./pki-sync-certificate-name-fns";
-import { PkiSync } from "./pki-sync-enums";
-import { POST_SYNC_COMMAND_MAX_LENGTH } from "./pki-sync-post-sync-command-fns";
+import { PKI_SYNC_FILTERS } from "@app/lib/api-docs/constants";
+import { HOSTNAME_MAX_LENGTH, isValidHostname } from "@app/lib/validator/validate-hostname";
 
-export const PostSyncCommandSchema = z
+import { buildCertificateNameSchemaTestName } from "./pki-sync-certificate-name-fns";
+import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
+import { PKI_SYNC_MAX_FILTER_ORDERS } from "./pki-sync-filter-fns";
+import { HOST_COMMAND_MAX_LENGTH } from "./pki-sync-host-command-fns";
+
+export const HostCommandSchema = z
   .string()
   .trim()
-  .max(POST_SYNC_COMMAND_MAX_LENGTH, `Command must be at most ${POST_SYNC_COMMAND_MAX_LENGTH} characters`)
+  .max(HOST_COMMAND_MAX_LENGTH, `Command must be at most ${HOST_COMMAND_MAX_LENGTH} characters`)
   .nullable()
+  .optional();
+
+export const PkiSyncTargetPortSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(65535)
+  .optional()
+  .describe("The port to reach the target host on. Defaults to the protocol's standard port.");
+
+export const PkiSyncTargetHostSchema = z
+  .string()
+  .trim()
+  .min(1, "Target host is required")
+  .max(HOSTNAME_MAX_LENGTH, "Target host is too long")
+  .refine(isValidHostname, {
+    message: "Target host must be a hostname or IP address (for example server01.corp.example.com or 10.0.0.5)"
+  })
   .optional();
 
 // Sync options shared by every destination. Destinations extend this with their own
@@ -18,7 +40,8 @@ export const BasePkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
   preserveItemOnRenewal: z.boolean().default(true),
-  postSyncCommand: PostSyncCommandSchema
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema
 });
 
 // Builds a destination's certificateNameSchema validator. The compiled name must match the
@@ -84,6 +107,45 @@ export const PkiSyncDestinationConfigSchema = z.object({
   config: z.record(z.unknown())
 });
 
+const PkiSyncFiltersSchema = z
+  .object({
+    profileIds: z.string().uuid().array().max(20).optional().describe(PKI_SYNC_FILTERS.profileIds),
+    certificateOrderIds: z
+      .string()
+      .uuid()
+      .array()
+      .max(PKI_SYNC_MAX_FILTER_ORDERS)
+      .optional()
+      .describe(PKI_SYNC_FILTERS.certificateOrderIds),
+    metadata: z
+      .object({
+        key: z
+          .string()
+          .trim()
+          .min(1, "Metadata filter key cannot be empty")
+          .max(255)
+          .describe(PKI_SYNC_FILTERS.metadataKey),
+        value: z.string().trim().max(1020).optional().describe(PKI_SYNC_FILTERS.metadataValue)
+      })
+      .array()
+      .max(20)
+      .optional()
+      .describe(PKI_SYNC_FILTERS.metadata)
+  })
+  .strict();
+
+export const PkiSyncFiltersField = PkiSyncFiltersSchema.nullish().describe(PKI_SYNC_FILTERS.filters);
+
+export const UpdatePkiSyncFiltersField = PkiSyncFiltersSchema.nullish().describe(PKI_SYNC_FILTERS.updateFilters);
+
+const StoredPkiSyncFiltersSchema = z.object({
+  profileIds: z.string().uuid().array().optional(),
+  certificateOrderIds: z.string().uuid().array().optional(),
+  metadata: z.object({ key: z.string(), value: z.string().optional() }).array().optional()
+});
+
+export const PkiSyncStoredFiltersField = StoredPkiSyncFiltersSchema.nullish().describe(PKI_SYNC_FILTERS.filters);
+
 // Base PKI sync schema for API responses
 export const PkiSyncSchema = z.object({
   id: z.string().uuid(),
@@ -99,5 +161,17 @@ export const PkiSyncSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   syncStatus: z.string().nullable().optional(),
-  lastSyncedAt: z.date().nullable().optional()
+  lastSyncedAt: z.date().nullable().optional(),
+  lastHealthCheckRanAt: z.date().nullable().optional(),
+  lastHealthCheckStatus: z.nativeEnum(PkiSyncStatus).nullable().optional(),
+  lastHealthCheckMessage: z.string().nullable().optional(),
+  filters: PkiSyncStoredFiltersField
+});
+
+export const BaseHealthCheckTestSchema = z.object({
+  connectionId: z.string().uuid(),
+  applicationId: z.string().uuid().optional(),
+  syncId: z.string().uuid().optional(),
+  certificateIds: z.array(z.string().uuid()).max(100).optional(),
+  filters: PkiSyncFiltersField
 });

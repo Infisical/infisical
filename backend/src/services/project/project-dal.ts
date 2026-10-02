@@ -25,6 +25,13 @@ import {
 } from "@app/lib/knex";
 
 import { ActorType } from "../auth/auth-type";
+import {
+  hardDeleteApprovalSecretLinksInBatches,
+  hardDeleteSecretReferencesInBatches,
+  hardDeleteSecretsInBatches,
+  hardDeleteSecretVersionsInBatches,
+  projectFolderIdsSubquery
+} from "../secret-v2-bridge/secret-tree-hard-delete-fns";
 import { Filter, ProjectFilterType, SearchProjectSortBy } from "./project-types";
 
 export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
@@ -138,44 +145,69 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Chunked delete of a project's secret_versions_v2 rows ahead of the final cascade. This table
-  // is the largest project-scoped table and has NO FK on folderId/secretId nor any other FK back to
-  // the project tree, so the project-delete cascade otherwise orphans ALL of its version rows.
-  // Deleting by folderId is FK-safe (no inbound RESTRICT FK; snapshot_secrets_v2.secretVersionId
-  // is ON DELETE CASCADE). Each batch is its own transaction so a crash just leaves fewer rows for
-  // the next run (idempotent/resumable). statement_timeout is SET LOCAL so it can't leak to pooled
-  // connections.
-  const hardDeleteProjectSecretVersionsInBatches = async (
+  const pruneOpts = (
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) => ({
+    batchSize,
+    statementTimeoutMs,
+    interBatchSleepMs,
+    onBatchCommitted
+  });
+
+  const hardDeleteProjectSecretVersionsInBatches = (
     projectId: string,
     batchSize: number,
     statementTimeoutMs: number,
-    interBatchSleepMs: number
-  ) => {
-    let totalDeleted = 0;
-    for (;;) {
-      // eslint-disable-next-line no-await-in-loop
-      const deletedCount = await db.transaction(async (tx): Promise<number> => {
-        await tx.raw(`SET LOCAL statement_timeout = ${statementTimeoutMs}`);
-        const folderIdsSubquery = tx(TableName.SecretFolder)
-          .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-          .where(`${TableName.Environment}.projectId`, projectId)
-          .select(`${TableName.SecretFolder}.id`);
-        const idsToDelete = tx(TableName.SecretVersionV2)
-          .whereIn("folderId", folderIdsSubquery)
-          .select("id")
-          .limit(batchSize);
-        const deleted = await tx(TableName.SecretVersionV2).whereIn("id", idsToDelete).delete();
-        return deleted;
-      });
-      totalDeleted += deletedCount;
-      if (deletedCount < batchSize) break;
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => {
-        setTimeout(resolve, interBatchSleepMs + Math.floor(Math.random() * interBatchSleepMs));
-      });
-    }
-    return totalDeleted;
-  };
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretVersionsInBatches(
+      db,
+      projectFolderIdsSubquery(projectId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteProjectSecretReferencesInBatches = (
+    projectId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretReferencesInBatches(
+      db,
+      projectFolderIdsSubquery(projectId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteProjectApprovalSecretLinksInBatches = (
+    projectId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteApprovalSecretLinksInBatches(
+      db,
+      projectFolderIdsSubquery(projectId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteProjectSecretsInBatches = (
+    projectId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretsInBatches(
+      db,
+      projectFolderIdsSubquery(projectId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
 
   // Hands a project's envs to the paced env hard-delete worker: marks them deleteAfter = now,
   // collapsing any restore grace. Returns rows marked.
@@ -276,7 +308,7 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findUserProjects = async (userId: string, orgId: string, projectType?: ProjectType) => {
+  const findUserProjects = async (userId: string, orgId: string | string[], projectType?: ProjectType) => {
     try {
       const userGroupSubquery = db
         .replicaNode()(TableName.Groups)
@@ -288,7 +320,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.orgId`, orgId)
+        .whereIn(`${TableName.Project}.orgId`, Array.isArray(orgId) ? orgId : [orgId])
         .whereNull(`${TableName.Project}.deleteAfter`)
         .andWhere((qb) => {
           void qb
@@ -480,15 +512,14 @@ export const projectDALFactory = (db: TDbClient) => {
         };
       }
 
-      const rows = await (tx || db.replicaNode())(TableName.Membership)
+      const conn = tx || db.replicaNode();
+      const rows = await conn(TableName.Membership)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .leftJoin(TableName.UserGroupMembership, function joinUserGroupMembership() {
-          this.on(`${TableName.Membership}.actorGroupId`, `${TableName.UserGroupMembership}.groupId`).andOn(
-            `${TableName.UserGroupMembership}.isPending`,
-            "=",
-            (tx || db).raw("?", [false])
-          );
-        })
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.Membership}.actorGroupId`,
+          `${TableName.UserGroupMembership}.groupId`
+        )
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
@@ -861,9 +892,17 @@ export const projectDALFactory = (db: TDbClient) => {
       )
       .limit(limit)
       .offset(offset);
-    if (sortBy === SearchProjectSortBy.NAME) {
-      void query.orderBy([{ column: `${TableName.Project}.name`, order: sortDir }]);
+    const sortColumn = {
+      [SearchProjectSortBy.NAME]: `${TableName.Project}.name`,
+      [SearchProjectSortBy.DESCRIPTION]: `${TableName.Project}.description`,
+      [SearchProjectSortBy.CREATED_AT]: `${TableName.Project}.createdAt`
+    }[sortBy];
+
+    void query.orderBy(sortColumn, sortDir, "last");
+    if (sortBy !== SearchProjectSortBy.NAME) {
+      void query.orderBy(`${TableName.Project}.name`, SortDirection.ASC);
     }
+    void query.orderBy(`${TableName.Project}.id`, SortDirection.ASC);
 
     if (dto.type) {
       void query.where(`${TableName.Project}.type`, dto.type);
@@ -986,7 +1025,7 @@ export const projectDALFactory = (db: TDbClient) => {
       const doc = await (tx || db.replicaNode())(TableName.Project)
         .whereNotIn("type", [ProjectType.CertificateManager])
         .whereNull("deleteAfter")
-        .whereNotIn("type", [ProjectType.CertificateManager, ProjectType.PAM])
+        .whereNotIn("type", [ProjectType.CertificateManager, ProjectType.PAM, ProjectType.AgentVault])
         // Project rows of the removed SSH / Agent Sentinel products are left in
         // place (see migration 20260729150000) but must not consume workspace quota.
         .whereNotIn("type", ["ssh", "ai"])
@@ -1012,6 +1051,9 @@ export const projectDALFactory = (db: TDbClient) => {
     softDeleteById,
     findExpiredForHardDelete,
     hardDeleteProjectSecretVersionsInBatches,
+    hardDeleteProjectSecretReferencesInBatches,
+    hardDeleteProjectApprovalSecretLinksInBatches,
+    hardDeleteProjectSecretsInBatches,
     softDeleteProjectEnvironments,
     countProjectEnvironments,
     findUserProjects,

@@ -1,5 +1,4 @@
 /* eslint-disable react-refresh/only-export-components */
-export * from "./AccessRestrictedBanner";
 export * from "./Accordion";
 export * from "./Alert";
 export * from "./Breadcrumb";
@@ -14,7 +13,6 @@ export * from "./Divider";
 export * from "./Drawer";
 export * from "./Dropdown";
 export * from "./Editor";
-export * from "./EmailServiceSetupModal";
 export * from "./EmptyState";
 export * from "./FilterableSelect";
 export * from "./FontAwesomeSymbol";

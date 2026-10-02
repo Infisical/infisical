@@ -1,17 +1,11 @@
 import { useEffect, useState } from "react";
-import { Outlet, useRouterState } from "@tanstack/react-router";
+import { Outlet } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { useProjectPermission, useSubscription } from "@app/context";
-
-import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
-import { CertManagerInstanceBanner } from "./components/CertManagerInstanceBanner";
+import { useSubscription } from "@app/context";
 
 export const PkiManagerLayout = () => {
-  const { assumedPrivilegeDetails } = useProjectPermission();
   const { subscription } = useSubscription();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isDashboard = /\/cert-manager\/[^/]+\/overview\/?$/.test(pathname);
 
   const isCertManagerGated = subscription?.certManager === false;
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(isCertManagerGated);
@@ -22,12 +16,11 @@ export const PkiManagerLayout = () => {
 
   return (
     <div className="flex h-full w-full flex-col overflow-x-hidden">
-      {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
-      {isDashboard && <CertManagerInstanceBanner />}
-      <div className="flex-1 overflow-x-hidden overflow-y-auto px-12 pt-10 pb-4">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto p-6 md:p-10">
         <Outlet />
       </div>
       <UpgradePlanModal
+        paywallKey="cert-manager.product-access"
         isOpen={isUpgradeModalOpen}
         onOpenChange={setIsUpgradeModalOpen}
         text="Certificate Manager is not available on your current plan. Upgrade to continue using it."

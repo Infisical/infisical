@@ -7,17 +7,52 @@ import {
   TEMPLATE_SUCCESS_MESSAGES,
   TEMPLATE_VALIDATION_MESSAGES
 } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
+import {
+  kubernetesTemplateFieldsCreateSchema,
+  kubernetesTemplateFieldsResponseSchema,
+  ldapTemplateFieldsResponseSchema,
+  ldapTemplateFieldsSchema,
+  oidcTemplateFieldsResponseSchema,
+  oidcTemplateFieldsSchema,
+  templateFieldsPatchSchema
+} from "@app/ee/services/identity-auth-template/identity-auth-template-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const ldapTemplateFieldsSchema = z.object({
-  url: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.URL_REQUIRED),
-  bindDN: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.BIND_DN_REQUIRED),
-  bindPass: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.BIND_PASSWORD_REQUIRED),
-  searchBase: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.SEARCH_BASE_REQUIRED),
-  ldapCaCertificate: z.string().trim().optional()
+const templateNameSchema = z
+  .string()
+  .trim()
+  .min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_REQUIRED)
+  .max(64, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_MAX_LENGTH);
+
+// one response shape per auth method, discriminated the same way the create body is.
+// Credential fields are stripped server-side by $sanitizeTemplate; declaring the
+// exact shape here documents each method's fields and makes the response serializer a
+// second barrier that drops anything undeclared
+// the gateway reference is stored in columns so it can carry a foreign key, but it stays
+// inside templateFields in the API, so the column names are not part of the contract.
+// gatewayId is the retired v1 column, kept on the table but never read or written any more
+const templateRowSchema = IdentityAuthTemplatesSchema.omit({
+  gatewayId: true,
+  gatewayV2Id: true,
+  gatewayPoolId: true
 });
+
+const sanitizedTemplateSchema = z.discriminatedUnion("authMethod", [
+  templateRowSchema.extend({
+    authMethod: z.literal(IdentityAuthTemplateMethod.LDAP),
+    templateFields: ldapTemplateFieldsResponseSchema
+  }),
+  templateRowSchema.extend({
+    authMethod: z.literal(IdentityAuthTemplateMethod.KUBERNETES),
+    templateFields: kubernetesTemplateFieldsResponseSchema
+  }),
+  templateRowSchema.extend({
+    authMethod: z.literal(IdentityAuthTemplateMethod.OIDC),
+    templateFields: oidcTemplateFieldsResponseSchema
+  })
+]);
 
 export const registerIdentityTemplateRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -35,19 +70,25 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
           bearerAuth: []
         }
       ],
-      body: z.object({
-        name: z
-          .string()
-          .trim()
-          .min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_REQUIRED)
-          .max(64, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_MAX_LENGTH),
-        authMethod: z.nativeEnum(IdentityAuthTemplateMethod),
-        templateFields: ldapTemplateFieldsSchema
-      }),
-      response: {
-        200: IdentityAuthTemplatesSchema.extend({
-          templateFields: z.record(z.string(), z.unknown())
+      body: z.discriminatedUnion("authMethod", [
+        z.object({
+          name: templateNameSchema,
+          authMethod: z.literal(IdentityAuthTemplateMethod.LDAP),
+          templateFields: ldapTemplateFieldsSchema
+        }),
+        z.object({
+          name: templateNameSchema,
+          authMethod: z.literal(IdentityAuthTemplateMethod.KUBERNETES),
+          templateFields: kubernetesTemplateFieldsCreateSchema
+        }),
+        z.object({
+          name: templateNameSchema,
+          authMethod: z.literal(IdentityAuthTemplateMethod.OIDC),
+          templateFields: oidcTemplateFieldsSchema
         })
+      ]),
+      response: {
+        200: sanitizedTemplateSchema
       }
     },
     handler: async (req) => {
@@ -96,18 +137,11 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         templateId: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_ID_REQUIRED)
       }),
       body: z.object({
-        name: z
-          .string()
-          .trim()
-          .min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_REQUIRED)
-          .max(64, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_MAX_LENGTH)
-          .optional(),
-        templateFields: ldapTemplateFieldsSchema.partial().optional()
+        name: templateNameSchema.optional(),
+        templateFields: templateFieldsPatchSchema.optional()
       }),
       response: {
-        200: IdentityAuthTemplatesSchema.extend({
-          templateFields: z.record(z.string(), z.unknown())
-        })
+        200: sanitizedTemplateSchema
       }
     },
     handler: async (req) => {
@@ -192,7 +226,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       description: "Get identity auth template by ID",
@@ -205,9 +239,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         templateId: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_ID_REQUIRED)
       }),
       response: {
-        200: IdentityAuthTemplatesSchema.extend({
-          templateFields: ldapTemplateFieldsSchema
-        })
+        200: sanitizedTemplateSchema
       }
     },
     handler: async (req) => {
@@ -229,7 +261,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       description: "List identity auth templates",
@@ -245,9 +277,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
       }),
       response: {
         200: z.object({
-          templates: IdentityAuthTemplatesSchema.extend({
-            templateFields: ldapTemplateFieldsSchema
-          }).array(),
+          templates: sanitizedTemplateSchema.array(),
           totalCount: z.number()
         })
       }
@@ -273,7 +303,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       description: "Get identity auth templates by authentication method",
@@ -286,9 +316,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         authMethod: z.nativeEnum(IdentityAuthTemplateMethod)
       }),
       response: {
-        200: IdentityAuthTemplatesSchema.extend({
-          templateFields: ldapTemplateFieldsSchema
-        }).array()
+        200: sanitizedTemplateSchema.array()
       }
     },
     handler: async (req) => {
@@ -310,7 +338,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       description: "Get template usage by template ID",

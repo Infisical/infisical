@@ -58,6 +58,20 @@ module.exports = {
         "@typescript-eslint/no-unsafe-return": "off",
         "@typescript-eslint/no-unsafe-call": "off"
       }
+    },
+    {
+      files: ["./src/db/migrations/**/*"],
+      rules: {
+        "no-restricted-syntax": [
+          "error",
+          {
+            selector:
+              "MemberExpression[property.name='encryptWithRootEncryptionKey'], MemberExpression[property.name='decryptWithRootEncryptionKey'], CallExpression[callee.name='buildSecretBlindIndexFromName']",
+            message:
+              "A migration cannot use the instance root encryption key: it runs before the key is loaded and would fall back to process.env, which is the wrong key on any instance that has rotated ENCRYPTION_KEY. Do this work in a post-boot background job instead."
+          }
+        ]
+      }
     }
   ],
 
@@ -65,6 +79,7 @@ module.exports = {
     "@typescript-eslint/no-empty-function": "off",
     "@typescript-eslint/no-unsafe-enum-comparison": "off",
     "no-void": "off",
+    "no-continue": "off",
     "consistent-return": "off", // my style
     "import/order": "off", // for simple-import-order
     "import/prefer-default-export": "off", // why

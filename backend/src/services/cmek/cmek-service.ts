@@ -173,7 +173,13 @@ export const cmekServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Delete, ProjectPermissionSub.Cmek);
 
-    await kmsDAL.deleteById(keyId);
+    const [deletedKey] = await kmsDAL.delete({ id: keyId, hasDeleteProtection: false });
+
+    if (!deletedKey) {
+      throw new BadRequestError({
+        message: `Key with ID ${keyId} has delete protection enabled. Disable delete protection on the key before deleting it.`
+      });
+    }
 
     return key;
   };
@@ -681,6 +687,7 @@ export const cmekServiceFactory = ({
           name: entry.name,
           isReserved: false,
           isExportable: entry.isExportable,
+          hasDeleteProtection: entry.hasDeleteProtection,
           projectId,
           orgId: actor.orgId,
           keyUsage: entry.keyUsage

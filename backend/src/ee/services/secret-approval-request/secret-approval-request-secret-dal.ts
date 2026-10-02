@@ -442,6 +442,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   return {
     ...secretApprovalRequestSecretOrm,
     insertV2Bridge: secretApprovalRequestSecretV2Orm.insertMany,
+    updateV2ById: secretApprovalRequestSecretV2Orm.updateById,
     findByRequestId,
     findByRequestIdBridgeSecretV2,
     bulkUpdateNoVersionIncrement,

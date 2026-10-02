@@ -1,0 +1,20 @@
+version: v0.165.12
+releasedAt: 2026-09-16T15:30:18-03:00
+sourceTag: v0.165.12
+previousTag: v0.165.11
+impactLevel: none
+summary: No self-hosted upgrade actions or risks were found.
+requiresDbMigration: false
+breakingChanges: []
+dbSchemaChanges: []
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-09-16T19:36:03.928Z
+  sourceRange:
+    from: v0.165.11
+    to: v0.165.12

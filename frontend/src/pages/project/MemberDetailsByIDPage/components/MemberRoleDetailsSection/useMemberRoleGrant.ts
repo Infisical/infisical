@@ -21,10 +21,12 @@ import {
 // the single- and multi-role editors so both gate role selection the same way.
 export const useMemberRoleGrant = (projectMember: TWorkspaceUser) => {
   const { projectId, currentProject } = useProject();
-  const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
-    projectId,
-    currentProject?.type
-  );
+  const {
+    data: projectRoles,
+    isPending: isRolesLoading,
+    isError: isRolesError,
+    refetch: refetchRoles
+  } = useGetProjectRoles(projectId, currentProject?.type);
   const { permission } = useProjectPermission();
 
   const isMemberEditDisabled = permission.cannot(
@@ -79,6 +81,8 @@ export const useMemberRoleGrant = (projectMember: TWorkspaceUser) => {
 
   return {
     isRolesLoading,
+    isRolesError,
+    refetchRoles,
     assignableRoleSlugs,
     getRolesForSelect,
     isEditDisabled: isMemberEditDisabled || !canModifyMemberRoles

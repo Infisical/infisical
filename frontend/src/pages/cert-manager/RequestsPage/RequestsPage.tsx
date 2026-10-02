@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { FilterIcon, SearchIcon } from "lucide-react";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   Badge,
   Card,
@@ -25,12 +24,17 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  PageHeader,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
@@ -161,6 +165,20 @@ export const RequestsPage = () => {
     })
   );
 
+  const pendingApplicationCount = useMemo(
+    () =>
+      (requests as TApprovalRequest[]).filter((r) => r.status === ApprovalRequestStatus.Pending)
+        .length,
+    [requests]
+  );
+  const pendingSigningCount = useMemo(
+    () =>
+      (signingRequests as TApprovalRequest[]).filter(
+        (r) => r.status === ApprovalRequestStatus.Pending
+      ).length,
+    [signingRequests]
+  );
+
   // resolve names only for the applications actually referenced by the visible
   // requests, rather than loading the project's entire application list
   const referencedAppIds = useMemo(() => {
@@ -227,9 +245,9 @@ export const RequestsPage = () => {
       <Helmet>
         <title>Requests</title>
       </Helmet>
-      <div className="h-full bg-bunker-800">
-        <div className="mx-auto flex flex-col text-white">
-          <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="h-full bg-page">
+        <div className="mx-auto flex flex-col text-foreground-inverse">
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
             <PageHeader
               scope={ProjectType.CertificateManager}
               title="Approval Requests"
@@ -246,16 +264,26 @@ export const RequestsPage = () => {
                 })
               }
             >
-              <TabList>
-                <Tab variant="project" value="application-requests">
+              <TabsList variant="project" aria-label="Approval request sections">
+                <TabsTrigger value="application-requests" className="gap-2">
                   Application Requests
-                </Tab>
-                <Tab variant="project" value="signing-requests">
+                  {Boolean(pendingApplicationCount) && (
+                    <Badge variant="warning" isSquare>
+                      {pendingApplicationCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="signing-requests" className="gap-2">
                   Signing Requests
-                </Tab>
-              </TabList>
+                  {Boolean(pendingSigningCount) && (
+                    <Badge variant="warning" isSquare>
+                      {pendingSigningCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
 
-              <TabPanel value="application-requests">
+              <TabsContent value="application-requests">
                 <Card>
                   <CardHeader>
                     <CardTitle>Application Requests</CardTitle>
@@ -411,9 +439,9 @@ export const RequestsPage = () => {
                     )}
                   </CardContent>
                 </Card>
-              </TabPanel>
+              </TabsContent>
 
-              <TabPanel value="signing-requests">
+              <TabsContent value="signing-requests">
                 <Card>
                   <CardHeader>
                     <CardTitle>Signing Requests</CardTitle>
@@ -537,7 +565,7 @@ export const RequestsPage = () => {
                     )}
                   </CardContent>
                 </Card>
-              </TabPanel>
+              </TabsContent>
             </Tabs>
           </div>
         </div>

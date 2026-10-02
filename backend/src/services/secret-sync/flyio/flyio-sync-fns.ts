@@ -11,7 +11,7 @@ import {
 } from "@app/services/secret-sync/flyio/flyio-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
-import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
@@ -204,7 +204,8 @@ const deleteFlyioSecrets = async ({ accessToken, appId, keys }: TDeleteFlyioVari
 };
 
 export const FlyioSyncFns = {
-  syncSecrets: async (secretSync: TFlyioSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TFlyioSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       environment,
@@ -243,7 +244,8 @@ export const FlyioSyncFns = {
       await deployAppMachines(secretSync, releaseVersion);
     }
   },
-  removeSecrets: async (secretSync: TFlyioSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TFlyioSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       destinationConfig: { appId }

@@ -11,14 +11,16 @@ export enum TriggerFeature {
   SECRET_SYNC_ERROR = "secret-sync-error",
   PAM_ACCESS_REQUESTED = "pam-access-requested",
   PAM_ACCESS_REQUEST_APPROVED = "pam-access-request-approved",
-  PAM_ACCESS_REQUEST_DENIED = "pam-access-request-denied"
+  PAM_ACCESS_REQUEST_DENIED = "pam-access-request-denied",
+  PAM_ACCESS_REQUEST_BYPASSED = "pam-access-request-bypassed"
 }
 
 export type TNotification =
   | {
       type: TriggerFeature.SECRET_APPROVAL;
       payload: {
-        userEmail: string;
+        userEmail?: string;
+        machineIdentityId?: string;
         environment: string;
         secretPath: string;
         requestId: string;
@@ -82,6 +84,7 @@ export type TNotification =
         accountName: string;
         folderName: string;
         accessDuration: string;
+        accessTypeLabel?: string;
         reason?: string;
         approvalUrl: string;
       };
@@ -95,6 +98,17 @@ export type TNotification =
         folderName: string;
         comment?: string;
         approvalUrl: string;
+      };
+    }
+  | {
+      type: TriggerFeature.PAM_ACCESS_REQUEST_BYPASSED;
+      payload: {
+        requesterFullName: string;
+        requesterEmail: string;
+        accountName: string;
+        folderName: string;
+        accessDuration: string;
+        bypassReason: string;
       };
     };
 

@@ -3,7 +3,16 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { sanitizeEmail } from "@app/lib/validator";
+import {
+  EmailDispatchAddressForm,
+  EmailDispatchDimension,
+  emailDispatchDistinctCounter,
+  EmailDispatchMailboxProvider,
+  EmailDispatchOutcome,
+  EmailDispatchPurpose as EmailDispatchMetricPurpose,
+  emailDispatchRequestCounter
+} from "@app/lib/telemetry/metrics";
+import { isAliasedEmail, normalizeEmail, sanitizeEmail } from "@app/lib/validator";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -12,33 +21,112 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { validatePasswordResetAuthorization } from "../auth/auth-fns";
+import { verifyPublicEmailCaptcha } from "../auth/captcha-fns";
+import { EmailDispatchPurpose, TEmailDispatchGuardFactory } from "../auth/email-dispatch-guard";
 
 type TAccountRecoveryServiceFactoryDep = {
   userDAL: TUserDALFactory;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
+  emailDispatchGuard: TEmailDispatchGuardFactory;
 };
 
 export type TAccountRecoveryServiceFactory = ReturnType<typeof accountRecoveryServiceFactory>;
 const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
 
+const recoveryTrafficAttributes = (email: string) => ({
+  "email_dispatch.purpose": EmailDispatchMetricPurpose.ACCOUNT_RECOVERY,
+  "email_dispatch.mailbox_provider": normalizeEmail(email).endsWith("@gmail.com")
+    ? EmailDispatchMailboxProvider.GOOGLE
+    : EmailDispatchMailboxProvider.OTHER,
+  "email_dispatch.address_form": isAliasedEmail(email)
+    ? EmailDispatchAddressForm.ALIASED
+    : EmailDispatchAddressForm.CANONICAL
+});
+
 export const accountRecoveryServiceFactory = ({
   userDAL,
   membershipUserDAL,
   tokenService,
-  smtpService
+  smtpService,
+  emailDispatchGuard
 }: TAccountRecoveryServiceFactoryDep) => {
   /*
    * Account recovery flow via email. Step 1: send recovery email
    */
-  const sendRecoveryEmail = async (unsanitizedUsername: string) => {
+  const sendRecoveryEmail = async ({
+    email: unsanitizedUsername,
+    ip,
+    captchaToken
+  }: {
+    email: string;
+    ip: string;
+    captchaToken?: string;
+  }) => {
+    const trafficAttributes = recoveryTrafficAttributes(unsanitizedUsername);
+
+    try {
+      await verifyPublicEmailCaptcha(captchaToken);
+    } catch (err) {
+      emailDispatchRequestCounter.add(1, {
+        ...trafficAttributes,
+        "email_dispatch.outcome": EmailDispatchOutcome.CAPTCHA_REJECTED
+      });
+      throw err;
+    }
+
+    const { mailboxHash } = await emailDispatchGuard.checkMailboxCooldown({
+      purpose: EmailDispatchPurpose.AccountRecovery,
+      email: unsanitizedUsername
+    });
+
+    await emailDispatchGuard.startMailboxCooldown({ purpose: EmailDispatchPurpose.AccountRecovery, mailboxHash });
+
+    const { isNewSource, isNewMailbox } = await emailDispatchGuard.probeTraffic({
+      purpose: EmailDispatchPurpose.AccountRecovery,
+      mailboxHash,
+      ip
+    });
+    if (isNewSource) {
+      emailDispatchDistinctCounter.add(1, {
+        "email_dispatch.purpose": EmailDispatchMetricPurpose.ACCOUNT_RECOVERY,
+        "email_dispatch.dimension": EmailDispatchDimension.SOURCE
+      });
+    }
+    if (isNewMailbox) {
+      emailDispatchDistinctCounter.add(1, {
+        "email_dispatch.purpose": EmailDispatchMetricPurpose.ACCOUNT_RECOVERY,
+        "email_dispatch.dimension": EmailDispatchDimension.MAILBOX
+      });
+    }
+
     const sendEmail = async () => {
       const username = sanitizeEmail(unsanitizedUsername);
       const user = await userDAL.findOne({ username });
-      if (!user) throw new BadRequestError({ message: "Failed to find user data" });
+      if (!user) {
+        emailDispatchRequestCounter.add(1, {
+          ...trafficAttributes,
+          "email_dispatch.outcome": EmailDispatchOutcome.NO_RECIPIENT
+        });
+        throw new BadRequestError({ message: "Failed to find user data" });
+      }
 
       if (user && user.isAccepted) {
+        if (
+          !(await emailDispatchGuard.consumeMailboxAllowance({
+            purpose: EmailDispatchPurpose.AccountRecovery,
+            mailboxHash
+          }))
+        ) {
+          emailDispatchRequestCounter.add(1, {
+            ...trafficAttributes,
+            "email_dispatch.outcome": EmailDispatchOutcome.MAILBOX_CAPPED
+          });
+          logger.info(`Account recovery email suppressed by the per-mailbox cap [mailboxHash=${mailboxHash}]`);
+          return;
+        }
+
         const cfg = getConfig();
 
         const recipient = user.email ?? user.username;
@@ -76,6 +164,11 @@ export const accountRecoveryServiceFactory = ({
           subjectLine: "Infisical account recovery",
           substitutions
         });
+
+        emailDispatchRequestCounter.add(1, {
+          ...trafficAttributes,
+          "email_dispatch.outcome": EmailDispatchOutcome.SENT
+        });
       }
     };
 
@@ -110,6 +203,11 @@ export const accountRecoveryServiceFactory = ({
     if (shouldReject) {
       throw new Error("Invalid or expired verification request");
     }
+
+    await emailDispatchGuard.clearMailboxThrottle({
+      purpose: EmailDispatchPurpose.AccountRecovery,
+      mailboxHash: emailDispatchGuard.hashAddress(username).mailboxHash
+    });
 
     const token = crypto.jwt().sign(
       {

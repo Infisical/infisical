@@ -13,7 +13,8 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SecretScanning = "secret-scanning",
-  PAM = "pam"
+  PAM = "pam",
+  AgentVault = "agent-vault"
 }
 
 export enum ProjectUserMembershipTemporaryMode {
@@ -43,7 +44,11 @@ export type Project = {
   showSnapshotsLegacy: boolean;
   secretDetectionIgnoreValues: string[];
   enforceEncryptedSecretManagerSecretMetadata: boolean;
+  secretBlindIndexEnabled: boolean;
+  isLegacyAdditionalPrivilegesEnabled: boolean;
 };
+
+export type TProjectNavigation = Pick<Project, "id" | "orgId" | "name" | "slug" | "type">;
 
 export type ProjectEnv = {
   id: string;
@@ -193,6 +198,13 @@ export type TListProjectIdentitiesDTO = {
 export enum ProjectIdentityOrderBy {
   Name = "name"
 }
+
+export enum SearchProjectSortBy {
+  Name = "name",
+  Description = "description",
+  CreatedAt = "createdAt"
+}
+
 export type TSearchProjectsDTO = {
   name?: string;
   limit?: number;
@@ -200,7 +212,7 @@ export type TSearchProjectsDTO = {
   projectIds?: string[];
   type?: ProjectType;
   options?: { enabled?: boolean };
-  orderBy?: ProjectIdentityOrderBy;
+  orderBy?: SearchProjectSortBy;
   orderDirection?: OrderByDirection;
 };
 

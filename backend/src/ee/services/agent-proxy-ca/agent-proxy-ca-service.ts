@@ -8,6 +8,8 @@ import { OrgServiceActor } from "@app/lib/types";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
+  getNotAfterWithClockSkew,
+  getNotBeforeWithClockSkew,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -29,7 +31,6 @@ type TAgentProxyCaServiceFactoryDep = {
 const ROOT_CA_ALGORITHM = CertKeyAlgorithm.ECDSA_P256;
 const INTERMEDIATE_CA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const ROOT_CA_VALIDITY_YEARS = 10;
-const CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 export const agentProxyCaServiceFactory = ({
   orgAgentProxyConfigDAL,
@@ -77,14 +78,13 @@ export const agentProxyCaServiceFactory = ({
 
       const rootCaSerialNumber = createSerialNumber();
       const rootCaIssuedAt = new Date();
-      const rootCaNotBefore = new Date(rootCaIssuedAt.getTime() - CLOCK_SKEW_MS);
       const rootCaExpiration = new Date(new Date().setFullYear(new Date().getFullYear() + ROOT_CA_VALIDITY_YEARS));
 
       const rootCaCert = await x509.X509CertificateGenerator.createSelfSigned({
         name: `O=${orgId},CN=Infisical Agent Proxy Root CA`,
         serialNumber: rootCaSerialNumber,
-        notBefore: rootCaNotBefore,
-        notAfter: rootCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(rootCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(rootCaExpiration),
         signingAlgorithm: alg,
         keys: rootCaKeys,
         extensions: [
@@ -181,16 +181,16 @@ export const agentProxyCaServiceFactory = ({
 
     const serialNumber = createSerialNumber();
     const issuedAt = new Date();
-    const notBefore = new Date(issuedAt.getTime() - CLOCK_SKEW_MS);
-    // clamp so an intermediate can never outlive the root it chains to
-    const requestedExpiration = new Date(issuedAt.getTime() + INTERMEDIATE_CA_TTL_MS);
+    // clamp so an intermediate can never outlive the root it chains to, tolerance included — a root
+    // minted before we widened notAfter carries none of its own for the clamp to absorb
+    const requestedExpiration = getNotAfterWithClockSkew(new Date(issuedAt.getTime() + INTERMEDIATE_CA_TTL_MS));
     const expiration = requestedExpiration < rootCaCert.notAfter ? requestedExpiration : rootCaCert.notAfter;
 
     const intermediateCert = await x509.X509CertificateGenerator.create({
       serialNumber,
       subject: `O=${actor.orgId},CN=Infisical Agent Proxy Intermediate CA`,
       issuer: rootCaCert.subject,
-      notBefore,
+      notBefore: getNotBeforeWithClockSkew(issuedAt),
       notAfter: expiration,
       signingKey: importedRootCaPrivateKey,
       publicKey: intermediatePublicKey,

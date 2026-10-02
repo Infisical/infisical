@@ -18,7 +18,11 @@ export const OauthClientsSchema = z.object({
   redirectUris: z.string().array(),
   requirePkce: z.boolean().default(false),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  grantTypes: z.string().array(),
+  tokenExchangeAudience: z.string().nullable().optional(),
+  tokenExchangeIdpSatisfiesMfa: z.boolean().default(false),
+  accessTokenTTL: z.number().default(86400)
 });
 
 export type TOauthClients = z.infer<typeof OauthClientsSchema>;

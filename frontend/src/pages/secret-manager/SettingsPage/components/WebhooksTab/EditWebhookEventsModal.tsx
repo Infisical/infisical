@@ -17,6 +17,7 @@ import {
   FilterableSelect
 } from "@app/components/v3";
 import {
+  DEFAULT_ENABLED_EVENTS,
   TWebhook,
   WEBHOOK_EVENT_METADATA,
   WEBHOOK_EVENTS,
@@ -79,14 +80,7 @@ export const EditWebhookEventsModal = ({
   onOpenChange,
   onSave
 }: Props) => {
-  const defaultSettings = useMemo<TWebhookEventSettings>(
-    () => ({
-      [WebhookEvent.SecretModified]: true,
-      [WebhookEvent.SecretRotationFailed]: true,
-      [WebhookEvent.HoneyTokenTriggered]: true
-    }),
-    []
-  );
+  const defaultSettings = DEFAULT_ENABLED_EVENTS;
   const [eventSettings, setEventSettings] = useState<TWebhookEventSettings>(defaultSettings);
 
   useEffect(() => {

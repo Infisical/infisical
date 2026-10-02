@@ -162,5 +162,9 @@ export const ServiceTokenSection = withProjectPermission(
       </>
     );
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.ServiceTokens }
+  {
+    action: ProjectPermissionActions.Read,
+    subject: ProjectPermissionSub.ServiceTokens,
+    accessRestrictedMode: "dialog"
+  }
 );

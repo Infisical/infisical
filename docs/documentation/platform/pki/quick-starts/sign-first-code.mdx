@@ -1,6 +1,6 @@
 ---
-title: "Sign Your First Artifact"
-sidebarTitle: "Sign Artifact"
+title: "Sign your first artifact"
+sidebarTitle: "Sign artifact"
 description: "Sign a JAR file using Infisical Code Signing in under 10 minutes."
 ---
 
@@ -16,7 +16,7 @@ Sign a Java JAR file using Infisical-managed keys in about 10 minutes. You'll is
 
 <Steps>
   <Step title="Issue a Code Signing Certificate">
-    First, issue a certificate for code signing. Go to **Certificate Manager → Certificate Policies** and click **Create**.
+    First, issue a certificate for code signing. Go to **Certificate Manager → Certificate Policies** and select **Create**.
     
     | Field | Value |
     |-------|-------|
@@ -28,7 +28,7 @@ Sign a Java JAR file using Infisical-managed keys in about 10 minutes. You'll is
     Download the certificate. You'll need it for the signer.
   </Step>
   <Step title="Create a Signer">
-    Go to **Code Signing → Signers** and click **Create**.
+    Go to **Code Signing → Signers** and select **Create**.
     
     | Field | Value |
     |-------|-------|
@@ -71,7 +71,7 @@ jarsigner -verify -verbose your-app.jar
 
 You should see `jar verified` with details about the signing certificate.
 
-## Next Steps
+## Next steps
 
 - Add an [approval policy](/documentation/platform/pki/code-signing/approvals) for sign-off workflows
 - Learn how [signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) is requested and revoked

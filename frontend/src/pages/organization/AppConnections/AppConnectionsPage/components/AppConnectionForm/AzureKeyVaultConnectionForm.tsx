@@ -46,7 +46,7 @@ import {
 
 import { AzureKeyVaultFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -201,6 +201,8 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
     watch,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  useAppConnectionFormDirtyState(isDirty);
 
   const scopeVariant = useScopeVariant();
 
@@ -535,11 +537,14 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                     </Tooltip>
                   </FieldLabel>
                   <SecretInput
+                    aria-describedby={error ? "credentials.certificateBody-error" : undefined}
+                    id="credentials.certificateBody"
+                    isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder="-----BEGIN CERTIFICATE-----..."
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="credentials.certificateBody-error" errors={[error]} />
                 </Field>
               )}
             />
@@ -562,11 +567,14 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                     </Tooltip>
                   </FieldLabel>
                   <SecretInput
+                    aria-describedby={error ? "credentials.privateKey-error" : undefined}
+                    id="credentials.privateKey"
+                    isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder="-----BEGIN PRIVATE KEY-----..."
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="credentials.privateKey-error" errors={[error]} />
                 </Field>
               )}
             />

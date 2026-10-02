@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { CertificateRequestsSection } from "../../CertificateRequestsPage/components/CertificateRequestsSection";
+import { ApplicationTab } from "../application-tabs";
 
 type Props = {
   applicationId: string;
@@ -20,7 +21,7 @@ export const ApplicationRequestsTab = ({ applicationId, applicationName }: Props
         projectId: projectId ?? "",
         applicationName
       },
-      search: { selectedTab: "certificates", search: certificateId }
+      search: { selectedTab: ApplicationTab.Certificates, search: certificateId }
     });
   };
 

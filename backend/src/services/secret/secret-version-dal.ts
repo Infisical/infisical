@@ -152,10 +152,11 @@ export const secretVersionDALFactory = (db: TDbClient) => {
             );
           }
         );
-      return docs.reduce<Record<string, TSecretVersions>>(
-        (prev, curr) => ({ ...prev, [curr.secretId || ""]: curr }),
-        {}
-      );
+      return docs.reduce<Record<string, TSecretVersions>>((prev, curr) => {
+        // eslint-disable-next-line no-param-reassign
+        prev[curr.secretId || ""] = curr;
+        return prev;
+      }, {});
     } catch (error) {
       throw new DatabaseError({ error, name: "FindLatestVersinMany" });
     }

@@ -4,6 +4,10 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  hasAnyFilter,
+  isCertificateOrderTheOnlyFilter
+} from "@app/components/pki-syncs/forms/pki-sync-filter-fns";
+import {
   Button,
   Checkbox,
   EmptyState,
@@ -21,12 +25,14 @@ import {
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
+import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import {
-  PkiSync,
   useAddCertificatesToPkiSync,
   useListPkiSyncsWithCertificate,
   useRemoveCertificatesFromPkiSync
 } from "@app/hooks/api/pkiSyncs";
+import { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
+import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 type Props = {
@@ -39,6 +45,14 @@ type Props = {
   };
   handlePopUpToggle: (popUpName: "managePkiSyncs", state?: boolean) => void;
   applicationName?: string;
+};
+
+const getSyncUnavailableReason = (sync: TPkiSync): string | null => {
+  if (!sync.applicationId) return "Not attached to an Application";
+  if (!hasAnyFilter(sync.filters)) return "No filters set";
+  if (!isCertificateOrderTheOnlyFilter(sync.filters))
+    return "Selects certificates by profile or metadata";
+  return null;
 };
 
 const PER_PAGE = 10;
@@ -103,7 +117,7 @@ export const CertificateManagePkiSyncsModal = ({
           projectId: currentProject.id,
           applicationName
         },
-        search: { selectedTab: "syncs" }
+        search: { selectedTab: ApplicationTab.Syncs }
       });
     } else {
       navigate({
@@ -118,17 +132,6 @@ export const CertificateManagePkiSyncsModal = ({
       });
     }
     handleClose();
-  };
-
-  const getDestinationDisplayName = (destination: string) => {
-    switch (destination) {
-      case PkiSync.AzureKeyVault:
-        return "Azure Key Vault";
-      case PkiSync.AwsCertificateManager:
-        return "AWS Certificate Manager";
-      default:
-        return destination;
-    }
   };
 
   useEffect(() => {
@@ -214,7 +217,7 @@ export const CertificateManagePkiSyncsModal = ({
         <div className="mt-4 max-h-96 overflow-y-auto">
           {isPending && (
             <div className="flex h-32 items-center justify-center">
-              <div className="text-bunker-300">Loading PKI syncs...</div>
+              <div className="text-label-secondary">Loading PKI syncs...</div>
             </div>
           )}
           {!isPending && pkiSyncs.length === 0 && (
@@ -224,7 +227,7 @@ export const CertificateManagePkiSyncsModal = ({
                 <button
                   type="button"
                   onClick={handleNavigateToPkiSyncs}
-                  className="cursor-pointer underline hover:text-mineshaft-300"
+                  className="cursor-pointer underline hover:text-label"
                 >
                   PKI sync
                 </button>{" "}
@@ -250,34 +253,47 @@ export const CertificateManagePkiSyncsModal = ({
                   </Tr>
                 </THead>
                 <TBody>
-                  {paginatedSyncs.map((sync) => (
-                    <Tr
-                      key={sync.id}
-                      className="cursor-pointer hover:bg-mineshaft-700"
-                      onClick={() => handleSyncToggle(sync.id)}
-                    >
-                      <Td>
-                        <Checkbox
-                          isChecked={selectedSyncIds.has(sync.id)}
-                          onCheckedChange={() => handleSyncToggle(sync.id)}
-                          id={`sync-${sync.id}`}
-                        />
-                      </Td>
-                      <Td className="w-1/2 max-w-0">
-                        <div className="truncate" title={sync.name}>
-                          {sync.name}
-                        </div>
-                      </Td>
-                      <Td className="w-1/2 max-w-0">
-                        <div
-                          className="truncate capitalize"
-                          title={getDestinationDisplayName(sync.destination)}
-                        >
-                          {getDestinationDisplayName(sync.destination)}
-                        </div>
-                      </Td>
-                    </Tr>
-                  ))}
+                  {paginatedSyncs.map((sync) => {
+                    const unavailableReason = getSyncUnavailableReason(sync);
+                    const managesItsOwnCertificates = Boolean(unavailableReason);
+
+                    return (
+                      <Tr
+                        key={sync.id}
+                        className={
+                          managesItsOwnCertificates
+                            ? "opacity-60"
+                            : "cursor-pointer hover:bg-surface-hover"
+                        }
+                        onClick={() => !managesItsOwnCertificates && handleSyncToggle(sync.id)}
+                      >
+                        <Td>
+                          <Checkbox
+                            isChecked={selectedSyncIds.has(sync.id)}
+                            isDisabled={managesItsOwnCertificates}
+                            onCheckedChange={() => handleSyncToggle(sync.id)}
+                            id={`sync-${sync.id}`}
+                          />
+                        </Td>
+                        <Td className="w-1/2 max-w-0">
+                          <div className="truncate" title={sync.name}>
+                            {sync.name}
+                          </div>
+                          {unavailableReason && (
+                            <div className="truncate text-xs text-muted">{unavailableReason}</div>
+                          )}
+                        </Td>
+                        <Td className="w-1/2 max-w-0">
+                          <div
+                            className="truncate capitalize"
+                            title={PKI_SYNC_MAP[sync.destination].name}
+                          >
+                            {PKI_SYNC_MAP[sync.destination].name}
+                          </div>
+                        </Td>
+                      </Tr>
+                    );
+                  })}
                 </TBody>
               </Table>
             </TableContainer>

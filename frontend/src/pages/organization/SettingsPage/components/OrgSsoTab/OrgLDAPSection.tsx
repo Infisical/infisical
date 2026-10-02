@@ -21,7 +21,7 @@ import {
   FieldGroup,
   FieldTitle,
   IconButton,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -175,7 +175,7 @@ export const OrgLDAPSection = ({ onSwitchProvider }: Props): JSX.Element => {
                 >
                   {(isAllowed) => (
                     <div>
-                      <Switch
+                      <Toggle
                         id="enable-ldap-sso"
                         variant="org"
                         checked={data.isActive}
@@ -216,6 +216,7 @@ export const OrgLDAPSection = ({ onSwitchProvider }: Props): JSX.Element => {
         handlePopUpToggle={handlePopUpToggle}
       />
       <UpgradePlanModal
+        paywallKey="organization.org-ldap.section"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Your current plan does not include access to LDAP authentication. To unlock this feature, please upgrade to Infisical Enterprise plan."

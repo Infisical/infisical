@@ -138,6 +138,7 @@ export const OrgGroupsSection = () => {
         }
       />
       <UpgradePlanModal
+        paywallKey="organization.org-groups"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}

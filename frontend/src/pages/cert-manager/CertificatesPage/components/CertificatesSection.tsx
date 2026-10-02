@@ -1,4 +1,4 @@
-import { ArrowRightIcon } from "lucide-react";
+import { ImportIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -29,7 +29,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CertificateCertModal } from "./CertificateCertModal";
 import { CertificateExportModal, ExportOptions } from "./CertificateExportModal";
-import { CertificateImportModal } from "./CertificateImportModal";
+import { CertificateImportSheet } from "./CertificateImportSheet";
 import { CertificateManagePkiSyncsModal } from "./CertificateManagePkiSyncsModal";
 import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "./CertificateRenewalModal";
@@ -151,7 +151,7 @@ export const CertificatesSection = ({
         {applicationId && canImportIntoApplication && (
           <CardAction>
             <Button variant="outline" onClick={() => handlePopUpOpen("certificateImport")}>
-              <ArrowRightIcon className="mr-1.5 size-4" />
+              <ImportIcon />
               Import
             </Button>
           </CardAction>
@@ -168,7 +168,7 @@ export const CertificatesSection = ({
                   onClick={() => handlePopUpOpen("certificateImport")}
                   disabled={!isAllowed}
                 >
-                  <ArrowRightIcon className="mr-1.5 size-4" />
+                  <ImportIcon />
                   Import
                 </Button>
               )}
@@ -185,7 +185,7 @@ export const CertificatesSection = ({
           applicationId={applicationId}
           applicationName={applicationName}
         />
-        <CertificateImportModal
+        <CertificateImportSheet
           popUp={popUp}
           handlePopUpToggle={handlePopUpToggle}
           applicationId={applicationId}
@@ -201,7 +201,11 @@ export const CertificatesSection = ({
           onFormatSelected={handleCertificateExport}
         />
         <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateRenewalModal
+          popUp={popUp}
+          applicationName={applicationName}
+          handlePopUpToggle={handlePopUpToggle}
+        />
         <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <CertificateManagePkiSyncsModal
           popUp={popUp.managePkiSyncs}
@@ -213,6 +217,7 @@ export const CertificatesSection = ({
           title={`Are you sure you want to remove the certificate ${
             (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
           }?`}
+          subTitle="This action cannot be undone."
           onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() =>

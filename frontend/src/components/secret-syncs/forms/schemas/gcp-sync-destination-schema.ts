@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
-import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 
 export const GcpSyncDestinationSchema = BaseSecretSyncSchema().merge(

@@ -6,7 +6,7 @@ import {
   FieldDescription,
   FieldError,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -31,7 +31,7 @@ export const FlyioSyncOptionsFields = () => {
                 Machines view or app logs.
               </FieldDescription>
             </FieldContent>
-            <Switch
+            <Toggle
               id="flyio-auto-redeploy"
               variant="project"
               checked={value}

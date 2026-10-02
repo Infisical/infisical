@@ -1,10 +1,12 @@
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 
+import { handleClickhouseSession } from "./clickhouse/pam-clickhouse-session-handler";
 import { handleMysqlSession } from "./mysql/pam-mysql-session-handler";
 import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
 import { handlePostgresSession } from "./postgres/pam-postgres-session-handler";
 import { handleRdpSession } from "./rdp/pam-rdp-session-handler";
 import { handleRedisSession } from "./redis/pam-redis-session-handler";
+import { handleSnowflakeSession } from "./snowflake/pam-snowflake-session-handler";
 import { handleSSHSession } from "./ssh/pam-ssh-session-handler";
 
 export type TWebAccessHandler = (
@@ -29,6 +31,14 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
   [PamAccountType.Redis]: {
     gatewayAccountType: PamAccountType.Redis,
     handler: handleRedisSession
+  },
+  [PamAccountType.Snowflake]: {
+    gatewayAccountType: PamAccountType.Snowflake,
+    handler: handleSnowflakeSession
+  },
+  [PamAccountType.ClickHouse]: {
+    gatewayAccountType: PamAccountType.ClickHouse,
+    handler: handleClickhouseSession
   },
   [PamAccountType.SSH]: {
     gatewayAccountType: PamAccountType.SSH,

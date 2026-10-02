@@ -36,7 +36,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       await server.services.reminder.createReminder({
         actorId: req.permission.id,
@@ -105,7 +105,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const reminder = await server.services.reminder.getReminder({
         actorId: req.permission.id,
@@ -146,7 +146,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       await server.services.reminder.deleteReminder({
         actorId: req.permission.id,

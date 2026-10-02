@@ -23,8 +23,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "createPkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       body: z.object({
         name: slugSchema(),
         caName: slugSchema({ field: "caName" }),
@@ -45,7 +48,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.pkiTemplate.createTemplate({
         actor: req.permission.type,
@@ -67,8 +70,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "updatePkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         templateName: slugSchema()
       }),
@@ -95,7 +101,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.pkiTemplate.updateTemplate({
         actor: req.permission.type,
@@ -118,8 +124,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "deletePkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         templateName: z.string().min(1)
       }),
@@ -132,7 +141,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.pkiTemplate.deleteTemplate({
         actor: req.permission.type,
@@ -155,8 +164,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "getPkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         templateName: slugSchema()
       }),
@@ -171,7 +183,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.pkiTemplate.getTemplateByName({
         actor: req.permission.type,
@@ -194,8 +206,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "listPkiTemplates",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       querystring: z.object({
         projectId: z.string(),
         limit: z.coerce.number().default(100),
@@ -210,7 +225,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { certificateTemplates, totalCount } = await server.services.pkiTemplate.listTemplate({
         actor: req.permission.type,
@@ -232,8 +247,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "issueCertificateFromTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         templateName: slugSchema()
       }),
@@ -257,7 +275,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.pkiTemplate.issueCertificate({
         actor: req.permission.type,
@@ -280,8 +298,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "signCertificateFromTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         templateName: slugSchema()
       }),
@@ -299,7 +320,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.pkiTemplate.signCertificate({
         actor: req.permission.type,

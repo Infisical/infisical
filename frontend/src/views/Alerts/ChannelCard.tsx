@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ReactElement, useState } from "react";
 import { Controller, useFormContext, UseFormRegisterReturn, useWatch } from "react-hook-form";
 import { EyeIcon, EyeOffIcon, SendIcon, TrashIcon } from "lucide-react";
 
@@ -16,12 +16,13 @@ import {
   InputGroupButton,
   InputGroupInput,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
+  TAlertChannelRecipient,
   TAlertForm,
   toChannelInput,
   useTestAlertChannel
@@ -30,13 +31,21 @@ import {
 import { getChannelIcon } from "./channelIcons";
 import { ChannelRecipientsField } from "./ChannelRecipientsField";
 
+export type TChannelRecipientsRenderProps = {
+  value: TAlertChannelRecipient[];
+  onChange: (recipients: TAlertChannelRecipient[]) => void;
+  isError: boolean;
+};
+
 type Props = {
   index: number;
   projectId?: string;
   resourceType: string;
   resourceId?: string | null;
+  alertId?: string;
   onRemove: () => void;
   canRemove: boolean;
+  renderRecipients?: (props: TChannelRecipientsRenderProps) => ReactElement;
 };
 
 const KEEP_PLACEHOLDER = "•••••••• (leave blank to keep)";
@@ -81,8 +90,10 @@ export const ChannelCard = ({
   projectId,
   resourceType,
   resourceId,
+  alertId,
   onRemove,
-  canRemove
+  canRemove,
+  renderRecipients
 }: Props) => {
   const scopeVariant = useScopeVariant();
   const {
@@ -111,6 +122,7 @@ export const ChannelCard = ({
         resourceType,
         resourceId,
         projectId: projectId ?? null,
+        alertId,
         channelId: channel?.id,
         channelType,
         config,
@@ -168,7 +180,7 @@ export const ChannelCard = ({
               control={control}
               name={`channels.${index}.enabled`}
               render={({ field }) => (
-                <Switch
+                <Toggle
                   id={`channel-${index}-enabled`}
                   aria-label={`Toggle ${channelLabel} channel`}
                   variant={scopeVariant}
@@ -193,14 +205,22 @@ export const ChannelCard = ({
             <Controller
               control={control}
               name={`channels.${index}.recipients`}
-              render={({ field }) => (
-                <ChannelRecipientsField
-                  projectId={projectId}
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                  isError={Boolean(channelErrors?.recipients)}
-                />
-              )}
+              render={({ field }) =>
+                renderRecipients ? (
+                  renderRecipients({
+                    value: field.value ?? [],
+                    onChange: field.onChange,
+                    isError: Boolean(channelErrors?.recipients)
+                  })
+                ) : (
+                  <ChannelRecipientsField
+                    projectId={projectId}
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    isError={Boolean(channelErrors?.recipients)}
+                  />
+                )
+              }
             />
             <FieldError errors={[channelErrors?.recipients as { message?: string } | undefined]} />
           </FieldContent>

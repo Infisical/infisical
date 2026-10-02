@@ -11,6 +11,7 @@ import {
   XIcon
 } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import { Spinner } from "@app/components/v2";
 import { Button } from "@app/components/v3/generic/Button";
 import { cn } from "@app/components/v3/utils";
@@ -24,6 +25,12 @@ import type { SchemaInfo, TableInfo } from "./data-explorer-types";
 import type { SqlDialect } from "./sql-generation";
 import { useDataExplorerSession } from "./use-data-explorer-session";
 import { useQueryTabs } from "./use-query-tabs";
+
+const DIALECT_BY_ACCOUNT_TYPE: Partial<Record<PamAccountType, SqlDialect>> = {
+  [PamAccountType.MySQL]: "mysql",
+  [PamAccountType.Snowflake]: "snowflake",
+  [PamAccountType.ClickHouse]: "clickhouse"
+};
 
 type Props = {
   reason?: string;
@@ -40,11 +47,20 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
 
   const { data: account } = useGetPamAccountById(accountId);
 
-  const dialect: SqlDialect = account?.accountType === PamAccountType.MySQL ? "mysql" : "postgres";
-  const defaultSchema =
-    dialect === "mysql"
-      ? ((account?.connectionDetails as { database?: string })?.database ?? "")
-      : "public";
+  const dialect: SqlDialect =
+    (account?.accountType && DIALECT_BY_ACCOUNT_TYPE[account.accountType]) ?? "postgres";
+  const connectionDetails = account?.connectionDetails as { database?: string; schema?: string };
+
+  let defaultSchema: string;
+  if (dialect === "mysql") {
+    defaultSchema = connectionDetails?.database ?? "";
+  } else if (dialect === "snowflake") {
+    defaultSchema = connectionDetails?.schema ?? "PUBLIC";
+  } else if (dialect === "clickhouse") {
+    defaultSchema = connectionDetails?.database ?? "default";
+  } else {
+    defaultSchema = "public";
+  }
 
   // Sidebar-only view state. Switching schemas in the sidebar does not alter
   // open tabs — tabs are bound to their own (schema, table) at open time.
@@ -179,9 +195,15 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
       try {
         const result = await fetchSchemas();
         setSchemas(result);
-        const hasSelected = result.find((s) => s.name === selectedSchema);
-        const activeSchema = hasSelected ? selectedSchema : (result[0]?.name ?? defaultSchema);
-        if (!hasSelected && result.length > 0 && !keepSelected) {
+        const matched = result.find((s) => s.name.toLowerCase() === selectedSchema.toLowerCase());
+        const activeSchema = matched?.name ?? result[0]?.name ?? defaultSchema;
+        if (!matched && result.length > 0) {
+          createNotification({
+            type: "warning",
+            text: `Schema "${selectedSchema}" was not found. Browsing "${activeSchema}" instead.`
+          });
+        }
+        if (activeSchema !== selectedSchema && result.length > 0 && !keepSelected) {
           setSelectedSchema(activeSchema);
         }
         if (result.length > 0) {
@@ -404,7 +426,7 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
                 openQueryTab().catch(() => {});
               }}
               disabled={tabOpeningDisabled}
-              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-border px-2 py-1 text-xs text-muted transition-colors first:ml-0 hover:border-border hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-muted"
+              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-border px-2 py-1 text-xs text-muted transition-colors first:ml-0 hover:border-foreground/20 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-muted"
               aria-label="New query tab"
               title={atTabLimit ? `Tab limit (${MAX_TABS}) reached` : "New query tab"}
             >

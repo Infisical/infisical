@@ -1,10 +1,10 @@
 import { Knex } from "knex";
 
-import { OrgMembershipStatus, TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
+import { OrgMembershipStatus, TAuthTokens, TAuthTokenSessions, TUsers } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn/array";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -30,13 +30,7 @@ type TAuthTokenServiceFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
   keyStore: Pick<
     TKeyStoreFactory,
-    | "setItemWithExpiry"
-    | "setItemWithExpiryNX"
-    | "getItem"
-    | "deleteItem"
-    | "acquireLock"
-    | "deleteItemsByKeyIn"
-    | "ttl"
+    "setItemWithExpiry" | "setItemWithExpiryNX" | "getItem" | "deleteItem" | "acquireLock" | "ttl"
   >;
 };
 
@@ -115,6 +109,9 @@ export const getTokenConfig = (tokenType: TokenType) => {
     }
   }
 };
+
+const isUserLocked = (user: Pick<TUsers, "isLocked" | "temporaryLockDateEnd">) =>
+  Boolean(user.isLocked || (user.temporaryLockDateEnd && new Date() < user.temporaryLockDateEnd));
 
 export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAuthTokenServiceFactoryDep) => {
   const createTokenForUser = async ({ type, userId, orgId, aliasId, payload }: TCreateTokenForUserDTO) => {
@@ -259,9 +256,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
   const revokeMySessionById = async (userId: string, sessionId: string) =>
     tokenDAL.deleteTokenSession({ userId, id: sessionId });
 
-  // Revokes every token session created under the given userAgent (across all users/IPs). Used to
-  // invalidate all OAuth access/refresh tokens issued for a client when that client is deleted.
-  const revokeSessionsByUserAgent = async (userAgent: string) => tokenDAL.deleteTokenSession({ userAgent });
+  const revokeSessionsByUserAgent = async (userAgent: string, tx?: Knex) =>
+    tokenDAL.deleteTokenSession({ userAgent }, tx);
 
   const validateRefreshToken = async (refreshToken?: string, opts?: { allowOauthClientToken?: boolean }) => {
     const appCfg = getConfig();
@@ -362,14 +358,22 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return { newRefreshToken, updatedSession };
   };
 
-  // to parse jwt identity in inject identity plugin
-  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
-    const session = await tokenDAL.findOneTokenSession({
-      id: token.tokenVersionId,
-      userId: token.userId
+  const validateUserSessionFreshness = async ({
+    userId,
+    tokenVersionId,
+    accessVersion,
+    readFromPrimary = false
+  }: {
+    userId: string;
+    tokenVersionId: string;
+    accessVersion: number;
+    readFromPrimary?: boolean;
+  }) => {
+    const session = await tokenDAL.findOneTokenSession({ id: tokenVersionId, userId }, undefined, {
+      readFromPrimary
     });
     if (!session) throw new NotFoundError({ name: "Session not found" });
-    if (token.accessVersion !== session.accessVersion) {
+    if (accessVersion !== session.accessVersion) {
       throw new UnauthorizedError({ name: "StaleSession", message: "User session is stale, please re-authenticate" });
     }
 
@@ -378,94 +382,113 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     );
     if (!user || !user.isAccepted) throw new NotFoundError({ message: `User with ID '${session.userId}' not found` });
 
-    if (user.isLocked || (user.temporaryLockDateEnd && new Date() < user.temporaryLockDateEnd)) {
+    if (isUserLocked(user)) {
       throw new UnauthorizedError({ message: "Account is locked" });
     }
 
-    let orgId = "";
-    let orgName = "";
-    let rootOrgId = "";
-    let parentOrgId = "";
-    if (token.organizationId) {
-      // Check if token has sub-organization scope
-      if (token.subOrganizationId) {
-        const subOrganization = await orgDAL.findOne({
-          id: token.subOrganizationId
-        });
-        if (!subOrganization)
-          throw new BadRequestError({ message: `Sub organization ${token.subOrganizationId} not found` });
-        // Verify the sub-org belongs to the token's root organization
-        if (subOrganization.rootOrgId !== token.organizationId && subOrganization.id !== token.organizationId) {
-          throw new ForbiddenRequestError({ message: "Sub-organization does not belong to the token's organization" });
-        }
+    return { user };
+  };
 
-        const orgMembership = await orgDAL.findEffectiveOrgMembership({
-          actorType: ActorType.USER,
-          actorId: user.id,
-          orgId: subOrganization.id,
-          status: OrgMembershipStatus.Accepted
-        });
+  const assertActiveOrgMembership = async (userId: string, orgId: string, { acceptAnyStatus = false } = {}) => {
+    const orgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.USER,
+      actorId: userId,
+      orgId,
+      ...(acceptAnyStatus ? { acceptAnyStatus } : { status: OrgMembershipStatus.Accepted })
+    });
 
-        if (!orgMembership) {
-          throw new ForbiddenRequestError({ message: "User not member of organization" });
-        }
-
-        if (!orgMembership.isActive) {
-          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
-        }
-        orgId = subOrganization.id;
-        orgName = subOrganization.name;
-        rootOrgId = token.organizationId;
-        parentOrgId = subOrganization.parentOrgId as string;
-      } else {
-        const organization = await orgDAL.findOne({ id: token.organizationId });
-        const orgMembership = await orgDAL.findEffectiveOrgMembership({
-          actorType: ActorType.USER,
-          actorId: user.id,
-          orgId: token.organizationId,
-          status: OrgMembershipStatus.Accepted
-        });
-
-        if (!orgMembership) {
-          throw new ForbiddenRequestError({ message: "User not member of organization" });
-        }
-
-        if (!orgMembership.isActive) {
-          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
-        }
-
-        orgId = token.organizationId;
-        orgName = organization.name;
-        rootOrgId = token.organizationId;
-        parentOrgId = token.organizationId;
-      }
+    if (!orgMembership) {
+      throw new ForbiddenRequestError({ message: "User not member of organization" });
     }
+
+    if (!orgMembership.isActive) {
+      throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+    }
+  };
+
+  const validateTokenOrgScope = async ({
+    userId,
+    organizationId,
+    subOrganizationId
+  }: {
+    userId: string;
+    organizationId?: string;
+    subOrganizationId?: string;
+  }) => {
+    if (!organizationId) {
+      if (subOrganizationId) throw new UnauthorizedError({ message: "Invalid token" });
+      return { orgId: "", orgName: "", rootOrgId: "", parentOrgId: "" };
+    }
+
+    if (!subOrganizationId) {
+      const organization = await orgDAL.findOne({ id: organizationId });
+
+      if (!organization) {
+        throw new UnauthorizedError({
+          message: `The organization with ID '${organizationId}' no longer exists. Log in again.`
+        });
+      }
+      await assertActiveOrgMembership(userId, organizationId);
+
+      return {
+        orgId: organizationId,
+        orgName: organization.name,
+        rootOrgId: organizationId,
+        parentOrgId: organizationId
+      };
+    }
+
+    const subOrganization = await orgDAL.findOne({ id: subOrganizationId });
+    if (!subOrganization) {
+      throw new UnauthorizedError({
+        message: `The sub-organization with ID '${subOrganizationId}' no longer exists. Log in again.`
+      });
+    }
+    if (subOrganization.rootOrgId !== organizationId || subOrganization.id === organizationId) {
+      throw new ForbiddenRequestError({ message: "Sub-organization does not belong to the token's organization" });
+    }
+
+    // Mirrors selectOrganization, which lets a still-Invited root member into a sub-org: selecting a sub-org
+    // never promotes the root membership, so only deactivation is a reason to refuse here.
+    await assertActiveOrgMembership(userId, organizationId, { acceptAnyStatus: true });
+    await assertActiveOrgMembership(userId, subOrganization.id);
+
+    return {
+      orgId: subOrganization.id,
+      orgName: subOrganization.name,
+      rootOrgId: organizationId,
+      parentOrgId: subOrganization.parentOrgId as string
+    };
+  };
+
+  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
+    const { user } = await validateUserSessionFreshness({
+      userId: token.userId,
+      tokenVersionId: token.tokenVersionId,
+      accessVersion: token.accessVersion
+    });
+
+    const { orgId, orgName, rootOrgId, parentOrgId } = await validateTokenOrgScope({
+      userId: user.id,
+      organizationId: token.organizationId,
+      subOrganizationId: token.subOrganizationId
+    });
 
     return { user, tokenVersionId: token.tokenVersionId, orgId, orgName, rootOrgId, parentOrgId };
   };
 
-  const acquireEmailSignupCooldown = async (email: string): Promise<{ emailHash: string; cooldownSeconds: number }> => {
-    const appCfg = getConfig();
-    const emailHash = computeHash(email, appCfg.AUTH_SECRET);
-    const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
-    const cooldownSeconds = KeyStoreTtls.EmailSignupResendCooldownInSeconds;
+  const validateRefreshTokenAccess = async (decodedToken: AuthModeRefreshJwtTokenPayload) => {
+    const user = await requestMemoize(requestMemoKeys.userFindById(decodedToken.userId), () =>
+      userDAL.findById(decodedToken.userId)
+    );
+    if (!user || !user.isAccepted) throw new UnauthorizedError({ message: "Invalid token", name: "InvalidToken" });
+    if (isUserLocked(user)) throw new UnauthorizedError({ message: "Account is locked" });
 
-    // SET NX is atomic: only one concurrent request can acquire the cooldown slot.
-    const acquired = await keyStore.setItemWithExpiryNX(cooldownKey, cooldownSeconds, "1");
-    if (!acquired) {
-      const remaining = await keyStore.ttl(cooldownKey);
-      throw new BadRequestError({
-        message: "Please wait before requesting another code",
-        details: {
-          cooldownSeconds: Math.max(1, remaining)
-        }
-      });
-    }
-
-    return {
-      emailHash,
-      cooldownSeconds
-    };
+    await validateTokenOrgScope({
+      userId: user.id,
+      organizationId: decodedToken.organizationId,
+      subOrganizationId: decodedToken.subOrganizationId
+    });
   };
 
   const createEmailSignupToken = async (emailHash: string): Promise<string> => {
@@ -540,8 +563,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         });
       }
 
-      const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
-      await keyStore.deleteItemsByKeyIn([key, cooldownKey]);
+      await keyStore.deleteItem(key);
     } finally {
       await lock.release();
     }
@@ -559,9 +581,10 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     revokeSessionsByUserAgent,
     validateRefreshToken,
     rotateRefreshToken,
+    validateUserSessionFreshness,
+    validateRefreshTokenAccess,
     fnValidateJwtIdentity,
     getUserTokenSessionById,
-    acquireEmailSignupCooldown,
     createEmailSignupToken,
     validateEmailSignupToken
   };

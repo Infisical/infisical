@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { AccessRestrictedBanner, PageHeader } from "@app/components/v2";
 import {
+  AccessRestrictedDialog,
   Button,
   DeleteConfirmDialog,
   DocumentationLinkBadge,
@@ -21,6 +21,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  PageHeader,
   PageLoader,
   ResourceIcon,
   Tabs,
@@ -50,6 +51,7 @@ import { ApplicationMembersTab } from "./components/ApplicationMembersTab";
 import { ApplicationRequestsTab } from "./components/ApplicationRequestsTab";
 import { ApplicationSettingsTab } from "./components/ApplicationSettingsTab";
 import { ApplicationSyncsTab } from "./components/ApplicationSyncsTab";
+import { ApplicationTab } from "./application-tabs";
 
 type PermissionedTabProps = {
   value: string;
@@ -171,9 +173,7 @@ export const ApplicationDetailsByIDPage = () => {
 
   if (isAccessForbidden) {
     return (
-      <div className="container mx-auto flex h-full items-center justify-center p-16">
-        <AccessRestrictedBanner body="You do not have access to this application. Reach out to an administrator to request access." />
-      </div>
+      <AccessRestrictedDialog description="You don't have access to this application. An administrator can grant it." />
     );
   }
 
@@ -190,20 +190,19 @@ export const ApplicationDetailsByIDPage = () => {
       <Helmet>
         <title>{application.name}</title>
       </Helmet>
-      <div className="h-full bg-bunker-800">
-        <div className="mx-auto flex flex-col text-white">
-          <div className="mx-auto mb-6 w-full max-w-8xl">
-            <div className="mb-4">
-              <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/applications"
-                params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-                className="flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-              >
-                <ChevronLeftIcon size={16} />
-                Back to Applications
-              </Link>
-            </div>
+      <div className="h-full bg-page">
+        <div className="mx-auto flex flex-col text-foreground-inverse">
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
             <PageHeader
+              backLink={
+                <Link
+                  to="/organizations/$orgId/projects/cert-manager/$projectId/applications"
+                  params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
+                >
+                  <ChevronLeftIcon size={16} />
+                  Back to Applications
+                </Link>
+              }
               scope={ProjectType.CertificateManager}
               icon={ResourceIcon}
               title={
@@ -217,7 +216,6 @@ export const ApplicationDetailsByIDPage = () => {
                   <span className="break-all">{application.description}</span>
                 ) : undefined
               }
-              className="mb-4"
             >
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -261,7 +259,7 @@ export const ApplicationDetailsByIDPage = () => {
                     applicationName: application.name
                   },
                   search: {
-                    selectedTab: v as "certificates" | "requests" | "syncs" | "members" | "settings"
+                    selectedTab: v as ApplicationTab
                   }
                 })
               }

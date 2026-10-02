@@ -6,11 +6,11 @@ description: "Learn how to configure an UltraDNS Connection for Infisical."
 Infisical connects to UltraDNS with the username and password of an UltraDNS user, and uses that access to manage the DNS records in your zones.
 
 <Note>
-  The UltraDNS REST API does not support accounts with Two Factor Mobile Authentication enabled. Use a dedicated
+  The UltraDNS REST API doesn't support accounts with Two Factor Mobile Authentication enabled. Use a dedicated
   API user, or disable Two Factor Mobile Authentication for the user you connect with.
 </Note>
 
-## Prepare an UltraDNS User
+## Prepare an UltraDNS user
 
 <Steps>
   <Step title="Create a user for Infisical">
@@ -24,12 +24,12 @@ Infisical connects to UltraDNS with the username and password of an UltraDNS use
     `_acme-challenge.<your-domain>` and removes it once the certificate authority has validated the domain.
   </Step>
   <Step title="Confirm REST API access">
-    Verify the user can sign in, and that Two Factor Mobile Authentication is not enabled for it. Only zones of type
-    **Primary** are available to Infisical, because secondary zones cannot accept record changes.
+    Verify the user can sign in, and that Two Factor Mobile Authentication isn't enabled for it. Only zones of type
+    **Primary** are available to Infisical, because secondary zones can't accept record changes.
   </Step>
 </Steps>
 
-## Setup UltraDNS Connection in Infisical
+## Setup UltraDNS connection in Infisical
 
 <Steps>
   <Step title="Navigate to App Connections">
@@ -40,7 +40,7 @@ Infisical connects to UltraDNS with the username and password of an UltraDNS use
     Select the **UltraDNS Connection** option from the connection options modal.
   </Step>
   <Step title="Input Credentials">
-    Enter the username and password of your UltraDNS user, choose the **Environment** to connect to, and click
+    Enter the username and password of your UltraDNS user, choose the **Environment** to connect to, and select
     **Connect to UltraDNS**. Infisical verifies the credentials against the UltraDNS API before saving the connection.
 
     Choose **Production** for `api.ultradns.com` and **Test** for the UltraDNS customer test environment at

@@ -1,3 +1,9 @@
+## 1.11.0 (September 17, 2026)
+Changes:
+* `infisical.autoBootstrap.secretDestination.namespace` now defaults to `""` instead of the literal `"default"`. Helm's `default` function only substitutes on an empty value, so the non-empty `"default"` meant the template's documented fall back to the release namespace never applied. Every install that left this key alone wrote the root identity token to the `default` namespace and created the bootstrap Role and RoleBinding there, and the bootstrap Job still reported success. Fresh installs now place the secret and its RBAC in the release namespace.
+* To keep writing the secret to the `default` namespace, set `infisical.autoBootstrap.secretDestination.namespace: "default"` explicitly before upgrading.
+* **The new default applies to future bootstrap runs only, and upgrading does not move an existing secret.** The bootstrap Job is a `post-install` hook, and an instance can be bootstrapped only once, so the Job neither re-runs on upgrade nor can reissue the token. The upgrade relocates only the Role and RoleBinding, leaving `default/infisical-bootstrap-secret` behind with a valid instance admin token in a namespace the chart no longer manages, while automation looks for it in the release namespace. Treat that leftover token as exposed. See [Migrating from chart versions before 1.11.0](https://infisical.com/docs/self-hosting/guides/automated-bootstrapping) for the `kubectl` steps to copy the secret across, delete the original, and rotate the credentials.
+
 ## 1.10.0 (July 3, 2026)
 Changes:
 * Added configurable `securityContext` via `infisical.podSecurityContext` and `infisical.containerSecurityContext`, with secure defaults so the Infisical Deployment and the auto-bootstrap Job run under the Kubernetes Pod Security "restricted" standard out of the box.

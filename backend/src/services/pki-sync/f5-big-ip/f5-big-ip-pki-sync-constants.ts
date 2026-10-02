@@ -31,6 +31,7 @@ export const F5_BIG_IP_PKI_SYNC_LIST_OPTION = {
   canImportCertificates: false,
   canRemoveCertificates: true,
   canRunPostSyncCommand: false,
+  canRunHealthCheckCommand: false,
   defaultCertificateNameSchema: "Infisical-{{certificateId}}",
   forbiddenCharacters: F5_BIG_IP_NAMING.FORBIDDEN_CHARACTERS,
   allowedCharacterPattern: F5_BIG_IP_NAMING.ALLOWED_CHARACTER_PATTERN,

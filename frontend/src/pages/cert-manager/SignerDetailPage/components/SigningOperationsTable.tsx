@@ -30,9 +30,10 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
+  getSigningOperationStatusBadgeVariant,
   SIGNER_TABLE_PAGE_SIZE,
   SigningActorType,
-  SigningOperationStatus,
+  signingAlgorithmLabels,
   signingOperationStatusLabels,
   TSigner,
   TSigningOperation,
@@ -45,31 +46,6 @@ type Props = {
   signer: TSigner;
   signerId: string;
   projectId: string;
-};
-
-const getStatusBadgeVariant = (status: SigningOperationStatus) => {
-  switch (status) {
-    case SigningOperationStatus.Success:
-      return "success" as const;
-    case SigningOperationStatus.Failed:
-      return "danger" as const;
-    case SigningOperationStatus.Denied:
-      return "warning" as const;
-    default:
-      return "neutral" as const;
-  }
-};
-
-const ALGORITHM_DISPLAY: Record<string, string> = {
-  RSASSA_PKCS1_V1_5_SHA_256: "RSA PKCS#1 v1.5 (SHA-256)",
-  RSASSA_PKCS1_V1_5_SHA_384: "RSA PKCS#1 v1.5 (SHA-384)",
-  RSASSA_PKCS1_V1_5_SHA_512: "RSA PKCS#1 v1.5 (SHA-512)",
-  RSASSA_PSS_SHA_256: "RSA-PSS (SHA-256)",
-  RSASSA_PSS_SHA_384: "RSA-PSS (SHA-384)",
-  RSASSA_PSS_SHA_512: "RSA-PSS (SHA-512)",
-  ECDSA_SHA_256: "ECDSA (SHA-256)",
-  ECDSA_SHA_384: "ECDSA (SHA-384)",
-  ECDSA_SHA_512: "ECDSA (SHA-512)"
 };
 
 const getActorDisplayName = (actorType: SigningActorType, actorName?: string | null) => {
@@ -156,75 +132,93 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
           </CardAction>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Algorithm</TableHead>
-                <TableHead>Data Hash</TableHead>
-                <TableHead>Actor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading &&
-                Array.from({ length: 5 }).map((_, i) => (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <TableRow key={`skeleton-${i}`}>
-                    {Array.from({ length: 5 }).map((__, j) => (
-                      // eslint-disable-next-line react/no-array-index-key
-                      <TableCell key={`skeleton-cell-${j}`}>
-                        <div className="h-4 w-full animate-pulse rounded bg-mineshaft-700" />
+          {(isLoading || operations.length > 0) && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Algorithm</TableHead>
+                  <TableHead>Data Hash</TableHead>
+                  <TableHead>Actor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading &&
+                  Array.from({ length: 5 }).map((_, i) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <TableRow key={`skeleton-${i}`}>
+                      {Array.from({ length: 5 }).map((__, j) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <TableCell key={`skeleton-cell-${j}`}>
+                          <div className="h-4 w-full animate-pulse rounded bg-surface-hover" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                {!isLoading &&
+                  operations.map((op) => (
+                    <TableRow
+                      key={op.id}
+                      className="cursor-pointer transition-colors hover:bg-surface-hover [&>td]:py-3"
+                      onClick={() =>
+                        navigate({
+                          to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId/operations/$operationId",
+                          params: {
+                            orgId: currentOrg.id,
+                            projectId,
+                            signerId,
+                            operationId: op.id
+                          }
+                        })
+                      }
+                    >
+                      <TableCell>
+                        {format(new Date(op.createdAt), "MMM d, yyyy HH:mm:ss")}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              {!isLoading &&
-                operations.map((op) => (
-                  <TableRow key={op.id} className="[&>td]:py-3">
-                    <TableCell>{format(new Date(op.createdAt), "MMM d, yyyy HH:mm:ss")}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(op.status)}>
-                        {signingOperationStatusLabels[op.status] ?? op.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {ALGORITHM_DISPLAY[op.signingAlgorithm] ?? op.signingAlgorithm}
-                    </TableCell>
-                    <TableCell className="max-w-[120px] truncate font-mono text-xs">
-                      {op.dataHash}
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center gap-1.5">
-                            {op.actorType === SigningActorType.User ? (
-                              <UserIcon className="size-3.5 text-muted" />
-                            ) : (
-                              <HardDriveIcon className="size-3.5 text-muted" />
-                            )}
-                            <button
-                              type="button"
-                              onClick={
-                                isActorClickable(op) ? () => handleActorClick(op) : undefined
-                              }
-                              className={
-                                isActorClickable(op)
-                                  ? "cursor-pointer font-medium text-accent underline"
-                                  : "text-muted"
-                              }
-                            >
-                              {getActorDisplayName(op.actorType, op.actorName)}
-                            </button>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>{op.actorName ?? op.actorId}</TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
+                      <TableCell>
+                        <Badge variant={getSigningOperationStatusBadgeVariant(op.status)}>
+                          {signingOperationStatusLabels[op.status] ?? op.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {signingAlgorithmLabels[op.signingAlgorithm] ?? op.signingAlgorithm}
+                      </TableCell>
+                      <TableCell className="max-w-[120px] truncate font-mono text-xs">
+                        {op.dataHash}
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center gap-1.5">
+                              {op.actorType === SigningActorType.User ? (
+                                <UserIcon className="size-3.5 text-muted" />
+                              ) : (
+                                <HardDriveIcon className="size-3.5 text-muted" />
+                              )}
+                              <button
+                                type="button"
+                                onClick={
+                                  isActorClickable(op) ? () => handleActorClick(op) : undefined
+                                }
+                                className={
+                                  isActorClickable(op)
+                                    ? "cursor-pointer font-medium text-accent underline"
+                                    : "text-muted"
+                                }
+                              >
+                                {getActorDisplayName(op.actorType, op.actorName)}
+                              </button>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>{op.actorName ?? op.actorId}</TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          )}
           {!isLoading && operations.length === 0 && (
             <Empty className="border border-solid">
               <EmptyHeader>

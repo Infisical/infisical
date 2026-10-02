@@ -5,6 +5,7 @@ export type TSplunkProviderLogStream = TRootProviderLogStream & {
   provider: LogProvider.Splunk;
   credentials: {
     hostname: string;
+    port?: number;
     token: string;
   };
 };

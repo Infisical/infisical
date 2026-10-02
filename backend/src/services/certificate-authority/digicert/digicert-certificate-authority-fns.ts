@@ -14,6 +14,10 @@ import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-c
 import { DIGICERT_CS_PRODUCT_NAME_IDS } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertStatus, CrlReason, TAltNameType } from "@app/services/certificate/certificate-types";
 import {
@@ -26,11 +30,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import {
-  createDistinguishedName,
-  extractIssuedCertificateFields,
-  keyAlgorithmToAlgCfg
-} from "../certificate-authority-fns";
+import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createDigiCertApiClient } from "./digicert-api-client";
 import {
@@ -62,7 +62,7 @@ type TDigiCertCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findOne">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -506,7 +506,7 @@ export const DigiCertCertificateAuthorityFns = ({
     const { leaf, chain } = extractLeafAndChain(pemBundle);
 
     const certObj = new x509.X509Certificate(leaf);
-    const issued = extractIssuedCertificateFields(certObj);
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -525,21 +525,18 @@ export const DigiCertCertificateAuthorityFns = ({
     const createdCertificateId = await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           applicationId: applicationId ?? undefined,
           profileId: certificateRequest.profileId ?? undefined,
           status: CertStatus.ACTIVE,
-          friendlyName: issued.commonName || "",
-          commonName: issued.commonName || "",
-          altNames: issued.altNames.length > 0 ? issued.altNames.join(",") : "",
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
-          keyUsages: issued.keyUsages,
-          extendedKeyUsages: issued.extendedKeyUsages,
-          keyAlgorithm: certificateRequest.keyAlgorithm ?? undefined,
-          signatureAlgorithm: certificateRequest.signatureAlgorithm ?? undefined,
           projectId: ca.projectId,
+          friendlyName: parsedFields.commonName || "",
+          commonName: parsedFields.commonName || "",
+          keyUsages: parsedFields.keyUsages ?? [],
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? [],
+          keyAlgorithm: parsedFields.keyAlgorithm ?? certificateRequest.keyAlgorithm ?? undefined,
+          signatureAlgorithm: parsedFields.signatureAlgorithm ?? certificateRequest.signatureAlgorithm ?? undefined,
           externalMetadata: {
             type: CaType.DIGICERT,
             orderId: digicertOrderId
@@ -550,7 +547,7 @@ export const DigiCertCertificateAuthorityFns = ({
       );
 
       if (isRenewal && originalCertificateId) {
-        await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, tx);
+        await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, tx);
       }
 
       await certificateBodyDAL.create(
@@ -629,6 +626,57 @@ export const DigiCertCertificateAuthorityFns = ({
     return { status: DigiCertPollOutcome.Pending, orderStatus };
   };
 
+  const assertOrderMatchesCertificate = async ({
+    caId,
+    orderId,
+    serialNumber
+  }: {
+    caId: string;
+    orderId: number;
+    serialNumber: string;
+  }) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
+      throw new BadRequestError({ message: `CA is not a DigiCert certificate authority [caId=${caId}]` });
+    }
+
+    const digicertCa = castDbEntryToDigiCertCertificateAuthority(ca);
+    const { apiKey, baseUrl } = await getDigiCertClientCredentials(
+      digicertCa.configuration.appConnectionId,
+      appConnectionDAL,
+      kmsService
+    );
+    const client = createDigiCertApiClient(apiKey, baseUrl);
+
+    const order = await client.getOrder(orderId);
+
+    if (
+      order.organization?.id !== digicertCa.configuration.organizationId ||
+      order.product?.name_id !== digicertCa.configuration.productNameId
+    ) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} belongs to a different DigiCert organization or product than this certificate authority.`
+      });
+    }
+
+    const digicertCertificateId = order.certificate?.id;
+    if (!digicertCertificateId) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} has no issued certificate yet, so it cannot be linked.`
+      });
+    }
+
+    const pem = await client.downloadCertificatePem(digicertCertificateId);
+    const { leaf } = extractLeafAndChain(pem);
+    const orderSerialNumber = new x509.X509Certificate(leaf).serialNumber;
+
+    if (orderSerialNumber.toLowerCase() !== serialNumber.toLowerCase()) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} was issued for a different certificate than the one being imported. Check the order number in DigiCert CertCentral.`
+      });
+    }
+  };
+
   const revokeCertificate = async ({
     caId,
     serialNumber,
@@ -691,6 +739,7 @@ export const DigiCertCertificateAuthorityFns = ({
     fetchAndAttachIssuedCertificate,
     pollOrderForCertificate,
     revokeCertificate,
+    assertOrderMatchesCertificate,
     orderCodeSigningCertificate: codeSigningFns.orderCodeSigningCertificate,
     reissueCodeSigningCertificate: codeSigningFns.reissueCodeSigningCertificate,
     findCodeSigningOrderByReference: codeSigningFns.findCodeSigningOrderByReference,

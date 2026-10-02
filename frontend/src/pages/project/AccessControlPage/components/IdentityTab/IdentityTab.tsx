@@ -9,18 +9,16 @@ import {
   MoreHorizontalIcon,
   PlusIcon,
   SearchIcon,
-  TrashIcon,
-  XIcon
+  TrashIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { AssumePrivilegesModal } from "@app/components/assume-privileges";
+import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Spinner } from "@app/components/v2";
-import { Blur } from "@app/components/v2/Blur";
 import {
   Badge,
+  Blur,
   Button,
   Card,
   CardAction,
@@ -51,6 +49,7 @@ import {
   Pagination,
   ProjectIcon,
   Skeleton,
+  Spinner,
   SubOrgIcon,
   Table,
   TableBody,
@@ -90,6 +89,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectIdentityOrderBy, ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
+import { IdentityActionConfirmationDialog } from "@app/pages/project/IdentityDetailsByIDPage/components/IdentityActionConfirmationDialog";
 import { IdentityAuthMethodSheet } from "@app/views/IdentityAuthMethods";
 
 import { CreateProjectIdentitySheet } from "./components/CreateProjectIdentity/CreateProjectIdentitySheet";
@@ -106,7 +106,6 @@ export const IdentityTab = withProjectPermission(
       offset,
       limit,
       orderBy,
-      setOrderBy,
       orderDirection,
       setOrderDirection,
       search,
@@ -207,18 +206,6 @@ export const IdentityTab = withProjectPermission(
 
       handlePopUpClose("deleteIdentity");
     };
-    const handleSort = (column: ProjectIdentityOrderBy) => {
-      if (column === orderBy) {
-        setOrderDirection((prev) =>
-          prev === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
-        );
-        return;
-      }
-
-      setOrderBy(column);
-      setOrderDirection(OrderByDirection.ASC);
-    };
-
     const noAccessIdentityCount = Math.max(
       (page * perPage > totalCount ? totalCount % perPage : perPage) -
         (data?.identityMemberships?.length || 0),
@@ -275,7 +262,10 @@ export const IdentityTab = withProjectPermission(
                 </InputGroup>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <IconButton variant={isTableFiltered ? "project" : "outline"}>
+                    <IconButton
+                      aria-label="Filter machine identities"
+                      variant={isTableFiltered ? "project" : "outline"}
+                    >
                       <FilterIcon />
                     </IconButton>
                   </DropdownMenuTrigger>
@@ -323,16 +313,22 @@ export const IdentityTab = withProjectPermission(
                       <TableRow>
                         <TableHead
                           className="w-1/4"
-                          onClick={() => handleSort(ProjectIdentityOrderBy.Name)}
+                          sortDirection={
+                            orderDirection === OrderByDirection.ASC ? "ascending" : "descending"
+                          }
+                          onSortChange={(direction) =>
+                            setOrderDirection(
+                              direction === "descending"
+                                ? OrderByDirection.DESC
+                                : OrderByDirection.ASC
+                            )
+                          }
                         >
                           Name
                           <ChevronDownIcon
                             className={twMerge(
                               "transition-transform",
-                              orderDirection === OrderByDirection.DESC &&
-                                orderBy === ProjectIdentityOrderBy.Name &&
-                                "rotate-180",
-                              orderBy !== ProjectIdentityOrderBy.Name && "opacity-30"
+                              orderDirection === OrderByDirection.DESC && "rotate-180"
                             )}
                           />
                         </TableHead>
@@ -341,7 +337,9 @@ export const IdentityTab = withProjectPermission(
                         </TableHead>
                         <TableHead>Managed by</TableHead>
                         <TableHead className="w-5">
-                          {isFetching ? <Spinner size="xs" /> : null}
+                          {isFetching ? (
+                            <Spinner size="xs" label="Refreshing machine identities" />
+                          ) : null}
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -385,7 +383,9 @@ export const IdentityTab = withProjectPermission(
                               role="button"
                               tabIndex={0}
                               onKeyDown={(evt) => {
-                                if (evt.key === "Enter") {
+                                if (evt.target !== evt.currentTarget) return;
+                                if (evt.key === "Enter" || evt.key === " ") {
+                                  evt.preventDefault();
                                   navigate({
                                     to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
                                     params: {
@@ -447,6 +447,11 @@ export const IdentityTab = withProjectPermission(
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <Badge isSquare variant="danger">
+                                          <span className="sr-only">
+                                            {`Locked out: ${(activeLockoutAuthMethods ?? [])
+                                              .map((method) => identityAuthToNameMap[method])
+                                              .join(", ")}`}
+                                          </span>
                                           <LockIcon />
                                         </Badge>
                                       </TooltipTrigger>
@@ -460,6 +465,7 @@ export const IdentityTab = withProjectPermission(
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <IconButton
+                                        aria-label={`Open actions for ${name}`}
                                         variant="ghost"
                                         size="xs"
                                         onClick={(e) => e.stopPropagation()}
@@ -493,6 +499,7 @@ export const IdentityTab = withProjectPermission(
                                                     variant="danger"
                                                     className="ml-auto"
                                                   >
+                                                    <span className="sr-only">Locked out</span>
                                                     <LockIcon className="size-3!" />
                                                   </Badge>
                                                 )}
@@ -577,7 +584,7 @@ export const IdentityTab = withProjectPermission(
                                               });
                                             }}
                                           >
-                                            {identityProjectId ? <TrashIcon /> : <XIcon />}
+                                            {identityProjectId && <TrashIcon />}
                                             {/* eslint-disable-next-line no-nested-ternary */}
                                             {identityProjectId
                                               ? "Delete Machine Identity"
@@ -599,13 +606,19 @@ export const IdentityTab = withProjectPermission(
                         data?.totalCount !== 0 &&
                         Array.from(Array(noAccessIdentityCount)).map((_e, i) => (
                           <TableRow key={`hid-identity-${i + 1}`}>
-                            <TableCell>No Access</TableCell>
-                            <TableCell colSpan={4}>
-                              <Blur
-                                className="w-min"
-                                tooltipText="You do not have permission to view this machine identity."
-                              />
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <LockIcon className="size-4 text-muted" aria-hidden="true" />
+                                <Blur
+                                  className="w-min p-0"
+                                  aria-label="Restricted machine identity"
+                                  tooltipText="You do not have permission to view this machine identity."
+                                />
+                              </div>
                             </TableCell>
+                            <TableCell className="text-muted">—</TableCell>
+                            <TableCell className="text-muted">—</TableCell>
+                            <TableCell />
                           </TableRow>
                         ))}
                     </TableBody>
@@ -628,14 +641,26 @@ export const IdentityTab = withProjectPermission(
           isOpen={popUp.createIdentity.isOpen}
           onOpenChange={(open) => handlePopUpToggle("createIdentity", open)}
         />
-        <DeleteActionModal
-          isOpen={popUp.deleteIdentity.isOpen}
-          title={`Are you sure you want to remove ${
-            (popUp?.deleteIdentity?.data as { name: string })?.name || ""
-          } from the ${productLabel.toLowerCase()}?`}
-          onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() =>
+        <IdentityActionConfirmationDialog
+          open={popUp.deleteIdentity.isOpen}
+          title={
+            popUp.deleteIdentity.data?.isProjectIdentity
+              ? `Delete ${popUp.deleteIdentity.data?.name || "machine identity"}?`
+              : `Remove ${popUp.deleteIdentity.data?.name || "machine identity"} from ${productLabel}?`
+          }
+          description={
+            popUp.deleteIdentity.data?.isProjectIdentity
+              ? "This permanently deletes the project machine identity and revokes its access. This cannot be undone."
+              : `The machine identity will lose access to this ${productLabel.toLowerCase()} but remain available in its organization.`
+          }
+          descriptionAsAlert
+          descriptionAlertVariant={
+            popUp.deleteIdentity.data?.isProjectIdentity ? "danger" : "warning"
+          }
+          confirmationText="confirm"
+          actionLabel={popUp.deleteIdentity.data?.isProjectIdentity ? "Delete" : "Remove"}
+          onOpenChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
+          onConfirm={() =>
             onRemoveIdentitySubmit(
               popUp?.deleteIdentity?.data?.identityId,
               popUp?.deleteIdentity?.data?.isProjectIdentity
@@ -672,7 +697,7 @@ export const IdentityTab = withProjectPermission(
               />
             );
           })()}
-        <AssumePrivilegesModal
+        <AssumePrivilegesDialog
           isOpen={popUp.assumePrivileges.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
           actorType={ActorType.IDENTITY}
@@ -681,5 +706,9 @@ export const IdentityTab = withProjectPermission(
       </>
     );
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Identity }
+  {
+    action: ProjectPermissionActions.Read,
+    subject: ProjectPermissionSub.Identity,
+    accessRestrictedMode: "dialog"
+  }
 );

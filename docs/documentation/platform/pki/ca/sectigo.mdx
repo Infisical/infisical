@@ -7,13 +7,13 @@ description: "Learn how to connect Infisical to Sectigo to issue certificates vi
 
 Infisical can connect to [Sectigo](https://www.sectigo.com/) using the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) to issue certificates back to your end-entities.
 
-Sectigo Certificate Manager (SCM) supports the ACME protocol and requires **External Account Binding (EAB)** for all ACME registrations. You will need to obtain the ACME Directory URL, a Key Identifier (KID), and an HMAC Key from your Sectigo account before registering the ACME CA in Infisical.
+Sectigo Certificate Manager (SCM) supports the ACME protocol and requires **External Account Binding (EAB)** for all ACME registrations. You'll need to obtain the ACME Directory URL, a Key Identifier (KID), and an HMAC Key from your Sectigo account before registering the ACME CA in Infisical.
 
-## Guide to Connecting Infisical to Sectigo
+## Guide to connecting Infisical to Sectigo
 
 <Steps>
   <Step title="Retrieve ACME credentials from Sectigo">
-    Log in to your Sectigo Certificate Manager (SCM) portal and navigate to **Manage > ACME Accounts** in the left sidebar. Click **Manage** on the ACME account you want to use.
+    Log in to your Sectigo Certificate Manager (SCM) portal and navigate to **Manage > ACME Accounts** in the left sidebar. Select **Manage** on the ACME account you want to use.
 
     ![Sectigo ACME Accounts](/images/platform/pki/sectigo/sectigo-acme-accounts.png)
 
@@ -37,18 +37,18 @@ Sectigo Certificate Manager (SCM) supports the ACME protocol and requires **Exte
   Sectigo ACME accounts are tied to specific domains configured in SCM. Ensure the domains you want to issue certificates for are added to your ACME account in Sectigo before requesting certificates through Infisical.
 </Note>
 
-## What's Next
+## What's next
 
 Now that your Sectigo CA is configured, set up the infrastructure to issue certificates:
 
 <CardGroup cols={2}>
-  <Card title="Certificate Profiles" icon="file-certificate" href="/documentation/platform/pki/settings/profiles">
+  <Card title="Certificate Profiles" icon="file-badge" href="/documentation/platform/pki/settings/profiles">
     Create a profile that references your Sectigo CA.
   </Card>
-  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+  <Card title="Applications" icon="layout-grid" href="/documentation/platform/pki/applications/overview">
     Create an Application, attach a profile, and configure enrollment.
   </Card>
-  <Card title="Enrollment Methods" icon="arrow-right-to-arc" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+  <Card title="Enrollment Methods" icon="log-in" href="/documentation/platform/pki/applications/enrollment-methods/overview">
     Choose how certificates are requested — API, ACME, EST, or SCEP.
   </Card>
   <Card title="Quick Start" icon="rocket" href="/documentation/platform/pki/quick-starts/issue-first-certificate">

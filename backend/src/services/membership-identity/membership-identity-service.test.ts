@@ -49,7 +49,11 @@ const createService = ({
 
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
+    // The delete guards bound the removal against the target's current roles. "no-access" is filtered
+    // out before resolution, so the target resolves to no roles and the boundary sees an empty ability.
+    getIdentityById: vi.fn().mockResolvedValue({ roles: [{ role: "no-access" }] }),
     findByIdForUpdate: vi.fn().mockResolvedValue(existingMembership),
+    find: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID }),
     updateById: vi.fn().mockImplementation(async (id: string, data: Record<string, unknown>) => ({ id, ...data })),
     deleteById: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID }),
@@ -70,8 +74,14 @@ const createService = ({
       getProjectPermission: vi
         .fn()
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      // Role name "no-access" skips the privilege-boundary comparison in the guards.
-      getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ role: { name: "no-access" }, permission: null }])
+      // These tests cover revocation markers, not the privilege boundary. Built-in roles come back
+      // without a `role` field, and an empty target ability clears the boundary for the actor above.
+      getOrgPermissionByRoles: vi
+        .fn()
+        .mockImplementation(async (roles: string[]) => (roles.length ? [{ permission: createMongoAbility([]) }] : [])),
+      getProjectPermissionByRoles: vi
+        .fn()
+        .mockImplementation(async (roles: string[]) => (roles.length ? [{ permission: createMongoAbility([]) }] : []))
     } as never,
     orgDAL: { findById: vi.fn().mockResolvedValue({}), findEffectiveOrgMembership: vi.fn() } as never,
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
@@ -81,7 +91,7 @@ const createService = ({
     licenseService: { getPlan: vi.fn() } as never,
     applicationMembershipCleanupService: { cleanupActorApplicationMemberships: vi.fn() } as never,
     projectDAL: { findById: vi.fn() } as never,
-    keyStore: { getKeysByPattern: vi.fn(), getItem: vi.fn() } as never,
+    keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
     alertService: { deleteAlertsForResource } as never,
     identityAccessTokenService: {

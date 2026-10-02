@@ -1,4 +1,5 @@
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DocumentationLinkBadge, SheetDescription, SheetTitle } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
@@ -12,19 +13,15 @@ export const HoneyTokenModalHeader = ({ type, isEdit }: Props) => {
 
   return (
     <div className="flex w-full items-center gap-3">
-      <img
-        alt={`${details.name} logo`}
-        src={`/images/integrations/${details.image}`}
-        className="h-10 w-10"
-      />
-      <div>
-        <div className="flex items-center gap-x-2 text-mineshaft-300">
+      <ProviderIcon alt={`${details.name} logo`} icon={details.image} className="h-10 w-10" />
+      <div className="flex flex-col gap-1">
+        <SheetTitle className="flex items-center gap-x-2">
           {isEdit ? "Edit" : ""} {details.name} Honey Token
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/honey-tokens/overview" />
-        </div>
-        <p className="text-sm leading-4 text-mineshaft-400">
+        </SheetTitle>
+        <SheetDescription className="leading-4 text-muted">
           Plant a decoy credential that alerts on access
-        </p>
+        </SheetDescription>
       </div>
     </div>
   );

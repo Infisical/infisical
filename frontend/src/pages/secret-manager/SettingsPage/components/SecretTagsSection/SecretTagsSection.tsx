@@ -29,8 +29,10 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteWsTag } from "@app/hooks/api";
+import { WsTag } from "@app/hooks/api/tags/types";
 
 import { AddSecretTagModal } from "./AddSecretTagModal";
+import { EditSecretTagModal } from "./EditSecretTagModal";
 import { SecretTagsTable } from "./SecretTagsTable";
 
 type DeleteModalData = { name: string; id: string };
@@ -38,7 +40,8 @@ type DeleteModalData = { name: string; id: string };
 export const SecretTagsSection = (): JSX.Element => {
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
     "CreateSecretTag",
-    "deleteTagConfirmation"
+    "deleteTagConfirmation",
+    "editSecretTag"
   ] as const);
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
@@ -46,6 +49,7 @@ export const SecretTagsSection = (): JSX.Element => {
 
   const deleteWsTag = useDeleteWsTag();
   const deleteTagData = popUp?.deleteTagConfirmation?.data as DeleteModalData | undefined;
+  const editTag = popUp?.editSecretTag?.data as WsTag | undefined;
 
   const onDeleteApproved = async () => {
     if (!deleteTagData?.id) return;
@@ -100,6 +104,11 @@ export const SecretTagsSection = (): JSX.Element => {
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
+      />
+      <EditSecretTagModal
+        tag={editTag}
+        isOpen={popUp.editSecretTag.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("editSecretTag", isOpen)}
       />
       <AlertDialog
         open={popUp.deleteTagConfirmation.isOpen}

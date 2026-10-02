@@ -24,7 +24,13 @@ export const BasicsStep = ({ form }: { form: ReturnType<typeof useForm<BasicsFor
             Signer name <span className="text-danger">*</span>
           </FieldLabel>
           <FieldContent>
-            <Input {...field} placeholder="e.g. mobile-app-prod" isError={Boolean(error)} />
+            <Input
+              {...field}
+              placeholder="e.g. mobile-app-prod"
+              isError={Boolean(error)}
+              autoComplete="off"
+              name="signer-name"
+            />
             <FieldDescription>Lowercase, with dashes.</FieldDescription>
             <FieldError errors={[error]} />
           </FieldContent>

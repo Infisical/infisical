@@ -19,7 +19,15 @@ import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
-import { domainComponentsSchema } from "@app/services/certificate-common/certificate-constants";
+import {
+  domainComponentsSchema,
+  resolvedCustomExtensionSchema
+} from "@app/services/certificate-common/certificate-constants";
+import {
+  describeCustomExtensionValue,
+  TResolvedCustomExtension
+} from "@app/services/certificate-common/certificate-extension-fns";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -39,6 +47,7 @@ import {
 type TCertificateRequestServiceFactoryDep = {
   certificateRequestDAL: TCertificateRequestDALFactory;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateService: Pick<TCertificateServiceFactory, "getCertBody" | "getCertPrivateKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
@@ -76,6 +85,7 @@ const certificateRequestDataSchema = z
         pathLength: z.number().int().min(-1).optional()
       })
       .optional(),
+    customExtensions: z.array(resolvedCustomExtensionSchema).optional(),
     ttl: z.string().max(50).optional(),
     enrollmentType: z.string().max(50).optional(),
     organization: z.string().max(255).optional(),
@@ -135,6 +145,7 @@ const validateCertificateRequestData = (data: unknown) => {
 export const certificateRequestServiceFactory = ({
   certificateRequestDAL,
   certificateDAL,
+  pkiApplicationDAL,
   certificateService,
   permissionService,
   resourceMetadataDAL,
@@ -142,6 +153,12 @@ export const certificateRequestServiceFactory = ({
   userDAL,
   identityDAL
 }: TCertificateRequestServiceFactoryDep) => {
+  const $resolveApplicationName = async (applicationId?: string | null) => {
+    if (!applicationId) return null;
+    const application = await pkiApplicationDAL.findById(applicationId);
+    return application?.name ?? null;
+  };
+
   const createCertificateRequest = async ({
     acmeOrderId,
     actor,
@@ -179,7 +196,12 @@ export const certificateRequestServiceFactory = ({
     // Validate input data before creating the request
     const validatedData = validateCertificateRequestData(requestData);
 
-    const { altNames: altNamesInput, domainComponents: domainComponentsInput, ...restValidatedData } = validatedData;
+    const {
+      altNames: altNamesInput,
+      domainComponents: domainComponentsInput,
+      customExtensions: customExtensionsInput,
+      ...restValidatedData
+    } = validatedData;
 
     // Explicitly set createdAt to ensure millisecond precision matches when used in FK references.
     // PostgreSQL's DEFAULT now() has microsecond precision, but JavaScript Date only has millisecond precision.
@@ -192,6 +214,7 @@ export const certificateRequestServiceFactory = ({
         acmeOrderId,
         ...restValidatedData,
         altNames: altNamesInput ? JSON.stringify(altNamesInput) : null,
+        customExtensions: customExtensionsInput?.length ? JSON.stringify(customExtensionsInput) : null,
         domainComponents:
           domainComponentsInput && domainComponentsInput.length > 0 ? domainComponentsInput.join(",") : null,
         createdAt: new Date()
@@ -321,6 +344,11 @@ export const certificateRequestServiceFactory = ({
       }
     }
 
+    const parsedCustomExtensions =
+      (certificateRequest.customExtensions as TResolvedCustomExtension[] | null)?.map((extension) => ({
+        ...extension,
+        displayValue: describeCustomExtensionValue(extension.oid, extension.value) ?? undefined
+      })) ?? null;
     const parsedBasicConstraints = certificateRequest.basicConstraints as {
       isCA: boolean;
       pathLength?: number;
@@ -345,6 +373,7 @@ export const certificateRequestServiceFactory = ({
           locality: certificateRequest.locality || null,
           domainComponents: certificateRequest.domainComponents ? certificateRequest.domainComponents.split(",") : null,
           basicConstraints: parsedBasicConstraints,
+          customExtensions: parsedCustomExtensions,
           metadata: requestMetadata,
           createdAt: certificateRequest.createdAt,
           updatedAt: certificateRequest.updatedAt
@@ -423,11 +452,14 @@ export const certificateRequestServiceFactory = ({
         locality: certificateRequest.locality || null,
         domainComponents: certificateRequest.domainComponents ? certificateRequest.domainComponents.split(",") : null,
         basicConstraints: parsedBasicConstraints,
+        customExtensions: parsedCustomExtensions,
         metadata: requestMetadata,
         createdAt: certificateRequest.createdAt,
         updatedAt: certificateRequest.updatedAt
       },
-      projectId: certificateRequest.projectId
+      projectId: certificateRequest.projectId,
+      applicationId: certificateRequest.applicationId ?? null,
+      applicationName: await $resolveApplicationName(certificateRequest.applicationId)
     };
   };
 
@@ -621,7 +653,9 @@ export const certificateRequestServiceFactory = ({
         projectId: certificateRequest.projectId,
         cancelled: false,
         previousStatus,
-        previousPendingMessage
+        previousPendingMessage,
+        applicationId: certificateRequest.applicationId ?? null,
+        applicationName: await $resolveApplicationName(certificateRequest.applicationId)
       };
     }
 
@@ -650,7 +684,9 @@ export const certificateRequestServiceFactory = ({
         projectId: certificateRequest.projectId,
         cancelled: false,
         previousStatus,
-        previousPendingMessage
+        previousPendingMessage,
+        applicationId: certificateRequest.applicationId ?? null,
+        applicationName: await $resolveApplicationName(certificateRequest.applicationId)
       };
     }
 
@@ -686,7 +722,9 @@ export const certificateRequestServiceFactory = ({
       projectId: certificateRequest.projectId,
       cancelled: true,
       previousStatus,
-      previousPendingMessage
+      previousPendingMessage,
+      applicationId: certificateRequest.applicationId ?? null,
+      applicationName: await $resolveApplicationName(certificateRequest.applicationId)
     };
   };
 

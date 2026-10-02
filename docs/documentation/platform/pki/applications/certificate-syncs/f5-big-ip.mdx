@@ -16,11 +16,11 @@ Deploy certificates to F5 BIG-IP appliances. Certificates can be automatically a
 - The BIG-IP must be reachable over HTTPS from Infisical (directly or via an [Infisical Gateway](/documentation/platform/gateways/overview))
 - User account with permissions to manage certificates in the target partition, and to update SSL profiles when profile binding is used
 
-## Create an F5 BIG-IP Sync
+## Create an F5 BIG-IP sync
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+        1. In your Application, go to the **Certificate Syncs** tab and select **Create Sync**.
 
         2. Select the **F5 BIG-IP** option.
 
@@ -53,8 +53,9 @@ Deploy certificates to F5 BIG-IP appliances. Certificates can be automatically a
         ### Sample request
 
         <Note>
-          You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
-          If not provided, you can add certificates later using the certificate management endpoints.
+          Pass `filters` to describe the certificates this sync holds. Anything in the Application that matches is
+          attached automatically, as it is issued. Omit it and the sync starts empty, and you can set filters later.
+          See [Certificate filters](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-filters).
         </Note>
 
         ```bash Request
@@ -69,9 +70,9 @@ Deploy certificates to F5 BIG-IP appliances. Certificates can be automatically a
             "connectionId": "550e8400-e29b-41d4-a716-446655440000",
             "destination": "f5-big-ip",
             "isAutoSyncEnabled": true,
-            "certificateIds": [
-                "550e8400-e29b-41d4-a716-446655440000"
-            ],
+            "filters": {
+                "certificateOrderIds": ["550e8400-e29b-41d4-a716-446655440000"]
+            },
             "syncOptions": {
                 "canRemoveCertificates": true,
                 "includeRootCa": false,
@@ -121,7 +122,7 @@ Deploy certificates to F5 BIG-IP appliances. Certificates can be automatically a
     </Tab>
 </Tabs>
 
-## Certificate Management
+## Certificate management
 
 The F5 BIG-IP Certificate Sync provides:
 
@@ -138,14 +139,14 @@ The F5 BIG-IP Certificate Sync provides:
   they're issued or renewed.
 </Note>
 
-## Certificate Renewal Behavior
+## Certificate renewal behavior
 
 When a certificate is renewed in Infisical, the behavior depends on the **Preserve Certificate on Renewal** option:
 
 - **Preserve enabled**: The renewed certificate keeps the same name on the BIG-IP. Any profile or virtual server already using that certificate keeps working without any change.
 - **Preserve disabled**: The renewed certificate is uploaded with a new name and the original stays on the BIG-IP. Both certificates coexist until the original is revoked or removed.
 
-## Manual Certificate Sync
+## Manual certificate sync
 
 You can manually trigger a sync to F5 BIG-IP. This is useful for:
 
@@ -185,19 +186,19 @@ To manually sync, use the [Sync Certificates](/api-reference/endpoints/pki/syncs
   replaces what was there.
 </Accordion>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="NetScaler" icon="server" href="/documentation/platform/pki/applications/certificate-syncs/netscaler">
     Deploy certificates to Citrix NetScaler ADC appliances.
   </Card>
-  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+  <Card title="Auto-Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
     Enable automatic certificate renewal and syncing.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified about certificate lifecycle events.
   </Card>
-  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Other Sync Destinations" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     View all supported sync destinations.
   </Card>
 </CardGroup>

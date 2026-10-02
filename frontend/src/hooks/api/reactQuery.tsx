@@ -87,6 +87,53 @@ function ValidationErrorModal({
   );
 }
 
+type TPermissionConditions = Record<
+  string,
+  string | { [K in PermissionConditionOperators]: string | string[] }
+>;
+
+function PermissionConditionsList({
+  conditions,
+  keyPrefix
+}: {
+  conditions?: unknown;
+  keyPrefix: string;
+}) {
+  const fields = Object.keys((conditions as TPermissionConditions) || {});
+  if (!fields.length) return null;
+
+  return (
+    <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 marker:text-muted">
+      {fields.flatMap((field, fieldIndex) => {
+        const operators = (conditions as TPermissionConditions)[field];
+        const formattedFieldName = camelCaseToSpaces(field).toLowerCase();
+
+        if (typeof operators === "string") {
+          return (
+            <li key={`${keyPrefix}-${fieldIndex + 1}`}>
+              <span className="font-medium capitalize">{formattedFieldName}</span>{" "}
+              <span className="text-muted">equal to</span>{" "}
+              <Badge variant="neutral">{operators}</Badge>
+            </li>
+          );
+        }
+
+        return Object.keys(operators).map((operator, operatorIndex) => (
+          <li key={`${keyPrefix}-${fieldIndex + 1}-${operatorIndex + 1}`}>
+            <span className="font-medium capitalize">{formattedFieldName}</span>{" "}
+            <span className="text-muted">
+              {formatedConditionsOperatorNames[operator as PermissionConditionOperators]}
+            </span>{" "}
+            <Badge variant="neutral">
+              {operators[operator as PermissionConditionOperators].toString()}
+            </Badge>
+          </li>
+        ));
+      })}
+    </ul>
+  );
+}
+
 export const onRequestError = (
   error: unknown,
   _variables?: unknown,
@@ -191,54 +238,74 @@ export const onRequestError = (
                         <span>{el.subject.toString()}</span>
                         {hasConditions && <span className="text-muted">with conditions:</span>}
                       </div>
-                      {hasConditions && (
-                        <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 marker:text-muted">
-                          {Object.keys(el.conditions || {}).flatMap((field, fieldIndex) => {
-                            const operators = (
-                              el.conditions as Record<
-                                string,
-                                string | { [K in PermissionConditionOperators]: string | string[] }
-                              >
-                            )[field];
-
-                            const formattedFieldName = camelCaseToSpaces(field).toLowerCase();
-                            if (typeof operators === "string") {
-                              return (
-                                <li key={`Forbidden-error-details-${index + 1}-${fieldIndex + 1}`}>
-                                  <span className="font-medium capitalize">
-                                    {formattedFieldName}
-                                  </span>{" "}
-                                  <span className="text-muted">equal to</span>{" "}
-                                  <Badge variant="neutral">{operators}</Badge>
-                                </li>
-                              );
-                            }
-
-                            return Object.keys(operators).map((operator, operatorIndex) => (
-                              <li
-                                key={`Forbidden-error-details-${index + 1}-${
-                                  fieldIndex + 1
-                                }-${operatorIndex + 1}`}
-                              >
-                                <span className="font-medium capitalize">{formattedFieldName}</span>{" "}
-                                <span className="text-muted">
-                                  {
-                                    formatedConditionsOperatorNames[
-                                      operator as PermissionConditionOperators
-                                    ]
-                                  }
-                                </span>{" "}
-                                <Badge variant="neutral">
-                                  {operators[operator as PermissionConditionOperators].toString()}
-                                </Badge>
-                              </li>
-                            ));
-                          })}
-                        </ul>
-                      )}
+                      <PermissionConditionsList
+                        conditions={el.conditions}
+                        keyPrefix={`Forbidden-error-details-${index + 1}`}
+                      />
                     </div>
                   );
                 })}
+              </div>
+            </DialogContent>
+          </Dialog>
+        ) : undefined,
+        copyActions: [
+          {
+            value: serverResponse.reqId,
+            name: "Request ID",
+            label: `Request ID: ${serverResponse.reqId}`
+          }
+        ]
+      });
+      return;
+    }
+    if (serverResponse?.error === ApiErrorTypes.PermissionBoundaryError) {
+      const missingPermissions = serverResponse.details?.missingPermissions ?? [];
+      const toastIdRef: { current: string | number | undefined } = { current: undefined };
+      toastIdRef.current = createNotification({
+        title: "Permission Denied",
+        type: "error",
+        text: `${serverResponse.message}${serverResponse.message.endsWith(".") ? "" : "."}`,
+        callToAction: missingPermissions.length ? (
+          <Dialog
+            onOpenChange={(open) => {
+              if (!open && toastIdRef.current !== undefined) {
+                dismissNotification(toastIdRef.current);
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" size="xs">
+                Show more
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="z-[70] sm:max-w-2xl" overlayClassName="z-[70]">
+              <DialogHeader>
+                <DialogTitle>Missing Permissions</DialogTitle>
+                <DialogDescription>
+                  Your role needs the permissions below to perform this action.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-2">
+                {missingPermissions.map((el, index) => (
+                  <div
+                    key={`Permission-boundary-details-${index + 1}`}
+                    className="rounded-md border border-border bg-card p-4 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                      <span>Can</span>
+                      <Badge variant="danger">{el.action}</Badge>
+                      <span>{el.subject}</span>
+                      {Boolean(Object.keys(el.conditions || {}).length) && (
+                        <span className="text-muted">with conditions:</span>
+                      )}
+                    </div>
+                    <PermissionConditionsList
+                      conditions={el.conditions}
+                      keyPrefix={`Permission-boundary-details-${index + 1}`}
+                    />
+                  </div>
+                ))}
               </div>
             </DialogContent>
           </Dialog>

@@ -2,6 +2,9 @@ export { useProjectPermission } from "./ProjectPermissionContext";
 export type { ProjectPermissionSet, TProjectPermission } from "./types";
 export {
   ProjectPermissionActions,
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
@@ -21,6 +24,8 @@ export {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
+  ProjectPermissionProjectFolderGrantActions,
   ProjectPermissionProxiedServiceActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSub
 } from "./types";

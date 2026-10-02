@@ -1,6 +1,7 @@
 import { faBan } from "@fortawesome/free-solid-svg-icons";
 
-import { AccessRestrictedBanner, ContentLoader, EmptyState } from "@app/components/v2";
+import { ContentLoader, EmptyState } from "@app/components/v2";
+import { AccessRestrictedNotice } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
 import { useGetSecretScanningConfig } from "@app/hooks/api/secretScanningV2";
 
@@ -16,17 +17,10 @@ export const ProjectScanningConfigTab = () => {
 
   if (!subscription.secretScanning) {
     return (
-      <div className="mt-60 flex h-full w-full items-center justify-center px-20">
-        <AccessRestrictedBanner
-          body={
-            <>
-              Your current plan doesn&apos;t support Secret Scanning.
-              <br /> Please contact Infisical Support or reach out through our Slack channel for
-              assistance.
-            </>
-          }
-        />
-      </div>
+      <AccessRestrictedNotice
+        title="Secret Scanning Not Available"
+        description="Your current plan doesn't include Secret Scanning. Contact Infisical support or reach out on Slack to enable it."
+      />
     );
   }
 

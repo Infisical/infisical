@@ -30,7 +30,7 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
       }),
       produces: ["text/event-stream"]
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const client = await server.services.projectEventsSSE.subscribe({
         projectId: req.body.projectId,

@@ -43,11 +43,18 @@ export const useCreateCmek = () => {
 export const useUpdateCmek = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ keyId, name, description, isDisabled }: TUpdateCmek) => {
+    mutationFn: async ({
+      keyId,
+      name,
+      description,
+      isDisabled,
+      hasDeleteProtection
+    }: TUpdateCmek) => {
       const { data } = await apiRequest.patch(`/api/v1/kms/keys/${keyId}`, {
         name,
         description,
-        isDisabled
+        isDisabled,
+        hasDeleteProtection
       });
 
       return data;

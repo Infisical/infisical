@@ -3,8 +3,13 @@ import { useTranslation } from "react-i18next";
 import { Link, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
-import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
+import {
+  AlertDescription,
+  AlertTitle,
+  DismissableAlert,
+  LookingForOrgPageLink,
+  PageHeader
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useSubscription } from "@app/context";
 
@@ -80,12 +85,13 @@ export const OrgTabGroup = () => {
       defaultTab)
     : defaultTab;
   const activeTab = visibleTabs.find((item) => item.key === selectedTab);
+  const ActiveTabComponent = activeTab?.component;
   const selectedTabName = activeTab?.name;
   const settingsTitle = `${isSubOrganization ? "Sub-Organization" : "Organization"} Settings`;
   const pageTitle = selectedTabName ? `${selectedTabName} - ${settingsTitle}` : settingsTitle;
 
   return (
-    <>
+    <div className="flex w-full flex-col gap-8">
       <Helmet>
         <title>{t("common.head-title", { title: pageTitle })}</title>
       </Helmet>
@@ -97,55 +103,40 @@ export const OrgTabGroup = () => {
         }
         title={selectedTabName ?? settingsTitle}
       >
-        {isSubOrganization && (
-          <Link
-            to="/organizations/$orgId/settings"
-            params={{
-              orgId: currentOrg.rootOrgId ?? ""
-            }}
-            className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
-          >
-            <InfoIcon size={12} /> Looking for root organization settings?
-          </Link>
-        )}
+        <LookingForOrgPageLink page="settings" target="root" />
       </PageHeader>
-      {selectedTab === "tab-org-general" && (
-        <Alert variant="info" className="mb-6">
-          <InfoIcon />
-          <AlertTitle>Some Settings Have Moved</AlertTitle>
-          <AlertDescription>
-            <p>
-              Audit log streams now live under{" "}
-              <Link
-                to="/organizations/$orgId/audit-logs"
-                params={{ orgId: currentOrg.id }}
-                search={{ selectedTab: "streams" }}
-                className="underline hover:opacity-80"
-              >
-                Audit Logs
-              </Link>
-              , and workflow integrations, OAuth applications, and external migrations have moved to{" "}
-              <Link
-                to="/organizations/$orgId/integrations"
-                params={{ orgId: currentOrg.id }}
-                className="underline hover:opacity-80"
-              >
-                Integrations
-              </Link>
-              .
-            </p>
-          </AlertDescription>
-        </Alert>
-      )}
-      <Tabs orientation="vertical" value={selectedTab}>
-        {visibleTabs
-          .filter((tab) => !tab.requiresFeature)
-          .map(({ key, component: Component }) => (
-            <TabPanel value={key} key={`tab-panel-${key}`}>
-              <Component />
-            </TabPanel>
-          ))}
-      </Tabs>
-    </>
+      <div className="flex flex-col gap-6">
+        {selectedTab === "tab-org-general" && (
+          <DismissableAlert variant="info" actionKey="org_general_settings_moved_banner_dismissed">
+            <InfoIcon />
+            <AlertTitle>Some Settings Have Moved</AlertTitle>
+            <AlertDescription>
+              <p>
+                Audit log streams now live under{" "}
+                <Link
+                  to="/organizations/$orgId/audit-logs"
+                  params={{ orgId: currentOrg.id }}
+                  search={{ selectedTab: "streams" }}
+                  className="underline hover:opacity-80"
+                >
+                  Audit Logs
+                </Link>
+                , and workflow integrations, OAuth applications, and external migrations have moved
+                to{" "}
+                <Link
+                  to="/organizations/$orgId/integrations"
+                  params={{ orgId: currentOrg.id }}
+                  className="underline hover:opacity-80"
+                >
+                  Integrations
+                </Link>
+                .
+              </p>
+            </AlertDescription>
+          </DismissableAlert>
+        )}
+        {ActiveTabComponent && <ActiveTabComponent />}
+      </div>
+    </div>
   );
 };

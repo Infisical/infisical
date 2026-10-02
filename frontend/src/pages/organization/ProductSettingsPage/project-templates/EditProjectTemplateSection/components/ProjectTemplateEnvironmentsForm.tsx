@@ -145,7 +145,7 @@ export const ProjectTemplateEnvironmentsForm = ({
             <span className="my-4 text-sm text-danger">{errors.environments.message}</span>
           )}
           {environments.length > 0 ? (
-            <Table className="table-fixed">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
@@ -214,7 +214,7 @@ export const ProjectTemplateEnvironmentsForm = ({
                     </TableCell>
                     {!isInfisicalTemplate && (
                       <TableCell>
-                        <div className="flex items-center justify-end gap-3 text-mineshaft-400">
+                        <div className="flex items-center justify-end gap-3 text-muted">
                           <OrgPermissionCan
                             I={OrgPermissionActions.Edit}
                             a={OrgPermissionSubjects.ProjectTemplates}
@@ -253,7 +253,7 @@ export const ProjectTemplateEnvironmentsForm = ({
                               </IconButton>
                             )}
                           </OrgPermissionCan>
-                          <div className="h-7 w-px bg-mineshaft-600" />
+                          <div className="h-7 w-px bg-surface-active" />
                           <OrgPermissionCan
                             I={OrgPermissionActions.Edit}
                             a={OrgPermissionSubjects.ProjectTemplates}

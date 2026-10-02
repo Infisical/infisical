@@ -10,13 +10,16 @@ import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
+import { TCertificateAlertEventEmitter } from "../certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
@@ -32,6 +35,7 @@ import type { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { InternalCas } from "../license-client";
 import { TUsageMeteringServiceFactory } from "../license-client/usage";
+import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
@@ -80,6 +84,9 @@ import {
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
+import { assertNoCertificateProfilesUsingCa, rethrowCaDeleteError } from "./certificate-authority-fns";
+import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
+import { assertCertificateAuthorityQuota, resolveEffectiveMaxCas } from "./certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TCertificateAuthority,
@@ -132,6 +139,7 @@ type TCertificateAuthorityServiceFactoryDep = {
     | "findWithAssociatedCa"
     | "findByNameAndProjectIdWithAssociatedCa"
     | "countInternalCasByOrgId"
+    | "countCasByOrgId"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
@@ -148,7 +156,8 @@ type TCertificateAuthorityServiceFactoryDep = {
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByCaId" | "findById" | "findByIdWithConfigs">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateRequestDAL: Pick<
     TCertificateRequestDALFactory,
     "findById" | "updateById" | "transitionFromPending" | "attachCertificate" | "setPendingMessage"
@@ -156,10 +165,13 @@ type TCertificateAuthorityServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "assertAttachPermission">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -182,13 +194,17 @@ export const certificateAuthorityServiceFactory = ({
   pkiSyncQueue,
   certificateProfileDAL,
   certificateRequestDAL,
+  pkiApplicationDAL,
   resourceMetadataDAL,
   gatewayV2Service,
   gatewayPoolService,
+  keyStore,
   usageMeteringService,
   hsmConnectorService,
   certificateAuthoritySecretDAL,
-  licenseService
+  licenseService,
+  pkiAlertV2Queue,
+  certificateAlertEventEmitter
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -203,7 +219,10 @@ export const certificateAuthorityServiceFactory = ({
     projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    certificateProfileDAL
+    certificateProfileDAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    keyStore
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
@@ -326,18 +345,24 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.pkiEnterpriseCaIntegrations) {
+      throw new BadRequestError({
+        message: `Failed to connect ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} due to plan restriction. Upgrade plan to connect an external certificate authority.`
+      });
+    }
+
+    // Internal CAs are gated inside internalCertificateAuthorityService.createCa, which every internal
+    // creation path funnels through, so only the external types are checked here.
+    if (type !== CaType.INTERNAL) {
+      await assertCertificateAuthorityQuota({
+        projectId,
+        isInternal: false,
+        deps: { projectDAL, licenseService, certificateAuthorityDAL }
+      });
+    }
+
     if (type === CaType.INTERNAL) {
       const internalConfig = configuration as TCreateInternalCertificateAuthorityDTO["configuration"];
-
-      if (typeof plan.maxInternalCas === "number") {
-        const currentInternalCaCount = await certificateAuthorityDAL.countInternalCasByOrgId(actor.orgId);
-        if (currentInternalCaCount >= plan.maxInternalCas) {
-          throw new BadRequestError({
-            message:
-              "Failed to create internal certificate authority due to plan limit reached. Upgrade plan to add more internal certificate authorities."
-          });
-        }
-      }
 
       if (internalConfig.keySource === CertKeySource.Hsm) {
         if (!internalConfig.hsmConnectorId) {
@@ -632,6 +657,36 @@ export const certificateAuthorityServiceFactory = ({
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
+  const getCertificateAuthorityQuota = async ({ projectId }: { projectId: string }, actor: OrgServiceActor) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateAuthorityActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const plan = await licenseService.getPlan(project.orgId);
+    const [totalUsed, internalUsed] = await Promise.all([
+      certificateAuthorityDAL.countCasByOrgId(project.orgId),
+      certificateAuthorityDAL.countInternalCasByOrgId(project.orgId)
+    ]);
+
+    return {
+      certificateAuthorities: { used: totalUsed, limit: resolveEffectiveMaxCas(plan) },
+      internalCertificateAuthorities: { used: internalUsed, limit: plan.maxInternalCas ?? null }
+    };
+  };
+
   const listCertificateAuthoritiesByProjectId = async (
     { projectId, type }: { projectId: string; type: CaType },
     actor: OrgServiceActor
@@ -747,7 +802,11 @@ export const certificateAuthorityServiceFactory = ({
       }
 
       const internalConfig = configuration as
-        | { crlDistributionPointUrls?: string[]; disableManagedCrlDistributionPointUrl?: boolean }
+        | {
+            crlDistributionPointUrls?: string[];
+            disableManagedCrlDistributionPointUrl?: boolean;
+            isOcspEnabled?: boolean;
+          }
         | undefined;
 
       const updatedCa = await internalCertificateAuthorityService.updateCaById({
@@ -756,7 +815,8 @@ export const certificateAuthorityServiceFactory = ({
         status,
         name,
         crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls,
-        disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl
+        disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl,
+        isOcspEnabled: internalConfig?.isOcspEnabled
       });
 
       if (!updatedCa.internalCa) {
@@ -893,7 +953,9 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
-    await certificateAuthorityDAL.deleteById(certificateAuthority.id);
+    await assertNoCertificateProfilesUsingCa(certificateProfileDAL, certificateAuthority.id, certificateAuthority.name);
+
+    await certificateAuthorityDAL.deleteById(certificateAuthority.id).catch(rethrowCaDeleteError);
 
     if (type === CaType.INTERNAL) {
       usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
@@ -1125,7 +1187,9 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
-    await certificateAuthorityDAL.deleteById(certificateAuthority.id);
+    await assertNoCertificateProfilesUsingCa(certificateProfileDAL, certificateAuthority.id, certificateAuthority.name);
+
+    await certificateAuthorityDAL.deleteById(certificateAuthority.id).catch(rethrowCaDeleteError);
 
     if (type === CaType.INTERNAL) {
       usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
@@ -1425,7 +1489,9 @@ export const certificateAuthorityServiceFactory = ({
               resourceMetadataDAL,
               godaddyFns,
               projectDAL,
-              telemetryService
+              telemetryService,
+              pkiAlertV2Queue,
+              certificateAlertEventEmitter
             },
             certificateRequest
           )
@@ -1439,18 +1505,28 @@ export const certificateAuthorityServiceFactory = ({
               resourceMetadataDAL,
               digicertFns,
               projectDAL,
-              telemetryService
+              telemetryService,
+              pkiAlertV2Queue,
+              certificateAlertEventEmitter
             },
             certificateRequest
           );
 
-    return { ...result, projectId: certificateRequest.projectId };
+    return {
+      ...result,
+      projectId: certificateRequest.projectId,
+      applicationId: certificateRequest.applicationId ?? null,
+      applicationName: certificateRequest.applicationId
+        ? ((await pkiApplicationDAL.findById(certificateRequest.applicationId))?.name ?? null)
+        : null
+    };
   };
 
   return {
     createCertificateAuthority,
     findCertificateAuthorityById,
     listCertificateAuthoritiesByProjectId,
+    getCertificateAuthorityQuota,
     findCertificateAuthorityByNameAndProjectId,
     updateCertificateAuthority,
     deleteCertificateAuthority,

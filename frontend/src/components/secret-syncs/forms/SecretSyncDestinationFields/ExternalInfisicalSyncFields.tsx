@@ -1,16 +1,15 @@
 import { useMemo } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   SecretPathInput,
   Tooltip,
   TooltipContent,
@@ -18,7 +17,6 @@ import {
 } from "@app/components/v3";
 import {
   TRemoteInfisicalEnvironmentFolderTree,
-  TRemoteInfisicalProject,
   useExternalInfisicalConnectionGetEnvironmentFolderTree,
   useExternalInfisicalConnectionListProjects
 } from "@app/hooks/api/appConnections/external-infisical";
@@ -87,7 +85,10 @@ export const ExternalInfisicalSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-external-infisical-project-id-label"
+              htmlFor="secret-sync-external-infisical-project-id"
+            >
               Project
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -100,12 +101,18 @@ export const ExternalInfisicalSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-external-infisical-project-id-label"
+                aria-describedby={
+                  error ? "secret-sync-external-infisical-project-id-error" : undefined
+                }
+                id="secret-sync-external-infisical-project-id"
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TRemoteInfisicalProject>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? "");
                   setValue("destinationConfig.environment", "");
                   setValue("destinationConfig.secretPath", "/");
@@ -114,8 +121,10 @@ export const ExternalInfisicalSyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id, option.slug]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-external-infisical-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -125,7 +134,10 @@ export const ExternalInfisicalSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-external-infisical-environment-label"
+              htmlFor="secret-sync-external-infisical-environment"
+            >
               Environment
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -135,12 +147,18 @@ export const ExternalInfisicalSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-external-infisical-environment-label"
+                aria-describedby={
+                  error ? "secret-sync-external-infisical-environment-error" : undefined
+                }
+                id="secret-sync-external-infisical-environment"
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId || !projectId}
                 value={environments.find((e) => e.slug === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<{ id: string; name: string; slug: string }>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.slug ?? "");
                   setValue("destinationConfig.secretPath", "/");
                 }}
@@ -148,8 +166,10 @@ export const ExternalInfisicalSyncFields = () => {
                 placeholder="Select an environment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.slug}
+                getOptionKeywords={(option) => [option.slug]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-external-infisical-environment-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -173,6 +193,7 @@ export const ExternalInfisicalSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <SecretPathInput
+                isError={Boolean(error)}
                 disabled={!connectionId || !projectId || !environmentSlug}
                 value={value}
                 onChange={onChange}

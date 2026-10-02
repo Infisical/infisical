@@ -96,7 +96,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const dynamicSecretCfg = await server.services.dynamicSecret.create({
         actor: req.permission.type,
@@ -118,7 +118,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
             secretPath: dynamicSecretCfg.secretPath,
             defaultTTL: `${ms(dynamicSecretCfg.defaultTTL) / 1000}s`,
             maxTTL: dynamicSecretCfg.maxTTL ? `${ms(dynamicSecretCfg.maxTTL) / 1000}s` : null,
-            hasGateway: Boolean(dynamicSecretCfg.gatewayId || dynamicSecretCfg.gatewayV2Id)
+            hasGateway: Boolean(dynamicSecretCfg.gatewayV2Id)
           }
         })
         .catch(() => {});
@@ -203,7 +203,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { dynamicSecret, updatedFields, projectId, environment, secretPath } =
         await server.services.dynamicSecret.updateByName({
@@ -272,7 +272,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const dynamicSecretCfg = await server.services.dynamicSecret.deleteByName({
         actor: req.permission.type,
@@ -343,7 +343,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const dynamicSecretCfg = await server.services.dynamicSecret.getDetails({
         actor: req.permission.type,
@@ -394,7 +394,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { dynamicSecrets, environment, secretPath, projectId } =
         await server.services.dynamicSecret.listDynamicSecretsByEnv({
@@ -450,7 +450,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { leases, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.listLeases({
@@ -499,7 +499,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         200: z.string()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { caPublicKey } = await server.services.dynamicSecret.getSshCaPublicKey({
         dynamicSecretId: req.params.dynamicSecretId,
@@ -600,7 +600,7 @@ echo ""
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { caPublicKey } = await server.services.dynamicSecret.getSshCaPublicKey({
         dynamicSecretId: req.params.dynamicSecretId,
@@ -640,7 +640,7 @@ echo ""
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.dynamicSecret.fetchIbmApiConnectOrgs({
         instanceUrl: req.body.instanceUrl,
@@ -686,7 +686,7 @@ echo ""
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.dynamicSecret.fetchIbmApiConnectOrgCatalogs({
         instanceUrl: req.body.instanceUrl,
@@ -735,7 +735,7 @@ echo ""
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.dynamicSecret.fetchIbmApiConnectOrgApps({
         instanceUrl: req.body.instanceUrl,
@@ -779,7 +779,7 @@ echo ""
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.dynamicSecret.fetchAzureEntraIdUsers({
         tenantId: req.body.tenantId,

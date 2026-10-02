@@ -9,7 +9,7 @@ import {
   FieldLabel,
   Input,
   SecretInput,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -154,7 +154,7 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
                         </TooltipContent>
                       </Tooltip>
                     </FieldLabel>
-                    <Switch
+                    <Toggle
                       id="stream-batch-mode"
                       variant={scopeVariant}
                       checked={isBatch}

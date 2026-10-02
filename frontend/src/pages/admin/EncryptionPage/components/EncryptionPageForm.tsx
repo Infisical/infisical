@@ -158,6 +158,7 @@ export const EncryptionPageForm = () => {
         </CardContent>
       </Card>
       <UpgradePlanModal
+        paywallKey="admin.encryption-page"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan?.data?.text}

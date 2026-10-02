@@ -147,6 +147,9 @@ export type TDynamicSecretServiceFactory = {
   listDynamicSecretsByFolderIds: (
     arg: TListDynamicSecretsByFolderMappingsDTO,
     actor: OrgServiceActor
-  ) => Promise<Array<TDynamicSecretWithMetadata & { environment: string; path: string }>>;
+  ) => Promise<{
+    dynamicSecrets: Array<TDynamicSecretWithMetadata & { environment: string; path: string }>;
+    isLimitReached: boolean;
+  }>;
   getSshCaPublicKey: (arg: TGetSshCaPublicKeyDTO) => Promise<{ caPublicKey: string }>;
 };

@@ -5,7 +5,12 @@ import { AppConnection, AWSRegion } from "@app/services/app-connection/app-conne
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema, PostSyncCommandSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import {
+  HostCommandSchema,
+  PkiSyncFiltersField,
+  PkiSyncSchema,
+  UpdatePkiSyncFiltersField
+} from "@app/services/pki-sync/pki-sync-schemas";
 
 import { AWS_CERTIFICATE_MANAGER_CERTIFICATE_NAMING } from "./aws-certificate-manager-pki-sync-constants";
 
@@ -18,7 +23,8 @@ const AwsCertificateManagerPkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
   preserveArn: z.boolean().default(true),
-  postSyncCommand: PostSyncCommandSchema,
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()
     .trim()
@@ -66,7 +72,8 @@ export const CreateAwsCertificateManagerPkiSyncSchema = z.object({
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
   applicationId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).optional()
+  certificateIds: z.array(z.string().uuid()).optional(),
+  filters: PkiSyncFiltersField
 });
 
 export const UpdateAwsCertificateManagerPkiSyncSchema = z.object({
@@ -76,7 +83,8 @@ export const UpdateAwsCertificateManagerPkiSyncSchema = z.object({
   destinationConfig: AwsCertificateManagerPkiSyncConfigSchema.optional(),
   syncOptions: AwsCertificateManagerPkiSyncOptionsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const AwsCertificateManagerPkiSyncListItemSchema = z.object({

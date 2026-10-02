@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { ApiErrorTypes } from "../types";
 import { accessApprovalKeys } from "./queries";
 import {
   TAccessApproval,
@@ -18,6 +19,7 @@ export const useCreateAccessApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TCreateAccessPolicyDTO>({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
     mutationFn: async ({
       environments,
       projectSlug,
@@ -66,6 +68,7 @@ export const useUpdateAccessApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TUpdateAccessPolicyDTO>({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
     mutationFn: async ({
       id,
       approvers,

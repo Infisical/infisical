@@ -29,7 +29,7 @@ type Props = {
 };
 
 const schema = z.object({
-  name: z.string(),
+  name: z.string().min(1, { message: "Environment Name field must be at least 1 character" }),
   slug: slugSchema({ min: 1, max: 64 })
 });
 
@@ -83,7 +83,13 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="updateEnvName">Environment Name</FieldLabel>
-                <Input id="updateEnvName" isError={Boolean(error)} {...field} />
+                <Input
+                  id="updateEnvName"
+                  isError={Boolean(error)}
+                  {...field}
+                  autoComplete="off"
+                  name="updateEnvName"
+                />
                 <FieldError>{error?.message}</FieldError>
               </Field>
             )}

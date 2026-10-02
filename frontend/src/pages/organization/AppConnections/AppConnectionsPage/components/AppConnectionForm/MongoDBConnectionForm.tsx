@@ -18,12 +18,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -206,9 +206,17 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field className="flex-1">
-                    <FieldLabel>Password</FieldLabel>
-                    <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                    <FieldError errors={[error]} />
+                    <FieldLabel htmlFor="app-connection-mongo-db-password">Password</FieldLabel>
+                    <SecretInput
+                      aria-describedby={
+                        error ? "app-connection-mongo-db-password-error" : undefined
+                      }
+                      id="app-connection-mongo-db-password"
+                      isError={Boolean(error)}
+                      value={value}
+                      onChange={(e) => onChange(e.target.value)}
+                    />
+                    <FieldError id="app-connection-mongo-db-password-error" errors={[error]} />
                   </Field>
                 )}
               />
@@ -224,7 +232,8 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     <FieldContent>
                       <Label htmlFor="tls-enabled">Enable TLS</Label>
                     </FieldContent>
-                    <Switch
+                    <Toggle
+                      aria-invalid={Boolean(error)}
                       id="tls-enabled"
                       variant={scopeVariant}
                       checked={value}
@@ -267,7 +276,8 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                         trusted TLS certificate.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
+                      aria-invalid={Boolean(error)}
                       id="tls-reject-unauthorized"
                       variant={scopeVariant}
                       checked={tlsEnabled ? value : false}

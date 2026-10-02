@@ -1,3 +1,4 @@
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 import {
   CERT_EXTENDED_KEY_USAGES,
@@ -6,6 +7,7 @@ import {
   CertSubjectAlternativeNameType,
   TAltNameType
 } from "@app/services/certificate-common/certificate-constants";
+import { TImportExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -14,7 +16,14 @@ import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 export enum CertStatus {
   ACTIVE = "active",
   EXPIRED = "expired",
-  REVOKED = "revoked"
+  REVOKED = "revoked",
+  RENEWED = "renewed"
+}
+
+export enum CertificateDeletionEligibility {
+  Expired = "expired",
+  Discovered = "discovered",
+  Imported = "imported"
 }
 
 export enum CertKeyAlgorithm {
@@ -120,6 +129,7 @@ export type TGetCertDTO = {
 export type TDeleteCertDTO = {
   id?: string;
   serialNumber?: string;
+  auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TRevokeCertDTO = {
@@ -150,6 +160,9 @@ export type TImportCertDTO = {
   certificatePem: string;
   privateKeyPem?: string;
   chainPem?: string;
+
+  profileId?: string;
+  externalMetadata?: TImportExternalMetadata;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCertPrivateKeyDTO = {

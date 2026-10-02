@@ -294,7 +294,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id: projectId } = await server.services.convertor.projectSlugToId({
         slug: req.params.projectSlug,
@@ -331,7 +331,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id: projectId } = await server.services.convertor.projectSlugToId({
         slug: req.params.projectSlug,

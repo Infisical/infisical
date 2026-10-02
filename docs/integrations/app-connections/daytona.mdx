@@ -1,0 +1,88 @@
+---
+title: "Daytona connection"
+sidebarTitle: "Daytona"
+description: "Learn how to configure a Daytona connection for Infisical."
+---
+
+import CreateApiKey from "/snippets/app-connections/daytona/create-api-key.mdx";
+import ConnectionFormFields from "/snippets/app-connections/daytona/form-fields.mdx";
+
+A Daytona connection authenticates Infisical to [Daytona](https://www.daytona.io/) using an API key.
+
+<Note>
+    This guide only authenticates Infisical with Daytona. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- A [Daytona account](https://app.daytona.io/) with access to create API keys in the organization you want to sync secrets to
+
+## Step 1: Create a Daytona API key
+
+Infisical authenticates to Daytona with an API key that can manage secrets in your organization. Daytona API keys belong to exactly one organization, so the key you use decides which organization Infisical writes secrets to.
+
+<CreateApiKey />
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+    To create the connection using the API, use the [Create Daytona Connection](/api-reference/endpoints/app-connections/daytona/create) endpoint.
+</Tip>
+
+<View title="Organization-level">
+    <Steps>
+        <Step>
+            In the sidebar, select **Organization Settings**, then open the **App Connections** tab.
+
+            ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        </Step>
+        <Step>
+            Select **+ Add Connection** and choose **Daytona Connection**.
+
+            ![Select Daytona Connection](/images/app-connections/daytona/daytona-app-connection-option.png)
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Daytona**.
+
+            ![Daytona Connection Modal](/images/app-connections/daytona/daytona-app-connection-form.png)
+        </Step>
+    </Steps>
+</View>
+
+<View title="Project-level">
+    <Steps>
+        <Step>
+            In your Secrets Manager project, select **Integrations** from the sidebar, then open the **App Connections** tab.
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Daytona Connection**.
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Daytona**.
+        </Step>
+    </Steps>
+</View>
+
+Infisical checks the key against Daytona and records the organization the key belongs to.
+
+<Check>
+    Your Daytona app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your Daytona app connection is configured, you can use it to set up the following integrations:
+
+<Card title="Daytona Secret Sync" icon="refresh-cw" href="/integrations/secret-syncs/daytona">
+    Sync secrets from Infisical to a Daytona organization.
+</Card>

@@ -331,12 +331,15 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   upgradeStatus: true,
   pitVersionLimit: true,
   kmsCertificateKeyId: true,
+  kmsSecretManagerKeyId: true,
   auditLogsRetentionDays: true,
   hasDeleteProtection: true,
   secretSharing: true,
   showSnapshotsLegacy: true,
   secretDetectionIgnoreValues: true,
-  enforceEncryptedSecretManagerSecretMetadata: true
+  enforceEncryptedSecretManagerSecretMetadata: true,
+  secretBlindIndexEnabled: true,
+  isLegacyAdditionalPrivilegesEnabled: true
 });
 
 export const SanitizedTagSchema = SecretTagsSchema.pick({

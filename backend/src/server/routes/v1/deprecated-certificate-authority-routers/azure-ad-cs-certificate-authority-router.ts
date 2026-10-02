@@ -49,7 +49,7 @@ export const registerAzureAdCsCertificateAuthorityRouter = async (server: Fastif
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const templates = await server.services.certificateAuthority.getAzureAdcsTemplates({
         caId: req.params.caId,

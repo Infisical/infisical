@@ -3,17 +3,23 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
 import { Button, PageHeader } from "@app/components/v2";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
+import {
+  LookingForOrgPageLink,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useOrgPermission
@@ -49,7 +55,11 @@ export const AccessManagementPage = () => {
     {
       key: OrgAccessControlTabSections.Member,
       label: "Users",
-      isHidden: permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Member),
+      isHidden: permission.cannot(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member),
+      requirement: {
+        action: OrgPermissionMemberActions.Read,
+        subject: OrgPermissionSubjects.Member
+      },
       component: OrgMembersTab
     },
     {
@@ -59,18 +69,30 @@ export const AccessManagementPage = () => {
         OrgPermissionIdentityActions.Read,
         OrgPermissionSubjects.Identity
       ),
+      requirement: {
+        action: OrgPermissionIdentityActions.Read,
+        subject: OrgPermissionSubjects.Identity
+      },
       component: OrgIdentityTab
     },
     {
       key: OrgAccessControlTabSections.Groups,
       label: "Groups",
       isHidden: permission.cannot(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups),
+      requirement: {
+        action: OrgPermissionGroupActions.Read,
+        subject: OrgPermissionSubjects.Groups
+      },
       component: OrgGroupsTab
     },
     {
       key: OrgAccessControlTabSections.Roles,
       label: "Roles",
       isHidden: permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Role),
+      requirement: {
+        action: OrgPermissionActions.Read,
+        subject: OrgPermissionSubjects.Role
+      },
       component: OrgRoleTabSection
     }
   ];
@@ -83,7 +105,7 @@ export const AccessManagementPage = () => {
   const activeTab = selectedTabSection ? selectedTab : (visibleTabSections[0]?.key ?? selectedTab);
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
       </Helmet>
@@ -93,25 +115,15 @@ export const AccessManagementPage = () => {
           title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Access Control`}
           description={`Manage fine-grained access for users, groups, roles, and machine identities within your ${isSubOrganization ? "sub-" : ""}organization resources.`}
         >
-          {isSubOrganization && (
-            <Link
-              to="/organizations/$orgId/access-management"
-              params={{
-                orgId: currentOrg.rootOrgId ?? ""
-              }}
-              className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
-            >
-              <InfoIcon size={12} /> Looking for root organization access control?
-            </Link>
-          )}
+          <LookingForOrgPageLink page="accessControl" target="root" />
         </PageHeader>
         {!currentOrg.shouldUseNewPrivilegeSystem && (
-          <div className="mt-4 mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
+          <div className="mt-4 mb-4 flex flex-col rounded-r border-l-2 border-l-project bg-label/5 px-4 py-2.5">
             <div className="mb-1 flex items-center text-sm">
-              <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
+              <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-project" />
               Your organization is using legacy privilege management
             </div>
-            <p className="mt-1 mb-2 text-sm text-bunker-300">
+            <p className="mt-1 mb-2 text-sm text-label-secondary">
               We&apos;ve developed an improved privilege management system to better serve your
               security needs. Upgrade to our new permission-based approach that allows you to
               explicitly designate who can modify specific access levels, rather than relying on
@@ -131,7 +143,7 @@ export const AccessManagementPage = () => {
           onOpenChange={setIsUpgradePrivilegeSystemModalOpen}
         />
         {visibleTabSections.length === 0 ? (
-          <OrgPermissionGuardBanner />
+          <OrgPermissionGuardBanner accessRestrictedMode="dialog" />
         ) : (
           <Tabs value={activeTab} onValueChange={updateSelectedTab}>
             <TabsList
@@ -145,7 +157,10 @@ export const AccessManagementPage = () => {
               ))}
             </TabsList>
             {isSelectedTabRestricted ? (
-              <OrgPermissionGuardBanner />
+              <OrgPermissionGuardBanner
+                accessRestrictedMode="dialog"
+                requirement={selectedTabSection?.requirement}
+              />
             ) : (
               visibleTabSections.map(({ key, component: Component }) => (
                 <TabsContent value={key} key={`org-access-tab-panel-${key}`}>

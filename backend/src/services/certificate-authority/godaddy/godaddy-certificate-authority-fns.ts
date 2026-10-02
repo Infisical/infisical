@@ -17,6 +17,10 @@ import { getGoDaddyApiBaseUrl } from "@app/services/app-connection/godaddy/godad
 import { TGoDaddyConnection } from "@app/services/app-connection/godaddy/godaddy-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertStatus, CrlReason } from "@app/services/certificate/certificate-types";
 import {
@@ -29,7 +33,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { extractIssuedCertificateFields, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createGoDaddyApiClient } from "./godaddy-api-client";
 import { GoDaddyProductType } from "./godaddy-certificate-authority-enums";
@@ -49,7 +53,7 @@ type TGoDaddyCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findOne">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -524,7 +528,7 @@ export const GoDaddyCertificateAuthorityFns = ({
       .join("\n");
 
     const certObj = new x509.X509Certificate(leaf);
-    const issued = extractIssuedCertificateFields(certObj);
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
     if (isRenewal && originalCertificateId) {
       const original = await certificateDAL.findOne({ id: originalCertificateId });
@@ -552,21 +556,18 @@ export const GoDaddyCertificateAuthorityFns = ({
     const createdCertificateId = await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           applicationId: applicationId ?? undefined,
           profileId: certificateRequest.profileId ?? undefined,
           status: CertStatus.ACTIVE,
-          friendlyName: issued.commonName || "",
-          commonName: issued.commonName || "",
-          altNames: issued.altNames.length > 0 ? issued.altNames.join(",") : "",
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
-          keyUsages: issued.keyUsages,
-          extendedKeyUsages: issued.extendedKeyUsages,
-          keyAlgorithm: certificateRequest.keyAlgorithm ?? undefined,
-          signatureAlgorithm: certificateRequest.signatureAlgorithm ?? undefined,
           projectId: ca.projectId,
+          friendlyName: parsedFields.commonName || "",
+          commonName: parsedFields.commonName || "",
+          keyUsages: parsedFields.keyUsages ?? [],
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? [],
+          keyAlgorithm: parsedFields.keyAlgorithm ?? certificateRequest.keyAlgorithm ?? undefined,
+          signatureAlgorithm: parsedFields.signatureAlgorithm ?? certificateRequest.signatureAlgorithm ?? undefined,
           externalMetadata: {
             type: CaType.GODADDY,
             certificateId: godaddyCertificateId
@@ -577,7 +578,7 @@ export const GoDaddyCertificateAuthorityFns = ({
       );
 
       if (isRenewal && originalCertificateId) {
-        await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, tx);
+        await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, tx);
       }
 
       await certificateBodyDAL.create(

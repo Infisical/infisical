@@ -24,10 +24,10 @@ export const PkiSyncOptionsSection = ({ pkiSync }: Props) => {
 
   return (
     <>
-      <Separator className="mt-4" />
+      <Separator />
       <Accordion type="multiple" variant="ghost">
         <AccordionItem value="sync-options">
-          <AccordionTrigger>Sync Options</AccordionTrigger>
+          <AccordionTrigger className="py-4">Sync Options</AccordionTrigger>
           <AccordionContent>
             <DetailGroup>
               {BOOLEAN_SYNC_OPTION_FIELDS.map(({ key, label }) => {

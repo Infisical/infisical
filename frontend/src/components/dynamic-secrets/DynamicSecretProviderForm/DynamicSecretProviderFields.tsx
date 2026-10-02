@@ -11,8 +11,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 
@@ -58,7 +58,7 @@ export const DynamicSecretProviderFields = <TValues extends FieldValues>({
 
                 if (fieldDefinition.type === "switch") {
                   input = (
-                    <Switch
+                    <Toggle
                       ref={field.ref}
                       id={inputId}
                       variant="project"

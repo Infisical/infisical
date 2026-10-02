@@ -224,7 +224,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
         <form onSubmit={handleSubmit(onFormSubmit)}>
           {certTemplate && (
             <FormControl label="Certificate Template ID">
-              <Input value={certTemplate.id} isDisabled className="bg-white/[0.07]" />
+              <Input value={certTemplate.id} isDisabled className="bg-foreground-inverse/[0.07]" />
             </FormControl>
           )}
           <Controller
@@ -238,7 +238,12 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
                 errorText={error?.message}
                 isRequired
               >
-                <Input {...field} placeholder="My Certificate Template" />
+                <Input
+                  {...field}
+                  placeholder="My Certificate Template"
+                  autoComplete="off"
+                  name="certificate-template-name"
+                />
               </FormControl>
             )}
           />

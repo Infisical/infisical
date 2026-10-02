@@ -3,11 +3,11 @@ import { Control, Controller, UseFormSetValue, useWatch } from "react-hook-form"
 import { ChevronDownIcon, ClockIcon } from "lucide-react";
 import ms from "ms";
 
-import { TtlFormLabel } from "@app/components/features";
 import {
   Badge,
   Button,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -29,6 +29,7 @@ import { getDurationDisplay, isValidTemporaryRange, TEMPORARY_RANGE_ERROR } from
 type RoleForSelect = { slug: string; name: string; id: string };
 
 type DurationEditorProps = {
+  inputId: string;
   committedRange?: string;
   isTemporary: boolean;
   isExpired: boolean;
@@ -41,6 +42,7 @@ type DurationEditorProps = {
 // keeps a half-typed range (eg "ab") out of the form state so it can't dirty the form or block save
 // from behind a closed popover.
 const DurationEditor = ({
+  inputId,
   committedRange,
   isTemporary,
   isExpired,
@@ -56,14 +58,14 @@ const DurationEditor = ({
       <div className="border-b border-b-border pb-2 text-sm text-muted">Configure Timed Access</div>
       {isExpired && <Badge variant="danger">Expired</Badge>}
       <Field>
-        <FieldLabel>
-          <TtlFormLabel label="Validity" />
-        </FieldLabel>
+        <FieldLabel htmlFor={inputId}>Validity</FieldLabel>
         <Input
+          id={inputId}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           isError={Boolean(errorMessage)}
         />
+        <FieldDescription>Use a duration such as 30m, 1h, or 3d.</FieldDescription>
         {errorMessage && <FieldError>{errorMessage}</FieldError>}
       </Field>
       <div className="flex items-center space-x-2">
@@ -106,6 +108,10 @@ export const RoleAssignmentRow = ({
 }: Props) => {
   const slugName = `${namePrefix}slug`;
   const temporaryAccessName = `${namePrefix}temporaryAccess`;
+  const fieldKey = (namePrefix || "single").replace(/[^a-zA-Z0-9-]/g, "-");
+  const roleSelectId = `member-${fieldKey}-role`;
+  const durationButtonId = `member-${fieldKey}-duration`;
+  const durationInputId = `member-${fieldKey}-validity`;
 
   const temporaryAccess = useWatch({ control, name: temporaryAccessName });
   const isTemporary = Boolean(temporaryAccess?.isTemporary);
@@ -120,9 +126,9 @@ export const RoleAssignmentRow = ({
           const rolesForSelect = getRolesForSelect(field.value);
           return (
             <Field className="min-w-0 flex-1">
-              {showLabels && <FieldLabel>Role</FieldLabel>}
+              {showLabels && <FieldLabel htmlFor={roleSelectId}>Role</FieldLabel>}
               <Select value={field.value} onValueChange={field.onChange} disabled={isEditDisabled}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger id={roleSelectId} className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper" className="z-[70]">
@@ -148,12 +154,13 @@ export const RoleAssignmentRow = ({
         }}
       />
       <Field className="w-44 shrink-0">
-        {showLabels && <FieldLabel>Duration</FieldLabel>}
+        {showLabels && <FieldLabel htmlFor={durationButtonId}>Duration</FieldLabel>}
         <Popover>
           <Tooltip>
             <TooltipTrigger asChild>
               <PopoverTrigger asChild>
                 <Button
+                  id={durationButtonId}
                   type="button"
                   variant={variant}
                   isDisabled={isEditDisabled}
@@ -174,6 +181,7 @@ export const RoleAssignmentRow = ({
             onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <DurationEditor
+              inputId={durationInputId}
               committedRange={
                 temporaryAccess?.isTemporary ? temporaryAccess.temporaryRange : undefined
               }

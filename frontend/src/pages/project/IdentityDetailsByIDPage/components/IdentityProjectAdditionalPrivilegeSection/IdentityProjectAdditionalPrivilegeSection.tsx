@@ -5,7 +5,6 @@ import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon } from "lucide-react"
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -26,6 +25,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  PageLoader,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -58,6 +58,7 @@ import {
   getIdentityAssignPrivilegesConditions
 } from "@app/lib/fn/permission";
 
+import { IdentityActionConfirmationDialog } from "../IdentityActionConfirmationDialog";
 import { IdentityProjectAdditionalPrivilegeModifySection } from "./IdentityProjectAdditionalPrivilegeModifySection";
 
 type Props = {
@@ -165,9 +166,8 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
         <CardContent>
           {/* eslint-disable-next-line no-nested-ternary */}
           {isPending ? (
-            // scott: todo proper loader
-            <div className="flex h-40 w-full items-center justify-center">
-              <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+            <div className="h-40">
+              <PageLoader lottieClassName="w-16" />
             </div>
           ) : identityProjectPrivileges?.length ? (
             <Table>
@@ -228,7 +228,11 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <IconButton size="xs" variant="ghost">
+                              <IconButton
+                                aria-label={`Open actions for ${privilegeDetails.slug || "additional privilege"}`}
+                                size="xs"
+                                variant="ghost"
+                              >
                                 <EllipsisIcon />
                               </IconButton>
                             </DropdownMenuTrigger>
@@ -361,14 +365,16 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
           />
         </SheetContent>
       </Sheet>
-      <DeleteActionModal
-        isOpen={popUp.deletePrivilege.isOpen}
-        deleteKey="remove"
-        title={`Do you want to remove privilege ${
-          (popUp?.deletePrivilege?.data as { slug: string; id: string })?.slug
+      <IdentityActionConfirmationDialog
+        open={popUp.deletePrivilege.isOpen}
+        confirmationText="remove"
+        title={`Remove privilege ${
+          (popUp?.deletePrivilege?.data as { slug: string; id: string })?.slug || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePrivilege", isOpen)}
-        onDeleteApproved={() => handlePrivilegeDelete()}
+        description="The machine identity will lose the permissions granted by this additional privilege."
+        actionLabel="Remove Privilege"
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePrivilege", isOpen)}
+        onConfirm={handlePrivilegeDelete}
       />
     </>
   );

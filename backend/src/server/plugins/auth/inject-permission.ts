@@ -100,6 +100,20 @@ export const injectPermission = fp(async (server) => {
       logger.info(
         `injectPermission: Injecting permissions for [permissionsForKmipServer=${req.auth.kmipServerId}] [type=${ActorType.KMIP_SERVER}]`
       );
+    } else if (req.auth.actor === ActorType.AGENT_VAULT_PROXY) {
+      // Without this the proxy routes' rate-limit keyGenerator falls back to source IP.
+      req.permission = {
+        type: ActorType.AGENT_VAULT_PROXY,
+        id: req.auth.agentVaultProxyId,
+        orgId: req.auth.orgId,
+        rootOrgId: req.auth.rootOrgId,
+        parentOrgId: req.auth.parentOrgId,
+        authMethod: null
+      };
+
+      logger.info(
+        `injectPermission: Injecting permissions for [permissionsForAgentVaultProxy=${req.auth.agentVaultProxyId}] [type=${ActorType.AGENT_VAULT_PROXY}]`
+      );
     }
   });
 });

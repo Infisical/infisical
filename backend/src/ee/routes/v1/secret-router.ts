@@ -57,7 +57,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { secretName } = req.params;
       const { secretPath, environment, projectId, includeAllEntities } = req.query;

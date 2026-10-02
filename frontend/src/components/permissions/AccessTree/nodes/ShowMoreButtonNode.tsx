@@ -1,8 +1,7 @@
-import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Handle, NodeProps, Position } from "@xyflow/react";
+import { ChevronRightIcon } from "lucide-react";
 
-import { Button, Tooltip } from "@app/components/v2";
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
 import { createShowMoreNode } from "../utils/createShowMoreNode";
 
@@ -12,7 +11,7 @@ export const ShowMoreButtonNode = ({
   const tooltipText = `${remaining} ${remaining === 1 ? "folder is" : "folders are"} hidden. Click to show ${remaining > 10 ? "10 more" : ""}`;
 
   return (
-    <div className="flex h-full w-full items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-2">
+    <div className="flex h-full w-full items-center justify-center rounded-md border border-border bg-card p-2">
       <Handle
         type="target"
         className="pointer-events-none cursor-pointer! opacity-0"
@@ -20,16 +19,14 @@ export const ShowMoreButtonNode = ({
       />
 
       <div className="flex items-center justify-center">
-        <Tooltip position="right" content={tooltipText}>
-          <Button
-            colorSchema="secondary"
-            variant="plain"
-            size="xs"
-            onClick={onClick}
-            rightIcon={<FontAwesomeIcon icon={faChevronRight} className="ml-1" />}
-          >
-            Show More
-          </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="xs" onClick={onClick}>
+              Show More
+              <ChevronRightIcon />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{tooltipText}</TooltipContent>
         </Tooltip>
       </div>
     </div>

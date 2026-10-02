@@ -1,10 +1,12 @@
-import { useMemo } from "react";
 import { format } from "date-fns";
 import { BanIcon, RefreshCwIcon } from "lucide-react";
 
 import { PkiSyncStatusBadge } from "@app/components/pki-syncs";
 import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
-import { PkiSyncStatus, TPkiSync } from "@app/hooks/api/pkiSyncs";
+import { getPkiSyncFailureMessage } from "@app/helpers/pkiSyncs";
+import { TPkiSync } from "@app/hooks/api/pkiSyncs";
+
+import { SyncErrorDetail } from "./SyncErrorDetail";
 
 type Props = {
   pkiSync: TPkiSync;
@@ -13,19 +15,7 @@ type Props = {
 export const PkiSyncDetailsSection = ({ pkiSync }: Props) => {
   const { syncStatus, lastSyncMessage, lastSyncedAt, isAutoSyncEnabled } = pkiSync;
 
-  const failureMessage = useMemo(() => {
-    if (syncStatus === PkiSyncStatus.Failed) {
-      if (lastSyncMessage)
-        try {
-          return JSON.stringify(JSON.parse(lastSyncMessage), null, 2);
-        } catch {
-          return lastSyncMessage;
-        }
-
-      return "An Unknown Error Occurred.";
-    }
-    return null;
-  }, [syncStatus, lastSyncMessage]);
+  const failureMessage = getPkiSyncFailureMessage(syncStatus, lastSyncMessage);
 
   return (
     <>
@@ -59,14 +49,7 @@ export const PkiSyncDetailsSection = ({ pkiSync }: Props) => {
           <DetailValue>{format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}</DetailValue>
         </Detail>
       )}
-      {syncStatus === PkiSyncStatus.Failed && failureMessage && (
-        <Detail>
-          <DetailLabel className="text-red">Last Sync Error</DetailLabel>
-          <DetailValue>
-            <p className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">{failureMessage}</p>
-          </DetailValue>
-        </Detail>
-      )}
+      {failureMessage && <SyncErrorDetail label="Last Sync Error" message={failureMessage} />}
     </>
   );
 };

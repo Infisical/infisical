@@ -10,6 +10,8 @@ const isScimRoutes = (pathname: string) =>
 
 const isAcmeRoutes = (pathname: string) => pathname.startsWith("/api/v1/cert-manager/acme/");
 
+const isOauthTokenRoute = (pathname: string) => pathname === "/api/v1/oauth/token";
+
 export const registerResponseSchemaHooks = fp(async (server) => {
   const appCfg = getConfig();
 
@@ -22,7 +24,8 @@ export const registerResponseSchemaHooks = fp(async (server) => {
       routeOptions.schema &&
       routeOptions.schema.response &&
       !isScimRoutes(routeOptions.path) &&
-      !isAcmeRoutes(routeOptions.path)
+      !isAcmeRoutes(routeOptions.path) &&
+      !isOauthTokenRoute(routeOptions.path)
     ) {
       routeOptions.schema.response = {
         ...DefaultResponseErrorsSchema,

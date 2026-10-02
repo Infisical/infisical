@@ -1,5 +1,7 @@
 export const REDACTED_CREDENTIAL_VALUE = "******";
 
+export const SPLUNK_DEFAULT_HEC_PORT = 8088;
+
 export enum LogProvider {
   Azure = "azure",
   Cribl = "cribl",
@@ -23,5 +25,6 @@ export enum AuditLogStreamProduct {
   KMS = "kms",
   SecretScanning = "secret-scanning",
   PAM = "pam",
+  AgentVault = "agent-vault",
   Organization = "organization"
 }

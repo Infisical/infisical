@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { format, intervalToDuration } from "date-fns";
 import {
   ArrowDownIcon,
@@ -38,16 +39,18 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { useRestoreEnvironment, useUpdateWsEnvironment } from "@app/hooks/api";
+import { useUpdateWsEnvironment } from "@app/hooks/api";
 import { ProjectDeletedEnvActor } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-type PopUpKeys = "updateEnv" | "deleteEnv" | "hardDeleteEnv" | "upgradePlan";
+type PopUpKeys = "updateEnv" | "deleteEnv" | "restoreEnv" | "hardDeleteEnv" | "upgradePlan";
 
 type EnvPayload = { name: string; slug: string; id: string; deleteAfter?: string };
 
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<[PopUpKeys]>, env: EnvPayload) => void;
+  isExternalMutationPending: boolean;
+  onMutationPendingChange: (isPending: boolean) => void;
 };
 
 const getActorLabel = (actor: ProjectDeletedEnvActor | null): string => {
@@ -76,52 +79,48 @@ const formatRemainingDuration = (target: Date): string | null => {
   return nonZero.map(([value, suffix]) => `${value}${suffix}`).join(" ");
 };
 
-export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
+export const EnvironmentTable = ({
+  handlePopUpOpen,
+  isExternalMutationPending,
+  onMutationPendingChange
+}: Props) => {
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
 
   const updateEnvironment = useUpdateWsEnvironment();
-  const restoreEnvironment = useRestoreEnvironment();
+  const [pendingAction, setPendingAction] = useState<
+    { id: string; direction: "up" | "down" } | undefined
+  >();
 
   const activeEnvironments = currentProject.environments ?? [];
   const deletedEnvironments = currentProject.deletedEnvironments ?? [];
 
-  const handleReorderEnv = async (id: string, position: number) => {
-    if (!currentProject?.id) return;
+  const handleReorderEnv = async (id: string, position: number, direction: "up" | "down") => {
+    if (!currentProject?.id || isExternalMutationPending || updateEnvironment.isPending) {
+      return;
+    }
 
-    await updateEnvironment.mutateAsync({
-      projectId: currentProject.id,
-      id,
-      position
-    });
-
-    createNotification({
-      text: "Successfully re-ordered environments",
-      type: "success"
-    });
-  };
-
-  const handleRestoreEnv = async (id: string) => {
-    if (!currentProject?.id) return;
+    setPendingAction({ id, direction });
+    onMutationPendingChange(true);
 
     try {
-      await restoreEnvironment.mutateAsync({
+      await updateEnvironment.mutateAsync({
         projectId: currentProject.id,
-        id
+        id,
+        position
       });
 
       createNotification({
-        text: "Successfully restored environment",
+        text: "Successfully re-ordered environments",
         type: "success"
       });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to restore environment";
-      createNotification({
-        text: message,
-        type: "error"
-      });
+    } finally {
+      setPendingAction(undefined);
+      onMutationPendingChange(false);
     }
   };
+
+  const isMutationPending = isExternalMutationPending || updateEnvironment.isPending;
 
   const isMoreEnvironmentsAllowed =
     subscription?.environmentLimit && activeEnvironments
@@ -170,9 +169,12 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                       aria-label="Move down"
                       variant="ghost-muted"
                       onClick={() =>
-                        handleReorderEnv(id, Math.min(activeEnvironments.length, pos + 2))
+                        handleReorderEnv(id, Math.min(activeEnvironments.length, pos + 2), "down")
                       }
-                      isDisabled={pos === activeEnvironments.length - 1 || !isAllowed}
+                      isPending={pendingAction?.id === id && pendingAction.direction === "down"}
+                      isDisabled={
+                        pos === activeEnvironments.length - 1 || !isAllowed || isMutationPending
+                      }
                     >
                       <ArrowDownIcon />
                     </IconButton>
@@ -186,8 +188,9 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     <IconButton
                       aria-label="Move up"
                       variant="ghost-muted"
-                      onClick={() => handleReorderEnv(id, Math.max(1, pos))}
-                      isDisabled={pos === 0 || !isAllowed}
+                      onClick={() => handleReorderEnv(id, Math.max(1, pos), "up")}
+                      isPending={pendingAction?.id === id && pendingAction.direction === "up"}
+                      isDisabled={pos === 0 || !isAllowed || isMutationPending}
                     >
                       <ArrowUpIcon />
                     </IconButton>
@@ -195,7 +198,11 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                 </ProjectPermissionCan>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <IconButton aria-label="Environment options" variant="ghost-muted">
+                    <IconButton
+                      aria-label="Environment options"
+                      variant="ghost-muted"
+                      isDisabled={isMutationPending}
+                    >
                       <Ellipsis />
                     </IconButton>
                   </DropdownMenuTrigger>
@@ -208,7 +215,9 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                         <Tooltip open={!isMoreEnvironmentsAllowed ? undefined : false}>
                           <TooltipTrigger asChild>
                             <DropdownMenuItem
-                              isDisabled={!isAllowed || !isMoreEnvironmentsAllowed}
+                              isDisabled={
+                                !isAllowed || !isMoreEnvironmentsAllowed || isMutationPending
+                              }
                               onClick={() => handlePopUpOpen("updateEnv", { name, slug, id })}
                             >
                               <PencilIcon />
@@ -231,7 +240,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                       {(isAllowed) => (
                         <DropdownMenuItem
                           variant="danger"
-                          isDisabled={!isAllowed}
+                          isDisabled={!isAllowed || isMutationPending}
                           onClick={() => handlePopUpOpen("deleteEnv", { name, slug, id })}
                         >
                           <Trash2Icon />
@@ -251,8 +260,8 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
 
           return (
             <TableRow key={id} className="bg-warning/[0.025]">
-              <TableCell className="text-mineshaft-400 line-through">{name}</TableCell>
-              <TableCell className="text-mineshaft-400">{slug}</TableCell>
+              <TableCell className="text-warning/80 line-through">{name}</TableCell>
+              <TableCell className="text-warning/80 line-through">{slug}</TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
                   <Tooltip>
@@ -269,12 +278,12 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                             ? `${remaining} until permanent deletion`
                             : "Will be permanently deleted soon"}
                         </span>
-                        <span className="text-xs text-mineshaft-300">
+                        <span className="text-xs text-accent">
                           {remaining
                             ? `Scheduled for ${format(deleteAfterDate, "MMM d, yyyy, h:mm a")}`
                             : "Awaiting the next daily cleanup sweep"}
                         </span>
-                        <span className="text-xs text-mineshaft-300">
+                        <span className="text-xs text-accent">
                           Soft-deleted by {getActorLabel(deletedBy)} ·{" "}
                           {format(new Date(softDeletedAt), "MMM d, yyyy")}
                         </span>
@@ -287,28 +296,34 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                   >
                     {(isAllowed) => (
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild disabled={!isAllowed}>
+                        <DropdownMenuTrigger asChild disabled={!isAllowed || isMutationPending}>
                           <IconButton
                             aria-label="Environment options"
                             variant="ghost-muted"
-                            isDisabled={!isAllowed}
+                            isDisabled={!isAllowed || isMutationPending}
                           >
                             <Ellipsis />
                           </IconButton>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleRestoreEnv(id)}>
+                          <DropdownMenuItem
+                            isDisabled={isMutationPending}
+                            onClick={() =>
+                              handlePopUpOpen("restoreEnv", { name, slug, id, deleteAfter })
+                            }
+                          >
                             <RotateCcwIcon />
                             Restore environment
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             variant="danger"
+                            isDisabled={isMutationPending}
                             onClick={() =>
                               handlePopUpOpen("hardDeleteEnv", { name, slug, id, deleteAfter })
                             }
                           >
                             <Trash2Icon />
-                            Delete permanently
+                            Delete Now
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

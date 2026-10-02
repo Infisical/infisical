@@ -1,4 +1,5 @@
 import type { TInventoryViewFilters } from "@app/hooks/api/certificateInventoryViews/types";
+import { CertStatus } from "@app/hooks/api/certificates/enums";
 
 export type FilterRule = {
   id: string;
@@ -22,9 +23,10 @@ export const FILTER_FIELDS: FilterFieldDefinition[] = [
     operators: [{ value: "in", label: "in" }],
     valueType: "multi-select",
     options: [
-      { value: "active", label: "Active" },
-      { value: "expired", label: "Expired" },
-      { value: "revoked", label: "Revoked" }
+      { value: CertStatus.ACTIVE, label: "Active" },
+      { value: CertStatus.RENEWED, label: "Renewed" },
+      { value: CertStatus.EXPIRED, label: "Expired" },
+      { value: CertStatus.REVOKED, label: "Revoked" }
     ]
   },
   {

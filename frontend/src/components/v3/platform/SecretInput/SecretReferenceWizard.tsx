@@ -7,7 +7,7 @@ import {
   LayersIcon
 } from "lucide-react";
 
-import { useProject } from "@app/context";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import { useGetProjectFolders, useGetProjectSecrets, useGetWorkspaceById } from "@app/hooks/api";
 import { useListProjectFolderGrantsReceived } from "@app/hooks/api/projectFolderGrants";
 import { TProjectFolderGrantReceived } from "@app/hooks/api/projectFolderGrants/types";
@@ -47,13 +47,20 @@ export const SecretReferenceWizard = ({
   currentInput = ""
 }: Props) => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
+  const { subscription } = useSubscription();
   const projectId = currentProject?.id || "";
+
+  const canCrossProjectShare =
+    subscription?.crossProjectSecretSharing && currentOrg?.allowCrossProjectSecretSharing;
 
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const { data: receivedGrants } = useListProjectFolderGrantsReceived(projectId);
+  const { data: receivedGrants } = useListProjectFolderGrantsReceived(
+    canCrossProjectShare ? projectId : ""
+  );
 
   const { data: selectedSourceProject } = useGetWorkspaceById(
     state.selectedProjectFolderGrant?.sourceProjectId || ""
@@ -406,6 +413,7 @@ export const SecretReferenceWizard = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const count = navigableCountRef.current;
+      if (e.key === "Tab" && count === 0) return;
       if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
         e.preventDefault();
         if (count === 0) return;
@@ -640,6 +648,13 @@ export const SecretReferenceWizard = ({
   };
 
   if (uniqueSourceProjects.length === 0) {
+    // If the user is typing a cross-project reference but cross-project sharing
+    // is not available (e.g. license downgrade), hide the wizard entirely so it
+    // does not block the input or the revealed value.
+    if (currentInput.startsWith("@")) {
+      return null;
+    }
+
     return <div ref={contentRef}>{renderStepContent()}</div>;
   }
 

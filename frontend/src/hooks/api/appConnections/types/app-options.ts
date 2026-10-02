@@ -127,6 +127,12 @@ export type THerokuConnectionOption = TAppConnectionOptionBase & {
   oauthClientId?: string;
 };
 
+export type TStripeConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Stripe;
+  oauthClientId?: string;
+  oauthAuthorizeUrl?: string;
+};
+
 export type TOnePassConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OnePass;
 };
@@ -218,6 +224,10 @@ export type TUltraDNSConnectionOption = TAppConnectionOptionBase & {
 
 export type TAzureDNSConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureDNS;
+};
+
+export type TPowerDnsConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.PowerDns;
 };
 
 export type TSshConnectionOption = TAppConnectionOptionBase & {
@@ -349,6 +359,10 @@ export type TSpaceliftConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Spacelift;
 };
 
+export type TDaytonaConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Daytona;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -375,6 +389,7 @@ export type TAppConnectionOption =
   | TOCIConnectionOption
   | TOnePassConnectionOption
   | THerokuConnectionOption
+  | TStripeConnectionOption
   | TRenderConnectionOption
   | TFlyioConnectionOption
   | TGitlabConnectionOption
@@ -401,6 +416,7 @@ export type TAppConnectionOption =
   | TDNSMadeEasyConnectionOption
   | TUltraDNSConnectionOption
   | TAzureDNSConnectionOption
+  | TPowerDnsConnectionOption
   | TOctopusDeployConnectionOption
   | TSshConnectionOption
   | TDbtConnectionOption
@@ -433,7 +449,8 @@ export type TAppConnectionOption =
   | TLiteLLMConnectionOption
   | TFireworksConnectionOption
   | TNutanixPrismCentralConnectionOption
-  | TSpaceliftConnectionOption;
+  | TSpaceliftConnectionOption
+  | TDaytonaConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -461,6 +478,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.OCI]: TOCIConnectionOption;
   [AppConnection.OnePass]: TOnePassConnectionOption;
   [AppConnection.Heroku]: THerokuConnectionOption;
+  [AppConnection.Stripe]: TStripeConnectionOption;
   [AppConnection.Render]: TRenderConnectionOption;
   [AppConnection.Flyio]: TFlyioConnectionOption;
   [AppConnection.GitLab]: TGitlabConnectionOption;
@@ -485,6 +503,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
   [AppConnection.Chef]: TChefConnectionOption;
   [AppConnection.AzureDNS]: TAzureDNSConnectionOption;
+  [AppConnection.PowerDns]: TPowerDnsConnectionOption;
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
   [AppConnection.SSH]: TSshConnectionOption;
   [AppConnection.Dbt]: TDbtConnectionOption;
@@ -520,4 +539,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Fireworks]: TFireworksConnectionOption;
   [AppConnection.NutanixPrismCentral]: TNutanixPrismCentralConnectionOption;
   [AppConnection.Spacelift]: TSpaceliftConnectionOption;
+  [AppConnection.Daytona]: TDaytonaConnectionOption;
 };

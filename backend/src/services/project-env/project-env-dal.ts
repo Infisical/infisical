@@ -5,6 +5,14 @@ import { TableName, TProjectEnvironments } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
+import {
+  envFolderIdsSubquery,
+  hardDeleteApprovalSecretLinksInBatches,
+  hardDeleteSecretReferencesInBatches,
+  hardDeleteSecretsInBatches,
+  hardDeleteSecretVersionsInBatches
+} from "../secret-v2-bridge/secret-tree-hard-delete-fns";
+
 export type TProjectEnvDALFactory = ReturnType<typeof projectEnvDALFactory>;
 
 export const projectEnvDALFactory = (db: TDbClient) => {
@@ -236,36 +244,69 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Batched delete of an environment's secret_versions_v2 rows. Must run before the environment is
-  // deleted, since those rows have no FK back to the folder/env tree and would otherwise be orphaned.
-  const hardDeleteEnvironmentSecretVersionsInBatches = async (
+  const pruneOpts = (
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) => ({
+    batchSize,
+    statementTimeoutMs,
+    interBatchSleepMs,
+    onBatchCommitted
+  });
+
+  const hardDeleteEnvironmentSecretVersionsInBatches = (
     envId: string,
     batchSize: number,
     statementTimeoutMs: number,
-    interBatchSleepMs: number
-  ) => {
-    let totalDeleted = 0;
-    for (;;) {
-      // eslint-disable-next-line no-await-in-loop
-      const deletedCount = await db.transaction(async (tx): Promise<number> => {
-        await tx.raw(`SET LOCAL statement_timeout = ${statementTimeoutMs}`);
-        const folderIdsSubquery = tx(TableName.SecretFolder).where("envId", envId).select("id");
-        const idsToDelete = tx(TableName.SecretVersionV2)
-          .whereIn("folderId", folderIdsSubquery)
-          .select("id")
-          .limit(batchSize);
-        const deleted = await tx(TableName.SecretVersionV2).whereIn("id", idsToDelete).delete();
-        return deleted;
-      });
-      totalDeleted += deletedCount;
-      if (deletedCount < batchSize) break;
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => {
-        setTimeout(resolve, interBatchSleepMs + Math.floor(Math.random() * interBatchSleepMs));
-      });
-    }
-    return totalDeleted;
-  };
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretVersionsInBatches(
+      db,
+      envFolderIdsSubquery(envId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteEnvironmentSecretReferencesInBatches = (
+    envId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretReferencesInBatches(
+      db,
+      envFolderIdsSubquery(envId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteEnvironmentApprovalSecretLinksInBatches = (
+    envId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteApprovalSecretLinksInBatches(
+      db,
+      envFolderIdsSubquery(envId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteEnvironmentSecretsInBatches = (
+    envId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretsInBatches(
+      db,
+      envFolderIdsSubquery(envId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
 
   return {
     ...projectEnvOrm,
@@ -284,6 +325,9 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     closePositionGap,
     findExpiredForHardDelete,
     hardDeleteIfExpired,
-    hardDeleteEnvironmentSecretVersionsInBatches
+    hardDeleteEnvironmentSecretVersionsInBatches,
+    hardDeleteEnvironmentSecretReferencesInBatches,
+    hardDeleteEnvironmentApprovalSecretLinksInBatches,
+    hardDeleteEnvironmentSecretsInBatches
   };
 };

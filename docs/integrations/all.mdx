@@ -1,12 +1,21 @@
 ---
-title: "Integrations"
+title: "Search integrations"
 sidebarTitle: "Search integrations"
 icon: search
-description: "Search the frameworks, platforms, and services that can receive secrets from Infisical."
+description: "Search every framework, infrastructure platform, and sync destination that Infisical delivers secrets to."
 ---
 
-import { DeliverSecretsBrowser } from "/snippets/DeliverSecretsBrowser.jsx";
+import { CatalogBrowser } from "/snippets/CatalogBrowser.jsx";
+import { integrations, integrationTypes, integrationBadges } from "/snippets/catalogs/integrations.jsx";
 
-Choose an integration based on where your application runs or where your secrets need to go.
+Filter by type or search by name. For what separates the three types, see the [integrations overview](/integrations/overview).
 
-<DeliverSecretsBrowser />
+<CatalogBrowser
+  id="integrations"
+  items={integrations}
+  categories={integrationTypes}
+  filterKey="type"
+  noun="integration"
+  badges={integrationBadges}
+  urlParam="type"
+/>

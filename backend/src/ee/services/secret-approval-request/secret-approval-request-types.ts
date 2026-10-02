@@ -1,5 +1,13 @@
-import { TImmutableDBKeys, TSecretApprovalPolicies, TSecretApprovalRequestsSecrets } from "@app/db/schemas";
-import { TProjectPermission } from "@app/lib/types";
+import { Knex } from "knex";
+
+import {
+  TImmutableDBKeys,
+  TSecretApprovalPolicies,
+  TSecretApprovalRequests,
+  TSecretApprovalRequestsSecrets,
+  TSecretFolders
+} from "@app/db/schemas";
+import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretOperations } from "@app/services/secret/secret-types";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
@@ -13,6 +21,13 @@ export enum ApprovalStatus {
   PENDING = "pending",
   APPROVED = "approved",
   REJECTED = "rejected"
+}
+
+export enum SecretApprovalRequestOrderBy {
+  Environment = "environment",
+  SecretPath = "secretPath",
+  Author = "author",
+  CreatedAt = "createdAt"
 }
 
 export type TApprovalCreateSecret = Omit<
@@ -64,12 +79,21 @@ export type TGenerateSecretApprovalRequestV2BridgeDTO = {
   commitMessage?: string;
   policy: TSecretApprovalPolicies;
   updateMode?: SecretUpdateMode;
+  folder?: Pick<TSecretFolders, "id" | "envId">;
   data: {
     [SecretOperations.Create]?: TApprovalCreateSecretV2Bridge[];
     [SecretOperations.Update]?: TApprovalUpdateSecretV2Bridge[];
     [SecretOperations.Delete]?: { secretKey: string }[];
   };
 } & TProjectPermission;
+
+export type TCreateSecretApprovalSideEffectsDTO = {
+  secretApprovalRequest: Pick<TSecretApprovalRequests, "id" | "policyId"> & { commits: { id: string }[] };
+  environment: string;
+  secretPath: string;
+  secretKeys: string[];
+  tx?: Knex;
+} & Omit<TProjectPermission, "actorAuthMethod">;
 
 export type TMergeSecretApprovalRequestDTO = {
   approvalId: string;
@@ -97,6 +121,8 @@ export type TListApprovalsDTO = {
   limit?: number;
   offset?: number;
   search?: string;
+  orderBy?: SecretApprovalRequestOrderBy;
+  orderDirection?: OrderByDirection;
 } & TProjectPermission;
 
 export type TSecretApprovalDetailsDTO = {

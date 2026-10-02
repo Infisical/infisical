@@ -2,16 +2,23 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalAuditAction,
+  ApprovalPolicyScope,
+  ApprovalPolicyType
+} from "@app/services/approval-policy/approval-policy-enums";
 import {
   TApprovalPolicyInputs,
   TCreatePolicyDTO,
   TCreateRequestDTO,
   TUpdatePolicyDTO
 } from "@app/services/approval-policy/approval-policy-types";
+import { getApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-request-fns";
 import {
   CreateCertRequestPolicySchema,
   UpdateCertRequestPolicySchema
@@ -25,7 +32,7 @@ import {
   UpdatePamAccessPolicySchema
 } from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PostHogEventTypes, TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
 type TCreatePolicySchema =
   | typeof CreatePamAccessPolicySchema
@@ -47,7 +54,8 @@ export const registerApprovalPolicyEndpoints = ({
   grantResponseSchema,
   inputsSchema,
   checkPolicyMatchResponseSchema,
-  allowRequestCreation = true
+  allowRequestCreation = true,
+  requestAuthModes = [AuthMode.JWT]
 }: {
   server: FastifyZodProvider;
   policyType: ApprovalPolicyType;
@@ -62,7 +70,18 @@ export const registerApprovalPolicyEndpoints = ({
   // Whether callers may open an approval request directly. Policy types whose requests are
   // only ever created server-side, as part of the flow being gated, must leave this off.
   allowRequestCreation?: boolean;
+  // Auth modes the request actions accept. Policy administration stays JWT-only regardless; a type
+  // whose requests are raised and reviewed by delegated tokens widens this.
+  requestAuthModes?: AuthMode[];
 }) => {
+  const sendTelemetry = async (event: TPostHogEvent) => {
+    try {
+      await server.services.telemetry.sendPostHogEvents(event);
+    } catch (err) {
+      logger.error(err, `Failed to send ${policyType} approval telemetry`);
+    }
+  };
+
   // Policies
   server.route({
     method: "POST",
@@ -80,7 +99,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.create(
         policyType,
@@ -102,7 +121,7 @@ export const registerApprovalPolicyEndpoints = ({
       });
 
       if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
-        await server.services.telemetry.sendPostHogEvents({
+        await sendTelemetry({
           event: PostHogEventTypes.PkiApprovalPolicyCreated,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
@@ -137,7 +156,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policies, projectId } = await server.services.approvalPolicy.list(
         policyType,
@@ -181,7 +200,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.getById(req.params.policyId, req.permission);
 
@@ -222,7 +241,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.updateById(
         req.params.policyId,
@@ -245,7 +264,7 @@ export const registerApprovalPolicyEndpoints = ({
       });
 
       if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
-        await server.services.telemetry.sendPostHogEvents({
+        await sendTelemetry({
           event: PostHogEventTypes.PkiApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
@@ -279,7 +298,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policyId, projectId } = await server.services.approvalPolicy.deleteById(
         req.params.policyId,
@@ -300,7 +319,7 @@ export const registerApprovalPolicyEndpoints = ({
       });
 
       if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
-        await server.services.telemetry.sendPostHogEvents({
+        await sendTelemetry({
           event: PostHogEventTypes.PkiApprovalPolicyDeleted,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
@@ -336,7 +355,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { requests, projectId } = await server.services.approvalPolicy.listRequests(
         policyType,
@@ -389,7 +408,7 @@ export const registerApprovalPolicyEndpoints = ({
         let requesterEmail: string;
         let machineIdentityId: string | undefined;
 
-        if (req.auth.authMode === AuthMode.JWT) {
+        if (isUserSessionAuth(req.auth)) {
           requesterName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim();
           requesterEmail = req.auth.user.email ?? "";
         } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
@@ -415,18 +434,26 @@ export const registerApprovalPolicyEndpoints = ({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
           projectId: request.projectId,
-          event: {
+          event: (await server.services.approvalPolicy.buildAuditEvent({
+            action: ApprovalAuditAction.RequestCreated,
+            request,
+            actorId: req.permission.id
+          })) ?? {
             type: EventType.APPROVAL_REQUEST_CREATE,
             metadata: {
-              policyType,
+              policyType: request.type,
+              approvalRequestId: request.id,
+              requesterName: request.requesterName,
+              requesterEmail: request.requesterEmail,
               justification: req.body.justification || undefined,
-              requestDuration: req.body.requestDuration || "infinite"
+              requestDuration: req.body.requestDuration || "infinite",
+              ...getApprovalRequestSubjectMetadata(request)
             }
           }
         });
 
         if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
-          await server.services.telemetry.sendPostHogEvents({
+          await sendTelemetry({
             event: PostHogEventTypes.PkiApprovalRequestCreated,
             distinctId: getTelemetryDistinctId(req),
             organizationId: req.permission.orgId,
@@ -461,7 +488,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.getRequestById(req.params.requestId, req.permission);
 
@@ -472,9 +499,12 @@ export const registerApprovalPolicyEndpoints = ({
         event: {
           type: EventType.APPROVAL_REQUEST_GET,
           metadata: {
-            policyType,
-            requestId: request.id,
-            status: request.status
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            status: request.status,
+            ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });
@@ -496,8 +526,7 @@ export const registerApprovalPolicyEndpoints = ({
         requestId: z.string().uuid()
       }),
       body: z.object({
-        comment: z.string().optional(),
-        bypassReason: z.string().min(10).max(500).optional()
+        comment: z.string().optional()
       }),
       response: {
         200: z.object({
@@ -505,7 +534,71 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth(requestAuthModes),
+    handler: async (req) => {
+      const { request } = await server.services.approvalPolicy.approveRequest(
+        req.params.requestId,
+        req.body,
+        req.permission,
+        policyType
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: request.projectId,
+        event: (await server.services.approvalPolicy.buildAuditEvent({
+          action: ApprovalAuditAction.RequestReviewed,
+          request,
+          actorId: req.permission.id,
+          comment: req.body.comment
+        })) ?? {
+          type: EventType.APPROVAL_REQUEST_APPROVE,
+          metadata: {
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            comment: req.body.comment,
+            ...getApprovalRequestSubjectMetadata(request)
+          }
+        }
+      });
+
+      const telemetry = await server.services.approvalPolicy.buildTelemetryEvent({
+        action: ApprovalAuditAction.RequestReviewed,
+        request,
+        distinctId: getTelemetryDistinctId(req),
+        decision: "approved"
+      });
+      if (telemetry) await sendTelemetry(telemetry);
+
+      return { request };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/requests/:requestId/break-glass",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "breakGlassApprovalRequest",
+      description: "Self-approve an approval request, bypassing its policy",
+      params: z.object({
+        requestId: z.string().uuid()
+      }),
+      body: z.object({
+        bypassReason: z.string().min(10).max(500)
+      }),
+      response: {
+        200: z.object({
+          request: requestResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth(requestAuthModes),
     handler: async (req) => {
       const { request, bypassMetadata } = await server.services.approvalPolicy.approveRequest(
         req.params.requestId,
@@ -514,50 +607,36 @@ export const registerApprovalPolicyEndpoints = ({
         policyType
       );
 
-      if (request.isBreakGlass && bypassMetadata) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          projectId: request.projectId,
-          event: {
-            type: EventType.PAM_ACCESS_POLICY_BYPASSED,
-            metadata: {
-              policyType,
-              policyId: request.policyId ?? null,
-              requestId: request.id,
-              granteeUserId: req.permission.id,
-              ...bypassMetadata
-            }
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: request.projectId,
+        event: (await server.services.approvalPolicy.buildAuditEvent({
+          action: ApprovalAuditAction.RequestBypassed,
+          request,
+          grantId: bypassMetadata?.grantId,
+          actorId: req.permission.id,
+          bypassReason: req.body.bypassReason
+        })) ?? {
+          type: EventType.APPROVAL_REQUEST_APPROVE,
+          metadata: {
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            comment: req.body.bypassReason,
+            ...getApprovalRequestSubjectMetadata(request)
           }
-        });
-      } else {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          projectId: request.projectId,
-          event: {
-            type: EventType.APPROVAL_REQUEST_APPROVE,
-            metadata: {
-              policyType,
-              requestId: req.params.requestId,
-              comment: req.body.comment
-            }
-          }
-        });
-      }
+        }
+      });
 
-      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
-        await server.services.telemetry.sendPostHogEvents({
-          event: PostHogEventTypes.PkiApprovalRequestReviewed,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            decision: "approved",
-            orgId: req.permission.orgId,
-            projectId: request.projectId
-          }
-        });
-      }
+      const telemetry = await server.services.approvalPolicy.buildTelemetryEvent({
+        action: ApprovalAuditAction.RequestBypassed,
+        request,
+        distinctId: getTelemetryDistinctId(req),
+        decision: "approved"
+      });
+      if (telemetry) await sendTelemetry(telemetry);
 
       return { request };
     }
@@ -584,40 +663,44 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth(requestAuthModes),
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.rejectRequest(
         req.params.requestId,
         req.body,
-        req.permission
+        req.permission,
+        policyType
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         projectId: request.projectId,
-        event: {
+        event: (await server.services.approvalPolicy.buildAuditEvent({
+          action: ApprovalAuditAction.RequestReviewed,
+          request,
+          actorId: req.permission.id,
+          comment: req.body.comment
+        })) ?? {
           type: EventType.APPROVAL_REQUEST_REJECT,
           metadata: {
-            policyType,
-            requestId: req.params.requestId,
-            comment: req.body.comment
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            comment: req.body.comment,
+            ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });
 
-      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
-        await server.services.telemetry.sendPostHogEvents({
-          event: PostHogEventTypes.PkiApprovalRequestReviewed,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            decision: "rejected",
-            orgId: req.permission.orgId,
-            projectId: request.projectId
-          }
-        });
-      }
+      const telemetry = await server.services.approvalPolicy.buildTelemetryEvent({
+        action: ApprovalAuditAction.RequestReviewed,
+        request,
+        distinctId: getTelemetryDistinctId(req),
+        decision: "rejected"
+      });
+      if (telemetry) await sendTelemetry(telemetry);
 
       return { request };
     }
@@ -641,7 +724,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.cancelRequest(req.params.requestId, req.permission);
 
@@ -652,8 +735,11 @@ export const registerApprovalPolicyEndpoints = ({
         event: {
           type: EventType.APPROVAL_REQUEST_CANCEL,
           metadata: {
-            policyType,
-            requestId: req.params.requestId
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });
@@ -682,7 +768,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { grants, projectId } = await server.services.approvalPolicy.listGrants(
         policyType,
@@ -726,7 +812,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { grant } = await server.services.approvalPolicy.getGrantById(req.params.grantId, req.permission);
 
@@ -769,15 +855,26 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth(requestAuthModes),
     handler: async (req) => {
-      const { grant } = await server.services.approvalPolicy.revokeGrant(req.params.grantId, req.body, req.permission);
+      const { grant, request } = await server.services.approvalPolicy.revokeGrant(
+        req.params.grantId,
+        req.body,
+        req.permission,
+        policyType
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         projectId: grant.projectId,
-        event: {
+        event: (request &&
+          (await server.services.approvalPolicy.buildAuditEvent({
+            action: ApprovalAuditAction.GrantRevoked,
+            request,
+            grantId: grant.id,
+            actorId: req.permission.id
+          }))) || {
           type: EventType.APPROVAL_REQUEST_GRANT_REVOKE,
           metadata: {
             policyType,
@@ -786,6 +883,15 @@ export const registerApprovalPolicyEndpoints = ({
           }
         }
       });
+
+      if (request) {
+        const telemetry = await server.services.approvalPolicy.buildTelemetryEvent({
+          action: ApprovalAuditAction.GrantRevoked,
+          request,
+          distinctId: getTelemetryDistinctId(req)
+        });
+        if (telemetry) await sendTelemetry(telemetry);
+      }
 
       return { grant };
     }
@@ -808,7 +914,7 @@ export const registerApprovalPolicyEndpoints = ({
         200: checkPolicyMatchResponseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.approvalPolicy.checkPolicyMatch(policyType, req.body, req.permission);
 

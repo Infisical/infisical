@@ -2,9 +2,10 @@ import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import { ApplicationTab } from "./application-tabs";
 import { ApplicationDetailsByIDPage } from "./ApplicationDetailsByIDPage";
 
-const ApplicationTabSchema = z.enum(["certificates", "requests", "syncs", "members", "settings"]);
+const ApplicationTabSchema = z.nativeEnum(ApplicationTab);
 
 const SearchSchema = z.object({
   selectedTab: ApplicationTabSchema.optional(),
@@ -16,7 +17,7 @@ export const Route = createFileRoute(
 )({
   component: ApplicationDetailsByIDPage,
   validateSearch: zodValidator(SearchSchema),
-  search: { middlewares: [stripSearchParams({ selectedTab: "certificates" })] },
+  search: { middlewares: [stripSearchParams({ selectedTab: ApplicationTab.Certificates })] },
   beforeLoad: ({ context }) => ({
     breadcrumbs: [...context.breadcrumbs, { label: "Applications" }, { label: "Application" }]
   })

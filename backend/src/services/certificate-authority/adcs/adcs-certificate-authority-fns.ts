@@ -21,16 +21,25 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
   CertKeyAlgorithm,
   CertKeyUsage,
-  CertSignatureAlgorithm,
   CertStatus,
   CrlReason
 } from "@app/services/certificate/certificate-types";
 import { generateLeafKeypairAndCsr } from "@app/services/certificate-common/certificate-csr-utils";
+import {
+  findCsrCustomExtensionMismatch,
+  findUnsatisfiedCustomExtensionOids,
+  TCsrCustomExtensionMismatch,
+  TResolvedCustomExtension
+} from "@app/services/certificate-common/certificate-extension-fns";
 import { calculateFinalRenewBeforeDays } from "@app/services/certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -49,20 +58,6 @@ import {
 } from "./adcs-certificate-authority-types";
 import { getAdcsConnectionCredentials } from "./adcs-connection-credentials";
 
-// @peculiar/x509 reports the signature algorithm as { name, hash }; map it to the stored enum.
-const SIG_ALG_MAP: Record<string, Record<string, CertSignatureAlgorithm>> = {
-  "RSASSA-PKCS1-v1_5": {
-    "SHA-256": CertSignatureAlgorithm.RSA_SHA256,
-    "SHA-384": CertSignatureAlgorithm.RSA_SHA384,
-    "SHA-512": CertSignatureAlgorithm.RSA_SHA512
-  },
-  ECDSA: {
-    "SHA-256": CertSignatureAlgorithm.ECDSA_SHA256,
-    "SHA-384": CertSignatureAlgorithm.ECDSA_SHA384,
-    "SHA-512": CertSignatureAlgorithm.ECDSA_SHA512
-  }
-};
-
 // RFC 5280 section 5.3.1 CRLReason codes, which MS-CSRA ICertAdminD::RevokeCertificate expects as `Reason`.
 const ADCS_CRL_REASON_CODES: Record<CrlReason, number> = {
   [CrlReason.UNSPECIFIED]: 0,
@@ -74,18 +69,6 @@ const ADCS_CRL_REASON_CODES: Record<CrlReason, number> = {
   [CrlReason.CERTIFICATE_HOLD]: 6,
   [CrlReason.PRIVILEGE_WITHDRAWN]: 9,
   [CrlReason.A_A_COMPROMISE]: 10
-};
-
-// The CA (not the request) decides how it signs, so read the algorithm off the issued certificate.
-const extractIssuedSignatureAlgorithm = (certObj: x509.X509Certificate): CertSignatureAlgorithm | undefined => {
-  try {
-    const { name } = certObj.signatureAlgorithm;
-    const hashName = (certObj.signatureAlgorithm as { hash?: { name?: string } }).hash?.name;
-    if (!hashName) return undefined;
-    return SIG_ALG_MAP[name]?.[hashName];
-  } catch {
-    return undefined;
-  }
 };
 
 const buildSubjectDN = (commonName: string): string => {
@@ -149,7 +132,7 @@ type TADCSCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findOne" | "transaction" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -407,7 +390,8 @@ export const ADCSCertificateAuthorityFns = ({
     csr,
     isRenewal,
     originalCertificateId,
-    isCancelled
+    isCancelled,
+    customExtensions
   }: {
     caId: string;
     profileId?: string;
@@ -423,6 +407,7 @@ export const ADCSCertificateAuthorityFns = ({
     isRenewal?: boolean;
     originalCertificateId?: string;
     isCancelled?: () => Promise<boolean>;
+    customExtensions?: TResolvedCustomExtension[];
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.ADCS) {
@@ -496,12 +481,26 @@ export const ADCSCertificateAuthorityFns = ({
     let skLeaf: string | undefined;
     let csrDerBase64: string;
     if (csr) {
-      csrDerBase64 = Buffer.from(new Uint8Array(new x509.Pkcs10CertificateRequest(csr).rawData)).toString("base64");
+      const parsedCsr = new x509.Pkcs10CertificateRequest(csr);
+      const mismatch = findCsrCustomExtensionMismatch(parsedCsr, customExtensions);
+      if (mismatch) {
+        const resolvedCritical = customExtensions?.find((extension) => extension.oid === mismatch.oid)?.critical;
+        const reasons: Record<TCsrCustomExtensionMismatch["reason"], string> = {
+          missing: `Custom extension '${mismatch.oid}' must be present in the certificate signing request you supply`,
+          value: `Custom extension '${mismatch.oid}' in the certificate signing request does not carry the value this policy resolved`,
+          criticality: `Custom extension '${mismatch.oid}' in the certificate signing request must be marked ${resolvedCritical ? "critical" : "non-critical"} to match this policy`
+        };
+        throw new BadRequestError({
+          message: `${reasons[mismatch.reason]}, because Active Directory Certificate Services is given that request unchanged. Correct the request, or let Infisical generate the key.`
+        });
+      }
+      csrDerBase64 = Buffer.from(new Uint8Array(parsedCsr.rawData)).toString("base64");
     } else {
       const generated = await generateLeafKeypairAndCsr({
         subjectName: buildSubjectDN(commonName),
         algorithm: alg,
-        altNames
+        altNames,
+        customExtensions
       });
       skLeaf = generated.privateKeyPem;
       csrDerBase64 = generated.csrDerBase64;
@@ -560,23 +559,24 @@ export const ADCSCertificateAuthorityFns = ({
 
     let certificateId: string;
 
+    const unsatisfiedOids = findUnsatisfiedCustomExtensionOids(Buffer.from(cleanedCertificatePem), customExtensions);
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj, customExtensions);
+
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           profileId,
           status: CertStatus.ACTIVE,
-          friendlyName: commonName,
-          commonName,
-          altNames: altNames.join(","),
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
-          keyUsages,
-          extendedKeyUsages,
-          keyAlgorithm,
-          signatureAlgorithm: extractIssuedSignatureAlgorithm(certObj) ?? signatureAlgorithm,
           projectId: ca.projectId,
+          friendlyName: parsedFields.commonName ?? commonName,
+          commonName: parsedFields.commonName ?? commonName,
+          altNames: parsedFields.altNames ?? altNames.join(","),
+          keyUsages: parsedFields.keyUsages ?? keyUsages,
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? extendedKeyUsages,
+          keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+          signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
           renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
         },
         tx
@@ -585,7 +585,7 @@ export const ADCSCertificateAuthorityFns = ({
       certificateId = cert.id;
 
       if (isRenewal && originalCertificateId) {
-        await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, tx);
+        await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, tx);
       }
 
       await certificateBodyDAL.create(
@@ -624,6 +624,15 @@ export const ADCSCertificateAuthorityFns = ({
         }
       }
     });
+
+    if (unsatisfiedOids.length) {
+      logger.warn(
+        `Active Directory Certificate Services did not honor custom extensions this profile declared [caId=${ca.id}] [profileId=${profileId}] [certificateId=${certificateId!}] [oids=${unsatisfiedOids.join(",")}]`
+      );
+      throw new BadRequestError({
+        message: `Active Directory Certificate Services issued a certificate that does not carry ${unsatisfiedOids.join(", ")} as this profile declared it. The certificate is recorded so you can revoke it. Add each object identifier to the certificate authority's EnableRequestExtensionList and restart certsvc, then request again.`
+      });
+    }
 
     return {
       certificate: cleanedCertificatePem,

@@ -1,7 +1,6 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PKI_SUBSCRIBERS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
@@ -11,6 +10,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { validateAltNameField } from "@app/services/certificate-authority/certificate-authority-validators";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
@@ -26,9 +26,11 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "getPkiSubscriber",
       tags: [ApiDocsTags.PkiSubscribers],
-      description: "Get PKI Subscriber",
+      description:
+        "Get PKI Subscriber. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.GET.subscriberName)
       }),
@@ -39,7 +41,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         200: sanitizedPkiSubscriber
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.getSubscriber({
         subscriberName: req.params.subscriberName,
@@ -74,9 +76,11 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "createPkiSubscriber",
       tags: [ApiDocsTags.PkiSubscribers],
-      description: "Create PKI Subscriber",
+      description:
+        "Create PKI Subscriber. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       body: z.object({
         projectId: z.string().trim().describe(PKI_SUBSCRIBERS.CREATE.projectId),
         caId: z
@@ -202,7 +206,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         200: sanitizedPkiSubscriber
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.createSubscriber({
         ...req.body,
@@ -240,12 +244,14 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "updatePkiSubscriber",
       tags: [ApiDocsTags.PkiSubscribers],
-      description: "Update PKI Subscriber",
+      description:
+        "Update PKI Subscriber. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         subscriberName: z.string().trim().describe(PKI_SUBSCRIBERS.UPDATE.subscriberName)
       }),
@@ -411,8 +417,10 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      deprecated: true,
       tags: [ApiDocsTags.PkiSubscribers],
-      description: "Delete PKI Subscriber",
+      description:
+        "Delete PKI Subscriber. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.DELETE.subscriberName)
       }),
@@ -423,7 +431,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         200: sanitizedPkiSubscriber
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.deleteSubscriber({
         subscriberName: req.params.subscriberName,
@@ -456,12 +464,14 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "orderPkiSubscriberCertificate",
       tags: [ApiDocsTags.PkiSubscribers],
-      description: "Order certificate",
+      description:
+        "Order certificate. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberName)
       }),
@@ -519,12 +529,14 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "issuePkiSubscriberCertificate",
       tags: [ApiDocsTags.PkiSubscribers],
-      description: "Issue certificate",
+      description:
+        "Issue certificate. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberName)
       }),
@@ -592,12 +604,14 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "signPkiSubscriberCertificate",
       tags: [ApiDocsTags.PkiSubscribers],
-      description: "Sign certificate",
+      description:
+        "Sign certificate. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.SIGN_CERT.subscriberName)
       }),
@@ -667,9 +681,11 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "getPkiSubscriberLatestCertificateBundle",
       tags: [ApiDocsTags.PkiSubscribers],
-      description: "Get latest certificate bundle of a subscriber",
+      description:
+        "Get latest certificate bundle of a subscriber. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.subscriberName)
       }),
@@ -689,7 +705,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { certificate, certificateChain, serialNumber, cert, privateKey, subscriber } =
         await server.services.pkiSubscriber.getSubscriberActiveCertBundle({
@@ -734,9 +750,11 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "listPkiSubscriberCertificates",
       tags: [ApiDocsTags.PkiSubscribers],
-      description: "List PKI Subscriber certificates",
+      description:
+        "List PKI Subscriber certificates. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.GET.subscriberName)
       }),
@@ -747,12 +765,12 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          certificates: z.array(CertificatesSchema),
+          certificates: z.array(SanitizedCertificateSchema),
           totalCount: z.number()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { totalCount, certificates } = await server.services.pkiSubscriber.listSubscriberCerts({
         subscriberName: req.params.subscriberName,

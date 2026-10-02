@@ -232,7 +232,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
               <span className="my-4 text-sm text-danger">{errors.users.message}</span>
             )}
             {users.length > 0 ? (
-              <Table className="table-fixed">
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Username</TableHead>
@@ -249,7 +249,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                           name={`users.${pos}.username`}
                           render={({ field }) => (
                             <p className="truncate">
-                              <span className="text-sm font-medium text-mineshaft-100">
+                              <span className="text-sm font-medium text-foreground">
                                 {field.value}
                               </span>
                             </p>

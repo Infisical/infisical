@@ -65,7 +65,7 @@ export const AzureKeyVaultSyncFields = () => {
         <AlertTitle>Key Naming</AlertTitle>
         <AlertDescription>
           Secret keys with underscores (_) will be converted to hyphens (-) when syncing to Azure
-          Key Vault.
+          Key Vault. Secrets imported from Azure Key Vault keep hyphens in the secret name.
         </AlertDescription>
       </Alert>
     </FieldGroup>

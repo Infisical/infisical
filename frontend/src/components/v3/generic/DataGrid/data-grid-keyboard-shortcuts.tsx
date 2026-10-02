@@ -11,9 +11,8 @@ import {
   DialogTitle
 } from "@app/components/v3/generic/Dialog";
 import { Input } from "@app/components/v3/generic/Input";
+import { Kbd, KbdGroup } from "@app/components/v3/generic/Kbd";
 import { Separator } from "@app/components/v3/generic/Separator";
-
-import { Kbd, KbdGroup } from "./ui/kbd";
 
 const SHORTCUT_KEY = "/";
 
@@ -281,7 +280,7 @@ function DataGridKeyboardShortcutsImpl({ enableSearch = false }: DataGridKeyboar
             <div className="flex flex-col gap-6">
               {filteredGroups.map((shortcutGroup) => (
                 <div key={shortcutGroup.title} className="flex flex-col gap-2">
-                  <h3 className="text-sm font-semibold text-foreground">{shortcutGroup.title}</h3>
+                  <h3 className="text-sm font-normal text-foreground">{shortcutGroup.title}</h3>
                   <div className="divide-y divide-border rounded-md border">
                     {shortcutGroup.shortcuts.map((shortcut, index) => (
                       // eslint-disable-next-line @typescript-eslint/no-use-before-define

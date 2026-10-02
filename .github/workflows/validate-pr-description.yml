@@ -1,0 +1,85 @@
+name: Validate PR Description
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+jobs:
+  validate-pr-description:
+    name: Validate PR Description
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Type section is filled out
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            // Automation that opens PRs from a fixed body template it does not
+            // control. Snyk opens under a real user's account, so it is matched
+            // on its branch prefix rather than the actor.
+            const exemptActors = ['dependabot[bot]', 'renovate[bot]'];
+            const exemptBranchPrefixes = ['snyk-fix-', 'snyk-upgrade-'];
+
+            if (
+              exemptActors.includes(pr.user.login) ||
+              exemptBranchPrefixes.some((prefix) => pr.head.ref.startsWith(prefix))
+            ) {
+              console.log(`✅ Skipping automated PR from ${pr.user.login} (${pr.head.ref})`);
+              return;
+            }
+
+            // Strip HTML comments so the template's own guidance, and any
+            // commented-out checkboxes, cannot satisfy the check.
+            const body = (pr.body || '').replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->/g, '');
+            const lines = body.split('\n');
+
+            const headingStart = lines.findIndex((line) => /^\s{0,3}#{1,6}\s*type\b/i.test(line));
+
+            const failureFooter = `
+            **How to fix:** edit the PR description and tick at least one box under the \`## Type\` heading:
+
+            \`\`\`markdown
+            ## Type
+
+            - [x] Fix
+            - [ ] Feature
+            - [ ] Improvement
+            - [ ] Breaking
+            - [ ] Docs
+            - [ ] Chore
+            \`\`\`
+
+            Tick more than one if the change genuinely spans types (e.g. a feature that is also breaking). This check re-runs automatically once the description is saved.
+            `;
+
+            if (headingStart === -1) {
+              core.setFailed(`
+            ❌ **PR description is missing the Type section**
+
+            Your PR description has no \`## Type\` heading, so it is not possible to tell what kind of change this is.
+
+            Use the repository's [pull request template](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/.github/pull_request_template.md) rather than deleting it.
+            ${failureFooter}`);
+              return;
+            }
+
+            const afterHeading = lines.slice(headingStart + 1);
+            const nextHeading = afterHeading.findIndex((line) => /^\s{0,3}#{1,6}\s+\S/.test(line));
+            const section = nextHeading === -1 ? afterHeading : afterHeading.slice(0, nextHeading);
+
+            const checked = section
+              .filter((line) => /^\s*[-*]\s*\[[xX]\]/.test(line))
+              .map((line) => line.replace(/^\s*[-*]\s*\[[xX]\]\s*/, '').trim())
+              .filter(Boolean);
+
+            if (checked.length === 0) {
+              core.setFailed(`
+            ❌ **No type selected for this PR**
+
+            The \`## Type\` section is present but every box is still unticked.
+            ${failureFooter}`);
+              return;
+            }
+
+            console.log(`✅ Type selected: ${checked.join(', ')}`);

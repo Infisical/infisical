@@ -1,6 +1,6 @@
 ---
-title: "PKI Issuer (cert-manager)"
-sidebarTitle: "PKI Issuer"
+title: "PKI issuer (cert-manager)"
+sidebarTitle: "PKI issuer"
 description: "Deploy the Infisical PKI Issuer for cert-manager on Kubernetes using the official Helm chart."
 ---
 
@@ -45,7 +45,7 @@ For more information on Infisical PKI, see the [PKI documentation](/documentatio
 helm uninstall infisical-pki-issuer --namespace infisical-pki
 ```
 
-## Configuration Reference
+## Configuration reference
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -58,7 +58,7 @@ helm uninstall infisical-pki-issuer --namespace infisical-pki
 | `controllerManager.manager.resources.limits.memory` | `128Mi` | Memory limit. |
 | `controllerManager.serviceAccount.annotations` | `{}` | Service account annotations. |
 
-## Default Helm Values
+## Default Helm values
 
 ```yaml
 controllerManager:

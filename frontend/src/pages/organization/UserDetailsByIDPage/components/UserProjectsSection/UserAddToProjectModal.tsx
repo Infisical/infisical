@@ -4,8 +4,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  Combobox,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import {
   useAddUserToWsNonE2EE,
   useGetOrgMembershipProjectMemberships,
@@ -16,7 +29,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
-    projectId: z.string()
+    project: z.object({ name: z.string(), id: z.string() })
   })
   .required();
 
@@ -31,11 +44,11 @@ type Props = {
   ) => void;
 };
 
-const UserAddToProjectModalChild = ({ membershipId, popUp, handlePopUpToggle }: Props) => {
+export const UserAddToProjectModal = ({ membershipId, popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
+  const scopeVariant = useScopeVariant();
   const orgId = currentOrg?.id || "";
-  const { data: workspaces = [] } = useGetUserProjects();
-
+  const { data: workspaces = [], isPending: isWorkspacesLoading } = useGetUserProjects();
   const { mutateAsync: addUserToWorkspaceNonE2EE } = useAddUserToWsNonE2EE();
 
   const popupData = popUp.addUserToProject.data as {
@@ -66,9 +79,14 @@ const UserAddToProjectModalChild = ({ membershipId, popUp, handlePopUpToggle }: 
     );
   }, [workspaces, projectMemberships]);
 
-  const onFormSubmit = async ({ projectId }: FormData) => {
+  const handleOpenChange = (isOpen: boolean) => {
+    handlePopUpToggle("addUserToProject", isOpen);
+    if (!isOpen) reset();
+  };
+
+  const onFormSubmit = async ({ project }: FormData) => {
     await addUserToWorkspaceNonE2EE({
-      projectId,
+      projectId: project.id,
       usernames: [popupData.username],
       orgId
     });
@@ -78,67 +96,61 @@ const UserAddToProjectModalChild = ({ membershipId, popUp, handlePopUpToggle }: 
       type: "success"
     });
 
-    reset();
-    handlePopUpToggle("addUserToProject", false);
+    handleOpenChange(false);
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Controller
-        control={control}
-        name="projectId"
-        defaultValue=""
-        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl label="Project" errorText={error?.message} isError={Boolean(error)}>
-            <Select
-              defaultValue={field.value}
-              {...field}
-              onValueChange={(e) => onChange(e)}
-              className="w-full"
+    <Dialog open={popUp?.addUserToProject?.isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add User to Project</DialogTitle>
+          <DialogDescription>Select a project to add this user to.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
+          <Controller
+            control={control}
+            name="project"
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="add-user-to-project-project">Project</FieldLabel>
+                <Combobox
+                  id="add-user-to-project-project"
+                  value={value ?? null}
+                  onValueChange={onChange}
+                  options={filteredWorkspaces}
+                  getOptionValue={(option) => option.id}
+                  getOptionLabel={(option) => option.name}
+                  placeholder="Select project..."
+                  searchPlaceholder="Search projects..."
+                  searchAriaLabel="Search projects"
+                  emptyMessage={
+                    filteredWorkspaces.length === 0
+                      ? "This user is already a member of every project you can access."
+                      : "No projects found."
+                  }
+                  isLoading={isWorkspacesLoading}
+                  isError={Boolean(error)}
+                  modal
+                />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
+          />
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant={scopeVariant}
+              isPending={isSubmitting}
+              isDisabled={isSubmitting}
             >
-              {(filteredWorkspaces || []).map(({ id, name }) => (
-                <SelectItem value={id} key={`project-${id}`}>
-                  {name}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-      />
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          Add
-        </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("addUserToProject", false)}
-        >
-          Cancel
-        </Button>
-      </div>
-    </form>
-  );
-};
-
-export const UserAddToProjectModal = (props: Props) => {
-  const { popUp, handlePopUpToggle } = props;
-  return (
-    <Modal
-      isOpen={popUp?.addUserToProject?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("addUserToProject", isOpen);
-      }}
-    >
-      <ModalContent title="Add User to Project">
-        <UserAddToProjectModalChild {...props} />
-      </ModalContent>
-    </Modal>
+              Add to Project
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };

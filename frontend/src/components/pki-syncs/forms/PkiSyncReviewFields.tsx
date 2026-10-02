@@ -1,34 +1,36 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { useFormContext } from "react-hook-form";
+import { FilterIcon } from "lucide-react";
 
+import { buildPkiSyncFilterSummary } from "@app/components/pki-syncs/PkiSyncFilterBadges";
 import {
   Badge,
   CodeBlock,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  Empty,
+  EmptyDescription,
+  EmptyMedia,
+  Pagination
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   BOOLEAN_SYNC_OPTION_FIELDS,
-  getCertificateDisplayName,
+  KEY_VALUE_SYNC_OPTION_FIELDS,
   PKI_SYNC_MAP,
-  truncateCertificateSerialNumber,
   VALUE_SYNC_OPTION_FIELDS
 } from "@app/helpers/pkiSyncs";
-import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
+import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
+import { usePkiSyncOption, usePkiSyncPreviewCertificates } from "@app/hooks/api/pkiSyncs";
+import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
+import { buildOrderNameMap, getPkiSyncCertificateCap, hasAnyFilter } from "./pki-sync-filter-fns";
+import { PkiSyncMatchedCertificatesTable } from "./PkiSyncMatchedCertificatesTable";
+
+const MATCHED_PAGE_SIZE = 20;
 
 const ReviewFieldLabel = ({ label, children }: { label: string; children?: ReactNode }) => (
-  <div className="flex h-full min-w-0 flex-col justify-between gap-1">
-    <p className="text-xs font-medium text-muted">{label}</p>
+  <div className="row-span-2 grid min-w-0 grid-rows-subgrid pb-2">
+    <p className="mb-1 text-xs font-medium text-muted">{label}</p>
     {children ? (
       <div className="text-sm break-words text-foreground">{children}</div>
     ) : (
@@ -37,28 +39,25 @@ const ReviewFieldLabel = ({ label, children }: { label: string; children?: React
   </div>
 );
 
-export const PkiSyncReviewFields = () => {
+type Props = {
+  applicationId?: string;
+};
+
+export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
   const { watch } = useFormContext<TPkiSyncForm>();
   const { currentProject } = useProject();
 
-  const { data } = useListWorkspaceCertificates({
-    projectId: currentProject?.id || "",
+  const { data: profileData } = useListCertificateProfiles({
+    limit: 100,
     offset: 0,
-    limit: 100
+    applicationId
   });
-
-  const certificates = data?.certificates || [];
-
-  const getSelectedCertificates = (certificateIds?: string[]) => {
-    if (!certificateIds || certificateIds.length === 0) return [];
-    return certificates.filter((cert) => certificateIds.includes(cert.id));
-  };
 
   const {
     name,
     description,
     connection,
-    certificateIds,
+    filters,
     syncOptions,
     destination,
     destinationConfig,
@@ -66,9 +65,42 @@ export const PkiSyncReviewFields = () => {
   } = watch();
 
   const destinationName = PKI_SYNC_MAP[destination].name;
-  const selectedCertificates = getSelectedCertificates(certificateIds);
+
+  const { syncOption } = usePkiSyncOption(destination);
+  const acceptsOnlyCertificateOrders =
+    getPkiSyncCertificateCap({
+      destinationMaxCertificates: syncOption?.maxCertificates,
+      syncOptions: syncOptions as Record<string, unknown> | undefined,
+      destinationConfig: destinationConfig as Record<string, unknown> | undefined
+    }) !== undefined;
+
+  const [page, setPage] = useState(1);
+
+  const { data: preview, isPending: isPreviewPending } = usePkiSyncPreviewCertificates({
+    projectId: currentProject?.id || "",
+    applicationId,
+    filters: (filters ?? null) as TPkiSyncFilters | null,
+    offset: (page - 1) * MATCHED_PAGE_SIZE,
+    limit: MATCHED_PAGE_SIZE,
+    enabled: Boolean(applicationId) && hasAnyFilter(filters)
+  });
+
+  const orderNameById = buildOrderNameMap(preview?.certificates);
+
+  const matchedRows = hasAnyFilter(filters) ? (preview?.certificates ?? []) : [];
+  const matchedCount = hasAnyFilter(filters) ? (preview?.totalCount ?? 0) : 0;
+  const filterFields = buildPkiSyncFilterSummary({
+    filters: (filters ?? null) as TPkiSyncFilters | null,
+    profileNameById: new Map(
+      (profileData?.certificateProfiles ?? []).map(({ id, slug }) => [id, slug])
+    ),
+    orderNameById,
+    visibleKinds: acceptsOnlyCertificateOrders ? ["certificateOrderIds"] : undefined
+  });
   const postSyncCommand =
     syncOptions && "postSyncCommand" in syncOptions ? syncOptions.postSyncCommand : undefined;
+  const healthCheckCommand =
+    syncOptions && "healthCheckCommand" in syncOptions ? syncOptions.healthCheckCommand : undefined;
 
   return (
     <div className="mb-4 flex flex-col gap-6">
@@ -77,60 +109,50 @@ export const PkiSyncReviewFields = () => {
           <span className="text-sm text-muted">Certificates</span>
         </div>
         <div className="w-full">
-          {selectedCertificates.length === 0 ? (
-            <span className="text-sm text-muted/50 italic">No certificates selected</span>
+          <p className="mb-2 text-sm font-medium text-foreground">Filters</p>
+          {filterFields ? (
+            <div
+              className="mb-4 grid gap-x-8"
+              style={{ gridTemplateColumns: `repeat(${filterFields.length}, minmax(0, 1fr))` }}
+            >
+              {filterFields.map(({ label, value }) => (
+                <ReviewFieldLabel key={label} label={label}>
+                  {value}
+                </ReviewFieldLabel>
+              ))}
+            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>SAN / CN</TableHead>
-                  <TableHead className="w-1/5">Serial Number</TableHead>
-                  <TableHead className="w-1/6">Issued At</TableHead>
-                  <TableHead className="w-1/6 pr-5">Expires At</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {selectedCertificates.map((cert) => {
-                  const { originalDisplayName, displayName, isTruncated } =
-                    getCertificateDisplayName(cert);
-                  const truncatedSerial = truncateCertificateSerialNumber(cert.serialNumber);
-
-                  return (
-                    <TableRow key={cert.id}>
-                      <TableCell className="max-w-0">
-                        {isTruncated ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="truncate">{displayName}</div>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-lg">
-                              {originalDisplayName}
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <div className="truncate">{displayName}</div>
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-0">
-                        <div className="font-mono text-xs" title={cert.serialNumber}>
-                          {truncatedSerial}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-0">
-                        <span className="text-sm">
-                          {new Date(cert.notBefore).toLocaleDateString()}
-                        </span>
-                      </TableCell>
-                      <TableCell className="max-w-0 pr-5">
-                        <span className="text-sm">
-                          {new Date(cert.notAfter).toLocaleDateString()}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <Empty className="mb-4 border py-8">
+              <EmptyMedia variant="icon">
+                <FilterIcon />
+              </EmptyMedia>
+              <EmptyDescription>No filters set. Nothing will be synced.</EmptyDescription>
+            </Empty>
+          )}
+          {hasAnyFilter(filters) && (
+            <>
+              <p className="mb-2 text-sm font-medium text-foreground">Matched Certificates</p>
+              <p className="mb-2 text-xs text-muted">
+                {matchedCount} certificate{matchedCount === 1 ? "" : "s"} will be synced.
+              </p>
+              <PkiSyncMatchedCertificatesTable
+                rows={matchedRows}
+                isLoading={isPreviewPending}
+                emptyTitle="No certificates match"
+                emptyDescription="Nothing in this application matches these filters yet."
+              />
+              {matchedCount > MATCHED_PAGE_SIZE && (
+                <Pagination
+                  className="mt-2"
+                  count={matchedCount}
+                  page={page}
+                  perPage={MATCHED_PAGE_SIZE}
+                  onChangePage={setPage}
+                  onChangePerPage={() => {}}
+                  perPageList={[MATCHED_PAGE_SIZE]}
+                />
+              )}
+            </>
           )}
         </div>
       </div>
@@ -138,19 +160,32 @@ export const PkiSyncReviewFields = () => {
         <div className="w-full border-b border-border">
           <span className="text-sm text-muted">Destination</span>
         </div>
-        <div className="grid grid-cols-3 gap-x-8 gap-y-4">
+        <div className="grid grid-cols-3 gap-x-8">
           <ReviewFieldLabel label="Connection">{connection?.name}</ReviewFieldLabel>
           <ReviewFieldLabel label="Service">{destinationName}</ReviewFieldLabel>
           {destinationConfig && "vaultBaseUrl" in destinationConfig && (
             <ReviewFieldLabel label="Vault URL">{destinationConfig.vaultBaseUrl}</ReviewFieldLabel>
           )}
+          {destinationConfig && "host" in destinationConfig && destinationConfig.host && (
+            <ReviewFieldLabel label="Target Host">
+              {destinationConfig.host}
+              {"port" in destinationConfig && destinationConfig.port
+                ? `:${destinationConfig.port}`
+                : ""}
+            </ReviewFieldLabel>
+          )}
+          {destinationConfig &&
+            "sslEnabled" in destinationConfig &&
+            destinationConfig.sslEnabled && (
+              <ReviewFieldLabel label="WinRM Transport">HTTPS</ReviewFieldLabel>
+            )}
         </div>
       </div>
       <div className="flex flex-col gap-3">
         <div className="w-full border-b border-border">
           <span className="text-sm text-muted">Sync Options</span>
         </div>
-        <div className="grid grid-cols-3 gap-x-8 gap-y-4">
+        <div className="grid grid-cols-3 gap-x-8">
           <ReviewFieldLabel label="Auto-Sync">
             <Badge variant={isAutoSyncEnabled ? "success" : "danger"}>
               {isAutoSyncEnabled ? "Enabled" : "Disabled"}
@@ -167,6 +202,22 @@ export const PkiSyncReviewFields = () => {
               </ReviewFieldLabel>
             );
           })}
+          {KEY_VALUE_SYNC_OPTION_FIELDS.map(({ key, label }) => {
+            const optionValue = (syncOptions as Record<string, unknown> | undefined)?.[key];
+            if (!Array.isArray(optionValue) || !optionValue.length) return null;
+            const pairs = optionValue as { key: string; value?: string }[];
+            return (
+              <ReviewFieldLabel key={key} label={label}>
+                <div className="flex flex-wrap gap-1">
+                  {pairs.map((pair) => (
+                    <Badge key={pair.key} variant="neutral" isTruncatable>
+                      <span>{pair.value ? `${pair.key}: ${pair.value}` : pair.key}</span>
+                    </Badge>
+                  ))}
+                </div>
+              </ReviewFieldLabel>
+            );
+          })}
           {VALUE_SYNC_OPTION_FIELDS.map(({ key, label }) => {
             const optionValue = (syncOptions as Record<string, unknown> | undefined)?.[key];
             if (optionValue === undefined || optionValue === null || optionValue === "")
@@ -179,6 +230,14 @@ export const PkiSyncReviewFields = () => {
           })}
         </div>
       </div>
+      {healthCheckCommand && (
+        <div className="flex flex-col gap-3">
+          <div className="w-full border-b border-border">
+            <span className="text-sm text-muted">Health Check</span>
+          </div>
+          <CodeBlock value={healthCheckCommand} className="max-h-48 whitespace-pre-wrap" />
+        </div>
+      )}
       {postSyncCommand && (
         <div className="flex flex-col gap-3">
           <div className="w-full border-b border-border">
@@ -191,7 +250,7 @@ export const PkiSyncReviewFields = () => {
         <div className="w-full border-b border-border">
           <span className="text-sm text-muted">Details</span>
         </div>
-        <div className="grid grid-cols-3 gap-x-8 gap-y-4">
+        <div className="grid grid-cols-3 gap-x-8">
           <ReviewFieldLabel label="Name">{name}</ReviewFieldLabel>
           <ReviewFieldLabel label="Description">{description}</ReviewFieldLabel>
         </div>

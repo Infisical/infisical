@@ -1,12 +1,39 @@
 /* eslint-disable react/no-danger */
-import { forwardRef, TextareaHTMLAttributes, useEffect, useState } from "react";
+import { forwardRef, ReactNode, TextareaHTMLAttributes, useEffect, useMemo, useState } from "react";
+import { TriangleAlertIcon } from "lucide-react";
 
+import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useToggle } from "@app/hooks";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
+import { IconButton } from "../../generic/IconButton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
 import { cn } from "../../utils";
+import { getInvisibleCharacterSummary, splitSuspiciousCharacters } from "./invisibleCharacters";
 
 const REGEX = /(\${([@a-zA-Z0-9-_. ]+)})/g;
+
+const markInvisibleChars = (text: string, chunkKey: number) => {
+  const nodes: ReactNode[] = [];
+  let offset = 0;
+
+  splitSuspiciousCharacters(text).forEach(({ text: part, isSuspicious }) => {
+    if (isSuspicious) {
+      nodes.push(
+        <span
+          key={`secret-value-invisible-${chunkKey}-${offset}`}
+          className="rounded-xs bg-warning/25 outline outline-1 outline-warning/70"
+        >
+          {part}
+        </span>
+      );
+    } else {
+      nodes.push(part);
+    }
+    offset += part.length;
+  });
+
+  return nodes;
+};
 
 const syntaxHighlight = (
   content?: string | null,
@@ -40,7 +67,7 @@ const syntaxHighlight = (
       const isCrossProjectRef = parts[0]?.startsWith("@");
 
       return (
-        <span className="ph-no-capture relative z-10 text-yellow" key={`secret-value-${i + 1}`}>
+        <span className="ph-no-capture relative z-10 text-secret" key={`secret-value-${i + 1}`}>
           &#36;&#123;
           {parts.map((segment, segmentIndex) => {
             const segmentKey = `${part}-segment-${segmentIndex}`;
@@ -54,9 +81,9 @@ const syntaxHighlight = (
                   role="button"
                   tabIndex={isInteractive ? 0 : -1}
                   className={cn(
-                    "ph-no-capture text-yellow-200/80",
+                    "ph-no-capture text-secret/80",
                     isInteractive ? "pointer-events-auto" : "pointer-events-none",
-                    shouldShowHoverStyle && "cursor-pointer underline decoration-yellow-400"
+                    shouldShowHoverStyle && "cursor-pointer underline decoration-secret"
                   )}
                   onMouseEnter={() => onHoverPart?.(segmentKey)}
                   onMouseLeave={() => onHoverPart?.("")}
@@ -81,10 +108,10 @@ const syntaxHighlight = (
                     }
                   }}
                 >
-                  {segment}
+                  {markInvisibleChars(segment, i)}
                 </span>
                 {segmentIndex < parts.length - 1 && (
-                  <span className="ph-no-capture pointer-events-none text-yellow-200/80">.</span>
+                  <span className="ph-no-capture pointer-events-none text-secret/80">.</span>
                 )}
               </span>
             );
@@ -97,7 +124,7 @@ const syntaxHighlight = (
       skipNext = false;
       return [];
     }
-    return el;
+    return markInvisibleChars(el, i);
   });
 
   // akhilmhdh: Dont remove this br. I am still clueless how this works but weirdly enough
@@ -107,8 +134,11 @@ const syntaxHighlight = (
   );
 };
 
+export type SecretInputVariant = "default" | "plain";
+
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   value?: string | null;
+  variant?: SecretInputVariant;
   isVisible?: boolean;
   valueAlwaysHidden?: boolean;
   isImport?: boolean;
@@ -118,16 +148,18 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   canEditButNotView?: boolean;
   isLoadingValue?: boolean;
   isErrorLoadingValue?: boolean;
+  isError?: boolean;
   onClickSegment?: (segment: string, allSegments: string[]) => void;
 };
 
 const commonClassName =
-  "text-sm leading-[1.45rem] caret-white border-none outline-hidden w-full break-all";
+  "w-full border-none text-sm leading-5 break-all caret-foreground outline-hidden";
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (
     {
       value,
+      variant = "default",
       isVisible,
       isImport,
       valueAlwaysHidden,
@@ -139,6 +171,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       canEditButNotView,
       isLoadingValue,
       isErrorLoadingValue,
+      isError,
       onClickSegment,
       placeholder,
       ...props
@@ -179,23 +212,42 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const shouldRevealValue = isVisible || (isSecretFocused && !valueAlwaysHidden);
     const shouldBindRealValue = isVisible || isSecretFocused;
+    const shouldShowMask =
+      !isErrorLoadingValue && (isLoadingValue || (Boolean(value) && !shouldRevealValue));
+
+    const invisibleChars = useMemo(
+      () =>
+        value && !isLoadingValue && !isErrorLoadingValue ? getInvisibleCharacterSummary(value) : [],
+      [value, isLoadingValue, isErrorLoadingValue]
+    );
 
     return (
       <div
+        data-slot="secret-input"
+        data-variant={variant}
+        data-invalid={isError}
         className={cn(
-          "no-scrollbar min-h-9 w-full overflow-auto rounded-md border border-border bg-transparent transition-[color,box-shadow]",
-          "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
+          "no-scrollbar w-full overflow-auto bg-transparent text-foreground",
+          variant === "default" &&
+            "flex min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+          variant === "plain" && invisibleChars.length > 0 && "flex",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}
       >
-        <div className="relative overflow-hidden px-3 pt-[6px] pb-[4px]">
+        <div
+          className={cn(
+            "relative w-full min-w-0 overflow-hidden",
+            variant === "default" && "px-2.5 py-1"
+          )}
+        >
           <div
             aria-hidden
             className={cn(
               "pointer-events-none whitespace-break-spaces",
               commonClassName,
-              !value && "text-muted"
+              !value && "text-muted",
+              shouldShowMask && "tracking-normal"
             )}
           >
             {syntaxHighlight(
@@ -219,7 +271,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             aria-label="secret value"
             ref={ref}
             className={cn(
-              "no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent px-3 py-1 text-transparent focus:border-0",
+              "no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0",
+              variant === "default" && "px-2.5 py-1",
               commonClassName
             )}
             onFocus={(evt) => {
@@ -246,9 +299,38 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             }}
             value={value && !shouldBindRealValue ? HIDDEN_SECRET_VALUE : (value ?? "")}
             {...props}
+            aria-invalid={isError || props["aria-invalid"]}
             readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
           />
         </div>
+        {invisibleChars.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                aria-label="Value contains invisible characters"
+                variant="ghost"
+                size="xs"
+                className={cn(
+                  "border-transparent bg-transparent text-warning hover:bg-transparent hover:text-warning data-[state=open]:bg-transparent",
+                  "sticky top-0 self-start",
+                  variant === "default" && "mt-1 mr-2.5"
+                )}
+              >
+                <TriangleAlertIcon />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-72">
+              <p>This value contains invisible characters that can break it when used:</p>
+              <ul className="mt-1 list-disc pl-4">
+                {invisibleChars.map(({ codePoint, label, count }) => (
+                  <li key={codePoint}>
+                    {count}x {label} ({codePoint})
+                  </li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     );
   }

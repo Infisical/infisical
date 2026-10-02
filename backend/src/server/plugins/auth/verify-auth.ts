@@ -17,14 +17,12 @@ export const verifyAuth =
     if (!Array.isArray(authStrategies)) throw new Error("Auth strategy must be array");
     if (!req.auth) throw new UnauthorizedError({ message: "Token missing" });
 
-    // Delegated OAuth access tokens are a distinct auth mode and must be opted into explicitly: a
-    // route only accepts them when it lists AuthMode.OAUTH. They are deliberately NOT accepted on
-    // the strength of AuthMode.JWT alone. OAuth scopes are enforced later, when a handler builds an
-    // org/project permission (the ability is intersected with the granted scopes). A JWT-only route
-    // that authenticates on userId without building a permission — e.g. account routes like
-    // GET/DELETE /me/totp, session revocation, MFA — never runs that scope narrowing, so letting a
-    // delegated token through on JWT alone would bypass scopes entirely. Adding AuthMode.OAUTH to a
-    // route is therefore only safe when its handler performs a scope-narrowed permission check.
+    // Delegated OAuth access tokens are a separate auth mode a route has to opt into by listing
+    // AuthMode.OAUTH, deliberately not accepted on AuthMode.JWT alone. Scopes are only enforced where a
+    // handler checks an org/project ability, since that check is what intersects them, so a route
+    // authenticating on bare userId would skip the narrowing entirely. Rough proxy: nothing passing
+    // `requireOrg: false` accepts AuthMode.OAUTH. See "Delegated OAuth tokens" in backend/CLAUDE.md for
+    // the families held back and why.
     const isAccessAllowed = authStrategies.some((strategy) => strategy === req.auth.authMode);
     if (!isAccessAllowed) {
       throw new ForbiddenRequestError({ name: `Forbidden access to ${req.url}` });

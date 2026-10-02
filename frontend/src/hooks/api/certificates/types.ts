@@ -1,5 +1,10 @@
+import type { TPkcs12Entry } from "@app/helpers/pkcs12";
+import { CaType } from "@app/hooks/api/ca/enums";
+
 import {
   CertExtendedKeyUsage,
+  CertificateIssuerKind,
+  CertificateRenewalKeySource,
   CertificateRequestStatus,
   CertKeyUsage,
   CertSource,
@@ -23,7 +28,16 @@ export type TCertificateFingerprints = {
 
 export type TCertificateSource = CertSource | null;
 
+export type TCertificateCustomExtension = {
+  oid: string;
+  critical: boolean;
+  value: string;
+  displayValue?: string;
+  issuerAdded?: boolean;
+};
+
 export type TCertificate = {
+  customExtensions?: TCertificateCustomExtension[] | null;
   id: string;
   caId: string;
   certificateTemplateId?: string;
@@ -34,6 +48,7 @@ export type TCertificate = {
   subjectAltNames: string;
   altNames?: string;
   serialNumber: string;
+  orderId?: string;
   notBefore: string;
   notAfter: string;
   keyUsages: CertKeyUsage[];
@@ -55,7 +70,8 @@ export type TCertificate = {
   caName?: string | null;
   profileName?: string | null;
   enrollmentType?: string | null;
-  caType?: "internal" | "external" | null;
+  caType?: CertificateIssuerKind | null;
+  externalMetadata?: TCertificateExternalMetadata | null;
   applicationId?: string | null;
   applicationName?: string | null;
   source?: TCertificateSource;
@@ -80,6 +96,23 @@ export type TRevokeCertDTO = {
   revocationReason: string;
 };
 
+export type TImportPkcs12EntriesDTO = {
+  entries: TPkcs12Entry[];
+  applicationId?: string;
+  profileIdByFingerprint?: Record<string, string>;
+  externalMetadataByFingerprint?: Record<string, TCertificateExternalMetadata>;
+};
+
+export type TImportPkcs12EntriesResult = {
+  entry: TPkcs12Entry;
+  error?: string;
+};
+
+export type TCertificateExternalMetadata =
+  | { type: CaType.DIGICERT; orderId: number }
+  | { type: CaType.GODADDY; certificateId: string }
+  | { type: CaType.AWS_ACM_PUBLIC_CA; arn: string; region: string; validationMethod: string };
+
 export type TImportCertificateDTO = {
   certificatePem: string;
   privateKeyPem?: string;
@@ -88,17 +121,51 @@ export type TImportCertificateDTO = {
   pkiCollectionId?: string;
   friendlyName?: string;
   applicationId?: string;
+  profileId?: string;
+  externalMetadata?: TCertificateExternalMetadata;
 };
 
 export type TImportCertificateResponse = {
+  certificateId: string;
   certificate: string;
   certificateChain?: string;
   privateKey?: string;
   serialNumber: string;
 };
 
+export type TRenewCertificateAttributes = {
+  commonName?: string | null;
+  organization?: string | null;
+  organizationalUnit?: string | null;
+  country?: string | null;
+  state?: string | null;
+  locality?: string | null;
+  domainComponents?: string[] | null;
+  keyUsages?: string[];
+  extendedKeyUsages?: string[];
+  altNames?: Array<{
+    type: string;
+    value: string;
+  }>;
+  signatureAlgorithm?: string;
+  keyAlgorithm?: string;
+  ttl?: string;
+  basicConstraints?: {
+    isCA: boolean;
+    pathLength?: number;
+  };
+  customExtensions?: Array<{
+    oid: string;
+    value?: string;
+    critical?: boolean;
+  }>;
+};
+
 export type TRenewCertificateDTO = {
   certificateId: string;
+  renewalKeySource?: CertificateRenewalKeySource;
+  csr?: string;
+  attributes?: TRenewCertificateAttributes;
 };
 
 export type TRenewCertificateResponse = {
@@ -197,6 +264,7 @@ export type TCertificateRequestDetails = {
     isCA: boolean;
     pathLength?: number;
   } | null;
+  customExtensions?: TCertificateCustomExtension[] | null;
   createdAt: string;
   updatedAt: string;
   metadata?: Array<{ key: string; value: string }>;
@@ -268,6 +336,7 @@ export type TDashboardStats = {
   totals: {
     total: number;
     active: number;
+    renewed: number;
     expiringSoon: number;
     expired: number;
     revoked: number;
@@ -309,4 +378,30 @@ export type TPqcTrendResponse = {
 export type TTriggerCertificateRequestValidationResponse = {
   status: CertificateRequestStatus;
   orderStatus?: string;
+};
+
+export type TIssuerModifiedField = {
+  field: string;
+  requested: string;
+  issued: string;
+};
+
+export type TCertificateRenewalPreview = {
+  hasOriginatingRequest: boolean;
+  request: {
+    commonName?: string;
+    organization?: string;
+    organizationalUnit?: string;
+    country?: string;
+    state?: string;
+    locality?: string;
+    domainComponents?: string[];
+    altNames: { type: string; value: string }[];
+    keyUsages: string[];
+    extendedKeyUsages: string[];
+    keyAlgorithm?: string;
+    signatureAlgorithm?: string;
+    customExtensions: { oid: string; value?: string; critical?: boolean }[];
+  };
+  issuerModifiedFields: TIssuerModifiedField[];
 };

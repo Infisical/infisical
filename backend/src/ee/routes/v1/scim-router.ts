@@ -86,7 +86,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       querystring: z.object({
         organizationId: z.string().trim()
@@ -146,7 +146,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       querystring: z.object({
         since: z.string().trim().optional(),
@@ -375,17 +375,17 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         orgMembershipId: z.string().trim()
       }),
       response: {
-        200: z.object({})
+        204: z.string().length(0)
       }
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
-    handler: async (req) => {
-      const user = await req.server.services.scim.deleteScimUser({
+    handler: async (req, res) => {
+      await req.server.services.scim.deleteScimUser({
         orgMembershipId: req.params.orgMembershipId,
         orgId: req.permission.orgId
       });
 
-      return user;
+      return res.status(204).send("");
     }
   });
 
@@ -682,17 +682,17 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         groupId: z.string().trim()
       }),
       response: {
-        200: z.object({})
+        204: z.string().length(0)
       }
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
-    handler: async (req) => {
-      const group = await req.server.services.scim.deleteScimGroup({
+    handler: async (req, res) => {
+      await req.server.services.scim.deleteScimGroup({
         groupId: req.params.groupId,
         orgId: req.permission.orgId
       });
 
-      return group;
+      return res.status(204).send("");
     }
   });
 };

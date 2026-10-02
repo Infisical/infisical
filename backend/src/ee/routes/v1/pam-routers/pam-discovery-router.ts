@@ -78,7 +78,7 @@ const registerPerTypeEndpoints = (
       response: { 200: z.object({ source: SourceSchema }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const source = await server.services.pamDiscovery.create({
         discoveryType,
@@ -137,7 +137,7 @@ const registerPerTypeEndpoints = (
       response: { 200: z.object({ source: SourceSchema }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const source = await server.services.pamDiscovery.update({
         sourceId: req.params.sourceId,
@@ -184,7 +184,7 @@ const registerPerTypeEndpoints = (
       response: { 200: z.object({ source: SourceSchema }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const source = await server.services.pamDiscovery.getById({
         sourceId: req.params.sourceId,
@@ -303,7 +303,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       response: { 200: z.object({ discoveryTypes: z.array(PamDiscoveryTypeMetadataSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async () => ({ discoveryTypes: buildPamDiscoveryTypeMetadata() })
   });
 
@@ -318,7 +318,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       response: { 200: z.object({ sources: z.array(SourceSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const sources = await server.services.pamDiscovery.list({
         projectId: req.internalPamProjectId,
@@ -347,7 +347,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       response: { 200: z.object({ runs: z.array(PamDiscoverySourceRunsSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const runs = await server.services.pamDiscovery.listRuns({
         sourceId: req.params.sourceId,
@@ -381,7 +381,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { discoveredAccounts, totalCount } = await server.services.pamDiscovery.listDiscovered({
         sourceId: req.params.sourceId,
@@ -429,7 +429,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { accounts, totalCount } = await server.services.pamDiscovery.listStale({
         sourceId: req.params.sourceId,
@@ -481,7 +481,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { results } = await server.services.pamDiscovery.importAccounts({
         sourceId: req.params.sourceId,

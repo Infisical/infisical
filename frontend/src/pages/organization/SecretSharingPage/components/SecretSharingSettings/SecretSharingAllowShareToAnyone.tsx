@@ -6,7 +6,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
@@ -42,7 +42,7 @@ export const SecretSharingAllowShareToAnyone = () => {
         <CardAction>
           <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
             {(isAllowed) => (
-              <Switch
+              <Toggle
                 variant="project"
                 id="enable-secret-sharing-outside-org"
                 onCheckedChange={(value) => handleSecretSharingToggle(value)}

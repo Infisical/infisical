@@ -48,7 +48,7 @@ type TSAMLConfig = {
 export const registerSamlRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
   const passport = new Authenticator({ key: "saml", userProperty: "passportUser" });
-  await server.register(fastifySession, { secret: appCfg.COOKIE_SECRET_SIGN_KEY });
+  await server.register(fastifySession, { secret: server.cookieSigningKey });
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
   server.decorateRequest("ssoConfig");
@@ -398,7 +398,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.SamlSso],

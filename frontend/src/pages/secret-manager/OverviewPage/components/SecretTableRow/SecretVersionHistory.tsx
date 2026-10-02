@@ -285,7 +285,7 @@ function VersionItem({
                       Are you sure you want to restore this secret to version {version.version}?
                       This will overwrite the current value.
                       {version.isRedacted && (
-                        <span className="mt-2 block text-red-400">
+                        <span className="mt-2 block text-danger">
                           Note: This version was redacted, so the value will be set to empty.
                         </span>
                       )}
@@ -414,7 +414,7 @@ function VersionItem({
         {/* Value input display */}
         {version.isRedacted ? (
           <>
-            <div className="mb-2 min-w-0 rounded-md border border-border bg-container px-3 py-2 font-mono text-sm text-bunker-200">
+            <div className="mb-2 min-w-0 rounded-md border border-border bg-container px-3 py-2 font-mono text-sm text-foreground">
               <span className="blur-sm select-none">xxxxxxxxxxxxxxxxxxxx</span>
             </div>
             {version.redactedByActor && (
@@ -439,7 +439,7 @@ function VersionItem({
         ) : (
           <Tooltip open={canReadValue && !version.secretValueHidden ? false : undefined}>
             <TooltipTrigger asChild>
-              <div className="mb-2 min-w-0 rounded-md border border-border bg-container px-3 py-2 font-mono text-sm [overflow-wrap:anywhere] whitespace-pre-wrap text-bunker-200">
+              <div className="mb-2 min-w-0 rounded-md border border-border bg-container px-3 py-2 font-mono text-sm [overflow-wrap:anywhere] whitespace-pre-wrap text-foreground">
                 {/* eslint-disable-next-line no-nested-ternary */}
                 {isValueVisible ? (
                   isFetchingValue ? (

@@ -47,7 +47,7 @@ export const registerTriggerDevConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const projects = await server.services.appConnection.triggerDev.listProjects(connectionId, req.permission);
@@ -79,7 +79,7 @@ export const registerTriggerDevConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const { projectRef } = req.query;

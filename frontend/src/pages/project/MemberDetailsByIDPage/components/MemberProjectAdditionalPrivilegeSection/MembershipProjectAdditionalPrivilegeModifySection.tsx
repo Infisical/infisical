@@ -2,20 +2,24 @@ import { useEffect, useMemo, useState } from "react";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, formatDistance } from "date-fns";
-import { ChevronDownIcon, ClockIcon, SaveIcon } from "lucide-react";
+import { ChevronDownIcon, CircleAlertIcon, ClockIcon, RefreshCwIcon, SaveIcon } from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
 
-import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import {
   Accordion,
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
+  PageLoader,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -103,15 +107,19 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
   );
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
-  const { data: privilegeDetails, isPending } = useGetProjectUserPrivilegeDetails(
-    privilegeId || ""
-  );
+  const {
+    data: privilegeDetails,
+    isPending,
+    isError,
+    refetch: refetchPrivilegeDetails
+  } = useGetProjectUserPrivilegeDetails(privilegeId || "");
 
   const { permission } = useProjectPermission();
   const isMemberEditDisabled = permission.cannot(
     ProjectPermissionMemberActions.Edit,
     ProjectPermissionSub.Member
   );
+  const isFormDisabled = isDisabled || isMemberEditDisabled;
 
   const assignPrivilegesConditions = useMemo(
     () => getMemberAssignPrivilegesConditions(permission),
@@ -228,6 +236,36 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
     }
   });
 
+  if (!isCreate && isError) {
+    return (
+      <div className="p-4">
+        <Alert variant="danger">
+          <CircleAlertIcon />
+          <AlertTitle>Could not load additional privilege</AlertTitle>
+          <AlertDescription>
+            <span>Retry to load this privilege before editing it.</span>
+            <Button
+              size="xs"
+              variant="danger"
+              onClick={() => refetchPrivilegeDetails().catch(() => undefined)}
+            >
+              <RefreshCwIcon />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!isCreate && isPending) {
+    return (
+      <div className="h-40">
+        <PageLoader lottieClassName="w-16" />
+      </div>
+    );
+  }
+
   const privilegeTemporaryAccess = form.watch("temporaryAccess");
   const isTemporary = privilegeTemporaryAccess?.isTemporary;
   const isExpired =
@@ -268,36 +306,35 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                     name="slug"
                     render={({ field }) => (
                       <Field>
-                        <FieldLabel>
+                        <FieldLabel htmlFor="member-privilege-name">
                           Privilege Name <span className="text-muted">(optional)</span>
                         </FieldLabel>
-                        <Input {...field} />
+                        <Input {...field} id="member-privilege-name" disabled={isFormDisabled} />
                       </Field>
                     )}
                   />
                 </div>
-                <div>
+                <div className="w-full max-w-md grow">
+                  <FieldLabel htmlFor="member-privilege-duration">Duration</FieldLabel>
                   <Popover>
-                    <PopoverTrigger disabled={isMemberEditDisabled} asChild>
-                      <div className="w-full max-w-md grow">
-                        <FieldLabel>Duration</FieldLabel>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant={durationVariant}
-                              disabled={isMemberEditDisabled}
-                              className="w-full capitalize"
-                            >
-                              {isTemporary && <ClockIcon className="size-4" />}
-                              {text}
-                              <ChevronDownIcon className="ml-2 size-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{toolTipText}</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </PopoverTrigger>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="member-privilege-duration"
+                            type="button"
+                            variant={durationVariant}
+                            isDisabled={isFormDisabled}
+                            className="capitalize"
+                          >
+                            {isTemporary && <ClockIcon className="size-4" />}
+                            {text}
+                            <ChevronDownIcon className="ml-2 size-4" />
+                          </Button>
+                        </PopoverTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>{toolTipText}</TooltipContent>
+                    </Tooltip>
                     <PopoverContent side="right" onWheel={(e) => e.stopPropagation()}>
                       <div className="flex flex-col space-y-4">
                         <div className="border-b border-b-border pb-2 text-sm text-muted">
@@ -311,16 +348,25 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                           render={({ field, fieldState: { error } }) => (
                             <>
                               <Field>
-                                <FieldLabel>
-                                  <TtlFormLabel label="Validity" />
+                                <FieldLabel htmlFor="member-privilege-validity">
+                                  Validity
                                 </FieldLabel>
-                                <Input {...field} isError={Boolean(error?.message)} />
+                                <Input
+                                  {...field}
+                                  id="member-privilege-validity"
+                                  isError={Boolean(error?.message)}
+                                  disabled={isFormDisabled}
+                                />
+                                <FieldDescription>
+                                  Use a duration such as 30m, 1h, or 3d.
+                                </FieldDescription>
                                 {error?.message && <FieldError>{error.message}</FieldError>}
                               </Field>
                               <div className="flex items-center space-x-2">
                                 <Button
                                   size="xs"
                                   variant="outline"
+                                  isDisabled={isFormDisabled}
                                   onClick={() => {
                                     const temporaryRange = field.value;
                                     if (!temporaryRange) {
@@ -352,6 +398,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                                   <Button
                                     size="xs"
                                     variant="danger"
+                                    isDisabled={isFormDisabled}
                                     onClick={() => {
                                       form.setValue(
                                         "temporaryAccess",
@@ -385,7 +432,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                       type="button"
                       className="mr-4 text-muted"
                       variant="ghost"
-                      disabled={isSubmitting}
+                      isDisabled={isSubmitting || isFormDisabled}
                       onClick={() => {
                         if (privilegeDetails) {
                           reset({
@@ -416,7 +463,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                   )}
                   {currentProject && (
                     <AddPoliciesButton
-                      isDisabled={isDisabled}
+                      isDisabled={isFormDisabled}
                       projectType={currentProject.type}
                       projectId={projectId}
                       allowedSubjects={filteredPermissionSubjects}
@@ -446,12 +493,17 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                           title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
                           description={PROJECT_PERMISSION_OBJECT[permissionSubject].description}
                           key={`project-permission-${permissionSubject}`}
-                          isDisabled={isDisabled}
+                          isDisabled={isFormDisabled}
                           isOpen={openPolicies.includes(permissionSubject)}
+                          onPolicyAdded={() =>
+                            setOpenPolicies((prev) =>
+                              prev.includes(permissionSubject) ? prev : [...prev, permissionSubject]
+                            )
+                          }
                           menuPortalContainerRef={menuPortalContainerRef}
                           isConditional={isConditionalSubjects(permissionSubject)}
                         >
-                          {renderConditionalComponents(permissionSubject, isDisabled)}
+                          {renderConditionalComponents(permissionSubject, isFormDisabled)}
                         </GeneralPermissionPolicies>
                       );
                     })}
@@ -465,7 +517,12 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
           <Button variant="ghost" onClick={onGoBack}>
             Cancel
           </Button>
-          <Button variant="project" type="submit" disabled={isSubmitting || !isDirty}>
+          <Button
+            variant="project"
+            type="submit"
+            isPending={isSubmitting}
+            isDisabled={isSubmitting || !isDirty || isFormDisabled}
+          >
             <SaveIcon />
             Save
           </Button>

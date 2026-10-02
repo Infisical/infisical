@@ -121,7 +121,6 @@ const SecretPathInputBase = ({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        sideOffset={4}
         onOpenAutoFocus={(e) => e.preventDefault()}
         className="p-1"
         style={{

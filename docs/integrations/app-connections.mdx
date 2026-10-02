@@ -1,8 +1,16 @@
 ---
-sidebarTitle: "Explore Options"
+title: "Explore app connections"
+sidebarTitle: "Explore options"
+icon: "search"
 description: "Browse and search through all available app connections for Infisical."
 ---
 
-import { AppConnectionsBrowser } from "/snippets/AppConnectionsBrowser.jsx";
+import { CatalogBrowser } from "/snippets/CatalogBrowser.jsx";
+import { appConnections, appConnectionCategories } from "/snippets/catalogs/app-connections.jsx";
 
-<AppConnectionsBrowser />
+<CatalogBrowser
+  id="app-connections"
+  items={appConnections}
+  categories={appConnectionCategories}
+  noun="app connection"
+/>

@@ -23,6 +23,7 @@ export const LINUX_SERVER_PKI_SYNC_LIST_OPTION = {
   canImportCertificates: false,
   canRemoveCertificates: true,
   canRunPostSyncCommand: true,
+  canRunHealthCheckCommand: true,
   defaultCertificateNameSchema: "{{commonName}}",
   forbiddenCharacters: LINUX_SERVER_NAMING.FORBIDDEN_CHARACTERS,
   allowedCharacterPattern: LINUX_SERVER_NAMING.ALLOWED_CHARACTER_PATTERN,

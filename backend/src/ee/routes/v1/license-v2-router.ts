@@ -1,10 +1,14 @@
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { NotFoundError } from "@app/lib/errors";
+import { BillingV2BreakdownDimension, BillingV2BreakdownScopeKind } from "@app/ee/services/license-v2/license-v2-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 // The license server joins this onto its configured portal origin, so it must be a single-rooted
 // relative path. Reject protocol-relative ("//host", "/\\host") values that browsers can normalize
@@ -49,6 +53,8 @@ const BillingV2PlanSchema = z.object({
   selfServe: z.boolean(),
   salesLed: z.boolean(),
   trialable: z.boolean(),
+  upgradeable: z.boolean(),
+  trialDays: z.number(),
   deprecated: z.boolean().optional(),
   deprecation: BillingV2DeprecationSchema.optional(),
   displayOrder: z.number().optional(),
@@ -117,6 +123,10 @@ const BillingV2EntitlementSchema = z.object({
   status: z.string().optional(),
   isTrialing: z.boolean().optional(),
   trialEndsAt: z.string().nullable().optional(),
+  trialPlan: z.string().optional(),
+  trialPlanName: z.string().optional(),
+  trialPlanEndsAt: z.string().nullable().optional(),
+  trialPlanDaysLeft: z.number().nullable().optional(),
   renewsOn: z.string().nullable().optional(),
   deprecation: BillingV2DeprecationSchema.extend({
     kind: z.enum(["product", "plan"])
@@ -124,6 +134,16 @@ const BillingV2EntitlementSchema = z.object({
   limit: z.number().nullable().optional(),
   used: z.number().optional(),
   unit: z.string().nullable().optional()
+});
+
+const BillingV2TrialSchema = z.object({
+  productKey: z.string(),
+  planTier: z.string().nullable(),
+  basePlanTier: z.string().nullable(),
+  outcome: z.string(),
+  endedDetail: z.string().nullable(),
+  endedAt: z.string().nullable(),
+  endedDaysAgo: z.number().nullable()
 });
 
 const BillingV2OverviewSchema = z.object({
@@ -167,9 +187,42 @@ const BillingV2OverviewSchema = z.object({
   invoices: BillingV2InvoiceSchema.array(),
   entitlements: z.record(BillingV2EntitlementSchema),
   trialedProductKeys: z.string().array(),
+  trials: BillingV2TrialSchema.array(),
   onDemandAmount: z.number(),
   checkoutFrozen: z.boolean(),
   selfServe: z.boolean()
+});
+
+const BillingV2BreakdownScopeSchema = z.object({
+  orgId: z.string().describe("ID of the organization the units were created in."),
+  name: z.string().describe("Display name of the organization."),
+  isRoot: z.boolean().describe("Whether this is the root organization of the billing tree."),
+  parentOrgName: z
+    .string()
+    .nullable()
+    .describe("Display name of the root organization this sub-organization belongs to; null on a root org."),
+  count: z.number().describe("Metered units attributed to this organization."),
+  orgLevelCount: z.number().describe("Units created on the organization itself rather than in a project."),
+  projects: z
+    .object({
+      id: z.string().describe("ID of the project the units were created in."),
+      name: z.string().describe("Display name of the project."),
+      count: z.number().describe("Metered units created in this project.")
+    })
+    .array()
+    .describe("Per-project split of this organization's units; empty when the dimension has no project detail.")
+});
+
+const BillingV2UsageBreakdownSchema = z.object({
+  dimensionKey: z.string().describe("The metered dimension this breakdown explains."),
+  total: z.number().describe("Live total for the dimension, counted the same way the meter counts it."),
+  userCount: z.number().describe("Human seats in the metered set; 0 for dimensions that count no users."),
+  scopedCount: z
+    .number()
+    .describe("The part of the total the scope tree accounts for; equals total for dimensions with no users."),
+  hasProjectDetail: z.boolean().describe("Whether units can be attributed to individual projects."),
+  unit: z.string().describe("Singular noun for what is counted, e.g. 'machine identity'."),
+  scopes: BillingV2BreakdownScopeSchema.array().describe("Organizations the total is drawn from, largest first.")
 });
 
 const BillingV2PreviewLineSchema = z.object({
@@ -186,12 +239,16 @@ const BillingV2PreviewSchema = z.object({
   nextInvoiceTotal: z.number(),
   nextRecurringTotal: z.number(),
   prorationDate: z.number().nullish(),
+  toPlanVersionId: z.string().nullish(),
   lines: BillingV2PreviewLineSchema.array()
 });
 
 // Subscription mutations mirror the checkout result: the change applies in place and the affected
 // subscription id comes back (the DB mirror catches up via webhook, so the UI refetches overview).
 const BillingV2MutationResultSchema = z.object({ subscriptionId: z.string().optional() });
+
+// Product and plan keys are short catalog identifiers (e.g. "secrets_management", "advanced").
+const BillingV2KeySchema = z.string().trim().min(1).max(64);
 
 const BillingV2QuantitiesSchema = z.record(z.string().trim(), z.number().int().min(0));
 const BillingV2CommitmentChangeSchema = z.object({
@@ -200,13 +257,6 @@ const BillingV2CommitmentChangeSchema = z.object({
 });
 
 export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
-  // Every route is gated on LICENSE_SERVER_V2_MODE="on"; the billing surface is invisible until full v2 cutover.
-  server.addHook("onRequest", async () => {
-    if (!server.services.licenseV2.isEnabled()) {
-      throw new NotFoundError({ message: "License Server v2 is not enabled" });
-    }
-  });
-
   const buildActor = (permission: FastifyRequest["permission"]) => ({
     type: permission.type,
     id: permission.id,
@@ -228,11 +278,97 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         200: z.object({ overview: BillingV2OverviewSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.licenseV2.getOverview({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission)
+        actor: buildActor(req.permission),
+        isInstanceAdmin: isSuperAdmin(req.auth)
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:organizationId/billing/v2/organizations",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listBillableOrganizations",
+      description:
+        "List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.",
+      params: z.object({ organizationId: z.string().trim().uuid() }),
+      querystring: z.object({
+        search: z
+          .string()
+          .trim()
+          .max(255)
+          .optional()
+          .describe("Match root organizations whose name or slug contains this."),
+        limit: z.coerce.number().int().min(1).max(1000).default(100).describe("Maximum organizations to return."),
+        offset: z.coerce.number().int().min(0).default(0).describe("Number of organizations to skip.")
+      }),
+      response: {
+        200: z.object({
+          organizations: z
+            .object({
+              id: z.string().describe("ID of the root organization."),
+              name: z.string().describe("Display name of the root organization."),
+              slug: z.string().describe("Slug of the root organization.")
+            })
+            .array(),
+          totalCount: z.number().describe("Root organizations matching the search, across every page.")
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      return server.services.licenseV2.getBillableOrganizations({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission),
+        isInstanceAdmin: isSuperAdmin(req.auth),
+        search: req.query.search,
+        limit: req.query.limit,
+        offset: req.query.offset
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:organizationId/billing/v2/breakdowns/:dimensionKey",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getBillingUsageBreakdown",
+      description:
+        "Break one metered usage dimension down by the organizations and projects its units were created in.",
+      params: z.object({
+        organizationId: z.string().trim().uuid(),
+        dimensionKey: z.nativeEnum(BillingV2BreakdownDimension).describe("The metered dimension to break down.")
+      }),
+      querystring: z.object({
+        scope: z
+          .nativeEnum(BillingV2BreakdownScopeKind)
+          .default(BillingV2BreakdownScopeKind.Organization)
+          .describe(
+            "'instance' explains usage across the entire self-hosted licence; 'organization' explains one root organization's share of it."
+          )
+      }),
+      response: {
+        200: z.object({ breakdown: BillingV2UsageBreakdownSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      return server.services.licenseV2.getUsageBreakdown({
+        orgId: req.params.organizationId,
+        dimensionKey: req.params.dimensionKey,
+        actor: buildActor(req.permission),
+        isInstanceAdmin: isSuperAdmin(req.auth),
+        scope: req.query.scope
       });
     }
   });
@@ -270,11 +406,12 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         200: z.object({ products: BillingV2CatalogProductSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.licenseV2.getCatalog({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission)
+        actor: buildActor(req.permission),
+        isInstanceAdmin: isSuperAdmin(req.auth)
       });
     }
   });
@@ -340,10 +477,20 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
           cadence: z.enum(["monthly", "annual"]).optional(),
           quantities: BillingV2QuantitiesSchema.optional(),
           removeProductId: z.string().trim().optional(),
-          commitmentChanges: BillingV2CommitmentChangeSchema.array().optional()
+          commitmentChanges: BillingV2CommitmentChangeSchema.array().optional(),
+          upgradeProductId: BillingV2KeySchema.optional(),
+          upgradePlan: BillingV2KeySchema.optional()
         })
-        .refine((b) => Boolean(b.addProductId) || Boolean(b.removeProductId) || Boolean(b.commitmentChanges?.length), {
-          message: "provide a product to add or remove, or a commitment change"
+        .refine(
+          (b) =>
+            Boolean(b.addProductId) ||
+            Boolean(b.removeProductId) ||
+            Boolean(b.upgradeProductId) ||
+            Boolean(b.commitmentChanges?.length),
+          { message: "provide a product to add, remove or upgrade, or a commitment change" }
+        )
+        .refine((b) => !b.upgradeProductId || Boolean(b.upgradePlan), {
+          message: "upgradePlan is required when upgradeProductId is set"
         }),
       response: {
         200: z.object({ preview: BillingV2PreviewSchema })
@@ -359,7 +506,9 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         cadence: req.body.cadence,
         quantities: req.body.quantities,
         removeProductId: req.body.removeProductId,
-        commitmentChanges: req.body.commitmentChanges
+        commitmentChanges: req.body.commitmentChanges,
+        upgradeProductId: req.body.upgradeProductId,
+        upgradePlan: req.body.upgradePlan
       });
     }
   });
@@ -391,8 +540,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       // A first-touch org has no Stripe customer yet, so the server needs an email. Take it from the
       // authenticated user (JWT-only route) rather than trusting a client-supplied value.
-      const email = req.auth.authMode === AuthMode.JWT ? (req.auth.user.email ?? undefined) : undefined;
-      return server.services.licenseV2.buyProduct({
+      const email = isUserSessionAuth(req.auth) ? (req.auth.user.email ?? undefined) : undefined;
+      const result = await server.services.licenseV2.buyProduct({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         productId: req.body.productId,
@@ -402,6 +551,79 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         email,
         returnPath: req.body.returnPath
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event:
+            result.outcome === "checkout_created"
+              ? PostHogEventTypes.BillingCheckoutSessionCreated
+              : PostHogEventTypes.BillingProductActivated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.params.organizationId,
+          properties: {
+            productId: req.body.productId,
+            plan: result.plan,
+            cadence: result.cadence,
+            ...(result.outcome === "subscription_updated" ? { subscriptionId: result.subscriptionId } : {})
+          }
+        })
+        .catch(() => {});
+
+      return result.outcome === "checkout_created"
+        ? { outcome: result.outcome, checkoutUrl: result.checkoutUrl }
+        : { outcome: result.outcome, subscriptionId: result.subscriptionId };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:organizationId/billing/v2/subscription/upgrade",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({ organizationId: z.string().trim() }),
+      body: z.object({
+        productId: BillingV2KeySchema,
+        plan: BillingV2KeySchema,
+        expectedPlanVersionId: z.string().trim().uuid(),
+        prorationDate: z.number().int().positive().optional()
+      }),
+      response: {
+        200: z.object({
+          outcome: z.literal("upgraded"),
+          subscriptionId: z.string().optional(),
+          fromPlanKey: z.string().optional(),
+          toPlanKey: z.string().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.licenseV2.upgradeProduct({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission),
+        productId: req.body.productId,
+        plan: req.body.plan,
+        expectedPlanVersionId: req.body.expectedPlanVersionId,
+        prorationDate: req.body.prorationDate
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.BillingPlanUpgraded,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.params.organizationId,
+          properties: {
+            productId: req.body.productId,
+            fromPlan: result.fromPlanKey,
+            toPlan: result.toPlanKey ?? req.body.plan,
+            subscriptionId: result.subscriptionId
+          }
+        })
+        .catch(() => {});
+
+      return result;
     }
   });
 
@@ -483,14 +705,33 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       // A trial has no Stripe customer yet, so the server needs an email. Take it from the authenticated
       // user (this route is JWT-only) rather than trusting a client-supplied value.
-      const email = req.auth.authMode === AuthMode.JWT ? (req.auth.user.email ?? undefined) : undefined;
-      return server.services.licenseV2.startTrial({
+      const email = isUserSessionAuth(req.auth) ? (req.auth.user.email ?? undefined) : undefined;
+      const result = await server.services.licenseV2.startTrial({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         productId: req.body.productId,
         plan: req.body.plan,
         email
       });
+
+      // Split on outcome rather than passing it as a property: "awaiting_card" means no card was on
+      // file and the trial was NOT granted, so folding it into a "Trial Started" would overcount
+      // trials. The actual grant for that branch happens on the License Server after the card-setup
+      // checkout completes, which this service never observes, so neither event tracks conversion.
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event:
+            result.outcome === "trial_started" ? PostHogEventTypes.TrialStarted : PostHogEventTypes.TrialCardRequired,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.params.organizationId,
+          properties: {
+            productId: req.body.productId,
+            plan: req.body.plan
+          }
+        })
+        .catch(() => {});
+
+      return result;
     }
   });
 
