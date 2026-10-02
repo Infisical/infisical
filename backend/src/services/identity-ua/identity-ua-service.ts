@@ -50,6 +50,7 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityUaClientSecretDALFactory } from "./identity-ua-client-secret-dal";
 import { TIdentityUaDALFactory } from "./identity-ua-dal";
+import { isClientSecretUsageLimitReached } from "./identity-ua-fns";
 import {
   TAttachUaDTO,
   TClearUaLockoutsDTO,
@@ -275,7 +276,7 @@ export const identityUaServiceFactory = ({
         }
       }
 
-      if (clientSecretNumUsesLimit > 0 && clientSecretNumUses >= clientSecretNumUsesLimit) {
+      if (isClientSecretUsageLimitReached(clientSecretNumUses, clientSecretNumUsesLimit)) {
         // number of times client secret can be used for
         // a login operation reached
         await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {
