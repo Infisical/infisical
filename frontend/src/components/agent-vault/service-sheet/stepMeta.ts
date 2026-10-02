@@ -12,6 +12,7 @@ type StepMeta = {
   subtitle?: string;
   rightLabel?: string;
   rightDescription?: string;
+  rightTip?: string;
 };
 
 export const SERVICE_STEPS: StepMeta[] = [
@@ -37,7 +38,9 @@ export const SERVICE_STEPS: StepMeta[] = [
     subtitle: "How requests to this service are authenticated, and anything else to add to them.",
     rightLabel: "CREDENTIAL",
     rightDescription:
-      "Agents reach this service without ever holding the credential themselves. Custom headers go out on top of it, and a substitution swaps a placeholder your agent already sends for the real value."
+      "Agents reach this service without ever holding the credential themselves. Custom headers go out on top of it, and a substitution swaps a placeholder your agent already sends for the real value.",
+    rightTip:
+      "To use one of this bundle's variables, type {{ in any value and pick it from the list. The proxy puts the variable's value in its place."
   },
   {
     step: ServiceStep.Review,

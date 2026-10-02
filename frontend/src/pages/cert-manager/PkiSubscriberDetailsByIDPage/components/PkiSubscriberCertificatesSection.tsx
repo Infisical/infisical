@@ -13,7 +13,7 @@ export const PkiSubscriberCertificatesSection = ({ subscriberName }: Props) => {
   return (
     <div className="h-full rounded-lg border border-border-control bg-surface-base p-4">
       <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
-        <h3 className="text-lg font-medium text-foreground">Certificates</h3>
+        <h3 className="text-lg font-normal text-foreground">Certificates</h3>
       </div>
       <div className="py-4">
         <PkiSubscriberCertificatesTable

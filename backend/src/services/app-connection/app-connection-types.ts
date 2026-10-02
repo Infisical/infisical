@@ -740,6 +740,8 @@ export type TValidateAppConnectionUsageByIdDTO = {
   projectId: string;
 };
 
+export type TAppConnectionScope = { projectId: string };
+
 export type TAppConnectionConfig =
   | TAwsConnectionConfig
   | TGitHubConnectionConfig

@@ -176,7 +176,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                     onSelect={handleSwitchEnv}
                     keywords={[env.name, env.slug]}
                   >
-                    <Tooltip delayDuration={500} disableHoverableContent>
+                    <Tooltip delayDuration={500}>
                       <TooltipTrigger asChild>
                         <span className="min-w-0 flex-1 truncate">{env.name}</span>
                       </TooltipTrigger>

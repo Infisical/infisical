@@ -195,10 +195,6 @@ export const KmipServerDetailsCard = ({ kmipServer }: Props) => {
             {authMethod.method === "aws" && (
               <>
                 <Detail>
-                  <DetailLabel>STS Endpoint</DetailLabel>
-                  <DetailValue>{authMethod.config.stsEndpoint}</DetailValue>
-                </Detail>
-                <Detail>
                   <DetailLabel>Allowed Principal ARNs</DetailLabel>
                   <DetailValue>
                     {authMethod.config.allowedPrincipalArns || (

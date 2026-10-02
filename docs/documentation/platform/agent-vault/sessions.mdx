@@ -54,11 +54,19 @@ Anyone granted at least one access bundle can create a session. Admins can creat
   Picking **Never** as the duration keeps the session working until someone revokes it. Only use this for long-running agents, and revoke the session once the agent has finished.
 </Tip>
 
+## View session logs
+
+Session logs record every request an agent makes during a session. If you haven't already, [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs). Then go to **Sessions** and select **View Session Logs** on the session's row. You can filter and search the requests, and while the session is active, new logs keep appearing.
+
+<Frame>
+  <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for an active session, listing each request's time, method, host, path, upstream status, and outcome" />
+</Frame>
+
 ## Revoke a session
 
 To revoke a session before it expires, go to the **Sessions** page, open the session's menu, and select **Revoke Session**. The proxy stops attaching credentials for the session within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
 
-The **Sessions** page shows each session as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions for 30 days so you can audit what an agent had access to during the session:
+The **Sessions** page shows each session as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions so you can audit what an agent had access to during the session:
 
 <Frame>
   <img src="/images/platform/agent-vault/sessions-list.png" alt="The Sessions page listing active, revoked, and expired sessions with their access bundle and expiry" />
@@ -80,3 +88,5 @@ If a session stops getting credentials because of a lost grant or a deleted bund
 ## Audit trail
 
 When you create or revoke a session, Infisical writes an audit event. To review these events, open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
+
+Audit events cover what you changed in Infisical. To see which requests an agent made while its session was running, [view its session logs](#view-session-logs).

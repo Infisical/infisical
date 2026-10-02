@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDownIcon,
   CircleAlertIcon,
@@ -29,6 +29,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
@@ -82,6 +83,8 @@ import { RemoveApprovalPolicyModal } from "./components/RemoveApprovalPolicyModa
 
 interface IProps {
   projectId: string;
+  openAddPolicy: PolicyType | null;
+  onAddPolicyOpened: () => void;
 }
 
 enum PolicyOrderBy {
@@ -145,7 +148,8 @@ const useApprovalPolicies = (permission: TProjectPermission, currentProject?: Pr
   };
 };
 
-export const ApprovalPolicyList = ({ projectId }: IProps) => {
+export const ApprovalPolicyList = ({ projectId, openAddPolicy, onAddPolicyOpened }: IProps) => {
+  const [initialPolicyType, setInitialPolicyType] = useState<PolicyType>();
   const { handlePopUpToggle, handlePopUpOpen, popUp } = usePopUp([
     "policyForm",
     "deletePolicy",
@@ -154,6 +158,18 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
+
+  useEffect(() => {
+    if (!openAddPolicy) return;
+
+    if (subscription && !subscription.secretApproval) {
+      handlePopUpOpen("upgradePlan");
+    } else {
+      setInitialPolicyType(openAddPolicy);
+      handlePopUpOpen("policyForm");
+    }
+    onAddPolicyOpened();
+  }, [openAddPolicy, subscription, handlePopUpOpen, onAddPolicyOpened]);
 
   const canReadPolicies = permission.can(
     ProjectPermissionActions.Read,
@@ -337,6 +353,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                         handlePopUpOpen("upgradePlan");
                         return;
                       }
+                      setInitialPolicyType(undefined);
                       handlePopUpOpen("policyForm");
                     }}
                     variant="project"
@@ -543,6 +560,25 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                       Create a policy to require approval for secret changes and access requests.
                     </EmptyDescription>
                   </EmptyHeader>
+                  {canCreatePolicies && (
+                    <EmptyContent>
+                      <Button
+                        variant="project"
+                        size="sm"
+                        onClick={() => {
+                          if (subscription && !subscription.secretApproval) {
+                            handlePopUpOpen("upgradePlan");
+                          } else {
+                            setInitialPolicyType(undefined);
+                            handlePopUpOpen("policyForm");
+                          }
+                        }}
+                      >
+                        <PlusIcon />
+                        Configure Policy
+                      </Button>
+                    </EmptyContent>
+                  )}
                 </Empty>
               )}
               {Boolean(
@@ -572,6 +608,8 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
         </CardContent>
       </Card>
       <AccessPolicyForm
+        key={initialPolicyType ?? "default"}
+        initialPolicyType={initialPolicyType}
         projectId={currentProject.id}
         projectSlug={currentProject.slug}
         isOpen={popUp.policyForm.isOpen}
