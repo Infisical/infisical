@@ -140,7 +140,7 @@ export const AgentVaultQuickstartPicker = () => {
     "vercel",
     "xai",
   ]);
-  const KNOWN_AGENT_IDS = new Set(["claude-code", "codex", "opencode"]);
+  const KNOWN_AGENT_IDS = new Set(["claude-code", "codex", "hermes", "opencode"]);
 
   const SERVICES = [
     { id: "custom", label: "Custom API", chip: "a custom API" },
@@ -187,6 +187,7 @@ export const AgentVaultQuickstartPicker = () => {
   const AGENTS = [
     { id: "claude-code", label: "Claude Code", chip: "Claude Code" },
     { id: "codex", label: "Codex", chip: "Codex" },
+    { id: "hermes", label: "Hermes Agent", chip: "Hermes Agent" },
     { id: "opencode", label: "OpenCode", chip: "OpenCode" },
   ];
 
@@ -527,7 +528,7 @@ export const AgentVaultBranch = ({
     "vercel",
     "xai",
   ]);
-  const KNOWN_AGENT_IDS = new Set(["claude-code", "codex", "opencode"]);
+  const KNOWN_AGENT_IDS = new Set(["claude-code", "codex", "hermes", "opencode"]);
   const [selection, setSelection] = useState({ service: null, agent: null });
 
   useEffect(() => {
