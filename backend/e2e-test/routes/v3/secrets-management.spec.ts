@@ -1,4 +1,4 @@
-import { fakeLicense } from "e2e-test/fakes/license-fns";
+import { fakeLicense } from "e2e-test/fakes/license-service";
 import { createFakeWebhookServer, TFakeWebhookServer } from "e2e-test/fakes/webhook-destination";
 import { createIsolatedOrgAndProject, createProject } from "e2e-test/testUtils/fixtures";
 import { createFolder } from "e2e-test/testUtils/folders";
@@ -100,11 +100,7 @@ describe("Secrets management", () => {
   describe("Finding a secret by its value", () => {
     // Value search sits behind the insights plan, and the e2e instance runs unlicensed.
     beforeAll(() => {
-      fakeLicense.setFeatures({ secretAccessInsights: true });
-    });
-
-    afterAll(() => {
-      fakeLicense.reset();
+      fakeLicense.setFeatures(orgId, { secretAccessInsights: true });
     });
 
     test("a rotated value stops being found and the new one starts", async () => {
@@ -210,6 +206,7 @@ describe("Secrets management", () => {
     // The org digest is keyed by the org data key, so one org's values must never match another's.
     test("a value held in another organization is not found", async () => {
       const other = await createIsolatedOrgAndProject("secrets-management-e2e-other");
+      fakeLicense.setFeatures(other.orgId, { secretAccessInsights: true });
       try {
         const value = "value-in-a-different-org";
         await createSecretV2({
