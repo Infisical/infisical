@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import {
+  CircleXIcon,
   CodeXmlIcon,
   EyeIcon,
   EyeOffIcon,
@@ -13,10 +14,14 @@ import {
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Combobox,
   Field,
   FieldContent,
+  FieldDescription,
   FieldLabel,
   FileDropzone,
   IconButton,
@@ -51,6 +56,7 @@ import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { SecretType } from "@app/hooks/api/types";
 
 import { CsvColumnMapContent } from "./CsvColumnMapDialog";
+import { flattenNestedJson, getNestedJsonObject, joinSecretPath } from "./parseNestedJson";
 import { CsvData, parseSecretFile } from "./parseSecretFile";
 import { PASTE_SECRETS_FORM_ID, PasteSecretsContent } from "./PasteSecretsDialog";
 import { TParsedEnv } from "./types";
@@ -100,6 +106,8 @@ const ImportSecretsContent = ({
   const [visibleSecretKeys, setVisibleSecretKeys] = useState<Set<string>>(new Set());
   const [shouldOverwrite, setShouldOverwrite] = useState(false);
   const [keyOverrides, setKeyOverrides] = useState<Record<string, string>>({});
+  const [nestedJson, setNestedJson] = useState<Record<string, unknown> | null>(null);
+  const [shouldImportNested, setShouldImportNested] = useState(false);
 
   const { mutateAsync: createSecretBatch } = useCreateSecretBatch();
   const { mutateAsync: updateSecretBatch } = useUpdateSecretBatch();
@@ -129,7 +137,27 @@ const ImportSecretsContent = ({
   });
 
   const activeSecrets = initialParsedSecrets || parsedSecrets;
-  const secretCount = activeSecrets ? Object.keys(activeSecrets).length : 0;
+
+  const nestedImport = useMemo(
+    () => (nestedJson && shouldImportNested ? flattenNestedJson(nestedJson) : null),
+    [nestedJson, shouldImportNested]
+  );
+
+  const reviewSecrets = useMemo<TParsedEnv | null>(() => {
+    if (!nestedImport) return activeSecrets;
+    return Object.fromEntries(
+      Object.entries(nestedImport.secretsByPath).flatMap(([path, secrets]) =>
+        Object.entries(secrets).map(([key, secretData]) => [
+          path === "/" ? key : `${path.slice(1)}/${key}`,
+          secretData
+        ])
+      )
+    );
+  }, [nestedImport, activeSecrets]);
+
+  const secretCount = reviewSecrets ? Object.keys(reviewSecrets).length : 0;
+  const folderCount = nestedImport?.folderPaths.length ?? 0;
+  const hasNestedErrors = Boolean(nestedImport?.errors.length);
   const hasTagsToResolve = activeSecrets
     ? Object.values(activeSecrets).some((s) => s.tagSlugs?.length)
     : false;
@@ -140,7 +168,7 @@ const ImportSecretsContent = ({
       )
     : false;
 
-  const handleParsedSecrets = useCallback((env: TParsedEnv) => {
+  const handleParsedSecrets = useCallback((env: TParsedEnv, jsonSource?: string) => {
     if (!Object.keys(env).length) {
       createNotification({
         type: "error",
@@ -149,6 +177,7 @@ const ImportSecretsContent = ({
       return;
     }
     setParsedSecrets(env);
+    setNestedJson(getNestedJsonObject(jsonSource));
   }, []);
 
   const parseFile = useCallback(
@@ -221,35 +250,39 @@ const ImportSecretsContent = ({
         return ids.length ? ids : undefined;
       };
 
-      const envPromises = selectedEnvs.map(async (env) => {
-        // Ensure folder exists if not root
-        if (secretPath !== "/") {
-          const pathSegment = secretPath.split("/").filter(Boolean);
-          const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
-          const folderName = pathSegment.at(-1);
-          const canCreateFolder = permission.can(
-            ProjectPermissionActions.Create,
-            subject(ProjectPermissionSub.SecretFolders, {
-              environment: env.slug,
-              secretPath: parentPath
-            })
-          );
+      const ensureFolder = async (environment: string, path: string) => {
+        if (path === "/") return;
+        const pathSegment = path.split("/").filter(Boolean);
+        const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
+        const folderName = pathSegment.at(-1);
+        const canCreateFolder = permission.can(
+          ProjectPermissionActions.Create,
+          subject(ProjectPermissionSub.SecretFolders, {
+            environment,
+            secretPath: parentPath
+          })
+        );
 
-          if (folderName && parentPath && canCreateFolder) {
-            await getOrCreateFolder({
-              projectId,
-              path: parentPath,
-              environment: env.slug,
-              name: folderName
-            });
-          }
+        if (folderName && parentPath && canCreateFolder) {
+          await getOrCreateFolder({
+            projectId,
+            path: parentPath,
+            environment,
+            name: folderName
+          });
         }
+      };
 
+      const importSecretsAtPath = async (
+        environment: string,
+        path: string,
+        secrets: TParsedEnv
+      ) => {
         // Fetch existing secrets to detect conflicts
         const { secrets: rawExisting } = await fetchProjectSecrets({
           projectId,
-          environment: env.slug,
-          secretPath,
+          environment,
+          secretPath: path,
           viewSecretValue: false
         });
 
@@ -260,7 +293,7 @@ const ImportSecretsContent = ({
         );
 
         // Resolve edited keys (file-based secrets can be renamed in the review table)
-        const resolvedEntries = Object.entries(activeSecrets).map(([origKey, secretData]) => ({
+        const resolvedEntries = Object.entries(secrets).map(([origKey, secretData]) => ({
           finalKey: (keyOverrides[origKey] ?? origKey).trim(),
           secretData
         }));
@@ -294,13 +327,13 @@ const ImportSecretsContent = ({
             skipMultilineEncoding: secretData.skipMultilineEncoding
           }));
 
-        const results = await Promise.allSettled([
+        return Promise.allSettled([
           ...(secretsToCreate.length
             ? [
                 createSecretBatch({
                   projectId,
-                  environment: env.slug,
-                  secretPath,
+                  environment,
+                  secretPath: path,
                   secrets: secretsToCreate
                 })
               ]
@@ -309,13 +342,35 @@ const ImportSecretsContent = ({
             ? [
                 updateSecretBatch({
                   projectId,
-                  environment: env.slug,
-                  secretPath,
+                  environment,
+                  secretPath: path,
                   secrets: secretsToUpdate
                 })
               ]
             : [])
         ]);
+      };
+
+      const envPromises = selectedEnvs.map(async (env) => {
+        await ensureFolder(env.slug, secretPath);
+
+        let results: PromiseSettledResult<unknown>[];
+        if (nestedImport) {
+          // Folders are created one at a time so parents always exist before their children
+          // eslint-disable-next-line no-restricted-syntax
+          for (const folderPath of nestedImport.folderPaths) {
+            // eslint-disable-next-line no-await-in-loop
+            await ensureFolder(env.slug, joinSecretPath(secretPath, folderPath));
+          }
+          const pathResults = await Promise.all(
+            Object.entries(nestedImport.secretsByPath).map(([path, secrets]) =>
+              importSecretsAtPath(env.slug, joinSecretPath(secretPath, path), secrets)
+            )
+          );
+          results = pathResults.flat();
+        } else {
+          results = await importSecretsAtPath(env.slug, secretPath, activeSecrets);
+        }
         const hasApproval = results.some(
           (r) => r.status === "fulfilled" && "approval" in (r.value as object)
         );
@@ -387,6 +442,8 @@ const ImportSecretsContent = ({
 
   const handleBack = () => {
     setParsedSecrets(null);
+    setNestedJson(null);
+    setShouldImportNested(false);
     setVisibleSecretKeys(new Set());
     setKeyOverrides({});
   };
@@ -400,7 +457,7 @@ const ImportSecretsContent = ({
     });
   };
 
-  const allSecretKeys = activeSecrets ? Object.keys(activeSecrets) : [];
+  const allSecretKeys = reviewSecrets ? Object.keys(reviewSecrets) : [];
   const areAllVisible =
     allSecretKeys.length > 0 && allSecretKeys.every((k) => visibleSecretKeys.has(k));
 
@@ -509,13 +566,47 @@ const ImportSecretsContent = ({
       <SheetHeader>
         <SheetTitle>Review & Upload Secrets</SheetTitle>
         <SheetDescription>
-          {secretCount} secret{secretCount !== 1 ? "s" : ""} found. Select environments to upload
-          to.
+          {secretCount} secret{secretCount !== 1 ? "s" : ""} found
+          {nestedImport && ` across ${folderCount} folder${folderCount !== 1 ? "s" : ""}`}. Select
+          environments to upload to.
         </SheetDescription>
       </SheetHeader>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
         <div className="flex flex-col gap-4">
+          {nestedJson && (
+            <Field orientation="horizontal" className="w-fit">
+              <FieldContent>
+                <FieldLabel htmlFor="import-nested-as-folders">
+                  Import Nested Objects as Folders
+                </FieldLabel>
+                <FieldDescription className="max-w-lg">
+                  Each nested object becomes a folder relative to {secretPath}, and its values
+                  become secrets in that folder. Arrays are stored as JSON strings, null as an empty
+                  value, and numbers and booleans as text.
+                </FieldDescription>
+              </FieldContent>
+              <Toggle
+                id="import-nested-as-folders"
+                variant="project"
+                checked={shouldImportNested}
+                onCheckedChange={setShouldImportNested}
+              />
+            </Field>
+          )}
+          {hasNestedErrors && (
+            <Alert variant="danger">
+              <CircleXIcon />
+              <AlertTitle>Some keys cannot be imported as folders</AlertTitle>
+              <AlertDescription>
+                <ul className="list-disc pl-4">
+                  {nestedImport!.errors.map((error) => (
+                    <li key={error}>{error}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="relative flex flex-col gap-2">
             <Table
               className="border-collapse"
@@ -537,7 +628,7 @@ const ImportSecretsContent = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.entries(activeSecrets!).map(([key, secretData]) => {
+                {Object.entries(reviewSecrets!).map(([key, secretData]) => {
                   const isVisible = visibleSecretKeys.has(key);
                   const hasComments = secretData.comments.some((c) => c);
                   const hasTags = Boolean(secretData.tagSlugs?.length);
@@ -707,7 +798,13 @@ const ImportSecretsContent = ({
         <Button
           variant="project"
           onClick={handleImport}
-          isDisabled={!selectedEnvs.length || isImporting || isWaitingForTags || hasInvalidKey}
+          isDisabled={
+            !selectedEnvs.length ||
+            isImporting ||
+            isWaitingForTags ||
+            hasInvalidKey ||
+            hasNestedErrors
+          }
           isPending={isImporting || isWaitingForTags}
         >
           Upload {secretCount} Secret{secretCount !== 1 ? "s" : ""}
