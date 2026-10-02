@@ -545,8 +545,8 @@ const buildDestinationTargets = ({
   return { checks: isSelfMove ? [] : checks, isSelfMove };
 };
 
-// one check per environment pair that has something to move. syncs beneath the destination count too,
-// so a moved folder needs no check of its own.
+// one check per path the items land at. a moved folder always lands at a new path (the backend rejects a
+// name clash), so only recursive syncs above it can cover it or anything inside it.
 const buildMoveWarningChecks = ({
   sourceSecretPath,
   destinationPath,
@@ -560,19 +560,20 @@ const buildMoveWarningChecks = ({
 }): TMoveWarningsCheck[] => {
   if (!destinationPath) return [];
 
-  const environmentPairs = new Map(
-    [...secretEnvironments, ...movedFolders].map(({ sourceEnv, destinationEnvironment }) => [
-      `${sourceEnv}:${destinationEnvironment}`,
-      { sourceEnv, destinationEnvironment }
-    ])
-  );
-
-  return [...environmentPairs.values()].map(({ sourceEnv, destinationEnvironment }) => ({
+  const secretChecks = secretEnvironments.map(({ sourceEnv, destinationEnvironment }) => ({
     sourceEnvironment: sourceEnv,
     sourceSecretPath: removeTrailingSlash(sourceSecretPath),
     destinationEnvironment,
     destinationSecretPath: removeTrailingSlash(destinationPath)
   }));
+  const folderChecks = movedFolders.map(({ folderName, sourceEnv, destinationEnvironment }) => ({
+    sourceEnvironment: sourceEnv,
+    sourceSecretPath: `${removeTrailingSlash(sourceSecretPath)}/${folderName}`,
+    destinationEnvironment,
+    destinationSecretPath: `${removeTrailingSlash(destinationPath)}/${folderName}`
+  }));
+
+  return [...secretChecks, ...folderChecks];
 };
 
 // memoizes the destination checks for the moved folders and runs the destination approval-policy eligibility

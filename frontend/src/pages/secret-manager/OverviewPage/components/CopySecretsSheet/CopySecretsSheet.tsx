@@ -202,16 +202,13 @@ const CopySecretsSession = ({
     sourceEnvironmentSlug &&
       destinationEnvironmentSlug &&
       isSourcePathSettled &&
-      isDestinationPathSettled &&
-      (requestGroups.length || selectedFolderPaths.length)
-      ? [
-          {
-            sourceEnvironment: sourceEnvironmentSlug,
-            sourceSecretPath: normalizedSourcePath,
-            destinationEnvironment: destinationEnvironmentSlug,
-            destinationSecretPath: normalizedDestinationPath
-          }
-        ]
+      isDestinationPathSettled
+      ? requestGroups.map((group) => ({
+          sourceEnvironment: sourceEnvironmentSlug,
+          sourceSecretPath: group.sourcePath,
+          destinationEnvironment: destinationEnvironmentSlug,
+          destinationSecretPath: group.destinationPath
+        }))
       : []
   );
   const destinationFolderPaths = getCopyDestinationFolderPaths({

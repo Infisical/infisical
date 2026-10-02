@@ -1,10 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import {
-  getSecretSyncsNewlyCoveringPaths,
-  isPathCoveredBySecretSync,
-  isPathOrDescendantCoveredBySecretSync
-} from "./secretSyncCoverage";
+import { getSecretSyncsNewlyCoveringPaths, isPathCoveredBySecretSync } from "./secretSyncCoverage";
 
 describe("isPathCoveredBySecretSync", () => {
   const sync = (path: string, includeAllSubFolders?: boolean, environment = "dev") => ({
@@ -58,34 +54,6 @@ describe("isPathCoveredBySecretSync", () => {
   });
 });
 
-describe("isPathOrDescendantCoveredBySecretSync", () => {
-  const sync = (path: string, includeAllSubFolders = false, environment = "dev") => ({
-    environment: { slug: environment },
-    folder: { path },
-    syncOptions: { includeAllSubFolders }
-  });
-
-  const covers = (entry: ReturnType<typeof sync>, secretPath: string, environment = "dev") =>
-    isPathOrDescendantCoveredBySecretSync(entry, { environment, secretPath });
-
-  test("covers whatever the path itself is covered by", () => {
-    expect(covers(sync("/apps"), "/apps")).toBe(true);
-    expect(covers(sync("/", true), "/apps")).toBe(true);
-  });
-
-  test("covers a sync rooted anywhere beneath the path, recursive or not", () => {
-    expect(covers(sync("/apps/payments"), "/apps")).toBe(true);
-    expect(covers(sync("/apps/payments/api", true), "/apps")).toBe(true);
-    expect(covers(sync("/apps"), "/")).toBe(true);
-  });
-
-  test("never covers a non-recursive ancestor, a sibling, or another environment", () => {
-    expect(covers(sync("/"), "/apps")).toBe(false);
-    expect(covers(sync("/apps-legacy/api"), "/apps")).toBe(false);
-    expect(covers(sync("/apps/payments", false, "prod"), "/apps")).toBe(false);
-  });
-});
-
 describe("getSecretSyncsNewlyCoveringPaths", () => {
   const sync = (id: string, overrides: Record<string, unknown> = {}) => ({
     id,
@@ -116,6 +84,13 @@ describe("getSecretSyncsNewlyCoveringPaths", () => {
   test("returns nothing when no check lands under a sync", () => {
     expect(getSecretSyncsNewlyCoveringPaths([sync("a")], [check("/", "/other")])).toEqual([]);
     expect(getSecretSyncsNewlyCoveringPaths([sync("a")], [])).toEqual([]);
+  });
+
+  test("leaves out a sync rooted beneath the landing path", () => {
+    const syncs = [sync("nested", { folder: { path: "/apps/other" } })];
+
+    expect(getSecretSyncsNewlyCoveringPaths(syncs, [check("/x", "/apps")])).toEqual([]);
+    expect(getSecretSyncsNewlyCoveringPaths(syncs, [check("/x", "/")])).toEqual([]);
   });
 
   test("returns a sync once even when several checks land under it", () => {

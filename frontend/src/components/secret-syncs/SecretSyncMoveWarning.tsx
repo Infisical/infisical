@@ -24,25 +24,32 @@ export const useSecretSyncMoveWarning = (projectId: string, checks: TMoveWarning
   );
   const isEnabled = canReadSecretSyncs && checks.length > 0;
 
-  // never served from cache, so a sync created since the list was last loaded is not missed
   const {
     data: projectSyncs,
-    isLoading,
-    isError
+    isFetching,
+    isError,
+    refetch
   } = useListSecretSyncs(projectId, {
     enabled: isEnabled,
     staleTime: 0
   });
 
+  // a cached list may predate a sync created since, so the list is refetched whenever the checks change
+  // and submit stays blocked until it lands
+  const checksKey = JSON.stringify(checks);
+  useEffect(() => {
+    if (isEnabled) refetch({ cancelRefetch: false });
+  }, [checksKey, isEnabled]);
+
   const secretSyncs = useMemo(
     () => (isEnabled && projectSyncs ? getSecretSyncsNewlyCoveringPaths(projectSyncs, checks) : []),
     [isEnabled, projectSyncs, checks]
   );
-  const isChecking = isEnabled && isLoading;
+  const isChecking = isEnabled && isFetching;
   const hasError = isEnabled && isError;
 
   const warningKey = JSON.stringify({
-    checks,
+    checksKey,
     syncIds: secretSyncs.map(({ id }) => id),
     hasError
   });

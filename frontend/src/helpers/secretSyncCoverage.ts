@@ -37,25 +37,9 @@ export const isPathCoveredBySecretSync = (
   );
 };
 
-// A move or copy can land items anywhere beneath its destination, so a sync rooted below the destination
-// counts as well as one covering it. This can warn about a sync that nothing ends up under, which is
-// safer for a warning than missing one.
-export const isPathOrDescendantCoveredBySecretSync = (
-  sync: TCoverageSync,
-  { environment, secretPath }: { environment: string; secretPath: string }
-) => {
-  if (isPathCoveredBySecretSync(sync, { environment, secretPath })) return true;
-  if (!sync.folder || sync.environment?.slug !== environment) return false;
-
-  const syncSegments = toPathSegments(sync.folder.path);
-  const pathSegments = toPathSegments(secretPath);
-
-  return pathSegments.every((segment, index) => syncSegments[index] === segment);
-};
-
 // The syncs that would start sending items to their destination if they were moved or copied as the checks
-// describe. A sync that already covers a check's source is left out for that check, since the items
-// already reach it.
+// describe, one check per path the items land at. A sync that already covers a check's source is left out
+// for that check, since the items already reach it.
 export const getSecretSyncsNewlyCoveringPaths = <
   T extends TCoverageSync & { id: string; name: string }
 >(
@@ -66,7 +50,7 @@ export const getSecretSyncsNewlyCoveringPaths = <
     .filter((sync) =>
       checks.some(
         (check) =>
-          isPathOrDescendantCoveredBySecretSync(sync, {
+          isPathCoveredBySecretSync(sync, {
             environment: check.destinationEnvironment,
             secretPath: check.destinationSecretPath
           }) &&
