@@ -69,7 +69,10 @@ type ImportedSecretData = {
   environment: string;
   secretPath: string;
   sourceEnv: string;
-  secrets: Pick<SecretV3RawSanitized, "id" | "key" | "env" | "isEmpty" | "version">[];
+  secrets: Pick<
+    SecretV3RawSanitized,
+    "id" | "key" | "env" | "isEmpty" | "version" | "comment" | "tags"
+  >[];
 };
 
 type Props = {
@@ -91,6 +94,7 @@ type Props = {
   index: number;
   secretImport?: TSecretImport;
   isVisible?: boolean;
+  showComments?: boolean;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
 };
@@ -110,6 +114,7 @@ export const SecretImportTableRow = ({
   index,
   secretImport,
   isVisible,
+  showComments,
   activityId,
   onActivityChange
 }: Props) => {
@@ -119,7 +124,7 @@ export const SecretImportTableRow = ({
   const resyncSecretReplication = useResyncSecretReplication();
 
   const isSingleEnvView = environments.length === 1;
-  const totalCols = environments.length + 2;
+  const totalCols = environments.length + 2 + (isSingleEnvView && showComments ? 1 : 0);
 
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
   const singleEnvImport = isSingleEnvView
@@ -191,6 +196,23 @@ export const SecretImportTableRow = ({
       secret.key.toUpperCase().includes(searchFilter.toUpperCase())
     );
   }, [matchingImportedSecrets, searchFilter]);
+
+  const getCommentContexts = (key: string, destinationEnv?: string) =>
+    allEnvImportedSecrets.flatMap((data) => {
+      if (destinationEnv && data.sourceEnv !== destinationEnv) return [];
+      const secret = data.secrets.find((item) => item.key === key);
+      if (!secret) return [];
+      return [
+        {
+          secret,
+          environment: data.sourceEnv,
+          environmentName:
+            environments.find((env) => env.slug === data.sourceEnv)?.name ?? data.sourceEnv,
+          secretPath,
+          importSource: { environmentName: importEnvName, secretPath: data.secretPath }
+        }
+      ];
+    });
 
   const hasAnyReplicatedImport = useMemo(() => {
     if (isSingleEnvView) return false;
@@ -610,18 +632,22 @@ export const SecretImportTableRow = ({
               <col className="w-10" />
               <col className="w-[var(--name-column-width,180px)]" />
               <col />
+              {showComments && <col className="w-[35%]" />}
             </colgroup>
             <TableHeader className="bg-container-hover">
               <TableRow>
                 <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                 <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>Name</TableHead>
                 <TableHead>Value</TableHead>
+                {showComments && <TableHead>Comment</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {selectedEnvSecrets.map((secret) => (
                 <SecretImportSecretRow
                   key={`import-secret-multi-${effectiveSelectedEnv}-${secret.key}`}
+                  showComments={showComments}
+                  commentContexts={getCommentContexts(secret.key, effectiveSelectedEnv)}
                   secretKey={secret.key}
                   environment={
                     selectedImport?.isReplication ||
@@ -668,12 +694,14 @@ export const SecretImportTableRow = ({
             <col className="w-10" />
             <col className="w-[var(--name-column-width,180px)]" />
             <col />
+            {showComments && <col className="w-[35%]" />}
           </colgroup>
           <TableHeader className="bg-container-hover">
             <TableRow>
               <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
               <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>Name</TableHead>
               <TableHead>Value</TableHead>
+              {showComments && <TableHead>Comment</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -688,6 +716,8 @@ export const SecretImportTableRow = ({
               return (
                 <SecretImportSecretRow
                   key={`import-secret-multi-${secret.key}`}
+                  showComments={showComments}
+                  commentContexts={getCommentContexts(secret.key)}
                   secretKey={secret.key}
                   environment={
                     secretImport?.importEnv?.projectId !== currentProject?.id
@@ -745,18 +775,22 @@ export const SecretImportTableRow = ({
           <col className="w-10" />
           <col className="w-[var(--name-column-width,180px)]" />
           <col />
+          {showComments && <col className="w-[35%]" />}
         </colgroup>
         <TableHeader className="bg-container-hover">
           <TableRow>
             <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
             <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>Name</TableHead>
             <TableHead>Value</TableHead>
+            {showComments && <TableHead>Comment</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {filteredImportedSecrets.map((secret) => (
             <SecretImportSecretRow
               key={`import-secret-${envSlug}-${secret.key}`}
+              showComments={showComments}
+              commentContexts={getCommentContexts(secret.key, singleEnvSlug)}
               secretKey={secret.key}
               environment={
                 singleEnvImport?.isReplication ||
@@ -805,7 +839,7 @@ export const SecretImportTableRow = ({
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
           isTruncatable
-          colSpan={isSingleEnvView ? 2 : undefined}
+          colSpan={isSingleEnvView ? 2 + Number(Boolean(showComments)) : undefined}
         >
           <div className="relative flex w-full items-center">
             <div className="flex items-center gap-2 overflow-hidden">

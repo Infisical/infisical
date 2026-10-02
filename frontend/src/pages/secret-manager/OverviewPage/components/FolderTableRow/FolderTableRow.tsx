@@ -33,6 +33,7 @@ type Props = {
   folderName: string;
   description?: string;
   environments: { name: string; slug: string }[];
+  singleEnvColumnSpan?: number;
   isFolderPresentInEnv: (name: string, env: string) => boolean;
   onClick: (path: string) => void;
   isSelected: boolean;
@@ -53,6 +54,7 @@ export const FolderTableRow = ({
   folderName,
   description,
   environments = [],
+  singleEnvColumnSpan = 2,
   isFolderPresentInEnv,
   isSelected,
   onToggleFolderSelect,
@@ -123,7 +125,7 @@ export const FolderTableRow = ({
       </TableCell>
       <TableCell
         isTruncatable
-        colSpan={isSingleEnvView ? 2 : undefined}
+        colSpan={isSingleEnvView ? singleEnvColumnSpan : undefined}
         className={
           isSingleEnvView
             ? "relative transition-all duration-75"

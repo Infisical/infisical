@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import {
   BanIcon,
   CheckIcon,
@@ -16,9 +17,10 @@ export type EnvironmentStatus = "present" | "missing" | "empty" | "imported" | "
 type Props = {
   status: EnvironmentStatus;
   hasOverride?: boolean;
+  children?: ReactNode;
 };
 
-export const ResourceEnvironmentStatusCell = ({ status, hasOverride }: Props) => {
+export const ResourceEnvironmentStatusCell = ({ status, hasOverride, children }: Props) => {
   let tooltipContent: string;
   let Icon: LucideIcon;
   let iconClassName: string;
@@ -80,6 +82,7 @@ export const ResourceEnvironmentStatusCell = ({ status, hasOverride }: Props) =>
         </TooltipTrigger>
         <TooltipContent>{tooltipContent}</TooltipContent>
       </Tooltip>
+      {children}
     </TableCell>
   );
 };

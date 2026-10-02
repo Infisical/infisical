@@ -60,6 +60,7 @@ import {
   TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
+import { SecretComment } from "./SecretComment";
 import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
@@ -109,6 +110,7 @@ type Props = {
     }[];
   }[];
   isSingleEnvSecretsVisible?: boolean;
+  showComments?: boolean;
   isBatchMode?: boolean;
   onBatchRevert?: (env: string, key: string) => void;
   isSelectionDisabled?: boolean;
@@ -142,6 +144,7 @@ export const SecretTableRow = ({
   isSelected,
   importedBy,
   isSingleEnvSecretsVisible,
+  showComments,
   isBatchMode,
   onBatchRevert,
   isSelectionDisabled,
@@ -150,7 +153,7 @@ export const SecretTableRow = ({
   onActivityChange
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
-  const totalCols = environments.length + 2; // secret key row + icon
+  const totalCols = environments.length + 2 + (environments.length === 1 && showComments ? 1 : 0); // secret key row + icon
   const [isSecretVisible, setIsSecretVisible] = useToggle();
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
   const [isSingleEnvBaseActive, setIsSingleEnvBaseActive] = useState(false);
@@ -540,10 +543,32 @@ export const SecretTableRow = ({
             </div>
           </TableCell>
         )}
+        {isSingleEnvView && showComments && (
+          <TableCell className="align-top">
+            <SecretComment
+              secret={singleEnvSecret ?? singleEnvImportedSecret?.secret}
+              secretName={secretKey}
+              environment={singleEnvSlug}
+              environmentName={singleEnvName}
+              secretPath={secretPath}
+              importSource={
+                !singleEnvSecret && singleEnvImportedSecret
+                  ? {
+                      environmentName:
+                        singleEnvImportedSecret.environmentInfo?.name ??
+                        singleEnvImportedSecret.environment,
+                      secretPath: singleEnvImportedSecret.secretPath
+                    }
+                  : undefined
+              }
+            />
+          </TableCell>
+        )}
         {environments.length > 1 &&
           !isFormExpanded &&
-          environments.map(({ slug }, i) => {
+          environments.map(({ slug, name }, i) => {
             const secret = getSecretByKey(slug, secretKey);
+            const importedSecret = !secret ? getImportedSecretByKey(slug, secretKey) : undefined;
 
             const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
 
@@ -567,7 +592,29 @@ export const SecretTableRow = ({
                 key={`sec-overview-${slug}-${i + 1}-value`}
                 status={status}
                 hasOverride={Boolean(secret?.idOverride)}
-              />
+              >
+                {showComments && (
+                  <div className="mt-2 text-left">
+                    <p className="mb-1 text-xs text-muted">{name}</p>
+                    <SecretComment
+                      secret={secret ?? importedSecret?.secret}
+                      secretName={secretKey}
+                      environment={slug}
+                      environmentName={name}
+                      secretPath={secretPath}
+                      importSource={
+                        importedSecret
+                          ? {
+                              environmentName:
+                                importedSecret.environmentInfo?.name ?? importedSecret.environment,
+                              secretPath: importedSecret.secretPath
+                            }
+                          : undefined
+                      }
+                    />
+                  </div>
+                )}
+              </ResourceEnvironmentStatusCell>
             );
           })}
       </TableRow>
@@ -617,6 +664,9 @@ export const SecretTableRow = ({
               onActiveChange={setIsSingleEnvOverrideActive}
             />
           </TableCell>
+          {showComments && (
+            <TableCell className="text-xs text-muted">Shared comment above</TableCell>
+          )}
         </TableRow>
       )}
       {!isSingleEnvView && (
@@ -644,16 +694,20 @@ export const SecretTableRow = ({
               className="sticky left-0 border-y border-border bg-container"
             >
               <Table
-                className="w-full min-w-[600px] table-fixed"
+                className={twMerge(
+                  "w-full table-fixed",
+                  showComments ? "min-w-[880px]" : "min-w-[600px]"
+                )}
                 containerClassName={twMerge(
                   "rounded-none border-0",
-                  tableWidth >= 600 && "overflow-hidden"
+                  tableWidth >= (showComments ? 880 : 600) && "overflow-hidden"
                 )}
               >
                 <colgroup>
                   <col className="w-10" />
                   <col className="w-60" />
                   <col />
+                  {showComments && <col className="w-[35%]" />}
                   <col className="w-32" />
                 </colgroup>
                 <TableHeader className="bg-container-hover">
@@ -673,6 +727,7 @@ export const SecretTableRow = ({
                       />
                     </TableHead>
                     <TableHead>Value</TableHead>
+                    {showComments && <TableHead>Comment</TableHead>}
                     <TableHead variant="action" className="w-px">
                       <Button variant="ghost" size="xs" onClick={() => setIsSecretVisible.toggle()}>
                         {isSecretVisible ? (
@@ -759,7 +814,7 @@ export const SecretTableRow = ({
                             </div>
                           </TableCell>
                           <TableCell
-                            colSpan={2}
+                            colSpan={showComments ? 1 : 2}
                             className={twMerge("max-w-0", hasOverride && "border-b-border/50")}
                           >
                             <SecretEditTableRow
@@ -808,6 +863,30 @@ export const SecretTableRow = ({
                               }
                             />
                           </TableCell>
+                          {showComments && (
+                            <>
+                              <TableCell className="align-top">
+                                <SecretComment
+                                  secret={secret ?? importedSecret?.secret}
+                                  secretName={secretKey}
+                                  environment={slug}
+                                  environmentName={name}
+                                  secretPath={secretPath}
+                                  importSource={
+                                    !secret && importedSecret
+                                      ? {
+                                          environmentName:
+                                            importedSecret.environmentInfo?.name ??
+                                            importedSecret.environment,
+                                          secretPath: importedSecret.secretPath
+                                        }
+                                      : undefined
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell />
+                            </>
+                          )}
                         </TableRow>
                         {showOverrideRow && (
                           <TableRow
@@ -818,7 +897,7 @@ export const SecretTableRow = ({
                             <TableCell
                               className={hasOverride ? "border-l border-l-override" : undefined}
                             />
-                            <TableCell colSpan={2} className="max-w-0">
+                            <TableCell colSpan={showComments ? 3 : 2} className="max-w-0">
                               <SecretOverrideRow
                                 secretName={secretKey}
                                 environment={slug}

@@ -54,6 +54,7 @@ const formatLastUsed = (lastUsedAt?: string | null) => {
 type Props = {
   proxiedServiceName: string;
   environments: { name: string; slug: string }[];
+  singleEnvColumnSpan?: number;
   isProxiedServiceInEnv: (name: string, env: string) => boolean;
   getProxiedServiceByName: (slug: string, name: string) => TDashboardProxiedService | undefined;
   tableWidth: number;
@@ -64,6 +65,7 @@ type Props = {
 export const ProxiedServiceTableRow = ({
   proxiedServiceName,
   environments = [],
+  singleEnvColumnSpan = 2,
   isProxiedServiceInEnv,
   getProxiedServiceByName,
   tableWidth,
@@ -222,7 +224,7 @@ export const ProxiedServiceTableRow = ({
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
           isTruncatable
-          colSpan={isSingleEnvView ? 2 : undefined}
+          colSpan={isSingleEnvView ? singleEnvColumnSpan : undefined}
         >
           {isSingleEnvView && singleEnvService ? (
             <div className="relative flex w-full items-center">

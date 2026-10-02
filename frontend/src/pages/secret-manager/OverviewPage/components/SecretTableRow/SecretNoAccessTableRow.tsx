@@ -14,9 +14,10 @@ import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell"
 type Props = {
   environments: { name: string; slug: string }[];
   count: number;
+  showComments?: boolean;
 };
 
-export const SecretNoAccessTableRow = ({ environments = [], count }: Props) => {
+export const SecretNoAccessTableRow = ({ environments = [], count, showComments }: Props) => {
   return (
     <>
       {Array.from(Array(count)).map((_, j) => (
@@ -42,6 +43,9 @@ export const SecretNoAccessTableRow = ({ environments = [], count }: Props) => {
               />
             );
           })}
+          {environments.length === 1 && showComments && (
+            <TableCell className="text-xs text-muted">Access denied</TableCell>
+          )}
         </TableRow>
       ))}
     </>

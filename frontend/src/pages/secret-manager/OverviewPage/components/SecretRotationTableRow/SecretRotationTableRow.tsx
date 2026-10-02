@@ -61,6 +61,7 @@ import type { TableRowActivityChangeHandler, TableRowActivityId } from "../table
 type Props = {
   secretRotationName: string;
   environments: { name: string; slug: string }[];
+  singleEnvColumnSpan?: number;
   isSecretRotationInEnv: (name: string, env: string) => boolean;
   getSecretRotationByName: (slug: string, name: string) => TSecretRotationV2 | undefined;
   getSecretRotationStatusesByName: (name: string) => (SecretRotationStatus | null)[] | undefined;
@@ -89,6 +90,7 @@ const shouldShowReconciliationButton = (secretRotation: TSecretRotationV2) =>
 export const SecretRotationTableRow = ({
   secretRotationName,
   environments = [],
+  singleEnvColumnSpan = 2,
   isSecretRotationInEnv,
   tableWidth,
   getSecretRotationByName,
@@ -386,7 +388,7 @@ export const SecretRotationTableRow = ({
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
           isTruncatable
-          colSpan={isSingleEnvView ? 2 : undefined}
+          colSpan={isSingleEnvView ? singleEnvColumnSpan : undefined}
         >
           {isSingleEnvView && singleEnvRotation ? (
             <div className="relative flex w-full items-center">

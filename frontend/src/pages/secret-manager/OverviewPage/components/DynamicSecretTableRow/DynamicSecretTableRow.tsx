@@ -46,6 +46,7 @@ type DynamicSecretWithEnv = TDynamicSecret & { environment: string };
 type Props = {
   dynamicSecretName: string;
   environments: { name: string; slug: string }[];
+  singleEnvColumnSpan?: number;
   isDynamicSecretInEnv: (name: string, env: string) => boolean;
   getDynamicSecretByName: (envSlug: string, name: string) => DynamicSecretWithEnv | undefined;
   getDynamicSecretStatusesByName: (
@@ -63,6 +64,7 @@ type Props = {
 export const DynamicSecretTableRow = ({
   dynamicSecretName,
   environments = [],
+  singleEnvColumnSpan = 2,
   isDynamicSecretInEnv,
   getDynamicSecretByName,
   getDynamicSecretStatusesByName,
@@ -308,7 +310,7 @@ export const DynamicSecretTableRow = ({
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
           isTruncatable
-          colSpan={isSingleEnvView ? 2 : undefined}
+          colSpan={isSingleEnvView ? singleEnvColumnSpan : undefined}
         >
           {isSingleEnvView && singleEnvDynamicSecret ? (
             <div className="relative flex w-full items-center pr-40">

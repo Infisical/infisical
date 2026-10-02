@@ -92,6 +92,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Label,
   PageHeader,
   Pagination,
   Sheet,
@@ -105,6 +106,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -401,6 +403,10 @@ const OverviewPageContent = () => {
   );
 
   const [isSingleEnvSecretsVisible, setIsSingleEnvSecretsVisible] = useToggle();
+  const [showComments, setShowComments] = useLocalStorageState<boolean>(
+    `overview-show-comments-${projectId}`,
+    false
+  );
 
   // scott: keeping incase we bring it back
   // const [collapseEnvironments, setCollapseEnvironments] = useToggle(
@@ -2615,9 +2621,11 @@ const OverviewPageContent = () => {
     Record<string, number[]>
   >(`overview-column-widths-${projectId}`, {});
   const columnResize = useRef<{ index: number; startX: number; widths: number[] } | null>(null);
-  const columnKey = `${isSingleEnvView ? "single" : "multi"}:${visibleEnvs.map(({ id }) => id).join(":")}`;
+  const columnKey = `${isSingleEnvView ? "single" : "multi"}:${visibleEnvs.map(({ id }) => id).join(":")}${isSingleEnvView && showComments ? ":comments" : ""}`;
   const nameMaxWidth = Math.max(isSingleEnvView ? 280 : 240, tableWidth * 0.8);
-  const columnMinWidths = isSingleEnvView ? [280, 368] : Array(visibleEnvs.length + 1).fill(240);
+  const columnMinWidths = isSingleEnvView
+    ? [280, 368, ...(showComments ? [280] : [])]
+    : Array(visibleEnvs.length + 1).fill(240);
   const minColumnTotal = columnMinWidths.reduce((total, width) => total + width, 0);
   const savedWidths = storedColumnWidths?.[columnKey];
   const columnWidths = (() => {
@@ -2996,6 +3004,20 @@ const OverviewPageContent = () => {
                     environments={visibleEnvs}
                     projectId={projectId}
                   />
+                  <Label
+                    htmlFor="overview-show-comments"
+                    className="flex shrink-0 items-center gap-2 text-xs text-accent"
+                  >
+                    <Toggle
+                      id="overview-show-comments"
+                      size="sm"
+                      variant="project"
+                      aria-label="Show Comments"
+                      checked={showComments}
+                      onCheckedChange={setShowComments}
+                    />
+                    Show Comments
+                  </Label>
                 </>
               )}
             </div>
@@ -3138,7 +3160,10 @@ const OverviewPageContent = () => {
                     <col className="w-10" />
                     <col style={{ width: columnWidths?.[0] }} />
                     {isSingleEnvView ? (
-                      <col style={{ width: columnWidths?.[1] }} />
+                      <>
+                        <col style={{ width: columnWidths?.[1] }} />
+                        {showComments && <col style={{ width: columnWidths?.[2] }} />}
+                      </>
                     ) : (
                       visibleEnvs.map(({ id }, index) => (
                         <col key={id} style={{ width: columnWidths?.[index + 1] }} />
@@ -3382,86 +3407,92 @@ const OverviewPageContent = () => {
                           );
                         })
                       ) : (
-                        <TableHead className="min-w-[368px] text-sm font-medium text-muted">
-                          <div className="flex w-full items-center justify-between gap-2">
-                            Value
-                            <div className="flex items-center gap-2">
-                              <Badge variant="ghost" asChild>
-                                <button type="button" onClick={setIsSingleEnvSecretsVisible.toggle}>
-                                  {isSingleEnvSecretsVisible ? (
-                                    <>
-                                      <EyeOffIcon />
-                                      Hide Values
-                                    </>
-                                  ) : (
-                                    <>
-                                      <EyeIcon />
-                                      Reveal All
-                                    </>
-                                  )}
-                                </button>
-                              </Badge>
-                              {isProtectedBranch && (
+                        <>
+                          <TableHead className="min-w-[368px] text-sm font-medium text-muted">
+                            <div className="flex w-full items-center justify-between gap-2">
+                              Value
+                              <div className="flex items-center gap-2">
+                                <Badge variant="ghost" asChild>
+                                  <button
+                                    type="button"
+                                    onClick={setIsSingleEnvSecretsVisible.toggle}
+                                  >
+                                    {isSingleEnvSecretsVisible ? (
+                                      <>
+                                        <EyeOffIcon />
+                                        Hide Values
+                                      </>
+                                    ) : (
+                                      <>
+                                        <EyeIcon />
+                                        Reveal All
+                                      </>
+                                    )}
+                                  </button>
+                                </Badge>
+                                {isProtectedBranch && (
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Badge variant="info">
+                                        <LockIcon />
+                                        Protected
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      Protected
+                                      {boardPolicy?.name ? ` by policy ${boardPolicy.name}` : ""}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                                <Badge
+                                  asChild
+                                  className="float-right cursor-pointer"
+                                  variant="neutral"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (singleVisibleEnv) {
+                                        handleViewCommitHistory(singleVisibleEnv.slug);
+                                      }
+                                    }}
+                                  >
+                                    <GitCommitIcon />
+                                    {/* eslint-disable-next-line no-nested-ternary */}
+                                    {subscription.pitRecovery
+                                      ? isSingleEnvChangesCountLoading
+                                        ? "Loading..."
+                                        : `${singleEnvChangesCount} Commit${singleEnvChangesCount === 1 ? "" : "s"}`
+                                      : "Commit History"}
+                                  </button>
+                                </Badge>
                                 <Tooltip>
                                   <TooltipTrigger>
-                                    <Badge variant="info">
-                                      <LockIcon />
-                                      Protected
+                                    <Badge
+                                      asChild
+                                      className={isOverviewBatchMode ? "" : "opacity-75"}
+                                      variant={isOverviewBatchMode ? "warning" : "neutral"}
+                                    >
+                                      <button type="button" onClick={toggleBatchMode}>
+                                        <GroupIcon />
+                                        Batch Edit
+                                      </button>
                                     </Badge>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    Protected
-                                    {boardPolicy?.name ? ` by policy ${boardPolicy.name}` : ""}
+                                    {isOverviewBatchMode
+                                      ? "Changes are batched together into a single commit. Click to switch to single edit mode."
+                                      : "Click to enable batch edit mode. Changes will be grouped into a single commit."}
                                   </TooltipContent>
                                 </Tooltip>
-                              )}
-                              <Badge
-                                asChild
-                                className="float-right cursor-pointer"
-                                variant="neutral"
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (singleVisibleEnv) {
-                                      handleViewCommitHistory(singleVisibleEnv.slug);
-                                    }
-                                  }}
-                                >
-                                  <GitCommitIcon />
-                                  {/* eslint-disable-next-line no-nested-ternary */}
-                                  {subscription.pitRecovery
-                                    ? isSingleEnvChangesCountLoading
-                                      ? "Loading..."
-                                      : `${singleEnvChangesCount} Commit${singleEnvChangesCount === 1 ? "" : "s"}`
-                                    : "Commit History"}
-                                </button>
-                              </Badge>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <Badge
-                                    asChild
-                                    className={isOverviewBatchMode ? "" : "opacity-75"}
-                                    variant={isOverviewBatchMode ? "warning" : "neutral"}
-                                  >
-                                    <button type="button" onClick={toggleBatchMode}>
-                                      <GroupIcon />
-                                      Batch Edit
-                                    </button>
-                                  </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  {isOverviewBatchMode
-                                    ? "Changes are batched together into a single commit. Click to switch to single edit mode."
-                                    : "Click to enable batch edit mode. Changes will be grouped into a single commit."}
-                                </TooltipContent>
-                              </Tooltip>
-                              <SecretSyncStatusBadgeOverview
-                                environmentSlugs={visibleEnvs.map((e) => e.slug)}
-                              />
+                                <SecretSyncStatusBadgeOverview
+                                  environmentSlugs={visibleEnvs.map((e) => e.slug)}
+                                />
+                              </div>
                             </div>
-                          </div>
-                        </TableHead>
+                          </TableHead>
+                          {showComments && <TableHead>Comment</TableHead>}
+                        </>
                       )}
                     </TableRow>
                   </TableHeader>
@@ -3501,6 +3532,11 @@ const OverviewPageContent = () => {
                               </TableCell>
                             );
                           })}
+                          {isSingleEnvView && showComments && (
+                            <TableCell>
+                              <Skeleton className="h-4 w-full" />
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))
                     ) : (
@@ -3508,6 +3544,7 @@ const OverviewPageContent = () => {
                         {isSingleEnvView &&
                           sortableImportItems.map((imp, idx) => (
                             <SecretImportTableRow
+                              showComments={showComments}
                               key={`overview-import-${imp.id}`}
                               index={idx}
                               secretImport={imp}
@@ -3533,6 +3570,7 @@ const OverviewPageContent = () => {
                           secretImportNames.map(
                             ({ importEnvSlug, importEnvName, importPath }, index) => (
                               <SecretImportTableRow
+                                showComments={showComments}
                                 key={`overview-import-${importEnvSlug}-${importPath}-${index + 1}`}
                                 index={index}
                                 importEnvSlug={importEnvSlug}
@@ -3564,6 +3602,7 @@ const OverviewPageContent = () => {
                             index
                           ) => (
                             <FolderTableRow
+                              singleEnvColumnSpan={showComments ? 3 : 2}
                               folderName={folderName}
                               description={description}
                               isFolderPresentInEnv={isFolderPresentInEnv}
@@ -3597,6 +3636,7 @@ const OverviewPageContent = () => {
                         )}
                         {dynamicSecretNames.map((dynamicSecretName, index) => (
                           <DynamicSecretTableRow
+                            singleEnvColumnSpan={showComments ? 3 : 2}
                             dynamicSecretName={dynamicSecretName}
                             isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
                             getDynamicSecretByName={getDynamicSecretByName}
@@ -3627,6 +3667,7 @@ const OverviewPageContent = () => {
                         ))}
                         {secretRotationNames.map((secretRotationName, index) => (
                           <SecretRotationTableRow
+                            singleEnvColumnSpan={showComments ? 3 : 2}
                             secretRotationName={secretRotationName}
                             isSecretRotationInEnv={isSecretRotationPresentInEnv}
                             environments={visibleEnvs}
@@ -3697,6 +3738,7 @@ const OverviewPageContent = () => {
                         ))}
                         {proxiedServiceNames.map((proxiedServiceName, index) => (
                           <ProxiedServiceTableRow
+                            singleEnvColumnSpan={showComments ? 3 : 2}
                             key={`overview-ps-${proxiedServiceName}-${index + 1}`}
                             proxiedServiceName={proxiedServiceName}
                             environments={visibleEnvs}
@@ -3713,6 +3755,7 @@ const OverviewPageContent = () => {
                         ))}
                         {mergedSecKeys.map((key, index) => (
                           <SecretTableRow
+                            showComments={showComments}
                             isSelected={
                               !hasPendingBatchChanges && Boolean(selectedEntries.secret[key])
                             }
@@ -3742,6 +3785,7 @@ const OverviewPageContent = () => {
                           />
                         ))}
                         <SecretNoAccessTableRow
+                          showComments={showComments}
                           environments={visibleEnvs}
                           count={Math.max(
                             (page * perPage > totalCount ? totalCount % perPage : perPage) -
@@ -3760,6 +3804,7 @@ const OverviewPageContent = () => {
                           isLastPage &&
                           !isTableEmpty && (
                             <QuickAddSecretRow
+                              showComments={showComments}
                               autoQueueOnBlur={isBatchModeActive}
                               activityId={getTableRowActivityId("quick-add", secretPath)}
                               environments={visibleEnvs.map((env) => env.slug)}

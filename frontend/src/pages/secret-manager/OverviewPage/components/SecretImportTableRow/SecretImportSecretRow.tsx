@@ -1,7 +1,9 @@
 import { TriangleAlertIcon } from "lucide-react";
 
 import { TableCell, TableRow, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
+import { SecretComment } from "../SecretTableRow/SecretComment";
 import { TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME } from "../tableRowActionStyles";
 import { SecretImportSecretValueCell } from "./SecretImportSecretValueCell";
 
@@ -12,6 +14,14 @@ type Props = {
   isEmpty?: boolean;
   missingFromEnvs?: string[];
   isVisible?: boolean;
+  showComments?: boolean;
+  commentContexts?: {
+    secret: Pick<SecretV3RawSanitized, "comment" | "tags">;
+    environment: string;
+    environmentName: string;
+    secretPath: string;
+    importSource: { environmentName: string; secretPath: string };
+  }[];
 };
 
 export const SecretImportSecretRow = ({
@@ -20,7 +30,9 @@ export const SecretImportSecretRow = ({
   secretPath = "/",
   isEmpty,
   missingFromEnvs,
-  isVisible
+  isVisible,
+  showComments,
+  commentContexts
 }: Props) => {
   return (
     <TableRow className="group">
@@ -47,6 +59,18 @@ export const SecretImportSecretRow = ({
           isVisible={isVisible}
         />
       </TableCell>
+      {showComments && (
+        <TableCell className="align-top">
+          <div className="space-y-3">
+            {commentContexts?.map((context) => (
+              <div key={context.environment}>
+                <p className="mb-1 text-xs text-muted">{context.environmentName}</p>
+                <SecretComment secretName={secretKey} {...context} />
+              </div>
+            ))}
+          </div>
+        </TableCell>
+      )}
     </TableRow>
   );
 };

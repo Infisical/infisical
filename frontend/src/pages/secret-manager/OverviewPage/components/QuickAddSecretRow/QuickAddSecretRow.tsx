@@ -27,6 +27,7 @@ type TParsedEnv = Record<string, { value: string; comments: string[] }>;
 type Props = {
   autoQueueOnBlur?: boolean;
   environments: string[];
+  showComments?: boolean;
   existingSecretKeys: string[];
   onCreateSecret: (
     environment: string,
@@ -45,6 +46,7 @@ type Props = {
 export const QuickAddSecretRow = ({
   autoQueueOnBlur = false,
   environments,
+  showComments,
   existingSecretKeys,
   onCreateSecret,
   onPasteSecrets,
@@ -268,7 +270,7 @@ export const QuickAddSecretRow = ({
       </TableCell>
       <TableCell
         className={isMultiEnvironmentView ? "p-0" : undefined}
-        colSpan={environments.length}
+        colSpan={environments.length + (environments.length === 1 && showComments ? 1 : 0)}
       >
         <div
           className={
