@@ -966,7 +966,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         value: OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
         label: "Search All Secret Values",
         description:
-          "Find secrets that share a value in any project, including projects the user isn't a member of"
+          "Locate secrets that share a value in any project, including projects the user isn't a member of"
       }
     ]
   },

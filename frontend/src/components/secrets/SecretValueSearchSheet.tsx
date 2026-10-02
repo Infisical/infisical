@@ -66,7 +66,7 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
         <SecretValueTrackingPrompt
           tracking={tracking}
           featureName="secret value search"
-          description="Enable secret value search to find every project, environment and path where a value is used."
+          description="Enable secret value search to locate every project, environment and path where a value is used."
         />
       </div>
     );
@@ -229,9 +229,9 @@ export const SecretValueSearchSheet = ({ orgId, isOpen, onOpenChange }: Props) =
       <SheetHeader>
         <SheetTitle>Locate Secrets by Value</SheetTitle>
         <SheetDescription>
-          Find every project, environment and path where a secret value is used. Only the full value
-          matches, exactly as stored: partial values and values differing in whitespace are not
-          found.
+          Locate every project, environment and path where a secret value is used. Only the full
+          value matches, exactly as stored: partial values and values differing in whitespace are
+          not found.
         </SheetDescription>
       </SheetHeader>
       {/* Mounted only while open, so the value and results are dropped the moment it closes. */}

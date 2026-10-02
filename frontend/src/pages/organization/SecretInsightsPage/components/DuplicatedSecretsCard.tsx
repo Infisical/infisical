@@ -55,7 +55,7 @@ export const DuplicatedSecretsCard = ({ isPlanRestricted }: Props) => {
             </EmptyMedia>
             <EmptyTitle>Duplicate detection is not on your current plan</EmptyTitle>
             <EmptyDescription>
-              Upgrade to find secrets that share a value across every project in the organization.
+              Upgrade to locate secrets that share a value across every project in the organization.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -84,7 +84,7 @@ export const DuplicatedSecretsCard = ({ isPlanRestricted }: Props) => {
         <SecretValueTrackingPrompt
           tracking={tracking}
           featureName="duplicate secret detection"
-          description="Enable duplicate secret detection to find secrets that share a value across the organization."
+          description="Enable duplicate secret detection to locate secrets that share a value across the organization."
         />
       );
     }

@@ -565,7 +565,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "searchOrgInsightsSecretsByValue",
       description:
-        "Find every secret in the organization holding the supplied value, including secrets in projects the caller is not a member of",
+        "Locate every secret in the organization holding the supplied value, including secrets in projects the caller is not a member of",
       security: [{ bearerAuth: [] }],
       body: z.object({
         secretValue: z.string().min(1)
