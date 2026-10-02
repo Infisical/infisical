@@ -33,11 +33,7 @@ import { TProjectMembershipDALFactory } from "@app/services/project-membership/p
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
-import {
-  SecretScanningDataSource,
-  SecretScanningScanStatus,
-  SecretScanningScanType
-} from "./secret-scanning-v2-enums";
+import { SecretScanningDataSource, SecretScanningScanStatus, SecretScanningScanType } from "./secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "./secret-scanning-v2-factory";
 import {
   TFindingsPayload,
