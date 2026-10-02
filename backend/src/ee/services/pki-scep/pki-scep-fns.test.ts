@@ -1,6 +1,4 @@
 /* eslint-disable no-bitwise */
-import { webcrypto } from "node:crypto";
-
 import { AsnConvert } from "@peculiar/asn1-schema";
 import * as asn1x509 from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
@@ -64,11 +62,11 @@ describe("decodeAsn1ChallengePasswordValue", () => {
 
 describe("extractScepChallengePassword", () => {
   beforeAll(() => {
-    x509.cryptoProvider.set(webcrypto as Crypto);
+    x509.cryptoProvider.set(globalThis.crypto);
   });
 
   const generateCsr = async (attributes: x509.Attribute[]) => {
-    const keys = await webcrypto.subtle.generateKey(
+    const keys = await globalThis.crypto.subtle.generateKey(
       { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
       true,
       ["sign", "verify"]
