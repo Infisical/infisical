@@ -124,7 +124,7 @@ On the HTTP interface, applying that policy means reading the statement first, s
 The native protocol has no such limit. A statement arrives in its own packet, separate from any rows that follow, so it's always read in full and an insert's data never counts against the policy or fills the recording.
 
 <Note>
-  Over the native protocol, an `INSERT` that pushes rows from the client is read so that later statements on the same connection stay covered by the policy. A few column types can't be read yet, including `Tuple`, `JSON`, `Nested`, `LowCardinality(Nullable(...))` and `Point`. Inserting into a table that has one of those columns is refused with a message naming the type. Reading those columns is unaffected, and so is inserting over the HTTP interface. A single block is also capped at 64 MB, so a client sending larger batches is asked to split them.
+  Over the native protocol, an `INSERT` that pushes rows from the client is read so that later statements on the same connection stay covered by the policy. A few column types can't be read yet, including `Tuple`, `JSON`, `Nested`, `Point`, `LowCardinality(Nullable(...))`, a `Map` other than `Map(String, String)`, an array of arrays such as `Array(Array(Int16))`, and a `FixedString` whose length isn't 8, 16, 32, 64, 128, 256 or 512. Inserting into a table that has one of those columns is refused with a message naming the type. Inserting over the HTTP interface is unaffected. Reading those columns works too, but the session can't read the results either, so from then on every statement on that connection is recorded as sent, without an outcome. A single block is also capped at 64 MB, so a client sending larger batches is asked to split them.
 </Note>
 
 ## Servers with HTTP turned off
