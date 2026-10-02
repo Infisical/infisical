@@ -25,7 +25,7 @@ export const CaCertModal = ({ popUp, handlePopUpToggle }: Props) => {
         handlePopUpToggle("caCert", isOpen);
       }}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>CA Certificate</DialogTitle>
           <DialogDescription>Copy or download the CA certificate and its chain.</DialogDescription>

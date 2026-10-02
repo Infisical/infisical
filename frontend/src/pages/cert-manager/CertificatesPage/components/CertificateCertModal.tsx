@@ -75,7 +75,7 @@ export const CertificateCertModal = ({ popUp, handlePopUpToggle, applicationId }
         handlePopUpToggle("certificateCert", isOpen);
       }}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Export Certificate</DialogTitle>
           <DialogDescription>
