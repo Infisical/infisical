@@ -73,6 +73,9 @@ const priceLabel = (ent: BillingV2Entitlement) => {
 };
 
 const planLine = (ent: BillingV2Entitlement) => {
+  if (ent.trialPaymentDueAt) {
+    return `Payment needed · access until ${ent.trialPaymentDueAt}`;
+  }
   if (ent.isTrialing) {
     return ent.trialEndsAt ? `Trial ends ${ent.trialEndsAt}` : "Trial";
   }
@@ -212,7 +215,13 @@ const ProductRow = ({
               {ent.isTrialing && <Badge variant="info">Trial</Badge>}
               {prod.addon && <Badge variant="neutral">Add-on</Badge>}
             </span>
-            <span className="truncate text-xs text-muted">{planLine(ent)}</span>
+            <span
+              className={
+                ent.trialPaymentDueAt ? "text-xs text-warning" : "truncate text-xs text-muted"
+              }
+            >
+              {planLine(ent)}
+            </span>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -256,8 +265,16 @@ const ProductRow = ({
       {trialPlanName && (
         <p className="pl-10 text-xs text-muted">
           Trialing {trialPlanName}
-          {ent.trialPlanEndsAt ? ` until ${ent.trialPlanEndsAt}` : ""}; upgrades automatically when
-          the trial ends.
+          {ent.trialPlanPaymentDueAt ? (
+            <span className="text-warning">
+              {` · access until ${ent.trialPlanPaymentDueAt}; confirm payment to upgrade.`}
+            </span>
+          ) : (
+            <>
+              {ent.trialPlanEndsAt ? ` until ${ent.trialPlanEndsAt}` : ""}; upgrades automatically
+              when the trial ends.
+            </>
+          )}
         </p>
       )}
       {(ent.dimensions ?? []).length > 0 && (

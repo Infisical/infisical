@@ -131,7 +131,8 @@ export const SelectOrgPage = () => {
     org_id: orgId,
     callback_port: callbackPort,
     is_admin_login: isBreakglassRoute,
-    mfa_method: mfaMethodFromSearch
+    mfa_method: mfaMethodFromSearch,
+    redirect_to: redirectTo
   } = search;
 
   const { data: orgs, isPending: orgsLoading } = useGetOrganizationsWithSubOrgs();
@@ -303,7 +304,11 @@ export const SelectOrgPage = () => {
     } else {
       setAuthToken(token);
       createNotification({ text: "Successfully logged in", type: "success" });
-      navigateUserToOrg({ navigate, organizationId: targetOrgId });
+      if (redirectTo?.startsWith(`/organizations/${targetOrgId}/`)) {
+        navigate({ href: redirectTo });
+      } else {
+        navigateUserToOrg({ navigate, organizationId: targetOrgId });
+      }
     }
   };
 
