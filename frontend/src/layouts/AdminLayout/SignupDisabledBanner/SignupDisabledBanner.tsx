@@ -1,8 +1,6 @@
-import { UserXIcon, XIcon } from "lucide-react";
-
-import { Alert, AlertDescription, AlertTitle, IconButton } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { useToggle } from "@app/hooks";
+import { OrgAlertBanner } from "@app/layouts/OrganizationLayout/components/OrgAlertBanner";
 
 const SIGNUP_BANNER_MAX_SERVER_AGE_DAYS = 7;
 const SIGNUP_BANNER_MAX_SERVER_AGE_MS = SIGNUP_BANNER_MAX_SERVER_AGE_DAYS * 24 * 60 * 60 * 1000;
@@ -37,21 +35,15 @@ export const SignupDisabledBanner = () => {
   if (!shouldShow || isDismissed) return null;
 
   return (
-    <Alert variant="warning" className="relative pr-10">
-      <UserXIcon />
-      <AlertTitle>Public user signups are disabled</AlertTitle>
-      <AlertDescription>
-        New users can only join through an organization invitation until you enable signups.{" "}
-      </AlertDescription>
-      <IconButton
-        variant="ghost"
-        size="xs"
-        aria-label="Dismiss banner"
-        onClick={() => setIsDismissed.on()}
-        className="absolute top-2 right-2 text-warning"
-      >
-        <XIcon />
-      </IconButton>
-    </Alert>
+    <OrgAlertBanner
+      role="alert"
+      onDismiss={setIsDismissed.on}
+      text={
+        <>
+          <span className="font-medium">Public user signups are disabled</span>. New users can only
+          join through an organization invitation until you enable signups.
+        </>
+      }
+    />
   );
 };
