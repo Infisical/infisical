@@ -20,6 +20,9 @@ type Props = {
 const getProjectIdFromZone = (zoneResourceName?: string | null) =>
   zoneResourceName?.split("/")[1] ?? "";
 
+const getApiErrorMessage = (apiError: unknown, fallback: string) =>
+  (apiError as AxiosError<{ message?: string }>)?.response?.data?.message ?? fallback;
+
 const GcpCloudDnsZoneSelect = ({
   connectionId,
   gcpProjectId,
@@ -43,15 +46,11 @@ const GcpCloudDnsZoneSelect = ({
     { enabled: Boolean(connectionId) && Boolean(gcpProjectId) }
   );
 
-  const displayedError =
-    error ??
-    (isZonesError
-      ? {
-          message:
-            (zonesError as AxiosError<{ message?: string }>)?.response?.data?.message ??
-            "Failed to list Cloud DNS zones for this project."
-        }
-      : undefined);
+  const displayedError = isZonesError
+    ? {
+        message: getApiErrorMessage(zonesError, "Failed to list Cloud DNS zones for this project.")
+      }
+    : error;
 
   return (
     <Field className="mb-4">
@@ -85,8 +84,16 @@ const GcpCloudDnsZoneSelect = ({
 export const GcpCloudDnsZoneFields = ({ control, connectionId }: Props) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>();
 
-  const { data: projects = [], isPending: isProjectsPending } =
-    useGcpConnectionListCloudDnsProjects(connectionId, { enabled: Boolean(connectionId) });
+  const {
+    data: projects = [],
+    isPending: isProjectsPending,
+    isError: isProjectsError,
+    error: projectsError
+  } = useGcpConnectionListCloudDnsProjects(connectionId, { enabled: Boolean(connectionId) });
+
+  const projectsErrorMessage = isProjectsError
+    ? getApiErrorMessage(projectsError, "Failed to list GCP projects for this connection.")
+    : undefined;
 
   return (
     <Controller
@@ -117,11 +124,13 @@ export const GcpCloudDnsZoneFields = ({ control, connectionId }: Props) => {
                 noOptionsMessage={({ inputValue }) =>
                   inputValue
                     ? "No matching projects"
-                    : "No projects found. Grant the connection's service account the DNS Administrator role on your project and enable the Cloud DNS API there."
+                    : "No projects found. Grant the connection's service account the DNS Administrator and Service Usage Viewer roles on your project and enable the Cloud DNS API there."
                 }
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                isError={Boolean(projectsErrorMessage)}
               />
+              {projectsErrorMessage && <FieldError>{projectsErrorMessage}</FieldError>}
             </Field>
             <GcpCloudDnsZoneSelect
               connectionId={connectionId}

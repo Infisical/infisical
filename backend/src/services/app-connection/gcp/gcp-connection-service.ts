@@ -97,7 +97,7 @@ export const gcpConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
     try {
       return await getGcpCloudDnsProjects(appConnection);
     } catch (error) {
-      logger.error(error, "Error listing GCP Cloud DNS projects");
+      logger.error(error, `Error listing GCP Cloud DNS projects [connectionId=${connectionId}]`);
       throw error;
     }
   };
@@ -111,7 +111,10 @@ export const gcpConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
     try {
       return await getGcpCloudDnsZones(gcpProjectId, appConnection);
     } catch (error) {
-      logger.error(error, "Error listing GCP Cloud DNS zones");
+      logger.error(
+        error,
+        `Error listing GCP Cloud DNS zones [connectionId=${connectionId}] [gcpProjectId=${gcpProjectId}]`
+      );
       throw error;
     }
   };

@@ -86,6 +86,30 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
     );
   });
 
+  it("retries as a fresh create when the record set was deleted between read and write", async () => {
+    getMock.mockResolvedValueOnce(existingRecordSet(['"token-a"'])).mockRejectedValueOnce(axiosError(404));
+    postMock.mockRejectedValueOnce(axiosError(404)).mockResolvedValueOnce({ data: {} });
+
+    await gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-b"');
+
+    expect(postMock).toHaveBeenCalledTimes(2);
+    expect(postMock).toHaveBeenLastCalledWith(
+      `${ZONE_URL}/changes`,
+      { additions: [{ name: FQDN, type: "TXT", ttl: 60, rrdatas: ['"token-b"'] }] },
+      expect.anything()
+    );
+  });
+
+  it("does not retry a 404 on a plain create", async () => {
+    getMock.mockRejectedValueOnce(axiosError(404));
+    postMock.mockRejectedValueOnce(axiosError(404, "The managed zone does not exist."));
+
+    await expect(gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"')).rejects.toThrow(
+      "Google Cloud DNS request failed: The managed zone does not exist."
+    );
+    expect(postMock).toHaveBeenCalledTimes(1);
+  });
+
   it("does nothing when the value is already present", async () => {
     getMock.mockResolvedValueOnce(existingRecordSet(["token-a"]));
 

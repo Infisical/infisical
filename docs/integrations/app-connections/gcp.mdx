@@ -107,7 +107,7 @@ Infisical supports [service account impersonation](https://cloud.google.com/iam/
             <Tab title="ACME DNS validation">
                 Add the required permissions for [ACME certificate authorities](/documentation/platform/pki/ca/acme-ca) that validate domains through Google Cloud DNS.
 
-                Grant the **DNS Administrator** (`roles/dns.admin`) and **Service Usage Viewer** (`roles/serviceusage.serviceUsageViewer`) roles on the project that holds your public managed zone. DNS Administrator lets Infisical create and delete the challenge TXT records, and Service Usage Viewer lets Infisical list the projects where the Cloud DNS API is enabled.
+                Grant the **DNS Administrator** (`roles/dns.admin`) and **Service Usage Viewer** (`roles/serviceusage.serviceUsageViewer`) roles on the project that holds your public managed zone. DNS Administrator lets Infisical list your projects and zones and create and delete the challenge TXT records. Service Usage Viewer lets Infisical check which projects have the Cloud DNS API enabled.
 
                 Then enable the Google Cloud APIs that Infisical uses on that same project:
 

@@ -46,7 +46,7 @@ const toGcpDnsError = (error: unknown, hostedZoneId: string) => {
 
     if (error.response?.status === 403) {
       const [, gcpProjectId, , zoneName] = hostedZoneId.split("/");
-      if (message.includes("has not been used in project") || message.includes("is disabled")) {
+      if (message.includes("has not been used in project")) {
         return new Error(
           `The Cloud DNS API is not enabled on GCP project '${gcpProjectId}'. Enable dns.googleapis.com in the Google Cloud console and try again.`
         );
@@ -61,9 +61,12 @@ const toGcpDnsError = (error: unknown, hostedZoneId: string) => {
   return error;
 };
 
-// 409 = record set was created concurrently, 412 = record set changed since it was read
-const isConflictError = (error: unknown) =>
-  isAxiosError(error) && (error.response?.status === 409 || error.response?.status === 412);
+// 409 = created concurrently, 412 = changed since read, 404 on a deletion = removed since read
+const isConflictError = (error: unknown, changeHadDeletions: boolean) =>
+  isAxiosError(error) &&
+  (error.response?.status === 409 ||
+    error.response?.status === 412 ||
+    (error.response?.status === 404 && changeHadDeletions));
 
 const getTxtRecordSet = async (zoneUrl: string, accessToken: string, fqdn: string) => {
   try {
@@ -101,17 +104,19 @@ const applyTxtRecordChange = async (
   const accessToken = await getGcpConnectionAuthToken(connection);
 
   for (let attempt = 1; attempt <= MAX_CHANGE_ATTEMPTS; attempt += 1) {
+    let changeHadDeletions = false;
     try {
       // eslint-disable-next-line no-await-in-loop
       const existing = await getTxtRecordSet(zoneUrl, accessToken, fqdn);
       const change = buildChange(fqdn, existing);
       if (!change) return;
+      changeHadDeletions = Boolean(change.deletions?.length);
 
       // eslint-disable-next-line no-await-in-loop
       await submitChange(zoneUrl, accessToken, change);
       return;
     } catch (error) {
-      if (!isConflictError(error) || attempt === MAX_CHANGE_ATTEMPTS) {
+      if (!isConflictError(error, changeHadDeletions) || attempt === MAX_CHANGE_ATTEMPTS) {
         throw toGcpDnsError(error, hostedZoneId);
       }
       // eslint-disable-next-line no-await-in-loop
@@ -152,7 +157,10 @@ export const gcpCloudDnsDeleteTxtRecord = async (
     const remaining = existing?.rrdatas.filter((rrdata) => normalizeTxtValue(rrdata) !== normalizeTxtValue(value));
 
     if (!existing || !remaining || remaining.length === existing.rrdatas.length) {
-      logger.warn({ hostedZoneId, recordName: fqdn }, "TXT record not found for deletion");
+      logger.warn(
+        { hostedZoneId, recordName: fqdn },
+        `Google Cloud DNS TXT record not found for deletion [hostedZoneId=${hostedZoneId}] [recordName=${fqdn}]`
+      );
       return null;
     }
 
