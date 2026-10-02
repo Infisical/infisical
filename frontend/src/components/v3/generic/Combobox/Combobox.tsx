@@ -27,6 +27,7 @@ type ComboboxCreationBaseConfig<TOption> = {
   isValid?: (inputValue: string, context: ComboboxCreationContext<TOption>) => boolean;
   isDuplicate?: (inputValue: string, option: TOption) => boolean;
   formatLabel?: (inputValue: string) => React.ReactNode;
+  emptyLabel?: React.ReactNode;
   isDisabled?: boolean;
 };
 
@@ -365,7 +366,7 @@ const ComboboxList = <TOption,>({
       const hasCreationError = Boolean(
         inlineCreation && creationError?.inputValue === item.inputValue
       );
-      let label: React.ReactNode = "Create";
+      let label: React.ReactNode = creation?.emptyLabel ?? "Create";
       if (item.inputValue) {
         label = creation?.formatLabel?.(item.inputValue) ?? `Create "${item.inputValue}"`;
       }

@@ -21,6 +21,10 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import {
+  CertificateAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -154,6 +158,7 @@ type TCertificateServiceFactoryDep = {
   certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "revokeCertificate">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
@@ -187,6 +192,7 @@ export const certificateServiceFactory = ({
   certificateAuthorityService,
   resourceMetadataDAL,
   pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationDAL,
   certificateProfileDAL,
   pkiApplicationProfileDAL,
@@ -746,6 +752,7 @@ export const certificateServiceFactory = ({
 
     const revokedAt = new Date();
     const revokedCertId = cert.id;
+    const revokedCertApplicationId = cert.applicationId ?? null;
     await certificateDAL.transaction(async (tx) => {
       await certificateDAL.update(
         {
@@ -762,6 +769,14 @@ export const certificateServiceFactory = ({
       if (!ca.externalCa?.id) {
         await internalCertificateAuthorityDAL.update({ caId: ca.id }, { $incr: { ocspGeneration: 1 } }, tx);
       }
+    });
+
+    await certificateAlertEventEmitter.notify({
+      certificateId: revokedCertId,
+      projectId: ca.projectId,
+      orgId: actorOrgId,
+      eventType: CertificateAlertEvent.Revocation,
+      applicationId: revokedCertApplicationId
     });
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
