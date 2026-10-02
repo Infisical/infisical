@@ -135,6 +135,7 @@ type Props = {
     metadata?: { key: string; value: string; isEncrypted?: boolean }[];
     skipMultilineEncoding?: boolean | null;
     allowRename?: boolean;
+    renameDisabledReason?: string;
     environmentOptions?: { name: string; slug: string }[];
     getEnvironmentError?: (slug: string) => string | undefined;
     hasMixedFields?: boolean;
@@ -650,6 +651,9 @@ export const CreateSecretForm = ({
                           )}
                         </div>
                         <FieldError errors={[error]} />
+                        {editSecret?.renameDisabledReason && (
+                          <FieldDescription>{editSecret.renameDisabledReason}</FieldDescription>
+                        )}
                       </FieldContent>
                     </Field>
                   )}

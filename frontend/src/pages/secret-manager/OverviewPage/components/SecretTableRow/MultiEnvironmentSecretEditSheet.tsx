@@ -70,6 +70,15 @@ export const MultiEnvironmentSecretEditSheet = ({
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty, onDiscard: onClose });
 
+  const hasPersonalOverride = environments.some((env) => {
+    const secret = getSecretByKey(env.slug, secretKey);
+    return (
+      secret?.idOverride ||
+      secret?.overrideAction === "created" ||
+      secret?.overrideAction === "modified"
+    );
+  });
+
   const getEnvironmentError = (slug: string) => {
     const secret = getSecretByKey(slug, secretKey);
     const name = environments.find((env) => env.slug === slug)?.name ?? slug;
@@ -144,6 +153,13 @@ export const MultiEnvironmentSecretEditSheet = ({
   }, [initialSecrets, readableEnvironmentsJson, projectId, secretPath, secretKey]);
 
   const save = async (changes: TSecretEditChanges, selected: { name: string; slug: string }[]) => {
+    if (changes.newSecretName && hasPersonalOverride) {
+      createNotification({
+        type: "error",
+        text: "Remove personal overrides before renaming this secret."
+      });
+      return;
+    }
     const error = selected.map((env) => getEnvironmentError(env.slug)).find(Boolean);
     if (error || selected.length === 0) {
       createNotification({ type: "error", text: error ?? "Select an environment to update." });
@@ -267,7 +283,10 @@ export const MultiEnvironmentSecretEditSheet = ({
                 ),
                 canEditButNotView: commonValue === undefined,
                 isReadOnly: isSaving,
-                allowRename: true,
+                allowRename: !hasPersonalOverride,
+                renameDisabledReason: hasPersonalOverride
+                  ? "Remove personal overrides before renaming this secret."
+                  : undefined,
                 environmentOptions: environments,
                 getEnvironmentError,
                 hasMixedFields: true,
