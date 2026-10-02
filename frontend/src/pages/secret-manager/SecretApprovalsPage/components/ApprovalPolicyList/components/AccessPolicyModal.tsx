@@ -123,6 +123,7 @@ const hasOptionId = (option: ApproverOptionData): option is ApproverOptionData &
 
 type Props = {
   isOpen?: boolean;
+  initialPolicyType?: PolicyType;
   onToggle: (isOpen: boolean) => void;
   members?: TWorkspaceUser[];
   groups?: TGroupMembership[];
@@ -141,6 +142,7 @@ const Form = ({
   projectId,
   projectSlug,
   editValues,
+  initialPolicyType,
   isEditMode,
   onDirtyChange,
   onSubmittingChange,
@@ -210,6 +212,7 @@ const Form = ({
     values: editFormValues,
     defaultValues: !editValues
       ? {
+          policyType: initialPolicyType ?? PolicyType.ChangePolicy,
           secretPath: "/",
           sequenceApprovers: [{ approvals: 1 }]
         }
@@ -635,7 +638,7 @@ const Form = ({
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
-      className="flex flex-1 flex-col gap-4 overflow-hidden"
+      className="flex flex-1 flex-col overflow-hidden"
     >
       <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
         {hasApproverOptionsError && (
@@ -661,7 +664,7 @@ const Form = ({
         <Controller
           control={control}
           name="policyType"
-          defaultValue={PolicyType.ChangePolicy}
+          defaultValue={initialPolicyType ?? PolicyType.ChangePolicy}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
               <FieldLabel>

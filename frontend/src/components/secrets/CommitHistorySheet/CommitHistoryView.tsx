@@ -281,7 +281,7 @@ export const CommitHistoryView = ({
                 <div key={group.date} className="mb-6 last:mb-0">
                   <div className="mb-2 flex items-center gap-2">
                     <GitCommitHorizontalIcon className="size-4 text-muted" />
-                    <h3 className="text-sm font-medium text-foreground">{group.date}</h3>
+                    <h3 className="text-sm font-normal text-foreground">{group.date}</h3>
                     <span aria-hidden className="text-xs text-muted">
                       &middot;
                     </span>

@@ -184,7 +184,7 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
       >
         <div className="mb-4 flex items-center justify-between border-b border-border-emphasis pb-4">
           <div>
-            <h2 className="text-lg font-medium">Project Groups</h2>
+            <h2 className="text-lg font-normal">Project Groups</h2>
             <p className="text-sm text-muted">
               Add groups that will be automatically added to projects created from this template
             </p>

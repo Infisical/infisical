@@ -1,3 +1,4 @@
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { logger } from "@app/lib/logger";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -5,7 +6,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAlertRecipient } from "./alert-channel-types";
-import { resolvePrincipalsInScope } from "./alert-principal-scope-fns";
+import { findVerifiedEmailDomains, isOnVerifiedDomain, resolvePrincipalsInScope } from "./alert-principal-scope-fns";
 import { AlertPrincipalType } from "./alert-types";
 
 type TAlertRecipientResolverDep = {
@@ -13,6 +14,7 @@ type TAlertRecipientResolverDep = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
 
 type TResolvableRecipient = { principalType: string; principalId: string };
@@ -25,7 +27,8 @@ export const alertRecipientResolverFactory = ({
   userDAL,
   userGroupMembershipDAL,
   orgDAL,
-  projectDAL
+  projectDAL,
+  emailDomainDAL
 }: TAlertRecipientResolverDep) => {
   const resolveMany = async (
     rowsByChannel: Map<string, TResolvableRecipient[]>,
@@ -33,12 +36,17 @@ export const alertRecipientResolverFactory = ({
   ): Promise<Map<string, TAlertRecipient[]>> => {
     const allGroupIds = new Set<string>();
     const allUserIds = new Set<string>();
+    let hasEmailRecipients = false;
     for (const rows of rowsByChannel.values()) {
       for (const recipient of rows) {
         if (recipient.principalType === AlertPrincipalType.GROUP) allGroupIds.add(recipient.principalId);
         else if (recipient.principalType === AlertPrincipalType.USER) allUserIds.add(recipient.principalId);
+        else if (recipient.principalType === AlertPrincipalType.EMAIL) hasEmailRecipients = true;
       }
     }
+    const verifiedDomains = hasEmailRecipients
+      ? await findVerifiedEmailDomains(emailDomainDAL, scope.orgId)
+      : new Set<string>();
 
     const groupMembers = new Map<string, string[]>();
     if (allGroupIds.size > 0) {
@@ -64,6 +72,7 @@ export const alertRecipientResolverFactory = ({
     const result = new Map<string, TAlertRecipient[]>();
     for (const [channelId, rows] of rowsByChannel.entries()) {
       const userIds = new Set<string>();
+      const emails = new Set<string>();
 
       for (const recipient of rows) {
         switch (recipient.principalType) {
@@ -74,6 +83,9 @@ export const alertRecipientResolverFactory = ({
             if (inScopeGroupIds.has(recipient.principalId)) {
               (groupMembers.get(recipient.principalId) ?? []).forEach((userId) => userIds.add(userId));
             }
+            break;
+          case AlertPrincipalType.EMAIL:
+            emails.add(recipient.principalId.toLowerCase());
             break;
           default:
             logger.warn(`Unknown alert recipient principal type '${recipient.principalType}'`);
@@ -87,6 +99,10 @@ export const alertRecipientResolverFactory = ({
         if (user?.email) {
           resolved.push({ userId: user.id, email: user.email, firstName: user.firstName });
         }
+      });
+      const userEmails = new Set(resolved.map((recipient) => recipient.email.toLowerCase()));
+      emails.forEach((email) => {
+        if (!userEmails.has(email) && isOnVerifiedDomain(email, verifiedDomains)) resolved.push({ email });
       });
 
       result.set(channelId, resolved);

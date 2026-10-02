@@ -19,6 +19,7 @@ import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
+import { TCertificateAlertEventEmitter } from "../certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
@@ -170,6 +171,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -201,7 +203,8 @@ export const certificateAuthorityServiceFactory = ({
   hsmConnectorService,
   certificateAuthoritySecretDAL,
   licenseService,
-  pkiAlertV2Queue
+  pkiAlertV2Queue,
+  certificateAlertEventEmitter
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -1487,7 +1490,8 @@ export const certificateAuthorityServiceFactory = ({
               godaddyFns,
               projectDAL,
               telemetryService,
-              pkiAlertV2Queue
+              pkiAlertV2Queue,
+              certificateAlertEventEmitter
             },
             certificateRequest
           )
@@ -1502,7 +1506,8 @@ export const certificateAuthorityServiceFactory = ({
               digicertFns,
               projectDAL,
               telemetryService,
-              pkiAlertV2Queue
+              pkiAlertV2Queue,
+              certificateAlertEventEmitter
             },
             certificateRequest
           );

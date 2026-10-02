@@ -282,7 +282,7 @@ export const SecretRotationV2Form = ({
             </div>
             <div className="flex w-full max-w-3xl flex-col gap-y-2 px-4 py-6 md:px-8">
               <div className="mb-6">
-                <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+                <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
                 <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
               </div>
 
