@@ -3,30 +3,47 @@ import { describe, expect, test } from "vitest";
 const PROJECTS_URL = "/api/v1/insights/secrets/projects";
 
 // Every org-scoped insight, by the URL the router registers it at. The aggregation behind each one is
-// covered against a real database (or a faked ClickHouse) in the e2e-test/insights-*.spec.ts files.
-// This file only asserts the wiring, because the e2e instance runs unlicensed and the plan gate
-// therefore rejects every request before any aggregate is computed.
-const ORG_SCOPED_URLS = {
+// covered against a real database (or a faked ClickHouse) in the e2e-test/insights-*.spec.ts files,
+// including the plan gate. This file only asserts the wiring. The e2e license mock includes insights,
+// so the seeded admin clears both the permission and the plan check.
+const DATABASE_BACKED_URLS = {
   summary: "/api/v1/insights/secrets/summary",
   projects: PROJECTS_URL,
-  accessVolume: "/api/v1/insights/secrets/access-volume",
-  authMethods: "/api/v1/insights/secrets/usage/auth-methods",
   staticSecrets: "/api/v1/insights/secrets/usage/static-secrets"
 };
 
+// These read audit logs from ClickHouse, which the e2e instance does not run.
+const CLICKHOUSE_BACKED_URLS = {
+  accessVolume: "/api/v1/insights/secrets/access-volume",
+  authMethods: "/api/v1/insights/secrets/usage/auth-methods"
+};
+
+const ORG_SCOPED_URLS = { ...DATABASE_BACKED_URLS, ...CLICKHOUSE_BACKED_URLS };
+
 describe("Insights V1 Router (org-scoped)", async () => {
-  test.each(Object.entries(ORG_SCOPED_URLS))("GET %s is registered and refuses on plan restriction", async (_, url) => {
+  test.each(Object.entries(DATABASE_BACKED_URLS))("GET %s is registered and answers", async (_, url) => {
     const res = await testServer.inject({
       method: "GET",
       url,
       headers: { authorization: `Bearer ${jwtAuthToken}` }
     });
 
-    // 400, not 403: the seeded user is an org admin, so it clears the Secrets Management Insights
-    // permission check and falls through to the licence gate.
-    expect(res.statusCode).toBe(400);
-    expect(res.json().message).toContain("Upgrade your plan");
+    expect(res.statusCode).toBe(200);
   });
+
+  test.each(Object.entries(CLICKHOUSE_BACKED_URLS))(
+    "GET %s is registered and says ClickHouse is required",
+    async (_, url) => {
+      const res = await testServer.inject({
+        method: "GET",
+        url,
+        headers: { authorization: `Bearer ${jwtAuthToken}` }
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toContain("ClickHouse");
+    }
+  );
 
   test.each(Object.entries(ORG_SCOPED_URLS))("GET %s requires authentication", async (_, url) => {
     const res = await testServer.inject({ method: "GET", url });
@@ -34,20 +51,7 @@ describe("Insights V1 Router (org-scoped)", async () => {
     expect(res.statusCode).toBe(401);
   });
 
-  // Value search sits behind the same plan gate. What the index finds is covered in
-  // routes/v3/secrets-management.spec.ts, through the service.
-  test("POST secrets search-by-value is registered and refuses on plan restriction", async () => {
-    const res = await testServer.inject({
-      method: "POST",
-      url: "/api/v1/insights/secrets/search-by-value",
-      headers: { authorization: `Bearer ${jwtAuthToken}` },
-      body: { secretValue: "any-value" }
-    });
-
-    expect(res.statusCode).toBe(400);
-    expect(res.json().message).toContain("Upgrade your plan");
-  });
-
+  // What value search finds is covered in routes/v3/secrets-management.spec.ts.
   test("POST secrets search-by-value rejects an empty value", async () => {
     const res = await testServer.inject({
       method: "POST",
