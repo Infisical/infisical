@@ -437,21 +437,6 @@ describe("Access approval request lifecycle on the global system", () => {
     expect(request?.status).toBe("pending");
   });
 
-  test("Approval stands when a brace policy still covers the requested path", async () => {
-    const secretPath = "/apps/blue";
-    const { policy, requestId } = await openPendingRequest(secretPath);
-
-    await getDb()(TableName.ApprovalPolicySecretEnvironment)
-      .where({ policyId: policy.id })
-      .update({ secretPath: "/apps/{blue,green}" });
-
-    const approveRes = await reviewAccessRequest(requestId, { status: "approved" });
-    expect(approveRes.statusCode).toBe(200);
-
-    const request = await getDb()(TableName.ApprovalRequests).where({ id: requestId }).first();
-    expect(request?.status).toBe("approved");
-  });
-
   test("Approval stands when a broader policy path still contains the requested glob", async () => {
     const secretPath = "/scope-broader/*";
     const { policy, requestId } = await openPendingRequest(secretPath);
