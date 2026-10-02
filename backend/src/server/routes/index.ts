@@ -2491,6 +2491,8 @@ export const registerRoutes = async (
     approvalPolicySecretEnvironmentDAL,
     secretAccessApprovalPolicyBridgeDAL,
     approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
     approvalRequestGrantsDAL,
     additionalPrivilegeDAL
   });

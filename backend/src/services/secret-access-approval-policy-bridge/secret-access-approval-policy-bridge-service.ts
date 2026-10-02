@@ -16,6 +16,7 @@ import {
   ApprovalRequestGrantStatus,
   ApprovalRequestStatus
 } from "@app/services/approval-policy/approval-policy-enums";
+import { insertApprovalRequestSteps } from "@app/services/approval-policy/approval-request-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import {
@@ -58,6 +59,8 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
   approvalPolicySecretEnvironmentDAL,
   secretAccessApprovalPolicyBridgeDAL,
   approvalRequestDAL,
+  approvalRequestStepsDAL,
+  approvalRequestStepEligibleApproversDAL,
   approvalRequestGrantsDAL,
   additionalPrivilegeDAL
 }: TSecretAccessApprovalPolicyBridgeServiceFactoryDep) => {
@@ -267,6 +270,27 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     return permission;
   };
 
+  const $resetPendingRequestSteps = async (
+    { policyId, steps }: { policyId: string; steps: TPolicyStep[] },
+    tx: Knex
+  ) => {
+    const pendingRequests = await approvalRequestDAL.find({ policyId, status: ApprovalRequestStatus.Pending }, { tx });
+    if (!pendingRequests.length) return;
+
+    const requestIds = pendingRequests.map((request) => request.id);
+    await approvalRequestStepsDAL.delete({ $in: { requestId: requestIds } }, tx);
+    await Promise.all(
+      requestIds.map((requestId) =>
+        insertApprovalRequestSteps(
+          { requestId, policySteps: steps },
+          { approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL },
+          tx
+        )
+      )
+    );
+    await approvalRequestDAL.update({ $in: { id: requestIds } }, { currentStep: 1 }, tx);
+  };
+
   const $findPolicyById = async (policyId: string, organizationId: string, message: string) => {
     const [policy] = await secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies({ policyId, organizationId });
     if (!policy) throw new NotFoundError({ message });
@@ -432,6 +456,12 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     }
 
     const nextSecretPath = secretPath || policy.secretPath;
+    const currentEnvSlugs = new Set(policy.environments.map((env) => env.slug));
+    const environmentsChanged =
+      environments !== undefined &&
+      (envs.length !== currentEnvSlugs.size || envs.some((env) => !currentEnvSlugs.has(env.slug)));
+    const scopeChanged = nextSecretPath !== policy.secretPath || environmentsChanged;
+
     for (const env of envs) {
       if (
         // eslint-disable-next-line no-await-in-loop
@@ -474,12 +504,13 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
       await approvalPolicyBypassersDAL.delete({ policyId: policy.id }, tx);
       await $insertStepsAndBypassers({ policyId: policy.id, steps, bypasserUserIds, groupBypassers }, tx);
 
-      if (environments || secretPath) {
+      if (scopeChanged) {
         await approvalPolicySecretEnvironmentDAL.delete({ policyId: policy.id }, tx);
         await approvalPolicySecretEnvironmentDAL.insertMany(
           envs.map((env) => ({ policyId: policy.id, envId: env.id, secretPath: nextSecretPath })),
           tx
         );
+        await $resetPendingRequestSteps({ policyId: policy.id, steps }, tx);
       }
 
       const [updatedPolicy] = await secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies(

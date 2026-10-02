@@ -17,7 +17,9 @@ import {
 } from "@app/services/approval-policy/approval-policy-dal";
 import {
   TApprovalRequestDALFactory,
-  TApprovalRequestGrantsDALFactory
+  TApprovalRequestGrantsDALFactory,
+  TApprovalRequestStepEligibleApproversDALFactory,
+  TApprovalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -41,6 +43,8 @@ export type TSecretAccessApprovalPolicyBridgeServiceFactoryDep = {
     "insertMany" | "delete" | "findPolicyByEnvIdsAndSecretPath"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "find" | "update">;
+  approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create" | "delete">;
+  approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "update">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   secretAccessApprovalPolicyBridgeDAL: Pick<TSecretAccessApprovalPolicyBridgeDALFactory, "findSecretAccessPolicies">;

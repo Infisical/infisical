@@ -504,6 +504,31 @@ const openRequest = async (secretPath: string) => {
   return res.json().approval.id as string;
 };
 
+const patchPolicy = (policyId: string, body: Record<string, unknown>) =>
+  testServer.inject({
+    method: "PATCH",
+    url: `/api/v1/access-approvals/policies/${policyId}`,
+    headers: authHeaders(),
+    body: { approvals: 1, allowedSelfApprovals: false, ...body }
+  });
+
+const getRequestSteps = async (requestId: string) => {
+  const db = getDb();
+  const steps = await db(TableName.ApprovalRequestSteps).where({ requestId }).orderBy("stepNumber", "asc");
+  return Promise.all(
+    steps.map(async (step) => {
+      const eligible = await db(TableName.ApprovalRequestStepEligibleApprovers).where({ stepId: step.id });
+      const approvals = await db(TableName.ApprovalRequestApprovals).where({ stepId: step.id });
+      return {
+        id: step.id,
+        status: step.status,
+        approverUserIds: eligible.map((row) => row.userId).sort(),
+        approvalCount: approvals.length
+      };
+    })
+  );
+};
+
 describe("Per-step required approvals on the global system", () => {
   const approvers: TApprover[] = [];
   const groupIds: string[] = [];
@@ -715,6 +740,95 @@ describe("Per-step required approvals on the global system", () => {
     const state = await getRequestState(requestId);
     expect(state.status).toBe("approved");
     expect(state.privilege).toBeDefined();
+  });
+
+  const twoStepApprovers = () => [
+    { type: ApproverType.User, id: a.userId, sequence: 1 },
+    { type: ApproverType.User, id: b.userId, sequence: 2 }
+  ];
+
+  const openRequestPastStepOne = async (secretPath: string) => {
+    const policy = await createPolicyWithApprovers({ secretPath, approvers: twoStepApprovers(), approvals: 1 });
+    const requestId = await openRequest(secretPath);
+    expect((await reviewAs(a, requestId)).statusCode).toBe(200);
+
+    const before = await getRequestSteps(requestId);
+    expect((await getRequestState(requestId)).currentStep).toBe(2);
+    expect(before.map((step) => step.approvalCount)).toEqual([1, 0]);
+    return { policy, requestId, before };
+  };
+
+  const expectStepsReset = async (requestId: string, before: Awaited<ReturnType<typeof getRequestSteps>>) => {
+    const after = await getRequestSteps(requestId);
+    expect((await getRequestState(requestId)).currentStep).toBe(1);
+    expect(after.map((step) => step.status)).toEqual(["in-progress", "pending"]);
+    expect(after.map((step) => step.approvalCount)).toEqual([0, 0]);
+    expect(after.map((step) => step.id)).not.toEqual(before.map((step) => step.id));
+    return after;
+  };
+
+  const expectStepsUntouched = async (requestId: string, before: Awaited<ReturnType<typeof getRequestSteps>>) => {
+    expect((await getRequestState(requestId)).currentStep).toBe(2);
+    expect(await getRequestSteps(requestId)).toEqual(before);
+  };
+
+  test("Changing the secret path rebuilds the steps of pending requests", async () => {
+    const { policy, requestId, before } = await openRequestPastStepOne("/reset-path");
+
+    const res = await patchPolicy(policy.id, { secretPath: "/reset-path-moved", approvers: twoStepApprovers() });
+    expect(res.statusCode).toBe(200);
+
+    const after = await expectStepsReset(requestId, before);
+    expect(after.map((step) => step.approverUserIds)).toEqual([[a.userId], [b.userId]]);
+  });
+
+  test("Changing the environments rebuilds the steps of pending requests with the updated approvers", async () => {
+    const { policy, requestId, before } = await openRequestPastStepOne("/reset-env");
+    const otherEnv = await getDb()(TableName.Environment)
+      .where({ projectId: seedData1.project.id })
+      .whereNot({ slug: seedData1.environment.slug })
+      .first();
+    expect(otherEnv).toBeDefined();
+
+    const res = await patchPolicy(policy.id, {
+      secretPath: "/reset-env",
+      environments: [otherEnv!.slug],
+      approvers: [...twoStepApprovers(), { type: ApproverType.User, id: c.userId, sequence: 1 }]
+    });
+    expect(res.statusCode).toBe(200);
+
+    const after = await expectStepsReset(requestId, before);
+    expect(after.map((step) => step.approverUserIds)).toEqual([[a.userId, c.userId].sort(), [b.userId]]);
+  });
+
+  test("Changing only the approvers leaves the steps of pending requests alone", async () => {
+    const { policy, requestId, before } = await openRequestPastStepOne("/reset-approvers-only");
+
+    const res = await patchPolicy(policy.id, {
+      secretPath: "/reset-approvers-only",
+      environments: [seedData1.environment.slug],
+      approvers: [...twoStepApprovers(), { type: ApproverType.User, id: c.userId, sequence: 1 }],
+      approvalsRequired: [{ stepNumber: 1, numberOfApprovals: 2 }]
+    });
+    expect(res.statusCode).toBe(200);
+
+    const policySteps = await getPolicySteps(policy.id);
+    expect(policySteps.map((step) => step.requiredApprovals)).toEqual([2, 1]);
+    await expectStepsUntouched(requestId, before);
+  });
+
+  test("Re-sending the same path and environments does not reset pending requests", async () => {
+    const { policy, requestId, before } = await openRequestPastStepOne("/reset-unchanged");
+
+    const res = await patchPolicy(policy.id, {
+      name: "reset-unchanged-renamed",
+      secretPath: "/reset-unchanged",
+      environments: [seedData1.environment.slug],
+      approvers: twoStepApprovers()
+    });
+    expect(res.statusCode).toBe(200);
+
+    await expectStepsUntouched(requestId, before);
   });
 });
 
