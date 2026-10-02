@@ -17,6 +17,7 @@ import { ApproverType, BypasserType } from "../access-approval-policy/access-app
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
 import { RequestState } from "../secret-approval-request/secret-approval-request-types";
+import { TSecretChangePolicyBridgeServiceFactory } from "../secret-change-policy-bridge/secret-change-policy-bridge-service";
 import {
   TSecretApprovalPolicyApproverDALFactory,
   TSecretApprovalPolicyBypasserDALFactory
@@ -59,6 +60,10 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "update">;
   secretApprovalPolicyEnvironmentDAL: TSecretApprovalPolicyEnvironmentDALFactory;
+  secretChangePolicyBridgeService: Pick<
+    TSecretChangePolicyBridgeServiceFactory,
+    "findSecretChangePolicy" | "updateSecretChangePolicy" | "deleteSecretChangePolicy"
+  >;
 };
 
 export type TSecretApprovalPolicyServiceFactory = ReturnType<typeof secretApprovalPolicyServiceFactory>;
@@ -73,7 +78,8 @@ export const secretApprovalPolicyServiceFactory = ({
   projectDAL,
   userDAL,
   licenseService,
-  secretApprovalRequestDAL
+  secretApprovalRequestDAL,
+  secretChangePolicyBridgeService
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
@@ -98,6 +104,9 @@ export const secretApprovalPolicyServiceFactory = ({
 
     return policyId ? policy && policy.id !== policyId : Boolean(policy);
   };
+
+  const $useSecretChangePolicyBridge = async (policyId: string) =>
+    Boolean(await secretChangePolicyBridgeService.findSecretChangePolicy(policyId));
 
   const createSecretApprovalPolicy = async ({
     name,
@@ -319,22 +328,28 @@ export const secretApprovalPolicyServiceFactory = ({
     return { ...secretApproval, environments: envs, projectId, environment: envs[0] };
   };
 
-  const updateSecretApprovalPolicy = async ({
-    approvers,
-    bypassers,
-    environments,
-    secretPath,
-    name,
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    approvals,
-    secretPolicyId,
-    enforcementLevel,
-    allowedSelfApprovals,
-    bypassForMachineIdentities
-  }: TUpdateSapDTO) => {
+  const updateSecretApprovalPolicy = async (dto: TUpdateSapDTO) => {
+    if (await $useSecretChangePolicyBridge(dto.secretPolicyId)) {
+      return secretChangePolicyBridgeService.updateSecretChangePolicy(dto);
+    }
+
+    const {
+      approvers,
+      bypassers,
+      environments,
+      secretPath,
+      name,
+      actorId,
+      actor,
+      actorOrgId,
+      actorAuthMethod,
+      approvals,
+      secretPolicyId,
+      enforcementLevel,
+      allowedSelfApprovals,
+      bypassForMachineIdentities
+    } = dto;
+
     const groupApprovers = approvers
       ?.filter((approver) => approver.type === ApproverType.Group)
       .map((approver) => approver.id)
@@ -555,13 +570,13 @@ export const secretApprovalPolicyServiceFactory = ({
     };
   };
 
-  const deleteSecretApprovalPolicy = async ({
-    secretPolicyId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeleteSapDTO) => {
+  const deleteSecretApprovalPolicy = async (dto: TDeleteSapDTO) => {
+    if (await $useSecretChangePolicyBridge(dto.secretPolicyId)) {
+      return secretChangePolicyBridgeService.deleteSecretChangePolicy(dto);
+    }
+
+    const { secretPolicyId, actor, actorId, actorAuthMethod, actorOrgId } = dto;
+
     const sapPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
     if (!sapPolicy)
       throw new NotFoundError({ message: `Secret approval policy with ID '${secretPolicyId}' not found` });

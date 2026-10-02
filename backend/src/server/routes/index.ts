@@ -201,6 +201,7 @@ import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approva
 import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-reviewer-dal";
 import { secretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { secretChangePolicyBridgeServiceFactory } from "@app/ee/services/secret-change-policy-bridge/secret-change-policy-bridge-service";
 import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { secretRotationV2QueueServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-queue";
@@ -1254,6 +1255,8 @@ export const registerRoutes = async (
     auditLogService
   });
 
+  const secretChangePolicyBridgeService = secretChangePolicyBridgeServiceFactory({ approvalPolicyDAL });
+
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
@@ -1264,7 +1267,8 @@ export const registerRoutes = async (
     licenseService,
     projectDAL,
     userDAL,
-    secretApprovalRequestDAL
+    secretApprovalRequestDAL,
+    secretChangePolicyBridgeService
   });
 
   // samlService is created after loginService (below) due to dependency on processProviderCallback
@@ -4396,6 +4400,7 @@ export const registerRoutes = async (
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,
     secretApprovalPolicy: secretApprovalPolicyService,
+    secretChangePolicyBridge: secretChangePolicyBridgeService,
     secretApprovalRequest: secretApprovalRequestService,
     dynamicSecret: dynamicSecretService,
     dynamicSecretLease: dynamicSecretLeaseService,
