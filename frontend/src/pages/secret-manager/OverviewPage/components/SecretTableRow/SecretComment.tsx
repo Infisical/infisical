@@ -75,8 +75,7 @@ export const SecretComment = ({
         <DialogTrigger asChild>
           <Button
             size="xs"
-            variant="ghost"
-            className="h-auto px-0 py-1 text-accent"
+            variant="link"
             aria-label={`Read full comment for ${secretName} in ${environmentName}`}
             onClick={(event) => {
               event.stopPropagation();

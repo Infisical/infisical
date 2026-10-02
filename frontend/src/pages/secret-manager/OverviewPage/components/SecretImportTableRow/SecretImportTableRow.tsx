@@ -197,8 +197,9 @@ export const SecretImportTableRow = ({
     );
   }, [matchingImportedSecrets, searchFilter]);
 
-  const getCommentContexts = (key: string, destinationEnv?: string) =>
-    allEnvImportedSecrets.flatMap((data) => {
+  const getCommentContexts = (key: string, destinationEnv?: string) => {
+    if (!showComments) return [];
+    return allEnvImportedSecrets.flatMap((data) => {
       if (destinationEnv && data.sourceEnv !== destinationEnv) return [];
       const secret = data.secrets.find((item) => item.key === key);
       if (!secret) return [];
@@ -213,6 +214,7 @@ export const SecretImportTableRow = ({
         }
       ];
     });
+  };
 
   const hasAnyReplicatedImport = useMemo(() => {
     if (isSingleEnvView) return false;

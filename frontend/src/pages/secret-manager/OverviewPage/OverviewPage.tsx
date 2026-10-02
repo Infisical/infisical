@@ -3721,6 +3721,7 @@ const OverviewPageContent = () => {
                         ))}
                         {honeyTokenNames.map((honeyTokenName, index) => (
                           <HoneyTokenTableRow
+                            singleEnvColumnSpan={showComments ? 3 : 2}
                             honeyTokenName={honeyTokenName}
                             isHoneyTokenInEnv={isHoneyTokenPresentInEnv}
                             environments={visibleEnvs}
@@ -3837,7 +3838,9 @@ const OverviewPageContent = () => {
                           )}
                         {isTableEmpty && (
                           <TableEmptyRow
-                            colSpan={visibleEnvs.length + 2}
+                            colSpan={
+                              visibleEnvs.length + 2 + Number(isSingleEnvView && showComments)
+                            }
                             onImportSecrets={(step) => {
                               setImportSecretsInitialStep(step);
                               handlePopUpOpen("importSecrets");

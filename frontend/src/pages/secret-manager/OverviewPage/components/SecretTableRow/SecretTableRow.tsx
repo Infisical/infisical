@@ -568,7 +568,8 @@ export const SecretTableRow = ({
           !isFormExpanded &&
           environments.map(({ slug, name }, i) => {
             const secret = getSecretByKey(slug, secretKey);
-            const importedSecret = !secret ? getImportedSecretByKey(slug, secretKey) : undefined;
+            const importedSecret =
+              showComments && !secret ? getImportedSecretByKey(slug, secretKey) : undefined;
 
             const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
 

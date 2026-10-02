@@ -63,6 +63,7 @@ const TRIGGERED_STICKY_CELL_CLASS_NAME =
 type Props = {
   honeyTokenName: string;
   environments: { name: string; slug: string }[];
+  singleEnvColumnSpan?: number;
   isHoneyTokenInEnv: (name: string, env: string) => boolean;
   getHoneyTokenByName: (slug: string, name: string) => TDashboardHoneyToken | undefined;
   tableWidth: number;
@@ -74,6 +75,7 @@ type Props = {
 export const HoneyTokenTableRow = ({
   honeyTokenName,
   environments = [],
+  singleEnvColumnSpan = 2,
   isHoneyTokenInEnv,
   getHoneyTokenByName,
   tableWidth,
@@ -286,7 +288,7 @@ export const HoneyTokenTableRow = ({
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
           isTruncatable
-          colSpan={isSingleEnvView ? 2 : undefined}
+          colSpan={isSingleEnvView ? singleEnvColumnSpan : undefined}
         >
           {isSingleEnvView && singleEnvToken ? (
             <div className="relative flex w-full items-center">
