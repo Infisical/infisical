@@ -103,7 +103,7 @@ import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/c
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
-import { CreateSecretForm } from "../CreateSecretForm/CreateSecretForm";
+import { CreateSecretForm, TSecretEditChanges } from "../CreateSecretForm/CreateSecretForm";
 import {
   TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME
@@ -778,17 +778,44 @@ export const SecretEditTableRow = ({
     }
   };
 
+  const resetSheetFields = (changes: TSecretEditChanges) => {
+    if (changes.value !== undefined) {
+      lastAppliedRef.current.value = changes.value;
+      resetField("value", {
+        defaultValue: !isBatchMode && secretValueHidden ? defaultValue || null : changes.value
+      });
+    }
+    if (changes.secretComment !== undefined) {
+      lastAppliedRef.current.comment = changes.secretComment;
+      resetField("comment", { defaultValue: changes.secretComment });
+    }
+    if (changes.tags !== undefined) {
+      lastAppliedRef.current.tags = changes.tags;
+      resetField("tags", { defaultValue: changes.tags });
+    }
+    if (changes.secretMetadata !== undefined) {
+      const metadata = changes.secretMetadata.map((entry) => ({
+        ...entry,
+        isEncrypted: entry.isEncrypted ?? false
+      }));
+      lastAppliedRef.current.metadata = metadata;
+      resetField("metadata", { defaultValue: metadata });
+    }
+  };
+
   const handleFormSubmit = async ({
     value,
     key,
-    valueOnly
+    sheetChanges
   }: {
     value?: string | null;
     key?: string;
-    valueOnly?: boolean;
+    sheetChanges?: TSecretEditChanges;
   }) => {
-    const isValueDirty = valueOnly || getFieldState("value").isDirty;
-    const isKeyDirty = !valueOnly && isSingleEnvView && key && key !== secretName;
+    const isValueDirty = sheetChanges
+      ? sheetChanges.value !== undefined
+      : getFieldState("value").isDirty;
+    const isKeyDirty = !sheetChanges && isSingleEnvView && key && key !== secretName;
 
     // If the value edit requires confirmation (importedBy references), defer everything
     // (including rename) to handleEditSecret so the rename isn't lost on re-render.
@@ -809,13 +836,13 @@ export const SecretEditTableRow = ({
       handlePopUpOpen("editSecret", {
         secretValue: value,
         newKey: isKeyDirty ? key : undefined,
-        valueOnly
+        sheetChanges
       });
       return false;
     }
 
     // Handle rename and/or value changes in a single mutation
-    if ((isKeyDirty || isValueDirty) && secretName) {
+    if ((sheetChanges || isKeyDirty || isValueDirty) && secretName) {
       if (isCreatable) {
         if (isValueDirty && (value || value === "")) {
           await onSecretCreate(environment, secretName, value);
@@ -828,7 +855,8 @@ export const SecretEditTableRow = ({
           secretValueHidden,
           type: SecretType.Shared,
           secretId,
-          newSecretName: isKeyDirty ? key : undefined
+          newSecretName: isKeyDirty ? key : undefined,
+          ...sheetChanges
         });
       }
     }
@@ -838,8 +866,8 @@ export const SecretEditTableRow = ({
     if (isValueDirty && !secretValueHidden) {
       originalValueRef.current = value ?? null;
     }
-    if (valueOnly) {
-      resetField("value", { defaultValue: secretValueHidden ? defaultValue || null : value });
+    if (sheetChanges) {
+      resetSheetFields(sheetChanges);
       return true;
     }
     if (secretValueHidden) {
@@ -866,11 +894,11 @@ export const SecretEditTableRow = ({
   const handleEditSecret = async ({
     secretValue,
     newKey,
-    valueOnly
+    sheetChanges
   }: {
     secretValue: string;
     newKey?: string;
-    valueOnly?: boolean;
+    sheetChanges?: TSecretEditChanges;
   }) => {
     if (isEditing) return;
     setIsEditing.on();
@@ -882,15 +910,14 @@ export const SecretEditTableRow = ({
         secretValueHidden,
         type: SecretType.Shared,
         secretId,
-        newSecretName: newKey
+        newSecretName: newKey,
+        ...sheetChanges
       });
       if (!secretValueHidden) {
         originalValueRef.current = secretValue;
       }
-      if (valueOnly) {
-        resetField("value", {
-          defaultValue: secretValueHidden ? defaultValue || null : secretValue
-        });
+      if (sheetChanges) {
+        resetSheetFields(sheetChanges);
         closeValueSheet();
       } else {
         reset({
@@ -1001,22 +1028,22 @@ export const SecretEditTableRow = ({
     }
   };
 
-  const handleValueSheetSubmit = async (value: string) => {
+  const handleValueSheetSubmit = async (changes: TSecretEditChanges) => {
     if (isValueSheetReadOnly || valueEditDraft?.scope !== valueEditScope) return;
     if (isBatchMode) {
       await onSecretUpdate({
         env: environment,
         key: secretName,
-        value,
+        value: changes.value,
         secretValueHidden,
         type: SecretType.Shared,
         secretId,
-        originalValue: originalValueRef.current ?? undefined
+        originalValue: originalValueRef.current ?? undefined,
+        ...changes
       });
-      lastAppliedRef.current.value = value;
-      resetField("value", { defaultValue: value });
+      resetSheetFields(changes);
     } else {
-      const completed = await handleFormSubmit({ value, valueOnly: true });
+      const completed = await handleFormSubmit({ value: changes.value, sheetChanges: changes });
       if (!completed) return;
     }
     closeValueSheet();
@@ -1065,7 +1092,7 @@ export const SecretEditTableRow = ({
               {...field}
               value={field.value ?? ""}
               className={twMerge(
-                "h-auto w-full truncate rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
+                "field-sizing-content h-auto w-auto max-w-full truncate rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
                 isPendingDelete && "text-danger/75 line-through"
               )}
               onChange={(event) => {
@@ -1996,12 +2023,19 @@ export const SecretEditTableRow = ({
           if (!open) requestDiscard();
         }}
       >
-        <SheetContent side="right" className="gap-y-0">
+        <SheetContent
+          side="right"
+          className="gap-y-0"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            (event.target as HTMLElement)
+              .querySelector<HTMLTextAreaElement>('[aria-label="secret value"]')
+              ?.focus();
+          }}
+        >
           <SheetHeader>
             <SheetTitle>Edit Secret</SheetTitle>
-            <SheetDescription>
-              Update this secret&apos;s value in {environmentName}.
-            </SheetDescription>
+            <SheetDescription>Update this secret in {environmentName}.</SheetDescription>
           </SheetHeader>
           {valueEditDraft?.scope === valueEditScope && (
             <CreateSecretForm
@@ -2012,6 +2046,10 @@ export const SecretEditTableRow = ({
               editSecret={{
                 key: pendingKeyName || secretName,
                 value: valueEditDraft.value,
+                comment: isBatchMode ? ((watchedComment as string) ?? comment) : comment,
+                tags: isBatchMode ? watchedTags : tags,
+                metadata: isBatchMode ? watchedMetadata : secretMetadata,
+                skipMultilineEncoding,
                 canEditButNotView: secretValueHidden,
                 isReadOnly: isValueSheetReadOnly,
                 onDirtyChange: setIsValueEditDirty,
@@ -2026,7 +2064,7 @@ export const SecretEditTableRow = ({
         onOpenChange={setIsDiscardDialogOpen}
         onDiscard={confirmDiscard}
         title="Discard Changes?"
-        description="Your unsaved changes to this secret value will be lost."
+        description="Your unsaved changes to this secret will be lost."
       />
       <Sheet open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
         <SheetContent onOpenAutoFocus={(e) => e.preventDefault()} className="gap-y-0" side="right">
@@ -2143,7 +2181,7 @@ export const SecretEditTableRow = ({
         >
           <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
             <PopoverAnchor asChild>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 {nameInput}
                 {commentPreview &&
                   !isImportedSecret &&
@@ -2153,8 +2191,9 @@ export const SecretEditTableRow = ({
                       <TooltipTrigger asChild>
                         <IconButton
                           aria-label="View secret comment"
-                          variant="ghost"
+                          variant="ghost-muted"
                           size="xs"
+                          className="size-3.5 rounded-none border-0 [&>svg]:size-3.5 [&>svg]:stroke-2"
                           onClick={() => setIsCommentOpen(true)}
                         >
                           <MessageSquareIcon className="size-3.5" />
