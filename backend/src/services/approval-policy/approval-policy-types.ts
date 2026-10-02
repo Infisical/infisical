@@ -143,7 +143,8 @@ export interface TUpdatePolicyDTO {
 export interface TCreateRequestDTO {
   scope: ApprovalPolicyScope;
   scopeId: string;
-  requestData: TApprovalRequest["requestData"]["requestData"];
+  // Secret access requests are created in the access-approval bridge, not through this DTO.
+  requestData: Exclude<TApprovalRequestData, TSecretAccessRequestData>;
   justification?: TApprovalRequest["justification"];
   requestDuration?: string | null;
   // Set by a caller that decides the request in the same breath (break-glass), so approvers are not

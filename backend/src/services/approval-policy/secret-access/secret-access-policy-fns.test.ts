@@ -2,7 +2,6 @@ import {
   getSecretAccessGrantWindow,
   hasSameAccessCriteria,
   isSecretAccessBreakGlassEligible,
-  parseSecretAccessRequestData,
   validateSecretAccessConstraints
 } from "./secret-access-policy-fns";
 import { TSecretAccessRequestData } from "./secret-access-policy-types";

@@ -27,10 +27,7 @@ import {
   parseSecretAccessRequestData,
   validateSecretAccessConstraints
 } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
-import {
-  TSecretAccessPolicy,
-  TSecretAccessRequestData
-} from "@app/services/approval-policy/secret-access/secret-access-policy-types";
+import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { AccessRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
@@ -86,6 +83,14 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
 
   const $findRequestById = async (requestId: string) => {
     const request = await secretAccessApprovalRequestBridgeDAL.findSecretAccessRequestById(requestId);
+    if (!request) throw new NotFoundError({ message: `Access request with ID '${requestId}' not found` });
+    return request;
+  };
+
+  const $findRequestByIdFromPrimary = async (requestId: string) => {
+    const request = await approvalRequestDAL.transaction((tx) =>
+      secretAccessApprovalRequestBridgeDAL.findSecretAccessRequestById(requestId, tx)
+    );
     if (!request) throw new NotFoundError({ message: `Access request with ID '${requestId}' not found` });
     return request;
   };
@@ -181,18 +186,19 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
     return { pendingCount, finalizedCount: rows.length - pendingCount };
   };
 
-  const $queueAccessRequestCreatedWebhook = async ({
+  const $queueAccessRequestWebhook = async ({
+    action,
     request,
     project,
     policy,
     requestedByUser,
-    envSlug,
     envName,
-    secretPath
+    isBypassed = false
   }: {
+    action: AccessRequestWebhookAction;
     request: ReturnType<typeof toLegacyAccessApprovalRequest>;
     project: { id: string; name: string; orgId: string };
-    policy: TSecretAccessPolicy;
+    policy: { id: string; name: string; enforcementLevel: string; hasSequencedApprovers: boolean };
     requestedByUser: {
       id: string;
       firstName?: string | null;
@@ -200,66 +206,71 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
       username: string;
       email?: string | null;
     };
-    envSlug: string;
     envName: string;
-    secretPath: string;
+    isBypassed?: boolean;
   }) => {
-    const { requestedPermissions } = verifyRequestedPermissions({ permissions: request.permissions });
-    const cfg = getConfig();
+    try {
+      const { envSlug, secretPath, requestedPermissions } = verifyRequestedPermissions({
+        permissions: request.permissions
+      });
+      const cfg = getConfig();
 
-    await queueService.queue(
-      QueueName.SecretWebhook,
-      QueueJobs.SecWebhook,
-      {
-        type: WebhookEvents.AccessRequestModified,
-        payload: {
-          projectId: project.id,
-          projectName: project.name,
-          environment: envSlug,
-          environmentName: envName,
-          secretPath,
-          action: AccessRequestWebhookAction.Created,
-          request: {
-            id: request.id,
-            url: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval?selectedTab=resource-requests&requestId=${request.id}`,
-            status: request.status,
-            isBypassed: false,
-            policy: {
-              id: policy.id,
-              name: policy.name,
-              enforcementLevel: policy.enforcementLevel,
-              hasSequencedApprovers: policy.steps.length > 1
-            },
-            requestedAccess: {
-              isTemporary: request.isTemporary,
-              temporaryRange: request.temporaryRange,
-              permissions: requestedPermissions
-            },
-            requestedBy: {
-              type: ActorType.USER,
-              id: requestedByUser.id,
-              name:
-                [requestedByUser.firstName, requestedByUser.lastName].filter(Boolean).join(" ") ||
-                requestedByUser.username,
-              email: requestedByUser.email ?? null
-            },
-            expiresAt: request.expiresAt?.toISOString() ?? null,
-            approvedAt: null,
-            revokedAt: null,
-            createdAt: request.createdAt.toISOString(),
-            updatedAt: request.updatedAt.toISOString()
+      await queueService.queue(
+        QueueName.SecretWebhook,
+        QueueJobs.SecWebhook,
+        {
+          type: WebhookEvents.AccessRequestModified,
+          payload: {
+            projectId: project.id,
+            projectName: project.name,
+            environment: envSlug,
+            environmentName: envName,
+            secretPath,
+            action,
+            request: {
+              id: request.id,
+              url: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval?selectedTab=resource-requests&requestId=${request.id}`,
+              status: request.status,
+              isBypassed,
+              policy: {
+                id: policy.id,
+                name: policy.name,
+                enforcementLevel: policy.enforcementLevel,
+                hasSequencedApprovers: policy.hasSequencedApprovers
+              },
+              requestedAccess: {
+                isTemporary: request.isTemporary,
+                temporaryRange: request.temporaryRange,
+                permissions: requestedPermissions
+              },
+              requestedBy: {
+                type: ActorType.USER,
+                id: requestedByUser.id,
+                name:
+                  [requestedByUser.firstName, requestedByUser.lastName].filter(Boolean).join(" ") ||
+                  requestedByUser.username,
+                email: requestedByUser.email ?? null
+              },
+              expiresAt: request.expiresAt?.toISOString() ?? null,
+              approvedAt: request.approvedAt?.toISOString() ?? null,
+              revokedAt: request.revokedAt?.toISOString() ?? null,
+              createdAt: request.createdAt.toISOString(),
+              updatedAt: request.updatedAt.toISOString()
+            }
           }
+        },
+        {
+          jobId: `access-request-webhook-${request.id}-${alphaNumericNanoId(6)}`,
+          removeOnFail: { count: 5 },
+          removeOnComplete: true,
+          delay: 1000,
+          attempts: 5,
+          backoff: { type: "exponential", delay: 3000 }
         }
-      },
-      {
-        jobId: `access-request-webhook-${request.id}-${alphaNumericNanoId(6)}`,
-        removeOnFail: { count: 5 },
-        removeOnComplete: true,
-        delay: 1000,
-        attempts: 5,
-        backoff: { type: "exponential", delay: 3000 }
-      }
-    );
+      );
+    } catch (error) {
+      logger.error(error, `Failed to queue access request webhook [requestId=${request.id}] [action=${action}]`);
+    }
   };
 
   const isGlobalAccessApprovalRequest = async (requestId: string) =>
@@ -284,6 +295,10 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
       isTemporary,
       temporaryRange: temporaryRange || null
     };
+
+    if (isTemporary && !temporaryRange) {
+      throw new BadRequestError({ message: "A temporary range is required for temporary requests" });
+    }
 
     const constraintValidation = secretAccessApprovalResource.validateConstraints(policy, requestData);
     if (!constraintValidation.valid) {
@@ -372,22 +387,14 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
 
     const legacyRequest = toLegacyAccessApprovalRequest(request);
 
-    try {
-      await $queueAccessRequestCreatedWebhook({
-        request: legacyRequest,
-        project,
-        policy,
-        requestedByUser,
-        envSlug,
-        envName,
-        secretPath
-      });
-    } catch (error) {
-      logger.error(
-        error,
-        `Failed to queue access request webhook [requestId=${request.id}] [action=${AccessRequestWebhookAction.Created}]`
-      );
-    }
+    await $queueAccessRequestWebhook({
+      action: AccessRequestWebhookAction.Created,
+      request: legacyRequest,
+      project,
+      policy: { ...policy, hasSequencedApprovers: policy.steps.length > 1 },
+      requestedByUser,
+      envName
+    });
 
     return { request: legacyRequest, projectId };
   };
@@ -453,10 +460,39 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
 
     const actorGroupIds = await $getActorGroupIds(actorId, actorOrgId);
 
-    const project = await projectDAL.findById(request.projectId);
+    const [project, requestedByUser] = await Promise.all([
+      projectDAL.findById(request.projectId),
+      userDAL.findById(request.requesterId)
+    ]);
     if (!project) {
       throw new NotFoundError({ message: "The project associated with this access request was not found." });
     }
+
+    const $queueReviewedWebhook = async (isBypassed: boolean) => {
+      if (!requestedByUser) {
+        logger.warn(
+          `Skipping access request webhook, requester not found [requestId=${requestId}] [action=${AccessRequestWebhookAction.Reviewed}]`
+        );
+        return;
+      }
+      try {
+        const reviewed = await $findRequestByIdFromPrimary(requestId);
+        await $queueAccessRequestWebhook({
+          action: AccessRequestWebhookAction.Reviewed,
+          request: toLegacyAccessApprovalRequest(reviewed),
+          project,
+          policy: { ...policy, hasSequencedApprovers: policy.approvers.some((a) => (a.sequence ?? 1) > 1) },
+          requestedByUser,
+          envName: policy.environment.name,
+          isBypassed
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to queue access request webhook [requestId=${requestId}] [action=${AccessRequestWebhookAction.Reviewed}]`
+        );
+      }
+    };
 
     if (isBreakGlassAttempt) {
       const trimmedBypassReason = bypassReason.trim();
@@ -544,6 +580,8 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
           { userDAL, userGroupMembershipDAL, notificationService, smtpService }
         );
       }
+
+      await $queueReviewedWebhook(true);
 
       const createdAt = approval.createdAt ?? new Date();
       return {
@@ -643,7 +681,6 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
     });
 
     if (nextStep) {
-      const requestedByUser = await userDAL.findById(request.requesterId);
       if (requestedByUser) {
         await notifySecretAccessStepApprovers(
           {
@@ -669,6 +706,8 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
         );
       }
     }
+
+    await $queueReviewedWebhook(false);
 
     const createdAt = approval.createdAt ?? new Date();
     return {
@@ -715,15 +754,14 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
     );
     const canGrantPrivilegesLegacy = permission.can(ProjectPermissionMemberActions.GrantPrivileges, memberSubject);
 
+    const [policy] = request.policyId
+      ? await secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies({ policyId: request.policyId })
+      : [];
+
     let isApprover = false;
-    if (!canAssignAdditionalPrivileges && !canGrantPrivilegesLegacy && request.policyId) {
-      const [policy] = await secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies({
-        policyId: request.policyId
-      });
-      if (policy) {
-        const actorGroupIds = await $getActorGroupIds(actorId, actorOrgId);
-        isApprover = isPolicySubjectMatch(policy.approvers, actorId, actorGroupIds);
-      }
+    if (!canAssignAdditionalPrivileges && !canGrantPrivilegesLegacy && policy) {
+      const actorGroupIds = await $getActorGroupIds(actorId, actorOrgId);
+      isApprover = isPolicySubjectMatch(policy.approvers, actorId, actorGroupIds);
     }
 
     if (!canAssignAdditionalPrivileges && !canGrantPrivilegesLegacy && !isApprover) {
@@ -754,8 +792,25 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
       await additionalPrivilegeDAL.delete({ grantId: grant.id }, tx);
     });
 
-    const revoked = await $findRequestById(requestId);
-    return { request: toLegacyAccessApprovalRequest(revoked), projectId: request.projectId };
+    const revoked = toLegacyAccessApprovalRequest(await $findRequestByIdFromPrimary(requestId));
+
+    const project = await projectDAL.findById(request.projectId);
+    if (policy && project) {
+      await $queueAccessRequestWebhook({
+        action: AccessRequestWebhookAction.Revoked,
+        request: revoked,
+        project,
+        policy: { ...policy, hasSequencedApprovers: policy.approvers.some((a) => (a.sequence ?? 1) > 1) },
+        requestedByUser: targetUser,
+        envName: policy.environment.name
+      });
+    } else {
+      logger.warn(
+        `Skipping access request webhook, policy or project not found [requestId=${requestId}] [action=${AccessRequestWebhookAction.Revoked}]`
+      );
+    }
+
+    return { request: revoked, projectId: request.projectId };
   };
 
   return {
