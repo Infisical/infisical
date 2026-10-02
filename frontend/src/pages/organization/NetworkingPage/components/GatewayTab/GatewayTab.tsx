@@ -93,13 +93,18 @@ export const GatewayTab = withPermission(
     const navigate = useNavigate();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
-    const initialSubTab = useSearch({
-      from: ROUTE_PATHS.Organization.NetworkingPage.id,
-      select: (el) => el.gatewayView
-    });
-    const [activeSubTab, setActiveSubTab] = useState<"all-gateways" | "gateway-pools">(
-      initialSubTab ?? "all-gateways"
-    );
+    const activeSubTab =
+      useSearch({
+        from: ROUTE_PATHS.Organization.NetworkingPage.id,
+        select: (el) => el.gatewayView
+      }) ?? "all-gateways";
+    const setActiveSubTab = (view: "all-gateways" | "gateway-pools") =>
+      navigate({
+        to: "/organizations/$orgId/networking",
+        params: { orgId },
+        search: (prev) => ({ ...prev, gatewayView: view }),
+        replace: true
+      });
     const { subscription } = useSubscription();
     const showPoolsTab = subscription?.gatewayPool;
     const [search, setSearch] = useState("");

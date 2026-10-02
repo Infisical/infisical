@@ -16,7 +16,7 @@ export const Route = createFileRoute(
   component: NetworkingPage,
   validateSearch: zodValidator(NetworkingPageQueryParams),
   search: {
-    middlewares: [stripSearchParams({ selectedTab: "gateways" })]
+    middlewares: [stripSearchParams({ selectedTab: "gateways", gatewayView: "all-gateways" })]
   },
   context: () => ({
     breadcrumbs: [

@@ -175,6 +175,16 @@ export const CreateAccountSheet = ({
   };
   const templateGatewayUnsupported = (tpl: { gatewayId?: string | null; type: string }) =>
     unsupportedBy(tpl.gatewayId, tpl.type);
+  // An account can't override its template's individual gateway, so under the org's pool requirement
+  // such a template can't create accounts until the template itself moves to a pool.
+  const templateUnusableReason = (tpl: { gatewayId?: string | null; type: string }) => {
+    const unsupportedOn = templateGatewayUnsupported(tpl);
+    if (unsupportedOn) return `Gateway '${unsupportedOn}' does not support this type`;
+    if (currentOrg.requireGatewayPools && tpl.gatewayId) {
+      return "Uses an individual gateway, but your organization requires a gateway pool";
+    }
+    return null;
+  };
   const selectedGatewayUnsupported = selectedTemplate
     ? unsupportedBy(gateway.gatewayId, selectedTemplate.type)
     : null;
@@ -233,7 +243,7 @@ export const CreateAccountSheet = ({
     selectedFolderId &&
       selectedTemplateId &&
       selectedTemplate &&
-      !templateGatewayUnsupported(selectedTemplate)
+      !templateUnusableReason(selectedTemplate)
   );
 
   const onSubmit = (values: TAccountFormValues) => {
@@ -455,10 +465,10 @@ export const CreateAccountSheet = ({
                         >
                           {filteredTemplates.map((tpl) => {
                             const typeName = accountTypeMap[tpl.type]?.name ?? tpl.type;
-                            const unusableOn = templateGatewayUnsupported(tpl);
+                            const unusableReason = templateUnusableReason(tpl);
                             let subtitle = typeName;
-                            if (unusableOn) {
-                              subtitle = `${typeName} • Gateway '${unusableOn}' does not support this type`;
+                            if (unusableReason) {
+                              subtitle = `${typeName} • ${unusableReason}`;
                             } else if (tpl.description) {
                               subtitle = `${typeName} • ${tpl.description}`;
                             }
@@ -467,7 +477,9 @@ export const CreateAccountSheet = ({
                                 key={tpl.id}
                                 htmlFor={`tpl-${tpl.id}`}
                                 variant="pam"
-                                className={unusableOn ? "cursor-not-allowed opacity-50" : undefined}
+                                className={
+                                  unusableReason ? "cursor-not-allowed opacity-50" : undefined
+                                }
                               >
                                 <Field orientation="horizontal" className="items-center gap-3">
                                   <AccountPlatformIcon accountType={tpl.type} size={28} />
@@ -480,7 +492,7 @@ export const CreateAccountSheet = ({
                                   <RadioGroupItem
                                     id={`tpl-${tpl.id}`}
                                     value={tpl.id}
-                                    disabled={Boolean(unusableOn)}
+                                    disabled={Boolean(unusableReason)}
                                     className="sr-only"
                                   />
                                 </Field>
