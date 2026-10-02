@@ -11,16 +11,13 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
-import {
-  ApprovalPolicyType,
-  ApprovalRequestGrantStatus,
-  ApprovalRequestStatus
-} from "@app/services/approval-policy/approval-policy-enums";
+import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { insertApprovalRequestSteps } from "@app/services/approval-policy/approval-request-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import {
   buildSecretAccessPolicySteps,
+  revokeActiveSecretAccessGrants,
   secretAccessApprovalPolicyExists
 } from "./secret-access-approval-policy-bridge-fns";
 import {
@@ -555,21 +552,14 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
       );
 
       const requests = await approvalRequestDAL.find({ policyId: policy.id }, { tx });
-      if (requests.length) {
-        const revokedGrants = await approvalRequestGrantsDAL.update(
-          { $in: { requestId: requests.map((request) => request.id) }, status: ApprovalRequestGrantStatus.Active },
-          {
-            status: ApprovalRequestGrantStatus.Revoked,
-            revokedAt: new Date(),
-            revokedByUserId: actor === ActorType.USER ? actorId : null
-          },
-          tx
-        );
-
-        if (revokedGrants.length) {
-          await additionalPrivilegeDAL.delete({ $in: { grantId: revokedGrants.map((grant) => grant.id) } }, tx);
-        }
-      }
+      await revokeActiveSecretAccessGrants(
+        {
+          requestIds: requests.map((request) => request.id),
+          revokedByUserId: actor === ActorType.USER ? actorId : null
+        },
+        { approvalRequestGrantsDAL, additionalPrivilegeDAL },
+        tx
+      );
 
       await approvalPolicyDAL.deleteById(policy.id, tx);
     });
