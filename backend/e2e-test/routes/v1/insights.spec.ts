@@ -34,6 +34,31 @@ describe("Insights V1 Router (org-scoped)", async () => {
     expect(res.statusCode).toBe(401);
   });
 
+  // Value search sits behind the same plan gate. What the index finds is covered in
+  // routes/v3/secrets-management.spec.ts, through the service.
+  test("POST secrets search-by-value is registered and refuses on plan restriction", async () => {
+    const res = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/insights/secrets/search-by-value",
+      headers: { authorization: `Bearer ${jwtAuthToken}` },
+      body: { secretValue: "any-value" }
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toContain("Upgrade your plan");
+  });
+
+  test("POST secrets search-by-value rejects an empty value", async () => {
+    const res = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/insights/secrets/search-by-value",
+      headers: { authorization: `Bearer ${jwtAuthToken}` },
+      body: { secretValue: "" }
+    });
+
+    expect(res.statusCode).toBe(422);
+  });
+
   test("GET secrets projects rejects an out-of-bounds limit", async () => {
     const res = await testServer.inject({
       method: "GET",
