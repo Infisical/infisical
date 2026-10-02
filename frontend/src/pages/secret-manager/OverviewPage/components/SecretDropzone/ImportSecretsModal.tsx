@@ -459,6 +459,7 @@ const ImportSecretsContent = ({
               `${result.value.environment} (${result.value.failedPaths.join(", ")})`
             );
             partialEnvSlugs.push(result.value.slug);
+            if (result.value.hasApproval) approvalEnvs.push(result.value.environment);
           } else if (result.value.failCount > 0) {
             failedEnvs.push(result.value.environment);
           } else if (result.value.hasApproval) {
@@ -858,7 +859,7 @@ const ImportSecretsContent = ({
           </Field>
           {nestedJson && (
             <Field orientation="horizontal" className="w-fit">
-              <FieldLabel>
+              <FieldLabel htmlFor="import-nested-as-folders">
                 Import Nested Objects as Folders
                 <Tooltip>
                   <TooltipTrigger>
@@ -871,7 +872,11 @@ const ImportSecretsContent = ({
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <Toggle checked={shouldImportNested} onCheckedChange={setShouldImportNested} />
+              <Toggle
+                id="import-nested-as-folders"
+                checked={shouldImportNested}
+                onCheckedChange={setShouldImportNested}
+              />
             </Field>
           )}
         </div>
