@@ -35,7 +35,7 @@ describe("Insights V1 Router (org-scoped)", async () => {
   });
 
   // Value search sits behind the same plan gate. What the index finds is covered in
-  // routes/v3/secrets-management.spec.ts, which turns the plan on with fakeLicense.
+  // routes/v3/secrets-management.spec.ts, through the service.
   test("POST secrets search-by-value is registered and refuses on plan restriction", async () => {
     const res = await testServer.inject({
       method: "POST",
