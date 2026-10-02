@@ -1,12 +1,8 @@
 import { CSSProperties, ReactNode, useEffect } from "react";
-import { EllipsisVerticalIcon, InfoIcon, RefreshCw } from "lucide-react";
+import { CheckIcon, EllipsisVerticalIcon, InfoIcon, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
   Alert,
   AlertDescription,
   Badge,
@@ -23,6 +19,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Separator,
   Skeleton,
   Tabs,
@@ -35,12 +34,10 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
-  BillingV2BreakdownScopeKind,
   BillingV2CatalogProduct,
   BillingV2Entitlement,
   BillingV2EntitlementDim,
   BillingV2Overview,
-  useGetBillingV2UsageBreakdown,
   useRefreshBillingV2Entitlements
 } from "@app/hooks/api";
 
@@ -51,10 +48,8 @@ import {
   dimMonthlyRate,
   dimOnDemandQuantity,
   fmtMoney,
-  pluralizeUnit,
   productAnnualCommitted,
-  tierLabel,
-  unitForCount
+  tierLabel
 } from "../billing-v2-format";
 import { DetailsCard } from "./cards/DetailsCard";
 import { InvoicesCard } from "./cards/InvoicesCard";
@@ -63,8 +58,6 @@ import { CardEmpty, ProductIcon } from "./shared";
 import { breakdownableDimensions } from "./UsageBreakdownSheet";
 
 type ActiveProduct = { prod: BillingV2CatalogProduct; ent: BillingV2Entitlement };
-
-const share = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
 
 const priceLabel = (ent: BillingV2Entitlement) => {
   const annual = productAnnualCommitted(ent);
@@ -80,15 +73,9 @@ const priceLabel = (ent: BillingV2Entitlement) => {
 
 const planLine = (ent: BillingV2Entitlement) => {
   if (ent.isTrialing) {
-    return [
-      ent.planTier ? tierLabel(ent.planTier) : null,
-      ent.trialEndsAt ? `Trial ends ${ent.trialEndsAt}` : "Trial"
-    ]
-      .filter(Boolean)
-      .join(" · ");
+    return ent.trialEndsAt ? `Trial ends ${ent.trialEndsAt}` : "Trial";
   }
   return [
-    ent.planTier ? tierLabel(ent.planTier) : null,
     ent.cadence && (ent.cadence === "annual" ? "Yearly" : "Monthly"),
     ent.renewsOn ? `Renews ${ent.renewsOn}` : null
   ]
@@ -142,12 +129,7 @@ const Metric = ({ label, value, note }: { label: string; value: ReactNode; note?
   </div>
 );
 
-type BreakdownTarget = {
-  orgId: string;
-  scope: BillingV2BreakdownScopeKind;
-};
-
-type TabbedOverviewProps = BreakdownTarget & {
+type TabbedOverviewProps = {
   tab: string;
   onTabChange: (tab: string) => void;
   overview: BillingV2Overview;
@@ -163,95 +145,37 @@ type TabbedOverviewProps = BreakdownTarget & {
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-const UsageMeterSources = ({
+const ProductPlansPopover = ({
   prod,
-  dim,
-  orgId,
-  scope,
-  onViewBreakdown
-}: BreakdownTarget & {
+  currentTier
+}: {
   prod: BillingV2CatalogProduct;
-  dim: BillingV2EntitlementDim;
-  onViewBreakdown: (productId: string, dimensionKey?: string) => void;
+  currentTier?: string;
 }) => {
-  const { data, isPending, isError, refetch } = useGetBillingV2UsageBreakdown(
-    orgId,
-    dim.key,
-    scope
-  );
-
-  const ranked = data
-    ? [...data.scopes].filter((scope_) => scope_.count > 0).sort((a, b) => b.count - a.count)
-    : [];
-  const shown = ranked.slice(0, 5);
-  const rest = ranked.length - shown.length;
+  const plans = prod.plans
+    .filter((plan) => !plan.deprecated || plan.tier === currentTier)
+    .sort(byDisplayOrder);
+  if (plans.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm text-foreground">{dim.label}</h3>
-        <Button
-          variant="outline"
-          size="xs"
-          aria-label={`Full breakdown for ${prod.name} ${dim.label}`}
-          onClick={() => onViewBreakdown(prod.id, dim.key)}
-        >
-          Full Breakdown
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" aria-label={`View plans for ${prod.name}`}>
+          View Plans
         </Button>
-      </div>
-      {isPending && <Skeleton className="h-32 w-full" />}
-      {isError && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs text-muted">Unable to load usage sources.</span>
-          <Button variant="ghost" size="xs" onClick={() => refetch()}>
-            Retry
-          </Button>
-        </div>
-      )}
-      {data && !isError && (
+      </PopoverTrigger>
+      <PopoverContent align="end" aria-label={`${prod.name} plans`}>
         <div className="flex flex-col gap-3">
-          {data.userCount > 0 && (
-            <span className="text-xs text-accent">
-              <span className="font-medium text-foreground">{data.userCount.toLocaleString()}</span>{" "}
-              {unitForCount("user identity", data.userCount)} ·{" "}
-              <span className="font-medium text-foreground">
-                {data.scopedCount.toLocaleString()}
-              </span>{" "}
-              {unitForCount(data.unit, data.scopedCount)}
-            </span>
-          )}
-          {shown.length === 0 && (
-            <span className="text-sm text-muted">
-              No {pluralizeUnit(data.unit)} have been created yet.
-            </span>
-          )}
-          {shown.map((source) => (
-            <div key={source.orgId} className="flex flex-col gap-1">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="truncate text-foreground">{source.name}</span>
-                <span className="shrink-0 text-xs text-muted tabular-nums">
-                  <span className="font-medium text-foreground">
-                    {source.count.toLocaleString()}
-                  </span>{" "}
-                  · {share(source.count, data.scopedCount)}%
-                </span>
-              </div>
-              <div className="h-[3px] w-full overflow-hidden rounded-xs bg-background">
-                <div
-                  className={source.isRoot ? "h-full bg-org/85" : "h-full bg-sub-org/85"}
-                  style={{ width: `${share(source.count, data.scopedCount)}%` }}
-                />
-              </div>
+          <span className="text-sm font-medium">{prod.name} plans</span>
+          {plans.map((plan) => (
+            <div key={plan.tier} className="flex items-center justify-between gap-3">
+              <span className="text-sm">{plan.name}</span>
+              {plan.tier === currentTier && <Badge variant="neutral">Current</Badge>}
             </div>
           ))}
-          {rest > 0 && (
-            <span className="text-xs text-muted">
-              {rest} more {rest === 1 ? "organization" : "organizations"} in the full breakdown
-            </span>
-          )}
         </div>
-      )}
-    </section>
+      </PopoverContent>
+    </Popover>
   );
 };
 
@@ -261,25 +185,26 @@ const ProductOverviewCard = ({
   readOnly,
   selfServe,
   isManaged,
-  orgId,
-  scope,
   onManage,
   onSetCommitment,
   onViewBreakdown
-}: ActiveProduct &
-  BreakdownTarget & {
-    readOnly: boolean;
-    selfServe: boolean;
-    isManaged: boolean;
-    onManage: (productId: string) => void;
-    onSetCommitment: (productId: string) => void;
-    onViewBreakdown: (productId: string, dimensionKey?: string) => void;
-  }) => {
+}: ActiveProduct & {
+  readOnly: boolean;
+  selfServe: boolean;
+  isManaged: boolean;
+  onManage: (productId: string) => void;
+  onSetCommitment: (productId: string) => void;
+  onViewBreakdown: (productId: string, dimensionKey?: string) => void;
+}) => {
   const canChangePlan = !readOnly && selfServe;
   const nudge = canChangePlan ? commitSavingsNudge(ent) : null;
   const hasBreakdown = breakdownableDimensions(ent).length > 0;
-  const sourceDimensions = breakdownableDimensions(ent).filter((dim) => dim.used > 0);
   const onDemand = ent.onDemandAmount ?? 0;
+  const planName = ent.planTier
+    ? (prod.plans.find((plan) => plan.tier === ent.planTier)?.name ?? tierLabel(ent.planTier))
+    : "Included";
+  const price = priceLabel(ent);
+  const planDetail = planLine(ent);
   const trialPlanName = ent.trialPlan
     ? (ent.trialPlanName ??
       prod.plans.find((plan) => plan.tier === ent.trialPlan)?.name ??
@@ -291,16 +216,11 @@ const ProductOverviewCard = ({
       <CardHeader>
         <div className="row-span-2 flex min-w-0 items-center gap-3">
           <ProductIcon product={prod} size={32} />
-          <div className="flex min-w-0 flex-col">
-            <CardTitle>
-              {prod.name}
-              {ent.isTrialing && <Badge variant="info">Trial</Badge>}
-              {prod.addon && <Badge variant="neutral">Add-on</Badge>}
-            </CardTitle>
-            <span className="text-xs text-muted">
-              {planLine(ent) || (isManaged ? "Included in your license" : "Included")}
-            </span>
-          </div>
+          <CardTitle>
+            {prod.name}
+            {ent.isTrialing && <Badge variant="info">Trial</Badge>}
+            {prod.addon && <Badge variant="neutral">Add-on</Badge>}
+          </CardTitle>
         </div>
         {(canChangePlan || hasBreakdown) && (
           <CardAction>
@@ -331,6 +251,24 @@ const ProductOverviewCard = ({
         )}
       </CardHeader>
       <CardContent className="@container flex flex-col gap-5">
+        <div className="flex flex-wrap items-start justify-between gap-4 rounded-md bg-container p-4">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <span className="text-xs text-accent">Current plan</span>
+            <span className="font-alliance text-xl">{planName}</span>
+            {planDetail && <span className="text-xs text-muted">{planDetail}</span>}
+            {!isManaged && (ent.planTier || price !== "Included" || onDemand > 0) && (
+              <div className="flex flex-wrap items-baseline gap-2 text-sm">
+                <span>{price}</span>
+                {onDemand > 0 && (
+                  <span className="text-xs text-muted">
+                    +{fmtMoney(onDemand, 2)} / mo on-demand
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          <ProductPlansPopover prod={prod} currentTier={ent.planTier} />
+        </div>
         {trialPlanName && (
           <p className="text-xs text-muted">
             Trialing {trialPlanName}
@@ -338,61 +276,62 @@ const ProductOverviewCard = ({
             when the trial ends.
           </p>
         )}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-5 @3xl:grid-cols-4">
-          {!isManaged && (
-            <Metric
-              label="Charge"
-              value={priceLabel(ent)}
-              note={onDemand > 0 ? `+${fmtMoney(onDemand, 2)} / mo on-demand` : undefined}
-            />
-          )}
-          {(ent.dimensions ?? []).map((dim) => (
-            <Metric
-              key={dim.key}
-              label={dim.label}
-              value={dim.used.toLocaleString()}
-              note={meterNote(dim, !isManaged)}
-            />
-          ))}
-        </div>
         {prod.includes && prod.includes.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <span className="text-xs text-accent">Product features</span>
-            <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-foreground">
-              {prod.includes.map((feature) => (
-                <li key={feature}>{feature}</li>
-              ))}
-            </ul>
-          </div>
+          <ul className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm @lg:grid-cols-2">
+            {prod.includes.map((feature) => (
+              <li key={feature} className="flex items-center gap-2">
+                <CheckIcon className="size-3.5 shrink-0 text-success" />
+                {feature}
+              </li>
+            ))}
+          </ul>
         )}
-        {sourceDimensions.length > 0 && (
-          <Accordion type="single" collapsible variant="ghost">
-            <AccordionItem value={prod.id}>
-              <AccordionTrigger
-                className="[&>[data-slot=accordion-chevron]]:order-last"
-                aria-label={`Usage sources for ${prod.name}`}
-              >
-                <span>Usage Sources</span>
-                <div className="min-w-8 flex-1">
-                  <Separator />
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="flex flex-col gap-5 divide-y divide-border [&>section:not(:first-child)]:pt-5">
-                  {sourceDimensions.map((dim) => (
-                    <UsageMeterSources
-                      key={dim.key}
-                      prod={prod}
-                      dim={dim}
-                      orgId={orgId}
-                      scope={scope}
-                      onViewBreakdown={onViewBreakdown}
-                    />
-                  ))}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+        {(ent.dimensions ?? []).length > 0 && (
+          <>
+            <Separator />
+            <div className="grid grid-cols-2 gap-x-6 gap-y-5 @3xl:grid-cols-3">
+              {ent.dimensions?.map((dim) => {
+                const allowance = dimCommitted(dim) ? dim.committed : dim.limit;
+                const overage = dimOnDemandQuantity(dim);
+                const detail = meterNote(dim, !isManaged);
+                return (
+                  <div key={dim.key} className="flex min-w-0 flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5 text-xs text-accent">
+                      {dim.label}
+                      {detail && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <IconButton
+                              size="xs"
+                              variant="ghost-muted"
+                              aria-label={`Limits and pricing for ${dim.label}`}
+                            >
+                              <InfoIcon />
+                            </IconButton>
+                          </TooltipTrigger>
+                          <TooltipContent>{detail}</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-baseline gap-1.5 text-xl font-medium tabular-nums">
+                      {dim.used.toLocaleString()}
+                      {allowance !== null && (
+                        <span className="text-sm font-normal text-muted">
+                          / {allowance.toLocaleString()}
+                          {dimCommitted(dim) ? " committed" : ""}
+                        </span>
+                      )}
+                    </div>
+                    {overage > 0 && (
+                      <span className="text-xs text-warning">
+                        {overage.toLocaleString()} on-demand
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
@@ -441,13 +380,13 @@ const InactiveProductCard = ({
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <p className="text-sm text-muted">
-          {isManaged
-            ? "This product isn't included in your current license. Contact your account manager to enable it."
-            : "This product hasn't been activated for your organization."}
-        </p>
-        {canActivate && hasSelfServePlan && (
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-4 rounded-md bg-container p-4">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <span className="text-xs text-accent">Subscription</span>
+            <span className="font-alliance text-xl">No active plan</span>
+          </div>
+          {(!canActivate || !hasSelfServePlan) && <ProductPlansPopover prod={prod} />}
+          {canActivate && hasSelfServePlan && (
             <Button
               variant="product"
               size="sm"
@@ -458,8 +397,13 @@ const InactiveProductCard = ({
                 ? `Try Free for ${trialPlan.trialDays} Days`
                 : "View Plans"}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
+        <p className="text-sm text-muted">
+          {isManaged
+            ? "This product isn't included in your current license. Contact your account manager to enable it."
+            : "This product hasn't been activated for your organization."}
+        </p>
         {canContactSales && (
           <div>
             <Button variant="outline" size="sm" onClick={() => onContact(prod)}>
@@ -498,8 +442,10 @@ export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode })
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="@container">
-              <div className="grid grid-cols-2 gap-6 @3xl:grid-cols-4">
+            <CardContent className="@container flex flex-col gap-5">
+              <Skeleton className="h-28 w-full rounded-md" />
+              <Separator />
+              <div className="grid grid-cols-2 gap-6 @3xl:grid-cols-3">
                 {SKELETON_PRODUCTS.map((metric) => (
                   <div key={metric} className="flex flex-col gap-2">
                     <Skeleton className="h-3 w-16" />
@@ -535,8 +481,6 @@ export const TabbedOverview = ({
   readOnly,
   canManageBilling,
   orgFilter,
-  orgId,
-  scope,
   onManage,
   onSetCommitment,
   onViewBreakdown,
@@ -561,7 +505,13 @@ export const TabbedOverview = ({
     !readOnly ||
     visible.some((prod) => {
       const ent = entitlements[prod.id];
-      return ent?.entitled && ent.status !== "churned" && breakdownableDimensions(ent).length > 0;
+      const active = ent?.entitled && ent.status !== "churned";
+      return (
+        prod.plans.some((plan) => !plan.deprecated || (active && plan.tier === ent.planTier)) ||
+        (active &&
+          (breakdownableDimensions(ent).length > 0 ||
+            (ent.dimensions ?? []).some((dim) => Boolean(meterNote(dim, !isManaged)))))
+      );
     });
   const hasTabs = showInvoicesTab || showPaymentTab;
   const activeTab =
@@ -621,8 +571,6 @@ export const TabbedOverview = ({
                     readOnly={readOnly}
                     selfServe={overview.selfServe}
                     isManaged={isManaged}
-                    orgId={orgId}
-                    scope={scope}
                     onManage={onManage}
                     onSetCommitment={onSetCommitment}
                     onViewBreakdown={onViewBreakdown}

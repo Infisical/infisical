@@ -225,8 +225,6 @@ export const BillingV2Page = () => {
               onUpgrade={onUpgrade}
               onSetCommitment={onSetCommitment}
               onViewBreakdown={onViewBreakdown}
-              breakdownOrgId={selectedOrgId}
-              breakdownScope={showOrgFilter ? breakdownScope : "organization"}
               rootOrgs={rootOrgs}
               rootOrgCount={orgPage?.totalCount ?? rootOrgCount}
               isRootOrgsLoading={isOrgSearchPending}

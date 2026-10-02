@@ -2,12 +2,7 @@ import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
-import {
-  BillingV2BreakdownScopeKind,
-  BillingV2CatalogProduct,
-  BillingV2Organization,
-  BillingV2Overview
-} from "@app/hooks/api";
+import { BillingV2CatalogProduct, BillingV2Organization, BillingV2Overview } from "@app/hooks/api";
 
 import { BillingV2RenderState } from "../billing-v2-view-types";
 import { ErrorPanel } from "./states/ErrorPanel";
@@ -24,8 +19,6 @@ export type OverviewProps = {
   onUpgrade: (productId: string) => void;
   onSetCommitment: (productId: string) => void;
   onViewBreakdown: (productId: string, dimensionKey?: string) => void;
-  breakdownOrgId: string;
-  breakdownScope: BillingV2BreakdownScopeKind;
   rootOrgs: BillingV2Organization[];
   rootOrgCount: number;
   isRootOrgsLoading: boolean;
@@ -50,8 +43,6 @@ export const Overview = ({
   onUpgrade,
   onSetCommitment,
   onViewBreakdown,
-  breakdownOrgId,
-  breakdownScope,
   rootOrgs,
   rootOrgCount,
   isRootOrgsLoading,
@@ -148,8 +139,6 @@ export const Overview = ({
         readOnly={productsReadOnly}
         canManageBilling={canManageBilling}
         orgFilter={orgFilter}
-        orgId={breakdownOrgId}
-        scope={breakdownScope}
         onManage={onUpgrade}
         onSetCommitment={onSetCommitment}
         onViewBreakdown={onViewBreakdown}
