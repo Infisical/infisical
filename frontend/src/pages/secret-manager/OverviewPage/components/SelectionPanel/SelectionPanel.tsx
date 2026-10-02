@@ -331,9 +331,18 @@ export const SelectionPanel = ({
   const areFoldersSelected = Boolean(Object.keys(selectedEntries[EntryType.FOLDER]).length);
   const areRotationsSelected = selectedRotationCount > 0;
 
-  const hasMovableSelection =
-    selectedKeysCount > 0 || selectedRotationCount > 0 || selectedFolderCount > 0;
-  const shouldShowMove = shouldShowDelete && hasMovableSelection;
+  const canMoveSelectedFolders = Object.values(selectedEntries[EntryType.FOLDER]).some(
+    (folderRecord) =>
+      Object.keys(folderRecord).some((environment) =>
+        permission.can(
+          ProjectPermissionActions.Delete,
+          subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
+        )
+      )
+  );
+  const shouldShowMove =
+    (shouldShowDelete && (selectedKeysCount > 0 || selectedRotationCount > 0)) ||
+    canMoveSelectedFolders;
 
   const isMoveDisabled = isHoneyTokenSelected;
   let moveDisabledReason = "";
