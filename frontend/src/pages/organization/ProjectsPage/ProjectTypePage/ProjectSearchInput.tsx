@@ -1,6 +1,7 @@
 import { FocusEvent, KeyboardEvent, useRef, useState } from "react";
-import { SearchIcon, ShieldAlertIcon } from "lucide-react";
+import { KeyIcon, SearchIcon } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { SecretValueSearchSheet } from "@app/components/secrets/SecretValueSearchSheet";
 import {
   InputGroup,
@@ -11,6 +12,7 @@ import {
   PopoverTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { useSubscription } from "@app/context";
 import { useSlashFocusSearch } from "@app/hooks";
 
 type Props = {
@@ -26,6 +28,8 @@ export const ProjectSearchInput = ({ orgId, value, onChange, canSearchByValue }:
   const [isFocused, setIsFocused] = useState(false);
   const [isOptionHighlighted, setIsOptionHighlighted] = useState(false);
   const [isValueSearchOpen, setIsValueSearchOpen] = useState(false);
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  const { subscription } = useSubscription();
   useSlashFocusSearch(inputRef);
 
   const close = () => {
@@ -36,7 +40,9 @@ export const ProjectSearchInput = ({ orgId, value, onChange, canSearchByValue }:
   const openValueSearch = () => {
     close();
     inputRef.current?.blur();
-    setIsValueSearchOpen(true);
+    // Value search is part of secret insights, so a plan without it gets the upgrade prompt.
+    if (subscription?.secretAccessInsights) setIsValueSearchOpen(true);
+    else setIsUpgradeOpen(true);
   };
 
   const input = (
@@ -113,8 +119,8 @@ export const ProjectSearchInput = ({ orgId, value, onChange, canSearchByValue }:
             }}
             onClick={openValueSearch}
           >
-            <ShieldAlertIcon className="size-4 shrink-0 text-muted" />
-            <span className="truncate">Search by secret value</span>
+            <KeyIcon className="size-4 shrink-0 text-muted" />
+            <span className="truncate">Locate secrets by value</span>
           </button>
         </PopoverContent>
       </Popover>
@@ -122,6 +128,12 @@ export const ProjectSearchInput = ({ orgId, value, onChange, canSearchByValue }:
         orgId={orgId}
         isOpen={isValueSearchOpen}
         onOpenChange={setIsValueSearchOpen}
+      />
+      <UpgradePlanModal
+        paywallKey="organization.secret-insights"
+        isOpen={isUpgradeOpen}
+        onOpenChange={setIsUpgradeOpen}
+        text="Your current plan does not include access to secret insights. To unlock this feature, please upgrade your Infisical plan."
       />
     </>
   );

@@ -24,10 +24,14 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { useDelayedLoading } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
-import { useSearchSecretsByValue } from "@app/hooks/api/secretInsights";
+import {
+  TSearchSecretsByValueResponse,
+  useSearchSecretsByValue
+} from "@app/hooks/api/secretInsights";
 
-import { GoToSecretFolderButton } from "./GoToSecretFolderButton";
+import { GoToSecretButton } from "./GoToSecretButton";
 import { SecretValueTrackingPrompt, useOrgSecretValueTracking } from "./SecretValueTrackingGate";
 
 // Mirrors SECRET_VALUE_SEARCH_LIMIT on the server, which truncates without saying so.
@@ -43,6 +47,11 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
   const [value, setValue] = useState("");
   const [isRevealed, setIsRevealed] = useState(false);
   const search = useSearchSecretsByValue();
+  // Held in state rather than read off the mutation, so the last answer stays on screen while a
+  // repeat search runs instead of blanking out and back.
+  const [matches, setMatches] = useState<TSearchSecretsByValueResponse["secrets"] | null>(null);
+  // Most searches return well under the delay, so the skeleton only shows for a slow one.
+  const isSearchSlow = useDelayedLoading(search.isPending, { delay: 300, minDuration: 500 });
   const { data: memberProjects } = useGetUserProjects();
   const memberProjectIds = useMemo(
     () => new Set(memberProjects?.map((project) => project.id)),
@@ -51,11 +60,12 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
 
   const tracking = useOrgSecretValueTracking({ orgId, enabled: true });
 
-  if (!tracking.isTrackingOn) {
+  if (!tracking.isReady) {
     return (
       <div className="p-4">
         <SecretValueTrackingPrompt
           tracking={tracking}
+          featureName="secret value search"
           description="Enable secret value search to find every project, environment and path where a value is used."
         />
       </div>
@@ -65,16 +75,14 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
   // Each search is an audited event, so it runs on submit rather than on every keystroke.
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!value) return;
-    search.mutate({ secretValue: value });
+    if (!value || search.isPending) return;
+    search.mutate({ secretValue: value }, { onSuccess: (data) => setMatches(data.secrets) });
   };
 
-  const matches = search.data?.secrets ?? [];
-
   const renderResults = () => {
-    if (search.isPending) return <Skeleton className="h-[240px] w-full" />;
+    if (isSearchSlow) return <Skeleton className="h-[240px] w-full" />;
 
-    if (!search.data) {
+    if (!matches) {
       return (
         <Empty variant="unstyled">
           <EmptyHeader>
@@ -147,9 +155,10 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
                     </div>
                   </TableCell>
                   <TableCell variant="action">
-                    <GoToSecretFolderButton
+                    <GoToSecretButton
                       orgId={orgId}
                       projectId={match.projectId}
+                      secretKey={match.key}
                       secretPath={match.secretPath}
                       environmentSlug={match.environment.slug}
                       isProjectMember={memberProjectIds.has(match.projectId)}
@@ -183,7 +192,8 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
             onChange={(e) => {
               setValue(e.target.value);
               // Results belong to the value that was searched, not the one now in the box.
-              if (search.data) search.reset();
+              setMatches(null);
+              search.reset();
             }}
             onKeyDown={(e) => {
               // A textarea would otherwise take Enter as a newline rather than a search.
@@ -202,7 +212,7 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
             {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
           </IconButton>
         </div>
-        <Button type="submit" variant="org" isDisabled={!value} isPending={search.isPending}>
+        <Button type="submit" variant="org" isDisabled={!value} isPending={isSearchSlow}>
           Search
         </Button>
       </form>
@@ -215,7 +225,7 @@ export const SecretValueSearchSheet = ({ orgId, isOpen, onOpenChange }: Props) =
   <Sheet open={isOpen} onOpenChange={onOpenChange}>
     <SheetContent size="workspace" className="flex flex-col overflow-hidden">
       <SheetHeader>
-        <SheetTitle>Search by Secret Value</SheetTitle>
+        <SheetTitle>Locate Secrets by Value</SheetTitle>
         <SheetDescription>
           Find every project, environment and path where a secret value is used. Only the full value
           matches, exactly as stored: partial values and values differing in whitespace are not

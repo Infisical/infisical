@@ -79,11 +79,12 @@ export const DuplicatedSecretsCard = ({ isPlanRestricted }: Props) => {
       );
     }
 
-    if (!tracking.isTrackingOn) {
+    if (!tracking.isReady) {
       return (
         <SecretValueTrackingPrompt
           tracking={tracking}
-          description="Enable secret value search to find secrets that share a value across the organization."
+          featureName="duplicate secret detection"
+          description="Enable duplicate secret detection to find secrets that share a value across the organization."
         />
       );
     }

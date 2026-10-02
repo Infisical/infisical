@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useParams } from "@tanstack/react-router";
 import { FolderIcon, KeyIcon, LayersIcon, LockIcon } from "lucide-react";
 
-import { GoToSecretFolderButton } from "@app/components/secrets/GoToSecretFolderButton";
+import { GoToSecretButton } from "@app/components/secrets/GoToSecretButton";
 import {
   Accordion,
   AccordionContent,
@@ -107,9 +107,10 @@ export const DuplicateGroupList = ({ groups }: Props) => {
                         </div>
                       </TableCell>
                       <TableCell variant="action">
-                        <GoToSecretFolderButton
+                        <GoToSecretButton
                           orgId={orgId as string}
                           projectId={entry.projectId}
+                          secretKey={entry.key}
                           secretPath={entry.secretPath}
                           environmentSlug={entry.environment.slug}
                           isProjectMember={memberProjectIds.has(entry.projectId)}

@@ -9,6 +9,7 @@ import {
   EmptyTitle,
   Skeleton
 } from "@app/components/v3";
+import { useDelayedLoading } from "@app/hooks";
 import {
   TGetOrgSecretValueTrackingStatusResponse,
   useEnableOrgSecretValueTracking,
@@ -17,7 +18,10 @@ import {
 
 type TOrgSecretValueTracking = {
   isLoading: boolean;
+  isLoadingVisible: boolean;
   isTrackingOn: boolean;
+  // Tracking is on and no loading state is still being held on screen.
+  isReady: boolean;
   status?: TGetOrgSecretValueTrackingStatusResponse;
   isEnablePending: boolean;
   enable: () => void;
@@ -34,11 +38,18 @@ export const useOrgSecretValueTracking = ({
 }): TOrgSecretValueTracking => {
   const enableTracking = useEnableOrgSecretValueTracking();
   const { data: status, isPending } = useGetOrgSecretValueTrackingStatus(orgId, { enabled });
+  const isLoading = enabled && isPending;
+  // The status usually comes back before the sheet or card finishes rendering, so the skeleton
+  // only appears on a slow request, and then stays long enough not to flash.
+  const isLoadingVisible = useDelayedLoading(isLoading, { delay: 300, minDuration: 500 });
+  // The status route reports completed whenever the org flag is set, so this is the durable answer.
+  const isTrackingOn = status?.status === "completed";
 
   return {
-    isLoading: enabled && isPending,
-    // The status route reports completed whenever the org flag is set, so this is the durable answer.
-    isTrackingOn: status?.status === "completed",
+    isLoading,
+    isLoadingVisible,
+    isTrackingOn,
+    isReady: isTrackingOn && !isLoadingVisible,
     status,
     isEnablePending: enableTracking.isPending,
     enable: () => enableTracking.mutate({ orgId })
@@ -46,24 +57,28 @@ export const useOrgSecretValueTracking = ({
 };
 
 // Renders whatever stands between the caller and a finished index. Callers render their own
-// content once `tracking.isTrackingOn` is true.
+// content once `tracking.isReady` is true.
 export const SecretValueTrackingPrompt = ({
   tracking,
+  featureName,
   description
 }: {
   tracking: TOrgSecretValueTracking;
+  // Lowercase, as it reads mid-sentence (eg "duplicate secret detection").
+  featureName: string;
   description: string;
 }) => {
-  const { status, isLoading, isEnablePending, enable } = tracking;
+  const { status, isLoading, isLoadingVisible, isEnablePending, enable } = tracking;
 
-  if (isLoading) return <Skeleton className="h-[200px] w-full" />;
+  if (isLoadingVisible) return <Skeleton className="h-[200px] w-full" />;
+  if (isLoading) return null;
 
   if (status?.status === "failed" && !isEnablePending) {
     return (
       <div className="flex h-[200px] flex-col items-center justify-center gap-3">
         <AlertTriangleIcon className="size-6 text-danger" />
         <p className="text-sm text-danger">
-          Could not enable secret value search: {status.message ?? "Unknown error"}
+          Could not enable {featureName}: {status.message ?? "Unknown error"}
         </p>
         <Button variant="outline" onClick={enable}>
           Retry
@@ -78,11 +93,11 @@ export const SecretValueTrackingPrompt = ({
         <Loader2Icon className="size-6 animate-spin text-org" />
         <p className="text-sm text-foreground">
           {status?.projectsTotal
-            ? `Enabling secret value search: ${status.projectsDone} of ${status.projectsTotal} projects ready`
-            : "Enabling secret value search"}
+            ? `Enabling ${featureName}: ${status.projectsDone} of ${status.projectsTotal} projects ready`
+            : `Enabling ${featureName}`}
         </p>
         <p className="max-w-md text-sm text-muted">
-          You can leave this page. Search is ready here when this finishes.
+          You can leave this page. This finishes in the background.
         </p>
       </div>
     );
@@ -91,11 +106,14 @@ export const SecretValueTrackingPrompt = ({
   return (
     <Empty className="border">
       <EmptyHeader>
-        <EmptyTitle>Secret value search is not enabled</EmptyTitle>
+        <EmptyTitle>
+          {featureName.charAt(0).toUpperCase()}
+          {featureName.slice(1)} is not enabled
+        </EmptyTitle>
         <EmptyDescription>{description}</EmptyDescription>
         <EmptyContent>
           <Button variant="org" size="xs" onClick={enable}>
-            Enable Secret Value Search
+            Enable
           </Button>
         </EmptyContent>
       </EmptyHeader>

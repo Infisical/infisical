@@ -38,8 +38,8 @@ export const useSearchSecretsByValue = () =>
   useMutation<TSearchSecretsByValueResponse, object, { secretValue: string }>({
     mutationFn: async ({ secretValue }) => {
       const { data } = await apiRequest.post<TSearchSecretsByValueResponse>(
-        "/api/v4/secrets/search-by-value",
-        { secretValue, scope: "organization" }
+        "/api/v1/insights/secrets/search-by-value",
+        { secretValue }
       );
       return data;
     }

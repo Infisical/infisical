@@ -15,6 +15,7 @@ const overviewRoute =
 type Props = {
   orgId: string;
   projectId: string;
+  secretKey: string;
   secretPath: string;
   environmentSlug: string;
   isProjectMember: boolean;
@@ -23,9 +24,10 @@ type Props = {
 
 // Org-wide value results include projects the user is not a member of, and the project overview
 // cannot load for them, so the link is disabled rather than sending them to a failing page.
-export const GoToSecretFolderButton = ({
+export const GoToSecretButton = ({
   orgId,
   projectId,
+  secretKey,
   secretPath,
   environmentSlug,
   isProjectMember,
@@ -42,14 +44,14 @@ export const GoToSecretFolderButton = ({
             <IconButton
               variant="ghost"
               size="sm"
-              aria-label="Go to secret folder"
+              aria-label="Go to secret"
               isDisabled={!isProjectMember}
               onClick={() => {
                 onNavigate?.();
                 navigate({
                   to: overviewRoute,
                   params: { orgId, projectId },
-                  search: { secretPath, environments: [environmentSlug] }
+                  search: { secretPath, environments: [environmentSlug], search: secretKey }
                 });
               }}
             >
@@ -58,7 +60,7 @@ export const GoToSecretFolderButton = ({
           </span>
         </TooltipTrigger>
         <TooltipContent>
-          {isProjectMember ? "Go to secret folder" : "You don't have access to this project"}
+          {isProjectMember ? "Go to secret" : "You don't have access to this project"}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
