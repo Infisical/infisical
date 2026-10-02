@@ -297,6 +297,30 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     return policy;
   };
 
+  const $assertNoConflictingPolicy = async (
+    {
+      envs,
+      secretPath,
+      excludePolicyId
+    }: { envs: { id: string; slug: string }[]; secretPath: string; excludePolicyId?: string },
+    tx?: Knex
+  ) => {
+    for (const env of envs) {
+      if (
+        // eslint-disable-next-line no-await-in-loop
+        await secretAccessApprovalPolicyExists(
+          { envId: env.id, secretPath, excludePolicyId },
+          { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL },
+          tx
+        )
+      ) {
+        throw new BadRequestError({
+          message: `A policy for secret path '${secretPath}' already exists in environment '${env.slug}'`
+        });
+      }
+    }
+  };
+
   const createAccessApprovalPolicy = async ({
     name,
     actor,
@@ -341,24 +365,12 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
       throw new NotFoundError({ message: `One or more environments not found: ${notFoundEnvs.join(", ")}` });
     }
 
-    for (const env of envs) {
-      if (
-        // eslint-disable-next-line no-await-in-loop
-        await secretAccessApprovalPolicyExists(
-          { envId: env.id, secretPath },
-          { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }
-        )
-      ) {
-        throw new BadRequestError({
-          message: `A policy for secret path '${secretPath}' already exists in environment '${env.slug}'`
-        });
-      }
-    }
-
     const scope = { projectId: project.id, orgId: project.orgId };
     const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope);
     const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope);
     const steps = $buildSteps({ approverUserIds, groupApprovers, approvalsRequired });
+
+    await $assertNoConflictingPolicy({ envs, secretPath });
 
     const policy = await approvalPolicyDAL.transaction(async (tx) => {
       const doc = await approvalPolicyDAL.create(
@@ -462,20 +474,6 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
       (envs.length !== currentEnvSlugs.size || envs.some((env) => !currentEnvSlugs.has(env.slug)));
     const scopeChanged = nextSecretPath !== policy.secretPath || environmentsChanged;
 
-    for (const env of envs) {
-      if (
-        // eslint-disable-next-line no-await-in-loop
-        await secretAccessApprovalPolicyExists(
-          { envId: env.id, secretPath: nextSecretPath, excludePolicyId: policy.id },
-          { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }
-        )
-      ) {
-        throw new BadRequestError({
-          message: `A policy for secret path '${nextSecretPath}' already exists in environment '${env.slug}'`
-        });
-      }
-    }
-
     const scope = { projectId: policy.projectId, orgId: actorOrgId };
     const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope);
     const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope);
@@ -505,6 +503,9 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
       await $insertStepsAndBypassers({ policyId: policy.id, steps, bypasserUserIds, groupBypassers }, tx);
 
       if (scopeChanged) {
+        await approvalPolicySecretEnvironmentDAL.findByPolicyIdForUpdate(policy.id, tx);
+        // make sure that the updated secret path is not conflicting with any other policy
+        await $assertNoConflictingPolicy({ envs, secretPath: nextSecretPath, excludePolicyId: policy.id }, tx);
         await approvalPolicySecretEnvironmentDAL.delete({ policyId: policy.id }, tx);
         await approvalPolicySecretEnvironmentDAL.insertMany(
           envs.map((env) => ({ policyId: policy.id, envId: env.id, secretPath: nextSecretPath })),

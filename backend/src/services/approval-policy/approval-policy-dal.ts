@@ -593,5 +593,13 @@ export const approvalPolicySecretEnvironmentDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findPolicyByEnvIdsAndSecretPath };
+  const findByPolicyIdForUpdate = async (policyId: string, tx: Knex) => {
+    try {
+      return await tx(TableName.ApprovalPolicySecretEnvironment).forUpdate().where({ policyId }).orderBy("id", "asc");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find approval policy secret environments by policy id for update" });
+    }
+  };
+
+  return { ...orm, findPolicyByEnvIdsAndSecretPath, findByPolicyIdForUpdate };
 };

@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -14,16 +16,23 @@ type TSecretAccessApprovalPolicyExistsDep = {
 
 export const secretAccessApprovalPolicyExists = async (
   { envId, secretPath, excludePolicyId }: { envId: string; secretPath: string; excludePolicyId?: string },
-  { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }: TSecretAccessApprovalPolicyExistsDep
+  { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }: TSecretAccessApprovalPolicyExistsDep,
+  tx?: Knex
 ) => {
-  const legacyPolicy = await accessApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({ envIds: [envId], secretPath });
+  const legacyPolicy = await accessApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath(
+    { envIds: [envId], secretPath },
+    tx
+  );
   if (legacyPolicy && legacyPolicy.id !== excludePolicyId) return true;
 
-  const policy = await approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdsAndSecretPath({
-    envIds: [envId],
-    secretPath,
-    excludePolicyId
-  });
+  const policy = await approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdsAndSecretPath(
+    {
+      envIds: [envId],
+      secretPath,
+      excludePolicyId
+    },
+    tx
+  );
   return Boolean(policy);
 };
 
