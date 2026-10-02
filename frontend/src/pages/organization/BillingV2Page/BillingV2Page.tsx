@@ -195,12 +195,19 @@ export const BillingV2Page = () => {
         returnPath: window.location.pathname
       },
       {
-        onSuccess: ({ outcome, redirectUrl }) => {
-          if (outcome === "payment_action_required") {
-            setTrialApproval({ orgId: orgIdAtRequest, url: redirectUrl });
+        onSuccess: (result) => {
+          if (result.outcome === "upgraded") {
+            createNotification({
+              type: "success",
+              text: "Payment confirmed. It may take a moment for your plan to update here."
+            });
             return;
           }
-          window.location.href = redirectUrl;
+          if (result.outcome === "payment_action_required") {
+            setTrialApproval({ orgId: orgIdAtRequest, url: result.redirectUrl });
+            return;
+          }
+          window.location.href = result.redirectUrl;
         }
       }
     );

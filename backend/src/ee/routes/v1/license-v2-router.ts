@@ -788,13 +788,13 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "confirmBillingTrialPayment",
       description:
-        "Get the page where the customer approves a trial conversion charge their bank is holding (for example 3D Secure): a Stripe Checkout for a trial on the free tier, or the invoice of the held change for an upgrade trial. The trial converts once it is paid.",
+        "Get the page where the customer approves a trial conversion charge their bank is holding (for example 3D Secure): a Stripe Checkout for a trial on the free tier, or the invoice of the held change for an upgrade trial. The trial converts once it is paid. Returns 'upgraded' with no redirect when the charge went through without needing approval.",
       params: z.object({ organizationId: z.string().trim().uuid() }),
       body: z.object({ returnPath: ReturnPathSchema }),
       response: {
         200: z.object({
-          outcome: z.enum(["checkout_created", "payment_action_required"]),
-          redirectUrl: z.string()
+          outcome: z.enum(["checkout_created", "payment_action_required", "upgraded"]),
+          redirectUrl: z.string().optional()
         })
       }
     },

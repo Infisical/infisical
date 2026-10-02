@@ -494,7 +494,8 @@ const httpUrlSchema = z
 // no_trial_awaiting_payment when nothing is waiting.
 const confirmTrialPaymentResultSchema = z.discriminatedUnion("outcome", [
   z.object({ outcome: z.literal("checkout_created"), checkoutUrl: httpUrlSchema }).passthrough(),
-  z.object({ outcome: z.literal("payment_action_required"), paymentUrl: httpUrlSchema }).passthrough()
+  z.object({ outcome: z.literal("payment_action_required"), paymentUrl: httpUrlSchema }).passthrough(),
+  z.object({ outcome: z.literal("upgraded") }).passthrough()
 ]);
 export type TConfirmTrialPaymentResult = z.infer<typeof confirmTrialPaymentResultSchema>;
 export { confirmTrialPaymentResultSchema };

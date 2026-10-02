@@ -372,10 +372,9 @@ export type TConfirmBillingV2TrialPaymentDTO = {
   returnPath?: string;
 };
 
-export type BillingV2ConfirmTrialPaymentResult = {
-  outcome: "checkout_created" | "payment_action_required";
-  redirectUrl: string;
-};
+export type BillingV2ConfirmTrialPaymentResult =
+  | { outcome: "checkout_created" | "payment_action_required"; redirectUrl: string }
+  | { outcome: "upgraded" };
 
 // License-server machine codes the billing UI branches on (read from the error's details.code).
 export const BillingV2ErrorCode = {

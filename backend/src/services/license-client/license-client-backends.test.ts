@@ -119,6 +119,16 @@ describe("licenseServerBackend confirmTrialPayment", () => {
       })
     ).rejects.toThrow();
   });
+
+  test("accepts an upgrade trial that converted without needing approval", async () => {
+    vi.stubGlobal("fetch", mockFetchReturning({ outcome: "upgraded" }));
+
+    const result = await licenseServerBackend(SERVER_URL, "key").confirmTrialPayment(ORG_ID, {
+      returnUrl: "https://app.infisical.com/organizations/org-1/billing"
+    });
+
+    expect(result.outcome).toBe("upgraded");
+  });
 });
 
 describe("licenseServerBackend payment_action_required", () => {

@@ -203,6 +203,11 @@ export const useConfirmBillingV2TrialPayment = () => {
 
       return data;
     },
+    onSuccess: (data, { orgId }) => {
+      if (data.outcome === "upgraded") {
+        invalidateBillingV2(queryClient, orgId);
+      }
+    },
     onError: (error, { orgId }) => {
       if (
         axios.isAxiosError<{ details?: { code?: string } }>(error) &&

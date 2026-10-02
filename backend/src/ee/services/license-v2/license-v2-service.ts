@@ -1463,6 +1463,10 @@ export const licenseV2ServiceFactory = ({
       const { paymentUrl } = await paymentActionRequired(orgId, result.paymentUrl);
       return { outcome: result.outcome, redirectUrl: paymentUrl };
     }
+    if (result.outcome === "upgraded") {
+      await licenseClient.markEntitlementsStale(orgId);
+      return { outcome: result.outcome };
+    }
     await licenseClient.markEntitlementsStale(orgId, { checkout: true });
     return { outcome: result.outcome, redirectUrl: result.checkoutUrl };
   };
