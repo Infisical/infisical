@@ -149,6 +149,27 @@ describe("Access approval request lifecycle on the global system", () => {
     expect(legacyRows).toHaveLength(0);
   });
 
+  test("A privilege granted through an approval request cannot be edited", async () => {
+    const db = getDb();
+    const { requestId } = await createApprovedTemporaryRequest("/lifecycle-edit-guard");
+
+    const grant = await db(TableName.ApprovalRequestGrants).where({ requestId }).first();
+    const privilege = await db(TableName.AdditionalPrivilege).where({ grantId: grant?.id }).first();
+    expect(privilege).toBeDefined();
+
+    const res = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v1/user-project-additional-privilege/${privilege?.id}`,
+      headers: authHeaders(),
+      body: { isTemporary: false }
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toBe("Cannot update a privilege that was granted through an access approval request");
+
+    const privilegeAfter = await db(TableName.AdditionalPrivilege).where({ id: privilege?.id }).first();
+    expect(privilegeAfter?.isTemporary).toBe(true);
+  });
+
   test("Revoking an approved request revokes the grant and deletes the privilege", async () => {
     const db = getDb();
     const { requestId } = await createApprovedTemporaryRequest("/lifecycle-revoke");
@@ -414,6 +435,21 @@ describe("Access approval request lifecycle on the global system", () => {
 
     const request = await getDb()(TableName.ApprovalRequests).where({ id: requestId }).first();
     expect(request?.status).toBe("pending");
+  });
+
+  test("Approval stands when a brace policy still covers the requested path", async () => {
+    const secretPath = "/apps/blue";
+    const { policy, requestId } = await openPendingRequest(secretPath);
+
+    await getDb()(TableName.ApprovalPolicySecretEnvironment)
+      .where({ policyId: policy.id })
+      .update({ secretPath: "/apps/{blue,green}" });
+
+    const approveRes = await reviewAccessRequest(requestId, { status: "approved" });
+    expect(approveRes.statusCode).toBe(200);
+
+    const request = await getDb()(TableName.ApprovalRequests).where({ id: requestId }).first();
+    expect(request?.status).toBe("approved");
   });
 
   test("Approval stands when a broader policy path still contains the requested glob", async () => {
