@@ -1,4 +1,11 @@
-import { Modal, ModalContent } from "@app/components/v2";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  PageLoader
+} from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
@@ -62,13 +69,19 @@ export const CertificateCertModal = ({ popUp, handlePopUpToggle, applicationId }
     | undefined = bundleData ?? bodyData;
 
   return (
-    <Modal
-      isOpen={popUp?.certificateCert?.isOpen}
+    <Dialog
+      open={popUp?.certificateCert?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("certificateCert", isOpen);
       }}
     >
-      <ModalContent title="Export Certificate">
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Export Certificate</DialogTitle>
+          <DialogDescription>
+            Copy or download the certificate and its key material.
+          </DialogDescription>
+        </DialogHeader>
         {data ? (
           <CertificateContent
             serialNumber={data.serialNumber}
@@ -77,9 +90,11 @@ export const CertificateCertModal = ({ popUp, handlePopUpToggle, applicationId }
             privateKey={data.privateKey || undefined}
           />
         ) : (
-          <div />
+          <div className="py-8">
+            <PageLoader />
+          </div>
         )}
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

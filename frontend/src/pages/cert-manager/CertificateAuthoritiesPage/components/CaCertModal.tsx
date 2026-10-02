@@ -1,4 +1,11 @@
-import { Modal, ModalContent } from "@app/components/v2";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  PageLoader
+} from "@app/components/v3";
 import { useGetCaCert } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -12,13 +19,17 @@ type Props = {
 export const CaCertModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data } = useGetCaCert((popUp?.caCert?.data as { caId: string })?.caId || "");
   return (
-    <Modal
-      isOpen={popUp?.caCert?.isOpen}
+    <Dialog
+      open={popUp?.caCert?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("caCert", isOpen);
       }}
     >
-      <ModalContent title="CA Certificate">
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>CA Certificate</DialogTitle>
+          <DialogDescription>Copy or download the CA certificate and its chain.</DialogDescription>
+        </DialogHeader>
         {data ? (
           <CertificateContent
             serialNumber={data.serialNumber}
@@ -26,9 +37,11 @@ export const CaCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             certificateChain={data.certificateChain}
           />
         ) : (
-          <div />
+          <div className="py-8">
+            <PageLoader />
+          </div>
         )}
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };
