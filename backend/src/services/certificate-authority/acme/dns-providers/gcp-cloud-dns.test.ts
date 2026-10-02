@@ -28,13 +28,13 @@ const ZONE_URL = `https://dns.googleapis.com/dns/v1/${ZONE}`;
 const RECORD = "_acme-challenge.example.com";
 const FQDN = `${RECORD}.`;
 
-const axiosError = (status: number, message = `status ${status}`) =>
+const axiosError = (status: number, message = `status ${status}`, extra: Record<string, unknown> = {}) =>
   new AxiosError("request failed", String(status), undefined, undefined, {
     status,
     statusText: "",
     headers: {},
     config: { headers: new AxiosHeaders() },
-    data: { error: { message } }
+    data: { error: { message, ...extra } }
   });
 
 const existingRecordSet = (rrdatas: string[]) => ({ data: { name: FQDN, type: "TXT", ttl: 60, rrdatas } });
@@ -150,6 +150,26 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
 
     await expect(gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"')).rejects.toThrow(
       "The Cloud DNS API is not enabled on GCP project 'my-project'"
+    );
+  });
+
+  it("detects a disabled API from Google's error reason, whatever the message says", async () => {
+    getMock.mockRejectedValueOnce(
+      axiosError(403, "Cloud DNS API is disabled.", {
+        details: [{ "@type": "type.googleapis.com/google.rpc.ErrorInfo", reason: "SERVICE_DISABLED" }]
+      })
+    );
+
+    await expect(gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"')).rejects.toThrow(
+      "The Cloud DNS API is not enabled on GCP project 'my-project'"
+    );
+  });
+
+  it("does not treat other disabled resources as a disabled API", async () => {
+    getMock.mockRejectedValueOnce(axiosError(403, "The billing account for the project is disabled."));
+
+    await expect(gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"')).rejects.toThrow(
+      "Grant it the DNS Administrator role"
     );
   });
 

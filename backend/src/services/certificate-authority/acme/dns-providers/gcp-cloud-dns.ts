@@ -39,14 +39,27 @@ const toFqdn = (recordName: string) => (recordName.endsWith(".") ? recordName : 
 
 const normalizeTxtValue = (value: string) => value.replace(QUOTES_REGEX, "");
 
+type TGoogleApiErrorBody = {
+  error?: {
+    message?: string;
+    errors?: { reason?: string }[];
+    details?: { "@type"?: string; reason?: string }[];
+  };
+};
+
+const isServiceDisabledError = (body: TGoogleApiErrorBody | undefined, message: string) =>
+  Boolean(body?.error?.details?.some((detail) => detail.reason === "SERVICE_DISABLED")) ||
+  Boolean(body?.error?.errors?.some((err) => err.reason === "accessNotConfigured")) ||
+  message.includes("has not been used in project");
+
 const toGcpDnsError = (error: unknown, hostedZoneId: string) => {
   if (isAxiosError(error)) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const message = (error.response?.data?.error?.message || error.message || "Unknown error") as string;
+    const body = error.response?.data as TGoogleApiErrorBody | undefined;
+    const message = body?.error?.message || error.message || "Unknown error";
 
     if (error.response?.status === 403) {
       const [, gcpProjectId, , zoneName] = hostedZoneId.split("/");
-      if (message.includes("has not been used in project")) {
+      if (isServiceDisabledError(body, message)) {
         return new Error(
           `The Cloud DNS API is not enabled on GCP project '${gcpProjectId}'. Enable dns.googleapis.com in the Google Cloud console and try again.`
         );
