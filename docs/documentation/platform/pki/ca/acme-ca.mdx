@@ -142,7 +142,9 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
             <Tab title="Google Cloud DNS">
                 1. In **Certificate Manager**, go to **Settings → App Connections** and create a new GCP connection. The service account's ID must end with the first two sections of your Infisical organization ID, as described in [Configure service account for Infisical](/integrations/app-connections/gcp#configure-service-account-for-infisical).
 
-                2. On the Google Cloud project that holds your public managed zone, grant the connection's service account the **DNS Administrator** (`roles/dns.admin`) and **Service Usage Viewer** (`roles/serviceusage.serviceUsageViewer`) roles, and enable the APIs Infisical calls:
+                2. On the Google Cloud project that holds your public managed zone, grant the connection's service account the **DNS Administrator** (`roles/dns.admin`) and **Service Usage Viewer** (`roles/serviceusage.serviceUsageViewer`) roles.
+
+                3. Enable the Google Cloud APIs that Infisical uses on that same project:
 
                 ```bash
                 gcloud services enable \
@@ -152,7 +154,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
                     --project=PROJECT_ID
                 ```
 
-                Infisical lists only projects with the Cloud DNS API enabled, and only public managed zones, because the ACME CA can't resolve records in a private zone.
+                When you register the CA, the **GCP Project** list shows only projects with the Cloud DNS API enabled. The **Zone** list shows only public managed zones, since an ACME CA can't look up records in a private zone.
 
                 For detailed instructions on setting up a GCP connection, see the [GCP Connection](/integrations/app-connections/gcp) documentation.
             </Tab>
