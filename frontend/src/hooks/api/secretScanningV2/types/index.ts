@@ -10,7 +10,6 @@ import {
   SecretScanningFindingSeverity,
   SecretScanningFindingStatus,
   SecretScanningScanStatus,
-  SecretScanningScanTrigger,
   SecretScanningScanType
 } from "../enums";
 import { TBitbucketDataSource, TBitbucketDataSourceOption } from "./bitbucket-data-source";
@@ -111,7 +110,6 @@ export type TSecretScanningScanWithDetails = {
   createdAt: string;
   resourceId: string;
   type: SecretScanningScanType;
-  trigger: SecretScanningScanTrigger;
   triggeredByUserId?: string | null;
   startedAt?: string | null;
   completedAt?: string | null;
@@ -146,7 +144,7 @@ export type TSecretScanningFinding = {
   dataSourceId: string;
   dataSourceName: string;
   dataSourceType: SecretScanningDataSource;
-  ruleKey: string;
+  rule: string;
   severity: SecretScanningFindingSeverity;
   confidence?: SecretScanningFindingConfidence | null;
   status: SecretScanningFindingStatus;

@@ -238,7 +238,7 @@ export const GitHubSecretScanningFactory = () => {
       details: toFindingDetails(finding),
       fingerprint: finding.Fingerprint,
       severity: SecretScanningFindingSeverity.High,
-      ruleKey: finding.RuleID
+      rule: finding.RuleID
     }));
   };
 

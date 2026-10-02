@@ -241,7 +241,7 @@ export type TSecretScanningFactory<
 
 export type TFindingsPayload = Pick<
   TSecretScanningFindingsInsert,
-  "details" | "fingerprint" | "severity" | "ruleKey"
+  "details" | "fingerprint" | "severity" | "rule"
 >[];
 export type TGetFindingsPayload = Promise<TFindingsPayload>;
 

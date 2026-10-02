@@ -9,7 +9,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const SecretScanningFindingsSchema = z.object({
   id: z.string().uuid(),
-  ruleKey: z.string(),
+  rule: z.string(),
   severity: z.string(),
   status: z.string().default("unresolved"),
   triageComment: z.string().nullable().optional(),

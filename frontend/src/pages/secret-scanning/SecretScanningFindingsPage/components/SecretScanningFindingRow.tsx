@@ -50,7 +50,7 @@ export const SecretScanningFindingRow = ({
     dataSourceType,
     createdAt,
     dataSourceName,
-    ruleKey,
+    rule,
     status,
     details,
     triageComment
@@ -123,7 +123,7 @@ export const SecretScanningFindingRow = ({
             <p className="truncate text-xs text-muted">{dataSourceName}</p>
           </div>
         </Td>
-        <Td className="whitespace-nowrap">{ruleKey}</Td>
+        <Td className="whitespace-nowrap">{rule}</Td>
         <Td className="whitespace-nowrap">
           <Tooltip position="left" content={triageComment}>
             <Badge variant={SECRET_SCANNING_FINDING_STATUS_MAP[status].variant}>

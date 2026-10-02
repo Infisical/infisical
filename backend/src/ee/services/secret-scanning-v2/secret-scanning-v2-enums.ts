@@ -16,11 +16,6 @@ export enum SecretScanningScanType {
   Realtime = "realtime"
 }
 
-export enum SecretScanningScanTrigger {
-  Manual = "manual",
-  Push = "push"
-}
-
 export enum SecretScanningFindingStatus {
   Resolved = "resolved",
   Unresolved = "unresolved",

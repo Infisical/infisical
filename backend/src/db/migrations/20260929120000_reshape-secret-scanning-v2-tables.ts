@@ -4,19 +4,12 @@ import { TableName } from "../schemas";
 
 const SCAN_STARTED_AT_LEGACY_INDEX = "secret_scanning_scans_scanning_started_at_index";
 const SCAN_STARTED_AT_INDEX = "secret_scanning_scans_started_at_index";
-const SCAN_TRIGGERED_BY_INDEX = "secret_scanning_scans_triggered_by_user_id_index";
-const DATA_SOURCE_CONNECTION_ID_INDEX = "secret_scanning_data_sources_connectionid_index";
-const FINDING_TRIAGED_BY_INDEX = "secret_scanning_findings_triaged_by_user_id_index";
+
+// Indexes on these tables are built concurrently in the next migration, outside this transaction.
 
 export async function up(knex: Knex): Promise<void> {
   // Scan workers write to these tables continuously; fail the deploy fast rather than queue behind them.
   await knex.raw("SET LOCAL lock_timeout = '10s'");
-
-  await knex.raw(`CREATE INDEX IF NOT EXISTS ?? ON ?? (??)`, [
-    DATA_SOURCE_CONNECTION_ID_INDEX,
-    TableName.SecretScanningDataSource,
-    "connectionId"
-  ]);
 
   if (await knex.schema.hasColumn(TableName.SecretScanningResource, "type")) {
     await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
@@ -29,30 +22,18 @@ export async function up(knex: Knex): Promise<void> {
       t.renameColumn("scanningStartedAt", "startedAt");
     });
     await knex.schema.alterTable(TableName.SecretScanningScan, (t) => {
-      t.string("trigger").nullable();
       t.uuid("triggeredByUserId").nullable();
       t.foreign("triggeredByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
       t.timestamp("completedAt").nullable();
-      t.index("resourceId");
     });
     await knex.raw(`ALTER INDEX IF EXISTS ?? RENAME TO ??`, [SCAN_STARTED_AT_LEGACY_INDEX, SCAN_STARTED_AT_INDEX]);
-    await knex.raw(`CREATE INDEX ?? ON ?? ("triggeredByUserId") WHERE "triggeredByUserId" IS NOT NULL`, [
-      SCAN_TRIGGERED_BY_INDEX,
-      TableName.SecretScanningScan
-    ]);
 
-    // Every existing full scan was started by someone creating a source or pressing scan, so they count as
-    // manual; diff scans only ever came from a push webhook. SET expressions all read the pre-update row.
-    await knex.raw(
-      `UPDATE ?? SET
-         type = CASE type WHEN 'full-scan' THEN 'historical' WHEN 'diff-scan' THEN 'realtime' ELSE type END,
-         "trigger" = CASE type WHEN 'diff-scan' THEN 'push' ELSE 'manual' END,
-         "createdAt" = COALESCE("createdAt", "startedAt", "progressUpdatedAt", NOW())`,
-      [TableName.SecretScanningScan]
-    );
+    await knex(TableName.SecretScanningScan).whereNull("createdAt").delete();
+
+    await knex(TableName.SecretScanningScan).where({ type: "full-scan" }).update({ type: "historical" });
+    await knex(TableName.SecretScanningScan).where({ type: "diff-scan" }).update({ type: "realtime" });
 
     await knex.schema.alterTable(TableName.SecretScanningScan, (t) => {
-      t.string("trigger").notNullable().alter();
       t.timestamp("createdAt").notNullable().defaultTo(knex.fn.now()).alter();
     });
   }
@@ -67,8 +48,8 @@ export async function up(knex: Knex): Promise<void> {
       TableName.SecretScanningScan
     ]);
 
-    // Every finding is inserted with its scan, and a scan only disappears when its resource is deleted
-    // (SET NULL on scanId), so a finding with no resource here belongs to a resource that no longer exists.
+    // Every finding is inserted with its scan, so a finding with no resource here lost its scan (SET NULL on scanId),
+    // either because the scan's resource was deleted or because the scan was dropped above for having no createdAt.
     await knex(TableName.SecretScanningFinding).whereNull("resourceId").delete();
 
     await knex.schema.alterTable(TableName.SecretScanningFinding, (t) => {
@@ -83,11 +64,8 @@ export async function up(knex: Knex): Promise<void> {
 
     await knex.schema.alterTable(TableName.SecretScanningFinding, (t) => {
       t.foreign("resourceId").references("id").inTable(TableName.SecretScanningResource).onDelete("CASCADE");
-      t.unique(["resourceId", "fingerprint"]);
       t.foreign("scanId").references("id").inTable(TableName.SecretScanningScan).onDelete("CASCADE");
-      t.index("scanId");
 
-      t.renameColumn("rule", "ruleKey");
       t.renameColumn("remarks", "triageComment");
     });
 
@@ -105,11 +83,6 @@ export async function up(knex: Knex): Promise<void> {
       t.dropColumn("resourceType");
       t.dropColumn("projectId");
     });
-
-    await knex.raw(`CREATE INDEX ?? ON ?? ("triagedByUserId") WHERE "triagedByUserId" IS NOT NULL`, [
-      FINDING_TRIAGED_BY_INDEX,
-      TableName.SecretScanningFinding
-    ]);
   }
 }
 
@@ -151,12 +124,8 @@ export async function down(knex: Knex): Promise<void> {
       TableName.SecretScanningFinding
     ]);
 
-    await knex.raw(`DROP INDEX IF EXISTS ??`, [FINDING_TRIAGED_BY_INDEX]);
-
     await knex.schema.alterTable(TableName.SecretScanningFinding, (t) => {
-      t.dropUnique(["resourceId", "fingerprint"]);
       t.dropForeign(["scanId"]);
-      t.dropIndex(["scanId"]);
       t.dropForeign(["resourceId"]);
       t.dropForeign(["triagedByUserId"]);
     });
@@ -168,7 +137,6 @@ export async function down(knex: Knex): Promise<void> {
       t.dropColumn("triagedAt");
       t.dropColumn("resolvedAt");
 
-      t.renameColumn("ruleKey", "rule");
       t.renameColumn("triageComment", "remarks");
     });
 
@@ -190,20 +158,15 @@ export async function down(knex: Knex): Promise<void> {
   }
 
   if (await knex.schema.hasColumn(TableName.SecretScanningScan, "startedAt")) {
-    await knex.raw(
-      `UPDATE ?? SET type = CASE type WHEN 'historical' THEN 'full-scan' WHEN 'realtime' THEN 'diff-scan' ELSE type END`,
-      [TableName.SecretScanningScan]
-    );
+    await knex(TableName.SecretScanningScan).where({ type: "historical" }).update({ type: "full-scan" });
+    await knex(TableName.SecretScanningScan).where({ type: "realtime" }).update({ type: "diff-scan" });
 
-    await knex.raw(`DROP INDEX IF EXISTS ??`, [SCAN_TRIGGERED_BY_INDEX]);
     await knex.raw(`ALTER INDEX IF EXISTS ?? RENAME TO ??`, [SCAN_STARTED_AT_INDEX, SCAN_STARTED_AT_LEGACY_INDEX]);
 
     await knex.schema.alterTable(TableName.SecretScanningScan, (t) => {
       t.dropForeign(["triggeredByUserId"]);
-      t.dropIndex(["resourceId"]);
     });
     await knex.schema.alterTable(TableName.SecretScanningScan, (t) => {
-      t.dropColumn("trigger");
       t.dropColumn("triggeredByUserId");
       t.dropColumn("completedAt");
       t.renameColumn("startedAt", "scanningStartedAt");
@@ -226,6 +189,4 @@ export async function down(knex: Knex): Promise<void> {
       t.string("type").notNullable().alter();
     });
   }
-
-  await knex.raw(`DROP INDEX IF EXISTS ??`, [DATA_SOURCE_CONNECTION_ID_INDEX]);
 }

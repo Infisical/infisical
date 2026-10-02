@@ -372,7 +372,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
       details: toFindingDetails(finding),
       fingerprint: finding.Fingerprint,
       severity: SecretScanningFindingSeverity.High,
-      ruleKey: finding.RuleID
+      rule: finding.RuleID
     }));
   };
 

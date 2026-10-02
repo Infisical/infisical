@@ -114,7 +114,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
     () =>
       findings
         .filter((finding) => {
-          const { ruleKey, resourceName, dataSourceType, dataSourceName, status, scanId } = finding;
+          const { rule, resourceName, dataSourceType, dataSourceName, status, scanId } = finding;
 
           if (filters.dataSourceTypes.length && !filters.dataSourceTypes.includes(dataSourceType))
             return false;
@@ -135,7 +135,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
               .includes(searchValue) ||
             resourceName.toLowerCase().includes(searchValue) ||
             dataSourceName.toLowerCase().includes(searchValue) ||
-            ruleKey.toLowerCase().includes(searchValue)
+            rule.toLowerCase().includes(searchValue)
           );
         })
         .sort((a, b) => {
@@ -148,9 +148,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
                 new Date(findingTwo.createdAt).getTime() - new Date(findingOne.createdAt).getTime()
               );
             case FindingsOrderBy.Rule:
-              return findingOne.ruleKey
-                .toLowerCase()
-                .localeCompare(findingTwo.ruleKey.toLowerCase());
+              return findingOne.rule.toLowerCase().localeCompare(findingTwo.rule.toLowerCase());
             case FindingsOrderBy.Status:
               return (
                 getStatusOrderValue(findingOne.status) - getStatusOrderValue(findingTwo.status)

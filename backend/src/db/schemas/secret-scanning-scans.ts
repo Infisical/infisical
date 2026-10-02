@@ -18,7 +18,6 @@ export const SecretScanningScansSchema = z.object({
   lastScannedCommit: z.string().nullable().optional(),
   progressUpdatedAt: z.date().nullable().optional(),
   lastScannedCommitDigest: z.string().nullable().optional(),
-  trigger: z.string(),
   triggeredByUserId: z.string().uuid().nullable().optional(),
   completedAt: z.date().nullable().optional()
 });

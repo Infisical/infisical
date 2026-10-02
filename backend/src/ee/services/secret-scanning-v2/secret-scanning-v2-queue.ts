@@ -36,7 +36,6 @@ import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
 import {
   SecretScanningDataSource,
   SecretScanningScanStatus,
-  SecretScanningScanTrigger,
   SecretScanningScanType
 } from "./secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "./secret-scanning-v2-factory";
@@ -226,7 +225,6 @@ export const secretScanningV2QueueServiceFactory = ({
           resourcesToScan.map((resource) => ({
             resourceId: resource.id,
             type: SecretScanningScanType.Historical,
-            trigger: SecretScanningScanTrigger.Manual,
             triggeredByUserId: triggeredByUserId ?? null
           })),
           tx
@@ -372,7 +370,7 @@ export const secretScanningV2QueueServiceFactory = ({
               ["resourceId", "fingerprint"],
               tx,
               // a no-op merge, so rows already found by an earlier scan are returned with their original scanId
-              ["ruleKey"]
+              ["rule"]
             );
           }
 
@@ -611,8 +609,7 @@ export const secretScanningV2QueueServiceFactory = ({
         const scan = await secretScanningV2DAL.scans.create(
           {
             resourceId: resource.id,
-            type: SecretScanningScanType.Realtime,
-            trigger: SecretScanningScanTrigger.Push
+            type: SecretScanningScanType.Realtime
           },
           tx
         );
@@ -726,7 +723,7 @@ export const secretScanningV2QueueServiceFactory = ({
             })),
             ["resourceId", "fingerprint"],
             tx,
-            ["ruleKey"]
+            ["rule"]
           );
         }
 
