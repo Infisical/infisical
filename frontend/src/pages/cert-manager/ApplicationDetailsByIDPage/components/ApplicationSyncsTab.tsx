@@ -37,10 +37,7 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
     if (!subscription.pkiSyncs) {
       openUpgradeGate({
         intent: CertificateSyncsUpgradeIntent,
-        paywallKey: "cert-manager.application-syncs",
-        isEntitled: (refreshedSubscription) => refreshedSubscription.pkiSyncs,
-        onGranted: () => setIsAddSyncOpen(true),
-        failureMessage: "Failed to refresh your subscription. Try adding a Certificate Sync again."
+        paywallKey: "cert-manager.application-syncs"
       });
       return;
     }

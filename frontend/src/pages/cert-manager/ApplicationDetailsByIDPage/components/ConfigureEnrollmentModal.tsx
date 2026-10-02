@@ -125,10 +125,10 @@ const SectionCard = ({
   className?: string;
 }) => (
   <section
-    className={`border-border bg-foreground/[0.02] rounded-md border ${className ?? ""}`.trim()}
+    className={`rounded-md border border-border bg-foreground/[0.02] ${className ?? ""}`.trim()}
   >
-    <header className="border-border flex items-center justify-between gap-3 border-b px-4 py-2.5">
-      <h3 className="text-foreground text-sm font-semibold">{title}</h3>
+    <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
     </header>
     <div className="space-y-4 px-4 py-4">{children}</div>
@@ -163,7 +163,7 @@ const CopyableField = ({
           </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
-      {helper ? <p className="text-accent mt-1 text-xs">{helper}</p> : null}
+      {helper ? <p className="mt-1 text-xs text-accent">{helper}</p> : null}
     </div>
   );
 };
@@ -311,7 +311,7 @@ const ApiPanel = ({
                 href="https://infisical.com/docs/api-reference/endpoints/certificates/create-certificate"
                 target="_blank"
                 rel="noreferrer"
-                className="text-project font-medium"
+                className="font-medium text-project"
               >
                 View API reference
               </a>
@@ -725,7 +725,7 @@ const AcmePanel = ({
               />
             </>
           ) : (
-            <p className="text-accent text-xs">
+            <p className="text-xs text-accent">
               EAB credentials are hidden by default. Reveal them to copy into your ACME client.
             </p>
           )}
@@ -1038,12 +1038,12 @@ const ScepPanel = ({
           }
         >
           <div className="flex items-center gap-3">
-            <div className="border-border bg-foreground/[0.04] text-accent flex size-9 shrink-0 items-center justify-center rounded-md border">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-foreground/[0.04] text-accent">
               <FileTextIcon />
             </div>
             <div className="flex flex-col">
-              <span className="text-foreground font-mono text-sm">{profileSlug}-ra-cert.pem</span>
-              <span className="text-accent text-xs">
+              <span className="font-mono text-sm text-foreground">{profileSlug}-ra-cert.pem</span>
+              <span className="text-xs text-accent">
                 Expires {raCertExpiresAtLabel ?? "Unknown"}
               </span>
             </div>
@@ -1223,7 +1223,7 @@ const ScepPanel = ({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <FieldLabel>Sign RA certificate with the CA</FieldLabel>
-                <p className="text-accent text-xs">
+                <p className="text-xs text-accent">
                   Issue the SCEP RA certificate from this profile&apos;s CA so clients can build a
                   chain to a CA they already trust. Required by strict clients such as Apple and
                   Microsoft Intune, which reject a self-signed RA. Only available for internal
@@ -1357,7 +1357,7 @@ const MethodDescription = ({ method }: { method: EnrollmentMethod }) => {
       href={METHOD_DOCS[method]}
       target="_blank"
       rel="noopener noreferrer"
-      className="hover:text-foreground underline"
+      className="underline hover:text-foreground"
     >
       {METHOD_LABELS[method]}
     </a>
@@ -1456,12 +1456,7 @@ export const ConfigureEnrollmentModal = ({
 
     openUpgradeGate({
       intent: CertificateEnrollmentUpgradeIntent,
-      paywallKey: `cert-manager.application-enrollment.${method}`,
-      isEntitled: (refreshedSubscription) =>
-        method === "est" ? refreshedSubscription.pkiEst : refreshedSubscription.pkiScep,
-      onGranted: () => handleAdd(method),
-      failureMessage:
-        "Failed to refresh your subscription. Try adding this enrollment method again."
+      paywallKey: `cert-manager.application-enrollment.${method}`
     });
   };
 
@@ -1498,7 +1493,7 @@ export const ConfigureEnrollmentModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="thin-scrollbar max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] thin-scrollbar max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configure enrollment methods for {profile?.profileSlug}</DialogTitle>
           <DialogDescription>
@@ -1507,7 +1502,7 @@ export const ConfigureEnrollmentModal = ({
               href={PkiDocsUrls.applications.enrollment.overview}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-foreground underline"
+              className="underline hover:text-foreground"
             >
               Learn more
             </a>
@@ -1520,7 +1515,7 @@ export const ConfigureEnrollmentModal = ({
           </div>
         ) : (
           <>
-            <div className="border-border flex items-center justify-between gap-2 border-b">
+            <div className="flex items-center justify-between gap-2 border-b border-border">
               {visibleMethods.length > 0 ? (
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
                   <TabList className="border-b-0">
@@ -1528,7 +1523,7 @@ export const ConfigureEnrollmentModal = ({
                       <Tab key={m} value={m}>
                         {METHOD_LABELS[m]}
                         {isUnsaved(m) && (
-                          <span className="text-muted ml-1.5 text-xs">(unsaved)</span>
+                          <span className="ml-1.5 text-xs text-muted">(unsaved)</span>
                         )}
                       </Tab>
                     ))}
@@ -1555,7 +1550,7 @@ export const ConfigureEnrollmentModal = ({
                               {METHOD_LABELS[m]}
                               {isLocked && <Badge variant="info">Enterprise</Badge>}
                             </span>
-                            <span className="text-accent text-xs">
+                            <span className="text-xs text-accent">
                               <MethodDescription method={m} />
                             </span>
                           </div>
@@ -1580,7 +1575,7 @@ export const ConfigureEnrollmentModal = ({
             ) : (
               <>
                 {activeTab && (
-                  <p className="text-accent text-sm">
+                  <p className="text-sm text-accent">
                     <MethodDescription method={activeTab as EnrollmentMethod} />
                   </p>
                 )}

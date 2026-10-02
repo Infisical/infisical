@@ -24,11 +24,7 @@ export const PkiManagerLayout = () => {
 
     openUpgradeGate({
       intent: CertificateManagementUpgradeIntent,
-      paywallKey: "cert-manager.product-access",
-      isEntitled: (refreshedSubscription) => Boolean(refreshedSubscription.certManager),
-      onGranted: () => undefined,
-      failureMessage:
-        "Failed to refresh your subscription. Reload Certificate Management to continue."
+      paywallKey: "cert-manager.product-access"
     });
   }, [isCertManagerGated, openUpgradeGate]);
 

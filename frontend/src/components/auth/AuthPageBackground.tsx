@@ -2,12 +2,7 @@ import { cn } from "@app/components/v3/utils";
 
 /* eslint-disable react/no-array-index-key */
 export const AuthPageBackground = ({ className }: { className?: string }) => (
-  <div
-    className={cn(
-      "pointer-events-none absolute inset-0 overflow-hidden text-white",
-      className
-    )}
-  >
+  <div className={cn("pointer-events-none absolute inset-0 overflow-hidden text-white", className)}>
     <svg
       viewBox="0 0 800 800"
       className="absolute top-1/2 -left-[360px] h-[720px] w-[720px] -translate-y-1/2 opacity-[0.06] xl:-left-[400px] xl:h-[800px] xl:w-[800px]"

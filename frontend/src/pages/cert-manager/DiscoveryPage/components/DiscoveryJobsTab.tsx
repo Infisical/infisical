@@ -85,10 +85,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
     if (!subscription.pkiDiscovery) {
       openUpgradeGate({
         intent: CertificateDiscoveryUpgradeIntent,
-        paywallKey: "cert-manager.discovery-jobs",
-        isEntitled: (refreshedSubscription) => refreshedSubscription.pkiDiscovery,
-        onGranted: () => handlePopUpOpen("createJob"),
-        failureMessage: "Failed to refresh your subscription. Try adding a discovery job again."
+        paywallKey: "cert-manager.discovery-jobs"
       });
       return;
     }
@@ -161,7 +158,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
             <HoverCardTrigger>
               <Tag>+{remainingPorts.length}</Tag>
             </HoverCardTrigger>
-            <HoverCardContent className="border-border-cool bg-surface-raised border p-3">
+            <HoverCardContent className="border border-border-cool bg-surface-raised p-3">
               <div className="flex flex-wrap gap-1">
                 {remainingPorts.map((port) => (
                   <Tag key={port}>{port}</Tag>

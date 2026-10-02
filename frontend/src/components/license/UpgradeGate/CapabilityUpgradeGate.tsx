@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useRouterState } from "@tanstack/react-router";
-import { CircleAlert, Server, Shield } from "lucide-react";
+import { CircleAlert, Server, Shield, Vault } from "lucide-react";
 
 import { Alert, AlertDescription, Button } from "@app/components/v3";
 import {
@@ -19,25 +19,6 @@ type Props = {
   paywallKey: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-};
-
-const PlatformCapabilityUpgradeGate = (props: Props) => {
-  const { permission } = useOrgPermission();
-  const canManageBilling = permission.can(
-    OrgPermissionBillingActions.ManageBilling,
-    OrgPermissionSubjects.Billing
-  );
-  return <CapabilityUpgradeDialog {...props} canManageBilling={canManageBilling} />;
-};
-
-export const CapabilityUpgradeGate = (props: Props) => {
-  if (!props.isOpen) return null;
-
-  return props.intent.scope === "instance" ? (
-    <CapabilityUpgradeDialog {...props} />
-  ) : (
-    <PlatformCapabilityUpgradeGate {...props} />
-  );
 };
 
 const CapabilityUpgradeDialog = ({
@@ -77,6 +58,7 @@ const CapabilityUpgradeDialog = ({
   if (!isOpen) return null;
 
   const isInstance = intent.scope === "instance";
+  const isProduct = intent.scope === "product";
   const openUpgradeDestination = () => {
     if (eventPropertiesRef.current) {
       analytics.captureForOrganization(
@@ -94,16 +76,33 @@ const CapabilityUpgradeDialog = ({
     window.location.assign(getCapabilityUpgradeUrl(intent, currentOrg));
   };
 
+  let scopeIcon = <Shield className="size-10 text-muted" />;
+  if (isInstance) scopeIcon = <Server className="size-10 text-muted" />;
+  else if (isProduct) scopeIcon = <Vault className="size-10 text-muted" />;
+
+  let actionLabel = isSubOrganization ? "Continue to Root Billing" : "View Plans";
+  if (isInstance) actionLabel = "Contact Sales";
+
+  let billingDescription =
+    "This capability is shared across products. Review your billing options to find a subscription that includes it.";
+  if (isInstance) {
+    billingDescription =
+      "This capability is licensed for the entire instance, not an individual product. Contact our team to discuss your deployment.";
+  } else if (isSubOrganization) {
+    billingDescription =
+      "Sub-organizations share the root organization's subscription. Review available options in root billing.";
+  } else if (!canManageBilling) {
+    billingDescription =
+      "Ask an organization member with billing management permission to update the subscription.";
+  } else if (isProduct) {
+    billingDescription =
+      "Review your billing options to find a subscription that includes this capability.";
+  }
+
   return (
     <UpgradeDialogLayout
-      scopeName={isInstance ? "Infisical Instance" : "Infisical Platform"}
-      icon={
-        isInstance ? (
-          <Server className="size-10 text-muted" />
-        ) : (
-          <Shield className="size-10 text-muted" />
-        )
-      }
+      scopeName={isInstance ? "Infisical Instance" : (intent.productName ?? "Infisical Platform")}
+      icon={scopeIcon}
       title={intent.title}
       description={
         isInstance
@@ -113,23 +112,34 @@ const CapabilityUpgradeDialog = ({
       onOpenChange={onOpenChange}
       footer={
         <Button data-upgrade-cta variant="org" className="w-full" onClick={openUpgradeDestination}>
-          {isInstance ? "Contact Sales" : isSubOrganization ? "Continue to Root Billing" : "View Plans"}
+          {actionLabel}
         </Button>
       }
     >
       <p className="text-sm text-foreground">{intent.description}</p>
       <Alert variant="info">
         <CircleAlert />
-        <AlertDescription>
-          {isInstance
-            ? "This capability is licensed for the entire instance, not an individual product. Contact our team to discuss your deployment."
-            : isSubOrganization
-              ? "Sub-organizations share the root organization's subscription. Review available options in root billing."
-              : !canManageBilling
-                ? "Ask an organization member with billing management permission to update the subscription."
-                : "This capability is shared across products. Review your billing options to find a subscription that includes it."}
-        </AlertDescription>
+        <AlertDescription>{billingDescription}</AlertDescription>
       </Alert>
     </UpgradeDialogLayout>
+  );
+};
+
+const PlatformCapabilityUpgradeGate = (props: Props) => {
+  const { permission } = useOrgPermission();
+  const canManageBilling = permission.can(
+    OrgPermissionBillingActions.ManageBilling,
+    OrgPermissionSubjects.Billing
+  );
+  return <CapabilityUpgradeDialog {...props} canManageBilling={canManageBilling} />;
+};
+
+export const CapabilityUpgradeGate = ({ isOpen, intent, ...props }: Props) => {
+  if (!isOpen) return null;
+
+  return intent.scope === "instance" ? (
+    <CapabilityUpgradeDialog {...props} isOpen={isOpen} intent={intent} />
+  ) : (
+    <PlatformCapabilityUpgradeGate {...props} isOpen={isOpen} intent={intent} />
   );
 };

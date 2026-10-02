@@ -62,58 +62,58 @@ export const SubjectAltNamesField = ({
 
   return (
     <>
-    <Controller
-      control={control}
-      name={namePrefix}
-      shouldUnregister={shouldUnregister}
-      render={({ field: { onChange, value } }) => {
-        const currentValues: SubjectAltName[] = value || [];
-        const isAtSanLimit =
-          typeof maxSansPerCertificate === "number" &&
-          currentValues.length >= maxSansPerCertificate;
-        return (
-          <Field className="mb-4">
-            <FieldLabel>Subject Alternative Names (SANs)</FieldLabel>
-            <div className="space-y-3">
-              {currentValues.map((san, index) => {
-                const policy = policyRows?.[index];
-                const isBlockedWildcard = areWildcardsUnavailable && san.value?.includes("*");
-                const rowError =
-                  rowErrors?.[index] ??
-                  (isBlockedWildcard
-                    ? "Wildcard certificates are not available on your plan."
-                    : undefined) ??
-                  (revealPolicyErrors ? policy?.error : undefined);
+      <Controller
+        control={control}
+        name={namePrefix}
+        shouldUnregister={shouldUnregister}
+        render={({ field: { onChange, value } }) => {
+          const currentValues: SubjectAltName[] = value || [];
+          const isAtSanLimit =
+            typeof maxSansPerCertificate === "number" &&
+            currentValues.length >= maxSansPerCertificate;
+          return (
+            <Field className="mb-4">
+              <FieldLabel>Subject Alternative Names (SANs)</FieldLabel>
+              <div className="space-y-3">
+                {currentValues.map((san, index) => {
+                  const policy = policyRows?.[index];
+                  const isBlockedWildcard = areWildcardsUnavailable && san.value?.includes("*");
+                  const rowError =
+                    rowErrors?.[index] ??
+                    (isBlockedWildcard
+                      ? "Wildcard certificates are not available on your plan."
+                      : undefined) ??
+                    (revealPolicyErrors ? policy?.error : undefined);
 
-                return (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <div key={`subject-alt-name-${index}`} className="flex items-start gap-2">
-                    <Select
-                      value={san.type}
-                      onValueChange={(newType) => {
-                        const newValue = [...currentValues];
-                        newValue[index] = {
-                          ...san,
-                          type: newType as CertSubjectAlternativeNameType
-                        };
-                        onChange(newValue);
-                      }}
-                    >
-                      <SelectTrigger className="w-32" disabled={policy?.isLocked}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        {allowedSanTypes.map((sanType) => (
-                          <SelectItem key={sanType} value={sanType}>
-                            {sanTypeLabels[sanType]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="min-w-0 flex-1">
-                      <Input
-                        value={san.value}
-                        onChange={(e) => {
+                  return (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <div key={`subject-alt-name-${index}`} className="flex items-start gap-2">
+                      <Select
+                        value={san.type}
+                        onValueChange={(newType) => {
+                          const newValue = [...currentValues];
+                          newValue[index] = {
+                            ...san,
+                            type: newType as CertSubjectAlternativeNameType
+                          };
+                          onChange(newValue);
+                        }}
+                      >
+                        <SelectTrigger className="w-32" disabled={policy?.isLocked}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {allowedSanTypes.map((sanType) => (
+                            <SelectItem key={sanType} value={sanType}>
+                              {sanTypeLabels[sanType]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="min-w-0 flex-1">
+                        <Input
+                          value={san.value}
+                          onChange={(e) => {
                             const nextSanValue = e.target.value;
                             if (
                               areWildcardsUnavailable &&
@@ -122,87 +122,71 @@ export const SubjectAltNamesField = ({
                             ) {
                               openUpgradeGate({
                                 intent: CertificateIssuanceLimitsUpgradeIntent,
-                                paywallKey: "cert-manager.certificate-wildcards",
-                                isEntitled: (refreshedSubscription) =>
-                                  refreshedSubscription.maxWildcardCertificates !== 0,
-                                onGranted: () => {
-                                  const newValue = [...currentValues];
-                                  newValue[index] = { ...san, value: nextSanValue };
-                                  onChange(newValue);
-                                },
-                                failureMessage:
-                                  "Failed to refresh your subscription. Try adding a wildcard name again."
+                                paywallKey: "cert-manager.certificate-wildcards"
                               });
                               return;
                             }
-                          const newValue = [...currentValues];
+                            const newValue = [...currentValues];
                             newValue[index] = { ...san, value: nextSanValue };
-                          onChange(newValue);
-                        }}
-                        placeholder={getSanPlaceholder(san.type)}
-                        isError={Boolean(rowError)}
-                        className="w-full"
-                      />
-                      {rowError && <PolicyRowMessage isError lines={[rowError]} />}
-                      {!rowError && policy?.hint && <PolicyRowMessage lines={policy.hint} />}
+                            onChange(newValue);
+                          }}
+                          placeholder={getSanPlaceholder(san.type)}
+                          isError={Boolean(rowError)}
+                          className="w-full"
+                        />
+                        {rowError && <PolicyRowMessage isError lines={[rowError]} />}
+                        {!rowError && policy?.hint && <PolicyRowMessage lines={policy.hint} />}
+                      </div>
+                      {policy?.isLocked ? (
+                        <span className="w-9 shrink-0" />
+                      ) : (
+                        <IconButton
+                          type="button"
+                          variant="ghost"
+                          aria-label="Remove entry"
+                          onClick={() => onChange(currentValues.filter((_, i) => i !== index))}
+                        >
+                          <Trash2 />
+                        </IconButton>
+                      )}
                     </div>
-                    {policy?.isLocked ? (
-                      <span className="w-9 shrink-0" />
-                    ) : (
-                      <IconButton
-                        type="button"
-                        variant="ghost"
-                        aria-label="Remove entry"
-                        onClick={() => onChange(currentValues.filter((_, i) => i !== index))}
-                      >
-                        <Trash2 />
-                      </IconButton>
-                    )}
-                  </div>
-                );
-              })}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const defaultType =
-                    allowedSanTypes.length > 0
-                      ? allowedSanTypes[0]
-                      : CertSubjectAlternativeNameType.DNS_NAME;
+                  );
+                })}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const defaultType =
+                      allowedSanTypes.length > 0
+                        ? allowedSanTypes[0]
+                        : CertSubjectAlternativeNameType.DNS_NAME;
                     if (isAtSanLimit) {
                       openUpgradeGate({
                         intent: CertificateIssuanceLimitsUpgradeIntent,
-                        paywallKey: "cert-manager.certificate-san-limit",
-                        isEntitled: (refreshedSubscription) =>
-                          refreshedSubscription.maxSansPerCertificate === null ||
-                          currentValues.length < refreshedSubscription.maxSansPerCertificate,
-                        onGranted: () =>
-                          onChange([...currentValues, { type: defaultType, value: "" }]),
-                        failureMessage:
-                          "Failed to refresh your subscription. Try adding a subject alternative name again."
+                        paywallKey: "cert-manager.certificate-san-limit"
                       });
                       return;
                     }
-                  onChange([...currentValues, { type: defaultType, value: "" }]);
-                }}
-              >
-                <Plus className="size-4" /> Add SAN
-              </Button>
-            </div>
-            {isAtSanLimit && (
-              <PolicyRowMessage
-                lines={[
-                  `Your plan allows up to ${maxSansPerCertificate} subject alternative names per certificate.`
-                ]}
-              />
-            )}
-            {error && <FieldError>{error}</FieldError>}
-            {revealPolicyErrors && <PolicyNoticeList notices={policyNotices ?? []} />}
-          </Field>
-        );
-      }}
-    />
+                    onChange([...currentValues, { type: defaultType, value: "" }]);
+                  }}
+                >
+                  <Plus className="size-4" /> Add SAN
+                </Button>
+              </div>
+              {isAtSanLimit && (
+                <PolicyRowMessage
+                  lines={[
+                    `Your plan allows up to ${maxSansPerCertificate} subject alternative names per certificate.`
+                  ]}
+                />
+              )}
+              {error && <FieldError>{error}</FieldError>}
+              {revealPolicyErrors && <PolicyNoticeList notices={policyNotices ?? []} />}
+            </Field>
+          );
+        }}
+      />
       {upgradeGate}
     </>
   );

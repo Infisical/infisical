@@ -59,11 +59,7 @@ export const ProductSettingsPage = () => {
     if (state && !subscription?.crossProjectSecretSharing) {
       openUpgradeGate({
         intent: CrossProjectSecretSharingUpgradeIntent,
-        paywallKey: "organization.product-settings",
-        isEntitled: (refreshedSubscription) => refreshedSubscription.crossProjectSecretSharing,
-        onGranted: () => undefined,
-        failureMessage:
-          "Failed to refresh your subscription. Try enabling cross-project secret sharing again."
+        paywallKey: "organization.product-settings"
       });
       return;
     }

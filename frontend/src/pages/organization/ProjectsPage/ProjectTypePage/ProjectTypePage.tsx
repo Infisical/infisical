@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
@@ -372,11 +372,16 @@ const ProjectTypeContent = ({
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
         projectType={projectType}
       />
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.project-type"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You have reached the maximum number of projects allowed on your current plan. Upgrade to Infisical Pro plan to add more projects."
+        intent={{
+          ...ProjectLimitUpgradeIntent,
+          description:
+            "You have reached the maximum number of projects allowed on your current plan. Upgrade to Infisical Pro plan to add more projects.",
+          isEnterpriseFeature: false
+        }}
       />
     </div>
   );

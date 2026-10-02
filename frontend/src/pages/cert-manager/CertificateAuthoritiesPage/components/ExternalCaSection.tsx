@@ -51,12 +51,7 @@ export const ExternalCaSection = () => {
     if (isAtCaLimit) {
       openUpgradeGate({
         intent: CertificateAuthoritiesUpgradeIntent,
-        paywallKey: "cert-manager.external-ca",
-        isEntitled: (refreshedSubscription) =>
-          refreshedSubscription.maxCas === null || caLimit.used < refreshedSubscription.maxCas,
-        onGranted: () => handlePopUpOpen("ca"),
-        failureMessage:
-          "Failed to refresh your subscription. Try creating an external certificate authority again."
+        paywallKey: "cert-manager.external-ca"
       });
       return;
     }

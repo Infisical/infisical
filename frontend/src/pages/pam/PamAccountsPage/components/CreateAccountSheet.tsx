@@ -251,10 +251,7 @@ export const CreateAccountSheet = ({
     if (isEnterpriseAccount && subscription.enterprisePamAccount === false) {
       openUpgradeGate({
         intent: EnterprisePamAccountsUpgradeIntent,
-        paywallKey: "pam.enterprise-account",
-        isEntitled: (refreshedSubscription) => Boolean(refreshedSubscription.enterprisePamAccount),
-        onGranted: () => setStep(2),
-        failureMessage: "Failed to refresh your subscription. Try adding this PAM account again."
+        paywallKey: "pam.enterprise-account"
       });
       return;
     }
@@ -328,18 +325,9 @@ export const CreateAccountSheet = ({
           const serverMessage = (error as { response?: { data?: { message?: string } } }).response
             ?.data?.message;
           if (serverMessage?.includes("plan limit reached")) {
-            const previousLimit = subscription.maxPamAccounts;
             openUpgradeGate({
               intent: PamAccountLimitUpgradeIntent,
-              paywallKey: "pam.account-limit",
-              isEntitled: (refreshedSubscription) =>
-                refreshedSubscription.maxPamAccounts === null ||
-                (typeof previousLimit === "number" &&
-                  typeof refreshedSubscription.maxPamAccounts === "number" &&
-                  refreshedSubscription.maxPamAccounts > previousLimit),
-              onGranted: () => onSubmit(values),
-              failureMessage:
-                "Failed to refresh your subscription. Try adding this PAM account again."
+              paywallKey: "pam.account-limit"
             });
             return;
           }

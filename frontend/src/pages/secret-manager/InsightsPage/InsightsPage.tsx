@@ -51,10 +51,7 @@ export const InsightsPage = withProjectPermission(
       if (subscription && !subscription.secretAccessInsights) {
         openUpgradeGate({
           intent: SecretAccessInsightsUpgradeIntent,
-          paywallKey: "secret-manager.insights",
-          isEntitled: (refreshedSubscription) => refreshedSubscription.secretAccessInsights,
-          onGranted: () => undefined,
-          failureMessage: "Failed to refresh your subscription. Try opening secret insights again."
+          paywallKey: "secret-manager.insights"
         });
       }
     }, [openUpgradeGate, subscription]);

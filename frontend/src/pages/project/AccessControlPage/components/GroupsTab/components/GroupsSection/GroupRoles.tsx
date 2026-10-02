@@ -5,7 +5,7 @@ import { CheckIcon, ClockAlertIcon, ClockIcon, EditIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
@@ -384,12 +384,16 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
           Save
         </Button>
       </div>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="project.group-roles"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
-        text="Assigning custom roles to groups can be unlocked if you upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          description:
+            "Assigning custom roles to groups can be unlocked if you upgrade to Infisical Enterprise plan.",
+          isEnterpriseFeature: true
+        }}
       />
     </form>
   );

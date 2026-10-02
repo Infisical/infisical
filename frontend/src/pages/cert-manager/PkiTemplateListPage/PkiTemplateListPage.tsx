@@ -228,15 +228,7 @@ export const PkiTemplateListPage = () => {
                                           if (!subscription.pkiEst) {
                                             openUpgradeGate({
                                               intent: CertificateEnrollmentUpgradeIntent,
-                                              paywallKey: "cert-manager.pki-template-list",
-                                              isEntitled: (refreshedSubscription) =>
-                                                refreshedSubscription.pkiEst,
-                                              onGranted: () =>
-                                                handlePopUpOpen("enrollmentOptions", {
-                                                  id: template.id
-                                                }),
-                                              failureMessage:
-                                                "Failed to refresh your subscription. Try managing enrollment again."
+                                              paywallKey: "cert-manager.pki-template-list"
                                             });
                                             return;
                                           }

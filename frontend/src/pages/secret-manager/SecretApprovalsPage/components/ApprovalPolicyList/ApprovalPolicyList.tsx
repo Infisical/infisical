@@ -339,11 +339,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                       if (subscription && !subscription?.secretApproval) {
                         openUpgradeGate({
                           intent: SecretApprovalPoliciesUpgradeIntent,
-                          paywallKey: "secret-manager.approval-policy-list",
-                          isEntitled: (refreshedSubscription) => refreshedSubscription.secretApproval,
-                          onGranted: () => handlePopUpOpen("policyForm"),
-                          failureMessage:
-                            "Failed to refresh your subscription. Try adding an approval policy again."
+                          paywallKey: "secret-manager.approval-policy-list"
                         });
                         return;
                       }

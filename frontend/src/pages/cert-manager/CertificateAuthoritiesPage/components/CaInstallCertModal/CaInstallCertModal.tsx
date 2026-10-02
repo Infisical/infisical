@@ -131,18 +131,18 @@ const RadioCard = ({
     {icon}
     <div className="flex-1">
       <div className="flex items-center gap-2">
-        <span className="text-foreground text-sm font-medium">{name}</span>
+        <span className="text-sm font-medium text-foreground">{name}</span>
         {badge && <Badge variant="neutral">{badge}</Badge>}
         {isLocked && <Badge variant="info">Enterprise</Badge>}
       </div>
-      <p className="text-muted mt-0.5 text-xs">{description}</p>
+      <p className="mt-0.5 text-xs text-muted">{description}</p>
     </div>
     <div
       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-        isSelected ? "bg-project/30 border-none" : "border-border-strong"
+        isSelected ? "border-none bg-project/30" : "border-border-strong"
       }`}
     >
-      {isSelected && <div className="bg-label h-2 w-2 rounded-full" />}
+      {isSelected && <div className="h-2 w-2 rounded-full bg-label" />}
     </div>
   </button>
 );
@@ -195,14 +195,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
 
     openUpgradeGate({
       intent: ExternalCertificateAuthoritiesUpgradeIntent,
-      paywallKey: "cert-manager.intermediate-ca-signing",
-      isEntitled: (refreshedSubscription) =>
-        method === SigningMethod.Manual
-          ? refreshedSubscription.pkiExternalIntermediateCa
-          : refreshedSubscription.pkiEnterpriseCaIntegrations,
-      onGranted: () => setSelectedMethod(method),
-      failureMessage:
-        "Failed to refresh your subscription. Try selecting this signing method again."
+      paywallKey: "cert-manager.intermediate-ca-signing"
     });
   };
 
@@ -243,8 +236,8 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             isLocked={lockedMethods[option.value]}
             onClick={() => handleSelectMethod(option.value)}
             icon={
-              <div className="bg-surface-active flex h-10 w-10 shrink-0 items-center justify-center rounded-md">
-                <option.icon className="text-label h-5 w-5" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active">
+                <option.icon className="h-5 w-5 text-label" />
               </div>
             }
             name={option.name}
@@ -283,7 +276,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <img
                   src={integration.image}
                   alt={`${integration.name} logo`}
-                  className="bg-surface-recessed h-8 w-8 rounded-md object-contain p-1"
+                  className="h-8 w-8 rounded-md bg-surface-recessed object-contain p-1"
                 />
               ) : undefined
             }
@@ -326,30 +319,30 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             <img
               src={displayImage}
               alt={`${displayName} logo`}
-              className="bg-surface-recessed mt-0.5 h-8 w-8 shrink-0 rounded-md object-contain p-1"
+              className="mt-0.5 h-8 w-8 shrink-0 rounded-md bg-surface-recessed object-contain p-1"
             />
           ) : (
             DisplayIcon && (
-              <div className="bg-surface-recessed mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
-                <DisplayIcon className="text-label h-4 w-4" />
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-recessed">
+                <DisplayIcon className="h-4 w-4 text-label" />
               </div>
             )
           )}
           <div className="flex-1">
             <div className="flex items-center">
-              <span className="text-foreground flex-1 text-sm font-medium">{displayName}</span>
+              <span className="flex-1 text-sm font-medium text-foreground">{displayName}</span>
               <button
                 type="button"
-                className="text-muted hover:text-label shrink-0 text-xs underline underline-offset-2"
+                className="shrink-0 text-xs text-muted underline underline-offset-2 hover:text-label"
                 onClick={resetState}
               >
                 Change method
               </button>
             </div>
-            <p className="text-muted mt-0.5 text-xs">{displayDesc}</p>
+            <p className="mt-0.5 text-xs text-muted">{displayDesc}</p>
           </div>
         </div>
-        <hr className="border-border-control -mx-6 mb-4" />
+        <hr className="-mx-6 mb-4 border-border-control" />
         {renderForm()}
       </>
     );
@@ -361,7 +354,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
         <div>
           <button
             type="button"
-            className="text-muted hover:text-label mb-2 flex items-center gap-1 text-xs"
+            className="mb-2 flex items-center gap-1 text-xs text-muted hover:text-label"
             onClick={goBackToMethodSelection}
           >
             <ArrowLeftIcon className="h-3 w-3" />
@@ -388,24 +381,24 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   return (
     <>
-    <Modal
-      isOpen={popUp?.installCaCert?.isOpen}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) resetState();
-        handlePopUpToggle("installCaCert", isOpen);
-      }}
-    >
-      <ModalContent
-        title={getTitle()}
-        className="max-w-lg"
-        bodyClassName={needsOverflowVisible ? "overflow-visible" : undefined}
-        subTitle={getSubTitle()}
+      <Modal
+        isOpen={popUp?.installCaCert?.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) resetState();
+          handlePopUpToggle("installCaCert", isOpen);
+        }}
       >
-        {step === Step.ChooseMethod && renderMethodSelection()}
-        {step === Step.ChooseIntegration && renderIntegrationSelection()}
-        {step === Step.Form && renderFormStep()}
-      </ModalContent>
-    </Modal>
+        <ModalContent
+          title={getTitle()}
+          className="max-w-lg"
+          bodyClassName={needsOverflowVisible ? "overflow-visible" : undefined}
+          subTitle={getSubTitle()}
+        >
+          {step === Step.ChooseMethod && renderMethodSelection()}
+          {step === Step.ChooseIntegration && renderIntegrationSelection()}
+          {step === Step.Form && renderFormStep()}
+        </ModalContent>
+      </Modal>
       {upgradeGate}
     </>
   );

@@ -79,10 +79,7 @@ export const SecretSyncSelect = ({ onSelect, onEnterpriseUpgrade }: Props) => {
       }
       openUpgradeGate({
         intent: EnterpriseSecretSyncsUpgradeIntent,
-        paywallKey: "secret-manager.secret-sync-provider",
-        isEntitled: (refreshedSubscription) => refreshedSubscription.enterpriseSecretSyncs,
-        onGranted: () => onSelect(option.destination),
-        failureMessage: "Failed to refresh your subscription. Try choosing that Secret Sync again."
+        paywallKey: "secret-manager.secret-sync-provider"
       });
       return;
     }

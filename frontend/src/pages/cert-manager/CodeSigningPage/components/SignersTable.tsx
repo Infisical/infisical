@@ -65,10 +65,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
     if (!subscription.pkiCodeSigning) {
       openUpgradeGate({
         intent: CodeSigningUpgradeIntent,
-        paywallKey: "cert-manager.signers",
-        isEntitled: (refreshedSubscription) => refreshedSubscription.pkiCodeSigning,
-        onGranted: onCreateSigner,
-        failureMessage: "Failed to refresh your subscription. Try creating a signer again."
+        paywallKey: "cert-manager.signers"
       });
       return;
     }
@@ -143,7 +140,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                 signers.map((signer) => (
                   <TableRow
                     key={signer.id}
-                    className="hover:bg-surface-hover cursor-pointer"
+                    className="cursor-pointer hover:bg-surface-hover"
                     onClick={() =>
                       navigate({
                         to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
@@ -168,7 +165,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                               </Badge>
                               {signer.status === SignerStatus.Pending && (
                                 <AlertTriangleIcon
-                                  className="text-warning size-3.5 shrink-0"
+                                  className="size-3.5 shrink-0 text-warning"
                                   aria-hidden
                                 />
                               )}
@@ -180,7 +177,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                             className="max-w-[320px] text-pretty break-words"
                           >
                             {signer.status === SignerStatus.Pending && (
-                              <span className="text-muted mb-0.5 block text-[10px] uppercase tracking-wide">
+                              <span className="mb-0.5 block text-[10px] tracking-wide text-muted uppercase">
                                 Last attempt failed, retrying
                               </span>
                             )}

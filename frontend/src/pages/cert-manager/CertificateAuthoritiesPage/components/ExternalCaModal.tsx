@@ -196,10 +196,10 @@ const CaTypeCard = ({
     <button
       type="button"
       onClick={onClick}
-      className="border-border bg-card hover:border-border-strong hover:bg-surface-hover/50 group flex cursor-pointer flex-col gap-3 rounded-md border p-4 text-left transition-colors"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover/50"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="bg-surface-hover flex h-9 w-9 items-center justify-center rounded-md">
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
           {option.image ? (
             <ProviderIcon
               icon={option.image}
@@ -207,20 +207,20 @@ const CaTypeCard = ({
               className="h-6 w-6 object-contain"
             />
           ) : (
-            Icon && <Icon className="text-foreground h-5 w-5" />
+            Icon && <Icon className="h-5 w-5 text-foreground" />
           )}
         </div>
         {isLocked ? (
           <Badge variant="info">Enterprise</Badge>
         ) : (
-          <span className="text-muted text-[10px] font-medium uppercase tracking-wider">
+          <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
             {option.category}
           </span>
         )}
       </div>
       <div className="flex flex-col gap-1">
-        <p className="text-foreground text-sm font-semibold">{option.name}</p>
-        <p className="text-muted text-xs leading-relaxed">{option.description}</p>
+        <p className="text-sm font-semibold text-foreground">{option.name}</p>
+        <p className="text-xs leading-relaxed text-muted">{option.description}</p>
       </div>
     </button>
   );
@@ -362,14 +362,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (isCaTypeLocked(type)) {
       openUpgradeGate({
         intent: ExternalCertificateAuthoritiesUpgradeIntent,
-        paywallKey: "cert-manager.external-ca-type",
-        isEntitled: (refreshedSubscription) => refreshedSubscription.pkiEnterpriseCaIntegrations,
-        onGranted: () => {
-          reset(getInitialValuesForType(type));
-          setSelectedType(type);
-        },
-        failureMessage:
-          "Failed to refresh your subscription. Try selecting this certificate authority again."
+        paywallKey: "cert-manager.external-ca-type"
       });
       return;
     }
@@ -892,217 +885,217 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   return (
     <>
-    <Sheet
-      open={popUp?.ca?.isOpen}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          reset();
-          setSelectedType(null);
-          setSearch("");
-        }
-        handlePopUpToggle("ca", isOpen);
-      }}
-    >
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-2xl">
-          <SheetHeader className="border-border border-b">
-          {showGrid ? (
-            <>
-              <SheetTitle>Connect External CA</SheetTitle>
-              <SheetDescription>
+      <Sheet
+        open={popUp?.ca?.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            reset();
+            setSelectedType(null);
+            setSearch("");
+          }
+          handlePopUpToggle("ca", isOpen);
+        }}
+      >
+        <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-2xl">
+          <SheetHeader className="border-b border-border">
+            {showGrid ? (
+              <>
+                <SheetTitle>Connect External CA</SheetTitle>
+                <SheetDescription>
                   Select the third-party certificate authority to connect to. Infisical issues
                   through it rather than hosting the signing key.
-              </SheetDescription>
-            </>
-          ) : (
-            <>
-              {!isEditMode && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedType(null)}
-                    className="text-muted hover:text-foreground mb-1 flex w-fit cursor-pointer items-center gap-1 text-xs transition-colors hover:underline"
-                >
-                  <ArrowLeftIcon className="size-3" />
-                  Select Another CA
-                </button>
-              )}
-              <SheetTitle>
-                <ExternalCaHeader
-                  name={headerTitle}
-                  subtitle="Define the connection and credentials used to issue certificates from this CA."
-                  image={activeTypeMedia?.image}
-                  icon={activeTypeMedia?.icon}
-                />
-              </SheetTitle>
-            </>
-          )}
-        </SheetHeader>
+                </SheetDescription>
+              </>
+            ) : (
+              <>
+                {!isEditMode && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedType(null)}
+                    className="mb-1 flex w-fit cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-foreground hover:underline"
+                  >
+                    <ArrowLeftIcon className="size-3" />
+                    Select Another CA
+                  </button>
+                )}
+                <SheetTitle>
+                  <ExternalCaHeader
+                    name={headerTitle}
+                    subtitle="Define the connection and credentials used to issue certificates from this CA."
+                    image={activeTypeMedia?.image}
+                    icon={activeTypeMedia?.icon}
+                  />
+                </SheetTitle>
+              </>
+            )}
+          </SheetHeader>
 
-        {/* eslint-disable-next-line no-nested-ternary */}
-        {showGrid ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
-            <InputGroup>
-              <InputGroupAddon align="inline-start">
-                <Search />
-              </InputGroupAddon>
-              <InputGroupInput
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search certificate authorities..."
-              />
-            </InputGroup>
-            <div className="grid grid-cols-2 gap-3">
-              {filteredCaOptions.map((option) => (
-                <CaTypeCard
-                  key={option.type}
-                  option={option}
-                  onClick={() => handleSelectType(option.type)}
-                  isLocked={isCaTypeLocked(option.type)}
+          {/* eslint-disable-next-line no-nested-ternary */}
+          {showGrid ? (
+            <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
+              <InputGroup>
+                <InputGroupAddon align="inline-start">
+                  <Search />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search certificate authorities..."
                 />
-              ))}
+              </InputGroup>
+              <div className="grid grid-cols-2 gap-3">
+                {filteredCaOptions.map((option) => (
+                  <CaTypeCard
+                    key={option.type}
+                    option={option}
+                    onClick={() => handleSelectType(option.type)}
+                    isLocked={isCaTypeLocked(option.type)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ) : isEditMode && isCaLoading ? (
-          <div className="flex min-h-0 flex-1 items-center justify-center">
-              <Loader2Icon className="text-accent size-8 animate-spin" />
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit(onFormSubmit)} className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-              {ca && (
-                <Field className="mb-4">
-                  <FieldLabel>CA ID</FieldLabel>
-                  <Input value={ca.id} disabled />
-                </Field>
-              )}
-              <Controller
-                control={control}
-                defaultValue=""
-                name="name"
-                render={({ field, fieldState: { error } }) => (
+          ) : isEditMode && isCaLoading ? (
+            <div className="flex min-h-0 flex-1 items-center justify-center">
+              <Loader2Icon className="size-8 animate-spin text-accent" />
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit(onFormSubmit)} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+                {ca && (
                   <Field className="mb-4">
-                    <FieldLabel>
-                      Name <span className="text-danger">*</span>
-                    </FieldLabel>
-                    <Input
-                      {...field}
-                      placeholder="my-external-ca"
-                      disabled={Boolean(ca)}
-                      isError={Boolean(error)}
-                      autoComplete="off"
-                      name="certificate-authority-name"
-                    />
-                    {!error && (
-                      <FieldDescription>
-                        Must be slug-friendly: lowercase letters, numbers, and hyphens only.
-                      </FieldDescription>
-                    )}
-                    <FieldError errors={[error]} />
+                    <FieldLabel>CA ID</FieldLabel>
+                    <Input value={ca.id} disabled />
                   </Field>
                 )}
-              />
-              {caType === CaType.ACME && (
-                <AcmeFields
+                <Controller
                   control={control}
-                  isExistingCa={Boolean(ca)}
-                  dnsProvider={dnsProvider}
-                  directoryUrl={directoryUrl}
-                  dnsAppConnection={dnsAppConnection}
-                  availableConnections={dnsAppConnections}
-                  isPending={isPending}
-                  cloudflareZones={cloudflareZones}
-                  isZonesPending={isZonesPending}
-                  dnsMadeEasyZones={dnsMadeEasyZones}
-                  isDNSMadeEasyZonesPending={isDNSMadeEasyZonesPending}
-                  azureDnsZones={azureDnsZones}
-                  isAzureDNSZonesPending={isAzureDNSZonesPending}
-                  powerDnsZones={powerDnsZones}
-                  isPowerDnsZonesPending={isPowerDnsZonesPending}
-                  onDnsSelectionChange={() =>
-                    setValue("configuration.dnsProviderConfig.hostedZoneId", "", {
-                      shouldDirty: true
-                    })
-                  }
+                  defaultValue=""
+                  name="name"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field className="mb-4">
+                      <FieldLabel>
+                        Name <span className="text-danger">*</span>
+                      </FieldLabel>
+                      <Input
+                        {...field}
+                        placeholder="my-external-ca"
+                        disabled={Boolean(ca)}
+                        isError={Boolean(error)}
+                        autoComplete="off"
+                        name="certificate-authority-name"
+                      />
+                      {!error && (
+                        <FieldDescription>
+                          Must be slug-friendly: lowercase letters, numbers, and hyphens only.
+                        </FieldDescription>
+                      )}
+                      <FieldError errors={[error]} />
+                    </Field>
+                  )}
                 />
-              )}
-              {caType === CaType.AZURE_AD_CS && (
-                <AzureAdCsFields
-                  control={control}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                />
-              )}
-              {caType === CaType.ADCS && (
-                <AdcsFields
-                  control={control}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                />
-              )}
-              {caType === CaType.AWS_PCA && (
-                <AwsPcaFields
-                  control={control}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                />
-              )}
-              {caType === CaType.DIGICERT && (
-                <DigiCertFields
-                  control={control}
-                  setValue={setValue}
-                  configuration={configuration}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                  digicertConnectionId={digicertConnectionId}
-                  digicertOrganizations={digicertOrganizations}
-                  isDigiCertOrgsPending={isDigiCertOrgsPending}
-                  digicertProducts={digicertProducts}
-                  isDigiCertProductsPending={isDigiCertProductsPending}
-                  csRequiresContact={csRequiresContact}
-                />
-              )}
-              {caType === CaType.AWS_ACM_PUBLIC_CA && (
-                <AwsAcmPublicCaFields
-                  control={control}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                />
-              )}
-              {caType === CaType.VENAFI_TPP && (
-                <VenafiTppFields
-                  control={control}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                />
-              )}
-              {caType === CaType.GODADDY && (
-                <GoDaddyFields
-                  control={control}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                />
-              )}
-            </div>
-              <div className="border-border flex shrink-0 items-center justify-end gap-3 border-t px-6 py-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handlePopUpToggle("ca", false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="project"
-                isPending={isSubmitting || isCheckingCsValidation}
-                isDisabled={isSubmitting || isCheckingCsValidation}
-              >
-                {isEditMode ? "Update" : "Create"}
-              </Button>
-            </div>
-          </form>
-        )}
-      </SheetContent>
-    </Sheet>
+                {caType === CaType.ACME && (
+                  <AcmeFields
+                    control={control}
+                    isExistingCa={Boolean(ca)}
+                    dnsProvider={dnsProvider}
+                    directoryUrl={directoryUrl}
+                    dnsAppConnection={dnsAppConnection}
+                    availableConnections={dnsAppConnections}
+                    isPending={isPending}
+                    cloudflareZones={cloudflareZones}
+                    isZonesPending={isZonesPending}
+                    dnsMadeEasyZones={dnsMadeEasyZones}
+                    isDNSMadeEasyZonesPending={isDNSMadeEasyZonesPending}
+                    azureDnsZones={azureDnsZones}
+                    isAzureDNSZonesPending={isAzureDNSZonesPending}
+                    powerDnsZones={powerDnsZones}
+                    isPowerDnsZonesPending={isPowerDnsZonesPending}
+                    onDnsSelectionChange={() =>
+                      setValue("configuration.dnsProviderConfig.hostedZoneId", "", {
+                        shouldDirty: true
+                      })
+                    }
+                  />
+                )}
+                {caType === CaType.AZURE_AD_CS && (
+                  <AzureAdCsFields
+                    control={control}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                  />
+                )}
+                {caType === CaType.ADCS && (
+                  <AdcsFields
+                    control={control}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                  />
+                )}
+                {caType === CaType.AWS_PCA && (
+                  <AwsPcaFields
+                    control={control}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                  />
+                )}
+                {caType === CaType.DIGICERT && (
+                  <DigiCertFields
+                    control={control}
+                    setValue={setValue}
+                    configuration={configuration}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                    digicertConnectionId={digicertConnectionId}
+                    digicertOrganizations={digicertOrganizations}
+                    isDigiCertOrgsPending={isDigiCertOrgsPending}
+                    digicertProducts={digicertProducts}
+                    isDigiCertProductsPending={isDigiCertProductsPending}
+                    csRequiresContact={csRequiresContact}
+                  />
+                )}
+                {caType === CaType.AWS_ACM_PUBLIC_CA && (
+                  <AwsAcmPublicCaFields
+                    control={control}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                  />
+                )}
+                {caType === CaType.VENAFI_TPP && (
+                  <VenafiTppFields
+                    control={control}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                  />
+                )}
+                {caType === CaType.GODADDY && (
+                  <GoDaddyFields
+                    control={control}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                  />
+                )}
+              </div>
+              <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handlePopUpToggle("ca", false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="project"
+                  isPending={isSubmitting || isCheckingCsValidation}
+                  isDisabled={isSubmitting || isCheckingCsValidation}
+                >
+                  {isEditMode ? "Update" : "Create"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </SheetContent>
+      </Sheet>
       {upgradeGate}
     </>
   );

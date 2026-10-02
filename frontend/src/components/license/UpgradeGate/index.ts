@@ -1,12 +1,33 @@
-export type { UpgradeIntent, UpgradeReturnTarget } from "./upgrade-intents";
 export type { CapabilityUpgradeIntent } from "./capability-upgrade-intents";
 export {
+  AgentVaultSessionLogsUpgradeIntent,
+  AuditLogStreamsUpgradeIntent,
+  AuditLogsUpgradeIntent,
+  AuditRetentionUpgradeIntent,
   CustomRolesUpgradeIntent,
+  EnterpriseAppConnectionsUpgradeIntent,
+  ExternalKmsUpgradeIntent,
+  GatewayPoolsUpgradeIntent,
+  GithubSyncUpgradeIntent,
   GroupsUpgradeIntent,
+  HsmConnectorsUpgradeIntent,
+  IdentityAuthUpgradeIntent,
   InstanceHsmUpgradeIntent,
-  InstanceUserManagementUpgradeIntent
+  InstanceUserManagementUpgradeIntent,
+  KmipUpgradeIntent,
+  LdapUpgradeIntent,
+  MachineIdentityTemplatesUpgradeIntent,
+  MfaEnforcementUpgradeIntent,
+  OidcSsoUpgradeIntent,
+  ProjectLimitUpgradeIntent,
+  ProjectTemplatesUpgradeIntent,
+  SamlSsoUpgradeIntent,
+  ScimUpgradeIntent,
+  SsoEnforcementUpgradeIntent,
+  SubOrganizationsUpgradeIntent
 } from "./capability-upgrade-intents";
 export { hasEnvironmentCapacity } from "./environment-limit";
+export type { UpgradeIntent } from "./upgrade-intents";
 export {
   BillingPlan,
   BillingProduct,
@@ -22,17 +43,17 @@ export {
   CodeSigningUpgradeIntent,
   CrossProjectSecretSharingUpgradeIntent,
   DynamicSecretsUpgradeIntent,
-  EnvironmentLimitUpgradeIntent,
   EnterprisePamAccountsUpgradeIntent,
   EnterpriseSecretSyncsUpgradeIntent,
+  EnvironmentLimitUpgradeIntent,
   ExternalCertificateAuthoritiesUpgradeIntent,
   FolderAccessControlsUpgradeIntent,
   getSafeUpgradeReturnPath,
   HoneyTokensUpgradeIntent,
-  PointInTimeRecoveryUpgradeIntent,
-  PamSlackNotificationsUpgradeIntent,
   PamAccountLimitUpgradeIntent,
+  PamSlackNotificationsUpgradeIntent,
   PamUpgradeIntent,
+  PointInTimeRecoveryUpgradeIntent,
   PostQuantumCertificatesUpgradeIntent,
   SecretAccessInsightsUpgradeIntent,
   SecretAccessRequestsUpgradeIntent,
@@ -40,8 +61,8 @@ export {
   SecretImportReplicationUpgradeIntent,
   SecretRotationsUpgradeIntent,
   SecretsBrokeringUpgradeIntent,
-  UpgradeContinuation,
+  SecretScanningUpgradeIntent,
   UpgradeFeature
 } from "./upgrade-intents";
-export { useUpgradeGate } from "./useUpgradeGate";
 export { UpgradeGate } from "./UpgradeGate";
+export { useUpgradeGate } from "./useUpgradeGate";

@@ -79,14 +79,7 @@ export const CaSection = () => {
       // shows one project, so the count is named rather than left to look like a mismatch.
       openUpgradeGate({
         intent: CertificateAuthoritiesUpgradeIntent,
-        paywallKey: "cert-manager.ca",
-        isEntitled: (refreshedSubscription) => {
-          const refreshedLimit = refreshedSubscription[exhausted.key];
-          return refreshedLimit === null || (exhausted.used ?? 0) < refreshedLimit;
-        },
-        onGranted: () => setIsCreateWizardOpen(true),
-        failureMessage:
-          "Failed to refresh your subscription. Try creating an internal certificate authority again."
+        paywallKey: "cert-manager.ca"
       });
       return;
     }

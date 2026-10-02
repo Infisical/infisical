@@ -5,7 +5,7 @@ import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { z } from "zod";
 
 import {
-  CertificateCrlDistributionPointsUpgradeIntent,
+  CertificateRevocationListsUpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
@@ -137,11 +137,8 @@ export const CaRevocationSection = ({ caId }: Props) => {
   const handleAddCrlUrl = () => {
     if (!subscription.caCrl) {
       openUpgradeGate({
-        intent: CertificateCrlDistributionPointsUpgradeIntent,
-        paywallKey: "cert-manager.ca-distribution-points",
-        isEntitled: (refreshedSubscription) => Boolean(refreshedSubscription.caCrl),
-        onGranted: () => crlUrls.append({ value: "" }),
-        failureMessage: "Failed to refresh your subscription. Try adding a CRL URL again."
+        intent: CertificateRevocationListsUpgradeIntent,
+        paywallKey: "cert-manager.ca-distribution-points"
       });
       return;
     }

@@ -406,15 +406,7 @@ export const CrossProjectSharingSection = () => {
                 if (!subscription?.crossProjectSecretSharing) {
                   openUpgradeGate({
                     intent: CrossProjectSecretSharingUpgradeIntent,
-                    paywallKey: "project.cross-project-sharing",
-                    isEntitled: (refreshedSubscription) =>
-                      refreshedSubscription.crossProjectSecretSharing,
-                    onGranted: () => {
-                      setEditData(null);
-                      setIsShareSheetOpen(true);
-                    },
-                    failureMessage:
-                      "Failed to refresh your subscription. Try sharing secrets again."
+                    paywallKey: "project.cross-project-sharing"
                   });
                   return;
                 }

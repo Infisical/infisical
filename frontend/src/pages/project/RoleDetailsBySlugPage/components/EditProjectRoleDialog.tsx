@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -208,11 +208,16 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
           </form>
         </SheetContent>
       </Sheet>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="project.edit-project-role-dialog"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(open) => handleUpgradePlanPopUpToggle("upgradePlan", open)}
-        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Advanced plan."
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          description:
+            "Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Advanced plan.",
+          isEnterpriseFeature: false
+        }}
       />
     </>
   );

@@ -59,7 +59,7 @@ export const UpgradeDialogLayout = ({
             <div aria-hidden="true">{icon}</div>
             <DialogHeader className="mt-6 items-center text-center">
               <p
-                className={`${color ? "text-(--product-color-resolved)" : "text-muted"} text-xs font-medium uppercase tracking-wide`}
+                className={`${color ? "text-(--product-color-resolved)" : "text-muted"} text-xs font-medium tracking-wide uppercase`}
               >
                 {scopeName}
               </p>

@@ -18,10 +18,7 @@ export const PamLayout = () => {
 
     openUpgradeGate({
       intent: PamUpgradeIntent,
-      paywallKey: "pam.product-access",
-      isEntitled: (refreshedSubscription) => Boolean(refreshedSubscription.pam),
-      onGranted: () => undefined,
-      failureMessage: "Failed to refresh your subscription. Reload PAM to continue."
+      paywallKey: "pam.product-access"
     });
   }, [isPamGated, openUpgradeGate]);
 

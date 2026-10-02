@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { IdentityAuthUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { Badge, Combobox, Field, FieldError, FieldLabel, ProviderIcon } from "@app/components/v3";
 import { MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK } from "@app/helpers/identityAuthSchemas";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
@@ -447,12 +447,15 @@ export const IdentityAuthMethodModalContent = ({
         }}
       />
       {selectedMethodItem?.render ? selectedMethodItem.render() : <div />}
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.identity-auth-method-modal"
         isOpen={popUp?.upgradePlan?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...IdentityAuthUpgradeIntent,
+          description: `Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );

@@ -18,7 +18,7 @@ export type PlanFeature = {
 type Props = {
   product: BillingV2CatalogProduct;
   upgradeLabel?: string;
-  requiredPlanName: string;
+  requiredPlanName?: string;
   plans: BillingV2Plan[];
   selectedTier: string;
   currentPlanTier?: string;
@@ -41,6 +41,15 @@ const formatPlanFeatureTitle = ({ label, value }: PlanFeature) => {
   return `${value} ${label}`;
 };
 
+const PlanFeatureIcon = ({ value }: { value?: string }) => {
+  const className = "mt-0.5 size-4 shrink-0 text-success";
+  if (value?.trim().toLowerCase() === "unlimited") {
+    return <InfinityIcon aria-hidden="true" className={className} />;
+  }
+  if (value) return <Plus aria-hidden="true" className={className} />;
+  return <Check aria-hidden="true" className={className} />;
+};
+
 export const ProductUpgradeDialog = ({
   product,
   upgradeLabel,
@@ -59,7 +68,11 @@ export const ProductUpgradeDialog = ({
     scopeName={product.name}
     icon={<ProductIcon product={product} size={64} />}
     title={upgradeLabel}
-    description={`Available with the ${requiredPlanName} plan and higher.`}
+    description={
+      requiredPlanName
+        ? `Available with the ${requiredPlanName} plan and higher.`
+        : "Review available plans for your team."
+    }
     color={product.color}
     onOpenChange={onOpenChange}
     footer={footer}
@@ -70,34 +83,25 @@ export const ProductUpgradeDialog = ({
           <TabsTrigger key={candidate.tier} value={candidate.tier}>
             {candidate.name}
             {candidate.tier === currentPlanTier && (
-              <span className="text-muted text-xs">· Current</span>
+              <span className="text-xs text-muted">· Current</span>
             )}
           </TabsTrigger>
         ))}
       </TabsList>
-      <TabsContent value={selectedTier} className="mt-0">
+      <TabsContent value={selectedTier} className="mt-0 outline-none focus-visible:ring-0">
         <section aria-label="Selected plan features" className="flex flex-col gap-6">
           {notice}
           {features.length > 0 && (
             <ul className="grid gap-4">
               {features.map((feature) => (
                 <li key={feature.label} className="flex min-w-0 items-start gap-3">
-                  {feature.value?.trim().toLowerCase() === "unlimited" ? (
-                    <InfinityIcon
-                      aria-hidden="true"
-                      className="text-success mt-0.5 size-4 shrink-0"
-                    />
-                  ) : feature.value ? (
-                    <Plus aria-hidden="true" className="text-success mt-0.5 size-4 shrink-0" />
-                  ) : (
-                    <Check aria-hidden="true" className="text-success mt-0.5 size-4 shrink-0" />
-                  )}
+                  <PlanFeatureIcon value={feature.value} />
                   <div className="min-w-0">
-                    <p className="text-foreground text-sm font-medium">
+                    <p className="text-sm font-medium text-foreground">
                       {formatPlanFeatureTitle(feature)}
                     </p>
                     {feature.description && (
-                      <p className="text-muted mt-0.5 text-xs leading-relaxed">
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted">
                         {feature.description}
                       </p>
                     )}

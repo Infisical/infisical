@@ -56,11 +56,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
     if (!subscription.pkiSyncs) {
       openUpgradeGate({
         intent: CertificateSyncsUpgradeIntent,
-        paywallKey: "pki.sync-provider",
-        isEntitled: (refreshedSubscription) => refreshedSubscription.pkiSyncs,
-        onGranted: () => onSelect(destination),
-        failureMessage:
-          "Failed to refresh your subscription. Try selecting a sync destination again."
+        paywallKey: "pki.sync-provider"
       });
       return;
     }

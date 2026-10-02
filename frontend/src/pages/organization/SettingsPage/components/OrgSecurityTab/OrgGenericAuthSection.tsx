@@ -1,6 +1,6 @@
 import { Fingerprint } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { MfaEnforcementUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -137,11 +137,16 @@ export const OrgGenericAuthSection = () => {
           </FieldGroup>
         </CardContent>
       </Card>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.org-generic-auth"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to enforce user MFA. To unlock this feature, please upgrade to Infisical Advanced plan."
+        intent={{
+          ...MfaEnforcementUpgradeIntent,
+          description:
+            "Your current plan does not include access to enforce user MFA. To unlock this feature, please upgrade to Infisical Advanced plan.",
+          isEnterpriseFeature: false
+        }}
       />
     </>
   );

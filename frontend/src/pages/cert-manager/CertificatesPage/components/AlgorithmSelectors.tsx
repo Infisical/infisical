@@ -117,50 +117,46 @@ const AlgorithmSelect = ({
 
   return (
     <Controller
-        control={control}
-        name={name}
-        shouldUnregister={shouldUnregister}
-        render={({ field: { onChange, value } }) => (
-          <Field>
-            <FieldLabel>
-              {label} {isRequired && <span className="text-danger">*</span>}
-            </FieldLabel>
-            <Select
-              value={value ?? (nonePlaceholder ? NONE_VALUE : "")}
-              onValueChange={(nextValue) => {
-                const normalizedValue = nextValue === NONE_VALUE ? null : nextValue;
-                if (normalizedValue && isPqcAlgorithm(normalizedValue) && !subscription.pkiPqc) {
-                  openUpgradeGate({
-                    intent: PostQuantumCertificatesUpgradeIntent,
-                    paywallKey: "cert-manager.certificate-algorithm",
-                    isEntitled: (refreshedSubscription) => refreshedSubscription.pkiPqc,
-                    onGranted: () => onChange(normalizedValue),
-                    failureMessage:
-                      "Failed to refresh your subscription. Try selecting this algorithm again."
-                  });
-                  return;
-                }
-                onChange(normalizedValue);
-              }}
-              disabled={Boolean(disabledReason)}
-            >
-              <SelectTrigger className="w-full" isError={Boolean(error)}>
-                {value ? (
-                  <SelectValue />
-                ) : (
-                  <span className="text-muted">
-                    {options.length > 0 ? selectPlaceholder : "No algorithms available"}
-                  </span>
-                )}
-              </SelectTrigger>
-              <SelectContent position="popper">{children}</SelectContent>
-            </Select>
-            {disabledReason && <FieldDescription>{disabledReason}</FieldDescription>}
-            <FieldError>{error}</FieldError>
-            {upgradeGate}
-          </Field>
-        )}
-      />
+      control={control}
+      name={name}
+      shouldUnregister={shouldUnregister}
+      render={({ field: { onChange, value } }) => (
+        <Field>
+          <FieldLabel>
+            {label} {isRequired && <span className="text-danger">*</span>}
+          </FieldLabel>
+          <Select
+            value={value ?? (nonePlaceholder ? NONE_VALUE : "")}
+            onValueChange={(nextValue) => {
+              const normalizedValue = nextValue === NONE_VALUE ? null : nextValue;
+              if (normalizedValue && isPqcAlgorithm(normalizedValue) && !subscription.pkiPqc) {
+                openUpgradeGate({
+                  intent: PostQuantumCertificatesUpgradeIntent,
+                  paywallKey: "cert-manager.certificate-algorithm"
+                });
+                return;
+              }
+              onChange(normalizedValue);
+            }}
+            disabled={Boolean(disabledReason)}
+          >
+            <SelectTrigger className="w-full" isError={Boolean(error)}>
+              {value ? (
+                <SelectValue />
+              ) : (
+                <span className="text-muted">
+                  {options.length > 0 ? selectPlaceholder : "No algorithms available"}
+                </span>
+              )}
+            </SelectTrigger>
+            <SelectContent position="popper">{children}</SelectContent>
+          </Select>
+          {disabledReason && <FieldDescription>{disabledReason}</FieldDescription>}
+          <FieldError>{error}</FieldError>
+          {upgradeGate}
+        </Field>
+      )}
+    />
   );
 };
 

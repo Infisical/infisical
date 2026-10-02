@@ -24,6 +24,7 @@ export const UpgradeFeature = {
   SecretAccessRequests: "secret-access-requests",
   CrossProjectSecretSharing: "cross-project-secret-sharing",
   EnvironmentLimit: "environment-limit",
+  SecretScanning: "secret-scanning",
   CertificateManagement: "certificate-management",
   CertificateSyncs: "certificate-syncs",
   CertificateApprovalPolicies: "certificate-approval-policies",
@@ -41,42 +42,10 @@ export const UpgradeFeature = {
   EnterprisePamAccounts: "enterprise-pam-accounts"
 } as const;
 
-export const UpgradeContinuation = {
-  CreateDynamicSecret: "create-dynamic-secret",
-  CreateSecretRotation: "create-secret-rotation",
-  CreateHoneyToken: "create-honey-token",
-  CreateProxiedService: "create-proxied-service",
-  ViewCommitHistory: "view-commit-history",
-  ManageFolderAccess: "manage-folder-access",
-  CreateSecretImport: "create-secret-import",
-  ViewSecretAccess: "view-secret-access",
-  CreateEnterpriseSecretSync: "create-enterprise-secret-sync",
-  CreateSecretApprovalPolicy: "create-secret-approval-policy",
-  RequestSecretAccess: "request-secret-access",
-  ShareSecretsAcrossProjects: "share-secrets-across-projects",
-  CreateEnvironment: "create-environment",
-  OpenCertificateManagement: "open-certificate-management",
-  CreateCertificateSync: "create-certificate-sync",
-  CreateCertificateApprovalPolicy: "create-certificate-approval-policy",
-  AddCertificateRevocationListUrl: "add-certificate-revocation-list-url",
-  CreateCodeSigner: "create-code-signer",
-  CreateCertificateDiscovery: "create-certificate-discovery",
-  ManageCertificateEnrollment: "manage-certificate-enrollment",
-  CreateCertificateAuthority: "create-certificate-authority",
-  ConfigureExternalCertificateAuthority: "configure-external-certificate-authority",
-  SelectPostQuantumAlgorithm: "select-post-quantum-algorithm",
-  ConfigureCertificateNames: "configure-certificate-names",
-  OpenPam: "open-pam",
-  CreatePamAccount: "create-pam-account",
-  ConfigurePamSlackNotifications: "configure-pam-slack-notifications",
-  CreateEnterprisePamAccount: "create-enterprise-pam-account"
-} as const;
-
 export type UpgradeIntent = {
   featureKey: (typeof UpgradeFeature)[keyof typeof UpgradeFeature];
   productKey: (typeof BillingProduct)[keyof typeof BillingProduct];
   planKey: (typeof BillingPlan)[keyof typeof BillingPlan];
-  continuation: (typeof UpgradeContinuation)[keyof typeof UpgradeContinuation];
   upgradeLabel?: string;
   title: string;
   description: string;
@@ -86,7 +55,6 @@ export const DynamicSecretsUpgradeIntent = {
   featureKey: UpgradeFeature.DynamicSecrets,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Advanced,
-  continuation: UpgradeContinuation.CreateDynamicSecret,
   upgradeLabel: "Unlock Dynamic Secrets",
   title: "Add Dynamic Secrets",
   description:
@@ -97,17 +65,24 @@ export const EnvironmentLimitUpgradeIntent = {
   featureKey: UpgradeFeature.EnvironmentLimit,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.CreateEnvironment,
   upgradeLabel: "Unlock More Environments",
   title: "Create Environment",
   description: "Compare Secrets Management plans to increase your project's environment allowance."
+} satisfies UpgradeIntent;
+
+export const SecretScanningUpgradeIntent = {
+  featureKey: UpgradeFeature.SecretScanning,
+  productKey: BillingProduct.SecretsManagement,
+  planKey: BillingPlan.Enterprise,
+  upgradeLabel: "Unlock Secret Scanning",
+  title: "Add Secret Scanning Data Source",
+  description: "Review Secrets Management plans to enable secret scanning data sources."
 } satisfies UpgradeIntent;
 
 export const SecretRotationsUpgradeIntent = {
   featureKey: UpgradeFeature.SecretRotations,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.CreateSecretRotation,
   upgradeLabel: "Unlock Secret Rotations",
   title: "Add Secret Rotation",
   description:
@@ -118,7 +93,6 @@ export const HoneyTokensUpgradeIntent = {
   featureKey: UpgradeFeature.HoneyTokens,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.CreateHoneyToken,
   upgradeLabel: "Unlock Honey Tokens",
   title: "Add Honey Token",
   description:
@@ -129,7 +103,6 @@ export const SecretsBrokeringUpgradeIntent = {
   featureKey: UpgradeFeature.SecretsBrokering,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Enterprise,
-  continuation: UpgradeContinuation.CreateProxiedService,
   upgradeLabel: "Unlock Secrets Brokering",
   title: "Add Proxied Service",
   description:
@@ -140,7 +113,6 @@ export const PointInTimeRecoveryUpgradeIntent = {
   featureKey: UpgradeFeature.PointInTimeRecovery,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.ViewCommitHistory,
   upgradeLabel: "Unlock Point-in-Time Recovery",
   title: "View Commit History",
   description:
@@ -151,7 +123,6 @@ export const FolderAccessControlsUpgradeIntent = {
   featureKey: UpgradeFeature.FolderAccessControls,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.ManageFolderAccess,
   upgradeLabel: "Unlock Folder Access Controls",
   title: "Manage Folder Access",
   description:
@@ -162,7 +133,6 @@ export const SecretImportReplicationUpgradeIntent = {
   featureKey: UpgradeFeature.SecretImportReplication,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.CreateSecretImport,
   upgradeLabel: "Unlock Secret Import Replication",
   title: "Replicate Secret Import",
   description:
@@ -173,7 +143,6 @@ export const SecretAccessInsightsUpgradeIntent = {
   featureKey: UpgradeFeature.SecretAccessInsights,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.ViewSecretAccess,
   upgradeLabel: "Unlock Secret Access Insights",
   title: "View Secret Access",
   description:
@@ -184,7 +153,6 @@ export const EnterpriseSecretSyncsUpgradeIntent = {
   featureKey: UpgradeFeature.EnterpriseSecretSyncs,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Enterprise,
-  continuation: UpgradeContinuation.CreateEnterpriseSecretSync,
   upgradeLabel: "Unlock Enterprise Secret Syncs",
   title: "Choose Enterprise Secret Sync",
   description:
@@ -195,7 +163,6 @@ export const SecretApprovalPoliciesUpgradeIntent = {
   featureKey: UpgradeFeature.SecretApprovalPolicies,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.CreateSecretApprovalPolicy,
   upgradeLabel: "Unlock Approval Policies",
   title: "Add Approval Policy",
   description:
@@ -206,7 +173,6 @@ export const SecretAccessRequestsUpgradeIntent = {
   featureKey: UpgradeFeature.SecretAccessRequests,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.RequestSecretAccess,
   upgradeLabel: "Unlock Access Requests",
   title: "Request Secret Access",
   description:
@@ -217,7 +183,6 @@ export const CrossProjectSecretSharingUpgradeIntent = {
   featureKey: UpgradeFeature.CrossProjectSecretSharing,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.ShareSecretsAcrossProjects,
   upgradeLabel: "Unlock Cross-Project Secret Sharing",
   title: "Share Secrets Across Projects",
   description:
@@ -228,7 +193,6 @@ export const CertificateManagementUpgradeIntent = {
   featureKey: UpgradeFeature.CertificateManagement,
   productKey: BillingProduct.CertificateManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.OpenCertificateManagement,
   upgradeLabel: "Unlock Certificate Management",
   title: "Open Certificate Management",
   description:
@@ -239,7 +203,6 @@ export const CertificateSyncsUpgradeIntent = {
   featureKey: UpgradeFeature.CertificateSyncs,
   productKey: BillingProduct.CertificateManagement,
   planKey: BillingPlan.Enterprise,
-  continuation: UpgradeContinuation.CreateCertificateSync,
   upgradeLabel: "Unlock Certificate Syncs",
   title: "Add Certificate Sync",
   description:
@@ -250,7 +213,6 @@ export const CertificateApprovalPoliciesUpgradeIntent = {
   featureKey: UpgradeFeature.CertificateApprovalPolicies,
   productKey: BillingProduct.CertificateManagement,
   planKey: BillingPlan.Enterprise,
-  continuation: UpgradeContinuation.CreateCertificateApprovalPolicy,
   upgradeLabel: "Unlock Approval Policies",
   title: "Create Approval Policy",
   description:
@@ -261,7 +223,6 @@ export const CertificateRevocationListsUpgradeIntent = {
   featureKey: UpgradeFeature.CertificateRevocationLists,
   productKey: BillingProduct.CertificateManagement,
   planKey: BillingPlan.Enterprise,
-  continuation: UpgradeContinuation.AddCertificateRevocationListUrl,
   upgradeLabel: "Unlock CRL Distribution Points",
   title: "Add CRL Distribution Point",
   description:
@@ -272,7 +233,6 @@ export const CodeSigningUpgradeIntent = {
   featureKey: UpgradeFeature.CodeSigning,
   productKey: BillingProduct.CertificateManagement,
   planKey: BillingPlan.Enterprise,
-  continuation: UpgradeContinuation.CreateCodeSigner,
   upgradeLabel: "Unlock Code Signing",
   title: "Create Code Signer",
   description: "Code signing is included with the Enterprise plan. Review the plan to continue."
@@ -282,7 +242,6 @@ export const CertificateDiscoveryUpgradeIntent = {
   featureKey: UpgradeFeature.CertificateDiscovery,
   productKey: BillingProduct.CertificateManagement,
   planKey: BillingPlan.Enterprise,
-  continuation: UpgradeContinuation.CreateCertificateDiscovery,
   upgradeLabel: "Unlock Certificate Discovery",
   title: "Add Discovery Job",
   description:
@@ -293,7 +252,6 @@ export const CertificateEnrollmentUpgradeIntent = {
   featureKey: UpgradeFeature.CertificateEnrollment,
   productKey: BillingProduct.CertificateManagement,
   planKey: BillingPlan.Enterprise,
-  continuation: UpgradeContinuation.ManageCertificateEnrollment,
   upgradeLabel: "Unlock Certificate Enrollment",
   title: "Manage Certificate Enrollment",
   description:
@@ -304,7 +262,6 @@ export const CertificateAuthoritiesUpgradeIntent = {
   featureKey: UpgradeFeature.CertificateAuthorities,
   productKey: BillingProduct.CertificateManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.CreateCertificateAuthority,
   upgradeLabel: "Unlock More Certificate Authorities",
   title: "Create Certificate Authority",
   description:
@@ -315,7 +272,6 @@ export const ExternalCertificateAuthoritiesUpgradeIntent = {
   featureKey: UpgradeFeature.ExternalCertificateAuthorities,
   productKey: BillingProduct.CertificateManagement,
   planKey: BillingPlan.Enterprise,
-  continuation: UpgradeContinuation.ConfigureExternalCertificateAuthority,
   upgradeLabel: "Unlock External Certificate Authorities",
   title: "Configure External Certificate Authority",
   description:
@@ -326,7 +282,6 @@ export const PostQuantumCertificatesUpgradeIntent = {
   featureKey: UpgradeFeature.PostQuantumCertificates,
   productKey: BillingProduct.CertificateManagement,
   planKey: BillingPlan.Enterprise,
-  continuation: UpgradeContinuation.SelectPostQuantumAlgorithm,
   upgradeLabel: "Unlock Post-Quantum Certificates",
   title: "Select Post-Quantum Algorithm",
   description:
@@ -337,7 +292,6 @@ export const CertificateIssuanceLimitsUpgradeIntent = {
   featureKey: UpgradeFeature.CertificateIssuanceLimits,
   productKey: BillingProduct.CertificateManagement,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.ConfigureCertificateNames,
   upgradeLabel: "Unlock Certificate Issuance",
   title: "Configure Certificate Names",
   description:
@@ -348,7 +302,6 @@ export const PamUpgradeIntent = {
   featureKey: UpgradeFeature.Pam,
   productKey: BillingProduct.Pam,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.OpenPam,
   upgradeLabel: "Unlock Privileged Access Management",
   title: "Open Privileged Access Management",
   description:
@@ -359,7 +312,6 @@ export const PamAccountLimitUpgradeIntent = {
   featureKey: UpgradeFeature.PamAccountLimit,
   productKey: BillingProduct.Pam,
   planKey: BillingPlan.Pro,
-  continuation: UpgradeContinuation.CreatePamAccount,
   upgradeLabel: "Unlock More PAM Accounts",
   title: "Add PAM Account",
   description: "Compare PAM plans to increase your organization-wide account allowance."
@@ -369,7 +321,6 @@ export const PamSlackNotificationsUpgradeIntent = {
   featureKey: UpgradeFeature.PamSlackNotifications,
   productKey: BillingProduct.Pam,
   planKey: BillingPlan.Enterprise,
-  continuation: UpgradeContinuation.ConfigurePamSlackNotifications,
   upgradeLabel: "Unlock Slack Notifications",
   title: "Configure Slack Notifications",
   description:
@@ -380,32 +331,22 @@ export const EnterprisePamAccountsUpgradeIntent = {
   featureKey: UpgradeFeature.EnterprisePamAccounts,
   productKey: BillingProduct.Pam,
   planKey: BillingPlan.Enterprise,
-  continuation: UpgradeContinuation.CreateEnterprisePamAccount,
   upgradeLabel: "Unlock Enterprise Accounts",
   title: "Add Enterprise Account",
   description:
     "Enterprise account types are included with the Enterprise plan. Review the plan to continue."
 } satisfies UpgradeIntent;
 
-export type UpgradeReturnTarget = { environment?: string; folderPath?: string };
-
-export const buildUpgradeReturnPath = (
-  intent: UpgradeIntent,
-  location: Location,
-  target?: UpgradeReturnTarget
-) => {
+export const buildUpgradeReturnPath = (location: Location) => {
   const search = new URLSearchParams(location.search);
-  search.set("upgradeContinuation", intent.continuation);
-  if (target?.environment) search.set("upgradeEnvironment", target.environment);
-  if (target?.folderPath) search.set("upgradeFolderPath", target.folderPath);
-  const fullPath = `${location.pathname}?${search.toString()}${location.hash}`;
-  if (fullPath.length <= 2048) return fullPath;
-
-  const continuation = new URLSearchParams({ upgradeContinuation: intent.continuation });
-  if (target?.environment) continuation.set("upgradeEnvironment", target.environment);
-  if (target?.folderPath) continuation.set("upgradeFolderPath", target.folderPath);
-  const minimalPath = `${location.pathname}?${continuation.toString()}`;
-  return minimalPath.length <= 2048 ? minimalPath : location.pathname;
+  search.delete("checkout");
+  search.delete("card");
+  search.delete("upgradeContinuation");
+  search.delete("upgradeEnvironment");
+  search.delete("upgradeFolderPath");
+  const query = search.toString();
+  const fullPath = `${location.pathname}${query ? `?${query}` : ""}${location.hash}`;
+  return fullPath.length <= 2048 ? fullPath : location.pathname;
 };
 
 export const getSafeUpgradeReturnPath = (returnPath: string | null, origin: string) => {

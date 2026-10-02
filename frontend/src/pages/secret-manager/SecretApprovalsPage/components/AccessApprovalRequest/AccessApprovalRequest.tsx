@@ -545,11 +545,7 @@ export const AccessApprovalRequest = ({
                     if (subscription && !subscription?.secretApproval) {
                       openUpgradeGate({
                         intent: SecretAccessRequestsUpgradeIntent,
-                        paywallKey: "secret-manager.access-approval-request",
-                        isEntitled: (refreshedSubscription) => refreshedSubscription.secretApproval,
-                        onGranted: () => handlePopUpOpen("requestAccess"),
-                        failureMessage:
-                          "Failed to refresh your subscription. Try requesting access again."
+                        paywallKey: "secret-manager.access-approval-request"
                       });
                       return;
                     }

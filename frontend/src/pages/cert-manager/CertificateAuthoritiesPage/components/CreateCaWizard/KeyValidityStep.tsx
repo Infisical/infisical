@@ -162,11 +162,7 @@ export const KeyValidityStep = ({ form, hsmConnectorOptions, isHsmConnectorsLoad
                     if (isPqcAlgorithm(value) && !subscription.pkiPqc) {
                       openUpgradeGate({
                         intent: PostQuantumCertificatesUpgradeIntent,
-                        paywallKey: "cert-manager.ca-key-algorithm",
-                        isEntitled: (refreshedSubscription) => refreshedSubscription.pkiPqc,
-                        onGranted: () => field.onChange(value),
-                        failureMessage:
-                          "Failed to refresh your subscription. Try selecting this algorithm again."
+                        paywallKey: "cert-manager.ca-key-algorithm"
                       });
                       return;
                     }

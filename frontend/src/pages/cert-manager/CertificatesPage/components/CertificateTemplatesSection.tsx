@@ -58,9 +58,9 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
   };
 
   return (
-    <div className="border-border-control bg-surface-base mt-4 rounded-lg border p-4">
-      <div className="border-border-emphasis flex items-center justify-between border-b pb-4">
-        <h3 className="text-foreground text-lg font-medium">Certificate Templates</h3>
+    <div className="mt-4 rounded-lg border border-border-control bg-surface-base p-4">
+      <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
+        <h3 className="text-lg font-medium text-foreground">Certificate Templates</h3>
         <ProjectPermissionCan
           I={ProjectPermissionPkiTemplateActions.Create}
           a={ProjectPermissionSub.CertificateTemplates}
@@ -82,13 +82,10 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
         <CertificateTemplatesTable
           handlePopUpOpen={handlePopUpOpen}
           caId={caId}
-          onEnrollmentUpgrade={(certificateTemplateId) =>
+          onEnrollmentUpgrade={() =>
             openUpgradeGate({
               intent: CertificateEnrollmentUpgradeIntent,
-              paywallKey: "cert-manager.certificate-templates",
-              isEntitled: (refreshedSubscription) => refreshedSubscription.pkiEst,
-              onGranted: () => handlePopUpOpen("enrollmentOptions", { id: certificateTemplateId }),
-              failureMessage: "Failed to refresh your subscription. Try managing enrollment again."
+              paywallKey: "cert-manager.certificate-templates"
             })
           }
         />

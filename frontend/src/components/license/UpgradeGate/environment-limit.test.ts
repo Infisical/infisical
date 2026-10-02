@@ -13,7 +13,10 @@ describe("hasEnvironmentCapacity", () => {
     [null, 12, true],
     [undefined, 12, true],
     [0, 12, true]
-  ] as const)("preserves the existing limit check for limit %s and count %s", (limit, count, allowed) => {
-    expect(hasEnvironmentCapacity(limit, count)).toBe(allowed);
-  });
+  ] as const)(
+    "preserves the existing limit check for limit %s and count %s",
+    (limit, count, allowed) => {
+      expect(hasEnvironmentCapacity(limit, count)).toBe(allowed);
+    }
+  );
 });

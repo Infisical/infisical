@@ -1,4 +1,5 @@
-import { CSSProperties, useEffect, useLayoutEffect, useState } from "react";
+import { CSSProperties, ReactNode, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
 import { CircleAlert } from "lucide-react";
 
@@ -37,34 +38,31 @@ import {
   useGetBillingV2Overview,
   useStartBillingV2Trial
 } from "@app/hooks/api";
+import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
-import { waitForMinimumDuration } from "@app/lib/fn/promise";
 import { fmtMoney } from "@app/pages/organization/BillingV2Page/billing-v2-format";
 import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
 
-import { CapabilityUpgradeGate } from "./CapabilityUpgradeGate";
 import { CapabilityUpgradeIntent } from "./capability-upgrade-intents";
-import { focusUpgradeContinuation, PlanFeature, ProductUpgradeDialog } from "./ProductUpgradeDialog";
+import { CapabilityUpgradeGate } from "./CapabilityUpgradeGate";
 import {
-  BillingPlan,
-  buildUpgradeReturnPath,
-  UpgradeIntent,
-  UpgradeReturnTarget
-} from "./upgrade-intents";
+  focusUpgradeContinuation,
+  PlanFeature,
+  ProductUpgradeDialog
+} from "./ProductUpgradeDialog";
+import { ProductUpgradeSuccessDialog } from "./ProductUpgradeSuccessDialog";
+import { BillingPlan, buildUpgradeReturnPath, UpgradeIntent } from "./upgrade-intents";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
-const MINIMUM_PLAN_LOADING_DURATION_MS = 800;
 
 type Props = {
   intent: UpgradeIntent;
-  returnTarget?: UpgradeReturnTarget;
   paywallKey: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onGranted: () => void;
 };
 
-type CapabilityProps = Omit<Props, "intent" | "onGranted"> & {
+type CapabilityProps = Omit<Props, "intent"> & {
   intent: CapabilityUpgradeIntent;
 };
 
@@ -92,7 +90,8 @@ const PLAN_FEATURE_DESCRIPTIONS: Record<string, string> = {
   "audit log streaming": "Send audit activity to external monitoring systems.",
   "sub-organizations": "Separate teams or environments under one organization.",
   "certificate authorities": "Connect or operate certificate authorities from one control plane.",
-  "internal certificate authorities": "Operate Infisical-managed root and intermediate authorities.",
+  "internal certificate authorities":
+    "Operate Infisical-managed root and intermediate authorities.",
   certificates: "Issue, renew, and centrally manage certificates.",
   "wildcard certificates": "Issue certificates that secure multiple subdomains.",
   "subject alternative names": "Secure additional hostnames and identities on one certificate.",
@@ -103,7 +102,8 @@ const PLAN_FEATURE_DESCRIPTIONS: Record<string, string> = {
   "approval policies": "Require review before sensitive certificate operations proceed.",
   "post-quantum cryptography": "Issue certificates with post-quantum key algorithms.",
   "pam accounts": "Manage privileged accounts and their credentials centrally.",
-  "enterprise pam accounts": "Connect enterprise account types such as Windows and Active Directory.",
+  "enterprise pam accounts":
+    "Connect enterprise account types such as Windows and Active Directory.",
   "slack notifications": "Notify teams when privileged access is requested or changed."
 };
 
@@ -113,14 +113,17 @@ const PAM_FEATURE_DESCRIPTIONS: Record<string, string> = {
   "approval workflows": "Require approval before privileged access is granted.",
   "cli-based resource access": "Connect to privileged resources from the Infisical CLI.",
   "ssh certificate authentication": "Authenticate SSH sessions with short-lived certificates.",
-  "privileged credential rotation": "Rotate privileged credentials without distributing them to users.",
+  "privileged credential rotation":
+    "Rotate privileged credentials without distributing them to users.",
   "command blocking": "Block restricted commands during privileged sessions.",
   "automated privileged account discovery": "Find privileged accounts across your infrastructure.",
-  "enterprise resources (windows, rdp)": "Connect to Windows servers and other enterprise resources.",
+  "enterprise resources (windows, rdp)":
+    "Connect to Windows servers and other enterprise resources.",
   "audit logs": "Track privileged access requests and session activity.",
   "session recording": "Record privileged sessions for review and investigation.",
   "session-log masking": "Mask sensitive information in session logs.",
-  "log & session recording retention": "Keep audit logs and session recordings available for review.",
+  "log & session recording retention":
+    "Keep audit logs and session recordings available for review.",
   "siem audit-log streaming": "Send audit activity to your security monitoring systems.",
   ldap: "Connect your directory for centralized identity management."
 };
@@ -247,38 +250,80 @@ const ProductUpgradeHeader = ({ product, productName, description }: ProductUpgr
   </DialogHeader>
 );
 
-export const UpgradeGate = (props: Props | CapabilityProps) => {
-  if ("scope" in props.intent) {
-    return <CapabilityUpgradeGate {...props} intent={props.intent} />;
-  }
-
-  return <ProductUpgradeGate {...(props as Props)} />;
-};
-
-const ProductUpgradeGate = ({
-  intent,
-  returnTarget,
-  paywallKey,
-  isOpen,
-  onOpenChange,
-  onGranted
-}: Props) => {
-  const [selectedTier, setSelectedTier] = useState(intent.planKey);
+const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props) => {
+  const [selectedTier, setSelectedTier] = useState<string>(intent.planKey);
   const [cadence, setCadence] = useState<BillingV2Cadence>("annual");
-  const [isMinimumPlanLoading, setIsMinimumPlanLoading] = useState(isOpen);
+  const [startedTrial, setStartedTrial] = useState<BillingV2Plan | null>(null);
+  const refreshedReturn = useRef<string>();
+  const queryClient = useQueryClient();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { permission } = useOrgPermission();
   const billingOrgId = currentOrg.rootOrgId ?? currentOrg.id;
+  const canReadBilling = permission.can(
+    OrgPermissionBillingActions.Read,
+    OrgPermissionSubjects.Billing
+  );
   const canManageBilling = permission.can(
     OrgPermissionBillingActions.ManageBilling,
     OrgPermissionSubjects.Billing
   );
-  const canLoadBilling = isOpen && canManageBilling && !isSubOrganization;
-  const overview = useGetBillingV2Overview(billingOrgId, { enabled: canLoadBilling });
+  const canLoadBilling = isOpen && canReadBilling && !isSubOrganization;
+  const returnSearch = new URLSearchParams(window.location.search);
+  const returnedFromBilling =
+    returnSearch.get("card") === "setup_success" || returnSearch.get("checkout") === "success";
+  const overview = useGetBillingV2Overview(billingOrgId, {
+    enabled: canLoadBilling,
+    ...(returnedFromBilling ? { staleTime: 0 } : {})
+  });
   const catalog = useGetBillingV2Catalog(billingOrgId, { enabled: canLoadBilling });
   const startTrial = useStartBillingV2Trial();
   const product = catalog.data?.find((candidate) => candidate.id === intent.productKey);
   const productName = product?.name ?? formatProductName(intent.productKey);
+  const checkingBillingReturn =
+    returnedFromBilling &&
+    ((overview.isFetching && !overview.isFetchedAfterMount) ||
+      (catalog.isFetching && !catalog.isFetchedAfterMount));
+  const paidPlans = [...(product?.plans ?? [])]
+    .filter((candidate) => !candidate.deprecated)
+    .sort((left, right) => (left.displayOrder ?? 0) - (right.displayOrder ?? 0));
+  const entitlement = overview.data?.entitlements[intent.productKey];
+  const hasActiveTrial = Boolean(entitlement?.isTrialing || entitlement?.trialPlan);
+  const activeTier = entitlement?.trialPlan ?? entitlement?.planTier;
+  const activePlanIndex = paidPlans.findIndex((candidate) => candidate.tier === activeTier);
+  const targetPlanIndex = paidPlans.findIndex((candidate) => candidate.tier === intent.planKey);
+  const returnedPlan =
+    canLoadBilling &&
+    returnedFromBilling &&
+    (returnSearch.get("checkout") === "success" || hasActiveTrial) &&
+    !checkingBillingReturn &&
+    !overview.isError &&
+    !catalog.isError &&
+    !overview.isPlaceholderData &&
+    !catalog.isPlaceholderData &&
+    entitlement?.entitled &&
+    (entitlement.status === "active" || entitlement.status === "trialing") &&
+    targetPlanIndex >= 0 &&
+    activePlanIndex >= targetPlanIndex
+      ? paidPlans[activePlanIndex]
+      : undefined;
+  const returnedTier = returnedPlan?.tier;
+
+  useEffect(() => {
+    if (!returnedTier) return;
+    const returnKey = `${currentOrg.id}:${returnedTier}`;
+    if (refreshedReturn.current === returnKey) return;
+    refreshedReturn.current = returnKey;
+
+    // Sync the legacy product gate once after confirmed activation; do not poll or reopen actions.
+    queryClient
+      .fetchQuery({
+        queryKey: subscriptionQueryKeys.getOrgSubsription(currentOrg.id),
+        queryFn: () => fetchOrgSubscription(currentOrg.id, true),
+        staleTime: 0,
+        retry: false
+      })
+      .catch(() => undefined);
+  }, [currentOrg.id, queryClient, returnedTier]);
   const route = useRouterState({
     select: (state) => state.matches.at(-1)?.routeId ?? "unknown"
   });
@@ -305,33 +350,11 @@ const ProductUpgradeGate = ({
     });
   };
 
-  useLayoutEffect(() => {
-    let isCurrent = true;
-
-    if (!isOpen) {
-      setIsMinimumPlanLoading(false);
-      return undefined;
-    }
-
-    const startedAt = Date.now();
-    setIsMinimumPlanLoading(true);
-    waitForMinimumDuration(startedAt, MINIMUM_PLAN_LOADING_DURATION_MS)
-      .then(() => {
-        if (isCurrent) {
-          setIsMinimumPlanLoading(false);
-        }
-      })
-      .catch(() => undefined);
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [isOpen]);
-
   useEffect(() => {
     if (!isOpen) {
       setSelectedTier(intent.planKey);
       setCadence("annual");
+      setStartedTrial(null);
     }
   }, [intent.planKey, isOpen]);
 
@@ -339,7 +362,7 @@ const ProductUpgradeGate = ({
     return null;
   }
 
-  const returnPath = buildUpgradeReturnPath(intent, window.location, returnTarget);
+  const returnPath = buildUpgradeReturnPath(window.location);
   const openRootBilling = () => {
     trackUpgradeClick();
     const search = new URLSearchParams({
@@ -382,7 +405,7 @@ const ProductUpgradeGate = ({
     );
   }
 
-  if (!canManageBilling) {
+  if (!canReadBilling) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
@@ -398,8 +421,8 @@ const ProductUpgradeGate = ({
           <Alert variant="info">
             <CircleAlert />
             <AlertDescription>
-              Ask an organization member with billing management permission to start the trial or
-              update the subscription.
+              Ask an organization member with billing access to review plans or update the
+              subscription.
             </AlertDescription>
           </Alert>
           <DialogFooter>
@@ -415,7 +438,29 @@ const ProductUpgradeGate = ({
     );
   }
 
-  if (isMinimumPlanLoading || overview.isPending || catalog.isPending) {
+  const successPlan = startedTrial ?? returnedPlan;
+  if (product && successPlan) {
+    return (
+      <ProductUpgradeSuccessDialog
+        product={product}
+        plan={successPlan}
+        isTrialing={Boolean(startedTrial || hasActiveTrial)}
+        trialEndsAt={entitlement?.trialPlanEndsAt ?? entitlement?.trialEndsAt}
+        onOpenChange={(open) => {
+          if (!open && returnedFromBilling) {
+            window.history.replaceState(
+              window.history.state,
+              "",
+              buildUpgradeReturnPath(window.location)
+            );
+          }
+          onOpenChange(open);
+        }}
+      />
+    );
+  }
+
+  if (overview.isPending || catalog.isPending || checkingBillingReturn) {
     return (
       <Dialog open>
         <DialogPortal>
@@ -468,9 +513,6 @@ const ProductUpgradeGate = ({
     );
   }
 
-  const paidPlans = [...product.plans]
-    .filter((candidate) => !candidate.deprecated)
-    .sort((left, right) => (left.displayOrder ?? 0) - (right.displayOrder ?? 0));
   const currentEntitlement = overview.data.entitlements[product.id];
   const currentPlanTier =
     currentEntitlement?.planTier ?? (currentEntitlement?.entitled === true ? undefined : "free");
@@ -482,10 +524,14 @@ const ProductUpgradeGate = ({
   const requiredPlan = plans.find((candidate) => candidate.tier === intent.planKey);
   const plan =
     plans.find((candidate) => candidate.tier === selectedTier) ?? requiredPlan ?? plans[0];
-  if (!plan || !requiredPlan) {
+  if (!plan) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
-        <DialogContent showCloseButton={false} className="sm:max-w-xl">
+        <DialogContent
+          onOpenAutoFocus={focusUpgradeContinuation}
+          showCloseButton={false}
+          className="sm:max-w-xl"
+        >
           <ProductUpgradeHeader
             product={product}
             productName={productName}
@@ -499,6 +545,9 @@ const ProductUpgradeGate = ({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
+            <Button data-upgrade-cta variant="org" onClick={openRootBilling}>
+              View Billing Options
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -506,22 +555,28 @@ const ProductUpgradeGate = ({
   }
 
   const requiredPlanIndex = plans.findIndex((candidate) => candidate.tier === intent.planKey);
-  const planMeetsRequirement = plans.indexOf(plan) >= requiredPlanIndex;
-  const selfServe =
-    overview.data.mode !== "managed" && overview.data.selfServe && !overview.data.checkoutFrozen;
+  const planMeetsRequirement = Boolean(requiredPlan) && plans.indexOf(plan) >= requiredPlanIndex;
+  const selfServe = overview.data.mode !== "managed" && overview.data.selfServe;
+  const { checkoutFrozen } = overview.data;
   const trialAvailable =
-    planMeetsRequirement && selfServe && plan.selfServe && !plan.salesLed && plan.trialable;
+    canManageBilling &&
+    !checkoutFrozen &&
+    planMeetsRequirement &&
+    selfServe &&
+    plan.selfServe &&
+    !plan.salesLed &&
+    plan.trialable;
   const supportsAnnualCadence = plans.some((candidate) => planSupportsCadence(candidate, "annual"));
   const supportsMonthlyCadence = plans.some((candidate) =>
     planSupportsCadence(candidate, "monthly")
   );
-  const visibleCadence =
-    (cadence === "annual" && supportsAnnualCadence) ||
-    (cadence === "monthly" && supportsMonthlyCadence)
-      ? cadence
-      : supportsAnnualCadence
-        ? "annual"
-        : "monthly";
+  let visibleCadence = cadence;
+  if (
+    (cadence === "annual" && !supportsAnnualCadence) ||
+    (cadence === "monthly" && !supportsMonthlyCadence)
+  ) {
+    visibleCadence = supportsAnnualCadence ? "annual" : "monthly";
+  }
   const effectiveCadence = trialAvailable ? "monthly" : getEffectiveCadence(plan, visibleCadence);
   const comparePrice = getPlanPrice(plan, effectiveCadence);
   const features = getPlanFeatures(product, plan);
@@ -534,12 +589,9 @@ const ProductUpgradeGate = ({
     plans.find((candidate) => candidate.tier === currentEntitlement?.planTier)?.name ??
     currentEntitlement?.planTier;
   const trialDurationLabel = plan.trialDays === 14 ? "2-Week" : `${plan.trialDays}-Day`;
-  let trialPriceLabel =
-    plan.trialDays === 14
-      ? "FREE for 2 Weeks"
-      : plan.trialDays > 0
-        ? `FREE for ${plan.trialDays} Days`
-        : "FREE during trial";
+  let trialPriceLabel = "FREE during trial";
+  if (plan.trialDays === 14) trialPriceLabel = "FREE for 2 Weeks";
+  else if (plan.trialDays > 0) trialPriceLabel = `FREE for ${plan.trialDays} Days`;
   if (isUpgradeTrial) trialPriceLabel = `Trial Upgrade: ${trialPriceLabel}`;
   const upgradeLabel = intent.upgradeLabel ?? `Unlock ${product.name}`;
   const productStyle = { "--product-color": product.color } as CSSProperties;
@@ -566,11 +618,9 @@ const ProductUpgradeGate = ({
         return;
       }
 
-      createNotification({ type: "success", text: `Your ${plan.name} trial has started.` });
-      onOpenChange(false);
-      onGranted();
+      setStartedTrial(plan);
     } catch {
-      return;
+      // The trial mutation reports errors through the shared notification handler.
     }
   };
 
@@ -585,7 +635,7 @@ const ProductUpgradeGate = ({
       View Billing Options
     </Button>
   );
-  if (!planMeetsRequirement) {
+  if (requiredPlan && !planMeetsRequirement) {
     productUpgradeAction = (
       <Button
         data-upgrade-cta
@@ -597,7 +647,7 @@ const ProductUpgradeGate = ({
         Select {requiredPlan?.name ?? intent.planKey} or higher
       </Button>
     );
-  } else if (plan.salesLed || !selfServe) {
+  } else if (requiredPlan && canManageBilling && (plan.salesLed || !selfServe)) {
     productUpgradeAction = (
       <Button
         data-upgrade-cta
@@ -610,6 +660,18 @@ const ProductUpgradeGate = ({
         }}
       >
         Contact Sales
+      </Button>
+    );
+  } else if (requiredPlan && canManageBilling && checkoutFrozen) {
+    productUpgradeAction = (
+      <Button
+        data-upgrade-cta
+        variant="product"
+        className="w-full justify-center"
+        style={productStyle}
+        isDisabled
+      >
+        Billing Changes Paused
       </Button>
     );
   } else if (trialAvailable) {
@@ -644,40 +706,72 @@ const ProductUpgradeGate = ({
     ? `Your ${trialDurationLabel.toLowerCase()} trial upgrade is free. You'll keep paying for ${currentPlanName} during the trial. After it ends, you'll move to ${plan.name} and be charged the difference. End the trial before then to stay on ${currentPlanName}. The displayed monthly rate is a catalog reference, not your actual upgrade charge.`
     : `Your ${trialDurationLabel.toLowerCase()} trial is free. A payment method is required. If you do not have one on file, secure card setup must finish before the trial starts. After the trial, billing continues monthly based on usage unless you cancel.`;
 
+  let notice: ReactNode;
+  if (!requiredPlan) {
+    notice = (
+      <Alert variant="info" appearance="borderless">
+        <CircleAlert />
+        <AlertDescription>
+          This feature&apos;s required plan is unavailable. Review available options in billing.
+        </AlertDescription>
+      </Alert>
+    );
+  } else if (!canManageBilling) {
+    notice = (
+      <Alert variant="info" appearance="borderless">
+        <CircleAlert />
+        <AlertDescription>
+          You can compare plans. Ask a member with billing management permission to start a trial or
+          update the subscription.
+        </AlertDescription>
+      </Alert>
+    );
+  } else if (checkoutFrozen && selfServe && !plan.salesLed) {
+    notice = (
+      <Alert variant="warning" appearance="borderless">
+        <CircleAlert />
+        <AlertDescription>
+          Purchases and plan changes are unavailable right now. Your current subscription is
+          unaffected; please check back shortly.
+        </AlertDescription>
+      </Alert>
+    );
+  } else if (!selfServe) {
+    notice = (
+      <Alert variant="info" appearance="borderless">
+        <CircleAlert />
+        <AlertDescription>
+          Contact your Infisical account manager to update this subscription.
+        </AlertDescription>
+      </Alert>
+    );
+  } else if (showUsedTrialNotice) {
+    notice = (
+      <Alert variant="info" appearance="borderless">
+        <CircleAlert />
+        <AlertDescription>Free trial for {product.name} has already been used.</AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <ProductUpgradeDialog
       product={product}
       upgradeLabel={upgradeLabel}
-      requiredPlanName={requiredPlan.name}
+      requiredPlanName={requiredPlan?.name}
       plans={plans}
       selectedTier={plan.tier}
       currentPlanTier={currentPlanTier}
       onTierChange={setSelectedTier}
       onOpenChange={onOpenChange}
       features={features}
-      notice={
-        !selfServe ? (
-          <Alert variant="info" appearance="borderless">
-            <CircleAlert />
-            <AlertDescription>
-              Contact your Infisical account manager to update this subscription.
-            </AlertDescription>
-          </Alert>
-        ) : showUsedTrialNotice ? (
-          <Alert variant="info" appearance="borderless">
-            <CircleAlert />
-            <AlertDescription>
-              Free trial for {product.name} has already been used.
-            </AlertDescription>
-          </Alert>
-        ) : undefined
-      }
+      notice={notice}
       footer={
         <>
           {plan.tier === product.baselinePlan?.tier && (
             <div className="flex items-center justify-center gap-3 px-1 text-sm">
               <span className="text-muted">Current plan</span>
-              <span className="text-foreground font-medium">FREE</span>
+              <span className="font-medium text-foreground">FREE</span>
             </div>
           )}
           {!plan.salesLed &&
@@ -685,8 +779,8 @@ const ProductUpgradeGate = ({
             (trialAvailable ? (
               <Tooltip key={plan.tier}>
                 <TooltipTrigger asChild>
-                  <div
-                    tabIndex={0}
+                  <button
+                    type="button"
                     className="flex w-full items-baseline justify-between gap-3 rounded-sm px-1 text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <span className="text-muted line-through">
@@ -694,8 +788,8 @@ const ProductUpgradeGate = ({
                         ? `${fmtMoney(comparePrice.amount, 6)}${comparePrice.compactUnit}`
                         : "Usage-based"}
                     </span>
-                    <span className="text-foreground font-medium">{trialPriceLabel}*</span>
-                  </div>
+                    <span className="font-medium text-foreground">{trialPriceLabel}*</span>
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent
                   side="top"
@@ -731,12 +825,12 @@ const ProductUpgradeGate = ({
                   className={`flex items-baseline gap-2 text-sm tabular-nums ${hasPeriodOption ? "ml-auto" : ""}`}
                 >
                   {comparePrice.amount > 0 ? (
-                    <span className="text-foreground font-medium">
+                    <span className="font-medium text-foreground">
                       {fmtMoney(comparePrice.amount, 6)}
                       {comparePrice.compactUnit}
                     </span>
                   ) : (
-                    <span className="text-foreground font-medium">Usage-based</span>
+                    <span className="font-medium text-foreground">Usage-based</span>
                   )}
                 </div>
               </div>
@@ -746,4 +840,11 @@ const ProductUpgradeGate = ({
       }
     />
   );
+};
+
+export const UpgradeGate = ({ intent, ...props }: Props | CapabilityProps) => {
+  if ("scope" in intent) {
+    return <CapabilityUpgradeGate {...props} intent={intent} />;
+  }
+  return <ProductUpgradeGate {...props} intent={intent} />;
 };

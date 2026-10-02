@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { Button, PageLoader } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
@@ -100,12 +100,16 @@ export const IdentitySingleRoleModify = ({ identityProjectMembership, role, onSu
           Save Role
         </Button>
       </div>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="project.identity-single-role-modify"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
-        text="Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          description:
+            "Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan.",
+          isEnterpriseFeature: true
+        }}
       />
     </form>
   );

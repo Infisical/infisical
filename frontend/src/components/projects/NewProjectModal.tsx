@@ -5,7 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { InfoIcon, Plus } from "lucide-react";
 import z from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { ExternalKmsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -358,12 +358,16 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
           Create Project
         </Button>
       </DialogFooter>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="project.external-kms"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to external KMS. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...ExternalKmsUpgradeIntent,
+          description:
+            "Your current plan does not include access to external KMS. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </form>
   );

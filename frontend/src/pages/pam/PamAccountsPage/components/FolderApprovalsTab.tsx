@@ -91,11 +91,11 @@ const ApproverSelectOption = ({ children, ...props }: OptionProps<ApproverOption
   return (
     <components.Option {...props}>
       <div className="flex items-center gap-2.5">
-        <Icon className="text-muted size-4 shrink-0" />
+        <Icon className="size-4 shrink-0 text-muted" />
         <div className="min-w-0">
           <p className="truncate">{children}</p>
           {props.data.subtitle && (
-            <p className="text-muted truncate text-xs leading-4">{props.data.subtitle}</p>
+            <p className="truncate text-xs leading-4 text-muted">{props.data.subtitle}</p>
           )}
         </div>
       </div>
@@ -403,7 +403,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           />
 
           {approvers.length === 0 ? (
-            <div className="border-border text-muted rounded-md border p-8 text-center text-sm">
+            <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
               No approvers configured.
             </div>
           ) : (
@@ -431,10 +431,10 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                     <TableRow key={`${approver.type}-${approver.id}`} className="h-14">
                       <TableCell>
                         <div className="flex items-center gap-2.5">
-                          <Icon className="text-muted size-4 shrink-0" />
+                          <Icon className="size-4 shrink-0 text-muted" />
                           <div className="flex flex-col">
                             <span className="text-sm font-medium">{displayName}</span>
-                            {subtitle && <span className="text-muted text-xs">{subtitle}</span>}
+                            {subtitle && <span className="text-xs text-muted">{subtitle}</span>}
                           </div>
                         </div>
                       </TableCell>
@@ -491,7 +491,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           />
 
           {breakGlassUsers.length === 0 ? (
-            <div className="border-border text-muted rounded-md border p-8 text-center text-sm">
+            <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
               No break-glass users configured. Nobody can bypass approval in this folder.
             </div>
           ) : (
@@ -519,10 +519,10 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                     <TableRow key={`bg-${approver.type}-${approver.id}`} className="h-14">
                       <TableCell>
                         <div className="flex items-center gap-2.5">
-                          <Icon className="text-muted size-4 shrink-0" />
+                          <Icon className="size-4 shrink-0 text-muted" />
                           <div className="flex flex-col">
                             <span className="text-sm font-medium">{displayName}</span>
-                            {subtitle && <span className="text-muted text-xs">{subtitle}</span>}
+                            {subtitle && <span className="text-xs text-muted">{subtitle}</span>}
                           </div>
                         </div>
                       </TableCell>
@@ -570,12 +570,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 onClick={() =>
                   openUpgradeGate({
                     intent: PamSlackNotificationsUpgradeIntent,
-                    paywallKey: "pam.folder-slack-notifications",
-                    isEntitled: (refreshedSubscription) =>
-                      refreshedSubscription.pamSlackNotifications,
-                    onGranted: () => undefined,
-                    failureMessage:
-                      "Failed to refresh your subscription. Try configuring Slack notifications again."
+                    paywallKey: "pam.folder-slack-notifications"
                   })
                 }
               >
@@ -634,7 +629,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardHeader>
         <CardContent>
           {requestsTotalCount === 0 ? (
-            <div className="border-border text-muted rounded-md border p-8 text-center text-sm">
+            <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
               No access requests have been submitted for this folder.
             </div>
           ) : (
@@ -657,7 +652,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                         <TableCell className="h-[50px]">
                           <div className="flex flex-col">
                             <span className="text-sm font-medium">{request.requesterName}</span>
-                            <span className="text-muted text-xs">
+                            <span className="text-xs text-muted">
                               {getRequesterSubtitle(request)}
                             </span>
                           </div>
@@ -752,7 +747,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
       <div aria-hidden className="h-8 shrink-0" />
       {isAnyDirty && (
-        <div className="border-border bg-popover sticky bottom-0 -mx-4 -mb-4 mt-auto flex items-center justify-end gap-2 border-t px-4 py-3">
+        <div className="sticky bottom-0 -mx-4 mt-auto -mb-4 flex items-center justify-end gap-2 border-t border-border bg-popover px-4 py-3">
           <Button type="button" variant="ghost" onClick={handleDiscard}>
             Discard
           </Button>

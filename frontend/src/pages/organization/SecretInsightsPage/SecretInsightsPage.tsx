@@ -141,10 +141,7 @@ export const SecretInsightsPage = withPermission(
     const handleUpgrade = useCallback(() => {
       openUpgradeGate({
         intent: SecretAccessInsightsUpgradeIntent,
-        paywallKey: "organization.secret-insights",
-        isEntitled: (refreshedSubscription) => refreshedSubscription.secretAccessInsights,
-        onGranted: () => undefined,
-        failureMessage: "Failed to refresh your subscription. Try opening secret insights again."
+        paywallKey: "organization.secret-insights"
       });
     }, [openUpgradeGate]);
 

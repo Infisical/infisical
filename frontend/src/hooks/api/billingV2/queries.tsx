@@ -21,7 +21,10 @@ export const billingV2Keys = {
     [{ orgId, search: search || undefined, ...rest }, "billing-v2-organizations"] as const
 };
 
-export const useGetBillingV2Overview = (orgId: string, options?: { enabled?: boolean }) => {
+export const useGetBillingV2Overview = (
+  orgId: string,
+  options?: { enabled?: boolean; staleTime?: number }
+) => {
   return useQuery({
     queryKey: billingV2Keys.overview(orgId),
     queryFn: async () => {
@@ -34,6 +37,7 @@ export const useGetBillingV2Overview = (orgId: string, options?: { enabled?: boo
       return overview;
     },
     enabled: Boolean(orgId) && (options?.enabled ?? true),
+    ...(options?.staleTime !== undefined ? { staleTime: options.staleTime } : {}),
     placeholderData: keepPreviousData
   });
 };

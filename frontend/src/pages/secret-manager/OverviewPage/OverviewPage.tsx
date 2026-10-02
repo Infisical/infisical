@@ -46,9 +46,8 @@ import {
   SecretImportReplicationUpgradeIntent,
   SecretRotationsUpgradeIntent,
   SecretsBrokeringUpgradeIntent,
-  UpgradeContinuation,
-  UpgradeGate,
-  UpgradeIntent
+  UpgradeIntent,
+  useUpgradeGate
 } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -194,8 +193,6 @@ import {
 import { useCheckSecretRotationV2Credentials } from "@app/hooks/api/secretRotationsV2/mutations";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
-import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
-import { SubscriptionPlan } from "@app/hooks/api/subscriptions/types";
 import {
   ApiErrorTypes,
   ProjectEnv,
@@ -334,10 +331,6 @@ const SECRET_SORT_OPTIONS = SECRET_NAME_SORT_OPTIONS;
 
 type UpgradeRequest = {
   intent: UpgradeIntent;
-  returnTarget?: { environment?: string; folderPath?: string };
-  isEntitled: (subscription: SubscriptionPlan) => boolean;
-  onGranted: () => void | Promise<void>;
-  failureMessage: string;
 };
 
 const OverviewPageContent = () => {
@@ -354,10 +347,6 @@ const OverviewPageContent = () => {
       search: el.search,
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
-      upgradeContinuation: el.upgradeContinuation,
-      upgradeEnvironment: el.upgradeEnvironment,
-      upgradeFolderPath: el.upgradeFolderPath,
-      checkout: el.checkout,
       honeyTokenId: el.honeyTokenId,
       tags: el.tags,
       filterBy: el.filterBy
@@ -1186,192 +1175,21 @@ const OverviewPageContent = () => {
     "revokeHoneyToken",
     "createEnvironment"
   ] as const);
-  const [upgradeRequest, setUpgradeRequest] = useState<UpgradeRequest | null>(null);
+  const { openUpgradeGate: openSharedUpgradeGate, upgradeGate } = useUpgradeGate();
   const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
     null
   );
 
-  const clearUpgradeContinuation = useCallback(() => {
-    navigate({
-      search: (prev) => ({
-        ...prev,
-        upgradeContinuation: undefined,
-        upgradeEnvironment: undefined,
-        upgradeFolderPath: undefined,
-        checkout: undefined
-      }),
-      replace: true
-    });
-  }, [navigate]);
-
-  const completeUpgradeRequest = useCallback(
+  const openUpgradeGate = useCallback(
     (request: UpgradeRequest) => {
-      const refreshSubscription = async (attempt = 0): Promise<void> => {
-        const refreshedSubscription = await fetchOrgSubscription(orgId, true);
-        queryClient.setQueryData(
-          subscriptionQueryKeys.getOrgSubsription(orgId),
-          refreshedSubscription
-        );
-
-        if (request.isEntitled(refreshedSubscription)) {
-          setUpgradeRequest(null);
-          clearUpgradeContinuation();
-          await request.onGranted();
-          return;
-        }
-
-        if (attempt < 4) {
-          await new Promise((resolve) => {
-            setTimeout(resolve, 1000);
-          });
-          await refreshSubscription(attempt + 1);
-          return;
-        }
-
-        createNotification({
-          type: "info",
-          text: "Your trial is still being activated. Reload this page in a moment to continue."
-        });
-      };
-
-      refreshSubscription().catch(() => {
-        createNotification({
-          type: "error",
-          text: request.failureMessage
-        });
-      });
+      openSharedUpgradeGate({ ...request, paywallKey: "secret-manager.overview" });
     },
-    [clearUpgradeContinuation, orgId, queryClient]
+    [openSharedUpgradeGate]
   );
 
-  const openUpgradeGate = useCallback((request: UpgradeRequest) => {
-    setUpgradeRequest(request);
-  }, []);
-
-  const getEnvironmentUpgradeRequest = useCallback(
-    (): UpgradeRequest => ({
-      intent: EnvironmentLimitUpgradeIntent,
-      isEntitled: (refreshedSubscription) =>
-        hasEnvironmentCapacity(refreshedSubscription.environmentLimit, userAvailableEnvs.length),
-      onGranted: () => {
-        if (permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Environments)) {
-          handlePopUpOpen("createEnvironment");
-        }
-      },
-      failureMessage: "Failed to refresh your subscription. Try creating an environment again."
-    }),
-    [handlePopUpOpen, permission, userAvailableEnvs.length]
-  );
-
-  useEffect(() => {
-    const continuation = routerSearch.upgradeContinuation;
-    if (!continuation) return;
-
-    if (routerSearch.checkout === "canceled") {
-      createNotification({ type: "info", text: "Trial setup was canceled." });
-      clearUpgradeContinuation();
-      return;
-    }
-
-    let request: UpgradeRequest | null = null;
-
-    if (continuation === UpgradeContinuation.CreateEnvironment) {
-      request = getEnvironmentUpgradeRequest();
-    } else if (continuation === UpgradeContinuation.CreateDynamicSecret) {
-      request = {
-        intent: DynamicSecretsUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.dynamicSecret,
-        onGranted: () => handlePopUpOpen("addDynamicSecret"),
-        failureMessage: "Failed to refresh your subscription. Try adding a dynamic secret again."
-      };
-    } else if (continuation === UpgradeContinuation.CreateSecretRotation) {
-      request = {
-        intent: SecretRotationsUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.secretRotation,
-        onGranted: () => handlePopUpOpen("addSecretRotation"),
-        failureMessage: "Failed to refresh your subscription. Try adding a secret rotation again."
-      };
-    } else if (continuation === UpgradeContinuation.CreateHoneyToken) {
-      request = {
-        intent: HoneyTokensUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.honeyTokens,
-        onGranted: () => handlePopUpOpen("addHoneyToken"),
-        failureMessage: "Failed to refresh your subscription. Try adding a honey token again."
-      };
-    } else if (continuation === UpgradeContinuation.CreateProxiedService) {
-      request = {
-        intent: SecretsBrokeringUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.secretsBrokering,
-        onGranted: () => handlePopUpOpen("addProxiedService"),
-        failureMessage: "Failed to refresh your subscription. Try adding a proxied service again."
-      };
-    } else if (continuation === UpgradeContinuation.ViewCommitHistory) {
-      request = {
-        intent: PointInTimeRecoveryUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.pitRecovery,
-        onGranted: () => {
-          const env = userAvailableEnvs.find(
-            (candidate) => candidate.slug === routerSearch.upgradeEnvironment
-          );
-          if (env) setCommitHistoryEnv({ slug: env.slug, name: env.name });
-        },
-        failureMessage: "Failed to refresh your subscription. Try opening commit history again."
-      };
-    } else if (continuation === UpgradeContinuation.ManageFolderAccess) {
-      request = {
-        intent: FolderAccessControlsUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.secretsFolderRbac,
-        onGranted: () => {
-          if (routerSearch.upgradeEnvironment && routerSearch.upgradeFolderPath) {
-            setFolderAccessTarget({
-              environmentSlug: routerSearch.upgradeEnvironment,
-              folderPath: routerSearch.upgradeFolderPath
-            });
-          }
-        },
-        failureMessage: "Failed to refresh your subscription. Try managing folder access again."
-      };
-    } else if (continuation === UpgradeContinuation.CreateSecretImport) {
-      request = {
-        intent: SecretImportReplicationUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.secretApproval,
-        onGranted: () => handlePopUpOpen("addSecretImport"),
-        failureMessage:
-          "Failed to refresh your subscription. Try enabling secret import replication again."
-      };
-    } else if (continuation === UpgradeContinuation.ViewSecretAccess) {
-      request = {
-        intent: SecretAccessInsightsUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.secretAccessInsights,
-        onGranted: () => {
-          createNotification({
-            type: "success",
-            text: "Secret access insights are now available. Open a secret's menu to view access."
-          });
-        },
-        failureMessage: "Failed to refresh your subscription. Try viewing secret access again."
-      };
-    } else if (continuation === UpgradeContinuation.CreateEnterpriseSecretSync) {
-      request = {
-        intent: EnterpriseSecretSyncsUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.enterpriseSecretSyncs,
-        onGranted: () => handlePopUpOpen("addSecretSync"),
-        failureMessage: "Failed to refresh your subscription. Try choosing that Secret Sync again."
-      };
-    }
-
-    if (request) completeUpgradeRequest(request);
-  }, [
-    clearUpgradeContinuation,
-    completeUpgradeRequest,
-    getEnvironmentUpgradeRequest,
-    handlePopUpOpen,
-    routerSearch.checkout,
-    routerSearch.upgradeContinuation,
-    routerSearch.upgradeEnvironment,
-    routerSearch.upgradeFolderPath,
-    userAvailableEnvs
-  ]);
+  const getEnvironmentUpgradeRequest = (): UpgradeRequest => ({
+    intent: EnvironmentLimitUpgradeIntent
+  });
 
   const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
   // Auto-open honey token drawer when linked via notification/email
@@ -1402,11 +1220,7 @@ const OverviewPageContent = () => {
 
     if (!subscription?.pitRecovery) {
       openUpgradeGate({
-        intent: PointInTimeRecoveryUpgradeIntent,
-        returnTarget: { environment: envSlug },
-        isEntitled: (refreshedSubscription) => refreshedSubscription.pitRecovery,
-        onGranted: openCommitHistory,
-        failureMessage: "Failed to refresh your subscription. Try opening commit history again."
+        intent: PointInTimeRecoveryUpgradeIntent
       });
       return;
     }
@@ -1431,11 +1245,7 @@ const OverviewPageContent = () => {
 
       if (!subscription?.secretsFolderRbac) {
         openUpgradeGate({
-          intent: FolderAccessControlsUpgradeIntent,
-          returnTarget: { environment: singleEnvSlug, folderPath: childFolderPath(folderName) },
-          isEntitled: (refreshedSubscription) => refreshedSubscription.secretsFolderRbac,
-          onGranted: openFolderAccess,
-          failureMessage: "Failed to refresh your subscription. Try managing folder access again."
+          intent: FolderAccessControlsUpgradeIntent
         });
         return;
       }
@@ -1464,11 +1274,7 @@ const OverviewPageContent = () => {
 
     if (!subscription?.secretsFolderRbac) {
       openUpgradeGate({
-        intent: FolderAccessControlsUpgradeIntent,
-        returnTarget: { environment: singleEnvSlug, folderPath: secretPath },
-        isEntitled: (refreshedSubscription) => refreshedSubscription.secretsFolderRbac,
-        onGranted: openCurrentFolderAccess,
-        failureMessage: "Failed to refresh your subscription. Try managing folder access again."
+        intent: FolderAccessControlsUpgradeIntent
       });
       return;
     }
@@ -3007,10 +2813,7 @@ const OverviewPageContent = () => {
   async function handleAddHoneyToken(): Promise<void> {
     if (!subscription?.honeyTokens) {
       openUpgradeGate({
-        intent: HoneyTokensUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.honeyTokens,
-        onGranted: () => handlePopUpOpen("addHoneyToken"),
-        failureMessage: "Failed to refresh your subscription. Try adding a honey token again."
+        intent: HoneyTokensUpgradeIntent
       });
       return;
     }
@@ -3025,10 +2828,7 @@ const OverviewPageContent = () => {
 
       if (data.used >= data.limit) {
         openUpgradeGate({
-          intent: HoneyTokensUpgradeIntent,
-          isEntitled: (refreshedSubscription) => refreshedSubscription.honeyTokenLimit > data.limit,
-          onGranted: handleAddHoneyToken,
-          failureMessage: "Failed to refresh your subscription. Try adding a honey token again."
+          intent: HoneyTokensUpgradeIntent
         });
         return;
       }
@@ -3067,10 +2867,7 @@ const OverviewPageContent = () => {
         return;
       }
       openUpgradeGate({
-        intent: DynamicSecretsUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.dynamicSecret,
-        onGranted: () => handlePopUpOpen("addDynamicSecret"),
-        failureMessage: "Failed to refresh your subscription. Try adding a dynamic secret again."
+        intent: DynamicSecretsUpgradeIntent
       });
     },
     onAddSecretRotation: () => {
@@ -3079,10 +2876,7 @@ const OverviewPageContent = () => {
         return;
       }
       openUpgradeGate({
-        intent: SecretRotationsUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.secretRotation,
-        onGranted: () => handlePopUpOpen("addSecretRotation"),
-        failureMessage: "Failed to refresh your subscription. Try adding a secret rotation again."
+        intent: SecretRotationsUpgradeIntent
       });
     },
     onAddHoneyToken: handleAddHoneyToken,
@@ -3092,10 +2886,7 @@ const OverviewPageContent = () => {
         return;
       }
       openUpgradeGate({
-        intent: SecretsBrokeringUpgradeIntent,
-        isEntitled: (refreshedSubscription) => refreshedSubscription.secretsBrokering,
-        onGranted: () => handlePopUpOpen("addProxiedService"),
-        failureMessage: "Failed to refresh your subscription. Try adding a proxied service again."
+        intent: SecretsBrokeringUpgradeIntent
       });
     },
     onCopySecrets: () =>
@@ -3872,14 +3663,9 @@ const OverviewPageContent = () => {
                             onBatchRevert={handleBatchRevert}
                             isSelectionDisabled={hasPendingBatchChanges}
                             onCopySecret={handleCopySecret}
-                            onAccessInsightsUpgrade={(onGranted) =>
+                            onAccessInsightsUpgrade={() =>
                               openUpgradeGate({
-                                intent: SecretAccessInsightsUpgradeIntent,
-                                isEntitled: (refreshedSubscription) =>
-                                  refreshedSubscription.secretAccessInsights,
-                                onGranted,
-                                failureMessage:
-                                  "Failed to refresh your subscription. Try viewing secret access again."
+                                intent: SecretAccessInsightsUpgradeIntent
                               })
                             }
                             activityId={getTableRowActivityId("secret", key)}
@@ -4238,11 +4024,7 @@ const OverviewPageContent = () => {
         }}
         onUpgradePlan={() =>
           openUpgradeGate({
-            intent: SecretImportReplicationUpgradeIntent,
-            isEntitled: (refreshedSubscription) => refreshedSubscription.secretApproval,
-            onGranted: () => handlePopUpOpen("addSecretImport"),
-            failureMessage:
-              "Failed to refresh your subscription. Try enabling secret import replication again."
+            intent: SecretImportReplicationUpgradeIntent
           })
         }
       />
@@ -4256,28 +4038,13 @@ const OverviewPageContent = () => {
         initialFormDataIsDirty={false}
         startOnDestination={false}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretSync", isOpen)}
-        onEnterpriseUpgrade={(onGranted) =>
+        onEnterpriseUpgrade={() =>
           openUpgradeGate({
-            intent: EnterpriseSecretSyncsUpgradeIntent,
-            isEntitled: (refreshedSubscription) => refreshedSubscription.enterpriseSecretSyncs,
-            onGranted,
-            failureMessage:
-              "Failed to refresh your subscription. Try choosing that Secret Sync again."
+            intent: EnterpriseSecretSyncsUpgradeIntent
           })
         }
       />
-      {upgradeRequest && (
-        <UpgradeGate
-          intent={upgradeRequest.intent}
-          paywallKey="secret-manager.overview"
-          returnTarget={upgradeRequest.returnTarget}
-          isOpen
-          onOpenChange={(isOpen) => {
-            if (!isOpen) setUpgradeRequest(null);
-          }}
-          onGranted={() => completeUpgradeRequest(upgradeRequest)}
-        />
-      )}
+      {upgradeGate}
       <AddEnvironmentModal
         isOpen={popUp.createEnvironment.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("createEnvironment", isOpen)}
