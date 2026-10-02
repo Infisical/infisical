@@ -32,6 +32,12 @@ export const assertFakeMatchesRealLicenseFns: Pick<typeof RealLicenseFns, "getDe
   getDefaultOnPremFeatures
 };
 
+// TFeatureSet types several flags as the literal `false` (the unlicensed default), so a plain
+// Partial<TFeatureSet> would refuse `true`. Widen those literals to boolean.
+type TFeatureOverrides = {
+  [K in keyof TFeatureSet]?: TFeatureSet[K] extends boolean ? boolean : TFeatureSet[K];
+};
+
 export const fakeLicense = {
   // Mutates in place rather than replacing the object, since the license service holds a reference
   // to it from boot.
@@ -41,7 +47,7 @@ export const fakeLicense = {
   },
 
   // Turns plan features on (or off) for the whole instance until the next reset.
-  setFeatures: (overrides: Partial<TFeatureSet>) => {
+  setFeatures: (overrides: TFeatureOverrides) => {
     Object.assign(features, overrides);
   }
 };
