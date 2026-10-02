@@ -117,7 +117,7 @@ const AnnouncementCard = ({
         // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The scrollable card needs keyboard focus so its full content is reachable.
         tabIndex={isActive ? 0 : -1}
         className={cn(
-          "absolute inset-0 thin-scrollbar overflow-x-hidden overflow-y-auto overscroll-none rounded-lg border border-border bg-popover shadow-lg transition-[transform,filter] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+          "absolute inset-0 thin-scrollbar overflow-x-hidden overflow-y-auto overscroll-none rounded-lg border border-border bg-popover shadow-lg transition-[transform,filter] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] outline-none motion-reduce:transition-none",
           isActive ? "pointer-events-auto" : "pointer-events-none select-none",
           Math.abs(offset) > 1 && "invisible"
         )}

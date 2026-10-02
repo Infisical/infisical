@@ -96,7 +96,7 @@ export const DashboardPage = () => {
                   <ValidityReadinessSection stats={stats} />
                   {stats.totals.total > 0 && (
                     <div className="flex flex-col gap-4">
-                      <h2 className="text-lg font-semibold text-foreground">
+                      <h2 className="text-lg font-normal text-foreground">
                         Post-Quantum Readiness
                       </h2>
                       <div className="flex flex-wrap gap-4">

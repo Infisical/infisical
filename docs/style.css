@@ -1274,6 +1274,8 @@ a.ifx-card__title:hover .ifx-card__chevron {
   padding: 1rem 1.25rem;
   border: 1px solid var(--ifx-card-line);
   background-color: var(--ifx-card-bg);
+  /* Matches Mintlify's heading scroll margin, so a link to the picker clears the sticky navbar. */
+  scroll-margin-top: 136px;
 }
 
 .ifx-avqs__sentence {
@@ -1556,6 +1558,89 @@ a.ifx-card__title:hover .ifx-card__chevron {
 
 .ifx-avqs__reset:hover {
   text-decoration-thickness: 2px;
+}
+
+/* ==========================================================================
+   Use case picker (snippets/UseCasePicker.jsx)
+   Reuses the .ifx-avqs chip and menu; these classes add the multi-select list.
+   ========================================================================== */
+
+.ifx-ucp__menu {
+  width: 20rem;
+  max-width: min(20rem, calc(100vw - 2rem));
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.ifx-ucp__group {
+  margin: 0;
+  padding: 0.25rem 0 0.5rem;
+  border: 0;
+}
+
+.ifx-ucp__group + .ifx-ucp__group {
+  border-top: 1px solid var(--ifx-control-line);
+  padding-top: 0.5rem;
+}
+
+.ifx-ucp__legend {
+  padding: 0 0.5rem 0.25rem;
+  color: var(--ifx-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ifx-ucp__option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  color: var(--ifx-control-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ifx-ucp__option:hover {
+  background-color: var(--ifx-hover-fill);
+  color: var(--ifx-control-text-hover);
+}
+
+.ifx-ucp__checkbox {
+  flex-shrink: 0;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin: 0;
+  accent-color: var(--ifx-accent-ink);
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Combined IAM policy (snippets/AwsIamPolicy.jsx)
+   ========================================================================== */
+
+.ifx-iamp__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+
+.ifx-iamp__option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ifx-text-soft);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.ifx-iamp__empty {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--ifx-control-line);
+  color: var(--ifx-muted);
+  font-size: 0.875rem;
 }
 
 /* ==========================================================================

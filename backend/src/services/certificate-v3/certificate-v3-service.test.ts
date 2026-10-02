@@ -318,6 +318,7 @@ describe("CertificateV3Service", () => {
     });
 
     service = certificateV3ServiceFactory({
+      certificateAlertEventEmitter: { emit: vi.fn() },
       certificateDAL: mockCertificateDAL,
       certificateSecretDAL: mockCertificateSecretDAL,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,

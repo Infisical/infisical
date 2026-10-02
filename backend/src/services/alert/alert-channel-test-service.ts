@@ -11,18 +11,21 @@ import {
 } from "./alert-channel-config-fns";
 import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
+import { TAlertChannelServiceFactory } from "./alert-channel-service";
 import { TAlertChannelDeps, TAlertRecipient } from "./alert-channel-types";
 import { TAlertDALFactory } from "./alert-dal";
-import { TAlertProviderRegistry } from "./alert-provider-registry";
+import { getRecipientScope } from "./alert-principal-scope-fns";
+import { getAlertResourceName, resolveAlertProjectId, TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
-import { TTestAlertChannelDTO, TTestAlertChannelResponse } from "./alert-service-types";
+import { TTestAlertChannelDTO, TTestAlertChannelResponse, TTestAlertChannelResult } from "./alert-service-types";
 import { buildTestAlertPayload } from "./alert-test-payload-fns";
-import { AlertPermissionAction, toAlertActor } from "./alert-types";
+import { AlertPermissionAction, IResourceAlertProvider, TAlertRecipientScope, toAlertActor } from "./alert-types";
 
 export type TAlertChannelTestServiceFactoryDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findById">;
-  alertDAL: Pick<TAlertDALFactory, "findByChannelId">;
+  alertDAL: Pick<TAlertDALFactory, "findByChannelId" | "findActiveById">;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
+  alertChannelService: Pick<TAlertChannelServiceFactory, "validateRecipients" | "assertRecipientTypesAllowed">;
   alertProviderRegistry: TAlertProviderRegistry;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -39,6 +42,7 @@ export const alertChannelTestServiceFactory = ({
   alertChannelDAL,
   alertDAL,
   alertRecipientResolver,
+  alertChannelService,
   alertProviderRegistry,
   kmsService,
   smtpService,
@@ -91,7 +95,7 @@ export const alertChannelTestServiceFactory = ({
 
     if (!dto.channelId) {
       assertChannelConfigValid(definition, dto.channelType, incoming);
-      return incoming;
+      return { config: incoming, channelName: null };
     }
 
     const channel = await alertChannelDAL.findById(dto.channelId);
@@ -114,19 +118,25 @@ export const alertChannelTestServiceFactory = ({
 
     const merged = mergeChannelConfigWithStored(dto.channelType, incoming, stored);
     assertChannelConfigValid(definition, dto.channelType, merged);
-    return merged;
+    return { config: merged, channelName: channel.name };
   };
 
   const $resolveRecipients = async (
     dto: TTestAlertChannelDTO,
-    projectId: string | null
+    scope: TAlertRecipientScope
   ): Promise<TAlertRecipient[]> => {
     const rows = dto.recipients ?? [];
     if (rows.length === 0) return [];
 
+    if (scope.allowEmailAddresses) {
+      await alertChannelService.validateRecipients(dto.actorOrgId, scope, rows);
+    } else {
+      alertChannelService.assertRecipientTypesAllowed(scope, rows);
+    }
+
     const resolved = await alertRecipientResolver.resolveMany(new Map([[TEST_CHANNEL_ID, rows]]), {
       orgId: dto.actorOrgId,
-      projectId
+      projectId: scope.projectId
     });
     return (resolved.get(TEST_CHANNEL_ID) ?? []).slice(0, MAX_TEST_RECIPIENTS);
   };
@@ -136,29 +146,14 @@ export const alertChannelTestServiceFactory = ({
     return message.slice(0, MAX_ERROR_LENGTH);
   };
 
-  const testChannel = async (dto: TTestAlertChannelDTO): Promise<TTestAlertChannelResponse> => {
+  const $sendTest = async (
+    dto: TTestAlertChannelDTO,
+    projectId: string | null,
+    provider: IResourceAlertProvider,
+    config: Record<string, unknown>
+  ): Promise<TTestAlertChannelResponse> => {
     const definition = getChannelDefinition(dto.channelType);
-
-    const provider = alertProviderRegistry.get(dto.resourceType);
-    if (!provider) {
-      throw new BadRequestError({
-        message: `No alert provider is registered for resource type '${dto.resourceType}'`
-      });
-    }
-
-    const projectId = dto.projectId ?? null;
-
-    await provider.assertPermission({
-      action: AlertPermissionAction.Create,
-      orgId: dto.actorOrgId,
-      projectId,
-      resourceId: dto.resourceId,
-      actor: toAlertActor(dto)
-    });
-    await provider.assertResourceInScope({ orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId });
-
-    const config = await $resolveConfig(dto, projectId);
-    const recipients = definition.directed ? await $resolveRecipients(dto, projectId) : [];
+    const recipients = definition.directed ? await $resolveRecipients(dto, getRecipientScope(provider, projectId)) : [];
     if (definition.directed && recipients.length === 0) {
       return { success: false, error: `No ${dto.channelType} recipients could be resolved in this scope` };
     }
@@ -167,7 +162,13 @@ export const alertChannelTestServiceFactory = ({
     await $assertCooldown(dto.actorOrgId, dto.actorId, dto.channelType);
 
     const deps: TAlertChannelDeps = { smtpService };
-    const payload = buildTestAlertPayload({ orgId: dto.actorOrgId, projectId });
+    const payload = buildTestAlertPayload({
+      orgId: dto.actorOrgId,
+      projectId,
+      ...(provider.getWebhookSource
+        ? { alertId: dto.alertId, resourceId: dto.resourceId, getWebhookSource: provider.getWebhookSource }
+        : {})
+    });
 
     try {
       if (!definition.directed) {
@@ -192,6 +193,54 @@ export const alertChannelTestServiceFactory = ({
       );
       return { success: false, error };
     }
+  };
+
+  const testChannel = async (dto: TTestAlertChannelDTO): Promise<TTestAlertChannelResult> => {
+    const provider = alertProviderRegistry.get(dto.resourceType);
+    if (!provider) {
+      throw new BadRequestError({
+        message: `No alert provider is registered for resource type '${dto.resourceType}'`
+      });
+    }
+
+    const projectId = await resolveAlertProjectId(provider, {
+      orgId: dto.actorOrgId,
+      projectId: dto.projectId,
+      resourceId: dto.resourceId
+    });
+
+    let alertName: string | null = null;
+    if (dto.alertId) {
+      const alert = await alertDAL.findActiveById(dto.alertId);
+      if (
+        !alert ||
+        alert.orgId !== dto.actorOrgId ||
+        alert.resourceType !== dto.resourceType ||
+        (alert.resourceId ?? null) !== (dto.resourceId ?? null) ||
+        (alert.projectId ?? null) !== projectId
+      ) {
+        throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' was not found in this scope` });
+      }
+      alertName = alert.name;
+    }
+
+    await provider.assertPermission({
+      action: dto.alertId ? AlertPermissionAction.Edit : AlertPermissionAction.Create,
+      orgId: dto.actorOrgId,
+      projectId,
+      resourceId: dto.resourceId,
+      actor: toAlertActor(dto)
+    });
+    await provider.assertResourceInScope({ orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId });
+
+    if (!dto.channelId) {
+      await provider.assertChannelTypesAllowed?.({ orgId: dto.actorOrgId, channelTypes: [dto.channelType] });
+    }
+
+    const { config, channelName } = await $resolveConfig(dto, projectId);
+    const resourceName = await getAlertResourceName(provider, dto.actorOrgId, dto.resourceId);
+    const result = await $sendTest(dto, projectId, provider, config);
+    return { ...result, projectId, resourceName, alertName, channelName };
   };
 
   return { testChannel };
