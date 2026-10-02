@@ -1,13 +1,14 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAgentVaultSessions } from "@app/db/schemas";
+import { TableName, TAgentVaultSessions, TAgentVaultSessionsInsert } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
+import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultSessionActor } from "./agent-vault-session-types";
 
 export type TAgentVaultSessionDALFactory = ReturnType<typeof agentVaultSessionDALFactory>;
 
@@ -15,8 +16,7 @@ export type TAgentVaultSessionListRow = {
   id: string;
   userId: string | null;
   identityId: string | null;
-  actorName: string;
-  actorEmail: string | null;
+  actor: TAgentVaultSessionActor;
   expiresAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
@@ -56,13 +56,47 @@ const statusFilter = (query: Knex.QueryBuilder, status: AgentVaultSessionStatus,
     });
 };
 
-const userDisplayName = ({
-  userFirstName,
-  userLastName
-}: {
+// A deleted owner leaves only the snapshot mint took, which holds a user's full name in one field.
+const toSessionActor = (row: {
+  actorType?: string | null;
+  userId: string | null;
+  identityId: string | null;
+  userUsername: string | null;
+  userEmail: string | null;
   userFirstName: string | null;
   userLastName: string | null;
-}) => [userFirstName, userLastName].filter(Boolean).join(" ") || null;
+  identityName: string | null;
+  actorName: string;
+  actorEmail: string | null;
+}): TAgentVaultSessionActor => {
+  // Null only on rows written by a pod still on the previous release during a rolling deploy.
+  const actorType =
+    row.actorType ??
+    (row.identityId || (!row.userId && !row.actorEmail)
+      ? AgentVaultMemberType.MachineIdentity
+      : AgentVaultMemberType.User);
+  if (actorType === AgentVaultMemberType.MachineIdentity) {
+    return { type: AgentVaultMemberType.MachineIdentity, id: row.identityId, name: row.identityName ?? row.actorName };
+  }
+  if (row.userId && row.userUsername) {
+    return {
+      type: AgentVaultMemberType.User,
+      id: row.userId,
+      username: row.userUsername,
+      email: row.userEmail,
+      firstName: row.userFirstName,
+      lastName: row.userLastName
+    };
+  }
+  return {
+    type: AgentVaultMemberType.User,
+    id: null,
+    username: row.actorEmail ?? row.actorName,
+    email: row.actorEmail,
+    firstName: row.actorName || null,
+    lastName: null
+  };
+};
 
 export const agentVaultSessionDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultSession);
@@ -78,15 +112,17 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
   const findForList = async (
     {
       projectId,
+      sessionId,
       actor,
-      status,
+      statuses,
       search,
       limit,
       offset
     }: {
       projectId: string;
+      sessionId?: string;
       actor?: { type: ActorType.USER | ActorType.IDENTITY; id: string };
-      status?: AgentVaultSessionStatus;
+      statuses?: AgentVaultSessionStatus[];
       search?: string;
       limit: number;
       offset: number;
@@ -99,9 +135,16 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
 
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query.where(`${TableName.AgentVaultSession}.projectId`, projectId);
+        if (sessionId) void query.where(`${TableName.AgentVaultSession}.id`, sessionId);
         if (actor?.type === ActorType.USER) void query.where(`${TableName.AgentVaultSession}.userId`, actor.id);
         if (actor?.type === ActorType.IDENTITY) void query.where(`${TableName.AgentVaultSession}.identityId`, actor.id);
-        if (status) statusFilter(query, status, now);
+        if (statuses?.length) {
+          void query.where((qb) => {
+            statuses.forEach((status) => {
+              void qb.orWhere((sub) => statusFilter(sub, status, now));
+            });
+          });
+        }
         // Shared with the count query, so the pager describes the filtered set rather than the whole one.
         if (search) {
           const term = `%${sanitizeSqlLikeString(search)}%`;
@@ -188,7 +231,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("expiresAt").withSchema(TableName.AgentVaultSession),
           db.ref("revokedAt").withSchema(TableName.AgentVaultSession),
           db.ref("createdAt").withSchema(TableName.AgentVaultSession),
+          db.ref("actorType").withSchema(TableName.AgentVaultSession),
           db.ref("username").withSchema(TableName.Users).as("userUsername"),
+          db.ref("email").withSchema(TableName.Users).as("userEmail"),
           db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
           db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
@@ -207,7 +252,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         expiresAt: Date | null;
         revokedAt: Date | null;
         createdAt: Date;
+        actorType: string | null;
         userUsername: string | null;
+        userEmail: string | null;
         userFirstName: string | null;
         userLastName: string | null;
         identityName: string | null;
@@ -227,8 +274,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
             id: row.id,
             userId: row.userId,
             identityId: row.identityId,
-            actorName: row.identityName ?? userDisplayName(row) ?? row.userUsername ?? row.actorName,
-            actorEmail: row.identityId ? null : (row.userUsername ?? row.actorEmail),
+            actor: toSessionActor(row),
             expiresAt: row.expiresAt,
             revokedAt: row.revokedAt,
             createdAt: row.createdAt,
@@ -264,26 +310,17 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  const pruneRetiredBefore = async (cutoff: Date, tx?: Knex) => {
+  // The id is chosen by the caller because the session log key is wrapped with it before the row exists.
+  const createWithId = async (data: TAgentVaultSessionsInsert & { id: string }, tx?: Knex) => {
     try {
-      return await (tx || db)(TableName.AgentVaultSession)
-        .where((qb) => {
-          void qb
-            .where("revokedAt", "<", cutoff)
-            .orWhere((inner) => {
-              void inner.whereNull("revokedAt").where("expiresAt", "<", cutoff);
-            })
-            // An ownerless session stopped working the moment its actor was deleted, and nothing stamps
-            // that moment, so it goes by age: a never session would otherwise outlive the 30 days for good.
-            .orWhere((inner) => {
-              void inner.whereNull("userId").whereNull("identityId").where("createdAt", "<", cutoff);
-            });
-        })
-        .del();
+      const [session] = await (tx || db)(TableName.AgentVaultSession)
+        .insert(data as never)
+        .returning("*");
+      return session;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Prune retired Agent Vault sessions" });
+      throw new DatabaseError({ error, name: "Create Agent Vault session" });
     }
   };
 
-  return { ...orm, findByTokenHash, findForList, revokeIfActive, pruneRetiredBefore };
+  return { ...orm, findByTokenHash, findForList, revokeIfActive, createWithId };
 };

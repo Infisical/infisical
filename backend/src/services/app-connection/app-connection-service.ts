@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, OrganizationActionScope, TAppConnections } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
@@ -34,7 +34,9 @@ import {
   encryptAppConnectionCredentials,
   enterpriseAppCheck,
   getAppConnectionMethodName,
+  isAppConnectionAllowedInProject,
   listAppConnectionOptions,
+  PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES,
   TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
@@ -55,6 +57,7 @@ import {
   TAppConnection,
   TAppConnectionConfig,
   TAppConnectionRaw,
+  TAppConnectionScope,
   TCreateAppConnectionDTO,
   TGetAppConnectionByNameDTO,
   TUpdateAppConnectionDTO,
@@ -393,10 +396,17 @@ export const appConnectionServiceFactory = ({
     );
   };
 
-  const findAppConnectionById = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
+  const findAppConnectionById = async (
+    app: AppConnection,
+    connectionId: string,
+    actor: OrgServiceActor,
+    scope?: TAppConnectionScope
+  ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    // Checked before any permission or app check, so a connection outside the scope reads exactly like a missing one.
+    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.projectId) {
       const { permission } = await permissionService.getProjectPermission({
@@ -548,6 +558,18 @@ export const appConnectionServiceFactory = ({
         ProjectPermissionAppConnectionActions.Create,
         ProjectPermissionSub.AppConnections
       );
+
+      if (
+        PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES.includes(project.type as ProjectType) &&
+        !isAppConnectionAllowedInProject(app, project.type as ProjectType)
+      ) {
+        const supported = listAppConnectionOptions(actor.orgId, project.type as ProjectType).map(
+          (option) => option.name
+        );
+        throw new BadRequestError({
+          message: `${APP_CONNECTION_NAME_MAP[app]} Connections can't be used in this project. It supports: ${supported.join(", ")}.`
+        });
+      }
     } else {
       ForbiddenError.from(orgPermission).throwUnlessCan(
         OrgPermissionAppConnectionActions.Create,
@@ -727,6 +749,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const updateAppConnection = async (
+    app: AppConnection,
     {
       connectionId,
       credentials,
@@ -737,7 +760,8 @@ export const appConnectionServiceFactory = ({
       rotation,
       ...params
     }: TUpdateAppConnectionDTO,
-    actor: OrgServiceActor
+    actor: OrgServiceActor,
+    scope?: TAppConnectionScope
   ) => {
     if (gatewayId && gatewayPoolId) {
       throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
@@ -745,7 +769,8 @@ export const appConnectionServiceFactory = ({
 
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     await enterpriseAppCheck(
       licenseService,
@@ -783,6 +808,9 @@ export const appConnectionServiceFactory = ({
         subject(OrgPermissionSubjects.AppConnections, { connectionId })
       );
     }
+
+    if (appConnection.app !== app)
+      throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
 
     if (gatewayId !== undefined && gatewayId !== appConnection.gatewayId) {
       ForbiddenError.from(orgPermission).throwUnlessCan(
@@ -837,7 +865,7 @@ export const appConnectionServiceFactory = ({
 
     let updatedCredentials: undefined | TAppConnection["credentials"];
 
-    const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
+    const { method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
     let validationGatewayIdForUpdate: string | null | undefined = effectiveGatewayIdForUpdate;
 
     if (credentials) {
@@ -1097,10 +1125,16 @@ export const appConnectionServiceFactory = ({
     }
   };
 
-  const deleteAppConnection = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
+  const deleteAppConnection = async (
+    app: AppConnection,
+    connectionId: string,
+    actor: OrgServiceActor,
+    scope?: TAppConnectionScope
+  ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.projectId) {
       const { permission } = await permissionService.getProjectPermission({
@@ -1327,11 +1361,13 @@ export const appConnectionServiceFactory = ({
 
   const triggerCredentialRotation = async (
     { app, connectionId }: { app: AppConnection; connectionId: string },
-    actor: OrgServiceActor
+    actor: OrgServiceActor,
+    scope?: TAppConnectionScope
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });

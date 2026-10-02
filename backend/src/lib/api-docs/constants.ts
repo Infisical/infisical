@@ -1,3 +1,4 @@
+import { AGENT_VAULT_MAX_REFERENCES_PER_FIELD } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   SECRET_ROTATION_CONNECTION_MAP,
@@ -106,6 +107,9 @@ export enum ApiDocsTags {
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
+  AgentVaultSessionLogs = "Agent Vault Session Logs",
+  AgentVaultSettings = "Agent Vault Settings",
+  AgentVaultAppConnections = "Agent Vault App Connections",
   KmipServers = "KMIP Servers",
   Instance = "Instance"
 }
@@ -4051,7 +4055,6 @@ export const GATEWAYS = {
       "Replacement auth method. Same shape as in create: `aws` with allowlists, `gcp` with GCP allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },
   AUTH_METHOD: {
-    stsEndpoint: "The endpoint URL for the AWS STS API.",
     allowedPrincipalArns:
       "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
@@ -4250,6 +4253,8 @@ export const ENCRYPTION_KEY_ROTATION = {
   }
 };
 
+const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to the access bundle's variables, written as \`{{KEY}}\`. A reference that repeats counts each time.`;
+
 export const AGENT_VAULT = {
   ACCESS_BUNDLE: {
     accessBundleId: "The ID of the access bundle.",
@@ -4271,19 +4276,15 @@ export const AGENT_VAULT = {
       "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
     headerName: "The header the credential is written to. Defaults to `Authorization`.",
     headerPrefix:
-      "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
-    username:
-      "The username half of the basic credential. May be empty if a password is set. Never returned once saved, since some APIs put the whole key here.",
-    updateUsername:
-      "The username half of the basic credential. Omit to keep the stored username; send an empty string to remove it, which requires a password.",
-    updateValue: "The secret. Omit to keep the stored secret.",
-    updatePassword:
-      "The password half of the basic credential. Omit to keep the stored password; send an empty string to remove it, which requires a username.",
+      "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. Can't contain `{{` or `}}`. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
+    username: `The username half of the basic credential. May be empty if a password is set. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved, since some APIs put the whole key here.`,
+    updateUsername: `The username half of the basic credential. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored username; send an empty string to remove it, which requires a password.`,
+    updateValue: `The secret. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored secret.`,
+    updatePassword: `The password half of the basic credential. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored password; send an empty string to remove it, which requires a username.`,
     createdAt: "When the service was added to the access bundle.",
     updatedAt: "When the service was last changed.",
-    value: "The secret. Never returned once saved.",
-    password:
-      "The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. Never returned once saved.",
+    value: `The secret. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    password: `The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
     allowedMethods:
       "The HTTP methods this service allows. Null allows every method. Anything else is refused by the proxy with a 403.",
     allowedPathPrefixes:
@@ -4292,20 +4293,41 @@ export const AGENT_VAULT = {
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's `id` to change it in place and keep its stored value. Without an `id`, a header is matched by name.",
     customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
     customHeaderName: "The name of the header, which must not be the credential's own header.",
-    customHeaderPrefix: "Written before the header value, separated by one space. Leave empty to send the value alone.",
+    customHeaderPrefix:
+      "Written before the header value, separated by one space. Leave empty to send the value alone. Can't contain `{{` or `}}`.",
     updateCustomHeaderPrefix:
-      "Written before the header value, separated by one space. Unlike the value, an omitted prefix is cleared rather than kept, since the stored prefix is returned and can be resent.",
-    customHeaderValue: "The header value. Never returned once saved.",
-    updateCustomHeaderValue: "The header value. Omit to keep the value already stored for this header.",
+      "Written before the header value, separated by one space. Can't contain `{{` or `}}`. Unlike the value, an omitted prefix is cleared rather than kept, since the stored prefix is returned and can be resent.",
+    customHeaderValue: `The header value. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    updateCustomHeaderValue: `The header value. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored for this header.`,
     substitutions:
       "Placeholders the proxy swaps for a real secret before forwarding. Send the full list. A substitution you leave out is deleted. Send a substitution's `id` to change it in place and keep its stored value. Without an `id`, it is matched by its placeholder.",
     substitutionId:
       "The ID of the substitution. Send it to change that substitution in place. Omit it to match by placeholder.",
     placeholder:
-      "The fake value your agent already sends. The proxy replaces it with the real secret. Matched as a plain string, so a distinctive placeholder is worth choosing.",
+      "The fake value your agent already sends. The proxy replaces it with the real secret. Matched as a plain string, so a distinctive placeholder is worth choosing. Can't contain `{{` or `}}`.",
     surfaces: "Where in the request to look for the placeholder: path, query, header or body.",
-    substitutionValue: "The real value the placeholder is replaced with. Never returned once saved.",
-    updateSubstitutionValue: "The real value the placeholder is replaced with. Omit to keep the value already stored."
+    substitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    updateSubstitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored.`,
+    variableReferences:
+      "The variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see variables.",
+    referenceField:
+      "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
+    referenceCustomHeaderId: "The custom header whose value uses the variable.",
+    referenceSubstitutionId: "The substitution whose value uses the variable."
+  },
+  VARIABLE: {
+    variableId: "The ID of the variable.",
+    key: "The name services use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
+    value: "The value the proxy puts in place of each `{{KEY}}`.",
+    updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
+    isSecret: "Whether the value is hidden once saved. A secret value is only returned by the value endpoint.",
+    listedValue:
+      "The value, for a variable that is not secret. Null for a secret one: read it from the value endpoint.",
+    revealedValue: "The variable's value.",
+    serviceIds:
+      "The IDs of the services in the access bundle that use this variable. A variable in use can't be deleted.",
+    createdAt: "When the variable was added to the access bundle.",
+    updatedAt: "When the variable was last changed."
   },
   MEMBER: {
     memberId: "The ID of the access bundle membership.",
@@ -4387,17 +4409,89 @@ export const AGENT_VAULT = {
     sessionToken: "The session an agent is running with. A selector, not a second credential.",
     createdAt: "When the proxy was registered."
   },
+  SESSION_LOGS: {
+    chunkId: "The ID of the chunk.",
+    proxyId: "The ID of the proxy that uploaded the chunk.",
+    proxyName: "The name of the proxy that uploaded the chunk. If the proxy was deleted, the name it had at the time.",
+    startedAt: "The time of the first record in the chunk.",
+    endedAt: "The time of the last record in the chunk.",
+    firstSeq: "The sequence number of the first record in the chunk. Each proxy numbers its own records.",
+    lastSeq: "The sequence number of the last record in the chunk. Each proxy numbers its own records.",
+    recordCount: "The number of records in the chunk.",
+    droppedCount:
+      "The number of requests the proxy couldn't record, for example because too many requests came in at once or session logs were off. They're reported on the next chunk the proxy sends, so they happened before this chunk, but not necessarily right before its first record.",
+    ciphertextBytes: "The size of the encrypted chunk, in bytes.",
+    iv: "The AES-GCM initialization vector for the chunk, as base64.",
+    ciphertextSha256:
+      "The SHA-256 digest of the encrypted chunk, as base64 without padding. If the downloaded chunk has a different digest, the chunk was changed after it was uploaded.",
+    uploadUrl:
+      "The URL to upload the encrypted chunk to with a PUT request. The body must be exactly `ciphertextBytes` bytes.",
+    presignedGetUrl:
+      "The URL to download the chunk from. Null if the chunk is in a bucket session logs no longer use, or if `sessionLogs.storageUnavailable` is set.",
+    expiresInSeconds: "The number of seconds before the URL expires.",
+    chunkCreatedAt:
+      "When the proxy registered the chunk with Infisical. Its upload to the bucket finishes shortly after, so a download in between returns 404.",
+    isRecordable: "False if this session's requests can't be recorded.",
+    sessionKey: "The key that decrypts every chunk in this response, as base64. Null if no chunk can be read.",
+    storageUnavailable: "The reason the chunks can't be downloaded right now. Null if they can.",
+    storageUnavailableReason:
+      "`no-connection` if no AWS connection is set for session logs, or `connection-unusable` if Infisical can't use the AWS connection.",
+    storageUnavailableMessage: "The error Infisical got from the AWS connection. Returned only to Agent Vault admins.",
+    sessionLogs:
+      "Whether session logs are on, the key that decrypts the chunks, and why they can't be downloaded, if they can't.",
+    historyCursor: "The `nextCursor` from the previous response. Leave it out to start from the newest logs.",
+    historyNextCursor: "Pass this as `cursor` to get older logs. Null when there's nothing older.",
+    liveCursor:
+      "Pass this to [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail) to get new logs as they arrive.",
+    tailCursor:
+      "The `liveCursor` from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list), or the `nextCursor` from your last call. Leave it out to start from now.",
+    tailNextCursor: "Pass this as `cursor` on your next call.",
+    tailHasMore: "Whether more logs are ready now. If false, wait a few seconds before calling again.",
+    limit: "How many records to return. Only whole chunks are returned, so a response can have slightly more.",
+    from: "Return only chunks with records at or after this time.",
+    to: "Return only chunks with records at or before this time.",
+    enabled: "Whether session logs are on.",
+    configEnabled: "Whether session logs are on. Turning them off stops recording but keeps what's already recorded.",
+    appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
+    bucket:
+      "The name of the S3 bucket. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",
+    region: "The AWS region of the bucket.",
+    keyPrefix:
+      "The folder in the bucket to store session logs in, such as `logs/agent-vault`. Up to 512 characters: letters, numbers and `! - _ . ' ( ) /`, with no slash at the start or end, no empty folder name, and no folder named `.` or `..`.",
+    corsProbeUrl: "A URL that fails to load in a browser if the bucket's CORS rule doesn't allow Infisical.",
+    connectionError:
+      "The error Infisical got when it tried to use the AWS connection, for example because AWS refused to let it assume the role. Null if there's no error or no connection.",
+    isStorageFull: "Whether your organization has reached its session log storage limit.",
+    hasSessionLogKey: "Whether the proxy already has this session's log key. If true, the key isn't returned again.",
+    proxySessionKey:
+      "The session's log key, as base64, sent once. Null when session logs are off or the proxy already has it."
+  },
+
   SESSION: {
     sessionId: "The ID of the session.",
     accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
+    recentSessionLogCounts:
+      "How many of the session's requests were recorded in its session log, and how many the proxy couldn't record, over the 24 hours before its most recent recorded request.",
+    recentRecordedCount: "The number of requests recorded in the session log.",
+    recentDroppedCount: "The number of requests the proxy couldn't record in the session log.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
-    status: "Filter by session status: active, revoked or expired.",
+    status:
+      "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
     search: "Match sessions by actor name, actor email or access bundle name.",
     limit: "The maximum number of sessions to return.",
-    offset: "How many sessions to skip."
+    offset: "How many sessions to skip.",
+    actorType: "Whether the session belongs to a user or a machine identity.",
+    actorId: "The ID of the user or machine identity the session belongs to, or null if it was deleted.",
+    username: "The username of the user. Once the user is deleted, the email recorded when the session was created.",
+    email: "The email address of the user. Once the user is deleted, the email recorded when the session was created.",
+    firstName:
+      "The first name of the user. Once the user is deleted, the full name recorded when the session was created.",
+    lastName: "The last name of the user, or null once the user is deleted.",
+    identityName:
+      "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created."
   }
 };
 
