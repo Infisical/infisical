@@ -71,6 +71,9 @@ const priceLabel = (ent: BillingV2Entitlement) => {
 };
 
 const planLine = (ent: BillingV2Entitlement) => {
+  if (ent.trialPaymentDueAt) {
+    return `Payment needed · access until ${ent.trialPaymentDueAt}`;
+  }
   if (ent.isTrialing) {
     return ent.trialEndsAt ? `Trial ends ${ent.trialEndsAt}` : "Trial";
   }
@@ -296,7 +299,13 @@ const ProductOverviewCard = ({
           <div className="flex min-w-0 flex-col gap-1.5">
             <span className="text-xs text-accent">Current plan</span>
             <span className="font-alliance text-xl">{planName}</span>
-            {planDetail && <span className="text-xs text-muted">{planDetail}</span>}
+            {planDetail && (
+              <span
+                className={ent.trialPaymentDueAt ? "text-xs text-warning" : "text-xs text-muted"}
+              >
+                {planDetail}
+              </span>
+            )}
             {!isManaged && (ent.planTier || price !== "Included" || onDemand > 0) && (
               <div className="flex flex-wrap items-baseline gap-2 text-sm">
                 <span>{price}</span>
@@ -320,8 +329,16 @@ const ProductOverviewCard = ({
         {trialPlanName && (
           <p className="text-xs text-muted">
             Trialing {trialPlanName}
-            {ent.trialPlanEndsAt ? ` until ${ent.trialPlanEndsAt}` : ""}; upgrades automatically
-            when the trial ends.
+            {ent.trialPlanPaymentDueAt ? (
+              <span className="text-warning">
+                {` · access until ${ent.trialPlanPaymentDueAt}; confirm payment to upgrade.`}
+              </span>
+            ) : (
+              <>
+                {ent.trialPlanEndsAt ? ` until ${ent.trialPlanEndsAt}` : ""}; upgrades automatically
+                when the trial ends.
+              </>
+            )}
           </p>
         )}
         {prod.includes && prod.includes.length > 0 && (

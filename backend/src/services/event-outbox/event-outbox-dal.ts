@@ -24,10 +24,10 @@ export type TOutboxInsertRow = {
 };
 
 export const eventOutboxDALFactory = (db: TDbClient) => {
-  const insertEvents = async (rows: TOutboxInsertRow[], tx: Knex): Promise<void> => {
+  const insertEvents = async (rows: TOutboxInsertRow[], tx?: Knex): Promise<void> => {
     if (rows.length === 0) return;
     try {
-      await tx(TableName.EventOutbox)
+      await (tx || db)(TableName.EventOutbox)
         .insert(
           rows.map((row) => ({
             ...row,

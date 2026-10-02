@@ -8,6 +8,10 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import {
+  getIssuanceAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
   CertExtendedKeyUsage,
@@ -188,6 +192,7 @@ type TCertificateIssuanceQueueFactoryDep = {
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL?: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -218,6 +223,7 @@ export const certificateIssuanceQueueFactory = ({
   certificateRequestDAL,
   resourceMetadataDAL,
   pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
   gatewayV2Service,
@@ -1201,6 +1207,15 @@ export const certificateIssuanceQueueFactory = ({
         }
       } catch {
         logger.debug("Failed to queue PKI alert event for async certificate issuance");
+      }
+
+      if (certificateExistsAfterThisJob && issuedCertificateId) {
+        await certificateAlertEventEmitter.notify({
+          certificateId: issuedCertificateId,
+          projectId: ca.projectId,
+          eventType: getIssuanceAlertEvent(isRenewal),
+          applicationId: scopedApplicationId
+        });
       }
 
       if (certificateExistsAfterThisJob) {

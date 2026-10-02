@@ -6,6 +6,10 @@ import { decryptAppConnectionCredentials } from "@app/services/app-connection/ap
 import { buildGoDaddySsoKeyHeader } from "@app/services/app-connection/godaddy/godaddy-connection-constants";
 import { getGoDaddyApiBaseUrl } from "@app/services/app-connection/godaddy/godaddy-connection-fns";
 import { TGoDaddyConnection } from "@app/services/app-connection/godaddy/godaddy-connection-types";
+import {
+  getIssuanceAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -66,6 +70,7 @@ export type TProcessGoDaddyRequestDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TProcessGoDaddyRequestResult =
@@ -208,6 +213,13 @@ export const processGoDaddyPendingValidationRequest = async (
           `Failed to queue PKI alert event [certificateRequestId=${request.id}] [certificateId=${certificateId}]`
         );
       }
+
+      await deps.certificateAlertEventEmitter.notify({
+        certificateId,
+        projectId: request.projectId,
+        eventType: getIssuanceAlertEvent(parsed.godaddy.isRenewal),
+        applicationId: request.applicationId
+      });
 
       return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };
     } catch (error) {

@@ -34,7 +34,8 @@ export const useGetBillingV2Overview = (orgId: string) => {
       return overview;
     },
     enabled: Boolean(orgId),
-    placeholderData: keepPreviousData
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: "always"
   });
 };
 
