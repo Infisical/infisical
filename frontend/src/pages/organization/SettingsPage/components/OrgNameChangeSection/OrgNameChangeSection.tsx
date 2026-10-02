@@ -141,6 +141,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
                   <InputGroupInput id="org-id" value={currentOrg.id} readOnly />
                   <InputGroupAddon align="inline-end">
                     <CopyButton
+                      key={currentOrg.id}
                       type="button"
                       value={currentOrg.id}
                       ariaLabel="Copy organization ID"
