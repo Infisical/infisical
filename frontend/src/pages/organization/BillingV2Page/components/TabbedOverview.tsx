@@ -1,4 +1,4 @@
-import { CSSProperties, ReactNode, useEffect } from "react";
+import { CSSProperties, ReactNode, useEffect, useRef, useState } from "react";
 import { CheckIcon, EllipsisVerticalIcon, InfoIcon, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -20,8 +20,8 @@ import {
   DropdownMenuTrigger,
   IconButton,
   Popover,
+  PopoverAnchor,
   PopoverContent,
-  PopoverTrigger,
   Separator,
   Skeleton,
   Tabs,
@@ -145,26 +145,83 @@ type TabbedOverviewProps = {
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-const ProductPlansPopover = ({
+const ProductPlanMenu = ({
   prod,
-  currentTier
+  currentTier,
+  canManage = false,
+  nudge,
+  onManage,
+  onSetCommitment
 }: {
   prod: BillingV2CatalogProduct;
   currentTier?: string;
+  canManage?: boolean;
+  nudge?: ReturnType<typeof commitSavingsNudge>;
+  onManage: (productId: string) => void;
+  onSetCommitment?: (productId: string) => void;
 }) => {
+  const [showPlans, setShowPlans] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const openPlansOnCloseRef = useRef(false);
   const plans = prod.plans
     .filter((plan) => !plan.deprecated || plan.tier === currentTier)
     .sort(byDisplayOrder);
-  if (plans.length === 0) return null;
+  if (!canManage && plans.length === 0) return null;
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" aria-label={`View plans for ${prod.name}`}>
-          View Plans
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" aria-label={`${prod.name} plans`}>
+    <Popover open={showPlans} onOpenChange={setShowPlans}>
+      <DropdownMenu>
+        <PopoverAnchor asChild>
+          <DropdownMenuTrigger asChild>
+            <IconButton
+              ref={triggerRef}
+              aria-label={`${prod.name} plan options`}
+              size="xs"
+              variant="ghost-muted"
+            >
+              <EllipsisVerticalIcon />
+            </IconButton>
+          </DropdownMenuTrigger>
+        </PopoverAnchor>
+        <DropdownMenuContent
+          align="end"
+          sideOffset={2}
+          onCloseAutoFocus={(event) => {
+            if (openPlansOnCloseRef.current) {
+              event.preventDefault();
+              openPlansOnCloseRef.current = false;
+              setShowPlans(true);
+            }
+          }}
+        >
+          {canManage && (
+            <DropdownMenuItem onClick={() => onManage(prod.id)}>Manage Plan</DropdownMenuItem>
+          )}
+          {canManage && nudge && onSetCommitment && (
+            <DropdownMenuItem onClick={() => onSetCommitment(prod.id)}>
+              Switch to Annual (save ~{nudge.savingsPct}%)
+            </DropdownMenuItem>
+          )}
+          {canManage && plans.length > 0 && <DropdownMenuSeparator />}
+          {plans.length > 0 && (
+            <DropdownMenuItem
+              onSelect={() => {
+                openPlansOnCloseRef.current = true;
+              }}
+            >
+              View Plans
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <PopoverContent
+        align="end"
+        aria-label={`${prod.name} plans`}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (document.activeElement === document.body) triggerRef.current?.focus();
+        }}
+      >
         <div className="flex flex-col gap-3">
           <span className="text-sm font-medium">{prod.name} plans</span>
           {plans.map((plan) => (
@@ -222,36 +279,21 @@ const ProductOverviewCard = ({
             {prod.addon && <Badge variant="neutral">Add-on</Badge>}
           </CardTitle>
         </div>
-        {(canChangePlan || hasBreakdown) && (
+        {hasBreakdown && (
           <CardAction>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton aria-label={`${prod.name} options`} size="xs" variant="ghost-muted">
-                  <EllipsisVerticalIcon />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={2}>
-                {canChangePlan && (
-                  <DropdownMenuItem onClick={() => onManage(prod.id)}>Manage Plan</DropdownMenuItem>
-                )}
-                {nudge && (
-                  <DropdownMenuItem onClick={() => onSetCommitment(prod.id)}>
-                    Switch to Annual (save ~{nudge.savingsPct}%)
-                  </DropdownMenuItem>
-                )}
-                {canChangePlan && hasBreakdown && <DropdownMenuSeparator />}
-                {hasBreakdown && (
-                  <DropdownMenuItem onClick={() => onViewBreakdown(prod.id)}>
-                    View Usage Breakdown
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={`View usage for ${prod.name}`}
+              onClick={() => onViewBreakdown(prod.id)}
+            >
+              View Usage
+            </Button>
           </CardAction>
         )}
       </CardHeader>
       <CardContent className="@container flex flex-col gap-5">
-        <div className="flex flex-wrap items-start justify-between gap-4 rounded-md bg-container p-4">
+        <div className="flex items-start justify-between gap-4 rounded-md bg-container p-4">
           <div className="flex min-w-0 flex-col gap-1.5">
             <span className="text-xs text-accent">Current plan</span>
             <span className="font-alliance text-xl">{planName}</span>
@@ -267,7 +309,14 @@ const ProductOverviewCard = ({
               </div>
             )}
           </div>
-          <ProductPlansPopover prod={prod} currentTier={ent.planTier} />
+          <ProductPlanMenu
+            prod={prod}
+            currentTier={ent.planTier}
+            canManage={canChangePlan}
+            nudge={nudge}
+            onManage={onManage}
+            onSetCommitment={onSetCommitment}
+          />
         </div>
         {trialPlanName && (
           <p className="text-xs text-muted">
@@ -385,7 +434,9 @@ const InactiveProductCard = ({
             <span className="text-xs text-accent">Subscription</span>
             <span className="font-alliance text-xl">No active plan</span>
           </div>
-          {(!canActivate || !hasSelfServePlan) && <ProductPlansPopover prod={prod} />}
+          {(!canActivate || !hasSelfServePlan) && (
+            <ProductPlanMenu prod={prod} onManage={onManage} />
+          )}
           {canActivate && hasSelfServePlan && (
             <Button
               variant="product"
