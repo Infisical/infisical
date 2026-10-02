@@ -54,7 +54,9 @@ E2E tests live in `e2e-test/routes/`. The custom Vitest environment (`e2e-test/v
 `isTestMode` branches. Replace the module instead, from `test.alias` in
 `vitest.e2e.config.mts`, with a double under `e2e-test/fakes/`. Production code stays unaware
 a fake exists. `e2e-test/fakes/aws-parameter-store-sync-fns.ts` and its connection counterpart
-are the worked examples, and the pre-existing `./license-fns` alias is the precedent.
+are the worked examples. `e2e-test/fakes/license-fns.ts` does the same for the plan: a spec calls
+`fakeLicense.setFeatures({ ... })` to turn plan features on over HTTP, and
+`e2e-test/setup/reset-fakes.ts` restores the unlicensed defaults at the start of every file.
 
 Four things decide whether this works:
 
