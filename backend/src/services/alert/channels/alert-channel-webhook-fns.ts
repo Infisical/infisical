@@ -19,7 +19,7 @@ type TAlertWebhookPayload = {
   datacontenttype: "application/json";
   subject: string;
   data: {
-    alert: { id: string; name: string; resourceType: string; condition?: string };
+    alert: { id: string; name: string; resourceType: string; resourceId?: string; condition?: string };
     items: TAlertPayload["items"];
     metadata: { totalItems: number; viewUrl: string };
   };
@@ -28,9 +28,11 @@ type TAlertWebhookPayload = {
 export const buildWebhookPayload = (payload: TAlertPayload): TAlertWebhookPayload => ({
   specversion: "1.0",
   type: payload.webhookType,
-  source: payload.alert.projectId
-    ? `/projects/${payload.alert.projectId}/alerts/${payload.alert.id}`
-    : `/alerts/${payload.alert.id}`,
+  source:
+    payload.webhookSource ??
+    (payload.alert.projectId
+      ? `/projects/${payload.alert.projectId}/alerts/${payload.alert.id}`
+      : `/alerts/${payload.alert.id}`),
   id: crypto.randomUUID(),
   time: new Date().toISOString(),
   datacontenttype: "application/json",
@@ -40,6 +42,7 @@ export const buildWebhookPayload = (payload: TAlertPayload): TAlertWebhookPayloa
       id: payload.alert.id,
       name: payload.alert.name,
       resourceType: payload.alert.resourceType,
+      ...(payload.alert.resourceId ? { resourceId: payload.alert.resourceId } : {}),
       ...(payload.alert.condition ? { condition: payload.alert.condition } : {})
     },
     items: payload.items,

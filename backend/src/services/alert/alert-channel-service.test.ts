@@ -11,6 +11,8 @@ const cipher = { encryptor, decryptor } as never;
 const encConfig = (config: unknown) => Buffer.from(JSON.stringify(config));
 const tx = {} as Knex;
 const CREATOR = { createdByActorId: "11111111-1111-1111-1111-111111111111", createdByActorType: "user" };
+const RECIPIENT_SCOPE = { projectId: null, allowEmailAddresses: true };
+const CHANNEL_INPUT = { ...CREATOR, recipientScope: RECIPIENT_SCOPE };
 
 type TRow = {
   id: string;
@@ -84,7 +86,8 @@ const buildService = (opts?: { seed?: TRow[] }) => {
         effectiveGroupIds: groupIds
       })
     },
-    groupDAL: { find: async (filter: { $in?: { id?: string[] } }) => (filter.$in?.id ?? []).map((id) => ({ id })) }
+    groupDAL: { find: async (filter: { $in?: { id?: string[] } }) => (filter.$in?.id ?? []).map((id) => ({ id })) },
+    emailDomainDAL: { find: async () => [{ domain: "verified-example.com" }] }
   } as unknown as TAlertChannelServiceFactoryDep);
 
   return { service, store, recipients };
@@ -97,7 +100,7 @@ const seedRow = (
   enabled: true,
   orgId: "org-1",
   projectId: null,
-  ...CREATOR,
+  ...CHANNEL_INPUT,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...over
@@ -112,7 +115,7 @@ describe("alert channel service", () => {
         channelType: AlertChannelType.WEBHOOK,
         config: { url: "https://example.com/hook", signingSecret: "s3cr3t" },
         orgId: "org-1",
-        ...CREATOR
+        ...CHANNEL_INPUT
       },
       encryptor as never,
       tx
@@ -129,7 +132,7 @@ describe("alert channel service", () => {
     const { service } = buildService();
     await expect(
       service.createChannelInTx(
-        { name: "Team email", channelType: AlertChannelType.EMAIL, config: {}, orgId: "org-1", ...CREATOR },
+        { name: "Team email", channelType: AlertChannelType.EMAIL, config: {}, orgId: "org-1", ...CHANNEL_INPUT },
         encryptor as never,
         tx
       )
@@ -143,7 +146,7 @@ describe("alert channel service", () => {
           config: { url: "https://example.com/hook" },
           recipients: [{ principalType: AlertPrincipalType.USER, principalId: "user-1" }],
           orgId: "org-1",
-          ...CREATOR
+          ...CHANNEL_INPUT
         },
         encryptor as never,
         tx
@@ -160,7 +163,7 @@ describe("alert channel service", () => {
         config: {},
         recipients: [{ principalType: AlertPrincipalType.USER, principalId: "user-1" }],
         orgId: "org-1",
-        ...CREATOR
+        ...CHANNEL_INPUT
       },
       encryptor as never,
       tx
@@ -169,6 +172,93 @@ describe("alert channel service", () => {
     expect(detail.channelType).toBe(AlertChannelType.EMAIL);
     expect(detail.recipients).toEqual([{ principalType: "user", principalId: "user-1" }]);
     expect(recipients.get(channel.id)).toHaveLength(1);
+  });
+
+  test("rejects duplicate recipients instead of dropping them", async () => {
+    const { service } = buildService();
+    await expect(
+      service.createChannelInTx(
+        {
+          name: "Team email",
+          channelType: AlertChannelType.EMAIL,
+          config: {},
+          recipients: [
+            { principalType: AlertPrincipalType.EMAIL, principalId: "Ops@Verified-Example.com" },
+            { principalType: AlertPrincipalType.EMAIL, principalId: "ops@verified-example.com" }
+          ],
+          orgId: "org-1",
+          ...CHANNEL_INPUT
+        },
+        encryptor as never,
+        tx
+      )
+    ).rejects.toThrow("Duplicate recipients: ops@verified-example.com");
+    await expect(
+      service.validateRecipients("org-1", RECIPIENT_SCOPE, [
+        { principalType: AlertPrincipalType.USER, principalId: "user-1" },
+        { principalType: AlertPrincipalType.USER, principalId: "user-1" }
+      ])
+    ).rejects.toThrow("Duplicate recipients: user-1");
+  });
+
+  test("stores email recipients exactly as sent", async () => {
+    const { service, recipients } = buildService();
+    const channel = await service.createChannelInTx(
+      {
+        name: "Team email",
+        channelType: AlertChannelType.EMAIL,
+        config: {},
+        recipients: [{ principalType: AlertPrincipalType.EMAIL, principalId: "Ops@Verified-Example.com" }],
+        orgId: "org-1",
+        ...CHANNEL_INPUT
+      },
+      encryptor as never,
+      tx
+    );
+    expect(recipients.get(channel.id)).toEqual([
+      { channelId: channel.id, principalType: "email", principalId: "Ops@Verified-Example.com" }
+    ]);
+  });
+
+  test("rejects email address recipients for alert types that don't accept them", async () => {
+    const { service } = buildService();
+    await expect(
+      service.validateRecipients("org-1", { projectId: null, allowEmailAddresses: false }, [
+        { principalType: AlertPrincipalType.EMAIL, principalId: "ops@verified-example.com" }
+      ])
+    ).rejects.toThrow("doesn't accept email address recipients");
+  });
+
+  test("rejects an email recipient on an unverified domain", async () => {
+    const { service } = buildService();
+    await expect(
+      service.createChannelInTx(
+        {
+          name: "Team email",
+          channelType: AlertChannelType.EMAIL,
+          config: {},
+          orgId: "org-1",
+          ...CHANNEL_INPUT,
+          recipients: [{ principalType: AlertPrincipalType.EMAIL, principalId: "outsider@unverified.io" }]
+        },
+        encryptor as never,
+        tx
+      )
+    ).rejects.toThrow("Not on a verified domain: outsider@unverified.io");
+  });
+
+  test("validates standalone email recipients against the verified domains", async () => {
+    const { service } = buildService();
+    await expect(
+      service.validateRecipients("org-1", RECIPIENT_SCOPE, [
+        { principalType: AlertPrincipalType.EMAIL, principalId: "stranger@unverified.io" }
+      ])
+    ).rejects.toThrow("Not on a verified domain: stranger@unverified.io");
+    await expect(
+      service.validateRecipients("org-1", RECIPIENT_SCOPE, [
+        { principalType: AlertPrincipalType.EMAIL, principalId: "ops@verified-example.com" }
+      ])
+    ).resolves.toBeUndefined();
   });
 
   test("keeps an omitted secret on update", async () => {
@@ -184,7 +274,7 @@ describe("alert channel service", () => {
 
     // Config sent without signingSecret -> keep the existing one.
     await service.updateChannelInTx(
-      { channelId: "ch-1", config: { url: "https://example.com/hook" } },
+      { recipientScope: RECIPIENT_SCOPE, channelId: "ch-1", config: { url: "https://example.com/hook" } },
       store.get("ch-1") as never,
       cipher,
       tx
@@ -204,7 +294,7 @@ describe("alert channel service", () => {
 
     await expect(
       service.updateChannelInTx(
-        { channelId: "ch-1", channelType: AlertChannelType.SLACK },
+        { recipientScope: RECIPIENT_SCOPE, channelId: "ch-1", channelType: AlertChannelType.SLACK },
         channel as never,
         cipher,
         tx
@@ -221,7 +311,11 @@ describe("alert channel service", () => {
     });
 
     await service.updateChannelInTx(
-      { channelId: "ch-1", config: { url: "https://example.com/hook", signingSecret: "" } },
+      {
+        recipientScope: RECIPIENT_SCOPE,
+        channelId: "ch-1",
+        config: { url: "https://example.com/hook", signingSecret: "" }
+      },
       channel as never,
       cipher,
       tx
@@ -241,7 +335,11 @@ describe("alert channel service", () => {
     });
 
     await service.updateChannelInTx(
-      { channelId: "ch-1", config: { url: "https://example.com/hook", signingSecret: "new" } },
+      {
+        recipientScope: RECIPIENT_SCOPE,
+        channelId: "ch-1",
+        config: { url: "https://example.com/hook", signingSecret: "new" }
+      },
       channel as never,
       cipher,
       tx
@@ -259,7 +357,12 @@ describe("alert channel service", () => {
     });
 
     await expect(
-      service.updateChannelInTx({ channelId: "ch-1", config: { webhookUrl: "" } }, channel as never, cipher, tx)
+      service.updateChannelInTx(
+        { recipientScope: RECIPIENT_SCOPE, channelId: "ch-1", config: { webhookUrl: "" } },
+        channel as never,
+        cipher,
+        tx
+      )
     ).rejects.toThrow(/Invalid slack channel config/);
   });
 });

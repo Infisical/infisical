@@ -116,6 +116,14 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_PKI_ALERT]: "Get PKI alert",
   [EventType.UPDATE_PKI_ALERT]: "Update PKI alert",
   [EventType.DELETE_PKI_ALERT]: "Delete PKI alert",
+  [EventType.CREATE_ALERT]: "Create alert",
+  [EventType.UPDATE_ALERT]: "Update alert",
+  [EventType.DELETE_ALERT]: "Delete alert",
+  [EventType.TEST_ALERT_CHANNEL]: "Test alert channel",
+  [EventType.CREATE_PKI_APPLICATION_ALERT]: "Create application alert",
+  [EventType.UPDATE_PKI_APPLICATION_ALERT]: "Update application alert",
+  [EventType.DELETE_PKI_APPLICATION_ALERT]: "Delete application alert",
+  [EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL]: "Test application alert channel",
   [EventType.CREATE_PKI_COLLECTION]: "Create PKI collection",
   [EventType.GET_PKI_COLLECTION]: "Get PKI collection",
   [EventType.UPDATE_PKI_COLLECTION]: "Update PKI collection",
@@ -472,6 +480,10 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_SERVICE_CREATE]: "Create service",
   [EventType.AGENT_VAULT_SERVICE_UPDATE]: "Update service",
   [EventType.AGENT_VAULT_SERVICE_DELETE]: "Delete service",
+  [EventType.AGENT_VAULT_VARIABLE_CREATE]: "Create variable",
+  [EventType.AGENT_VAULT_VARIABLE_UPDATE]: "Update variable",
+  [EventType.AGENT_VAULT_VARIABLE_DELETE]: "Delete variable",
+  [EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW]: "View variable value",
   [EventType.AGENT_VAULT_MEMBER_ADD]: "Add member",
   [EventType.AGENT_VAULT_MEMBER_UPDATE]: "Change member role",
   [EventType.AGENT_VAULT_MEMBER_REMOVE]: "Remove member",
@@ -484,7 +496,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_PROXY_ENROLL]: "Enroll proxy",
   [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
   [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",
-  [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy"
+  [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy",
+  [EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE]: "Update session log settings"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -545,6 +558,10 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.AGENT_VAULT_SERVICE_CREATE,
     EventType.AGENT_VAULT_SERVICE_UPDATE,
     EventType.AGENT_VAULT_SERVICE_DELETE,
+    EventType.AGENT_VAULT_VARIABLE_CREATE,
+    EventType.AGENT_VAULT_VARIABLE_UPDATE,
+    EventType.AGENT_VAULT_VARIABLE_DELETE,
+    EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW,
     EventType.AGENT_VAULT_MEMBER_ADD,
     EventType.AGENT_VAULT_MEMBER_UPDATE,
     EventType.AGENT_VAULT_MEMBER_REMOVE,
@@ -557,6 +574,7 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.AGENT_VAULT_PROXY_ENROLL,
     EventType.AGENT_VAULT_PROXY_UPDATE,
     EventType.AGENT_VAULT_PROXY_REVOKE,
-    EventType.AGENT_VAULT_PROXY_DELETE
+    EventType.AGENT_VAULT_PROXY_DELETE,
+    EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE
   ]
 };

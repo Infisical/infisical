@@ -280,7 +280,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
                         {!hideActions && (
                           <TableCell variant="action">
                             <div className="flex items-center justify-end">
-                              <Tooltip disableHoverableContent>
+                              <Tooltip>
                                 <TooltipTrigger>
                                   <IconButton
                                     variant="ghost"
@@ -299,7 +299,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
                                   {canManage ? "Manage Access" : "Access Restricted"}
                                 </TooltipContent>
                               </Tooltip>
-                              <Tooltip disableHoverableContent>
+                              <Tooltip>
                                 <TooltipTrigger>
                                   <IconButton
                                     variant="ghost"

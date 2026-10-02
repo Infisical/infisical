@@ -122,6 +122,23 @@ All user-facing "notify me when X happens" features share one module: `backend/s
 
 **If you touch a code path that deletes or detaches an alertable resource, it must reap that resource's alerts.** `alerts.resourceId` has no foreign key, so nothing cascades and the alert is left dangling. Use `alertService.deleteAlertsForDeletedResource` when the row is gone (unscoped, reaps across every org) and `deleteAlertsForResource` when the resource only left a scope. See the alerting invariants in `backend/CLAUDE.md`.
 
+### Approvals
+
+All "someone has to approve this before it happens" features share one module:
+`backend/src/services/approval-policy/`, which owns policies, requests, steps, grants, break-glass, and
+the generic `/v1/<policy-type>/approval-policies` endpoints. Current types: PAM access, certificate
+requests, code signing.
+
+A policy type plugs in through **one** extension point, a `TApprovalResource` (see its doc comment),
+constructed with its own dependencies and registered in the `approvalResources` map in
+`server/routes/index.ts`; that also gives it the generic `/v1/approval-policies/<type>/...` endpoints,
+which every type now uses for policy CRUD, requests, approve, reject and grant revocation. **Do not stand up a per-product approval service, request table, or review
+endpoint**: `access-approval-*` and `secret-approval-*` predate this module and are what we are
+converging away from. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
+for product vocabulary only: resolving the resource a request names, notifications, and read models.
+Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
+stop agreeing.
+
 ### API Layer (Frontend)
 
 React Query + Axios with query key factories per domain. Each API domain in `frontend/src/hooks/api/` has `queries.tsx`, `mutations.tsx`, and `types.tsx` — see `frontend/CLAUDE.md` for conventions.
