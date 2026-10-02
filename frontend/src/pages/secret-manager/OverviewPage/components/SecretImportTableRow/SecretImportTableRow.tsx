@@ -605,12 +605,17 @@ export const SecretImportTableRow = ({
       return (
         <>
           {renderReplicationEnvSelector()}
-          <Table containerClassName="rounded-none border-0">
+          <Table className="w-full table-fixed" containerClassName="rounded-none border-0">
+            <colgroup>
+              <col className="w-10" />
+              <col className="w-[var(--name-column-width,180px)]" />
+              <col />
+            </colgroup>
             <TableHeader className="bg-container-hover">
               <TableRow>
                 <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                 <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>Name</TableHead>
-                <TableHead className="w-full">Value</TableHead>
+                <TableHead>Value</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -658,12 +663,17 @@ export const SecretImportTableRow = ({
 
     return (
       <>
-        <Table containerClassName="rounded-none border-0">
+        <Table className="w-full table-fixed" containerClassName="rounded-none border-0">
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[var(--name-column-width,180px)]" />
+            <col />
+          </colgroup>
           <TableHeader className="bg-container-hover">
             <TableRow>
               <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
               <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>Name</TableHead>
-              <TableHead className="w-full">Value</TableHead>
+              <TableHead>Value</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -730,12 +740,17 @@ export const SecretImportTableRow = ({
     }
 
     return (
-      <Table containerClassName="rounded-none border-0">
+      <Table className="w-full table-fixed" containerClassName="rounded-none border-0">
+        <colgroup>
+          <col className="w-10" />
+          <col className="w-[var(--name-column-width,180px)]" />
+          <col />
+        </colgroup>
         <TableHeader className="bg-container-hover">
           <TableRow>
             <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
             <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>Name</TableHead>
-            <TableHead className="w-full">Value</TableHead>
+            <TableHead>Value</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -824,7 +839,7 @@ export const SecretImportTableRow = ({
               singleEnvImport?.isReplication &&
               singleEnvImport.lastReplicated && (
                 <div className="mr-16 ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16">
-                  <Tooltip disableHoverableContent>
+                  <Tooltip>
                     <TooltipTrigger>
                       <div
                         className={twMerge(

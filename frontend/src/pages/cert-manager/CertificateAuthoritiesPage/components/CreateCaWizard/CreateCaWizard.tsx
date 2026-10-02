@@ -56,6 +56,7 @@ const DEFAULT_VALUES: CaWizardForm = {
   keyAlgorithm: CertKeyAlgorithm.ECDSA_P256,
   notAfter: getDateTenYearsFromToday(),
   maxPathLength: "-1",
+  isOcspEnabled: false,
   disableManagedCrlDistributionPointUrl: false,
   crlDistributionPointUrls: []
 };
@@ -81,14 +82,19 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
     [hsmConnectors]
   );
 
+  const buildDefaultValues = (): CaWizardForm => ({
+    ...DEFAULT_VALUES,
+    isOcspEnabled: Boolean(subscription?.pkiOcsp)
+  });
+
   const form = useForm<CaWizardForm>({
     resolver: zodResolver(caWizardSchema),
-    defaultValues: DEFAULT_VALUES
+    defaultValues: buildDefaultValues()
   });
 
   const reset = () => {
     setStep(0);
-    form.reset(DEFAULT_VALUES);
+    form.reset(buildDefaultValues());
   };
 
   const handleClose = (open: boolean) => {
@@ -121,7 +127,8 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
           maxPathLength: Number(values.maxPathLength),
           ...(isRoot ? { notAfter: values.notAfter } : {}),
           crlDistributionPointUrls: values.crlDistributionPointUrls.map(({ value }) => value),
-          disableManagedCrlDistributionPointUrl: values.disableManagedCrlDistributionPointUrl
+          disableManagedCrlDistributionPointUrl: values.disableManagedCrlDistributionPointUrl,
+          isOcspEnabled: values.isOcspEnabled
         }
       });
 
@@ -205,7 +212,7 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
 
             <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
               <div className="mb-6">
-                <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+                <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
                 <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
               </div>
 

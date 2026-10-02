@@ -19,6 +19,7 @@ import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
+import { TCertificateAlertEventEmitter } from "../certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
@@ -83,6 +84,7 @@ import {
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
+import { assertNoCertificateProfilesUsingCa, rethrowCaDeleteError } from "./certificate-authority-fns";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
 import { assertCertificateAuthorityQuota, resolveEffectiveMaxCas } from "./certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
@@ -154,7 +156,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByCaId" | "findById" | "findByIdWithConfigs">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateRequestDAL: Pick<
     TCertificateRequestDALFactory,
@@ -169,6 +171,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -200,7 +203,8 @@ export const certificateAuthorityServiceFactory = ({
   hsmConnectorService,
   certificateAuthoritySecretDAL,
   licenseService,
-  pkiAlertV2Queue
+  pkiAlertV2Queue,
+  certificateAlertEventEmitter
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -798,7 +802,11 @@ export const certificateAuthorityServiceFactory = ({
       }
 
       const internalConfig = configuration as
-        | { crlDistributionPointUrls?: string[]; disableManagedCrlDistributionPointUrl?: boolean }
+        | {
+            crlDistributionPointUrls?: string[];
+            disableManagedCrlDistributionPointUrl?: boolean;
+            isOcspEnabled?: boolean;
+          }
         | undefined;
 
       const updatedCa = await internalCertificateAuthorityService.updateCaById({
@@ -807,7 +815,8 @@ export const certificateAuthorityServiceFactory = ({
         status,
         name,
         crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls,
-        disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl
+        disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl,
+        isOcspEnabled: internalConfig?.isOcspEnabled
       });
 
       if (!updatedCa.internalCa) {
@@ -944,7 +953,9 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
-    await certificateAuthorityDAL.deleteById(certificateAuthority.id);
+    await assertNoCertificateProfilesUsingCa(certificateProfileDAL, certificateAuthority.id, certificateAuthority.name);
+
+    await certificateAuthorityDAL.deleteById(certificateAuthority.id).catch(rethrowCaDeleteError);
 
     if (type === CaType.INTERNAL) {
       usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
@@ -1176,7 +1187,9 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
-    await certificateAuthorityDAL.deleteById(certificateAuthority.id);
+    await assertNoCertificateProfilesUsingCa(certificateProfileDAL, certificateAuthority.id, certificateAuthority.name);
+
+    await certificateAuthorityDAL.deleteById(certificateAuthority.id).catch(rethrowCaDeleteError);
 
     if (type === CaType.INTERNAL) {
       usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
@@ -1477,7 +1490,8 @@ export const certificateAuthorityServiceFactory = ({
               godaddyFns,
               projectDAL,
               telemetryService,
-              pkiAlertV2Queue
+              pkiAlertV2Queue,
+              certificateAlertEventEmitter
             },
             certificateRequest
           )
@@ -1492,7 +1506,8 @@ export const certificateAuthorityServiceFactory = ({
               digicertFns,
               projectDAL,
               telemetryService,
-              pkiAlertV2Queue
+              pkiAlertV2Queue,
+              certificateAlertEventEmitter
             },
             certificateRequest
           );

@@ -632,6 +632,11 @@ const envSchema = z
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
 
+    // Stripe App Connection
+    INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_STRIPE_SECRET_KEY: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL: zpStr(z.string().optional()),
+
     // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
     DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),
@@ -682,7 +687,10 @@ const envSchema = z
     GO_SIDECAR_SPAWN_ENABLED: zodStrBool.default("false"),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
-    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
+    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional()),
+
+    /* Temporary Stripe Whitelisting ----------------------------------------------------------------------------- */
+    WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS: zpStr(z.string().optional())
   })
   .refine(
     (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS) || Boolean(data.REDIS_CLUSTER_HOSTS),
@@ -785,7 +793,10 @@ const envSchema = z
       data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID || data.CLIENT_ID_HEROKU,
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU
+      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU,
+    WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS: data.WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.split(",").map((id) =>
+      id.trim()
+    )
   }));
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
@@ -1137,6 +1148,25 @@ export const overwriteSchema: {
       {
         key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET",
         description: "The Client Secret of your Heroku application."
+      }
+    ]
+  },
+  stripe: {
+    name: "Stripe",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID",
+        description: "The Client ID of your Stripe app."
+      },
+      {
+        key: "INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL",
+        description:
+          "Optional. Overrides the Stripe App Marketplace install link, which is otherwise derived from the Client ID above. Set it to the test-mode or sandbox link from the Stripe dashboard when the secret key below is not a live-mode key."
+      },
+      {
+        key: "INF_APP_CONNECTION_STRIPE_SECRET_KEY",
+        description:
+          "The secret API key of the Stripe account that owns your Stripe app. Infisical authenticates as this account and names the customer's account with Stripe-Context."
       }
     ]
   },

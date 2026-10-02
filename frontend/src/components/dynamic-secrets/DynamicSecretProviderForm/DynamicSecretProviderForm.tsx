@@ -435,7 +435,7 @@ export const DynamicSecretProviderForm = <
             }
           >
             {commonFields?.configurationHeading !== false && (
-              <h3 id="dynamic-secret-configuration-heading" className="text-base font-medium">
+              <h3 id="dynamic-secret-configuration-heading" className="text-base font-normal">
                 {commonFields?.configurationHeading ?? "Configuration"}
               </h3>
             )}

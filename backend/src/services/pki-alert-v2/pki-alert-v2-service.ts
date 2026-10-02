@@ -25,6 +25,7 @@ import { sendEmailNotificationWithRetry } from "./pki-alert-v2-channel-email-fns
 import { sendPagerDutyNotificationWithRetry } from "./pki-alert-v2-channel-pagerduty-fns";
 import { sendSlackNotificationWithRetry, validateSlackWebhookUrl } from "./pki-alert-v2-channel-slack-fns";
 import { sendWebhookNotification } from "./pki-alert-v2-channel-webhook-fns";
+import { LEGACY_ALERT_WRITES_BLOCKED } from "./pki-alert-v2-constants";
 import { TAlertWithChannels, TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
 import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-filter-utils";
 import {
@@ -97,6 +98,15 @@ export const pkiAlertV2ServiceFactory = ({
   projectDAL,
   pkiApplicationDAL
 }: TPkiAlertV2ServiceFactoryDep) => {
+  const $assertLegacyAlertWritesAllowed = () => {
+    if (LEGACY_ALERT_WRITES_BLOCKED) {
+      throw new BadRequestError({
+        message:
+          "Legacy PKI alerts can no longer be created or edited. Use the alerts API (/api/v1/alerts) or the Alerting section of an application instead. Existing legacy alerts can still be viewed and deleted."
+      });
+    }
+  };
+
   const $assertCanActOnAlert = async (
     action: ProjectPermissionActions,
     projectId: string,
@@ -227,6 +237,8 @@ export const pkiAlertV2ServiceFactory = ({
     actor,
     actorOrgId
   }: TCreateAlertV2DTO): Promise<TAlertV2Response> => {
+    $assertLegacyAlertWritesAllowed();
+
     if (!applicationId) {
       throw new BadRequestError({
         message: "Alerts must be created inside an Application. Open the Application's Alerts tab and click Add Alert."
@@ -398,6 +410,8 @@ export const pkiAlertV2ServiceFactory = ({
     actor,
     actorOrgId
   }: TUpdateAlertV2DTO): Promise<TAlertV2Response> => {
+    $assertLegacyAlertWritesAllowed();
+
     let alert = await pkiAlertV2DAL.findById(alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
     if (applicationId && alert.applicationId !== applicationId) {

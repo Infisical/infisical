@@ -167,7 +167,7 @@ export const PamDetailSheet = ({
                   {actions}
                 </div>
 
-                {title && <h2 className="text-lg font-semibold text-foreground">{title}</h2>}
+                {title && <h2 className="text-lg font-normal text-foreground">{title}</h2>}
                 {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
                 {(typeBadge || badges) && (
                   <div className="mt-2 flex flex-wrap items-center gap-2">

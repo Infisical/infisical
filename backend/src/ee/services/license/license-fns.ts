@@ -110,6 +110,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   honeyTokens: false,
   honeyTokenLimit: 0,
   secretsBrokering: true,
+  agentVaultByoS3: false,
   secretSyncLimit: null,
   maxPamAccounts: null,
   // PKI / Cert Manager
@@ -118,6 +119,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   pkiScep: false,
   pkiPqc: false,
   caCrl: true,
+  pkiOcsp: false,
   pkiEnterpriseCaIntegrations: false,
   pkiExternalIntermediateCa: false,
   pkiDiscovery: false,

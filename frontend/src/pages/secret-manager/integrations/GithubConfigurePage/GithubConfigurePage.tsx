@@ -408,7 +408,7 @@ export const GithubConfigurePage = () => {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             {integrationAuthApps.length > 0 ? (
-                              <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-inter text-sm font-normal text-foreground-soft outline-hidden data-placeholder:text-foreground-secondary">
+                              <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-sans text-sm font-normal text-foreground-soft outline-hidden data-placeholder:text-foreground-secondary">
                                 {repoIds?.length === 1
                                   ? integrationAuthApps?.reduce(
                                       (acc, { appId, name, owner }) =>
@@ -419,7 +419,7 @@ export const GithubConfigurePage = () => {
                                 <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
                               </div>
                             ) : (
-                              <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-inter text-sm font-normal text-foreground-soft outline-hidden data-placeholder:text-foreground-secondary">
+                              <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-sans text-sm font-normal text-foreground-soft outline-hidden data-placeholder:text-foreground-secondary">
                                 No repositories found
                               </div>
                             )}
@@ -545,7 +545,7 @@ export const GithubConfigurePage = () => {
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 {integrationAuthApps.length > 0 ? (
-                                  <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-inter text-sm font-normal text-foreground-soft outline-hidden data-placeholder:text-foreground-secondary">
+                                  <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-sans text-sm font-normal text-foreground-soft outline-hidden data-placeholder:text-foreground-secondary">
                                     {repoIds?.length === 1
                                       ? integrationAuthApps?.reduce(
                                           (acc, { appId, name, owner }) =>
@@ -556,7 +556,7 @@ export const GithubConfigurePage = () => {
                                     <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
                                   </div>
                                 ) : (
-                                  <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-inter text-sm font-normal text-foreground-soft outline-hidden data-placeholder:text-foreground-secondary">
+                                  <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-sans text-sm font-normal text-foreground-soft outline-hidden data-placeholder:text-foreground-secondary">
                                     No repositories found
                                   </div>
                                 )}

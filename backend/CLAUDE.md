@@ -678,7 +678,7 @@ See `src/services/health-alert/health-alert-queue.ts` for a minimal example, `sr
 
 `src/services/alert/` is **the** alerting module: one `alerts` table, one channel stack (email, Slack, webhook, PagerDuty), one recipient resolver, one encryption story for channel configs, one dedup + history + retention path, one cron tick that fans out into the `AlertDispatch` queue, and one set of routes (`src/server/routes/v1/alert-router.ts`, including `POST /channels/test`).
 
-**Any new "notify someone when X happens" capability belongs here as a provider.** Do not write a per-domain alert service, per-domain channel table, or per-domain notification cron — that path produces N half-featured implementations (only one of which gets PagerDuty, or dedup, or a test button). `src/services/pki-alert-v2/` predates this module and is the thing we are converging away from, not a template to copy.
+**Any new "notify someone when X happens" capability belongs here as a provider.** Do not write a per-domain alert service, per-domain channel table, or per-domain notification cron — that path produces N half-featured implementations (only one of which gets PagerDuty, or dedup, or a test button). `src/services/pki-alert-v2/` predates this module and is legacy. New PKI application alerts live here (`cert-manager.application`); existing PKI Alerts V2 rows were not migrated and keep firing, both project-wide and application-scoped, and can still be read and deleted through the deprecated routes. Creating and editing them is refused by `LEGACY_ALERT_WRITES_BLOCKED` (`pki-alert-v2-constants.ts`). Certificate code paths still queue it directly through `pkiAlertV2Queue`, next to the `certificateAlertEventEmitter` call that feeds this module (`emit` inside the issuance and renewal transactions, `notify` where there is none and after a revocation commits, so a failed event insert can never roll back a revocation the upstream CA already made). Don't add features to it or copy it.
 
 Adding a new alertable resource type:
 
@@ -689,14 +689,14 @@ That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS 
 
 **Each event declares how it fires**, and the trigger decides which discovery method the provider owes:
 
-- `AlertTriggerType.Scheduled` → **`findDueTargets`**. The daily cron asks what is currently due, and the engine dedups per `(channel, target)` so a target rediscovered tomorrow is not alerted on twice.
-- `AlertTriggerType.Event` → **`findTargetsByIds`**. The target is already known, so nothing is scanned for and **nothing is deduped**: an event that fired is one the customer asked to hear about, and unlike a daily scan it is never rediscovered. These reach the engine from the event outbox (below), never from the cron. The input carries the outbox row's whole `payload` next to `targetIds`: the module only reads `targetIds`, so an emitter can add the facts the notification needs (which auth method, who changed it) and the provider validates them with its own schema at delivery. Encoding facts into the target id is the wrong tool for that.
+- `AlertTriggerType.Scheduled` → **`findScheduledTargets`**. The daily cron asks what is currently due, and the engine dedups per `(channel, target)` so a target rediscovered tomorrow is not alerted on twice.
+- `AlertTriggerType.Event` → **`findEventTargets`**. The target is already known, so nothing is scanned for and **nothing is deduped**: an event that fired is one the customer asked to hear about, and unlike a daily scan it is never rediscovered. These reach the engine from the event outbox (below), never from the cron. The input carries the outbox row's whole `payload` next to `targetIds`: the module only reads `targetIds`, so an emitter can add the facts the notification needs (which auth method, who changed it) and the provider validates them with its own schema at delivery. Encoding facts into the target id is the wrong tool for that.
 
 **`findEnabledForEvent` with no `projectId` matches every alert bound to the resource, any scope.** A resource that has no project of its own (an org-level identity) can still be watched from a project it is a member of, and `assertResourceInScope` already checked that binding at create. Given a `projectId`, it matches that project's alerts plus org-scoped ones.
 
-`alertProviderRegistry.register` asserts that pairing at boot, so a provider that declares an event trigger without `findTargetsByIds` fails the process rather than silently no-op'ing in production. `triggerType` is derived from the provider's event definition inside `createAlert` and is never accepted from a request.
+`alertProviderRegistry.register` asserts that pairing at boot, so a provider that declares an event trigger without `findEventTargets` fails the process rather than silently no-op'ing in production. `triggerType` is derived from the provider's event definition inside `createAlert` and is never accepted from a request.
 
-**Event-path reads go to the primary, `findTargetsByIds` included.** An empty read there is terminal (the event is marked delivered and never asked about again), so a replica that hasn't seen the commit loses the notification. `findEnabledForEvent` and the engine's channel lookup already do this; a provider's `findTargetsByIds` must too, since the target usually commits in the same transaction as the event. The scheduled path keeps the replica because tomorrow's scan asks again.
+**Event-path reads go to the primary, `findEventTargets` included.** An empty read there is terminal (the event is marked delivered and never asked about again), so a replica that hasn't seen the commit loses the notification. `findEnabledForEvent` and the engine's channel lookup already do this; a provider's `findEventTargets` must too, since the target usually commits in the same transaction as the event. The scheduled path keeps the replica because tomorrow's scan asks again.
 
 **The history write is retried, then logged, never thrown.** The channels have already sent by then, so a throw can't undo anything and would re-notify on the event path.
 
@@ -705,8 +705,10 @@ Invariants worth knowing before extending it:
 - **The alert module owns no CASL subject.** Each provider reuses its own resource's existing permissions inside `assertPermission`, so authorization stays with the domain that owns the resource.
 - **New delivery mediums are channel definitions**, not providers: add one under `src/services/alert/channels/` and register it in `ALERT_CHANNEL_REGISTRY`. `directed: true` means the channel addresses principals and needs recipients (email); undirected channels carry their destination in config. `secretFields` drives masking on read and merge-from-stored on update.
 - **Channel configs are encrypted** with the org/project KMS cipher (`alert-channel-crypto-fns.ts`) — never store or return them in plaintext.
-- **`findDueTargets` must return most-urgent-first.** The engine's per-channel `maxTargetsPerRun` cap keeps the head of the list and defers the tail, so ordering is what guarantees the closest-to-expiry targets are never the dropped ones.
-- **Deleting an alertable resource does NOT delete its alerts. You have to reap them yourself.** `alerts.resourceId` is a plain string column with **no foreign key** to the resource's table (a provider's `resourceType` can point at anything), so nothing cascades. Skip the reap and the row survives as a dangling alert whose `findDueTargets` matches nothing and whose "view" link 404s. Two helpers on `alertService`, and picking the wrong one is the bug:
+- **One alert per `(scope, resource, event)`**, enforced by `alert_unique_scope_resource_event`. **Every provider hook is opt-in, and its absence must reproduce the behaviour identity alerts had before any other provider existed.** `recipientPolicy` decides who can receive: `atOrgScope` validates and resolves user and group recipients against the org instead of the alert's project, and `allowEmailAddresses` accepts plain `EMAIL` recipients and makes test sends validate recipients like create and update do, instead of silently dropping out-of-scope ones (application alerts set both). `includeLastRun` adds `lastRun` to alert responses, and `resourceName` is only returned by providers that implement `getResourceNames`. `assertChannelTypesAllowed` is where a provider gates paid channel types on create and on update (new types only). `getResourceNames` (batched) supplies the resource's display name for alert responses and for a provider's own audit events. `resolveProjectId` lets create, list and test sends omit `projectId` when the resource already belongs to one project (`resolveAlertProjectId` in `alert-types.ts`). `getTelemetryEvent` lets a provider map alert create, update and delete to its own PostHog event, so the shared router never branches on a resource type. `getAuditEvent` does the same for audit logs: a provider that needs distinct event types (application alerts log `create-pki-application-alert` and its siblings, with the application's ID and name) returns its own event, and every other provider falls back to the generic `create-alert` family via `buildGenericAlertAuditEvent`. Add a provider's own event interfaces next to the generic ones; never widen the generic ones. The deprecated `pki/alerts` and `applications/:applicationId/alerts` routes only serve legacy PKI Alerts V2 rows. Add features to `/api/v1/alerts`, not to them.
+- **Email channels accept plain addresses as `EMAIL` recipients when the provider opts in** (`recipientPolicy.allowEmailAddresses`), with the address as `principalId`, besides users and groups. Every address must be on one of the org's verified email domains, checked on create, update and test sends (`alert-channel-service.ts`). The resolver sends to them directly and skips an address that a user recipient on the same channel already covers.
+- **`findScheduledTargets` must return most-urgent-first.** The engine's per-channel `maxTargetsPerRun` cap keeps the head of the list and defers the tail, so ordering is what guarantees the closest-to-expiry targets are never the dropped ones.
+- **Deleting an alertable resource does NOT delete its alerts. You have to reap them yourself.** `alerts.resourceId` is a plain string column with **no foreign key** to the resource's table (a provider's `resourceType` can point at anything), so nothing cascades. Skip the reap and the row survives as a dangling alert whose `findScheduledTargets` matches nothing and whose "view" link 404s. Two helpers on `alertService`, and picking the wrong one is the bug:
   - **`deleteAlertsForDeletedResource({ resourceType, resourceId })`** when the resource **row is gone**. It has **no scope filter** and reaps across every org and project. This is required, not just tidier: the same resource can be watched from another org (a root-org identity invited into a child org), so an `orgId`-filtered reap leaves those rows orphaned.
   - **`deleteAlertsForResource({ orgId, projectId?, resourceType, resourceId })`** when the resource merely **left a scope** (removed from a project, removed from an org) but still exists. Narrow on purpose: leaving one project must not drop the org-level alert, and leaving one org must not touch another org's alerts. Omitting `projectId` reaps the whole org, which is what org-membership removal wants since it cascades the project memberships.
 
@@ -727,7 +729,7 @@ at-least-once delivery of a domain event registers next to it.
 `EventOutboxStatus`, `TOutboxFlushKey`) describe the mechanism and stay inside the module and its
 wiring. A dependency field for the emitter is `eventEmitter`, not `eventOutboxService`.
 
-**Emitting:** `eventEmitter.emit(event, tx)`. `tx` is required on purpose.
+**Emitting:** `eventEmitter.emit(event, tx)`. Pass the transaction of the write the event describes, so the event is exactly as durable as that write. Omit `tx` only when there is no such write left to be atomic with (for example after it already committed); the insert then runs on its own.
 
 ```ts
 await someDAL.transaction(async (tx) => {
@@ -801,7 +803,7 @@ stuck claim alike. `lag` and `exhausted.count` are recorded by the outbox, label
 new consumer gets them for free.
 
 **Adding an event-triggered alert** needs no outbox code: declare the event with
-`triggerType: AlertTriggerType.Event`, implement `findTargetsByIds`, and emit with
+`triggerType: AlertTriggerType.Event`, implement `findEventTargets`, and emit with
 `payload: { orgId, projectId, resourceType, resourceId, targetIds, ...facts }` where `resourceType` is the
 provider's. A
 `resourceType` that doesn't declare the `eventType` fails the row terminally with both named, so a bad
@@ -850,8 +852,20 @@ Custom error classes in `src/lib/errors/index.ts`:
 - `InternalServerError` (500)
 - `RateLimitError`
 - `ScimRequestError` — SCIM-specific formatting with schemas and status
+- `ClientClosedRequestError` (499, nginx convention) — the client disconnected before the response was written; see below
 
 Global error handler in `src/server/plugins/error-handler.ts` maps these to HTTP status codes and records OpenTelemetry error metrics.
+
+#### Stopping work after a client disconnect
+
+Node keeps running a handler after its client has gone, and a disconnected client usually retries, so a CPU-heavy request that outlives its caller does the full cost again on another pod. Routes whose work can run long after the database reads finish (fan-out over folders, references, or imports) should stop when the connection closes. `GET /api/v3/secrets/raw` and `GET /api/v4/secrets` are examples.
+
+- **Route:** pass `abortSignal: getClientDisconnectSignal(reply)` (`src/server/lib/client-disconnect.ts`) into the service. It aborts only when the socket closes before the response was written, so a normal completion never trips it.
+- **Service:** call `throwIfClientDisconnected(abortSignal)` at fan-out points only: before each unit of work that triggers more reads (each reference, each import level, a shared folder load). Don't add one after every `await`; a check that saves a single query for a client that has already left is noise. Checks are cooperative, so an in-flight query or synchronous block still finishes, and a long synchronous block delays noticing the disconnect. Keep the per-item work linear.
+- **`Promise.allSettled` fan-outs:** they swallow the rejection, so scan the results with `throwIfAnySettledClientClosed(results)` instead of rechecking the signal. A disconnect mid-fan-out means the result is partial and must not be cached or returned as reference errors; a result that completed before the client left should still be cached so the retry is a hit.
+- **Catch blocks** that turn failures into an empty result (a folder that failed to load, a skipped cross-project read) must rethrow `ClientClosedRequestError` first, or the partial state gets cached.
+
+The 499 never reaches the caller. It exists for logs (warn, no stack) and the `error.type="client_closed"` label on `infisical.core.http.error.count`. This is disconnect handling, not a request deadline: a slow client that stays connected is still bounded only by Fastify's 100s socket `connectionTimeout` in `src/server/app.ts`.
 
 ### Logging
 
@@ -871,6 +885,87 @@ logger.error({ sessionId, err }, "Failed to get connection details");
 **Never log an outbound URL verbatim — a URL is often itself a credential.** Incoming-webhook providers put the bearer secret in the path (`https://hooks.slack.com/services/T…/B…/<secret>`, Discord, Teams, Telegram) and many APIs accept a token as a query param, so a raw URL in a log line ships a working credential to the log sink. Pass it through `sanitizeUrlForLog` from `@app/lib/logger` first (`src/lib/logger/sanitize-url.ts`): it keeps only the origin, strips userinfo and the fragment, redacts the entire path, and redacts every query value. Token formats can't be recognised reliably, so the path is redacted by default for every host rather than sniffed with heuristics. The global axios response interceptor (`src/lib/config/request.ts`) and `safeRequest`'s dispatch log already do this.
 
 Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
+
+### Certificate revocation: CRL and OCSP
+
+Internal CAs publish revocation two ways, both unauthenticated public endpoints under
+`/api/v1/cert-manager`. CRL is `ee/services/certificate-authority-crl`; OCSP
+([RFC 6960](https://www.rfc-editor.org/rfc/rfc6960)) is `ee/services/certificate-authority-ocsp`, opt-in
+per CA via `internal_certificate_authorities.isOcspEnabled` and gated on the `pkiOcsp` plan flag.
+
+The responder answers a status question for one certificate, so the things that bite are freshness and
+what an anonymous caller can cost us.
+
+- **Serials have two forms and the database knows one.** `certificates.serialNumber` is 40 lowercase hex
+  as issued, and `createSerialNumber` clears the top bit, so ~1 in 8 begins with `0`. A CertID carries a
+  DER INTEGER that may also carry a sign byte. `parseOcspRequest` keeps `rawSerialNumber` and the
+  zero-stripped `serialNumber`, and `$resolveStatuses` queries both. Querying one silently answers
+  `unknown` for every certificate whose serial starts with a zero byte, revoked ones included.
+- **Every read on the revocation path goes to a primary, in Redis and in Postgres.** `keyStore.getItem`
+  and `ormify().find` both default to a replica, and so does `findByIdWithAssociatedCa`. Under lag any of
+  them re-caches a pre-revocation `good` for the full validity window, or answers for a CA whose OCSP was
+  just switched off. Use `getItemPrimary` and pass a `primaryNode()` as the `tx`.
+- **Invalidation is a Postgres counter, not a Redis write.** `internal_certificate_authorities.ocspGeneration`
+  is bumped in the *same transaction* as the certificate status write in `revokeCert`, which is the only
+  place a certificate becomes revoked. Each cached entry records the generation it was signed under and a
+  read rejects a mismatch, so nothing has to delete a key and a Redis outage cannot leave a revoked
+  certificate reading `good`. The responder already reads the CA row from the primary every request, so
+  comparing it is free. A new path that revokes a certificate must bump it too. Deleting a certificate does
+  not, and neither does the expiry cleanup: deletion is not revocation, so a cached `good` for a certificate
+  nobody revoked is still true, and bumping would flush every live certificate's cached response on that CA
+  for nothing. Only single-certID responses are cached; multi-certID requests are answered but never cached.
+  Do not reintroduce a best-effort invalidation call after the commit: that is exactly the shape that failed
+  review, because a failure there is unrecoverable and silent.
+- **Concurrent misses coalesce into one signing.** `inFlightResponses` keys on the cache key plus the
+  generation. The generation is what stops a request arriving after a revoke from joining a flight
+  that began before it. Nonced requests are exempt for free, because their cache key is `null`.
+- **A nonce is an OCTET STRING, and an extnValue that is not one is rejected.** The response always
+  re-encodes the nonce wrapped, so accepting a raw inner value would sign an echo that can never match what
+  the client sent. `parseOcspRequest` returns `null`, which the service answers as `malformedRequest`.
+- **Never take the hash OID out of a CertID without checking `OCSP_HASH_NAME_BY_OID` first.** An OID is an
+  unbounded dotted-decimal string and it keys the per-CA issuer-hash memo, so an unvalidated one is
+  unbounded attacker-controlled heap.
+- **Signing is capped three ways and sheds with `tryLater`**: globally (4), per CA (2), and in aggregate
+  across every CA (`OCSP_SIGNING_MAX_TOTAL_IN_FLIGHT`, checked before a per-CA limiter is created or
+  entered). The global cap matches libuv's default threadpool of 4, where `crypto.subtle.sign` runs, so
+  OCSP never needs more than the pool that password hashing, KMS decrypts and DNS lookups share. The
+  per-CA tier stops one tenant's traffic shedding everyone else's, but on its own it multiplies how many
+  requests are parked at once, because a caller choosing to spray across many valid CA ids gets a fresh
+  queue per id. The aggregate cap is what bounds that, and it is deliberately far above any single CA's
+  own limit so the fairness the per-CA tier buys is preserved. Both are per process, so the rate limiter is the outer
+  bound, and it is only registered under `isProductionMode && isCloud`.
+- **Do not log per request on this path.** The endpoint is unauthenticated and the rate limiter is only
+  registered under `isProductionMode && isCloud`, so on self-hosted an anonymous caller sets the log
+  volume. Malformed and unauthorized results are counted by `ocsp.result` and logged nowhere; the
+  saturation warning is interval-guarded because shedding is by definition high volume.
+- **Protocol shape, not REST.** HTTP 200 with the error in the DER body, and a wildcard GET path carrying
+  url-encoded base64. Required by RFC 6960 appendix A.1. Both routes also carry an `errorHandler`, because
+  a body over `bodyLimit` or a missing `Content-Type` never reaches the handler and would otherwise return
+  a JSON 500 an OCSP client cannot parse.
+- **The responder never consults the plan.** Entitlement gates enabling OCSP, never answering, per
+  `CODE_QUALITY.md`. Note the managed CRL URL beside it *does* re-check at issuance; that asymmetry is
+  deliberate on the OCSP side and should not be "fixed" by copying the CRL pattern.
+- **The response metric keeps those two states on separate dimensions.** `ocsp.status` is the envelope
+  and `ocsp.cert_status` is the per-certificate answer, which only exists inside a `successful` envelope
+  and is `none` otherwise. Flattening them onto one label made `unknown` and `unauthorized` look like
+  siblings when they come from different enumerations. Both names, plus `ocsp.cache`, have to be in
+  `INFISICAL_CORE_METER_ATTRIBUTES`: an attribute missing from that allowlist is dropped by the SDK View
+  with no error, so `ocsp-metric-attributes.test.ts` pins them.
+- **The two "I can't answer" states are different, and RFC 6960 picks between them.** `unauthorized`
+  (2.3, unsigned) is "not capable of responding authoritatively": no such CA, no active CA certificate,
+  issuer hashes that belong to someone else, and OCSP switched off for that CA. `unknown` (2.2, signed,
+  inside a successful response) is "I serve this issuer but have no record of this certificate", which is
+  a serial this CA never issued. Do not answer a disabled CA with `unknown`: we hold a record for those
+  certificates, so it is a false assertion signed with the CA key, and it would make the off switch still
+  cost a signature per request. `unknown` responses carry a short validity window, since their serial is
+  caller-chosen.
+
+**`signTbs` must DER-encode ECDSA itself.** WebCrypto returns raw `r||s`; X.509 and OCSP need the DER
+`ECDSA-Sig-Value` SEQUENCE. The certificate, CSR and CRL generators convert internally, so nothing above
+them ever had to. Without it every ECDSA CA's OCSP responses fail verification in openssl, Go and Windows,
+and nothing on our side errors. `TCaSigner` (`services/certificate-authority/ca-signer.ts`) gained
+`signTbs` for this and abstracts over software, HSM and PQC CAs. PQC needs no special case beyond taking
+the signature OID from `pqcNameToOid`.
 
 ### Enterprise (EE) Features
 

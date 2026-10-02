@@ -124,7 +124,7 @@ export const RequestActionsSection = ({ request }: Props) => {
         <CardContent className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <TriangleAlertIcon className="size-4 text-warning" />
-            <h3 className="font-medium text-foreground">Action Required</h3>
+            <h3 className="font-normal text-foreground">Action Required</h3>
           </div>
           <p className="text-sm text-muted">
             You are an approver for this request. Please review the details carefully before making

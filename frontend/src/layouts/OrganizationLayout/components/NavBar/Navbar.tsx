@@ -14,11 +14,11 @@ import {
   Info,
   LogOut,
   Mail,
+  MessagesSquare,
   Monitor,
   Moon,
   Plus,
   Settings,
-  Slack,
   Sun,
   TriangleAlertIcon,
   User,
@@ -142,7 +142,7 @@ Thank you,
 };
 
 export const INFISICAL_SUPPORT_OPTIONS = [
-  [Slack, "Support Forum", () => "https://infisical.com/slack"],
+  [MessagesSquare, "Support Forum", () => "https://community.infisical.com"],
   [
     Book,
     "Read Docs",
@@ -805,9 +805,9 @@ export const Navbar = () => {
               </a>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <a href="https://infisical.com/slack" target="_blank" rel="noopener noreferrer">
-                <Slack />
-                Join Slack Community
+              <a href="https://community.infisical.com" target="_blank" rel="noopener noreferrer">
+                <MessagesSquare />
+                Join Community
                 <ExternalLink className="ml-auto size-3.5 opacity-50" />
               </a>
             </DropdownMenuItem>

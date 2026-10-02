@@ -77,7 +77,7 @@ Every option resolves from the same sources, in order: **the flag → an environ
   The proxy address is the one setting that can't come from `.infisical.json`. That file is usually committed to your repository, so a wrong or malicious value would silently route every agent's traffic through the wrong host. Pass it with `--proxy` or `INFISICAL_AGENT_PROXY_ADDRESS` instead.
 </Note>
 
-See the [CLI reference](/cli/commands/agent-proxy) for every flag on both subcommands.
+See the [CLI reference](/cli/reference#secrets-agent-proxy) for every flag on both subcommands.
 
 ## Deployment
 
@@ -85,7 +85,7 @@ Starting the proxy in a shell is fine while you're trying it out, but it dies wi
 
 <Tabs>
   <Tab title="CLI (systemd, VM)">
-    Install the [CLI](/cli/overview) on the host and run `start` under a process supervisor so it restarts on failure:
+    Install the [CLI](/cli/install) on the host and run `start` under a process supervisor so it restarts on failure:
 
     ```bash
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
@@ -234,7 +234,7 @@ Records go to **stderr**, so whatever supervises the proxy collects them, and `-
   <Card title="Proxied Services" icon="arrow-right-left" href="/documentation/platform/agent-proxy/proxied-services">
     Host patterns, header rewrites, and secret substitution in depth.
   </Card>
-  <Card title="agent-proxy CLI reference" icon="terminal" href="/cli/commands/agent-proxy">
+  <Card title="agent-proxy CLI reference" icon="terminal" href="/cli/reference#secrets-agent-proxy">
     Every flag for `start` and `connect`, with examples.
   </Card>
 </CardGroup>

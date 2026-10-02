@@ -21,6 +21,10 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import {
+  CertificateAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -73,6 +77,7 @@ import {
   getCaCertChains,
   rebuildCaCrl
 } from "../certificate-authority/certificate-authority-fns";
+import { TInternalCertificateAuthorityDALFactory } from "../certificate-authority/internal/internal-certificate-authority-dal";
 import { parseImportedCustomExtensions } from "../certificate-common/certificate-extension-fns";
 import {
   calculateFinalRenewBeforeDays,
@@ -153,6 +158,7 @@ type TCertificateServiceFactoryDep = {
   certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "revokeCertificate">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
@@ -161,6 +167,7 @@ type TCertificateServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
+  internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -185,6 +192,7 @@ export const certificateServiceFactory = ({
   certificateAuthorityService,
   resourceMetadataDAL,
   pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationDAL,
   certificateProfileDAL,
   pkiApplicationProfileDAL,
@@ -195,7 +203,8 @@ export const certificateServiceFactory = ({
   usageCounterDAL,
   keyStore,
   usageMeteringService,
-  hsmConnectorService
+  hsmConnectorService,
+  internalCertificateAuthorityDAL
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
@@ -703,7 +712,7 @@ export const certificateServiceFactory = ({
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
 
-    if (ca.internalCa && cert.profileId && cert.source === CertificateSource.Imported) {
+    if (ca.internalCa?.id && cert.profileId && cert.source === CertificateSource.Imported) {
       const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
       if (!certBody) {
         throw new NotFoundError({ message: "Certificate body not found" });
@@ -742,16 +751,33 @@ export const certificateServiceFactory = ({
     }
 
     const revokedAt = new Date();
-    await certificateDAL.update(
-      {
-        id: cert.id
-      },
-      {
-        status: CertStatus.REVOKED,
-        revokedAt,
-        revocationReason: revocationReasonToCrlCode(revocationReason)
+    const revokedCertId = cert.id;
+    const revokedCertApplicationId = cert.applicationId ?? null;
+    await certificateDAL.transaction(async (tx) => {
+      await certificateDAL.update(
+        {
+          id: revokedCertId
+        },
+        {
+          status: CertStatus.REVOKED,
+          revokedAt,
+          revocationReason: revocationReasonToCrlCode(revocationReason)
+        },
+        tx
+      );
+
+      if (!ca.externalCa?.id) {
+        await internalCertificateAuthorityDAL.update({ caId: ca.id }, { $incr: { ocspGeneration: 1 } }, tx);
       }
-    );
+    });
+
+    await certificateAlertEventEmitter.notify({
+      certificateId: revokedCertId,
+      projectId: ca.projectId,
+      orgId: actorOrgId,
+      eventType: CertificateAlertEvent.Revocation,
+      applicationId: revokedCertApplicationId
+    });
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
     usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);

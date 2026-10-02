@@ -4,6 +4,8 @@ sidebarTitle: "Azure App Configuration"
 description: "Learn how to configure a Azure App Configuration Connection for Infisical."
 ---
 
+import AzureOAuthAppConfigurationServicePrincipal from "/snippets/app-connections/azure/oauth-app-configuration-service-principal.mdx";
+
 Infisical currently only supports two methods for connecting to Azure, which are OAuth and Client Secrets.
 
 <Accordion title="Self-Hosted Instance">
@@ -113,6 +115,8 @@ Infisical currently only supports two methods for connecting to Azure, which are
           Now select the **OAuth** method and click **Connect to Azure**. 
 
           ![Connect via Azure OAuth](/images/app-connections/azure/app-configuration/create-oauth-method.png)
+
+          <AzureOAuthAppConfigurationServicePrincipal />
 	      </Step>
 	      <Step title="Grant Access">
 	        You will then be redirected to Azure to grant Infisical access to your Azure account. Once granted,
