@@ -37,7 +37,12 @@ const toSecretValue = (value: unknown) => {
 };
 
 export const flattenNestedJson = (data: Record<string, unknown>): TNestedJsonImport => {
-  const result: TNestedJsonImport = { folderPaths: [], secretsByPath: {}, errors: [] };
+  // Null-prototype maps so user keys such as "__proto__" stay ordinary entries
+  const result: TNestedJsonImport = {
+    folderPaths: [],
+    secretsByPath: Object.create(null),
+    errors: []
+  };
 
   const walk = (node: Record<string, unknown>, path: string) => {
     Object.entries(node).forEach(([key, value]) => {
@@ -54,12 +59,15 @@ export const flattenNestedJson = (data: Record<string, unknown>): TNestedJsonImp
         return;
       }
 
-      if (!key.trim()) {
-        result.errors.push(`"${path}": secret keys cannot be empty.`);
+      // Mirrors the backend secret name rule, so no folder is written before a bad key fails
+      if (!key.trim() || key.includes(":") || key.includes("/")) {
+        result.errors.push(
+          `"${joinSecretPath(path, `/${key}`)}": secret keys cannot be empty or contain a colon or forward slash.`
+        );
         return;
       }
 
-      result.secretsByPath[path] ??= {};
+      result.secretsByPath[path] ??= Object.create(null);
       result.secretsByPath[path][key] = { value: toSecretValue(value), comments: [] };
     });
   };
