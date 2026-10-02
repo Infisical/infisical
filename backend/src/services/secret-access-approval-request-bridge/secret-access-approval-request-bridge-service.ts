@@ -603,6 +603,10 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
         throw new BadRequestError({ message: "The request has been closed" });
       }
 
+      if (locked.expiresAt && new Date(locked.expiresAt) < new Date()) {
+        throw new BadRequestError({ message: "This access request has expired and can no longer be reviewed" });
+      }
+
       const steps = await approvalRequestStepsDAL.find({ requestId }, { tx, sort: [["stepNumber", "asc"]] });
       const currentStepIndex = steps.findIndex((step) => step.stepNumber === locked.currentStep);
       const currentStep = steps[currentStepIndex];
