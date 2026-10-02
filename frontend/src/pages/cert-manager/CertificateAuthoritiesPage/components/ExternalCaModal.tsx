@@ -1018,6 +1018,16 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       shouldDirty: true
                     })
                   }
+                  onDnsProviderChange={() => {
+                    setValue(
+                      "configuration.dnsAppConnection",
+                      { id: "", name: "" },
+                      { shouldDirty: true }
+                    );
+                    setValue("configuration.dnsProviderConfig.hostedZoneId", "", {
+                      shouldDirty: true
+                    });
+                  }}
                 />
               )}
               {caType === CaType.AZURE_AD_CS && (

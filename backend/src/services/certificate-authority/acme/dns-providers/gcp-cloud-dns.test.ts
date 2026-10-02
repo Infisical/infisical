@@ -105,7 +105,7 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
     postMock.mockRejectedValueOnce(axiosError(404, "The managed zone does not exist."));
 
     await expect(gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"')).rejects.toThrow(
-      "Google Cloud DNS request failed: The managed zone does not exist."
+      "Failed to update Google Cloud DNS TXT record '_acme-challenge.example.com.' in zone 'example-zone': The managed zone does not exist."
     );
     expect(postMock).toHaveBeenCalledTimes(1);
   });
@@ -177,7 +177,7 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
     getMock.mockRejectedValueOnce(axiosError(400));
 
     await expect(gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"')).rejects.toThrow(
-      "Google Cloud DNS request failed: status 400"
+      "Failed to update Google Cloud DNS TXT record '_acme-challenge.example.com.' in zone 'example-zone': status 400"
     );
   });
 });

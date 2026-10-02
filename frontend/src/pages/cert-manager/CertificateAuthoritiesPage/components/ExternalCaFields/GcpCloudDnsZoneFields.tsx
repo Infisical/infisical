@@ -2,8 +2,17 @@ import { useState } from "react";
 import { Control, Controller } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { AxiosError } from "axios";
+import { Info } from "lucide-react";
 
-import { Field, FieldError, FieldLabel, FilterableSelect } from "@app/components/v3";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  FilterableSelect,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   useGcpConnectionListCloudDnsProjects,
   useGcpConnectionListCloudDnsZones
@@ -56,6 +65,15 @@ const GcpCloudDnsZoneSelect = ({
     <Field className="mb-4">
       <FieldLabel>
         Zone <span className="text-danger">*</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-md">
+            The public Cloud DNS zone where Infisical creates the challenge TXT records. It must
+            contain the domains you request certificates for.
+          </TooltipContent>
+        </Tooltip>
       </FieldLabel>
       <FilterableSelect
         isLoading={isZonesPending && Boolean(connectionId) && Boolean(gcpProjectId)}
@@ -107,6 +125,16 @@ export const GcpCloudDnsZoneFields = ({ control, connectionId }: Props) => {
             <Field className="mb-4">
               <FieldLabel>
                 GCP Project <span className="text-danger">*</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md">
+                    The Google Cloud project that holds your DNS zone. Only projects that the
+                    connection&apos;s service account can see and that have the Cloud DNS API
+                    enabled are listed.
+                  </TooltipContent>
+                </Tooltip>
               </FieldLabel>
               <FilterableSelect
                 isLoading={isProjectsPending && Boolean(connectionId)}

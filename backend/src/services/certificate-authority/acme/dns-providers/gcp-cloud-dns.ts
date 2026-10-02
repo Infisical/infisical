@@ -20,6 +20,7 @@ type TGcpResourceRecordSet = {
 const TXT_RECORD_TTL_SECONDS = 60;
 const MAX_CHANGE_ATTEMPTS = 5;
 const CHANGE_RETRY_DELAY_MS = 1000;
+const REQUEST_TIMEOUT_MS = 30_000;
 const QUOTES_REGEX = new RE2('"', "g");
 
 export const validateGcpCloudDnsZone = (hostedZoneId: string) => {
@@ -52,7 +53,7 @@ const isServiceDisabledError = (body: TGoogleApiErrorBody | undefined, message: 
   Boolean(body?.error?.errors?.some((err) => err.reason === "accessNotConfigured")) ||
   message.includes("has not been used in project");
 
-const toGcpDnsError = (error: unknown, hostedZoneId: string) => {
+const toGcpDnsError = (error: unknown, hostedZoneId: string, fqdn: string) => {
   if (isAxiosError(error)) {
     const body = error.response?.data as TGoogleApiErrorBody | undefined;
     const message = body?.error?.message || error.message || "Unknown error";
@@ -69,7 +70,8 @@ const toGcpDnsError = (error: unknown, hostedZoneId: string) => {
       );
     }
 
-    return new Error(`Google Cloud DNS request failed: ${message}`);
+    const [, , , zoneName] = hostedZoneId.split("/");
+    return new Error(`Failed to update Google Cloud DNS TXT record '${fqdn}' in zone '${zoneName}': ${message}`);
   }
   return error;
 };
@@ -84,7 +86,8 @@ const isConflictError = (error: unknown, changeHadDeletions: boolean) =>
 const getTxtRecordSet = async (zoneUrl: string, accessToken: string, fqdn: string) => {
   try {
     const { data } = await request.get<TGcpResourceRecordSet>(`${zoneUrl}/rrsets/${encodeURIComponent(fqdn)}/TXT`, {
-      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+      timeout: REQUEST_TIMEOUT_MS
     });
     return data;
   } catch (error) {
@@ -99,7 +102,8 @@ const submitChange = async (
   change: { additions?: TGcpResourceRecordSet[]; deletions?: TGcpResourceRecordSet[] }
 ) => {
   await request.post(`${zoneUrl}/changes`, change, {
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", Accept: "application/json" }
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", Accept: "application/json" },
+    timeout: REQUEST_TIMEOUT_MS
   });
 };
 
@@ -130,7 +134,7 @@ const applyTxtRecordChange = async (
       return;
     } catch (error) {
       if (!isConflictError(error, changeHadDeletions) || attempt === MAX_CHANGE_ATTEMPTS) {
-        throw toGcpDnsError(error, hostedZoneId);
+        throw toGcpDnsError(error, hostedZoneId, fqdn);
       }
       // eslint-disable-next-line no-await-in-loop
       await delay(CHANGE_RETRY_DELAY_MS);
