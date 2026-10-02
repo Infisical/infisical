@@ -40,7 +40,7 @@ const CertificateSection = ({
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="font-medium text-foreground">{title}</h3>
+        <h3 className="font-normal text-foreground">{title}</h3>
         <div className="flex items-center gap-1">
           {isSensitive && (
             <IconButton

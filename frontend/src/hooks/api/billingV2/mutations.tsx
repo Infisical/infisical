@@ -2,7 +2,7 @@ import { QueryClient, useMutation, useQueryClient } from "@tanstack/react-query"
 
 import { apiRequest } from "@app/config/request";
 
-import { subscriptionQueryKeys } from "../subscriptions/queries";
+import { fetchOrgSubscription, subscriptionQueryKeys } from "../subscriptions/queries";
 import { billingV2Keys } from "./queries";
 import {
   BillingV2CheckoutResult,
@@ -29,6 +29,14 @@ import {
 const invalidateBillingV2 = (queryClient: QueryClient, orgId: string) => {
   queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
   queryClient.invalidateQueries({ queryKey: billingV2Keys.catalog(orgId) });
+  const queryKey = subscriptionQueryKeys.getOrgSubsription(orgId);
+  return queryClient
+    .fetchQuery({
+      queryKey,
+      queryFn: () => fetchOrgSubscription(orgId, true),
+      staleTime: 0
+    })
+    .catch(() => queryClient.invalidateQueries({ queryKey }));
 };
 
 export const useCreateBillingV2PortalSession = () => {

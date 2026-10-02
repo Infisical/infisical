@@ -1,15 +1,6 @@
-import {
-  faCircleInfo,
-  faEllipsisH,
-  faEye,
-  faPencil,
-  faPlay,
-  faStop,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
+import { faCircleInfo, faEllipsisH, faEye, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { createNotification } from "@app/components/notifications";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,38 +12,17 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { PkiAlertEventTypeV2, TPkiAlertV2, useUpdatePkiAlertV2 } from "@app/hooks/api/pkiAlertsV2";
+import { PkiAlertEventTypeV2, TPkiAlertV2 } from "@app/hooks/api/pkiAlertsV2";
 
 import { formatAlertBefore, formatEventType } from "../utils/pki-alert-formatters";
 
 interface Props {
   alert: TPkiAlertV2;
   onView: () => void;
-  onEdit: () => void;
   onDelete: () => void;
 }
 
-export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
-  const { mutateAsync: updateAlert } = useUpdatePkiAlertV2();
-
-  const handleToggleAlert = async () => {
-    try {
-      await updateAlert({
-        alertId: alert.id,
-        enabled: !alert.enabled
-      });
-      createNotification({
-        text: `Alert ${!alert.enabled ? "enabled" : "disabled"} successfully`,
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed to update alert status",
-        type: "error"
-      });
-    }
-  };
-
+export const PkiAlertV2Row = ({ alert, onView, onDelete }: Props) => {
   return (
     <Tr>
       <Td>
@@ -118,14 +88,6 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
             <DropdownMenuItem onClick={onView}>
               <FontAwesomeIcon icon={faEye} className="mr-2 h-4 w-4" />
               View details
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onEdit}>
-              <FontAwesomeIcon icon={faPencil} className="mr-2 h-4 w-4" />
-              Edit alert
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleToggleAlert}>
-              <FontAwesomeIcon icon={alert.enabled ? faStop : faPlay} className="mr-2 h-4 w-4" />
-              {alert.enabled ? "Disable" : "Enable"} alert
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onDelete} className="text-danger">
               <FontAwesomeIcon icon={faTrash} className="mr-2 h-4 w-4" />

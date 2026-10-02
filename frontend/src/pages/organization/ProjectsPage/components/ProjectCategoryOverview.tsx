@@ -9,8 +9,8 @@ import { RequestProjectAccessModal } from "@app/components/projects/RequestProje
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
+  CardTitle,
   Skeleton,
   Tooltip,
   TooltipContent,
@@ -486,14 +486,14 @@ export const ProjectCategoryOverview = () => {
                     <Icon className={iconClassName} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <CardDescription className="flex items-center gap-1.5 text-base font-semibold text-foreground">
+                    <CardTitle className="flex items-center gap-1.5 text-base text-foreground">
                       <span
                         className={`underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`}
                       >
                         {getProjectTitle(type)}
                       </span>
                       <PreviewBadge type={type} />
-                    </CardDescription>
+                    </CardTitle>
                     <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
                       {getProjectDescription(type)}
                     </p>

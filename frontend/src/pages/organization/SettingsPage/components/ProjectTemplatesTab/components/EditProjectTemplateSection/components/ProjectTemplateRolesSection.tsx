@@ -103,7 +103,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
         <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
           <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
             <div>
-              <h2 className="text-lg font-medium">Project Roles</h2>
+              <h2 className="text-lg font-normal">Project Roles</h2>
               <p className="text-sm text-muted">
                 {isInfisicalTemplate
                   ? "Click a role to view the associated permissions"

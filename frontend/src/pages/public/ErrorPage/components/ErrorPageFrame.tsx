@@ -109,7 +109,7 @@ export const ErrorPageFrame = ({
               {badgeIcon}
               {badgeText}
             </Badge>
-            <h1 className="text-3xl font-semibold text-foreground">{heading}</h1>
+            <h1 className="text-3xl font-normal text-foreground">{heading}</h1>
             <p className="max-w-md text-sm leading-relaxed text-accent">{description}</p>
             <div className="flex flex-wrap items-center gap-2.5">{actions}</div>
             <p className="text-xs text-muted">
