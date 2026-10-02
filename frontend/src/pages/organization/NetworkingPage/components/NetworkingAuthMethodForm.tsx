@@ -283,7 +283,8 @@ export const NetworkingAuthMethodForm = ({
     watch,
     reset,
     setValue,
-    formState: { isSubmitting, isDirty }
+    trigger,
+    formState: { isSubmitting, isDirty, isSubmitted }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues
@@ -323,10 +324,12 @@ export const NetworkingAuthMethodForm = ({
   const isProxied = Boolean(gatewayId || gatewayPoolId);
   const isGatewayReviewer = tokenReviewMode === "gateway";
   // Under the org's pool requirement the backend only accepts a new individual gateway as the
-  // reviewer, since a pool can't perform the review. The gateway the config already had is kept as-is.
+  // reviewer, since a pool can't perform the review. A gateway the config already had in API mode is
+  // kept as-is; one saved as the reviewer was only allowed for that mode, so it stays in it.
   const isPoolRequired = Boolean(currentOrg?.requireGatewayPools);
-  const isNewIndividualGateway = Boolean(gatewayId) && gatewayId !== initialKubernetes?.gatewayId;
-  const mustUseGatewayReviewer = isPoolRequired && isNewIndividualGateway;
+  const isKeptApiGateway =
+    gatewayId === initialKubernetes?.gatewayId && initialKubernetes?.tokenReviewMode !== "gateway";
+  const mustUseGatewayReviewer = isPoolRequired && Boolean(gatewayId) && !isKeptApiGateway;
   const reviewModeOptions = REVIEW_MODE_OPTIONS.map((option) => ({
     ...option,
     isDisabled: option.value === "api" && mustUseGatewayReviewer
@@ -589,6 +592,12 @@ export const NetworkingAuthMethodForm = ({
                       ) {
                         setValue("tokenReviewMode", "gateway", { shouldDirty: true });
                       }
+                      // A pool can't perform the review, so Gateway as Reviewer never applies to one.
+                      if (next.gatewayPoolId) {
+                        setValue("tokenReviewMode", "api", { shouldDirty: true });
+                      }
+                      // Clears a stale review-mode error from an earlier submit.
+                      if (isSubmitted) trigger("gatewayId");
                     }}
                     isDisabled={isDisabled || isSaving}
                     isError={Boolean(error)}

@@ -221,7 +221,9 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
       throw new NotFoundError({ message: `Account template with ID '${templateId}' not found` });
     }
 
-    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx, existing.gatewayId);
+    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx, {
+      previousGatewayId: existing.gatewayId
+    });
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const validatedPolicies = validateTemplatePolicies(existing.type, policies);

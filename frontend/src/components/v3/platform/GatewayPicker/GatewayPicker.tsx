@@ -10,6 +10,7 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
+import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import { PoolHealthBadge } from "@app/pages/organization/NetworkingPage/components/GatewayTab/components/PoolHealthBadge";
 
@@ -41,6 +42,9 @@ type Props = {
   excludeGatewayId?: string;
   // For callers where the backend exempts an individual gateway from the org's pool requirement.
   allowIndividualGateways?: boolean;
+  // Limits the individual gateways to those that can serve the caller, such as HSM-capable ones.
+  // The currently selected gateway is always kept so an existing value stays visible.
+  filterGateway?: (gateway: TGatewayV2) => boolean;
 };
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -60,7 +64,8 @@ export const GatewayPicker = ({
   noGatewayLabel = "Internet Gateway",
   noGatewayIcon: NoGatewayIcon = GlobeIcon,
   excludeGatewayId,
-  allowIndividualGateways
+  allowIndividualGateways,
+  filterGateway
 }: Props) => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
@@ -71,6 +76,12 @@ export const GatewayPicker = ({
   const showPools = subscription?.gatewayPool || Boolean(currentOrg?.requireGatewayPools);
 
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
+  // The list above drops gateways that never connected. A saved value can still point at one, so it
+  // is looked up in the unfiltered list (same cached query) to keep the selection visible.
+  const { data: allGateways } = useQuery({
+    ...gatewaysQueryKeys.listAll(),
+    enabled: Boolean(value.gatewayId)
+  });
   const { data: pools, isPending: isPoolsLoading } = useQuery({
     ...gatewayPoolsQueryKeys.list(),
     enabled: Boolean(showPools)
@@ -95,7 +106,19 @@ export const GatewayPicker = ({
     }
   };
 
-  const v2Gateways = gateways?.filter((g) => g.id !== excludeGatewayId) ?? [];
+  const listedGateways =
+    gateways?.filter(
+      (g) =>
+        g.id !== excludeGatewayId &&
+        (!filterGateway || filterGateway(g) || g.id === value.gatewayId)
+    ) ?? [];
+  const unlistedSelectedGateway =
+    value.gatewayId && !listedGateways.some((g) => g.id === value.gatewayId)
+      ? allGateways?.find((g) => g.id === value.gatewayId)
+      : undefined;
+  const v2Gateways = unlistedSelectedGateway
+    ? [unlistedSelectedGateway, ...listedGateways]
+    : listedGateways;
 
   const isOnline = (gw: (typeof v2Gateways)[number]) => isGatewayHealthy(gw);
 
@@ -202,6 +225,7 @@ export const GatewayPicker = ({
                 <Link
                   to="/organizations/$orgId/networking"
                   params={{ orgId: currentOrg.id }}
+                  search={{ selectedTab: "gateways", gatewayView: "gateway-pools" }}
                   target="_blank"
                   className="text-foreground underline underline-offset-2 hover:text-info"
                 >

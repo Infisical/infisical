@@ -6,6 +6,7 @@ import { NetworkingPage } from "./NetworkingPage";
 
 const NetworkingPageQueryParams = z.object({
   selectedTab: z.string().catch("gateways"),
+  gatewayView: z.enum(["all-gateways", "gateway-pools"]).optional().catch(undefined),
   action: z.string().optional()
 });
 

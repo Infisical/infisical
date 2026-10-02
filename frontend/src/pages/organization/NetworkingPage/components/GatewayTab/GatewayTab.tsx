@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   CopyIcon,
   DoorClosedIcon,
@@ -64,6 +64,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import {
   OrgGatewayPermissionActions,
@@ -92,8 +93,12 @@ export const GatewayTab = withPermission(
     const navigate = useNavigate();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
+    const initialSubTab = useSearch({
+      from: ROUTE_PATHS.Organization.NetworkingPage.id,
+      select: (el) => el.gatewayView
+    });
     const [activeSubTab, setActiveSubTab] = useState<"all-gateways" | "gateway-pools">(
-      "all-gateways"
+      initialSubTab ?? "all-gateways"
     );
     const { subscription } = useSubscription();
     const showPoolsTab = subscription?.gatewayPool;

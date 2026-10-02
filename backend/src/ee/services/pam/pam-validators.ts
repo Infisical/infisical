@@ -44,8 +44,8 @@ export const validateGatewayAttachment = async (
   gwId: string | null | undefined,
   poolId: string | null | undefined,
   ctx: TActorContext,
-  previousGatewayId?: string | null,
-  inheritedFrom?: string
+  // Feeds the org's gateway pool requirement; see assertIndividualGatewayAllowed.
+  { previousGatewayId, inheritedFrom }: { previousGatewayId?: string | null; inheritedFrom?: string } = {}
 ) => {
   if (gwId) {
     const gw = await gatewayV2DAL.findOne({ id: gwId, orgId: ctx.actorOrgId });

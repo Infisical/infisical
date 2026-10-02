@@ -377,7 +377,9 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     }
 
     if (gatewayId !== undefined || gatewayPoolId !== undefined) {
-      await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx, source.gatewayId);
+      await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx, {
+        previousGatewayId: source.gatewayId
+      });
     }
 
     const discoveryConfiguration =

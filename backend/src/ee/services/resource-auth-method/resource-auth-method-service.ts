@@ -907,7 +907,13 @@ export const resourceAuthMethodServiceFactory = ({
       }
 
       await $assertProxyNotSelf(resource, authMethod);
-      await $assertCanAttachProxy(actor, authMethod, stored?.gatewayV2Id);
+      // A reviewer gateway was only allowed through the exemption, so it can't be carried into another
+      // review mode as if it were a kept attachment.
+      await $assertCanAttachProxy(
+        actor,
+        authMethod,
+        stored?.tokenReviewMode === KubernetesTokenReviewMode.Gateway ? undefined : stored?.gatewayV2Id
+      );
 
       const validation = await $buildKubernetesExecutor(
         {

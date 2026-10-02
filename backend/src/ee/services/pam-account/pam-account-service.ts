@@ -728,8 +728,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       effectiveGatewayId,
       effectiveGatewayId ? null : (gatewayPoolId ?? template.gatewayPoolId),
       ctx,
-      undefined,
-      gatewayId ? undefined : `Account template '${template.name}'`
+      { inheritedFrom: gatewayId ? undefined : `Account template '${template.name}'` }
     );
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
@@ -919,8 +918,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         effectiveGatewayId,
         effectiveGatewayId ? null : (nextGatewayPoolId ?? nextTemplateGatewayPoolId),
         ctx,
-        existing.gatewayId ?? existing.templateGatewayId,
-        !nextGatewayId && template ? `Account template '${template.name}'` : undefined
+        {
+          previousGatewayId: existing.gatewayId ?? existing.templateGatewayId,
+          inheritedFrom: nextGatewayId ? undefined : `Account template '${template?.name ?? existing.templateName}'`
+        }
       );
     }
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
