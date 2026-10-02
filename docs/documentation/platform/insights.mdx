@@ -58,13 +58,13 @@ Select a project to open that project's Insights page.
 
 The **Duplicated Secrets** card groups secrets that share the same value, across every project in the organization. Each group shows how many secrets share the value and how many projects and locations (an environment and path) they're stored in. Groups that span more than one project are marked with the number of projects.
 
-Expand a group to see each secret's project, key, environment, and path. To open a secret's folder, hover over its row and select the arrow icon. If you aren't a member of a secret's project, the arrow icon is disabled.
+Expand a group to see each secret's project, key, environment, and path. To open a secret, hover over its row and select the arrow icon. If you aren't a member of a secret's project, the arrow icon is disabled.
 
 Infisical finds duplicates by comparing hashes of secret values, the same hashes [secret value search](/documentation/platform/secret-value-search#how-values-are-compared) uses, so it never compares plain text values.
 
 To see the card, you need the **Search All Secret Values** permission under **Secrets Management Insights**, because the card shows secrets in projects you might not be a member of. The built-in **Admin** role has it.
 
-If your organization was created before secret value search was released, the card shows an **Enable Secret Value Search** button until someone turns it on.
+If your organization was created before secret value search was released, the card shows an **Enable** button until someone turns it on.
 
 Viewing the card is recorded in the organization's [audit logs](/documentation/platform/audit-logs) as a **View Org Secrets Duplication Insights** event.
 
