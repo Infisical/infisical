@@ -41,14 +41,21 @@ const normalizeTxtValue = (value: string) => value.replace(QUOTES_REGEX, "");
 
 const toGcpDnsError = (error: unknown, hostedZoneId: string) => {
   if (isAxiosError(error)) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const message = (error.response?.data?.error?.message || error.message || "Unknown error") as string;
+
     if (error.response?.status === 403) {
       const [, gcpProjectId, , zoneName] = hostedZoneId.split("/");
+      if (message.includes("has not been used in project") || message.includes("is disabled")) {
+        return new Error(
+          `The Cloud DNS API is not enabled on GCP project '${gcpProjectId}'. Enable dns.googleapis.com in the Google Cloud console and try again.`
+        );
+      }
       return new Error(
         `The GCP connection's service account can't manage records in Google Cloud DNS zone '${zoneName}'. Grant it the DNS Administrator role (roles/dns.admin) on GCP project '${gcpProjectId}' and try again.`
       );
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const message = (error.response?.data?.error?.message || error.message || "Unknown error") as string;
+
     return new Error(`Google Cloud DNS request failed: ${message}`);
   }
   return error;

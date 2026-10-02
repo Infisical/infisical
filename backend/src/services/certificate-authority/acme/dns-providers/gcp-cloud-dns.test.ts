@@ -28,13 +28,13 @@ const ZONE_URL = `https://dns.googleapis.com/dns/v1/${ZONE}`;
 const RECORD = "_acme-challenge.example.com";
 const FQDN = `${RECORD}.`;
 
-const axiosError = (status: number) =>
+const axiosError = (status: number, message = `status ${status}`) =>
   new AxiosError("request failed", String(status), undefined, undefined, {
     status,
     statusText: "",
     headers: {},
     config: { headers: new AxiosHeaders() },
-    data: { error: { message: `status ${status}` } }
+    data: { error: { message } }
   });
 
 const existingRecordSet = (rrdatas: string[]) => ({ data: { name: FQDN, type: "TXT", ttl: 60, rrdatas } });
@@ -117,6 +117,16 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
       "Grant it the DNS Administrator role (roles/dns.admin) on GCP project 'my-project'"
     );
     expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it("tells the user to enable the API when Cloud DNS is disabled on the project", async () => {
+    getMock.mockRejectedValueOnce(
+      axiosError(403, "Cloud DNS API has not been used in project 123456 before or it is disabled.")
+    );
+
+    await expect(gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"')).rejects.toThrow(
+      "The Cloud DNS API is not enabled on GCP project 'my-project'"
+    );
   });
 
   it("surfaces the provider message on other failures", async () => {
