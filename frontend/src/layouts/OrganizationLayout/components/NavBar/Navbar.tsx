@@ -559,7 +559,7 @@ export const Navbar = () => {
                               a={OrgPermissionSubjects.SubOrganization}
                             >
                               {(isAllowed) =>
-                                isAllowed ? (
+                                isAllowed && !isSubOrganization ? (
                                   <CommandItem
                                     className="text-muted"
                                     onSelect={() => {
