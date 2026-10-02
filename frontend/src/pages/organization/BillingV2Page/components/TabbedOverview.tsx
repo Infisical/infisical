@@ -22,7 +22,6 @@ import {
   Popover,
   PopoverAnchor,
   PopoverContent,
-  Separator,
   Skeleton,
   Tabs,
   TabsContent,
@@ -336,51 +335,51 @@ const ProductOverviewCard = ({
           </ul>
         )}
         {(ent.dimensions ?? []).length > 0 && (
-          <>
-            <Separator />
-            <div className="grid grid-cols-2 gap-x-6 gap-y-5 @3xl:grid-cols-3">
-              {ent.dimensions?.map((dim) => {
-                const allowance = dimCommitted(dim) ? dim.committed : dim.limit;
-                const overage = dimOnDemandQuantity(dim);
-                const detail = meterNote(dim, !isManaged);
-                return (
-                  <div key={dim.key} className="flex min-w-0 flex-col gap-1.5">
-                    <div className="flex items-center gap-1.5 text-xs text-accent">
-                      {dim.label}
-                      {detail && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <IconButton
-                              size="xs"
-                              variant="ghost-muted"
-                              aria-label={`Limits and pricing for ${dim.label}`}
-                            >
-                              <InfoIcon />
-                            </IconButton>
-                          </TooltipTrigger>
-                          <TooltipContent>{detail}</TooltipContent>
-                        </Tooltip>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-baseline gap-1.5 text-xl font-medium tabular-nums">
-                      {dim.used.toLocaleString()}
-                      {allowance !== null && (
-                        <span className="text-sm font-normal text-muted">
-                          / {allowance.toLocaleString()}
-                          {dimCommitted(dim) ? " committed" : ""}
-                        </span>
-                      )}
-                    </div>
-                    {overage > 0 && (
-                      <span className="text-xs text-warning">
-                        {overage.toLocaleString()} on-demand
+          <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-3">
+            {ent.dimensions?.map((dim) => {
+              const allowance = dimCommitted(dim) ? dim.committed : dim.limit;
+              const overage = dimOnDemandQuantity(dim);
+              const detail = meterNote(dim, !isManaged);
+              return (
+                <div
+                  key={dim.key}
+                  className="flex min-w-0 flex-col gap-1.5 rounded-md bg-container p-4"
+                >
+                  <div className="flex items-center gap-1.5 text-xs text-accent">
+                    {dim.label}
+                    {detail && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <IconButton
+                            size="xs"
+                            variant="ghost-muted"
+                            aria-label={`Limits and pricing for ${dim.label}`}
+                          >
+                            <InfoIcon />
+                          </IconButton>
+                        </TooltipTrigger>
+                        <TooltipContent>{detail}</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-baseline gap-1.5 text-xl font-medium tabular-nums">
+                    {dim.used.toLocaleString()}
+                    {allowance !== null && (
+                      <span className="text-sm font-normal text-muted">
+                        / {allowance.toLocaleString()}
+                        {dimCommitted(dim) ? " committed" : ""}
                       </span>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          </>
+                  {overage > 0 && (
+                    <span className="text-xs text-warning">
+                      {overage.toLocaleString()} on-demand
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </CardContent>
     </Card>
@@ -495,10 +494,9 @@ export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode })
             </CardHeader>
             <CardContent className="@container flex flex-col gap-5">
               <Skeleton className="h-28 w-full rounded-md" />
-              <Separator />
-              <div className="grid grid-cols-2 gap-6 @3xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-3">
                 {SKELETON_PRODUCTS.map((metric) => (
-                  <div key={metric} className="flex flex-col gap-2">
+                  <div key={metric} className="flex flex-col gap-2 rounded-md bg-container p-4">
                     <Skeleton className="h-3 w-16" />
                     <Skeleton className="h-5 w-12" />
                   </div>
