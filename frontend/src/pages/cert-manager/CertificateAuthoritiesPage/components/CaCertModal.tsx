@@ -17,7 +17,7 @@ type Props = {
 };
 
 export const CaCertModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { data } = useGetCaCert((popUp?.caCert?.data as { caId: string })?.caId || "");
+  const { data, isError } = useGetCaCert((popUp?.caCert?.data as { caId: string })?.caId || "");
   return (
     <Dialog
       open={popUp?.caCert?.isOpen}
@@ -30,13 +30,17 @@ export const CaCertModal = ({ popUp, handlePopUpToggle }: Props) => {
           <DialogTitle>CA Certificate</DialogTitle>
           <DialogDescription>Copy or download the CA certificate and its chain.</DialogDescription>
         </DialogHeader>
-        {data ? (
+        {data && (
           <CertificateContent
             serialNumber={data.serialNumber}
             certificate={data.certificate}
             certificateChain={data.certificateChain}
           />
-        ) : (
+        )}
+        {!data && isError && (
+          <p className="py-8 text-center text-sm text-danger">Failed to load CA certificate.</p>
+        )}
+        {!data && !isError && (
           <div className="py-8">
             <PageLoader />
           </div>

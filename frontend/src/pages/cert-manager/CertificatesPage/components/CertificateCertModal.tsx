@@ -54,7 +54,7 @@ export const CertificateCertModal = ({ popUp, handlePopUpToggle, applicationId }
   // With metadata-based RBAC conditions the generic check may be overly
   // optimistic, so we always fetch the cert body as a fallback.
   const { data: bundleData } = useGetCertBundle(canReadPrivateKey ? serialNumber : "");
-  const { data: bodyData } = useGetCertBody(serialNumber);
+  const { data: bodyData, isError } = useGetCertBody(serialNumber);
 
   // Prefer bundle data (cert + key) when available, otherwise fall back to
   // body data (cert only). This ensures the certificate is always shown even
@@ -82,14 +82,18 @@ export const CertificateCertModal = ({ popUp, handlePopUpToggle, applicationId }
             Copy or download the certificate and its key material.
           </DialogDescription>
         </DialogHeader>
-        {data ? (
+        {data && (
           <CertificateContent
             serialNumber={data.serialNumber}
             certificate={data.certificate}
             certificateChain={data.certificateChain}
             privateKey={data.privateKey || undefined}
           />
-        ) : (
+        )}
+        {!data && isError && (
+          <p className="py-8 text-center text-sm text-danger">Failed to load certificate.</p>
+        )}
+        {!data && !isError && (
           <div className="py-8">
             <PageLoader />
           </div>
