@@ -239,7 +239,7 @@ export const licenseServiceFactory = ({
     }
   };
 
-  const getPlan = async (orgId: string, projectId?: string, refreshCache = false) => {
+  const getPlan = async (orgId: string, projectId?: string) => {
     logger.info(`getPlan: attempting to fetch plan for [orgId=${orgId}] [projectId=${projectId}]`);
     try {
       if (instanceType === InstanceType.Cloud) {
@@ -260,7 +260,7 @@ export const licenseServiceFactory = ({
           }
         };
 
-        if (cachedPlan && !refreshCache) {
+        if (cachedPlan) {
           // A billing mutation flagged this org: serve the cached plan now but kick a background refresh
           // so the cache converges as the license server reconciles, instead of waiting out the TTL.
           if (passThrough) {
@@ -272,14 +272,7 @@ export const licenseServiceFactory = ({
           return plan;
         }
 
-        let currentPlan: TFeatureSet;
-        try {
-          currentPlan = await fetchAndCacheCloudPlan(orgId);
-        } catch (error) {
-          if (!cachedPlan) throw error;
-          logger.error(error, `getPlan: explicit refresh failed [orgId=${orgId}]`);
-          currentPlan = JSON.parse(cachedPlan) as TFeatureSet;
-        }
+        const currentPlan = await fetchAndCacheCloudPlan(orgId);
         maybeReconcile(currentPlan);
         return currentPlan;
       }
@@ -315,11 +308,10 @@ export const licenseServiceFactory = ({
   };
 
   const refreshPlan = async (orgId: string) => {
-    if (instanceType === InstanceType.Cloud) {
-      await getPlan(orgId, undefined, true);
-      return;
-    }
     await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
+    if (instanceType === InstanceType.Cloud) {
+      await getPlan(orgId);
+    }
     if (instanceType === InstanceType.EnterpriseOnPrem) {
       // Bust the license server's cached entitlements (e.g. after a license change), then re-sync.
       await licenseClient?.refreshEntitlements({ id: SELF_HOSTED_LICENSE_ORG_ID });
