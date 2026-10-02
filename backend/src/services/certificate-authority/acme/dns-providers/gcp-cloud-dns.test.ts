@@ -171,6 +171,22 @@ describe("gcpCloudDnsDeleteTxtRecord", () => {
     );
   });
 
+  it("re-reads and retries when another challenge removed its value first", async () => {
+    getMock
+      .mockResolvedValueOnce(existingRecordSet(['"token-a"', '"token-b"']))
+      .mockResolvedValueOnce(existingRecordSet(['"token-a"']));
+    postMock.mockRejectedValueOnce(axiosError(412)).mockResolvedValueOnce({ data: {} });
+
+    await gcpCloudDnsDeleteTxtRecord(connection, ZONE, RECORD, '"token-a"');
+
+    expect(postMock).toHaveBeenCalledTimes(2);
+    expect(postMock).toHaveBeenLastCalledWith(
+      `${ZONE_URL}/changes`,
+      { deletions: [{ name: FQDN, type: "TXT", ttl: 60, rrdatas: ['"token-a"'] }] },
+      expect.anything()
+    );
+  });
+
   it("is a no-op when the record set or value is already gone", async () => {
     getMock.mockRejectedValueOnce(axiosError(404)).mockResolvedValueOnce(existingRecordSet(['"token-b"']));
 

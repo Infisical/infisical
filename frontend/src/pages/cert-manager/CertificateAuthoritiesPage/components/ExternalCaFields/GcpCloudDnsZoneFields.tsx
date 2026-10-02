@@ -77,7 +77,7 @@ export const GcpCloudDnsZoneFields = ({ control, connectionId }: Props) => {
       name="configuration.dnsProviderConfig.hostedZoneId"
       control={control}
       render={({ field: { value, onChange }, fieldState: { error } }) => {
-        const gcpProjectId = selectedProjectId ?? getProjectIdFromZone(value);
+        const gcpProjectId = getProjectIdFromZone(value) || selectedProjectId || "";
 
         return (
           <>
