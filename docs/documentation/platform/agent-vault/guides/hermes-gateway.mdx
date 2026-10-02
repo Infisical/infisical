@@ -185,6 +185,10 @@ The gateway runs all the time, so run the proxy as a service that starts again w
 
 The proxy listens on port `17323`. Make sure the Hermes machine can reach that port on the Agent Vault machine's private address.
 
+<Warning>
+  Don't let anything outside your private network reach port `17323`. Hermes proves its identity to the proxy with a token it sends unencrypted on every request, so anyone who can see that traffic and reach the proxy can use the token to call every API in your access bundle.
+</Warning>
+
 ### Create a session
 
 Finally, create a [session](/documentation/platform/agent-vault/sessions) for the gateway. This will generate a token that Hermes can use to make authenticated requests via the proxy you enrolled.
