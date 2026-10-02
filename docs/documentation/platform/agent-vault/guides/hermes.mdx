@@ -243,31 +243,19 @@ The real values are now stored in Infisical, so you don't need to keep them on t
 Add these lines to `~/.hermes/.env`:
 
 ```bash
+# Send Hermes's requests through the proxy
 HTTPS_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
 HTTP_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
+# Skip the proxy for this machine, such as a local model server
 NO_PROXY=localhost,127.0.0.1,::1
+# Trust the proxy's certificate
 SSL_CERT_FILE=<path-to-ca.pem>
 REQUESTS_CA_BUNDLE=<path-to-ca.pem>
 CURL_CA_BUNDLE=<path-to-ca.pem>
 NODE_EXTRA_CA_CERTS=<path-to-ca.pem>
 ```
 
-Replace `<session-token>` with the token from [Step 2](#create-a-session), and `<path-to-ca.pem>` with the absolute path of the certificate you downloaded, such as `/home/hermes/.hermes/agent-vault/ca.pem`. Hermes doesn't expand `~` in this file.
-
-With `NO_PROXY`, requests to the Hermes machine itself skip the proxy, such as requests to a local model server.
-
-Hermes loads `~/.hermes/.env` every time it starts, so the gateway uses these settings whether systemd, launchd, Docker, or a terminal starts it. Don't add them to the gateway's service file instead, because Hermes rewrites that file when you reinstall or update the gateway.
-
-<Warning>
-  The proxy can only attach credentials to requests that reach it through `HTTPS_PROXY` and name the API by its hostname. Check that no messaging platform setting sends requests another way:
-
-  - **A proxy setting for one platform:** settings such as `TELEGRAM_PROXY`, `DISCORD_PROXY`, `MATRIX_PROXY`, and `MATTERMOST_PROXY`, or `telegram.proxy_url` in `~/.hermes/config.yaml`, take priority over `HTTPS_PROXY`, so leave them unset
-  - **Connecting by IP address:** if a request names an IP address instead of a hostname, the proxy can't verify the API's certificate and the request fails with a 502 (Hermes's Telegram adapter can connect to Telegram by IP address, which you can turn off with `HERMES_TELEGRAM_DISABLE_FALLBACK_IPS=true` in `~/.hermes/.env`)
-</Warning>
-
-<Note>
-  The shell commands Hermes runs also use these settings, so the proxy attaches credentials to requests from commands such as `curl` too. This only applies if Hermes runs commands on its own machine, which is the default. If you've set Hermes's `terminal.backend` to `docker`, `ssh`, or another backend, Hermes runs its commands in an environment that doesn't have these settings.
-</Note>
+Replace `<session-token>` with the token from [Step 2](#create-a-session), and `<path-to-ca.pem>` with the absolute path of the certificate you downloaded, such as `/home/hermes/.hermes/agent-vault/ca.pem`.
 
 ### Restart the gateway
 
@@ -328,6 +316,16 @@ Hermes writes the gateway's logs to `~/.hermes/logs/gateway.log`. On Linux, you 
 
     If the proxy still logs nothing from Hermes, the gateway didn't load the proxy settings. Confirm you edited the `.env` file in the Hermes home the gateway uses (`$HERMES_HOME` if you've set it), then run `hermes gateway restart` and check `hermes gateway status`.
   </Accordion>
+  <Accordion title="The messaging platform's requests skip the proxy">
+    Hermes has proxy settings for individual platforms, such as `TELEGRAM_PROXY`, `DISCORD_PROXY`, `MATRIX_PROXY`, and `MATTERMOST_PROXY` in `~/.hermes/.env`, or `telegram.proxy_url` in `~/.hermes/config.yaml`. If one of these is set, that platform's requests use it instead of `HTTPS_PROXY`.
+    
+    Remove the proxy setting for your platform, then run `hermes gateway restart`.
+  </Accordion>
+  <Accordion title="Shell commands that Hermes runs aren't getting credentials">
+    If you've set Hermes's `terminal.backend` to `docker`, `ssh`, or another backend other than `local`, Hermes runs its commands in an environment that doesn't have the proxy settings.
+    
+    To route those commands through the proxy, switch back by running `hermes config set terminal.backend local`.
+  </Accordion>
   <Accordion title="The gateway stopped after a messaging platform rejected its token">
     If a messaging platform rejects the gateway's token, Hermes exits instead of retrying, and the service manager doesn't start it again. The platform receives the placeholder instead of the real token if the placeholder doesn't match **Replace** exactly, or if the proxy runs an Infisical CLI earlier than 0.43.133.
     
@@ -343,7 +341,9 @@ Hermes writes the gateway's logs to `~/.hermes/logs/gateway.log`. On Linux, you 
     The credential wasn't applied. Open your access bundle and confirm a service covers the host Hermes called. If one does, the stored credential is likely wrong. If the service uses a substitution, check that the placeholder in `~/.hermes/.env` matches **Replace** exactly.
   </Accordion>
   <Accordion title="Hermes keeps getting authentication errors after you fix the credential">
-    After an API rejects a key, Hermes marks the key as exhausted and stops sending it, so fixing the service in Infisical isn't enough. Run `hermes auth list` to find the provider's name, then reset the key and restart the gateway:
+    After an API rejects a key, Hermes marks the key as exhausted and stops sending it, so fixing the service in Infisical isn't enough.
+    
+    Run `hermes auth list` to find the provider's name, then reset the key and restart the gateway:
 
     ```bash
     hermes auth reset <provider>
@@ -359,6 +359,15 @@ Hermes writes the gateway's logs to `~/.hermes/logs/gateway.log`. On Linux, you 
     - The session was revoked or has expired (check the **Sessions** page in Infisical, and [replace the session](#revoke-or-replace-the-session) if needed)
     - Under the proxy's [strict traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), no service in the bundle covers the host Hermes called (add a service that does, or use a pass-through service)
     - The service covers the host, but doesn't allow the request's method or path (check the service's [methods and paths](/documentation/platform/agent-vault/services#methods-and-paths))
+  </Accordion>
+  <Accordion title="Requests to Telegram fail with a 502">
+    The proxy can only attach credentials to a request that names the API by its hostname (`api.telegram.org`). Hermes's Telegram adapter can connect to Telegram by IP address instead, and for those requests the proxy can't verify Telegram's certificate, so it returns a 502. The proxy logs these requests with `decision=error` and an IP address as the host.
+
+    To keep Hermes on `api.telegram.org`, add this line to `~/.hermes/.env`, then run `hermes gateway restart`:
+
+    ```bash
+    HERMES_TELEGRAM_DISABLE_FALLBACK_IPS=true
+    ```
   </Accordion>
 </AccordionGroup>
 
