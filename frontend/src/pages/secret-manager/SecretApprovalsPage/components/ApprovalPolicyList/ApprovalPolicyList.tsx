@@ -166,13 +166,16 @@ export const ApprovalPolicyList = ({ projectId, openAddPolicy, onAddPolicyOpened
     if (!openAddPolicy) return;
 
     if (subscription && !subscription.secretApproval) {
-      handlePopUpOpen("upgradePlan");
+      openUpgradeGate({
+        intent: SecretApprovalPoliciesUpgradeIntent,
+        paywallKey: "secret-manager.approval-policy-list"
+      });
     } else {
       setInitialPolicyType(openAddPolicy);
       handlePopUpOpen("policyForm");
     }
     onAddPolicyOpened();
-  }, [openAddPolicy, subscription, handlePopUpOpen, onAddPolicyOpened]);
+  }, [openAddPolicy, subscription, handlePopUpOpen, openUpgradeGate, onAddPolicyOpened]);
 
   const canReadPolicies = permission.can(
     ProjectPermissionActions.Read,
@@ -573,7 +576,10 @@ export const ApprovalPolicyList = ({ projectId, openAddPolicy, onAddPolicyOpened
                         size="sm"
                         onClick={() => {
                           if (subscription && !subscription.secretApproval) {
-                            handlePopUpOpen("upgradePlan");
+                            openUpgradeGate({
+                              intent: SecretApprovalPoliciesUpgradeIntent,
+                              paywallKey: "secret-manager.approval-policy-list"
+                            });
                           } else {
                             setInitialPolicyType(undefined);
                             handlePopUpOpen("policyForm");
