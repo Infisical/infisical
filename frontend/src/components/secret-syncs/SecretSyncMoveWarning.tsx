@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon, TriangleAlertIcon } from "lucide-react";
 
@@ -6,61 +6,45 @@ import { Alert, AlertDescription, AlertTitle, Checkbox, Label } from "@app/compo
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useOrganization, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
-import {
-  getSecretSyncsNewlyCoveringPaths,
-  TMoveWarningsCheck
-} from "@app/helpers/secretSyncCoverage";
+import { TMoveWarningsCheck } from "@app/helpers/secretSyncCoverage";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
-import { useListSecretSyncs } from "@app/hooks/api/secretSyncs";
+import { useListSecretSyncsCoveringMove } from "@app/hooks/api/secretSyncs";
 
-// the acknowledgement is tied to the checks and the warning it was given for, and cleared whenever
-// either changes, so a yes never carries over to a destination or a set of syncs the user has not seen.
-// like the synced indicator on the dashboard, syncs the user cannot read are left out entirely.
-export const useSecretSyncMoveWarning = (projectId: string, checks: TMoveWarningsCheck[]) => {
-  const { permission } = useProjectPermission();
-  const canReadSecretSyncs = permission.can(
-    ProjectPermissionSecretSyncActions.Read,
-    ProjectPermissionSub.SecretSyncs
-  );
-  const isEnabled = canReadSecretSyncs && checks.length > 0;
-
-  const {
-    data: projectSyncs,
-    isFetching,
-    isError,
-    refetch
-  } = useListSecretSyncs(projectId, {
-    enabled: isEnabled,
-    staleTime: 0
-  });
-
-  // a cached list may predate a sync created since, so the list is refetched whenever the checks change
-  // and submit stays blocked until it lands
-  const checksKey = JSON.stringify(checks);
-  useEffect(() => {
-    if (isEnabled) refetch({ cancelRefetch: false });
-  }, [checksKey, isEnabled]);
-
-  const secretSyncs = useMemo(
-    () => (isEnabled && projectSyncs ? getSecretSyncsNewlyCoveringPaths(projectSyncs, checks) : []),
-    [isEnabled, projectSyncs, checks]
-  );
-  const isChecking = isEnabled && isFetching;
-  const hasError = isEnabled && isError;
-
-  const warningKey = JSON.stringify({
-    checksKey,
-    syncIds: secretSyncs.map(({ id }) => id),
-    hasError
-  });
+// remembers the warning the user ticked. it is cleared on any change, so returning to a warning ticked
+// earlier asks again rather than carrying a yes over to syncs the user has not seen.
+const useAcknowledgement = (warningKey: string) => {
   const [acknowledgedWarningKey, setAcknowledgedWarningKey] = useState<string | null>(null);
 
   useEffect(() => {
     setAcknowledgedWarningKey(null);
   }, [warningKey]);
 
-  const isAcknowledged = acknowledgedWarningKey === warningKey;
+  return {
+    isAcknowledged: acknowledgedWarningKey === warningKey,
+    setIsAcknowledged: (value: boolean) => setAcknowledgedWarningKey(value ? warningKey : null)
+  };
+};
+
+// like the synced indicator on the dashboard, syncs the user cannot read are left out entirely
+export const useSecretSyncMoveWarning = (projectId: string, checks: TMoveWarningsCheck[]) => {
+  const { permission } = useProjectPermission();
+  const canReadSecretSyncs = permission.can(
+    ProjectPermissionSecretSyncActions.Read,
+    ProjectPermissionSub.SecretSyncs
+  );
+
+  const {
+    data: secretSyncs = [],
+    isLoading: isChecking,
+    isError: hasError
+  } = useListSecretSyncsCoveringMove(projectId, checks, {
+    enabled: canReadSecretSyncs && checks.length > 0
+  });
+
   const needsAcknowledgement = hasError || secretSyncs.length > 0;
+  const { isAcknowledged, setIsAcknowledged } = useAcknowledgement(
+    JSON.stringify({ checks, syncIds: secretSyncs.map(({ id }) => id), hasError })
+  );
 
   return {
     secretSyncs,
@@ -68,7 +52,7 @@ export const useSecretSyncMoveWarning = (projectId: string, checks: TMoveWarning
     hasError,
     needsAcknowledgement,
     isAcknowledged,
-    setIsAcknowledged: (value: boolean) => setAcknowledgedWarningKey(value ? warningKey : null),
+    setIsAcknowledged,
     isBlockingSubmit: isChecking || (needsAcknowledgement && !isAcknowledged)
   };
 };
