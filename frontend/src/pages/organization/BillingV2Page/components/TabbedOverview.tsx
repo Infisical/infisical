@@ -557,6 +557,12 @@ export const TabbedOverview = ({
   const visible = [...catalog]
     .filter((prod) => !prod.deprecated || entitlements[prod.id]?.entitled)
     .sort(byDisplayOrder);
+  const hasOverviewControls =
+    !readOnly ||
+    visible.some((prod) => {
+      const ent = entitlements[prod.id];
+      return ent?.entitled && ent.status !== "churned" && breakdownableDimensions(ent).length > 0;
+    });
   const hasTabs = showInvoicesTab || showPaymentTab;
   const activeTab =
     tab === "usage" ||
@@ -591,7 +597,7 @@ export const TabbedOverview = ({
         </TabsList>
       )}
 
-      <TabsContent value="overview" tabIndex={-1}>
+      <TabsContent value="overview" tabIndex={hasOverviewControls ? -1 : 0}>
         <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="row-start-2 flex min-w-0 flex-col gap-5 xl:row-start-1">
             {visible.length === 0 && (
@@ -725,7 +731,10 @@ export const TabbedOverview = ({
       </TabsContent>
 
       {showInvoicesTab && (
-        <TabsContent value="invoices" tabIndex={-1}>
+        <TabsContent
+          value="invoices"
+          tabIndex={overview.invoices.some((invoice) => invoice.pdfUrl) ? -1 : 0}
+        >
           <InvoicesCard invoices={overview.invoices} />
         </TabsContent>
       )}
@@ -733,7 +742,7 @@ export const TabbedOverview = ({
       {showPaymentTab && (
         <TabsContent
           value="payment"
-          tabIndex={-1}
+          tabIndex={canManageBilling ? -1 : 0}
           className="grid items-start gap-6 xl:grid-cols-2"
         >
           {showPayment && (
