@@ -3,14 +3,15 @@
 import { isAxiosError } from "axios";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { request } from "@app/lib/config/request";
 import { delay } from "@app/lib/delay";
 import { logger } from "@app/lib/logger";
 import { UltraDNSEnvironment } from "@app/services/app-connection/ultradns/ultradns-connection-enum";
 import {
   getUltraDNSAccessToken,
   getUltraDNSErrorMessage,
-  getUltraDNSUrl
+  getUltraDNSUrl,
+  ULTRADNS_REQUEST_TIMEOUT_MS,
+  ultraDNSRequest
 } from "@app/services/app-connection/ultradns/ultradns-connection-fns";
 import { TUltraDNSConnection } from "@app/services/app-connection/ultradns/ultradns-connection-types";
 
@@ -21,7 +22,7 @@ const MAX_WRITE_ATTEMPTS = 3;
 const WRITE_RETRY_DELAY_MS = 3000;
 const APPLY_PENDING_STATUS = 202;
 const NON_RETRYABLE_WRITE_STATUSES = [401, 403, 404];
-const RECORD_LOCK_TTL_MS = 120_000;
+const RECORD_LOCK_TTL_MS = ULTRADNS_REQUEST_TIMEOUT_MS * (2 + MAX_WRITE_ATTEMPTS * 2) + 30_000;
 
 export type TUltraDNSProviderDeps = {
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
@@ -41,7 +42,7 @@ const getTxtRrSetUrl = (environment: UltraDNSEnvironment, zoneName: string, reco
 
 const getTxtRecordValues = async (url: string, accessToken: string) => {
   try {
-    const { data } = await request.get<{ rrSets?: { rdata?: string[] }[] }>(url, {
+    const { data } = await ultraDNSRequest.get<{ rrSets?: { rdata?: string[] }[] }>(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
@@ -63,12 +64,14 @@ const writeTxtRecordValues = async (url: string, accessToken: string, values: st
   };
 
   if (!values.length) {
-    const { status } = await request.delete(url, { headers });
+    const { status } = await ultraDNSRequest.delete(url, { headers });
     return status;
   }
 
   const body = { ttl: TXT_RECORD_TTL, rdata: values };
-  const { status } = await (isNewRrSet ? request.post(url, body, { headers }) : request.put(url, body, { headers }));
+  const { status } = await (isNewRrSet
+    ? ultraDNSRequest.post(url, body, { headers })
+    : ultraDNSRequest.put(url, body, { headers }));
   return status;
 };
 
@@ -133,9 +136,10 @@ export const ultraDNSInsertTxtRecord = async (
         );
 
         if (!isConfirmed) {
-          logger.warn(
-            { zoneName: zoneId, recordName: name, err: lastWriteError },
-            "UltraDNS has not confirmed the ACME challenge TXT record as published"
+          throw new Error(
+            `UltraDNS did not confirm the challenge record after ${MAX_WRITE_ATTEMPTS} attempts${
+              lastWriteError ? `: ${getUltraDNSErrorMessage(lastWriteError)}` : ""
+            }`
           );
         }
       }

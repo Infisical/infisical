@@ -1,6 +1,6 @@
 import { AxiosError, isAxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
+import { createRequestClient } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -16,6 +16,10 @@ type TUltraDNSZoneListResponse = {
 
 const ZONE_PAGE_SIZE = 1000;
 const MAX_ZONE_PAGES = 100;
+
+export const ULTRADNS_REQUEST_TIMEOUT_MS = 10_000;
+
+export const ultraDNSRequest = createRequestClient({ timeout: ULTRADNS_REQUEST_TIMEOUT_MS }, { retries: 0 });
 
 export const getUltraDNSUrl = (environment: UltraDNSEnvironment, path: string) => {
   const baseUrl =
@@ -36,7 +40,7 @@ export const getUltraDNSErrorMessage = (error: unknown) => {
 };
 
 export const getUltraDNSAccessToken = async (environment: UltraDNSEnvironment, username: string, password: string) => {
-  const { data } = await request.post<{ accessToken: string }>(
+  const { data } = await ultraDNSRequest.post<{ accessToken: string }>(
     getUltraDNSUrl(environment, "/v1/authorization/token"),
     new URLSearchParams({ grant_type: "password", username, password }).toString(),
     {
@@ -75,7 +79,7 @@ export const listUltraDNSZones = async (config: TUltraDNSConnectionConfig): Prom
 
     for (let page = 0; page < MAX_ZONE_PAGES; page += 1) {
       // eslint-disable-next-line no-await-in-loop
-      const { data } = await request.get<TUltraDNSZoneListResponse>(getUltraDNSUrl(environment, "/v3/zones"), {
+      const { data } = await ultraDNSRequest.get<TUltraDNSZoneListResponse>(getUltraDNSUrl(environment, "/v3/zones"), {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/json"
@@ -111,7 +115,7 @@ export const validateUltraDNSConnectionCredentials = async (config: TUltraDNSCon
   try {
     const accessToken = await getUltraDNSAccessToken(environment, username, password);
 
-    await request.get(getUltraDNSUrl(environment, "/v3/zones"), {
+    await ultraDNSRequest.get(getUltraDNSUrl(environment, "/v3/zones"), {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
