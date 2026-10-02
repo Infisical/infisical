@@ -75,3 +75,35 @@ export const flattenNestedJson = (data: Record<string, unknown>): TNestedJsonImp
   walk(data, "/");
   return result;
 };
+
+export type TFolderNode = {
+  name: string;
+  path: string;
+  secrets: TParsedEnv;
+  children: TFolderNode[];
+  // Includes secrets in descendant folders
+  secretCount: number;
+};
+
+export const buildFolderTree = ({ folderPaths, secretsByPath }: TNestedJsonImport): TFolderNode => {
+  const childPaths = new Map<string, string[]>();
+  folderPaths.forEach((path) => {
+    const parentPath = path.slice(0, path.lastIndexOf("/")) || "/";
+    childPaths.set(parentPath, [...(childPaths.get(parentPath) ?? []), path]);
+  });
+
+  const buildNode = (path: string): TFolderNode => {
+    const secrets = secretsByPath[path] ?? {};
+    const children = (childPaths.get(path) ?? []).map(buildNode);
+    return {
+      name: path.slice(path.lastIndexOf("/") + 1),
+      path,
+      secrets,
+      children,
+      secretCount:
+        Object.keys(secrets).length + children.reduce((sum, child) => sum + child.secretCount, 0)
+    };
+  };
+
+  return buildNode("/");
+};

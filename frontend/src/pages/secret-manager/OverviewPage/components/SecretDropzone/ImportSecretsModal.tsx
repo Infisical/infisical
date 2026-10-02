@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import {
+  ChevronDownIcon,
+  ChevronRightIcon,
   CircleXIcon,
   CodeXmlIcon,
   EyeIcon,
   EyeOffIcon,
   FolderIcon,
   InfoIcon,
+  KeyRoundIcon,
   MessageSquareIcon,
   TagsIcon,
   WrapTextIcon
@@ -18,6 +21,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Button,
   Combobox,
   Field,
@@ -47,6 +51,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
@@ -56,7 +61,13 @@ import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { SecretType } from "@app/hooks/api/types";
 
 import { CsvColumnMapContent } from "./CsvColumnMapDialog";
-import { flattenNestedJson, getNestedJsonObject, joinSecretPath } from "./parseNestedJson";
+import {
+  buildFolderTree,
+  flattenNestedJson,
+  getNestedJsonObject,
+  joinSecretPath,
+  TFolderNode
+} from "./parseNestedJson";
 import { CsvData, parseSecretFile } from "./parseSecretFile";
 import { PASTE_SECRETS_FORM_ID, PasteSecretsContent } from "./PasteSecretsDialog";
 import { TParsedEnv } from "./types";
@@ -75,8 +86,22 @@ type Props = {
 };
 
 type TReviewRow =
-  | { type: "folder"; id: string; path: string }
-  | { type: "secret"; id: string; key: string; secretData: TParsedEnv[string] };
+  | { type: "folder"; id: string; depth: number; node: TFolderNode }
+  | { type: "secret"; id: string; depth: number; key: string; secretData: TParsedEnv[string] };
+
+const TREE_INDENT_PX = 16;
+const CELL_PADDING_PX = 12;
+
+const TreeIndentGuides = ({ depth }: { depth: number }) =>
+  Array.from({ length: depth }, (_, level) => (
+    <span
+      key={level}
+      aria-hidden
+      className="pointer-events-none absolute inset-y-0 w-px bg-border"
+      // Centered under the parent folder's chevron
+      style={{ left: CELL_PADDING_PX + level * TREE_INDENT_PX + 7 }}
+    />
+  ));
 
 type ContentProps = {
   environments: { name: string; slug: string }[];
@@ -112,6 +137,7 @@ const ImportSecretsContent = ({
   const [keyOverrides, setKeyOverrides] = useState<Record<string, string>>({});
   const [nestedJson, setNestedJson] = useState<Record<string, unknown> | null>(null);
   const [shouldImportNested, setShouldImportNested] = useState(false);
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
 
   const { mutateAsync: createSecretBatch } = useCreateSecretBatch();
   const { mutateAsync: updateSecretBatch } = useUpdateSecretBatch();
@@ -147,34 +173,69 @@ const ImportSecretsContent = ({
     [nestedJson, shouldImportNested]
   );
 
+  const folderTree = useMemo(
+    () => (nestedImport ? buildFolderTree(nestedImport) : null),
+    [nestedImport]
+  );
+
   // Nested row ids are "<path>:<key>", which cannot collide because folder names and
   // nested secret keys never contain ":"
   const reviewRows = useMemo<TReviewRow[]>(() => {
-    const toSecretRows = (secrets: TParsedEnv = {}, path?: string) =>
+    const toSecretRows = (secrets: TParsedEnv, depth: number, path?: string): TReviewRow[] =>
       Object.entries(secrets).map(([key, secretData]) => ({
-        type: "secret" as const,
+        type: "secret",
         id: path ? `${path}:${key}` : key,
+        depth,
         key,
         secretData
       }));
-    if (!nestedImport) return toSecretRows(activeSecrets ?? undefined);
-    const { folderPaths, secretsByPath } = nestedImport;
-    return [
-      ...toSecretRows(secretsByPath["/"]),
-      ...folderPaths.flatMap((path) => [
-        { type: "folder" as const, id: path, path },
-        ...toSecretRows(secretsByPath[path], path)
-      ])
-    ];
-  }, [nestedImport, activeSecrets]);
+    if (!folderTree) return activeSecrets ? toSecretRows(activeSecrets, 0) : [];
 
-  const allSecretKeys = reviewRows.filter((row) => row.type === "secret").map((row) => row.id);
+    const toFolderRows = (node: TFolderNode, depth: number): TReviewRow[] => [
+      { type: "folder", id: node.path, depth, node },
+      ...(collapsedFolders.has(node.path)
+        ? []
+        : [
+            ...toSecretRows(node.secrets, depth + 1, node.path),
+            ...node.children.flatMap((child) => toFolderRows(child, depth + 1))
+          ])
+    ];
+    return [
+      ...toSecretRows(folderTree.secrets, 0, "/"),
+      ...folderTree.children.flatMap((child) => toFolderRows(child, 0))
+    ];
+  }, [folderTree, activeSecrets, collapsedFolders]);
+
+  const allSecretKeys = nestedImport
+    ? Object.entries(nestedImport.secretsByPath).flatMap(([path, secrets]) =>
+        Object.keys(secrets).map((key) => `${path}:${key}`)
+      )
+    : Object.keys(activeSecrets ?? {});
   const secretCount = allSecretKeys.length;
   const folderCount = nestedImport?.folderPaths.length ?? 0;
   const folderSummary = nestedImport
     ? ` across ${folderCount} folder${folderCount !== 1 ? "s" : ""}`
     : "";
   const hasNestedErrors = Boolean(nestedImport?.errors.length);
+  const areAllFoldersCollapsed = Boolean(
+    nestedImport?.folderPaths.length &&
+      nestedImport.folderPaths.every((path) => collapsedFolders.has(path))
+  );
+
+  const toggleFolder = (path: string) => {
+    setCollapsedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+
+  const toggleAllFolders = () => {
+    setCollapsedFolders(
+      areAllFoldersCollapsed ? new Set() : new Set(nestedImport?.folderPaths ?? [])
+    );
+  };
   const hasTagsToResolve = activeSecrets
     ? Object.values(activeSecrets).some((s) => s.tagSlugs?.length)
     : false;
@@ -490,6 +551,7 @@ const ImportSecretsContent = ({
     setParsedSecrets(null);
     setNestedJson(null);
     setShouldImportNested(false);
+    setCollapsedFolders(new Set());
     setVisibleSecretKeys(new Set());
     setKeyOverrides({});
   };
@@ -638,8 +700,29 @@ const ImportSecretsContent = ({
             >
               <TableHeader className="sticky top-0 z-[1] after:pointer-events-none after:absolute after:inset-x-0 after:-top-px after:h-px after:bg-container">
                 <TableRow className="relative h-9">
-                  <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-                    Key
+                  <TableHead
+                    className={cn(
+                      "bg-container shadow-[inset_0_-1px_0_var(--color-border)]",
+                      folderTree && "w-1/2"
+                    )}
+                  >
+                    {folderTree ? (
+                      <div className="flex items-center justify-between gap-2">
+                        Key
+                        {folderTree.children.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            className="-mr-2 text-accent hover:text-foreground"
+                            onClick={toggleAllFolders}
+                          >
+                            {areAllFoldersCollapsed ? "Expand All" : "Collapse All"}
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      "Key"
+                    )}
                   </TableHead>
                   <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                     Value
@@ -653,14 +736,36 @@ const ImportSecretsContent = ({
               </TableHeader>
               <TableBody>
                 {reviewRows.map((row) => {
+                  const treeCellStyle = folderTree
+                    ? { paddingLeft: CELL_PADDING_PX + row.depth * TREE_INDENT_PX }
+                    : undefined;
                   if (row.type === "folder") {
+                    const { node } = row;
+                    const isExpanded = !collapsedFolders.has(node.path);
                     return (
-                      <TableRow key={row.id} className="bg-container">
-                        <TableCell colSpan={3} isTruncatable className="font-mono text-xs">
-                          <div className="flex items-center gap-1.5">
+                      <TableRow key={row.id} className="relative">
+                        <TableCell isTruncatable className="w-1/2 text-xs" style={treeCellStyle}>
+                          <TreeIndentGuides depth={row.depth} />
+                          <button
+                            type="button"
+                            aria-expanded={isExpanded}
+                            onClick={() => toggleFolder(node.path)}
+                            className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 text-left outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+                          >
+                            {isExpanded ? (
+                              <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
+                            ) : (
+                              <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
+                            )}
                             <FolderIcon className="size-3.5 shrink-0 text-folder" />
-                            <p className="truncate">{row.path}</p>
-                          </div>
+                            <span className="truncate">{node.name}</span>
+                          </button>
+                        </TableCell>
+                        <TableCell isTruncatable className="w-1/2 font-mono text-xs text-muted">
+                          {joinSecretPath(secretPath, node.path)}
+                        </TableCell>
+                        <TableCell className="w-10 text-center">
+                          <Badge variant="neutral">{node.secretCount}</Badge>
                         </TableCell>
                       </TableRow>
                     );
@@ -674,9 +779,15 @@ const ImportSecretsContent = ({
                   const editableKey = secretData.isFileSecret === true;
                   const editedKey = keyOverrides[key] ?? key;
                   return (
-                    <TableRow key={id}>
-                      <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
+                    <TableRow key={id} className={folderTree ? "relative" : undefined}>
+                      <TableCell
+                        isTruncatable
+                        className="w-1/2 overflow-hidden font-mono text-xs"
+                        style={treeCellStyle}
+                      >
+                        {folderTree && <TreeIndentGuides depth={row.depth} />}
                         <div className="flex w-full items-center gap-1.5">
+                          {folderTree && <KeyRoundIcon className="size-3.5 shrink-0 text-secret" />}
                           {editableKey ? (
                             <Input
                               value={editedKey}
