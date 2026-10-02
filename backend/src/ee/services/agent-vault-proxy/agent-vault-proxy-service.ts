@@ -7,6 +7,7 @@ import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { PgSqlLock } from "@app/keystore/keystore";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -24,10 +25,19 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultCredentialType, AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
 import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
+import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { TAgentVaultVariableDALFactory } from "../agent-vault-access-bundle/agent-vault-variable-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
+import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
+import {
+  getSessionLogEntitlement,
+  isSessionLogIngestEnabled,
+  TSessionLogLicenseService
+} from "../agent-vault-session-log/agent-vault-session-log-fns";
+import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { parseRootCaCertificate } from "./agent-vault-ca-fns";
@@ -46,6 +56,8 @@ import {
 } from "./agent-vault-proxy-types";
 import { TAgentVaultResolveDALFactory } from "./agent-vault-resolve-dal";
 
+export const AGENT_VAULT_MAX_PROXIES_PER_ORG = 10;
+
 // Health is derived from the last heartbeat and the poll interval, never stored.
 const HEARTBEAT_MISSES_BEFORE_UNHEALTHY = 3;
 
@@ -54,11 +66,14 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultResolveDAL: TAgentVaultResolveDALFactory;
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
+  agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
+  agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  licenseService: TSessionLogLicenseService;
   resourceAuthMethodService: Pick<
     TResourceAuthMethodServiceFactory,
     "initAtCreate" | "mintToken" | "loginWithToken" | "revokeAccess"
@@ -72,11 +87,14 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultResolveDAL,
   agentVaultServiceCustomHeaderDAL,
   agentVaultServiceSubstitutionDAL,
+  agentVaultVariableDAL,
   agentVaultSessionDAL,
+  agentVaultSessionLogConfigDAL,
   membershipDAL,
   orgDAL,
   permissionService,
   kmsService,
+  licenseService,
   resourceAuthMethodService
 }: TAgentVaultProxyServiceFactoryDep) => {
   const isHealthy = (proxy: Pick<TAgentVaultProxies, "heartbeat" | "pollInterval" | "heartbeatTTL">) => {
@@ -174,6 +192,15 @@ export const agentVaultProxyServiceFactory = ({
 
     const create = () =>
       agentVaultProxyDAL.transaction(async (tx) => {
+        // Serialised per project so two creates at once can't both slip under the cap.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateAgentVaultProxy(projectId)]);
+        if ((await agentVaultProxyDAL.countByProjectId(projectId, tx)) >= AGENT_VAULT_MAX_PROXIES_PER_ORG) {
+          throw new BadRequestError({
+            message: `Agent Vault allows up to ${AGENT_VAULT_MAX_PROXIES_PER_ORG} proxies per organization. Delete one you no longer use to add another.`
+          });
+        }
+
         const created = await agentVaultProxyDAL.create(
           {
             projectId,
@@ -313,8 +340,96 @@ export const agentVaultProxyServiceFactory = ({
     return { type: "basic", username: secret.username ?? "", password: secret.password ?? "" };
   };
 
+  // The ids come out of the decrypted fields rather than the reference rows, so a service saved mid-poll can
+  // never leave the two describing different versions of a field. An id with nothing behind it stays as text:
+  // dropping the service instead would also drop its method and path restrictions.
+  const $expandVariableReferences = async ({
+    sessionId,
+    services,
+    accessBundleIdOf,
+    decryptValue
+  }: {
+    sessionId: string;
+    services: TResolvedService[];
+    accessBundleIdOf: Map<string, string>;
+    decryptValue: (encryptedValue: Buffer) => string;
+  }): Promise<TResolvedService[]> => {
+    const sealedTextsOf = ({ credential, customHeaders, substitutions }: TResolvedService) => [
+      ...(credential.type === AgentVaultCredentialType.Bearer ? [credential.value] : []),
+      ...(credential.type === AgentVaultCredentialType.Basic ? [credential.username, credential.password] : []),
+      ...customHeaders.map((header) => header.value),
+      ...substitutions.map((substitution) => substitution.value)
+    ];
+
+    const variableIds = [
+      ...new Set(services.flatMap((service) => sealedTextsOf(service).flatMap(findStoredVariableIds)))
+    ];
+    if (!variableIds.length) return services;
+
+    const variables = new Map(
+      (
+        await agentVaultVariableDAL.findValuesForResolve({
+          variableIds,
+          accessBundleIds: [...new Set(accessBundleIdOf.values())]
+        })
+      ).map((variable) => [variable.id, variable])
+    );
+
+    const opened = new Map<string, string>();
+    const unresolvedServiceIds = new Set<string>();
+
+    const expanded = services.map((service) => {
+      const valueOf = (variableId: string) => {
+        const variable = variables.get(variableId);
+        // A stored id only ever names a variable of the service's own bundle.
+        if (!variable || variable.accessBundleId !== accessBundleIdOf.get(service.id)) {
+          unresolvedServiceIds.add(service.id);
+          return undefined;
+        }
+        let value = opened.get(variableId);
+        if (value === undefined) {
+          value = decryptValue(variable.encryptedValue);
+          opened.set(variableId, value);
+        }
+        return value;
+      };
+      const expand = (text: string) => expandStoredVariableReferences(text, valueOf);
+
+      let { credential } = service;
+      if (credential.type === AgentVaultCredentialType.Bearer) {
+        credential = { ...credential, value: expand(credential.value) };
+      }
+      // A typed username is trimmed on save, and a username can't start or end with a space (RFC 8265), so one a
+      // variable fills in is trimmed too. Every other field keeps its spaces, as it does when typed.
+      if (credential.type === AgentVaultCredentialType.Basic) {
+        credential = {
+          ...credential,
+          username: expand(credential.username).trim(),
+          password: expand(credential.password)
+        };
+      }
+
+      return {
+        ...service,
+        credential,
+        customHeaders: service.customHeaders.map((header) => ({ ...header, value: expand(header.value) })),
+        substitutions: service.substitutions.map((substitution) => ({
+          ...substitution,
+          value: expand(substitution.value)
+        }))
+      };
+    });
+
+    if (unresolvedServiceIds.size) {
+      logger.error(
+        `agentVaultResolve: stored variable reference with no variable [sessionId=${sessionId}] [serviceIds=${[...unresolvedServiceIds].join(",")}]`
+      );
+    }
+    return expanded;
+  };
+
   /** The only endpoint that decrypts a credential. The proxy's JWT authorizes; the session token is a selector. */
-  const resolveSession = async ({ proxyId, orgId, sessionToken }: TResolveSessionDTO) => {
+  const resolveSession = async ({ proxyId, orgId, sessionToken, hasSessionLogKey }: TResolveSessionDTO) => {
     const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
     if (!session) throw new NotFoundError({ message: "Session not found" });
 
@@ -400,9 +515,22 @@ export const agentVaultProxyServiceFactory = ({
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds)
     ]);
 
+    const sessionLogConfig = await agentVaultSessionLogConfigDAL.findOne({ projectId: session.projectId });
+    const entitlement =
+      isSessionLogIngestEnabled(sessionLogConfig) && Boolean(session.encryptedSessionLogKey)
+        ? await getSessionLogEntitlement(licenseService, proxy.orgId)
+        : "unlicensed";
+    // While the plan can't be confirmed, a proxy that already holds the key keeps recording, and no key goes out.
+    const sessionLogsEnabled = entitlement === "licensed" || (entitlement === "unknown" && hasSessionLogKey);
+    const sessionLogKeyNeeded = entitlement === "licensed" && !hasSessionLogKey;
+
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
+    // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const hasSealedValue =
-      rows.some((row) => row.encryptedCredential) || customHeaderRows.length > 0 || substitutionRows.length > 0;
+      rows.some((row) => row.encryptedCredential) ||
+      customHeaderRows.length > 0 ||
+      substitutionRows.length > 0 ||
+      sessionLogKeyNeeded;
     const decryptor = hasSealedValue
       ? (
           await kmsService.createCipherPairWithDataKey({
@@ -417,7 +545,7 @@ export const agentVaultProxyServiceFactory = ({
       return (JSON.parse(decryptor({ cipherTextBlob: encryptedValue }).toString("utf-8")) as { value: string }).value;
     };
 
-    const services: TResolvedService[] = rows.map((row) => ({
+    const decryptedServices: TResolvedService[] = rows.map((row) => ({
       id: row.id,
       name: row.name,
       accessBundleName: row.accessBundleName,
@@ -437,6 +565,34 @@ export const agentVaultProxyServiceFactory = ({
         }))
     }));
 
+    const services = await $expandVariableReferences({
+      sessionId: session.id,
+      services: decryptedServices,
+      accessBundleIdOf: new Map(rows.map((row) => [row.id, row.accessBundleId])),
+      decryptValue: $decryptValue
+    });
+
+    // A key that can't be opened turns logs off for this session instead of cutting the agent off from its services.
+    const $sessionLogs = (): { enabled: boolean; sessionKey: string | null } => {
+      if (!sessionLogKeyNeeded || !session.encryptedSessionLogKey) {
+        return { enabled: sessionLogsEnabled, sessionKey: null };
+      }
+      try {
+        const sessionKey = openSessionLogKey({
+          sessionId: session.id,
+          payload: decryptor!({ cipherTextBlob: session.encryptedSessionLogKey })
+        }).toString("base64");
+        return { enabled: sessionLogsEnabled, sessionKey };
+      } catch (error) {
+        logger.error(
+          error,
+          `agentVaultResolve: could not open the session log key, session logs are off for this session [sessionId=${session.id}] [proxyId=${proxyId}]`
+        );
+        return { enabled: false, sessionKey: null };
+      }
+    };
+    const sessionLogs = $sessionLogs();
+
     logger.info(
       `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}]`
     );
@@ -444,7 +600,8 @@ export const agentVaultProxyServiceFactory = ({
     return {
       sessionId: session.id,
       expiresAt: session.expiresAt ?? null,
-      services
+      services,
+      sessionLogs
     };
   };
 

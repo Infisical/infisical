@@ -30,7 +30,7 @@ export const ApproversStep = ({
   onUpdateStep
 }: Props) => (
   <>
-    <h2 className="text-xl font-semibold text-foreground">Approval policy</h2>
+    <h2 className="text-xl font-normal text-foreground">Approval policy</h2>
     <p className="mt-1 mb-4 text-sm text-label">
       Add approvers if signing should require approval. Otherwise members can sign directly.
     </p>

@@ -85,7 +85,7 @@ export const QuickAddSecretRow = ({
 
       setValueEditorStyle({
         left,
-        width: Math.max(tableContainer.clientWidth - left, 0)
+        width: Math.max(tableContainer.clientWidth - left, 240)
       });
     };
 
@@ -227,8 +227,8 @@ export const QuickAddSecretRow = ({
       <TableCell
         className={
           isMultiEnvironmentView
-            ? "sticky left-10 z-10 min-w-[180px] border-r bg-container group-hover:bg-container-hover"
-            : "min-w-[180px] border-r"
+            ? "sticky left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container group-hover:bg-container-hover lg:w-96 lg:max-w-96 lg:min-w-96"
+            : "w-60 max-w-60 min-w-60 border-r lg:w-96 lg:max-w-96 lg:min-w-96"
         }
       >
         <form ref={formRef} id="quick-add-secret-form" onSubmit={handleSubmit}>

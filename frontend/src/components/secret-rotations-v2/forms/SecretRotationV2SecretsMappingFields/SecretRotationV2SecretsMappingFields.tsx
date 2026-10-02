@@ -24,6 +24,7 @@ import { RedisCredentialsRotationSecretsMappingFields } from "./RedisCredentials
 import { SalesforceOauthCredentialsRotationSecretsMappingFields } from "./SalesforceOauthCredentialsRotationSecretsMappingFields";
 import { SqlCredentialsRotationSecretsMappingFields } from "./shared";
 import { SnowflakeUserKeyPairRotationSecretsMappingFields } from "./SnowflakeUserKeyPairRotationSecretsMappingFields";
+import { StripeApiKeyRotationSecretsMappingFields } from "./StripeApiKeyRotationSecretsMappingFields";
 import { SupabaseApiKeyRotationSecretsMappingFields } from "./SupabaseApiKeyRotationSecretsMappingFields";
 import { UnixLinuxLocalAccountRotationSecretsMappingFields } from "./UnixLinuxLocalAccountRotationSecretsMappingFields";
 import { WindowsLocalAccountRotationSecretsMappingFields } from "./WindowsLocalAccountRotationSecretsMappingFields";
@@ -59,7 +60,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationSecretsMappingFields,
   [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationSecretsMappingFields,
   [SecretRotation.CloudflareApiToken]: CloudflareApiTokenRotationSecretsMappingFields,
-  [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationSecretsMappingFields
+  [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationSecretsMappingFields,
+  [SecretRotation.StripeApiKey]: StripeApiKeyRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

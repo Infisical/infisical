@@ -35,12 +35,24 @@ import {
   TAgentVaultServiceSubstitutionsInsert,
   TAgentVaultServiceSubstitutionsUpdate,
   TAgentVaultServicesUpdate,
+  TAgentVaultServiceVariableReferences,
+  TAgentVaultServiceVariableReferencesInsert,
+  TAgentVaultServiceVariableReferencesUpdate,
   TAgentVaultSessionAccessBundles,
   TAgentVaultSessionAccessBundlesInsert,
   TAgentVaultSessionAccessBundlesUpdate,
+  TAgentVaultSessionLogChunks,
+  TAgentVaultSessionLogChunksInsert,
+  TAgentVaultSessionLogChunksUpdate,
+  TAgentVaultSessionLogConfigs,
+  TAgentVaultSessionLogConfigsInsert,
+  TAgentVaultSessionLogConfigsUpdate,
   TAgentVaultSessions,
   TAgentVaultSessionsInsert,
   TAgentVaultSessionsUpdate,
+  TAgentVaultVariables,
+  TAgentVaultVariablesInsert,
+  TAgentVaultVariablesUpdate,
   TAlertChannelMemberships,
   TAlertChannelMembershipsInsert,
   TAlertChannelMembershipsUpdate,
@@ -1809,6 +1821,16 @@ declare module "knex/types/tables" {
       TAgentVaultServiceSubstitutionsInsert,
       TAgentVaultServiceSubstitutionsUpdate
     >;
+    [TableName.AgentVaultVariable]: KnexOriginal.CompositeTableType<
+      TAgentVaultVariables,
+      TAgentVaultVariablesInsert,
+      TAgentVaultVariablesUpdate
+    >;
+    [TableName.AgentVaultServiceVariableReference]: KnexOriginal.CompositeTableType<
+      TAgentVaultServiceVariableReferences,
+      TAgentVaultServiceVariableReferencesInsert,
+      TAgentVaultServiceVariableReferencesUpdate
+    >;
     [TableName.AgentVaultSession]: KnexOriginal.CompositeTableType<
       TAgentVaultSessions,
       TAgentVaultSessionsInsert,
@@ -1823,6 +1845,16 @@ declare module "knex/types/tables" {
       TAgentVaultProxies,
       TAgentVaultProxiesInsert,
       TAgentVaultProxiesUpdate
+    >;
+    [TableName.AgentVaultSessionLogConfig]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionLogConfigs,
+      TAgentVaultSessionLogConfigsInsert,
+      TAgentVaultSessionLogConfigsUpdate
+    >;
+    [TableName.AgentVaultSessionLogChunk]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionLogChunks,
+      TAgentVaultSessionLogChunksInsert,
+      TAgentVaultSessionLogChunksUpdate
     >;
     [TableName.PamAccountPolicy]: KnexOriginal.CompositeTableType<
       TPamAccountPolicies,

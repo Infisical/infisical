@@ -282,7 +282,7 @@ export const CertificateRequestsSection = ({
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-foreground">Filters</h3>
+                  <h3 className="text-sm font-normal text-foreground">Filters</h3>
                   <span className="text-xs text-label-secondary">
                     {isTableFiltered && (
                       <button

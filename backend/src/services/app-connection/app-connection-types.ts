@@ -437,6 +437,12 @@ import {
   TValidateSshConnectionCredentialsSchema
 } from "./ssh";
 import {
+  TStripeConnection,
+  TStripeConnectionConfig,
+  TStripeConnectionInput,
+  TValidateStripeConnectionCredentialsSchema
+} from "./stripe";
+import {
   TSupabaseConnection,
   TSupabaseConnectionConfig,
   TSupabaseConnectionInput,
@@ -591,6 +597,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TPowerDnsConnection
   | TSpaceliftConnection
   | TDaytonaConnection
+  | TStripeConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -687,6 +694,7 @@ export type TAppConnectionInput = { id: string } & (
   | TPowerDnsConnectionInput
   | TSpaceliftConnectionInput
   | TDaytonaConnectionInput
+  | TStripeConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -731,6 +739,8 @@ export type TValidateAppConnectionUsageByIdDTO = {
   connectionId: string;
   projectId: string;
 };
+
+export type TAppConnectionScope = { projectId: string };
 
 export type TAppConnectionConfig =
   | TAwsConnectionConfig
@@ -814,7 +824,8 @@ export type TAppConnectionConfig =
   | TNutanixPrismCentralConnectionConfig
   | TPowerDnsConnectionConfig
   | TSpaceliftConnectionConfig
-  | TDaytonaConnectionConfig;
+  | TDaytonaConnectionConfig
+  | TStripeConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -901,7 +912,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateNutanixPrismCentralConnectionCredentialsSchema
   | TValidatePowerDnsConnectionCredentialsSchema
   | TValidateSpaceliftConnectionCredentialsSchema
-  | TValidateDaytonaConnectionCredentialsSchema;
+  | TValidateDaytonaConnectionCredentialsSchema
+  | TValidateStripeConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

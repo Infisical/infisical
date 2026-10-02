@@ -128,7 +128,7 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
       <div className="flex w-full flex-col gap-3 rounded-lg border border-border-control bg-surface-base px-4 py-3">
         <div className="flex items-center justify-between border-b border-border-emphasis pb-2">
           <div className="flex items-center gap-x-2">
-            <h3 className="text-lg font-medium text-foreground">Certificate Alerts</h3>
+            <h3 className="text-lg font-normal text-foreground">Certificate Alerts</h3>
             <span className="rounded bg-surface-active px-2 py-0.5 text-xs tracking-wide text-foreground-secondary uppercase">
               Legacy
             </span>

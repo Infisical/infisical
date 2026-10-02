@@ -185,7 +185,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
       >
         <div className="mb-4 flex items-center justify-between border-b border-border-emphasis pb-4">
           <div>
-            <h2 className="text-lg font-medium">Project Members</h2>
+            <h2 className="text-lg font-normal">Project Members</h2>
             <p className="text-sm text-muted">
               Add users who will be automatically added to projects created from this template
             </p>

@@ -92,7 +92,7 @@ export const ExternalGroupOrgRoleMappings = () => {
 
   return (
     <div>
-      <h3 className="text-sm font-medium text-foreground">
+      <h3 className="text-sm font-normal text-foreground">
         SCIM Group to Organization Role Mappings
       </h3>
       <p className="text-xs text-muted">

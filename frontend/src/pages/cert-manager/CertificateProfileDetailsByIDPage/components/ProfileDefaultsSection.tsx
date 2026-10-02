@@ -29,7 +29,7 @@ type Props = {
 };
 
 const SectionHeader = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
-  <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+  <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-foreground">
     <span className="text-label [&>svg]:size-4">{icon}</span>
     {title}
   </h3>
