@@ -10,6 +10,7 @@ import {
   Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -275,6 +276,7 @@ const ProductOverviewCard = ({
   const canChangePlan = !readOnly && selfServe;
   const nudge = canChangePlan ? commitSavingsNudge(ent) : null;
   const hasBreakdown = breakdownableDimensions(ent).length > 0;
+  const sourceDimensions = breakdownableDimensions(ent).filter((dim) => dim.used > 0);
   const onDemand = ent.onDemandAmount ?? 0;
   const trialPlanName = ent.trialPlan
     ? (ent.trialPlanName ??
@@ -285,21 +287,21 @@ const ProductOverviewCard = ({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <ProductIcon product={prod} size={32} />
-            <div className="flex min-w-0 flex-col">
-              <CardTitle>
-                {prod.name}
-                {ent.isTrialing && <Badge variant="info">Trial</Badge>}
-                {prod.addon && <Badge variant="neutral">Add-on</Badge>}
-              </CardTitle>
-              <span className="text-xs text-muted">
-                {planLine(ent) || (isManaged ? "Included in your license" : "Included")}
-              </span>
-            </div>
+        <div className="row-span-2 flex min-w-0 items-center gap-3">
+          <ProductIcon product={prod} size={32} />
+          <div className="flex min-w-0 flex-col">
+            <CardTitle>
+              {prod.name}
+              {ent.isTrialing && <Badge variant="info">Trial</Badge>}
+              {prod.addon && <Badge variant="neutral">Add-on</Badge>}
+            </CardTitle>
+            <span className="text-xs text-muted">
+              {planLine(ent) || (isManaged ? "Included in your license" : "Included")}
+            </span>
           </div>
-          {(canChangePlan || hasBreakdown) && (
+        </div>
+        {(canChangePlan || hasBreakdown) && (
+          <CardAction>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <IconButton aria-label={`${prod.name} options`} size="xs" variant="ghost-muted">
@@ -323,8 +325,8 @@ const ProductOverviewCard = ({
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
-        </div>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent className="@container flex flex-col gap-5">
         {trialPlanName && (
@@ -361,7 +363,7 @@ const ProductOverviewCard = ({
             </ul>
           </div>
         )}
-        {hasBreakdown && (
+        {sourceDimensions.length > 0 && (
           <Accordion type="single" collapsible variant="ghost">
             <AccordionItem value={prod.id}>
               <AccordionTrigger
@@ -375,7 +377,7 @@ const ProductOverviewCard = ({
               </AccordionTrigger>
               <AccordionContent>
                 <div className="flex flex-col gap-5 divide-y divide-border [&>section:not(:first-child)]:pt-5">
-                  {breakdownableDimensions(ent).map((dim) => (
+                  {sourceDimensions.map((dim) => (
                     <UsageMeterSources
                       key={dim.key}
                       prod={prod}
@@ -414,6 +416,12 @@ const InactiveProductCard = ({
   const hasSelfServePlan = prod.plans.some((plan) => plan.selfServe);
   const hasSalesLedPlan = prod.plans.some((plan) => plan.salesLed);
   const canActivate = !readOnly && selfServe && !prod.deprecated;
+  const canContactSales =
+    !readOnly &&
+    !isManaged &&
+    !prod.deprecated &&
+    hasSalesLedPlan &&
+    (!selfServe || !hasSelfServePlan);
 
   return (
     <Card>
@@ -450,18 +458,14 @@ const InactiveProductCard = ({
             </Button>
           </div>
         )}
-        {!readOnly &&
-          !isManaged &&
-          !prod.deprecated &&
-          hasSalesLedPlan &&
-          (!selfServe || !hasSelfServePlan) && (
-            <div>
-              <Button variant="outline" size="sm" onClick={() => onContact(prod)}>
-                Contact Sales
-              </Button>
-            </div>
-          )}
-        {!isManaged && !selfServe && (
+        {canContactSales && (
+          <div>
+            <Button variant="outline" size="sm" onClick={() => onContact(prod)}>
+              Contact Sales
+            </Button>
+          </div>
+        )}
+        {!isManaged && !selfServe && !canContactSales && (
           <p className="text-xs text-muted">Contact your account manager to enable this product.</p>
         )}
       </CardContent>
@@ -639,9 +643,9 @@ export const TabbedOverview = ({
           >
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between gap-3">
-                  <CardTitle>Billing</CardTitle>
-                  {!readOnly && (
+                <CardTitle className="row-span-2">Billing</CardTitle>
+                {!readOnly && (
+                  <CardAction>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <IconButton
@@ -658,8 +662,8 @@ export const TabbedOverview = ({
                         Plan changes may take a few minutes to take effect.
                       </TooltipContent>
                     </Tooltip>
-                  )}
-                </div>
+                  </CardAction>
+                )}
               </CardHeader>
               <CardContent className="flex flex-col gap-5">
                 {isManaged && (
