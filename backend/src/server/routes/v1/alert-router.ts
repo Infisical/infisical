@@ -99,7 +99,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         name: z.string().min(1).max(255).describe(ALERTING.name),
         description: z.string().max(1000).optional().describe(ALERTING.description),
         resourceType: z.string().min(1).describe(ALERTING.resourceType),
-        resourceId: z.string().nullable().optional().describe(ALERTING.resourceId),
+        resourceId: z.string().uuid().nullable().optional().describe(ALERTING.resourceId),
         eventType: z.string().min(1).describe(ALERTING.eventType),
         condition: z.unknown().optional().describe(ALERTING.condition),
         enabled: z.boolean().optional().describe(ALERTING.enabled),
@@ -139,7 +139,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       description: ALERTING.ROUTES.testChannel,
       body: z.object({
         resourceType: z.string().min(1).describe(ALERTING.resourceType),
-        resourceId: z.string().nullable().optional().describe(ALERTING.resourceId),
+        resourceId: z.string().uuid().nullable().optional().describe(ALERTING.resourceId),
         projectId: z.string().nullable().optional().describe(ALERTING.projectId),
         alertId: z.string().uuid().optional().describe(ALERTING.alertId),
         channelId: z.string().uuid().optional().describe(ALERTING.channelId),
@@ -200,7 +200,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       description: ALERTING.ROUTES.list,
       querystring: z.object({
         resourceType: z.string().min(1).describe(ALERTING.resourceType),
-        resourceId: z.string().optional().describe(ALERTING.listResourceId),
+        resourceId: z.string().uuid().optional().describe(ALERTING.listResourceId),
         projectId: z.string().optional().describe(ALERTING.projectId),
         enabled: z
           .enum(["true", "false"])

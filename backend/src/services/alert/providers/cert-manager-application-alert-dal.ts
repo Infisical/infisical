@@ -93,6 +93,14 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
           .whereRaw(`"tgt"."targetId" = "${TableName.Certificate}".id::text`)
           .countDistinct("tgt.channelId");
         void query.whereRaw("(?) < ?", [deliveredChannelCount, alreadyAlerted.channelIds.length]);
+
+        const lastDeliveredAt = reader(`${TableName.AlertHistory} as lastHist`)
+          .join(`${TableName.AlertHistoryTarget} as lastTgt`, "lastHist.id", "lastTgt.alertHistoryId")
+          .where("lastHist.alertId", alreadyAlerted.alertId)
+          .where("lastTgt.status", AlertRunStatus.SUCCESS)
+          .whereRaw(`"lastTgt"."targetId" = "${TableName.Certificate}".id::text`)
+          .max("lastHist.triggeredAt");
+        void query.orderByRaw("(?) asc nulls first", [lastDeliveredAt]);
       }
 
       const certificates = (await query

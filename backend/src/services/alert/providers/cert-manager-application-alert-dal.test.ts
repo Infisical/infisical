@@ -69,6 +69,8 @@ describe("cert manager certificate alert DAL", () => {
     expect(sql).toContain('count(distinct "tgt"."channelId")');
     expect(sql).toContain('"tgt"."targetId" = "certificates".id::text');
     expect(sql.indexOf("count(distinct")).toBeLessThan(sql.indexOf("limit"));
+    expect(sql).toContain('max("lastHist"."triggeredAt")');
+    expect(sql.indexOf("asc nulls first")).toBeLessThan(sql.indexOf('"certificates"."notAfter" asc'));
     expect(bindings).toEqual(expect.arrayContaining(["alert-1", since, "success", "channel-1", "channel-2", 2]));
   });
 
