@@ -429,6 +429,9 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
+    // A user whose only active project role is NoAccess is not authorized to review the request,
+    // even with a break-glass approval. If they also hold another active role (e.g. via a group),
+    // allow the review to proceed.
     const activeRoles = flattenActiveRolesFromMemberships(memberships, ProjectMembershipRole.Custom);
     const hasOnlyNoAccessRole =
       activeRoles.length > 0 && activeRoles.every((r) => r.role === ProjectMembershipRole.NoAccess);
