@@ -64,7 +64,6 @@ type ActiveProduct = { prod: BillingV2CatalogProduct; ent: BillingV2Entitlement 
 const share = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
 
 const priceLabel = (ent: BillingV2Entitlement) => {
-  if (ent.amount === undefined && !ent.dimensions?.length) return "—";
   const annual = productAnnualCommitted(ent);
   if (annual > 0) {
     return `${fmtMoney(annual)} / yr`;
@@ -451,13 +450,17 @@ const InactiveProductCard = ({
             </Button>
           </div>
         )}
-        {canActivate && !hasSelfServePlan && hasSalesLedPlan && (
-          <div>
-            <Button variant="outline" size="sm" onClick={() => onContact(prod)}>
-              Contact Sales
-            </Button>
-          </div>
-        )}
+        {!readOnly &&
+          !isManaged &&
+          !prod.deprecated &&
+          hasSalesLedPlan &&
+          (!selfServe || !hasSelfServePlan) && (
+            <div>
+              <Button variant="outline" size="sm" onClick={() => onContact(prod)}>
+                Contact Sales
+              </Button>
+            </div>
+          )}
         {!isManaged && !selfServe && (
           <p className="text-xs text-muted">Contact your account manager to enable this product.</p>
         )}
