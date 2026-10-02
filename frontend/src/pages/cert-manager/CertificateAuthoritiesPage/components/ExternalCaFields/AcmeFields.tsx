@@ -31,6 +31,7 @@ import {
 
 import { AppConnectionSelectField } from "./AppConnectionSelectField";
 import { REQUIRED_EAB_DIRECTORIES } from "./constants";
+import { GcpCloudDnsZoneFields } from "./GcpCloudDnsZoneFields";
 import { FormData } from "./schema";
 
 type Props = {
@@ -242,6 +243,13 @@ export const AcmeFields = ({
             <FieldError errors={[error]} />
           </Field>
         )}
+      />
+    )}
+    {dnsProvider === AcmeDnsProvider.GcpCloudDns && (
+      <GcpCloudDnsZoneFields
+        key={dnsAppConnection.id}
+        control={control}
+        connectionId={dnsAppConnection.id}
       />
     )}
     <Controller

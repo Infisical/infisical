@@ -401,6 +401,14 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.ACME
     });
 
+  const { data: availableGcpConnections, isPending: isGcpPending } = useListAvailableAppConnections(
+    AppConnection.GCP,
+    currentProject.id,
+    {
+      enabled: caType === CaType.ACME
+    }
+  );
+
   const { data: availableAzureConnections, isPending: isAzurePending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
@@ -458,7 +466,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       ...(availableCloudflareConnections || []),
       ...(availableDNSMadeEasyConnections || []),
       ...(availableAzureDNSConnections || []),
-      ...(availablePowerDnsConnections || [])
+      ...(availablePowerDnsConnections || []),
+      ...(availableGcpConnections || [])
     ];
   }, [
     caType,
@@ -467,6 +476,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
     availablePowerDnsConnections,
+    availableGcpConnections,
     availableAzureConnections,
     availableAdcsConnections,
     availableAwsConnections,
@@ -487,6 +497,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         return availableAzureDNSConnections || [];
       case AcmeDnsProvider.PowerDns:
         return availablePowerDnsConnections || [];
+      case AcmeDnsProvider.GcpCloudDns:
+        return availableGcpConnections || [];
       default:
         return [];
     }
@@ -496,7 +508,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableCloudflareConnections,
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
-    availablePowerDnsConnections
+    availablePowerDnsConnections,
+    availableGcpConnections
   ]);
 
   const isPending =
@@ -504,7 +517,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       isCloudflarePending ||
       isDNSMadeEasyPending ||
       isAzureDNSPending ||
-      isPowerDnsPending) &&
+      isPowerDnsPending ||
+      isGcpPending) &&
       caType === CaType.ACME) ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
     (isAdcsPending && caType === CaType.ADCS) ||

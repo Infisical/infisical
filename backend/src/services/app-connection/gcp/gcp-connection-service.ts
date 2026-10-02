@@ -6,6 +6,8 @@ import {
   getGcpCertificateManagerLocations,
   getGcpCertificateManagerProjects,
   getGcpCertificateMaps,
+  getGcpCloudDnsProjects,
+  getGcpCloudDnsZones,
   getGcpSecretManagerProjectLocations,
   getGcpSecretManagerProjects
 } from "./gcp-connection-fns";
@@ -89,7 +91,34 @@ export const gcpConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
     }
   };
 
+  const listCloudDnsProjects = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
+
+    try {
+      return await getGcpCloudDnsProjects(appConnection);
+    } catch (error) {
+      logger.error(error, "Error listing GCP Cloud DNS projects");
+      throw error;
+    }
+  };
+
+  const listCloudDnsZones = async (
+    { connectionId, gcpProjectId }: TGcpCertificateManagerProjectScopedDTO,
+    actor: OrgServiceActor
+  ) => {
+    const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
+
+    try {
+      return await getGcpCloudDnsZones(gcpProjectId, appConnection);
+    } catch (error) {
+      logger.error(error, "Error listing GCP Cloud DNS zones");
+      throw error;
+    }
+  };
+
   return {
+    listCloudDnsProjects,
+    listCloudDnsZones,
     listSecretManagerProjects,
     listSecretManagerProjectLocations,
     listCertificateManagerProjects,
