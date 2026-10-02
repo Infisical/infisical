@@ -102,6 +102,7 @@ import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/c
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
+import { CreateSecretForm } from "../CreateSecretForm/CreateSecretForm";
 import {
   TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME
@@ -278,6 +279,7 @@ export const SecretEditTableRow = ({
     handleSubmit,
     control,
     reset,
+    resetField,
     setValue,
     setFocus,
     getFieldState,
@@ -353,6 +355,17 @@ export const SecretEditTableRow = ({
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [isAccessInsightsOpen, setIsAccessInsightsOpen] = useState(false);
   const [isSecretReferenceOpen, setIsSecretReferenceOpen] = useState(false);
+  const [valueEditDraft, setValueEditDraft] = useState<{ value: string; scope: string } | null>(
+    null
+  );
+  const [isLoadingEditValue, setIsLoadingEditValue] = useState(false);
+  const valueEditScope = JSON.stringify([
+    currentProject.id,
+    environment,
+    secretPath,
+    secretId,
+    secretName
+  ]);
 
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
@@ -754,9 +767,17 @@ export const SecretEditTableRow = ({
     }
   };
 
-  const handleFormSubmit = async ({ value, key }: { value?: string | null; key?: string }) => {
-    const isValueDirty = getFieldState("value").isDirty;
-    const isKeyDirty = isSingleEnvView && key && key !== secretName;
+  const handleFormSubmit = async ({
+    value,
+    key,
+    valueOnly
+  }: {
+    value?: string | null;
+    key?: string;
+    valueOnly?: boolean;
+  }) => {
+    const isValueDirty = valueOnly || getFieldState("value").isDirty;
+    const isKeyDirty = !valueOnly && isSingleEnvView && key && key !== secretName;
 
     // If the value edit requires confirmation (importedBy references), defer everything
     // (including rename) to handleEditSecret so the rename isn't lost on re-render.
@@ -774,7 +795,11 @@ export const SecretEditTableRow = ({
         )
       )
     ) {
-      handlePopUpOpen("editSecret", { secretValue: value, newKey: isKeyDirty ? key : undefined });
+      handlePopUpOpen("editSecret", {
+        secretValue: value,
+        newKey: isKeyDirty ? key : undefined,
+        valueOnly
+      });
       return;
     }
 
@@ -802,6 +827,10 @@ export const SecretEditTableRow = ({
     if (isValueDirty && !secretValueHidden) {
       originalValueRef.current = value ?? null;
     }
+    if (valueOnly) {
+      resetField("value", { defaultValue: secretValueHidden ? defaultValue || null : value });
+      return;
+    }
     if (secretValueHidden) {
       setTimeout(() => {
         reset({
@@ -824,10 +853,12 @@ export const SecretEditTableRow = ({
 
   const handleEditSecret = async ({
     secretValue,
-    newKey
+    newKey,
+    valueOnly
   }: {
     secretValue: string;
     newKey?: string;
+    valueOnly?: boolean;
   }) => {
     if (isEditing) return;
     setIsEditing.on();
@@ -844,10 +875,16 @@ export const SecretEditTableRow = ({
       if (!secretValueHidden) {
         originalValueRef.current = secretValue;
       }
-      reset({
-        value: secretValue,
-        ...(isSingleEnvView ? { key: newKey || secretName } : {})
-      });
+      if (valueOnly) {
+        resetField("value", {
+          defaultValue: secretValueHidden ? defaultValue || null : secretValue
+        });
+      } else {
+        reset({
+          value: secretValue,
+          ...(isSingleEnvView ? { key: newKey || secretName } : {})
+        });
+      }
       handlePopUpClose("editSecret");
     } finally {
       setIsEditing.off();
@@ -917,6 +954,59 @@ export const SecretEditTableRow = ({
     isFetchingSharedValue ||
     isErrorFetchingSharedValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
+
+  const isValueSheetReadOnly =
+    isPendingDelete ||
+    isImportedSecret ||
+    isManagedSecret ||
+    !canEditSecretValue ||
+    Boolean(revokedProjectFolderGrant);
+
+  const handleOpenValueSheet = async () => {
+    if (isValueSheetReadOnly || isLoadingEditValue) return;
+    const pendingValue =
+      hasPendingValueChange || getFieldState("value").isDirty || isPendingCreate
+        ? ((watchedValue as string) ?? "")
+        : undefined;
+    if (secretValueHidden || isEmpty || isPendingCreate) {
+      setValueEditDraft({ value: pendingValue ?? "", scope: valueEditScope });
+      return;
+    }
+    setIsLoadingEditValue(true);
+    try {
+      const { data, error } = await refetchSharedValue();
+      if (error || !data) {
+        createNotification({
+          type: "error",
+          text: "Failed to fetch secret value. Please try again."
+        });
+        return;
+      }
+      setValueEditDraft({ value: pendingValue ?? data.value ?? "", scope: valueEditScope });
+    } finally {
+      setIsLoadingEditValue(false);
+    }
+  };
+
+  const handleValueSheetSubmit = async (value: string) => {
+    if (isValueSheetReadOnly || valueEditDraft?.scope !== valueEditScope) return;
+    if (isBatchMode) {
+      await onSecretUpdate({
+        env: environment,
+        key: secretName,
+        value,
+        secretValueHidden,
+        type: SecretType.Shared,
+        secretId,
+        originalValue: originalValueRef.current ?? undefined
+      });
+      lastAppliedRef.current.value = value;
+      resetField("value", { defaultValue: value });
+    } else {
+      await handleFormSubmit({ value, valueOnly: true });
+    }
+    setValueEditDraft(null);
+  };
 
   const shouldStayExpanded =
     isCommentOpen || isTagOpen || isMetadataOpen || isReminderOpen || isDropdownOpen;
@@ -988,6 +1078,34 @@ export const SecretEditTableRow = ({
   ) : null;
 
   const secretHasReference = hasSecretReference(watchedValue as string);
+  const handleAnnotationEscapeKeyDown = (event: KeyboardEvent) => {
+    if (
+      event.target instanceof HTMLElement &&
+      event.target.matches('[role="combobox"][aria-expanded="true"]')
+    ) {
+      event.preventDefault();
+    }
+  };
+
+  const commentPopoverContent = (
+    <PopoverContent onCloseAutoFocus={(e) => e.preventDefault()} className="w-80" align="end">
+      <SecretCommentForm
+        comment={isBatchMode ? ((watchedComment as string) ?? comment) : comment}
+        secretKey={secretName}
+        secretPath={secretPath}
+        environment={environment}
+        onClose={() => setIsCommentOpen(false)}
+        isBatchMode={isBatchMode}
+        onCommentChange={handleCommentChange}
+      />
+    </PopoverContent>
+  );
+  const commentPreview = isBatchMode ? ((watchedComment as string) ?? comment) : comment;
+  const canDescribeSecret = hasSecretReadValueOrDescribePermission(
+    permission,
+    ProjectPermissionSecretActions.DescribeSecret,
+    { environment, secretPath, secretName, secretTags: tags?.map(({ slug }) => slug) ?? [] }
+  );
 
   const valueContent = (
     <>
@@ -1069,7 +1187,7 @@ export const SecretEditTableRow = ({
         {!isDirtyState && !isFieldActive && (
           <div className="pointer-events-none flex w-fit items-start justify-end self-start pl-2 opacity-0 transition-opacity duration-300 motion-reduce:transition-none [@media(hover:hover)]:pointer-events-auto [@media(hover:hover)]:opacity-100 [@media(hover:hover)]:group-focus-within:pointer-events-none [@media(hover:hover)]:group-focus-within:opacity-0 [@media(hover:hover)]:group-hover:pointer-events-none [@media(hover:hover)]:group-hover:opacity-0">
             <div className="flex items-center gap-1">
-              {comment && !isImportedSecret && (
+              {!isSingleEnvView && comment && !isImportedSecret && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="flex size-5 items-center justify-center text-muted">
@@ -1204,32 +1322,21 @@ export const SecretEditTableRow = ({
             isSingleEnvView ? "top-[3px] right-0.5" : "-top-px -right-1.5"
           )}
         >
-          <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
-            <PopoverAnchor asChild>
-              <span className="pointer-events-none absolute inset-0" />
-            </PopoverAnchor>
-            <PopoverContent
-              onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-80"
-              align="end"
-            >
-              <SecretCommentForm
-                comment={isBatchMode ? ((watchedComment as string) ?? comment) : comment}
-                secretKey={secretName}
-                secretPath={secretPath}
-                environment={environment}
-                onClose={() => setIsCommentOpen(false)}
-                isBatchMode={isBatchMode}
-                onCommentChange={handleCommentChange}
-              />
-            </PopoverContent>
-          </Popover>
+          {!isSingleEnvView && (
+            <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
+              <PopoverAnchor asChild>
+                <span className="pointer-events-none absolute inset-0" />
+              </PopoverAnchor>
+              {commentPopoverContent}
+            </Popover>
+          )}
           <Popover modal open={isTagOpen} onOpenChange={setIsTagOpen}>
             <PopoverAnchor asChild>
               <span className="pointer-events-none absolute inset-0" />
             </PopoverAnchor>
             <PopoverContent
               onCloseAutoFocus={(e) => e.preventDefault()}
+              onEscapeKeyDown={handleAnnotationEscapeKeyDown}
               className="w-80"
               align="end"
             >
@@ -1250,6 +1357,7 @@ export const SecretEditTableRow = ({
             </PopoverAnchor>
             <PopoverContent
               onCloseAutoFocus={(e) => e.preventDefault()}
+              onEscapeKeyDown={handleAnnotationEscapeKeyDown}
               className="w-[420px]"
               side="left"
             >
@@ -1312,9 +1420,14 @@ export const SecretEditTableRow = ({
           {!isImportedSecret &&
             !isCreatable &&
             !isPendingDelete &&
-            !!(comment || (canReadTags && tags?.length) || reminder || secretMetadata?.length) && (
+            !!(
+              (!isSingleEnvView && comment) ||
+              (canReadTags && tags?.length) ||
+              reminder ||
+              secretMetadata?.length
+            ) && (
               <>
-                {comment && (
+                {!isSingleEnvView && comment && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <IconButton
@@ -1392,9 +1505,15 @@ export const SecretEditTableRow = ({
                   isPendingDelete ||
                   isImportedSecret ||
                   isManagedSecret ||
+                  isLoadingEditValue ||
+                  Boolean(revokedProjectFolderGrant) ||
                   (isCreatable ? !canCreate : !canEditSecretValue)
                 }
                 onClick={() => {
+                  if (isSingleEnvView && !isCreatable && !isOverride) {
+                    handleOpenValueSheet();
+                    return;
+                  }
                   setFocus("value", { shouldSelect: true });
                 }}
               >
@@ -1857,6 +1976,36 @@ export const SecretEditTableRow = ({
           />
         </DialogContent>
       </Dialog>
+      <Sheet
+        open={valueEditDraft?.scope === valueEditScope}
+        onOpenChange={(open) => {
+          if (!open) setValueEditDraft(null);
+        }}
+      >
+        <SheetContent side="right" className="gap-y-0">
+          <SheetHeader>
+            <SheetTitle>Edit Secret</SheetTitle>
+            <SheetDescription>
+              Update this secret&apos;s value in {environmentName}.
+            </SheetDescription>
+          </SheetHeader>
+          {valueEditDraft?.scope === valueEditScope && (
+            <CreateSecretForm
+              secretPath={secretPath}
+              defaultSelectedEnvs={[{ name: environmentName, slug: environment }]}
+              onClose={() => setValueEditDraft(null)}
+              isBatchMode={isBatchMode}
+              editSecret={{
+                key: pendingKeyName || secretName,
+                value: valueEditDraft.value,
+                canEditButNotView: secretValueHidden,
+                isReadOnly: isValueSheetReadOnly,
+                onSubmit: handleValueSheetSubmit
+              }}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
       <Sheet open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
         <SheetContent onOpenAutoFocus={(e) => e.preventDefault()} className="gap-y-0" side="right">
           <SheetHeader>
@@ -1970,7 +2119,37 @@ export const SecretEditTableRow = ({
             isOverride && "border-l border-b-border/50 border-l-override"
           )}
         >
-          {nameInput}
+          <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
+            <PopoverAnchor asChild>
+              <div className="flex items-center gap-1">
+                {nameInput}
+                {commentPreview &&
+                  !isImportedSecret &&
+                  !isOverride &&
+                  !revokedProjectFolderGrant &&
+                  canDescribeSecret && (
+                    <Tooltip open={isCommentOpen ? false : undefined}>
+                      <TooltipTrigger asChild>
+                        <IconButton
+                          aria-label="View secret comment"
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => setIsCommentOpen(true)}
+                        >
+                          <MessageSquareIcon className="size-3.5" />
+                        </IconButton>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-72">
+                        <p className="line-clamp-2 break-words whitespace-pre-wrap">
+                          {commentPreview}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+              </div>
+            </PopoverAnchor>
+            {commentPopoverContent}
+          </Popover>
         </TableCell>
         <TableCell
           className={twMerge("relative w-full max-w-0", isOverride && "border-b-border/50")}

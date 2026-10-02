@@ -118,6 +118,13 @@ type Props = {
   defaultSelectedEnvs?: { name: string; slug: string }[];
   onClose: () => void;
   isBatchMode?: boolean;
+  editSecret?: {
+    key: string;
+    value: string;
+    canEditButNotView: boolean;
+    isReadOnly: boolean;
+    onSubmit: (value: string) => Promise<void>;
+  };
   onBatchSecretCreate?: (params: {
     env: string;
     key: string;
@@ -141,6 +148,7 @@ export const CreateSecretForm = ({
   defaultSelectedEnvs,
   onClose,
   isBatchMode,
+  editSecret,
   onBatchSecretCreate,
   onSecretCreated,
   onUploadSecrets
@@ -174,14 +182,22 @@ export const CreateSecretForm = ({
     setValue,
     getValues,
     watch,
-    formState: { isSubmitting, errors }
+    formState: { isSubmitting, errors, dirtyFields }
   } = useForm<TFormSchema>({
     resolver: zodResolver(
       formSchema(Boolean(currentProject?.enforceEncryptedSecretManagerSecretMetadata))
     ),
     defaultValues: {
       environments: defaultEnvs,
-      secrets: [{ key: "", value: "", skipMultilineEncoding: false, metadata: [], tags: [] }]
+      secrets: [
+        {
+          key: editSecret?.key ?? "",
+          value: editSecret?.value ?? "",
+          skipMultilineEncoding: false,
+          metadata: [],
+          tags: []
+        }
+      ]
     }
   });
 
@@ -194,7 +210,7 @@ export const CreateSecretForm = ({
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
-    canReadTags ? projectId : ""
+    !editSecret && canReadTags ? projectId : ""
   );
 
   const tagOptions = useMemo(
@@ -208,6 +224,11 @@ export const CreateSecretForm = ({
   const selectedEnvironments = watch("environments");
 
   const handleFormSubmit = async ({ environments: selectedEnv, secrets }: TFormSchema) => {
+    if (editSecret) {
+      if (editSecret.isReadOnly || !dirtyFields.secrets?.[0]?.value) return;
+      await editSecret.onSubmit(secrets[0].value ?? "");
+      return;
+    }
     if (isBatchMode && onBatchSecretCreate) {
       secrets.forEach((secret) => {
         const filteredMetadata = secret.metadata
@@ -339,6 +360,7 @@ export const CreateSecretForm = ({
   };
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>, index: number) => {
+    if (editSecret) return;
     const delimitters = [":", "="];
     const pastedContent = e.clipboardData.getData("text");
     const { key, value } = getKeyValue(pastedContent, delimitters);
@@ -393,6 +415,7 @@ export const CreateSecretForm = ({
   };
 
   const submitForm = handleSubmit(handleFormSubmit);
+  const editSubmitLabel = isBatchMode ? "Stage Changes" : "Save Changes";
 
   const handleFormKeyDown = (e: KeyboardEvent<HTMLFormElement>) => {
     // Allow Cmd+Enter (macOS) / Ctrl+Enter (other OSes) to submit the form.
@@ -418,11 +441,14 @@ export const CreateSecretForm = ({
           name="environments"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel htmlFor="create-secret-environments">Environments</FieldLabel>
+              <FieldLabel htmlFor="create-secret-environments">
+                {editSecret ? "Environment" : "Environments"}
+              </FieldLabel>
               <FieldContent>
                 <Combobox
                   id="create-secret-environments"
                   multiple
+                  isDisabled={Boolean(editSecret)}
                   options={environments.filter((environment) =>
                     permission.can(
                       ProjectPermissionSecretActions.Create,
@@ -482,6 +508,7 @@ export const CreateSecretForm = ({
                             }}
                             id={`create-secret-${index}-key`}
                             value={field.value ?? ""}
+                            readOnly={Boolean(editSecret)}
                             onChange={(e) => {
                               const val = currentProject?.autoCapitalization
                                 ? e.target.value.toUpperCase()
@@ -556,6 +583,10 @@ export const CreateSecretForm = ({
                         id={`create-secret-${index}-value`}
                         value={field.value ?? ""}
                         onChange={field.onChange}
+                        isReadOnly={editSecret?.isReadOnly}
+                        canEditButNotView={editSecret?.canEditButNotView}
+                        secretPath={editSecret ? secretPath : undefined}
+                        environment={editSecret ? defaultEnvs[0]?.slug : undefined}
                         onKeyDown={(event) => {
                           if (event.key === "Tab" && !event.shiftKey && !event.defaultPrevented) {
                             event.preventDefault();
@@ -593,7 +624,7 @@ export const CreateSecretForm = ({
                 control={control}
                 name={`secrets.${index}.comment`}
                 render={({ field }) => (
-                  <Field>
+                  <Field className={editSecret ? "hidden" : undefined}>
                     <FieldLabel htmlFor={`create-secret-${index}-comment`}>Comment</FieldLabel>
                     <FieldContent>
                       <TextArea
@@ -607,7 +638,12 @@ export const CreateSecretForm = ({
                 )}
               />
 
-              <Accordion type="single" collapsible variant="ghost">
+              <Accordion
+                type="single"
+                collapsible
+                variant="ghost"
+                className={editSecret ? "hidden" : undefined}
+              >
                 <AccordionItem value="advanced" className="border-b-0">
                   <AccordionTrigger>Advanced Options</AccordionTrigger>
                   <AccordionContent>
@@ -870,6 +906,7 @@ export const CreateSecretForm = ({
         <Button
           type="button"
           variant="outline"
+          className={editSecret ? "hidden" : undefined}
           onClick={() => {
             appendSecret({
               key: "",
@@ -899,11 +936,14 @@ export const CreateSecretForm = ({
           </Button>
           <Button
             isPending={isSubmitting}
-            isDisabled={isSubmitting}
+            isDisabled={
+              isSubmitting ||
+              Boolean(editSecret && (editSecret.isReadOnly || !dirtyFields.secrets?.[0]?.value))
+            }
             variant="project"
             type="submit"
           >
-            Create
+            {editSecret ? editSubmitLabel : "Create"}
           </Button>
         </div>
       </SheetFooter>
