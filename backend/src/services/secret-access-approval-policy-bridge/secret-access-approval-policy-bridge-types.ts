@@ -42,7 +42,7 @@ export type TSecretAccessApprovalPolicyBridgeServiceFactoryDep = {
     TApprovalPolicySecretEnvironmentDALFactory,
     "insertMany" | "delete" | "findPolicyByEnvIdsAndSecretPath"
   >;
-  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "find" | "update">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "find" | "update" | "findPendingByPolicyIdForUpdate">;
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create" | "delete">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "update">;

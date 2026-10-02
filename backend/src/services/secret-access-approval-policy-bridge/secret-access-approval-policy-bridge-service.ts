@@ -274,7 +274,7 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     { policyId, steps }: { policyId: string; steps: TPolicyStep[] },
     tx: Knex
   ) => {
-    const pendingRequests = await approvalRequestDAL.find({ policyId, status: ApprovalRequestStatus.Pending }, { tx });
+    const pendingRequests = await approvalRequestDAL.findPendingByPolicyIdForUpdate(policyId, tx);
     if (!pendingRequests.length) return;
 
     const requestIds = pendingRequests.map((request) => request.id);
