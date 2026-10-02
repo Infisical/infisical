@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BellIcon } from "lucide-react";
@@ -6,6 +6,7 @@ import { BellIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  DiscardChangesAlertDialog,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -32,17 +33,23 @@ import {
   useCreateAlert,
   useUpdateAlert
 } from "@app/hooks/api/alerts";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { buildNextChannel, canReceiveAlerts } from "@app/views/Alerts";
 
 import { CertificateAlertAddChannelMenu, ChannelsStep } from "./ChannelsStep";
 import { DetailsStep } from "./DetailsStep";
+import { FiltersStep } from "./FiltersStep";
 import { ReviewStep } from "./ReviewStep";
 import {
   certificateAlertFormSchema,
+  CertificateAlertScopeKind,
+  CertificateAlertStep,
   emptyCertificateAlertForm,
+  getAlertResourceId,
+  getSteps,
   STEP_FIELDS,
-  STEPS,
   TCertificateAlertForm,
+  TCertificateAlertScope,
   TMemberEmails,
   toCertificateAlertForm,
   toCondition
@@ -52,27 +59,30 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   projectId: string;
-  applicationId: string;
-  applicationName: string;
+  scope: TCertificateAlertScope;
   alert?: TAlert;
   isReadOnly?: boolean;
   usedEventTypes: CertificateAlertEventType[];
 };
 
-type WizardProps = Omit<Props, "isOpen"> & { members: TMemberEmails };
+type WizardProps = Omit<Props, "isOpen"> & {
+  members: TMemberEmails;
+  onDirtyChange: (isDirty: boolean) => void;
+};
 
 const CertificateAlertWizard = ({
   onOpenChange,
   projectId,
-  applicationId,
-  applicationName,
+  scope,
   alert,
   isReadOnly = false,
   usedEventTypes,
-  members
+  members,
+  onDirtyChange
 }: WizardProps) => {
   const isEditing = Boolean(alert);
-  const [step, setStep] = useState(isReadOnly ? STEPS.length - 1 : 0);
+  const steps = getSteps(scope);
+  const [step, setStep] = useState(isReadOnly ? steps.length - 1 : 0);
   const createAlert = useCreateAlert();
   const updateAlert = useUpdateAlert();
 
@@ -86,10 +96,15 @@ const CertificateAlertWizard = ({
         )
   });
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "channels" });
+  const { isDirty } = form.formState;
+
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const onSubmit = async (values: TCertificateAlertForm) => {
     const channels = values.channels.map(toChannelInput);
-    const condition = toCondition(values);
+    const condition = toCondition(scope, values);
 
     try {
       if (alert) {
@@ -107,7 +122,7 @@ const CertificateAlertWizard = ({
           name: values.name,
           description: values.description || undefined,
           resourceType: CertificateAlertResourceType.Application,
-          resourceId: applicationId,
+          resourceId: getAlertResourceId(scope),
           eventType: values.eventType,
           condition,
           enabled: values.enabled,
@@ -127,16 +142,17 @@ const CertificateAlertWizard = ({
   };
 
   const goNext = async () => {
-    if (step < STEP_FIELDS.length) {
-      if (await form.trigger(STEP_FIELDS[step])) setStep(step + 1);
+    const stepFields = STEP_FIELDS[steps[step].key];
+    if (stepFields) {
+      if (await form.trigger(stepFields)) setStep(step + 1);
       return;
     }
     await form.handleSubmit(onSubmit)();
   };
 
-  const isLast = step === STEPS.length - 1;
+  const isLast = step === steps.length - 1;
   const { isSubmitting } = form.formState;
-  const currentStep = STEPS[step];
+  const currentStep = steps[step];
   const submitLabel = isEditing ? "Update Alert" : "Create Alert";
   let title = isEditing ? "Edit Certificate Alert" : "Create Certificate Alert";
   if (isReadOnly) title = "Certificate Alert Details";
@@ -152,7 +168,9 @@ const CertificateAlertWizard = ({
             <div>
               <div className="text-label">{title}</div>
               <SheetDescription>
-                Get notified about certificate events in {applicationName}.
+                {scope.kind === CertificateAlertScopeKind.Application
+                  ? `Get notified about certificate events in ${scope.applicationName}.`
+                  : "Get notified about certificate events across Certificate Manager."}
               </SheetDescription>
             </div>
           </div>
@@ -171,7 +189,7 @@ const CertificateAlertWizard = ({
               }}
             >
               <StepperList>
-                {STEPS.map((item, index) => (
+                {steps.map((item, index) => (
                   <StepperStep
                     key={item.name}
                     index={index}
@@ -190,26 +208,36 @@ const CertificateAlertWizard = ({
               <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
               {!isReadOnly && <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>}
             </div>
-            {step === 1 && (
+            {currentStep.key === CertificateAlertStep.Channels && (
               <CertificateAlertAddChannelMenu channelCount={fields.length} onAdd={addChannel} />
             )}
           </div>
 
-          {step === 0 && (
-            <DetailsStep form={form} isEditing={isEditing} usedEventTypes={usedEventTypes} />
+          {currentStep.key === CertificateAlertStep.Details && (
+            <DetailsStep
+              form={form}
+              scope={scope}
+              isEditing={isEditing}
+              usedEventTypes={usedEventTypes}
+            />
           )}
-          {step === 1 && (
+          {currentStep.key === CertificateAlertStep.Filters && (
+            <FiltersStep form={form} projectId={projectId} />
+          )}
+          {currentStep.key === CertificateAlertStep.Channels && (
             <ChannelsStep
               form={form}
               fields={fields}
               onRemove={remove}
               projectId={projectId}
-              applicationId={applicationId}
+              scope={scope}
               alertId={alert?.id}
               members={members}
             />
           )}
-          {step === 2 && <ReviewStep form={form} members={members} />}
+          {currentStep.key === CertificateAlertStep.Review && (
+            <ReviewStep form={form} scope={scope} members={members} />
+          )}
         </div>
       </div>
 
@@ -221,7 +249,7 @@ const CertificateAlertWizard = ({
         ) : (
           <>
             <span className="text-xs text-muted">
-              Step {step + 1} of {STEPS.length}
+              Step {step + 1} of {steps.length}
             </span>
             <div className="flex items-center gap-3">
               {step > 0 && (
@@ -272,23 +300,50 @@ export const CertificateAlertSheet = ({ isOpen, onOpenChange, ...props }: Props)
     };
   }, [orgUsers]);
 
+  const [isDirty, setIsDirty] = useState(false);
+  const closeSheet = () => {
+    setIsDirty(false);
+    onOpenChange(false);
+  };
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: closeSheet });
+
+  const handleSheetOpenChange = (open: boolean) => {
+    if (!open) {
+      requestDiscard();
+      return;
+    }
+    onOpenChange(true);
+  };
+
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent size="wide" className="flex h-full max-h-full flex-col gap-y-0">
-        {isOpen && isUsersPending && (
-          <div className="flex flex-1 items-center justify-center">
-            <Spinner />
-          </div>
-        )}
-        {isOpen && !isUsersPending && (
-          <CertificateAlertWizard
-            key={props.alert?.id ?? "new"}
-            onOpenChange={onOpenChange}
-            members={members}
-            {...props}
-          />
-        )}
-      </SheetContent>
-    </Sheet>
+    <>
+      <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
+        <SheetContent size="wide" className="flex h-full max-h-full flex-col gap-y-0">
+          {isOpen && isUsersPending && (
+            <div className="flex flex-1 items-center justify-center">
+              <Spinner />
+            </div>
+          )}
+          {isOpen && !isUsersPending && (
+            <CertificateAlertWizard
+              key={props.alert?.id ?? "new"}
+              onOpenChange={(open) => (open ? onOpenChange(true) : closeSheet())}
+              onDirtyChange={setIsDirty}
+              members={members}
+              {...props}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your unsaved changes to this alert will be lost."
+      />
+    </>
   );
 };

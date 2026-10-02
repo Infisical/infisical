@@ -19,18 +19,20 @@ import {
 import { CertificateAlertEventType } from "@app/hooks/api/alerts";
 
 import {
-  CERTIFICATE_ALERT_EVENT_DESCRIPTIONS,
   CERTIFICATE_ALERT_EVENT_LABELS,
-  TCertificateAlertForm
+  getAlertEventDescription,
+  TCertificateAlertForm,
+  TCertificateAlertScope
 } from "./types";
 
 type Props = {
   form: UseFormReturn<TCertificateAlertForm>;
+  scope: TCertificateAlertScope;
   isEditing: boolean;
   usedEventTypes: CertificateAlertEventType[];
 };
 
-export const DetailsStep = ({ form, isEditing, usedEventTypes }: Props) => {
+export const DetailsStep = ({ form, scope, isEditing, usedEventTypes }: Props) => {
   const eventType = useWatch({ control: form.control, name: "eventType" });
 
   return (
@@ -58,9 +60,7 @@ export const DetailsStep = ({ form, isEditing, usedEventTypes }: Props) => {
                   ))}
                 </SelectContent>
               </Select>
-              <FieldDescription>
-                {CERTIFICATE_ALERT_EVENT_DESCRIPTIONS[field.value]}
-              </FieldDescription>
+              <FieldDescription>{getAlertEventDescription(scope, field.value)}</FieldDescription>
             </FieldContent>
           </Field>
         )}

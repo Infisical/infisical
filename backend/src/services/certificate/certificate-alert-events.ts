@@ -36,8 +36,6 @@ export const certificateAlertEventEmitterFactory = ({ eventEmitter, projectDAL }
     { certificateId, projectId, orgId, applicationId, eventType }: TCertificateAlertEventInput,
     tx?: Knex
   ) => {
-    if (!applicationId) return;
-
     const resolvedOrgId = orgId ?? (await projectDAL.findById(projectId, tx))?.orgId;
     if (!resolvedOrgId) return;
 
@@ -47,7 +45,7 @@ export const certificateAlertEventEmitterFactory = ({ eventEmitter, projectDAL }
         orgId: resolvedOrgId,
         projectId,
         resourceType: CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
-        resourceId: applicationId,
+        resourceId: applicationId ?? null,
         targetIds: [certificateId]
       }
     };

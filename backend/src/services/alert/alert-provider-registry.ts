@@ -4,7 +4,7 @@ export const resolveAlertProjectId = async (
   provider: IResourceAlertProvider,
   { orgId, projectId, resourceId }: { orgId: string; projectId?: string | null; resourceId?: string | null }
 ): Promise<string | null> => {
-  if (projectId || !resourceId || !provider.resolveProjectId) return projectId ?? null;
+  if (projectId || !provider.resolveProjectId) return projectId ?? null;
   return provider.resolveProjectId({ orgId, resourceId });
 };
 

@@ -97,6 +97,12 @@ export type TFindEventTargetsInput = {
   payload: Record<string, unknown>;
 };
 
+export type TAlreadyAlertedFilter = {
+  alertId: string;
+  channelIds: string[];
+  since: Date;
+};
+
 export type TFindScheduledTargetsInput = {
   orgId: string;
   projectId?: string | null;
@@ -104,7 +110,7 @@ export type TFindScheduledTargetsInput = {
   eventType: string;
   condition: unknown;
   asOf: Date;
-  alreadyAlerted?: { alertId: string; channelIds: string[]; since: Date };
+  alreadyAlerted?: TAlreadyAlertedFilter;
 };
 
 // Lets a provider factory declare which discovery method it guarantees.
@@ -113,6 +119,10 @@ export type IScheduledAlertProvider<TTarget = unknown> = IResourceAlertProvider<
 
 export type IEventAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
   Required<Pick<IResourceAlertProvider<TTarget>, "findEventTargets">>;
+
+export type TAlertFilterValue = { id: string; name: string | null };
+
+export type TAlertFilters = Record<string, TAlertFilterValue[]>;
 
 export enum AlertAuditAction {
   Create = "create",
@@ -124,6 +134,8 @@ export enum AlertAuditAction {
 type TAlertAuditAlert = {
   id: string;
   name: string;
+  condition?: unknown;
+  filters?: TAlertFilters;
   resourceType: string;
   resourceId: string | null;
   resourceName?: string | null;
@@ -207,6 +219,15 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // existing permissions (e.g. PKI reuses the `pki-alerts` subject, project- or application-scoped).
   assertPermission(input: TAlertPermissionInput): Promise<void>;
 
+  supportsScopeWideAlerts?: boolean;
+
+  assertConditionInScope?(input: {
+    projectId?: string | null;
+    resourceId?: string | null;
+    condition: unknown;
+    previousCondition?: unknown;
+  }): Promise<void>;
+
   assertChannelTypesAllowed?(input: { orgId: string; channelTypes: string[] }): Promise<void>;
 
   recipientPolicy?: TAlertRecipientPolicy;
@@ -219,7 +240,13 @@ export interface IResourceAlertProvider<TTarget = unknown> {
 
   getResourceNames?(input: { orgId: string; resourceIds: string[] }): Promise<Map<string, string>>;
 
-  resolveProjectId?(input: { orgId: string; resourceId: string }): Promise<string>;
+  getFilters?(input: {
+    orgId: string;
+    projectId: string | null;
+    alerts: { id: string; condition: unknown }[];
+  }): Promise<Map<string, TAlertFilters>>;
+
+  resolveProjectId?(input: { orgId: string; resourceId?: string | null }): Promise<string>;
 
   getTelemetryEvent?(input: TAlertTelemetryInput): TAlertTelemetryEvent | undefined;
 

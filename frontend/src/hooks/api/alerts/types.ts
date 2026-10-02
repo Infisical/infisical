@@ -42,6 +42,7 @@ export enum CertificateAlertEventType {
 export const MIN_ALERT_BEFORE_DAYS = 1;
 export const MAX_ALERT_BEFORE_DAYS = 90;
 export const MAX_CERTIFICATE_ALERT_BEFORE_DAYS = 365;
+export const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
 
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication"
@@ -80,6 +81,8 @@ export type TAlertChannelEmbedded = {
   recipients: TAlertChannelRecipient[];
 };
 
+export type TAlertFilterValue = { id: string; name: string | null };
+
 export type TAlert = {
   id: string;
   name: string;
@@ -87,11 +90,17 @@ export type TAlert = {
   resourceType: string;
   resourceId: string | null;
   eventType: string;
-  condition: { alertBefore?: string; dailyReminder?: boolean } | null;
+  condition: {
+    alertBefore?: string;
+    dailyReminder?: boolean;
+    applicationIds?: string[];
+    profileIds?: string[];
+  } | null;
   enabled: boolean;
   orgId: string;
   projectId: string | null;
   resourceName: string | null;
+  filters?: Record<string, TAlertFilterValue[]>;
   channels: TAlertChannelEmbedded[];
   lastRun: { timestamp: string; status: AlertRunStatus } | null;
   createdAt: string;

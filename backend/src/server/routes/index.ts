@@ -1084,6 +1084,10 @@ export const registerRoutes = async (
   const alertChannelMembershipDAL = alertChannelMembershipDALFactory(db);
   const alertHistoryDAL = alertHistoryDALFactory(db);
   const certManagerApplicationAlertDAL = certManagerApplicationAlertDALFactory(db);
+  const certManagerProjectResolver = certManagerProjectResolverFactory({
+    orgDAL,
+    projectDAL
+  });
   const alertProviderRegistry = alertProviderRegistryFactory();
   alertProviderRegistry.register(
     identityCredentialAlertProviderFactory({
@@ -1095,7 +1099,8 @@ export const registerRoutes = async (
     certManagerApplicationAlertProviderFactory({
       certManagerApplicationAlertDAL,
       permissionService,
-      licenseService
+      licenseService,
+      certManagerProjectResolver
     })
   );
   const alertRecipientResolver = alertRecipientResolverFactory({
@@ -1883,11 +1888,6 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
     approvalPolicyDAL
-  });
-
-  const certManagerProjectResolver = certManagerProjectResolverFactory({
-    orgDAL,
-    projectDAL
   });
 
   const agentVaultMemberDAL = agentVaultMemberDALFactory(db);

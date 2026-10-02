@@ -31,6 +31,7 @@ export const PkiDocsUrls = {
     policies: `${PKI_DOCS_BASE_URL}/settings/policies`,
     profiles: `${PKI_DOCS_BASE_URL}/settings/profiles`,
     certificateCleanup: `${PKI_DOCS_BASE_URL}/settings/certificate-cleanup`,
+    alerts: `${PKI_DOCS_BASE_URL}/settings/alerts`,
     hsmConnectors: `${PKI_DOCS_BASE_URL}/settings/hsm-connectors`
   },
 

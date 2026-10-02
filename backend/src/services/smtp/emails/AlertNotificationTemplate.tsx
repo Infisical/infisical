@@ -97,7 +97,7 @@ export const AlertNotificationTemplate = ({
 
       <Text className="text-[11px] text-gray-400 text-center leading-[16px] mt-[16px] mb-[0px]">
         You are receiving this because you are a recipient of this alert. Manage recipients and channels in the{" "}
-        {resourceOwnerKind.toLowerCase()}&apos;s alert settings in Infisical.
+        {resourceOwnerKind} alert settings in Infisical.
       </Text>
     </BaseEmailWrapper>
   );

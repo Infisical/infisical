@@ -21,9 +21,11 @@ import {
 import { AddChannelMenu, ChannelCard, TChannelRecipientsRenderProps } from "@app/views/Alerts";
 
 import {
+  getAlertResourceId,
   MAX_CHANNELS,
   normalizeEmail,
   TCertificateAlertForm,
+  TCertificateAlertScope,
   TMemberEmails,
   toRecipientEmails
 } from "./types";
@@ -134,7 +136,7 @@ export const ChannelsStep = ({
   fields,
   onRemove,
   projectId,
-  applicationId,
+  scope,
   alertId,
   members
 }: {
@@ -142,7 +144,7 @@ export const ChannelsStep = ({
   fields: TChannelField[];
   onRemove: (index: number) => void;
   projectId: string;
-  applicationId: string;
+  scope: TCertificateAlertScope;
   alertId?: string;
   members: TMemberEmails;
 }) => {
@@ -172,7 +174,7 @@ export const ChannelsStep = ({
           index={index}
           projectId={projectId}
           resourceType={CertificateAlertResourceType.Application}
-          resourceId={applicationId}
+          resourceId={getAlertResourceId(scope)}
           alertId={alertId}
           canRemove
           onRemove={() => onRemove(index)}

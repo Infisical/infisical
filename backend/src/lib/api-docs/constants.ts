@@ -2397,6 +2397,35 @@ export const CA_CRLS = {
   }
 };
 
+export const ALERTING = {
+  ROUTES: {
+    create: "Create an alert that notifies its channels when an event happens to a resource.",
+    testChannel: "Send a test notification through a channel, either a saved one or one described in the request.",
+    list: "List the alerts on a resource type, optionally narrowed to one resource.",
+    get: "Get an alert by ID.",
+    update: "Update an alert's name, description, condition, status, or channels.",
+    delete: "Delete an alert and its channels."
+  },
+  name: "The name of the alert.",
+  description: "An optional description of the alert.",
+  resourceType:
+    "The kind of resource the alert watches, such as `identity.authentication` or `cert-manager.application`.",
+  resourceId:
+    "The ID of the resource the alert watches. For `cert-manager.application`, set it to an application ID to watch that application, or null to watch every certificate in Certificate Manager.",
+  listResourceId:
+    "Only return alerts on this resource. For `cert-manager.application`, leave it out to list the alerts that cover all of Certificate Manager.",
+  eventType: "The event that triggers the alert, such as `cert-manager.application.certificate.expiry`.",
+  condition:
+    "When the alert fires. Expiry alerts take `alertBefore` (for example `30d`) and an optional `dailyReminder`. Certificate Manager alerts with no `resourceId` also accept `applicationIds` and `profileIds`, which narrow the alert to certificates in those applications and profiles.",
+  enabled: "Whether the alert sends notifications.",
+  projectId: "The ID of the project the alert belongs to. Optional when the resource already belongs to one.",
+  channels: "Where the alert is delivered. Each channel is email, Slack, webhook, or PagerDuty.",
+  alertId: "The ID of the alert.",
+  channelId: "The ID of a saved channel to test.",
+  filters:
+    "Read-only. The resources named in the alert's condition, as `{ id, name }` lists keyed by kind (for example `applications` and `profiles`). `name` is null when the resource no longer exists."
+};
+
 export const ALERTS = {
   CREATE: {
     projectId: "The ID of the project to create the alert in.",
