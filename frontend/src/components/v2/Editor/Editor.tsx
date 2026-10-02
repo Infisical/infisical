@@ -48,7 +48,7 @@ const inputVariants = cva(
   }
 );
 
-const inputParentContainerVariants = cva("inline-flex font-inter items-center border relative", {
+const inputParentContainerVariants = cva("inline-flex font-sans items-center border relative", {
   variants: {
     isRounded: {
       true: ["rounded-md"],

@@ -36,6 +36,7 @@ export {
   CertificateAuthoritiesUpgradeIntent,
   CertificateDiscoveryUpgradeIntent,
   CertificateEnrollmentUpgradeIntent,
+  CertificateEnterpriseAlertingUpgradeIntent,
   CertificateIssuanceLimitsUpgradeIntent,
   CertificateManagementUpgradeIntent,
   CertificateRevocationListsUpgradeIntent,

@@ -55,7 +55,7 @@ export type FormHelperTextProps = {
 export const FormHelperText = ({ isError, text }: FormHelperTextProps) => (
   <div
     className={twMerge(
-      "text-opacity-90 mt-2 flex items-center font-inter text-xs text-label",
+      "text-opacity-90 mt-2 flex items-center font-sans text-xs text-label",
       isError && "text-danger"
     )}
   >

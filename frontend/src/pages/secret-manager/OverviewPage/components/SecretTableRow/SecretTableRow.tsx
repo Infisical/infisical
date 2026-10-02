@@ -503,7 +503,7 @@ export const SecretTableRow = ({
                     "top-1/2 right-[3px] -translate-y-1/2"
                   )}
                 >
-                  <Tooltip disableHoverableContent>
+                  <Tooltip>
                     <TooltipTrigger>
                       <IconButton
                         aria-label="Copy secret name"
@@ -521,7 +521,7 @@ export const SecretTableRow = ({
                     </TooltipTrigger>
                     <TooltipContent>Copy Secret Name</TooltipContent>
                   </Tooltip>
-                  <Tooltip disableHoverableContent>
+                  <Tooltip>
                     <TooltipTrigger>
                       <IconButton
                         aria-label="Edit secret name"
@@ -724,7 +724,7 @@ export const SecretTableRow = ({
                             )}
                           >
                             <div className="flex h-8 items-center space-x-2">
-                              <Tooltip disableHoverableContent>
+                              <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span className="truncate">{name}</span>
                                 </TooltipTrigger>

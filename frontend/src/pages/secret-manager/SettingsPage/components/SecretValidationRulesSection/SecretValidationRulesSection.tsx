@@ -348,7 +348,7 @@ const RuleFormContent = ({
 
           {/* Scope */}
           <div>
-            <h4 className="mb-3 text-sm font-medium text-foreground">Scope</h4>
+            <h4 className="mb-3 text-sm font-normal text-foreground">Scope</h4>
             <div className="space-y-4">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-muted">Environment</label>
@@ -437,7 +437,7 @@ const RuleFormContent = ({
           {/* Constraints */}
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <h4 className="text-sm font-medium text-foreground">Validation Constraints</h4>
+              <h4 className="text-sm font-normal text-foreground">Validation Constraints</h4>
               {availableConstraintOptions.length > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

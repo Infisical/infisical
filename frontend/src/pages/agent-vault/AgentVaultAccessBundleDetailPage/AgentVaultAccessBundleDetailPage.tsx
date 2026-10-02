@@ -35,6 +35,7 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { DeleteAccessBundleDialog } from "@app/pages/agent-vault/AgentVaultAccessBundlesPage/components/DeleteAccessBundleDialog";
 
 import { ServicesCard } from "./components/ServicesCard";
+import { VariablesCard } from "./components/VariablesCard";
 
 export const AgentVaultAccessBundleDetailPage = () => {
   const { t } = useTranslation();
@@ -138,6 +139,11 @@ export const AgentVaultAccessBundleDetailPage = () => {
           setIsServiceSheetOpen(true);
         }}
       />
+
+      {/* The variables routes are admin only. */}
+      {isAdmin && (
+        <VariablesCard accessBundleId={accessBundle.id} services={accessBundle.services} />
+      )}
 
       <ManageAccessSheet
         accessBundle={isManageAccessOpen ? accessBundle : null}

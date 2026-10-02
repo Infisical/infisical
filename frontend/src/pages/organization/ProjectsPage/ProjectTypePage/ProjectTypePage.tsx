@@ -29,8 +29,8 @@ import {
   Card,
   CardAction,
   CardContent,
-  CardDescription,
   CardHeader,
+  CardTitle,
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -539,7 +539,7 @@ const MyProjectsForType = ({
               <WorkspaceIcon className="size-5.5 shrink-0 text-accent transition-colors duration-200 ease-out group-hover:text-project" />
             </div>
             <div className="min-w-0 flex-1">
-              <CardDescription className="text-base font-semibold text-foreground">
+              <CardTitle className="text-base text-foreground">
                 {/* The name is the card's link, so the accessible name comes from visible text
                     rather than a duplicated label, and its stretched pseudo-element covers the
                     card. Siblings raised above it (CardAction) stay outside the anchor. */}
@@ -550,7 +550,7 @@ const MyProjectsForType = ({
                 >
                   {workspace.name}
                 </Link>
-              </CardDescription>
+              </CardTitle>
               <p className="truncate text-sm leading-5 text-muted">
                 {getProjectTitle(workspace.type)}
               </p>

@@ -207,7 +207,7 @@ export const RotationTab = ({ accountId, supportsDependencies, onDirtyChange }: 
       <div className="rounded-lg border border-border bg-container p-4">
         <div className="mb-2 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Rotation</h3>
+            <h3 className="text-sm font-normal text-foreground">Rotation</h3>
             <p className="text-xs text-muted">
               How and when this account&apos;s password is rotated.
             </p>
@@ -285,7 +285,7 @@ export const RotationTab = ({ accountId, supportsDependencies, onDirtyChange }: 
       )}
 
       <div className="rounded-lg border border-border bg-container p-4">
-        <h3 className="text-sm font-semibold text-foreground">Rotation account</h3>
+        <h3 className="text-sm font-normal text-foreground">Rotation account</h3>
         <p className="mb-3 text-xs text-muted">
           The privileged account used to rotate this password.
         </p>

@@ -32,6 +32,7 @@ export const UpgradeFeature = {
   CodeSigning: "code-signing",
   CertificateDiscovery: "certificate-discovery",
   CertificateEnrollment: "certificate-enrollment",
+  CertificateEnterpriseAlerting: "certificate-enterprise-alerting",
   CertificateAuthorities: "certificate-authorities",
   ExternalCertificateAuthorities: "external-certificate-authorities",
   PostQuantumCertificates: "post-quantum-certificates",
@@ -256,6 +257,16 @@ export const CertificateEnrollmentUpgradeIntent = {
   title: "Manage Certificate Enrollment",
   description:
     "Advanced certificate enrollment methods are included with the Enterprise plan. Review the plan to continue."
+} satisfies UpgradeIntent;
+
+export const CertificateEnterpriseAlertingUpgradeIntent = {
+  featureKey: UpgradeFeature.CertificateEnterpriseAlerting,
+  productKey: BillingProduct.CertificateManagement,
+  planKey: BillingPlan.Enterprise,
+  upgradeLabel: "Unlock Enterprise Alert Channels",
+  title: "Add Enterprise Alert Channel",
+  description:
+    "Webhook, Slack, and PagerDuty certificate alert channels are included with the Enterprise plan. Review the plan to continue."
 } satisfies UpgradeIntent;
 
 export const CertificateAuthoritiesUpgradeIntent = {

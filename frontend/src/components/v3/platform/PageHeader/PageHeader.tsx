@@ -104,7 +104,7 @@ export const PageHeader = ({
             <h1
               data-slot="page-header-title"
               className={cn(
-                "truncate text-2xl font-medium text-foreground underline underline-offset-4",
+                "truncate font-alliance text-2xl font-normal text-foreground underline underline-offset-4",
                 scopeConfig?.titleClassName ?? "no-underline"
               )}
             >

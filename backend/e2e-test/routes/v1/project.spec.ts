@@ -1,3 +1,7 @@
+import { TableName } from "@app/db/schemas";
+
+import { createSecretV2 } from "../../testUtils/secrets";
+
 type TProject = { id: string; name: string; slug: string };
 
 const createProject = async (projectName: string, slug?: string): Promise<TProject> => {
@@ -124,6 +128,39 @@ describe("Project update (audit logs retention)", async () => {
 
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.payload).project.name).toBe("e2e-retention-renamed");
+
+    await deleteProject(project.id);
+  });
+});
+
+describe("Project read (secret manager KMS key)", async () => {
+  test("returns kmsSecretManagerKeyId so API clients can confirm which key encrypts the project", async () => {
+    const project = await createProject("e2e-read-kms-key");
+    // the secret manager key is created lazily on first secret write
+    await createSecretV2({
+      workspaceId: project.id,
+      environmentSlug: "dev",
+      secretPath: "/",
+      key: "E2E_KMS_KEY_PROBE",
+      value: "value",
+      authToken: jwtAuthToken
+    });
+    const kmsKeyId = (await testDb(TableName.Project).where({ id: project.id }).first())?.kmsSecretManagerKeyId;
+    expect(kmsKeyId).toBeTruthy();
+
+    const res = await getProject(project.id);
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.payload).project.kmsSecretManagerKeyId).toBe(kmsKeyId);
+
+    const deprecatedRes = await testServer.inject({
+      method: "GET",
+      url: `/api/v1/workspace/${project.id}`,
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      }
+    });
+    expect(deprecatedRes.statusCode).toBe(200);
+    expect(JSON.parse(deprecatedRes.payload).workspace.kmsSecretManagerKeyId).toBe(kmsKeyId);
 
     await deleteProject(project.id);
   });

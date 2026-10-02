@@ -61,21 +61,21 @@ const makeAlert = () => ({
 
 const makeProvider = (
   targets: TTarget[],
-  onFindDueTargets?: () => void,
-  onFindTargetsByIds?: (payload: Record<string, unknown>) => void
+  onFindScheduledTargets?: () => void,
+  onFindEventTargets?: (payload: Record<string, unknown>) => void
 ): IResourceAlertProvider<TTarget> => ({
   resourceType: RESOURCE_TYPE,
   events: [
     { key: "test.resource.expiration", triggerType: AlertTriggerType.Scheduled, conditionSchema: z.any() },
     { key: "test.resource.opened", triggerType: AlertTriggerType.Event, conditionSchema: z.any() }
   ],
-  findDueTargets: async () => {
-    onFindDueTargets?.();
+  findScheduledTargets: async () => {
+    onFindScheduledTargets?.();
     return targets;
   },
   // Like a real provider, a target deleted between emit and delivery just drops out.
-  findTargetsByIds: async ({ targetIds, payload }) => {
-    onFindTargetsByIds?.(payload);
+  findEventTargets: async ({ targetIds, payload }) => {
+    onFindEventTargets?.(payload);
     return targets.filter((target) => targetIds.includes(target.id));
   },
   assertPermission: async () => undefined,
@@ -125,13 +125,13 @@ const buildEngine = (opts: {
   failHistoryWriteTimes?: number;
 }) => {
   const registry = alertProviderRegistryFactory();
-  let findDueTargetsCalls = 0;
+  let findScheduledTargetsCalls = 0;
   const eventPayloads: Record<string, unknown>[] = [];
   registry.register(
     makeProvider(
       opts.targets,
       () => {
-        findDueTargetsCalls += 1;
+        findScheduledTargetsCalls += 1;
       },
       (payload) => eventPayloads.push(payload)
     ) as IResourceAlertProvider
@@ -223,7 +223,7 @@ const buildEngine = (opts: {
     eventPayloads,
     getHistoryAttempts: () => historyAttempts,
     getPeakConcurrentSends: () => peakConcurrentSends,
-    getFindDueTargetsCalls: () => findDueTargetsCalls
+    getFindScheduledTargetsCalls: () => findScheduledTargetsCalls
   };
 };
 
@@ -501,7 +501,7 @@ describe("alert engine", () => {
   });
 
   test("writes no history and skips the resource scan when there are no enabled channels", async () => {
-    const { engine, historyWrites, getFindDueTargetsCalls } = buildEngine({
+    const { engine, historyWrites, getFindScheduledTargetsCalls } = buildEngine({
       targets: [{ id: "t1" }],
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: false }]
     });
@@ -511,7 +511,7 @@ describe("alert engine", () => {
     expect(outcome).toBe(AlertDispatchOutcome.NoChannels);
     expect(historyWrites).toHaveLength(0);
     // The scan is the expensive part of a run; a channel-less alert must not pay for it daily.
-    expect(getFindDueTargetsCalls()).toBe(0);
+    expect(getFindScheduledTargetsCalls()).toBe(0);
   });
 
   test("reports no due targets when nothing matches the condition", async () => {

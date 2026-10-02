@@ -5,15 +5,14 @@ import { cn } from "../../utils";
 
 function TooltipProvider({
   delayDuration = 0,
-  disableHoverableContent = true,
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
+}: Omit<React.ComponentProps<typeof TooltipPrimitive.Provider>, "disableHoverableContent">) {
   return (
     <TooltipPrimitive.Provider
       data-slot="tooltip-provider"
       delayDuration={delayDuration}
-      disableHoverableContent={disableHoverableContent}
       {...props}
+      disableHoverableContent
     />
   );
 }
@@ -21,7 +20,7 @@ function TooltipProvider({
 function Tooltip({
   skipDelayDuration,
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Root> &
+}: Omit<React.ComponentProps<typeof TooltipPrimitive.Root>, "disableHoverableContent"> &
   Pick<React.ComponentProps<typeof TooltipPrimitive.Provider>, "skipDelayDuration">) {
   return (
     <TooltipProvider skipDelayDuration={skipDelayDuration}>
