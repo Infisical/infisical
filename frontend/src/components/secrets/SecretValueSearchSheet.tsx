@@ -76,7 +76,14 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!value || search.isPending) return;
-    search.mutate({ secretValue: value }, { onSuccess: (data) => setMatches(data.secrets) });
+    search.mutate(
+      { secretValue: value },
+      {
+        onSuccess: (data) => setMatches(data.secrets),
+        // A failed search must not leave the previous value's results looking like its answer.
+        onError: () => setMatches(null)
+      }
+    );
   };
 
   const renderResults = () => {
@@ -189,12 +196,7 @@ const SearchContent = ({ orgId, onClose }: { orgId: string; onClose: () => void 
             containerClassName="flex-1"
             placeholder="Paste the full secret value..."
             value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              // Results belong to the value that was searched, not the one now in the box.
-              setMatches(null);
-              search.reset();
-            }}
+            onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
               // A textarea would otherwise take Enter as a newline rather than a search.
               if (e.key === "Enter" && !e.shiftKey) {
