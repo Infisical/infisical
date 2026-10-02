@@ -482,12 +482,20 @@ const UsageSources = ({
   return (
     <Card>
       <CardContent>
-        <Accordion type="multiple" variant="ghost" defaultValue={[meteredProducts[0].prod.id]}>
+        <Accordion
+          type="multiple"
+          variant="ghost"
+          defaultValue={[meteredProducts[0].prod.id]}
+          className="flex flex-col gap-4"
+        >
           {meteredProducts.map(({ prod, ent }) => (
-            <AccordionItem key={prod.id} value={prod.id}>
-              <AccordionTrigger>
+            <AccordionItem key={prod.id} value={prod.id} className="border-b-0">
+              <AccordionTrigger className="[&>[data-slot=accordion-chevron]]:order-last">
                 <ProductIcon product={prod} size={32} />
                 <CardTitle>{prod.name}</CardTitle>
+                <div className="min-w-8 flex-1">
+                  <Separator />
+                </div>
               </AccordionTrigger>
               <div className="grid grid-cols-2 gap-x-6 gap-y-4 pb-5 xl:grid-cols-4">
                 {(ent.dimensions ?? []).map((dim) => (
@@ -598,6 +606,8 @@ export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode })
           </div>
         ))}
       </div>
+    </Card>
+    <Card>
       <CardHeader>
         <div className="flex items-center gap-3">
           <CardTitle>Products</CardTitle>
@@ -707,7 +717,7 @@ export const TabbedOverview = ({
         </TabsList>
       )}
 
-      <TabsContent value="overview">
+      <TabsContent value="overview" className="flex flex-col gap-6">
         <Card>
           {isManaged && (
             <div className="flex flex-col gap-4">
@@ -760,6 +770,8 @@ export const TabbedOverview = ({
               />
             </div>
           )}
+        </Card>
+        <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center gap-3">
               <CardTitle>Products</CardTitle>
