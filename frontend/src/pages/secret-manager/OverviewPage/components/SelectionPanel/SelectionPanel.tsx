@@ -331,17 +331,14 @@ export const SelectionPanel = ({
   const areFoldersSelected = Boolean(Object.keys(selectedEntries[EntryType.FOLDER]).length);
   const areRotationsSelected = selectedRotationCount > 0;
 
-  // folders are moved one at a time from the inline row action, so bulk move only handles
-  // secrets and rotations
-  const hasMovableSelection = selectedKeysCount > 0 || selectedRotationCount > 0;
+  const hasMovableSelection =
+    selectedKeysCount > 0 || selectedRotationCount > 0 || selectedFolderCount > 0;
   const shouldShowMove = shouldShowDelete && hasMovableSelection;
 
-  const isMoveDisabled = isHoneyTokenSelected || areFoldersSelected;
+  const isMoveDisabled = isHoneyTokenSelected;
   let moveDisabledReason = "";
   if (isHoneyTokenSelected) {
     moveDisabledReason = "Moving honey tokens is not supported";
-  } else if (areFoldersSelected) {
-    moveDisabledReason = "Folders cannot be moved via multi-select";
   }
 
   const isDeleteDisabled = areRotationsSelected || isManagedSecretSelected;
@@ -602,7 +599,7 @@ export const SelectionPanel = ({
         sourceSecretPath={secretPath}
         secrets={selectedEntries[EntryType.SECRET]}
         rotations={selectedEntries[EntryType.SECRET_ROTATION]}
-        folders={{}}
+        folders={selectedEntries[EntryType.FOLDER]}
         onComplete={resetSelectedEntries}
       />
       <BulkTagDialog
