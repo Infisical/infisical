@@ -48,6 +48,8 @@ export type TOrgInsightsDTO = TOrgPermission;
 
 export type TGetOrgSecretsDuplicationDTO = TOrgInsightsDTO;
 
+export type TSearchOrgSecretsByValueDTO = TOrgInsightsDTO & { secretValue: string };
+
 export type TGetSecretsProjectWarningsDTO = TOrgInsightsDTO & {
   offset: number;
   limit: number;

@@ -1531,18 +1531,13 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  // Finds secrets holding the given value within the given projects. The caller narrows those to
-  // what the actor may read BEFORE calling, so an unreadable project costs nothing here and cannot
-  // be inferred from how long this takes.
   const findSecretsWithMatchingValue = async (
     {
       orgId,
-      projectIds,
       secretValueDigest,
       limit
     }: {
       orgId: string;
-      projectIds: string[];
       secretValueDigest: string;
       limit: number;
     },
@@ -1554,6 +1549,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .where(`${TableName.Project}.type`, ProjectType.SecretManager)
         .where(`${TableName.SecretV2}.secretValueOrgBlindIndex`, secretValueDigest)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .whereNull(`${TableName.Project}.deleteAfter`)
@@ -1568,7 +1564,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           db.ref("name").withSchema(TableName.Project).as("projectName")
         );
 
-      return await query.whereIn(`${TableName.Project}.id`, projectIds).limit(limit);
+      return await query.limit(limit);
     } catch (error) {
       throw new DatabaseError({ error, name: "findSecretsWithMatchingValue" });
     }

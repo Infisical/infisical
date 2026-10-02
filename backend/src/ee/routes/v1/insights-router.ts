@@ -22,7 +22,7 @@ import {
   StaticSecretsUsageSchema
 } from "@app/ee/services/insights/insights-schemas";
 import { INSIGHTS } from "@app/lib/api-docs";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -553,6 +553,58 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       }
 
       return result;
+    }
+  });
+
+  // POST rather than GET because the secret value goes in the body. A GET would put it in the URL,
+  // where it lands in access logs, proxy logs and browser history.
+  server.route({
+    method: "POST",
+    url: "/secrets/search-by-value",
+    config: { rateLimit: secretsLimit },
+    schema: {
+      operationId: "searchOrgInsightsSecretsByValue",
+      description:
+        "Find every secret in the organization holding the supplied value, including secrets in projects the caller is not a member of",
+      security: [{ bearerAuth: [] }],
+      body: z.object({
+        secretValue: z.string().min(1)
+      }),
+      response: {
+        200: z.object({
+          secrets: z
+            .object({
+              key: z.string(),
+              projectId: z.string(),
+              projectName: z.string(),
+              environment: z.object({ name: z.string(), slug: z.string() }),
+              secretPath: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const secrets = await server.services.insights.searchOrgSecretsByValue({
+        secretValue: req.body.secretValue,
+        orgId: req.permission.orgId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.SEARCH_SECRETS_BY_VALUE,
+          metadata: { matchCount: secrets.length }
+        }
+      });
+
+      return { secrets };
     }
   });
 

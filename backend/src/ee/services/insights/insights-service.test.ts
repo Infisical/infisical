@@ -54,6 +54,7 @@ const projectScopedDepStubs: Pick<
     countStaleByProject: unreachable("secretV2BridgeDAL.countStaleByProject"),
     findDuplicatedSecretValues: unreachable("secretV2BridgeDAL.findDuplicatedSecretValues"),
     findDuplicatedSecretValuesInOrg: unreachable("secretV2BridgeDAL.findDuplicatedSecretValuesInOrg"),
+    findSecretsWithMatchingValue: unreachable("secretV2BridgeDAL.findSecretsWithMatchingValue"),
     countByProject: unreachable("secretV2BridgeDAL.countByProject")
   },
   dynamicSecretDAL: {

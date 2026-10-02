@@ -33,6 +33,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { createOrgSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { containsSecretReference } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -62,6 +63,7 @@ import {
   TOrgAccessVolume,
   TOrgAuthMethodDistribution,
   TOrgInsightsDTO,
+  TSearchOrgSecretsByValueDTO,
   TSecretsProjectWarnings,
   TSecretsUsageInsights,
   TStaticSecretsUsage
@@ -84,6 +86,7 @@ export type TInsightsServiceFactoryDep = {
     | "countStaleByProject"
     | "findDuplicatedSecretValues"
     | "findDuplicatedSecretValuesInOrg"
+    | "findSecretsWithMatchingValue"
     | "countByProject"
   >;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "countByProject">;
@@ -141,6 +144,10 @@ const checkInsightsPermission = async (
 };
 
 export const PROJECT_WARNINGS_CHUNK_SIZE = 1000;
+
+// One value genuinely can sit in thousands of places in a large org, and the caller is chasing a
+// leak rather than paginating, so the answer is bounded and the client says when it was cut off.
+const SECRET_VALUE_SEARCH_LIMIT = 1000;
 
 export const insightsServiceFactory = ({
   permissionService,
@@ -585,6 +592,58 @@ export const insightsServiceFactory = ({
     return { result, remainingTTL };
   };
 
+  // Answers "is this value in use anywhere", the question someone asks when they learn a value is
+  // compromised. The caller supplies the value, so nothing here reveals a value that was not already
+  // known; what it reveals is the locations, in every project of the org. That is exactly what Search
+  // All Secret Values grants, so it is the only way in: a narrower per-project filter would have to
+  // honour every environment, path, name and tag condition a role can carry, and still leak through
+  // timing whatever it filtered out after the query.
+  const searchOrgSecretsByValue = async ({ secretValue, ...dto }: TSearchOrgSecretsByValueDTO) => {
+    await assertOrgInsightsRead(dto, OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues);
+
+    const org = await orgDAL.findById(dto.orgId);
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${dto.orgId}' not found` });
+
+    // A partial index answering "this value is used nowhere" is the wrong answer to give someone
+    // chasing a leaked credential.
+    if (!org.orgWideSecretValueTrackingEnabled) {
+      throw new BadRequestError({
+        message:
+          "Enable org-wide secret value tracking for this organization before searching for a secret by its value"
+      });
+    }
+
+    // Every project in an org shares the org data key, so one digest answers for all of them.
+    const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({ orgId: dto.orgId, kmsService });
+    const secretValueDigest = await generateOrgLevelBlindIndex(Buffer.from(secretValue));
+
+    const matches = await secretV2BridgeDAL.findSecretsWithMatchingValue({
+      orgId: dto.orgId,
+      secretValueDigest,
+      limit: SECRET_VALUE_SEARCH_LIMIT
+    });
+    if (!matches.length) return [];
+
+    const pathByFolderId = new Map<string, string>();
+    await Promise.all(
+      [...new Set(matches.map((match) => match.projectId))].map(async (projectId) => {
+        const folderIds = [...new Set(matches.filter((m) => m.projectId === projectId).map((m) => m.folderId))];
+        const folders = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
+        folders.forEach((folder) => {
+          if (folder) pathByFolderId.set(folder.id, folder.path);
+        });
+      })
+    );
+
+    return matches.map((match) => ({
+      key: match.key,
+      projectId: match.projectId,
+      projectName: match.projectName,
+      environment: { name: match.environmentName, slug: match.environment },
+      secretPath: pathByFolderId.get(match.folderId) ?? "/"
+    }));
+  };
+
   const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
@@ -880,6 +939,7 @@ export const insightsServiceFactory = ({
     getSummary,
     getSecretsDuplication,
     getOrgSecretsDuplication,
+    searchOrgSecretsByValue,
     getCounts,
     getSecretsUsageInsights,
     getSecretsProjects,

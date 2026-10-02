@@ -68,10 +68,7 @@ import {
   TSecretSyncRaw,
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
-import {
-  SecretValueSearchScope,
-  TDuplicateSecretAttributes
-} from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { TDuplicateSecretAttributes } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 import { TSignerExternalConfigurationInput } from "@app/services/signer/signer-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
@@ -1283,9 +1280,6 @@ interface MoveSecretsEvent {
 interface SearchSecretsByValueEvent {
   type: EventType.SEARCH_SECRETS_BY_VALUE;
   metadata: {
-    scope: SecretValueSearchScope;
-    projectId?: string;
-    projectName?: string;
     matchCount: number;
   };
 }
