@@ -267,8 +267,8 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     return permission;
   };
 
-  const $findPolicyById = async (policyId: string, message: string) => {
-    const [policy] = await secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies({ policyId });
+  const $findPolicyById = async (policyId: string, organizationId: string, message: string) => {
+    const [policy] = await secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies({ policyId, organizationId });
     if (!policy) throw new NotFoundError({ message });
     return policy;
   };
@@ -407,7 +407,11 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     maxTimePeriod,
     requestExpirationTime
   }: TUpdateSecretAccessApprovalPolicyDTO) => {
-    const policy = await $findPolicyById(policyId, `Access approval policy with ID '${policyId}' not found`);
+    const policy = await $findPolicyById(
+      policyId,
+      actorOrgId,
+      `Access approval policy with ID '${policyId}' not found`
+    );
 
     const permission = await $getProjectPermission({
       actor,
@@ -493,7 +497,11 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TDeleteSecretAccessApprovalPolicyDTO) => {
-    const policy = await $findPolicyById(policyId, `Secret approval policy with ID '${policyId}' not found`);
+    const policy = await $findPolicyById(
+      policyId,
+      actorOrgId,
+      `Secret approval policy with ID '${policyId}' not found`
+    );
 
     const permission = await $getProjectPermission({
       actor,
@@ -544,7 +552,11 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TGetSecretAccessApprovalPolicyByIdDTO) => {
-    const policy = await $findPolicyById(policyId, `Cannot find access approval policy with ID ${policyId}`);
+    const policy = await $findPolicyById(
+      policyId,
+      actorOrgId,
+      `Cannot find access approval policy with ID ${policyId}`
+    );
 
     const permission = await $getProjectPermission({
       actor,

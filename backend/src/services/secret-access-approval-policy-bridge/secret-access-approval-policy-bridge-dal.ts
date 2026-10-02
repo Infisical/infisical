@@ -21,7 +21,12 @@ export type TSecretAccessApprovalPolicyBridgeDALFactory = ReturnType<typeof secr
 
 export const secretAccessApprovalPolicyBridgeDALFactory = (db: TDbClient) => {
   const findSecretAccessPolicies = async (
-    { policyId, projectId, envId }: { policyId?: string; projectId?: string; envId?: string },
+    {
+      policyId,
+      projectId,
+      envId,
+      organizationId
+    }: { policyId?: string; projectId?: string; envId?: string; organizationId?: string },
     tx?: Knex
   ) => {
     try {
@@ -30,6 +35,7 @@ export const secretAccessApprovalPolicyBridgeDALFactory = (db: TDbClient) => {
         .where((qb) => {
           if (policyId) void qb.where(`${TableName.ApprovalPolicies}.id`, policyId);
           if (projectId) void qb.where(`${TableName.ApprovalPolicies}.projectId`, projectId);
+          if (organizationId) void qb.where(`${TableName.ApprovalPolicies}.organizationId`, organizationId);
         })
         .join(
           TableName.ApprovalPolicySecretEnvironment,
