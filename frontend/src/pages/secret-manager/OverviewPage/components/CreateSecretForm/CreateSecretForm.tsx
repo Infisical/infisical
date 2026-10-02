@@ -1,4 +1,4 @@
-import { ClipboardEvent, KeyboardEvent, useMemo, useRef, useState } from "react";
+import { ClipboardEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -123,6 +123,7 @@ type Props = {
     value: string;
     canEditButNotView: boolean;
     isReadOnly: boolean;
+    onDirtyChange: (isDirty: boolean) => void;
     onSubmit: (value: string) => Promise<void>;
   };
   onBatchSecretCreate?: (params: {
@@ -222,10 +223,17 @@ export const CreateSecretForm = ({
   const secretKeyInputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const generateButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedEnvironments = watch("environments");
+  const [hasEditedHiddenValue, setHasEditedHiddenValue] = useState(false);
+  const hasValueChanges = Boolean(dirtyFields.secrets?.[0]?.value || hasEditedHiddenValue);
+  const onEditDirtyChange = editSecret?.onDirtyChange;
+
+  useEffect(() => {
+    onEditDirtyChange?.(hasValueChanges);
+  }, [hasValueChanges, onEditDirtyChange]);
 
   const handleFormSubmit = async ({ environments: selectedEnv, secrets }: TFormSchema) => {
     if (editSecret) {
-      if (editSecret.isReadOnly || !dirtyFields.secrets?.[0]?.value) return;
+      if (editSecret.isReadOnly || !hasValueChanges) return;
       await editSecret.onSubmit(secrets[0].value ?? "");
       return;
     }
@@ -582,7 +590,10 @@ export const CreateSecretForm = ({
                       <InfisicalSecretInput
                         id={`create-secret-${index}-value`}
                         value={field.value ?? ""}
-                        onChange={field.onChange}
+                        onChange={(value) => {
+                          if (editSecret?.canEditButNotView) setHasEditedHiddenValue(true);
+                          field.onChange(value);
+                        }}
                         isReadOnly={editSecret?.isReadOnly}
                         canEditButNotView={editSecret?.canEditButNotView}
                         secretPath={editSecret ? secretPath : undefined}
@@ -595,6 +606,27 @@ export const CreateSecretForm = ({
                         }}
                         placeholder="Enter secret value..."
                       />
+                      {editSecret?.canEditButNotView && (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            isDisabled={editSecret.isReadOnly}
+                            onClick={() => {
+                              setHasEditedHiddenValue(true);
+                              field.onChange("");
+                            }}
+                          >
+                            Clear Value
+                          </Button>
+                          {hasEditedHiddenValue && !field.value && (
+                            <FieldDescription>
+                              The existing value will be cleared when you save.
+                            </FieldDescription>
+                          )}
+                        </>
+                      )}
                       <FieldError errors={[errors.secrets?.[index]?.value]} />
                     </FieldContent>
                     <div className="col-start-2 row-start-1 flex items-center">
@@ -937,8 +969,7 @@ export const CreateSecretForm = ({
           <Button
             isPending={isSubmitting}
             isDisabled={
-              isSubmitting ||
-              Boolean(editSecret && (editSecret.isReadOnly || !dirtyFields.secrets?.[0]?.value))
+              isSubmitting || Boolean(editSecret && (editSecret.isReadOnly || !hasValueChanges))
             }
             variant="project"
             type="submit"

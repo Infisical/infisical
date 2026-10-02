@@ -53,6 +53,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DiscardChangesAlertDialog,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -91,7 +92,7 @@ import {
   useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { usePopUp, useTimedReset, useToggle } from "@app/hooks";
+import { useDiscardChangesGuard, usePopUp, useTimedReset, useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
@@ -359,6 +360,7 @@ export const SecretEditTableRow = ({
     null
   );
   const [isLoadingEditValue, setIsLoadingEditValue] = useState(false);
+  const [isValueEditDirty, setIsValueEditDirty] = useState(false);
   const valueEditScope = JSON.stringify([
     currentProject.id,
     environment,
@@ -366,6 +368,15 @@ export const SecretEditTableRow = ({
     secretId,
     secretName
   ]);
+  const closeValueSheet = () => {
+    setIsValueEditDirty(false);
+    setValueEditDraft(null);
+  };
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty: valueEditDraft?.scope === valueEditScope && isValueEditDirty,
+      onDiscard: closeValueSheet
+    });
 
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
@@ -800,7 +811,7 @@ export const SecretEditTableRow = ({
         newKey: isKeyDirty ? key : undefined,
         valueOnly
       });
-      return;
+      return false;
     }
 
     // Handle rename and/or value changes in a single mutation
@@ -829,7 +840,7 @@ export const SecretEditTableRow = ({
     }
     if (valueOnly) {
       resetField("value", { defaultValue: secretValueHidden ? defaultValue || null : value });
-      return;
+      return true;
     }
     if (secretValueHidden) {
       setTimeout(() => {
@@ -844,6 +855,7 @@ export const SecretEditTableRow = ({
         ...(isSingleEnvView ? { key: key || secretName } : {})
       });
     }
+    return true;
   };
 
   const submitForm = handleSubmit(handleFormSubmit);
@@ -879,6 +891,7 @@ export const SecretEditTableRow = ({
         resetField("value", {
           defaultValue: secretValueHidden ? defaultValue || null : secretValue
         });
+        closeValueSheet();
       } else {
         reset({
           value: secretValue,
@@ -1003,9 +1016,10 @@ export const SecretEditTableRow = ({
       lastAppliedRef.current.value = value;
       resetField("value", { defaultValue: value });
     } else {
-      await handleFormSubmit({ value, valueOnly: true });
+      const completed = await handleFormSubmit({ value, valueOnly: true });
+      if (!completed) return;
     }
-    setValueEditDraft(null);
+    closeValueSheet();
   };
 
   const shouldStayExpanded =
@@ -1979,7 +1993,7 @@ export const SecretEditTableRow = ({
       <Sheet
         open={valueEditDraft?.scope === valueEditScope}
         onOpenChange={(open) => {
-          if (!open) setValueEditDraft(null);
+          if (!open) requestDiscard();
         }}
       >
         <SheetContent side="right" className="gap-y-0">
@@ -1993,19 +2007,27 @@ export const SecretEditTableRow = ({
             <CreateSecretForm
               secretPath={secretPath}
               defaultSelectedEnvs={[{ name: environmentName, slug: environment }]}
-              onClose={() => setValueEditDraft(null)}
+              onClose={requestDiscard}
               isBatchMode={isBatchMode}
               editSecret={{
                 key: pendingKeyName || secretName,
                 value: valueEditDraft.value,
                 canEditButNotView: secretValueHidden,
                 isReadOnly: isValueSheetReadOnly,
+                onDirtyChange: setIsValueEditDirty,
                 onSubmit: handleValueSheetSubmit
               }}
             />
           )}
         </SheetContent>
       </Sheet>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your unsaved changes to this secret value will be lost."
+      />
       <Sheet open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
         <SheetContent onOpenAutoFocus={(e) => e.preventDefault()} className="gap-y-0" side="right">
           <SheetHeader>
@@ -2125,7 +2147,6 @@ export const SecretEditTableRow = ({
                 {nameInput}
                 {commentPreview &&
                   !isImportedSecret &&
-                  !isOverride &&
                   !revokedProjectFolderGrant &&
                   canDescribeSecret && (
                     <Tooltip open={isCommentOpen ? false : undefined}>
