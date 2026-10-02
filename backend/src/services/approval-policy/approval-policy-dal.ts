@@ -252,9 +252,11 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
    */
   const findPoliciesWhereSubjectIsApprover = async (args: {
     projectId: string;
+    type?: ApprovalPolicyType;
     scopeType?: string;
     scopeId?: string;
     userId?: string;
+    userIds?: string[];
     groupId?: string;
   }) => {
     try {
@@ -273,6 +275,10 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
           `${TableName.ApprovalPolicySteps}.id`
         );
 
+      if (args.type) {
+        void baseQuery.where(`${TableName.ApprovalPolicies}.type`, args.type);
+      }
+
       if (typeof args.scopeType === "string") {
         void baseQuery.where(`${TableName.ApprovalPolicies}.scopeType`, args.scopeType);
         if (typeof args.scopeId === "string") {
@@ -282,6 +288,8 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
 
       if (args.userId) {
         void baseQuery.where(`${TableName.ApprovalPolicyStepApprovers}.userId`, args.userId);
+      } else if (args.userIds?.length) {
+        void baseQuery.whereIn(`${TableName.ApprovalPolicyStepApprovers}.userId`, args.userIds);
       } else if (args.groupId) {
         void baseQuery.where(`${TableName.ApprovalPolicyStepApprovers}.groupId`, args.groupId);
       } else {

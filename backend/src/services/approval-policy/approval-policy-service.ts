@@ -934,6 +934,12 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Policy not found" });
     }
 
+    if (policy.type === ApprovalPolicyType.SecretAccess) {
+      throw new BadRequestError({
+        message: "This is a secret access policy. Delete it from the access approval policies instead."
+      });
+    }
+
     await $assertCanManagePolicy(
       policy.projectId,
       policy.scopeType ?? null,
