@@ -6,6 +6,7 @@ import { verifyRequestedPermissions } from "@app/ee/services/access-approval-req
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { flattenActiveRolesFromMemberships } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { isGlobSubsetOfGlob } from "@app/lib/casl/glob-subset";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -448,6 +449,20 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
     }
 
     const data = getSecretAccessRequestData(request);
+    if (status === ApprovalStatus.APPROVED) {
+      const { envSlug, secretPath } = verifyRequestedPermissions({ permissions: data.permissions });
+      if (!policy.environments.some((environment) => environment.slug === envSlug)) {
+        throw new BadRequestError({
+          message: `The policy is no longer attached to environment '${envSlug}'.`
+        });
+      }
+      // picomatch treats the requested glob as a literal path, so "/apps/**" would look covered by "/apps/*".
+      if (!isGlobSubsetOfGlob(policy.secretPath, secretPath)) {
+        throw new BadRequestError({
+          message: `The policy no longer covers secret path '${secretPath}'.`
+        });
+      }
+    }
 
     const isSelfReview = actorId === request.requesterId;
     const isApproving = status === ApprovalStatus.APPROVED;

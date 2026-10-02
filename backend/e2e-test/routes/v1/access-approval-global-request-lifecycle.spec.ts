@@ -392,6 +392,80 @@ describe("Access approval request lifecycle on the global system", () => {
     expect(rejectRes.statusCode).toBe(400);
     expect(rejectRes.json().message).toBe("The request has been closed");
   });
+
+  const openPendingRequest = async (secretPath: string) => {
+    const policy = await createGlobalPolicy({ name: `scope-${secretPath.replace(/[/*]/g, "")}`, secretPath });
+    const createRes = await createAccessRequest(secretPath);
+    expect(createRes.statusCode).toBe(200);
+    return { policy, requestId: createRes.json().approval.id as string };
+  };
+
+  test("Approval is refused when the policy path no longer contains the requested glob", async () => {
+    const secretPath = "/scope-mismatch/*";
+    const { policy, requestId } = await openPendingRequest(secretPath);
+
+    await getDb()(TableName.ApprovalPolicySecretEnvironment)
+      .where({ policyId: policy.id })
+      .update({ secretPath: "/other" });
+
+    const approveRes = await reviewAccessRequest(requestId, { status: "approved" });
+    expect(approveRes.statusCode).toBe(400);
+    expect(approveRes.json().message).toBe(`The policy no longer covers secret path '${secretPath}'.`);
+
+    const request = await getDb()(TableName.ApprovalRequests).where({ id: requestId }).first();
+    expect(request?.status).toBe("pending");
+  });
+
+  test("Approval stands when a broader policy path still contains the requested glob", async () => {
+    const secretPath = "/scope-broader/*";
+    const { policy, requestId } = await openPendingRequest(secretPath);
+
+    await getDb()(TableName.ApprovalPolicySecretEnvironment)
+      .where({ policyId: policy.id })
+      .update({ secretPath: "/scope-broader/**" });
+
+    const approveRes = await reviewAccessRequest(requestId, { status: "approved" });
+    expect(approveRes.statusCode).toBe(200);
+
+    const request = await getDb()(TableName.ApprovalRequests).where({ id: requestId }).first();
+    expect(request?.status).toBe("approved");
+  });
+
+  test("Approval is refused when the policy no longer includes the requested environment", async () => {
+    const { policy, requestId } = await openPendingRequest("/scope-env");
+    const otherEnv = await getDb()(TableName.Environment)
+      .where({ projectId: seedData1.project.id })
+      .whereNot({ slug: seedData1.environment.slug })
+      .first();
+    expect(otherEnv).toBeDefined();
+
+    await getDb()(TableName.ApprovalPolicySecretEnvironment)
+      .where({ policyId: policy.id })
+      .update({ envId: otherEnv!.id });
+
+    const approveRes = await reviewAccessRequest(requestId, { status: "approved" });
+    expect(approveRes.statusCode).toBe(400);
+    expect(approveRes.json().message).toBe(
+      `The policy is no longer attached to environment '${seedData1.environment.slug}'.`
+    );
+  });
+
+  test("A request whose policy path no longer matches can still be rejected", async () => {
+    const { policy, requestId } = await openPendingRequest("/scope-reject/*");
+
+    await getDb()(TableName.ApprovalPolicySecretEnvironment)
+      .where({ policyId: policy.id })
+      .update({ secretPath: "/other" });
+
+    const rejectRes = await reviewAccessRequest(requestId, { status: "rejected" });
+    expect(rejectRes.statusCode).toBe(200);
+    expect(rejectRes.json().review.status).toBe("rejected");
+
+    const request = await getDb()(TableName.ApprovalRequests).where({ id: requestId }).first();
+    expect(request?.status).toBe("rejected");
+    const grants = await getDb()(TableName.ApprovalRequestGrants).where({ requestId });
+    expect(grants).toHaveLength(0);
+  });
 });
 
 type TApprover = { userId: string; token: string };
