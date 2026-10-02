@@ -593,6 +593,9 @@ import {
   TSecretBlindIndexes,
   TSecretBlindIndexesInsert,
   TSecretBlindIndexesUpdate,
+  TSecretChangeRequests,
+  TSecretChangeRequestsInsert,
+  TSecretChangeRequestsUpdate,
   TSecretFolders,
   TSecretFoldersInsert,
   TSecretFoldersUpdate,
@@ -1974,6 +1977,11 @@ declare module "knex/types/tables" {
       TApprovalRequests,
       TApprovalRequestsInsert,
       TApprovalRequestsUpdate
+    >;
+    [TableName.SecretChangeRequests]: KnexOriginal.CompositeTableType<
+      TSecretChangeRequests,
+      TSecretChangeRequestsInsert,
+      TSecretChangeRequestsUpdate
     >;
     [TableName.PkiCertificatePolicy]: KnexOriginal.CompositeTableType<
       TPkiCertificatePolicies,
