@@ -191,7 +191,7 @@ export const GatewayPicker = ({
                 Individual Gateways
               </div>
               {isPoolRequired && (
-                <div className="mt-1 text-[11px]">
+                <div className="mt-1 text-2xs">
                   Your organization requires a gateway pool, so individual gateways can&apos;t be
                   selected.
                 </div>
