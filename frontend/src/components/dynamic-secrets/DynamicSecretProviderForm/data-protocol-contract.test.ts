@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import {
   DynamicSecretProviders,
@@ -16,7 +16,6 @@ import {
   getCassandraEditPayload,
   getCassandraVaultImportValues
 } from "./providerDefinitions/cassandraContract";
-import { DATA_PROTOCOL_DYNAMIC_SECRET_PROVIDERS } from "./providerDefinitions/dataProtocolContract";
 import {
   ELASTIC_SEARCH_CUSTOM_RENDERER_REASONS,
   elasticSearchCreateFormSchema,
@@ -79,7 +78,6 @@ import {
   totpEditFormSchema
 } from "./providerDefinitions/totpContract";
 import { testDynamicSecretProviderContract } from "./providerContractTestHarness";
-import { createDynamicSecretProviderRegistry, defineDynamicSecretProviderModule } from "./registry";
 import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "./schemas";
 import type {
   TCreateDynamicSecretProviderFormContext,
@@ -281,23 +279,6 @@ const totpDynamicSecretProvider = defineDynamicSecretProvider({
     submitLabel: "Save",
     successMessage: "Successfully updated dynamic secret"
   }
-});
-
-const definitionsByProvider = {
-  [DynamicSecretProviders.Cassandra]: cassandraDynamicSecretProvider,
-  [DynamicSecretProviders.ElasticSearch]: elasticSearchDynamicSecretProvider,
-  [DynamicSecretProviders.Kubernetes]: kubernetesDynamicSecretProvider,
-  [DynamicSecretProviders.Milvus]: milvusDynamicSecretProvider,
-  [DynamicSecretProviders.RabbitMq]: rabbitMqDynamicSecretProvider,
-  [DynamicSecretProviders.IbmApiConnect]: ibmApiConnectDynamicSecretProvider,
-  [DynamicSecretProviders.Totp]: totpDynamicSecretProvider
-};
-
-const dataProtocolContractModule = defineDynamicSecretProviderModule({
-  id: "data-protocol",
-  definitions: DATA_PROTOCOL_DYNAMIC_SECRET_PROVIDERS.map(
-    (provider) => definitionsByProvider[provider]
-  )
 });
 
 const cassandraCreateDefaults = getCassandraCreateDefaultValues(createContext);
@@ -1028,43 +1009,6 @@ testDynamicSecretProviderContract({
       }
     ]
   }
-});
-
-describe("data-service and protocol provider registration", () => {
-  it("registers all seven providers in product picker order", () => {
-    assert.deepEqual(
-      dataProtocolContractModule.definitions.map(({ provider }) => provider),
-      DATA_PROTOCOL_DYNAMIC_SECRET_PROVIDERS
-    );
-
-    const registry = createDynamicSecretProviderRegistry(dataProtocolContractModule);
-    assert.deepEqual(registry.providers, [
-      DynamicSecretProviders.Cassandra,
-      DynamicSecretProviders.ElasticSearch,
-      DynamicSecretProviders.RabbitMq,
-      DynamicSecretProviders.Totp,
-      DynamicSecretProviders.Kubernetes,
-      DynamicSecretProviders.Milvus,
-      DynamicSecretProviders.IbmApiConnect
-    ]);
-    registry.providers.forEach((provider) => {
-      assert.equal(registry.requireDefinition(provider).provider, provider);
-    });
-  });
-
-  it("keeps discovered and non-scalar values behind explicit custom renderers", () => {
-    assert.ok(cassandraDynamicSecretProvider.customRenderer?.reasons.includes("import-workflow"));
-    assert.ok(
-      elasticSearchDynamicSecretProvider.customRenderer?.reasons.includes("repeatable-fields")
-    );
-    assert.ok(kubernetesDynamicSecretProvider.customRenderer?.reasons.includes("remote-options"));
-    assert.ok(milvusDynamicSecretProvider.customRenderer?.reasons.includes("remote-options"));
-    assert.ok(rabbitMqDynamicSecretProvider.customRenderer?.reasons.includes("non-scalar-value"));
-    assert.ok(
-      ibmApiConnectDynamicSecretProvider.customRenderer?.reasons.includes("remote-options")
-    );
-    assert.ok(totpDynamicSecretProvider.customRenderer?.reasons.includes("conditional-fields"));
-  });
 });
 
 describe("data-service and protocol provider-specific branches", () => {

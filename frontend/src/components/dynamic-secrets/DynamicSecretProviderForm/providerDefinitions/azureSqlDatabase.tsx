@@ -13,7 +13,7 @@ import {
   FieldTitle,
   IconButton,
   Input,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { GatewayPicker, SecretInput } from "@app/components/v3/platform";
 import {
@@ -196,9 +196,26 @@ const AzureSqlFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
   const gatewayId = watch("inputs.gatewayId");
   const gatewayPoolId = watch("inputs.gatewayPoolId");
   const scalarFields = [
-    { name: "inputs.host", type: "text", label: "Host" },
-    { name: "inputs.username", type: "text", label: "User", layout: "half" },
-    { name: "inputs.database", type: "text", label: "Database", layout: "half" }
+    {
+      name: "inputs.host",
+      type: "text",
+      label: "Host",
+      placeholder: "server.database.windows.net"
+    },
+    {
+      name: "inputs.username",
+      type: "text",
+      label: "User",
+      placeholder: "database-admin",
+      layout: "half"
+    },
+    {
+      name: "inputs.database",
+      type: "text",
+      label: "Database",
+      placeholder: "app-db",
+      layout: "half"
+    }
   ] satisfies readonly TDynamicSecretProviderField<TAzureSqlEditValues>[];
   const statementFields = [
     {
@@ -316,6 +333,8 @@ const AzureSqlFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
                 {...field}
                 value={field.value ?? ""}
                 id="azure-sql-password"
+                placeholder="Enter database password"
+                isError={Boolean(error)}
                 aria-describedby={error ? "azure-sql-password-error" : undefined}
               />
               <FieldError id="azure-sql-password-error">{error?.message}</FieldError>
@@ -333,7 +352,7 @@ const AzureSqlFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
                   Configure a custom CA certificate for this connection.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 ref={field.ref}
                 checked={field.value ?? false}
                 onBlur={field.onBlur}
@@ -346,7 +365,15 @@ const AzureSqlFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
         {sslEnabled && (
           <>
             <DynamicSecretProviderFields
-              fields={[{ name: "inputs.ca", type: "secret", label: "CA (SSL)", isOptional: true }]}
+              fields={[
+                {
+                  name: "inputs.ca",
+                  type: "secret",
+                  label: "CA (SSL)",
+                  placeholder: "-----BEGIN CERTIFICATE----- ...",
+                  isOptional: true
+                }
+              ]}
             />
             <Controller
               control={control}
@@ -359,7 +386,7 @@ const AzureSqlFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
                       Verify the server certificate against the supplied certificate authorities.
                     </FieldDescription>
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     ref={field.ref}
                     checked={field.value ?? true}
                     onBlur={field.onBlur}

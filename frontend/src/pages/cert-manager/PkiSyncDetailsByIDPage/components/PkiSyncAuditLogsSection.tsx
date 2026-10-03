@@ -1,7 +1,18 @@
 import { Link } from "@tanstack/react-router";
 import { FingerprintIcon } from "lucide-react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle
+} from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
@@ -25,8 +36,8 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
   const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
 
   return (
-    <Card className="max-h-full">
-      <CardHeader className="border-b">
+    <Card className="max-h-full min-w-0">
+      <CardHeader>
         <CardTitle>Sync Logs</CardTitle>
         {subscription.auditLogs && (
           <CardDescription>
@@ -49,35 +60,35 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
             }}
           />
         ) : (
-          <div className="flex h-full items-center justify-center rounded-lg bg-mineshaft-800 text-sm text-mineshaft-200">
-            <div className="flex flex-col items-center gap-4 py-20">
-              <FingerprintIcon className="size-8" />
-              <p>
-                Please{" "}
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FingerprintIcon />
+              </EmptyMedia>
+              <EmptyTitle>Audit logs require an upgrade</EmptyTitle>
+              <EmptyDescription>
                 {subscription && subscription.slug !== null ? (
                   <Link
                     to="/organizations/$orgId/billing"
                     params={{ orgId: currentOrg.id }}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="cursor-pointer underline transition-all hover:text-white"
                   >
-                    upgrade your subscription
+                    Upgrade your subscription
                   </Link>
                 ) : (
                   <a
                     href="https://infisical.com/scheduledemo"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="cursor-pointer underline transition-all hover:text-white"
                   >
-                    upgrade your subscription
+                    Upgrade your subscription
                   </a>
                 )}{" "}
                 to view sync logs.
-              </p>
-            </div>
-          </div>
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
       </CardContent>
     </Card>

@@ -1,16 +1,18 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { faBell } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter } from "@tanstack/react-router";
 import { Bell, BellIcon } from "lucide-react";
 
 import {
-  ContentLoader,
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuTrigger
-} from "@app/components/v2";
-import { IconButton } from "@app/components/v3";
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  Loader
+} from "@app/components/v3";
 import {
   useDeleteNotification,
   useMarkAllNotificationsAsRead,
@@ -21,8 +23,11 @@ import { isCriticalNotification, TUserNotification } from "@app/hooks/api/notifi
 
 import { Notification } from "./Notification";
 
+const NOTIFICATIONS_PER_PAGE = 20;
+
 export const NotificationDropdown = () => {
   const router = useRouter();
+  const [visibleNotificationCount, setVisibleNotificationCount] = useState(NOTIFICATIONS_PER_PAGE);
 
   const { data: notifications, isLoading } = useGetMyNotifications();
   const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead();
@@ -57,9 +62,16 @@ export const NotificationDropdown = () => {
   );
 
   const hasCritical = criticalCount > 0;
+  const visibleNotifications = notifications?.slice(0, visibleNotificationCount);
+  const hasMoreNotifications = notifications && visibleNotificationCount < notifications.length;
 
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu
+      modal={false}
+      onOpenChange={(isOpen) => {
+        if (isOpen) setVisibleNotificationCount(NOTIFICATIONS_PER_PAGE);
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <IconButton variant="outline" size="sm" aria-label="Notifications" className="relative">
           {unreadCount > 0 ? <BellIcon className="text-warning" /> : <Bell />}
@@ -74,21 +86,21 @@ export const NotificationDropdown = () => {
       <DropdownMenuContent
         align="end"
         side="bottom"
-        className="z-999 mt-3 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
+        className="flex h-[550px] w-[400px] overflow-hidden p-0"
       >
         <div className="flex w-full flex-col">
-          <div className="flex items-center justify-between border-b border-mineshaft-500 px-3 py-2">
+          <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-white">Notifications</span>
+              <span className="font-medium text-foreground">Notifications</span>
               {hasCritical && (
-                <span className="rounded-full bg-red-700 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                  {criticalCount > 99 ? "99+" : criticalCount} critical
-                </span>
+                <Badge variant="danger">
+                  {criticalCount > 99 ? "99+" : criticalCount} Critical
+                </Badge>
               )}
             </div>
             <button
               type="button"
-              className="text-xs font-medium text-mineshaft-300 hover:text-primary-400 disabled:pointer-events-none disabled:opacity-50"
+              className="text-xs font-medium text-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
               onClick={(e) => {
                 e.preventDefault();
                 markAllAsRead();
@@ -101,21 +113,21 @@ export const NotificationDropdown = () => {
           <div className="flex h-full w-full overflow-auto">
             {isLoading && (
               <div className="flex h-full w-full items-center justify-center">
-                <ContentLoader className="pointer-events-none" lottieClassName="size-10" />
+                <Loader className="pointer-events-none" size="sm" />
               </div>
             )}
             {!isLoading && notifications?.length === 0 && (
               <div className="flex h-full w-full flex-col items-center justify-center">
-                <FontAwesomeIcon icon={faBell} size="3x" className="text-mineshaft-400" />
-                <span className="mt-4 text-sm text-mineshaft-300">No new notifications</span>
-                <span className="text-xs text-mineshaft-400">
+                <FontAwesomeIcon icon={faBell} size="3x" className="text-muted" />
+                <span className="mt-4 text-sm text-accent">No new notifications</span>
+                <span className="text-xs text-muted">
                   We&apos;ll let you know when something important happens.
                 </span>
               </div>
             )}
             {!isLoading && notifications && notifications.length > 0 && (
               <div className="flex w-full flex-col">
-                {notifications.map((notification) => (
+                {visibleNotifications?.map((notification) => (
                   <div
                     role="button"
                     tabIndex={0}
@@ -129,6 +141,16 @@ export const NotificationDropdown = () => {
                     <Notification notification={notification} onDelete={deleteNotification} />
                   </div>
                 ))}
+                {hasMoreNotifications && (
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setVisibleNotificationCount((count) => count + NOTIFICATIONS_PER_PAGE);
+                    }}
+                  >
+                    Show More
+                  </DropdownMenuItem>
+                )}
               </div>
             )}
           </div>

@@ -15,17 +15,36 @@ import {
 } from "./sapHanaContract";
 
 const sapHanaConnectionFields = [
-  { name: "inputs.host", type: "text", label: "Host", layout: "half" },
+  {
+    name: "inputs.host",
+    type: "text",
+    label: "Host",
+    placeholder: "hana.example.com",
+    layout: "half"
+  },
   { name: "inputs.port", type: "number", label: "Port", layout: "half" },
-  { name: "inputs.username", type: "text", label: "User", layout: "half" },
+  {
+    name: "inputs.username",
+    type: "text",
+    label: "User",
+    placeholder: "SYSTEM",
+    layout: "half"
+  },
   {
     name: "inputs.password",
     type: "secret",
     label: "Password",
+    placeholder: "Enter database password",
     autoComplete: "new-password",
     layout: "half"
   },
-  { name: "inputs.ca", type: "secret", label: "CA (SSL)", isOptional: true }
+  {
+    name: "inputs.ca",
+    type: "secret",
+    label: "CA (SSL)",
+    placeholder: "-----BEGIN CERTIFICATE----- ...",
+    isOptional: true
+  }
 ] as const;
 
 const sapHanaAdvancedFields = buildStatementFields();

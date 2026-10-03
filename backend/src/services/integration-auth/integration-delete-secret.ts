@@ -4,7 +4,6 @@ import { retry } from "@octokit/plugin-retry";
 import { Octokit } from "@octokit/rest";
 
 import { TIntegrationAuths, TIntegrations } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -46,8 +45,7 @@ const getIntegrationSecretsV2 = async (
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">,
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">,
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">
 ) => {
   const content: Record<string, boolean> = {};
   if (dto.depth > MAX_SYNC_SECRET_DEPTH) {
@@ -82,7 +80,6 @@ const getIntegrationSecretsV2 = async (
     projectFolderGrantDAL,
     actorOrgId: dto.actorOrgId,
     orgDAL,
-    licenseService,
     kmsService
   });
 
@@ -301,7 +298,6 @@ export const deleteIntegrationSecrets = async ({
   kmsService,
   projectFolderGrantDAL,
   orgDAL,
-  licenseService,
   actorOrgId
 }: {
   integration: Omit<TIntegrations, "envId"> & {
@@ -323,7 +319,6 @@ export const deleteIntegrationSecrets = async ({
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   actorOrgId: string;
 }) => {
   const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integration.projectId);
@@ -366,8 +361,7 @@ export const deleteIntegrationSecrets = async ({
         secretImportDAL,
         kmsService,
         projectFolderGrantDAL,
-        orgDAL,
-        licenseService
+        orgDAL
       )
     : await getIntegrationSecretsV1(
         {

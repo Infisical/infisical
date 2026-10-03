@@ -64,10 +64,13 @@ export enum IntegrationUrls {
   GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token",
   BITBUCKET_TOKEN_URL = "https://bitbucket.org/site/oauth2/access_token",
   CAMUNDA_TOKEN_URL = "https://login.cloud.camunda.io/oauth/token",
+  STRIPE_TOKEN_URL = "https://api.stripe.com/v1/oauth/token",
+  STRIPE_APP_AUTHORIZE_URL = "https://marketplace.stripe.com/oauth/v2/authorize",
 
   // integration apps endpoints
   GCP_API_URL = "https://cloudresourcemanager.googleapis.com",
   HEROKU_API_URL = "https://api.heroku.com",
+  STRIPE_API_URL = "https://api.stripe.com",
   GITLAB_URL = "https://gitlab.com",
   GITLAB_API_URL = `${GITLAB_URL}/api`,
   GITHUB_API_URL = "https://api.github.com",
@@ -101,6 +104,7 @@ export enum IntegrationUrls {
   HUMANITEC_API_URL = "https://api.humanitec.io",
   CAMUNDA_API_URL = "https://api.cloud.camunda.io",
   DEVIN_API_URL = "https://api.devin.ai",
+  DAYTONA_API_URL = "https://app.daytona.io/api",
   DIGICERT_SERVICES_API_URL = "https://www.digicert.com/services/v2",
   DIGICERT_SERVICES_API_URL_EU = "https://certcentral.digicert.eu/services/v2",
 

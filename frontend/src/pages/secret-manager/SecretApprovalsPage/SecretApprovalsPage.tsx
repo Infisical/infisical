@@ -1,13 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
+import { PolicyType } from "@app/hooks/api/policies/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AccessApprovalRequest } from "./components/AccessApprovalRequest";
@@ -21,6 +21,7 @@ enum TabSection {
 }
 
 export const SecretApprovalsPage = () => {
+  const [openAddPolicy, setOpenAddPolicy] = useState<PolicyType | null>(null);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -75,6 +76,11 @@ export const SecretApprovalsPage = () => {
     });
   };
 
+  const configurePolicy = (policyType: PolicyType) => {
+    setOpenAddPolicy(policyType);
+    updateSelectedTab(TabSection.Policies);
+  };
+
   return (
     <div>
       <Helmet>
@@ -82,43 +88,47 @@ export const SecretApprovalsPage = () => {
         <meta property="og:title" content={String(t("approval.og-title"))} />
         <meta name="og:description" content={String(t("approval.og-description"))} />
       </Helmet>
-      <div className="mx-auto h-full w-full max-w-8xl text-white">
+      <div className="mx-auto flex h-full w-full max-w-8xl flex-col gap-8 bg-page text-foreground-inverse">
         <PageHeader
           scope={ProjectType.SecretManager}
           title="Approval Workflows"
           description="Create approval policies for any modifications to secrets in sensitive environments and folders."
         />
         <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
-          <TabList>
-            <Tab variant="project" value={TabSection.SecretApprovalRequests}>
+          <TabsList variant="project">
+            <TabsTrigger value={TabSection.SecretApprovalRequests}>
               Change Requests
               {Boolean(secretApprovalReqCount?.open) && (
-                <Badge variant="warning" className="ml-2">
-                  {secretApprovalReqCount?.open}
-                </Badge>
+                <Badge variant="project">{secretApprovalReqCount?.open}</Badge>
               )}
-            </Tab>
-            <Tab variant="project" value={TabSection.ResourceApprovalRequests}>
+            </TabsTrigger>
+            <TabsTrigger value={TabSection.ResourceApprovalRequests}>
               Access Requests
               {Boolean(accessApprovalRequestCount?.pendingCount) && (
-                <Badge variant="warning" className="ml-2">
-                  {accessApprovalRequestCount?.pendingCount}
-                </Badge>
+                <Badge variant="project">{accessApprovalRequestCount?.pendingCount}</Badge>
               )}
-            </Tab>
-            <Tab variant="project" value={TabSection.Policies}>
-              Policies
-            </Tab>
-          </TabList>
-          <TabPanel value={TabSection.SecretApprovalRequests}>
-            <SecretApprovalRequest />
-          </TabPanel>
-          <TabPanel value={TabSection.ResourceApprovalRequests}>
-            <AccessApprovalRequest projectId={projectId} projectSlug={projectSlug} />
-          </TabPanel>
-          <TabPanel value={TabSection.Policies}>
-            <ApprovalPolicyList projectId={projectId} />
-          </TabPanel>
+            </TabsTrigger>
+            <TabsTrigger value={TabSection.Policies}>Policies</TabsTrigger>
+          </TabsList>
+          <TabsContent value={TabSection.SecretApprovalRequests}>
+            <SecretApprovalRequest
+              onConfigurePolicies={() => configurePolicy(PolicyType.ChangePolicy)}
+            />
+          </TabsContent>
+          <TabsContent value={TabSection.ResourceApprovalRequests}>
+            <AccessApprovalRequest
+              projectId={projectId}
+              projectSlug={projectSlug}
+              onConfigurePolicies={() => configurePolicy(PolicyType.AccessPolicy)}
+            />
+          </TabsContent>
+          <TabsContent value={TabSection.Policies}>
+            <ApprovalPolicyList
+              projectId={projectId}
+              openAddPolicy={openAddPolicy}
+              onAddPolicyOpened={() => setOpenAddPolicy(null)}
+            />
+          </TabsContent>
         </Tabs>
       </div>
     </div>

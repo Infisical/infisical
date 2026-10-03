@@ -13,9 +13,12 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { containsSecretReference } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretValidationRuleDALFactory } from "@app/services/secret-validation-rule/secret-validation-rule-dal";
-import { evaluateStaticSecretConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-fns";
-import { parseSecretValidationRuleInputs } from "@app/services/secret-validation-rule/secret-validation-rule-schemas";
-import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-types";
+import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-enums";
+import { parseSecretValidationRuleConfig } from "@app/services/secret-validation-rule/secret-validation-rule-fns";
+import {
+  evaluateStaticSecretConstraints,
+  TStaticSecretsRuleConfig
+} from "@app/services/secret-validation-rule/static-secrets";
 
 import { buildFolderPathMap, DAY_IN_MS, daysSince } from "./audit-report-fns";
 import { AuditReportType, MAX_AUDIT_REPORT_ROWS, TGeneratedReport, TReportRow } from "./audit-report-types";
@@ -273,10 +276,10 @@ const secretValidationComplianceReport: TReportDefinition = {
       name: rule.name,
       envId: rule.envId ?? null,
       secretPath: rule.secretPath,
-      constraints: parseSecretValidationRuleInputs(
+      config: parseSecretValidationRuleConfig(
         rule.type,
         JSON.parse(decryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
-      ).constraints
+      ) as TStaticSecretsRuleConfig
     }));
 
     const secrets = await dal.secretV2BridgeDAL.findValueValidationCandidatesByProject(projectId);
@@ -318,7 +321,7 @@ const secretValidationComplianceReport: TReportDefinition = {
       const value = decryptor({ cipherTextBlob: secret.encryptedValue }).toString();
 
       for (const rule of coveringRules) {
-        const violations = evaluateStaticSecretConstraints(rule.constraints, { key: secret.key, value });
+        const violations = evaluateStaticSecretConstraints(rule.config, { key: secret.key, value });
         for (const violation of violations) {
           if (rows.length >= MAX_AUDIT_REPORT_ROWS) {
             truncated = true;
@@ -329,7 +332,7 @@ const secretValidationComplianceReport: TReportDefinition = {
             environment: folder.envSlug,
             secretPath: folder.path,
             ruleName: rule.name,
-            constraintType: violation.constraintLabel,
+            constraintType: violation.label,
             violation: violation.message
           });
         }

@@ -1,11 +1,13 @@
 import fastifyMultipart from "@fastify/multipart";
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { MAX_VAULT_IMPORT_PATHS } from "@app/services/external-migration/external-migration-fns/vault";
 import { ExternalMigrationProviders } from "@app/services/external-migration/external-migration-schemas";
 import {
   ExternalMigrationImportStatus,
@@ -274,12 +276,36 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         environment: z.string(),
         secretPath: z.string(),
         vaultNamespace: z.string(),
-        vaultSecretPaths: z.array(z.string()).min(1),
-        connectionId: z.string().uuid()
+        mountPath: z
+          .string()
+          .trim()
+          .min(1)
+          .max(255)
+          .describe("The Vault KV secrets engine the selected paths belong to, e.g. 'kv' or 'apps/kv'."),
+        vaultSecretPaths: z
+          .array(z.string().max(255))
+          .min(1, { message: "Select at least one Vault path to import." })
+          .max(MAX_VAULT_IMPORT_PATHS, {
+            message: `Select at most ${MAX_VAULT_IMPORT_PATHS} Vault paths per import. Import the remaining paths in another run.`
+          })
+          .describe(`The Vault secret paths to import, at most ${MAX_VAULT_IMPORT_PATHS} per request.`),
+        connectionId: z.string().uuid(),
+        keepVaultStructure: z
+          .boolean()
+          .default(false)
+          .describe("Recreate the Vault paths as Infisical folders instead of flattening them into one path.")
       }),
       response: {
         200: z.object({
-          status: z.nativeEnum(ExternalMigrationImportStatus)
+          status: z.nativeEnum(ExternalMigrationImportStatus),
+          importedPaths: z
+            .array(z.string())
+            .optional()
+            .describe("The Infisical folder paths the secrets were written to."),
+          approvalRequiredPaths: z
+            .array(z.string())
+            .optional()
+            .describe("The Infisical folder paths whose secrets are pending approval.")
         })
       }
     },
@@ -289,6 +315,28 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         actor: req.permission,
         auditLogInfo: req.auditLogInfo,
         ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.body.projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.IMPORT_VAULT_SECRETS,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            vaultNamespace: req.body.vaultNamespace,
+            mountPath: req.body.mountPath,
+            vaultSecretPaths: req.body.vaultSecretPaths,
+            connectionId: req.body.connectionId,
+            keepVaultStructure: req.body.keepVaultStructure,
+            status: result.status,
+            importedSecretCount: result.importedSecretCount,
+            approvalRequiredSecretCount: result.approvalRequiredSecretCount,
+            importedPaths: result.importedPaths,
+            approvalRequiredPaths: result.approvalRequiredPaths
+          }
+        }
       });
 
       return result;

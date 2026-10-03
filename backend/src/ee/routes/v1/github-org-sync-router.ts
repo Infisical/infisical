@@ -182,7 +182,8 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const result = await server.services.githubOrgSync.syncAllTeams({
-        orgPermission: req.permission
+        orgPermission: req.permission,
+        auditLogInfo: req.auditLogInfo
       });
 
       void server.services.telemetry

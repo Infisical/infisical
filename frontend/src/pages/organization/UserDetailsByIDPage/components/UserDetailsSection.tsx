@@ -29,7 +29,7 @@ import {
   IconButton
 } from "@app/components/v3";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useUser
@@ -102,13 +102,13 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   const status = membership ? getStatus(membership) : null;
 
   return membership ? (
-    <Card className="w-full lg:max-w-[24rem]">
+    <Card className="w-full @4xl:max-w-[24rem] @4xl:shrink-0">
       <CardHeader className="border-b">
         <CardTitle>Details</CardTitle>
         <CardDescription>User membership details</CardDescription>
         {userId !== membership.user.id && (
           <CardAction>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
+            <OrgPermissionCan I={OrgPermissionMemberActions.Edit} a={OrgPermissionSubjects.Member}>
               {(isAllowed) => (
                 <IconButton
                   isDisabled={!isAllowed}
@@ -259,7 +259,10 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           (membership.status === "invited" || membership.status === "verified") &&
           membership.user.email &&
           serverDetails?.emailConfigured && (
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
+            <OrgPermissionCan
+              I={OrgPermissionMemberActions.Create}
+              a={OrgPermissionSubjects.Member}
+            >
               {(isAllowed) => (
                 <Button
                   isDisabled={!isAllowed}

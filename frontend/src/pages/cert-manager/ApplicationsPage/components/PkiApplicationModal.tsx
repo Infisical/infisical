@@ -152,7 +152,12 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
               <Field>
                 <FieldLabel>Name</FieldLabel>
                 <FieldContent>
-                  <Input {...field} placeholder="my-service" />
+                  <Input
+                    {...field}
+                    placeholder="my-service"
+                    autoComplete="off"
+                    name="pki-application-name"
+                  />
                 </FieldContent>
                 {error ? <FieldError>{error.message}</FieldError> : null}
               </Field>

@@ -116,8 +116,14 @@ export const ConvexConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel htmlFor="access-token">Access Token</FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-              <FieldError errors={[error]} />
+              <SecretInput
+                aria-describedby={error ? "access-token-error" : undefined}
+                id="access-token"
+                isError={Boolean(error)}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              <FieldError id="access-token-error" errors={[error]} />
             </Field>
           )}
         />

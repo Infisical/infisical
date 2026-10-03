@@ -3,16 +3,22 @@ import { UnrecoverableError } from "bullmq";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import {
+  getIssuanceAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
   CertExtendedKeyUsage,
   CertKeyUsage,
   CertSubjectAlternativeNameType
 } from "@app/services/certificate/certificate-types";
+import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -46,7 +52,11 @@ import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-applica
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
-import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
+import {
+  addRenewedCertificateToSyncs,
+  queueCertificateFilterReconcile,
+  triggerAutoSyncForCertificate
+} from "../pki-sync/pki-sync-utils";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "../resource-metadata/resource-metadata-fns";
 import { runWithAcmeCancellation } from "./acme/acme-cancellation";
@@ -66,6 +76,7 @@ import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-cert
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
+import { assertCaSupportsCustomExtensions } from "./certificate-authority-maps";
 import { DigiCertCertificateAuthorityFns } from "./digicert/digicert-certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
 import { GoDaddyCertificateAuthorityFns } from "./godaddy/godaddy-certificate-authority-fns";
@@ -142,6 +153,7 @@ export type TIssueCertificateFromProfileJobData = {
   locality?: string;
   applicationId?: string;
   basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
+  customExtensions?: TResolvedCustomExtension[];
 };
 
 type TCertificateIssuanceQueueFactoryDep = {
@@ -160,10 +172,14 @@ type TCertificateIssuanceQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById" | "updateById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
-  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
-    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
+    | "findPkiSyncIdsByCertificateId"
+    | "addCertificates"
+    | "findByPkiSyncAndCertificate"
+    | "updateSyncMetadata"
+    | "primaryNode"
   >;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
   certificateRequestService?: Pick<
@@ -176,10 +192,12 @@ type TCertificateIssuanceQueueFactoryDep = {
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL?: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
@@ -205,10 +223,12 @@ export const certificateIssuanceQueueFactory = ({
   certificateRequestDAL,
   resourceMetadataDAL,
   pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
   gatewayV2Service,
   gatewayPoolService,
+  keyStore,
   telemetryService
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
@@ -224,7 +244,10 @@ export const certificateIssuanceQueueFactory = ({
     projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    certificateProfileDAL
+    certificateProfileDAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    keyStore
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
@@ -326,54 +349,8 @@ export const certificateIssuanceQueueFactory = ({
   /**
    * Queue a certificate issuance job.
    */
-  const queueCertificateIssuance = async ({
-    certificateId,
-    profileId,
-    caId,
-    caType,
-    commonName,
-    altNames,
-    ttl,
-    signatureAlgorithm,
-    keyAlgorithm,
-    keyUsages,
-    extendedKeyUsages,
-    isRenewal,
-    originalCertificateId,
-    certificateRequestId,
-    csr,
-    organization,
-    organizationalUnit,
-    country,
-    state,
-    locality,
-    applicationId,
-    basicConstraints
-  }: TIssueCertificateFromProfileJobData) => {
-    const jobData: TIssueCertificateFromProfileJobData = {
-      certificateId,
-      profileId,
-      caId,
-      caType,
-      commonName,
-      altNames,
-      ttl,
-      signatureAlgorithm,
-      keyAlgorithm,
-      keyUsages,
-      extendedKeyUsages,
-      isRenewal,
-      originalCertificateId,
-      certificateRequestId,
-      csr,
-      organization,
-      organizationalUnit,
-      country,
-      state,
-      locality,
-      applicationId,
-      basicConstraints
-    };
+  const queueCertificateIssuance = async (jobData: TIssueCertificateFromProfileJobData) => {
+    const { caType, certificateId, certificateRequestId } = jobData;
 
     // ACM DNS validation can take 5–30 minutes; the function is fully idempotent via
     // IdempotencyToken, so we poll longer with a fixed backoff instead of exponential.
@@ -423,7 +400,8 @@ export const certificateIssuanceQueueFactory = ({
       country,
       state,
       locality,
-      basicConstraints
+      basicConstraints,
+      customExtensions
     } = data;
 
     const setPending = async (message: string) => {
@@ -446,8 +424,9 @@ export const certificateIssuanceQueueFactory = ({
     };
 
     // DigiCert and GoDaddy attach the certificate later in their processors, so a pending order
-    // must not be reported as issued. Tracked here rather than re-read: the replica lags the write.
+    // must not be reported as issued.
     let certificateExistsAfterThisJob = true;
+    let issuedCertificateId: string | undefined;
 
     try {
       logger.info(`Processing certificate issuance job for [certificateId=${certificateId}] [caId=${caId}]`);
@@ -466,6 +445,10 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+
+      if (customExtensions?.length) {
+        assertCaSupportsCustomExtensions((ca.externalCa?.type ?? CaType.INTERNAL) as CaType, customExtensions.length);
+      }
 
       await setPending("Starting certificate issuance");
 
@@ -549,6 +532,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: acmeResult.id
             });
+            issuedCertificateId = acmeResult.id;
 
             // Copy metadata from cert request to newly issued cert
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
@@ -615,6 +599,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: azureResult.certificateId
             });
+            issuedCertificateId = azureResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -646,6 +631,7 @@ export const certificateIssuanceQueueFactory = ({
         const template = await extractProfileTemplate(certificateProfileDAL, profileId);
 
         const adcsParams = {
+          customExtensions,
           caId,
           profileId,
           commonName: commonName || "",
@@ -684,6 +670,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: adcsResult.certificateId
             });
+            issuedCertificateId = adcsResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -752,6 +739,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: acmResult.certificateId
             });
+            issuedCertificateId = acmResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -800,6 +788,7 @@ export const certificateIssuanceQueueFactory = ({
           state,
           locality,
           basicConstraints,
+          customExtensions,
           isCancelled
         };
 
@@ -821,6 +810,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: awsPcaResult.certificateId
             });
+            issuedCertificateId = awsPcaResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -944,12 +934,12 @@ export const certificateIssuanceQueueFactory = ({
               isRenewal,
               originalCertificateId
             });
-
             if (certificateRequestService) {
               await certificateRequestService.attachCertificateToRequest({
                 certificateRequestId,
                 certificateId: attachedCertificateId
               });
+              issuedCertificateId = attachedCertificateId;
               await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
                 certificateRequestId,
                 certificateId: attachedCertificateId
@@ -1098,6 +1088,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: venafiTppResult.certificateId
             });
+            issuedCertificateId = venafiTppResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -1136,11 +1127,8 @@ export const certificateIssuanceQueueFactory = ({
           const orig = await certificateDAL.findById(originalCertificateId);
           scopedApplicationId = orig?.applicationId ?? null;
         }
-        if (scopedApplicationId && certificateRequestId && certificateRequestDAL) {
-          const req = await certificateRequestDAL.findById(certificateRequestId);
-          if (req?.certificateId) {
-            await certificateDAL.updateById(req.certificateId, { applicationId: scopedApplicationId });
-          }
+        if (scopedApplicationId && issuedCertificateId) {
+          await certificateDAL.updateById(issuedCertificateId, { applicationId: scopedApplicationId });
         }
       } catch (stampErr) {
         logger.warn(
@@ -1150,28 +1138,25 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       try {
-        if (scopedApplicationId && profileId && certificateProfileDAL && certificateRequestDAL) {
-          const req = await certificateRequestDAL.findById(certificateRequestId!);
-          if (req?.certificateId) {
-            const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
-            if (profile) {
-              const effectiveApiConfig = await resolveEffectiveApiConfig({
-                applicationId: scopedApplicationId,
-                profileId,
-                profileApiConfig: profile.apiConfig,
-                pkiApplicationProfileDAL,
-                apiEnrollmentConfigDAL
-              });
-              const cert = await certificateDAL.findById(req.certificateId);
-              if (cert && !cert.renewBeforeDays) {
-                const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-                  { apiConfig: effectiveApiConfig },
-                  ttl,
-                  new Date(cert.notAfter)
-                );
-                if (finalRenewBeforeDays !== undefined) {
-                  await certificateDAL.updateById(req.certificateId, { renewBeforeDays: finalRenewBeforeDays });
-                }
+        if (scopedApplicationId && profileId && certificateProfileDAL && issuedCertificateId) {
+          const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+          if (profile) {
+            const effectiveApiConfig = await resolveEffectiveApiConfig({
+              applicationId: scopedApplicationId,
+              profileId,
+              profileApiConfig: profile.apiConfig,
+              pkiApplicationProfileDAL,
+              apiEnrollmentConfigDAL
+            });
+            const cert = await certificateDAL.findById(issuedCertificateId);
+            if (cert && !cert.renewBeforeDays) {
+              const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
+                { apiConfig: effectiveApiConfig },
+                ttl,
+                new Date(cert.notAfter)
+              );
+              if (finalRenewBeforeDays !== undefined) {
+                await certificateDAL.updateById(issuedCertificateId, { renewBeforeDays: finalRenewBeforeDays });
               }
             }
           }
@@ -1184,33 +1169,53 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       try {
-        if (isRenewal && originalCertificateId && certificateRequestId && certificateRequestDAL) {
-          const req = await certificateRequestDAL.findById(certificateRequestId);
-          if (req?.certificateId) {
-            await addRenewedCertificateToSyncs(originalCertificateId, req.certificateId, { certificateSyncDAL });
-            await triggerAutoSyncForCertificate(req.certificateId, {
-              certificateSyncDAL,
-              pkiSyncDAL,
-              pkiSyncQueue
-            });
+        if (isRenewal && originalCertificateId && issuedCertificateId) {
+          await addRenewedCertificateToSyncs(originalCertificateId, issuedCertificateId, { certificateSyncDAL });
+          await triggerAutoSyncForCertificate(issuedCertificateId, {
+            certificateSyncDAL,
+            pkiSyncDAL,
+            pkiSyncQueue
+          });
+        }
+
+        if (issuedCertificateId && scopedApplicationId) {
+          await queueCertificateFilterReconcile(issuedCertificateId, scopedApplicationId, pkiSyncQueue);
+
+          if (isRenewal && originalCertificateId) {
+            await queueCertificateFilterReconcile(originalCertificateId, scopedApplicationId, pkiSyncQueue);
           }
         }
       } catch (syncErr) {
         logger.warn(
           syncErr,
-          `Failed to link renewed certificate to PKI syncs [originalCertificateId=${originalCertificateId}] [certificateRequestId=${certificateRequestId}]`
+          `Failed to link certificate to PKI syncs [isRenewal=${String(isRenewal)}] [originalCertificateId=${
+            originalCertificateId ?? "none"
+          }] [certificateRequestId=${certificateRequestId}]`
         );
       }
 
       try {
-        await pkiAlertV2Queue?.queueCertificateEvent({
-          certificateId,
-          projectId: ca.projectId,
-          eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
-          applicationId: scopedApplicationId
-        });
+        // The job's certificateId is an order id minted before issuance, not a certificate row, so the
+        // alert has to target the certificate the CA actually produced.
+        if (certificateExistsAfterThisJob && issuedCertificateId) {
+          await pkiAlertV2Queue?.queueCertificateEvent({
+            certificateId: issuedCertificateId,
+            projectId: ca.projectId,
+            eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
+            applicationId: scopedApplicationId
+          });
+        }
       } catch {
         logger.debug("Failed to queue PKI alert event for async certificate issuance");
+      }
+
+      if (certificateExistsAfterThisJob && issuedCertificateId) {
+        await certificateAlertEventEmitter.notify({
+          certificateId: issuedCertificateId,
+          projectId: ca.projectId,
+          eventType: getIssuanceAlertEvent(isRenewal),
+          applicationId: scopedApplicationId
+        });
       }
 
       if (certificateExistsAfterThisJob) {

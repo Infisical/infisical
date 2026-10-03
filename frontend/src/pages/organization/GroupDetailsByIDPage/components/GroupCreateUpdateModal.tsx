@@ -137,7 +137,14 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="name">Name</FieldLabel>
-                <Input id="name" placeholder="Engineering" isError={Boolean(error)} {...field} />
+                <Input
+                  id="name"
+                  placeholder="Engineering"
+                  isError={Boolean(error)}
+                  {...field}
+                  autoComplete="off"
+                  name="org-group-name"
+                />
                 <FieldError>{error?.message}</FieldError>
               </Field>
             )}

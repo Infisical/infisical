@@ -22,13 +22,16 @@ import {
   KeyIcon,
   KeyRoundIcon,
   LayersIcon,
+  ListChecksIcon,
   LockIcon,
   type LucideIcon,
+  PackageIcon,
   PenLineIcon,
   PuzzleIcon,
   RadarIcon,
   RadioIcon,
   RefreshCwIcon,
+  RouteIcon,
   ScaleIcon,
   ScrollTextIcon,
   SearchIcon,
@@ -40,6 +43,7 @@ import {
   StampIcon,
   TableIcon,
   TagIcon,
+  TicketIcon,
   UndoIcon,
   UserCheckIcon,
   UsersIcon,
@@ -64,7 +68,8 @@ export const ProjectPermissionSubjectFamily = {
   ProjectAdmin: "project-admin",
   CertificateManager: "certificate-manager",
   Kms: "kms",
-  SecretScanning: "secret-scanning"
+  SecretScanning: "secret-scanning",
+  AgentVault: "agent-vault"
 } as const;
 
 export type ProjectPermissionSubjectFamily =
@@ -133,8 +138,8 @@ export const PERMISSION_SUBJECT_SECRET_COLOR = {
 
 export const PERMISSION_SUBJECT_HONEY_TOKEN_COLOR = {
   token: null,
-  textClassName: "text-yellow-700",
-  tileClassName: "border-yellow-700/10 bg-yellow-700/15 text-yellow-700"
+  textClassName: "text-warning",
+  tileClassName: "border-warning/10 bg-warning/15 text-warning"
 } as const satisfies PermissionSubjectColor;
 
 const present = (
@@ -155,6 +160,8 @@ const pki = (Icon: LucideIcon) => present(ProjectPermissionSubjectFamily.Certifi
 const kms = (Icon: LucideIcon) => present(ProjectPermissionSubjectFamily.Kms, Icon);
 
 const scanning = (Icon: LucideIcon) => present(ProjectPermissionSubjectFamily.SecretScanning, Icon);
+
+const agentVault = (Icon: LucideIcon) => present(ProjectPermissionSubjectFamily.AgentVault, Icon);
 
 export const PROJECT_PERMISSION_SUBJECT_PRESENTATION = {
   [ProjectPermissionSub.Secrets]: smResource(KeyIcon, PERMISSION_SUBJECT_SECRET_COLOR),
@@ -180,6 +187,7 @@ export const PROJECT_PERMISSION_SUBJECT_PRESENTATION = {
   [ProjectPermissionSub.SecretApproval]: sm(FileCheckIcon),
   [ProjectPermissionSub.SecretApprovalRequest]: sm(FileClockIcon),
   [ProjectPermissionSub.SecretSyncs]: sm(RefreshCwIcon),
+  [ProjectPermissionSub.SecretValidationRules]: sm(ListChecksIcon),
   [ProjectPermissionSub.SecretEventSubscriptions]: sm(RadioIcon),
   [ProjectPermissionSub.Environments]: sm(LayersIcon),
   [ProjectPermissionSub.Tags]: sm(TagIcon),
@@ -203,6 +211,7 @@ export const PROJECT_PERMISSION_SUBJECT_PRESENTATION = {
   [ProjectPermissionSub.Certificates]: pki(FileKeyIcon),
   [ProjectPermissionSub.CertificateAuthorities]: pki(FileKeyIcon),
   [ProjectPermissionSub.CertificateTemplates]: pki(FileStackIcon),
+  [ProjectPermissionSub.Application]: pki(ServerIcon),
   [ProjectPermissionSub.CertificateProfiles]: pki(FileStackIcon),
   [ProjectPermissionSub.CertificatePolicies]: pki(ScaleIcon),
   [ProjectPermissionSub.CertificateInventoryViews]: pki(TableIcon),
@@ -219,7 +228,10 @@ export const PROJECT_PERMISSION_SUBJECT_PRESENTATION = {
   [ProjectPermissionSub.HsmConnectors]: kms(CpuIcon),
   [ProjectPermissionSub.SecretScanningDataSources]: scanning(DatabaseIcon),
   [ProjectPermissionSub.SecretScanningFindings]: scanning(SearchIcon),
-  [ProjectPermissionSub.SecretScanningConfigs]: scanning(SlidersHorizontalIcon)
+  [ProjectPermissionSub.SecretScanningConfigs]: scanning(SlidersHorizontalIcon),
+  [ProjectPermissionSub.AgentVaultAccessBundles]: agentVault(PackageIcon),
+  [ProjectPermissionSub.AgentVaultSessions]: agentVault(TicketIcon),
+  [ProjectPermissionSub.AgentVaultProxies]: agentVault(RouteIcon)
 } as const satisfies Record<ProjectPermissionSub, ProjectPermissionSubjectPresentation>;
 
 export const getProjectPermissionSubjectPresentation = (

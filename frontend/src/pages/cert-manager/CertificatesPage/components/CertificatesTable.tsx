@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -65,6 +65,7 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
+import { useSlashFocusSearch } from "@app/hooks";
 import { useUpdateRenewalConfig } from "@app/hooks/api";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
@@ -94,6 +95,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import {
+  getCertificateDeletionBlockReason,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
@@ -185,6 +187,8 @@ export const CertificatesTable = ({
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
   const [search, setSearch] = useState(externalFilter?.search || "");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
   const [appliedSearch, setAppliedSearch] = useState(externalFilter?.search || "");
 
   const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
@@ -734,6 +738,7 @@ export const CertificatesTable = ({
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            ref={searchInputRef}
             placeholder="Search by SAN, CN, ID or Serial Number"
           />
         </InputGroup>
@@ -913,6 +918,11 @@ export const CertificatesTable = ({
                   const canDeleteCertificate =
                     permission.can(ProjectPermissionCertificateActions.Delete, certSubject) ||
                     canDeleteAtApplication;
+                  const certificateCaType = caCapabilityMap[certificate.caId];
+                  const canRevokeCertificate =
+                    Boolean(certificate.caId) &&
+                    (!certificateCaType ||
+                      caSupportsCapability(certificateCaType, CaCapability.REVOKE_CERTIFICATES));
                   const canEditPkiSyncs =
                     permission.can(
                       ProjectPermissionPkiSyncActions.Edit,
@@ -1291,13 +1301,8 @@ export const CertificatesTable = ({
                                   </DropdownMenuItem>
                                 )}
                               {(() => {
-                                const caType = caCapabilityMap[certificate.caId];
-                                const supportsRevocation =
-                                  !caType ||
-                                  caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
-
                                 if (
-                                  !supportsRevocation ||
+                                  !canRevokeCertificate ||
                                   isRevoked ||
                                   certificate.source === CertSource.Discovered ||
                                   (isInventoryView && certificate.applicationId)
@@ -1321,22 +1326,49 @@ export const CertificatesTable = ({
                                   </DropdownMenuItem>
                                 );
                               })()}
-                              {!(isInventoryView && certificate.applicationId) && (
-                                <DropdownMenuItem
-                                  variant="danger"
-                                  isDisabled={!canDeleteCertificate}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("deleteCertificate", {
-                                      certificateId: certificate.id,
-                                      commonName: certificate.commonName
-                                    });
-                                  }}
-                                >
-                                  <Trash2Icon />
-                                  Delete Certificate
-                                </DropdownMenuItem>
-                              )}
+                              {!(isInventoryView && certificate.applicationId) &&
+                                (() => {
+                                  const deletionBlockReason = getCertificateDeletionBlockReason(
+                                    certificate,
+                                    canRevokeCertificate
+                                  );
+
+                                  const item = (
+                                    <DropdownMenuItem
+                                      variant="danger"
+                                      isDisabled={
+                                        !canDeleteCertificate || Boolean(deletionBlockReason)
+                                      }
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePopUpOpen("deleteCertificate", {
+                                          certificateId: certificate.id,
+                                          commonName: certificate.commonName
+                                        });
+                                      }}
+                                    >
+                                      <Trash2Icon />
+                                      Delete Certificate
+                                    </DropdownMenuItem>
+                                  );
+
+                                  if (!deletionBlockReason) return item;
+
+                                  return (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div>{item}</div>
+                                      </TooltipTrigger>
+                                      <TooltipContent
+                                        side="left"
+                                        sideOffset={20}
+                                        className="max-w-72"
+                                      >
+                                        {deletionBlockReason}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  );
+                                })()}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

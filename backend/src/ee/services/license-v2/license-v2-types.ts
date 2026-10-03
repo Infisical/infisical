@@ -1,4 +1,5 @@
 import { OrgServiceActor } from "@app/lib/types";
+import type { TMeteredDimensionKey } from "@app/services/license-client/usage/usage-counters";
 
 export type BillingV2SubState = "active" | "trialing" | "past-due" | "suspended" | "no-subscription";
 
@@ -39,8 +40,12 @@ export type BillingV2Plan = {
   name: string;
   selfServe: boolean;
   salesLed: boolean;
-  // Offers a self-serve trial; the UI shows a trial CTA only when selfServe && trialable.
+  // Org-aware: whether this org may trial / upgrade to this plan. Computed from the same rules the
+  // mutating endpoints enforce, so a CTA gated on these can never offer an action that then 409s.
   trialable: boolean;
+  upgradeable: boolean;
+  // Trial length in days for this plan; 0 when it offers no trial.
+  trialDays: number;
   // Kept for existing customers, closed to new ones. deprecation carries the reason/nextSteps/date.
   deprecated?: boolean;
   deprecation?: BillingV2Deprecation;
@@ -135,6 +140,12 @@ export type BillingV2Entitlement = {
   status?: string;
   isTrialing?: boolean;
   trialEndsAt?: string | null;
+  trialPlan?: string;
+  trialPlanName?: string;
+  trialPlanEndsAt?: string | null;
+  trialPlanDaysLeft?: number | null;
+  trialPaymentDueAt?: string | null;
+  trialPlanPaymentDueAt?: string | null;
   // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
   // the product has no dated line (e.g. feature-only entitlements).
   renewsOn?: string | null;
@@ -167,6 +178,17 @@ export type BillingV2Billing = {
   nextCharge: BillingV2NextCharge | null;
 };
 
+export type BillingV2Trial = {
+  productKey: string;
+  planTier: string | null;
+  basePlanTier: string | null;
+  outcome: string;
+  endedReason: string | null;
+  endedDetail: string | null;
+  endedAt: string | null;
+  endedDaysAgo: number | null;
+};
+
 export type BillingV2Overview = {
   isCloud: boolean;
   mode: BillingV2Mode;
@@ -189,10 +211,14 @@ export type BillingV2Overview = {
   } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
-  // Product keys whose one-per-product trial is used up (any outcome); the UI gates the trial CTA on it.
   trialedProductKeys: string[];
+  trials: BillingV2Trial[];
   // Total monthly on-demand overage across all products (dollars), for the summary's on-demand note.
   onDemandAmount: number;
+  // Earliest trial payment deadline across products, for the page banner; null when none is waiting.
+  trialPaymentDue: { dueAt: string; productKeys: string[] } | null;
+  // A renewal invoice that needs approval or was declined. Named apart from `payment` (the card on file).
+  paymentAlert: { state: "needs_action" | "failed"; actionUrl: string } | null;
   checkoutFrozen: boolean;
   selfServe: boolean;
 };
@@ -200,11 +226,21 @@ export type BillingV2Overview = {
 export type TGetBillingV2OverviewDTO = {
   orgId: string;
   actor: OrgServiceActor;
+  // Lets a self-hosted instance admin read an organization their token is not scoped to, because one
+  // licence covers every org on the instance. Never honoured on cloud.
+  isInstanceAdmin?: boolean;
+};
+
+export type TListBillableOrganizationsDTO = TGetBillingV2OverviewDTO & {
+  search?: string;
+  limit: number;
+  offset: number;
 };
 
 export type TGetBillingV2CatalogDTO = {
   orgId: string;
   actor: OrgServiceActor;
+  isInstanceAdmin?: boolean;
 };
 
 export type TCreateBillingV2PortalSessionDTO = {
@@ -245,6 +281,7 @@ export type BillingV2Preview = {
   nextInvoiceTotal: number;
   nextRecurringTotal: number;
   prorationDate?: number | null;
+  toPlanVersionId?: string | null;
   lines: BillingV2PreviewLine[];
 };
 
@@ -265,6 +302,17 @@ export type TPreviewBillingV2ChangeDTO = {
   removeProductId?: string;
   // Per_resource commitment quantity changes to preview against the existing subscription.
   commitmentChanges?: BillingV2CommitmentChange[];
+  upgradeProductId?: string;
+  upgradePlan?: string;
+};
+
+export type TUpgradeBillingV2ProductDTO = {
+  orgId: string;
+  actor: OrgServiceActor;
+  productId: string;
+  plan: string;
+  expectedPlanVersionId: string;
+  prorationDate?: number;
 };
 
 export type TRemoveBillingV2ProductDTO = {
@@ -278,6 +326,7 @@ export type TRemoveBillingV2ProductDTO = {
 // prices at the current server time; a client-supplied proration instant is never accepted. productId
 // is required: it names the product so the server resolves the trialing plan and creates/attaches the
 // subscription when there isn't one yet (a trialing org). Not trialing it → product_not_trialing.
+// Checkout also happens when the card on file needs the customer to approve the charge.
 export type TChangeBillingV2CommitmentDTO = {
   orgId: string;
   actor: OrgServiceActor;
@@ -300,7 +349,74 @@ export type TCancelBillingV2TrialDTO = {
   productId: string;
 };
 
+export type TConfirmBillingV2TrialPaymentDTO = {
+  orgId: string;
+  actor: OrgServiceActor;
+  returnPath?: string;
+};
+
 export type TBillingV2SubscriptionLifecycleDTO = {
   orgId: string;
   actor: OrgServiceActor;
+};
+
+// The metered dimensions the usage breakdown can explain. Values are license-server dimension keys and
+// must match the descriptors in services/license-client/features.ts
+export const BillingV2BreakdownDimension = {
+  Identities: "identities",
+  UserIdentities: "user_identities",
+  SecretIdentities: "secret_identities",
+  PamIdentities: "pam_identities",
+  InternalCas: "internal_cas",
+  ActiveCerts: "active_certs",
+  WildcardCerts: "wildcard_certs"
+} as const satisfies Record<string, TMeteredDimensionKey>;
+
+export type TBillingV2BreakdownDimension =
+  (typeof BillingV2BreakdownDimension)[keyof typeof BillingV2BreakdownDimension];
+
+export type BillingV2BreakdownProject = {
+  id: string;
+  name: string;
+  count: number;
+};
+
+export type BillingV2BreakdownScope = {
+  orgId: string;
+  name: string;
+  isRoot: boolean;
+  // Name of the root org this sub-org belongs to; null on a root itself. The instance-wide breakdown
+  // lists several trees flat, so a sub-org row is unattributable without it.
+  parentOrgName: string | null;
+  count: number;
+  // Units created on the org itself rather than inside one of its projects. Always 0 for a dimension
+  // with no project attribution (see hasProjectDetail).
+  orgLevelCount: number;
+  projects: BillingV2BreakdownProject[];
+};
+
+export type BillingV2UsageBreakdown = {
+  dimensionKey: string;
+  total: number;
+  // Humans in the metered set. The identity meters bill users and machine identities together
+  userCount: number;
+  // The part of the total the scope tree accounts for: total minus userCount for the identity meters.
+  scopedCount: number;
+  hasProjectDetail: boolean;
+  // Singular noun for what is counted ("machine identity", "internal CA"), for the UI's labels.
+  unit: string;
+  scopes: BillingV2BreakdownScope[];
+};
+
+export enum BillingV2BreakdownScopeKind {
+  Instance = "instance",
+  Organization = "organization"
+}
+
+export type TGetBillingV2UsageBreakdownDTO = {
+  orgId: string;
+  actor: OrgServiceActor;
+  dimensionKey: TBillingV2BreakdownDimension;
+  isInstanceAdmin?: boolean;
+  scope?: BillingV2BreakdownScopeKind;
 };

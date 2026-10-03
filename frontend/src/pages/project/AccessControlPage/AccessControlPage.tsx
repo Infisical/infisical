@@ -64,8 +64,8 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-foreground">
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
           scope={currentProject.type}
           title={isCertManager ? "Access Control" : "Project Access Control"}

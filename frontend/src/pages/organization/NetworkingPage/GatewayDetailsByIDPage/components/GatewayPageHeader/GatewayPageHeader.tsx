@@ -1,5 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
-import { BanIcon, CopyIcon, EllipsisIcon, HeartPulseIcon, TrashIcon } from "lucide-react";
+import {
+  BanIcon,
+  CopyIcon,
+  EllipsisIcon,
+  HeartPulseIcon,
+  PencilIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -34,6 +41,8 @@ import {
 } from "@app/hooks/api/gateways-v2";
 import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 
+import { RenameGatewayModal } from "../../../components/RenameGatewayModal";
+
 export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; orgId: string }) => {
   const navigate = useNavigate();
   const { mutateAsync: deleteGateway, isPending: isDeleting } = useDeleteGatewayV2ById();
@@ -42,7 +51,8 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
     useTriggerGatewayV2Heartbeat();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "deleteGateway",
-    "revokeGateway"
+    "revokeGateway",
+    "renameGateway"
   ] as const);
 
   const onDelete = async () => {
@@ -74,7 +84,9 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
     }
   };
 
-  const isRegistered = Boolean(gateway.heartbeat || gateway.heartbeatTTL);
+  const isRegistered = Boolean(
+    gateway.directAddress || gateway.relayId || gateway.heartbeat || gateway.heartbeatTTL !== null
+  );
   const { canRevoke } = gateway;
 
   return (
@@ -101,6 +113,20 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
               <CopyIcon />
               Copy Gateway ID
             </DropdownMenuItem>
+            <OrgPermissionCan
+              I={OrgGatewayPermissionActions.EditGateways}
+              a={OrgPermissionSubjects.Gateway}
+            >
+              {(isAllowed) => (
+                <DropdownMenuItem
+                  isDisabled={!isAllowed}
+                  onClick={() => handlePopUpOpen("renameGateway")}
+                >
+                  <PencilIcon />
+                  Rename Gateway
+                </DropdownMenuItem>
+              )}
+            </OrgPermissionCan>
             {isRegistered && (
               <DropdownMenuItem isDisabled={isHeartbeating} onClick={onHeartbeat}>
                 <HeartPulseIcon />
@@ -143,6 +169,12 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
         </DropdownMenu>
       </PageHeader>
 
+      <RenameGatewayModal
+        isOpen={popUp.renameGateway.isOpen}
+        onToggle={(isOpen) => handlePopUpToggle("renameGateway", isOpen)}
+        gateway={gateway}
+      />
+
       <AlertDialog
         open={popUp.deleteGateway.isOpen}
         confirmationValue={gateway.name}
@@ -176,6 +208,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
       </AlertDialog>
       <AlertDialog
         open={popUp.revokeGateway.isOpen}
+        confirmationValue={gateway.name}
         onOpenChange={(open) => handlePopUpToggle("revokeGateway", open)}
       >
         <AlertDialogContent>
@@ -186,6 +219,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
               re-authenticate to reconnect.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <AlertDialogConfirmationField inputProps={{ placeholder: gateway.name }} />
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
             <AlertDialogAction

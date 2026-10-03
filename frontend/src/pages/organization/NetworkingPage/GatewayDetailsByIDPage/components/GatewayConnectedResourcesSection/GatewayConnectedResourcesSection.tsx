@@ -56,9 +56,9 @@ const ResourceRow = ({
     <Link to={to as "/"} params={params} search={search as never}>
       <ItemContent>
         <ItemTitle>{name}</ItemTitle>
-        <ItemDescription className="text-mineshaft-400">{subtitle}</ItemDescription>
+        <ItemDescription className="text-muted">{subtitle}</ItemDescription>
       </ItemContent>
-      <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+      <ExternalLinkIcon className="size-3.5 text-muted" />
     </Link>
   </Item>
 );

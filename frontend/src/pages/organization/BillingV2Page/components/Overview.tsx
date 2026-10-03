@@ -2,7 +2,8 @@ import { TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { BillingV2CatalogProduct, BillingV2Overview } from "@app/hooks/api";
+import { isInfisicalCloud } from "@app/helpers/platform";
+import { BillingV2CatalogProduct, BillingV2Organization, BillingV2Overview } from "@app/hooks/api";
 
 import { BillingV2RenderState } from "../billing-v2-view-types";
 import { BillingHeaderCard } from "./cards/BillingHeaderCard";
@@ -11,8 +12,10 @@ import { InvoicesCard } from "./cards/InvoicesCard";
 import { PaymentCard } from "./cards/PaymentCard";
 import { ProductsCard } from "./cards/ProductsCard";
 import { ErrorPanel } from "./states/ErrorPanel";
-import { OverviewSkeleton } from "./states/OverviewSkeleton";
+import { BillingSectionSkeleton, StatTilesSkeleton } from "./states/OverviewSkeleton";
 import { Banner } from "./Banner";
+import { RootOrgFilter } from "./RootOrgFilter";
+import { TrialBanners } from "./TrialBanners";
 
 export type OverviewProps = {
   overview?: BillingV2Overview;
@@ -21,16 +24,27 @@ export type OverviewProps = {
   onManageSubscription: () => void;
   onUpgrade: (productId: string) => void;
   onSetCommitment: (productId: string) => void;
+  onViewBreakdown: (productId: string) => void;
+  rootOrgs: BillingV2Organization[];
+  rootOrgCount: number;
+  isRootOrgsLoading: boolean;
+  isReloading: boolean;
+  selectedOrgId: string;
+  onSelectOrg: (orgId: string) => void;
+  onSearchOrgs: (search: string) => void;
+  showOrgFilter: boolean;
   onUpdatePayment: () => void;
   onEditDetails: () => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
+  onCompleteTrialPayment: () => void;
+  isCompletingTrialPayment: boolean;
+  hasTrialApproval: boolean;
+  onOpenTrialApproval: () => void;
   onRetry: () => void;
   canManageBilling: boolean;
 };
 
 // Composes the billing overview by render state: loading → skeleton, error/no-overview → error panel,
-// no-subscription → banner + products, otherwise the full active layout. Each section is its own
-// component under components/ (cards/, deprecation/, states/); this file only routes and lays them out.
 export const Overview = ({
   overview,
   catalog,
@@ -38,19 +52,80 @@ export const Overview = ({
   onManageSubscription,
   onUpgrade,
   onSetCommitment,
+  onViewBreakdown,
+  rootOrgs,
+  rootOrgCount,
+  isRootOrgsLoading,
+  isReloading,
+  selectedOrgId,
+  onSelectOrg,
+  onSearchOrgs,
+  showOrgFilter,
   onUpdatePayment,
   onEditDetails,
   onContact,
+  onCompleteTrialPayment,
+  isCompletingTrialPayment,
+  hasTrialApproval,
+  onOpenTrialApproval,
   onRetry,
   canManageBilling
 }: OverviewProps) => {
-  if (subState === "loading") {
-    return <OverviewSkeleton />;
+  const orgFilter = showOrgFilter ? (
+    <RootOrgFilter
+      orgs={rootOrgs}
+      totalCount={rootOrgCount}
+      isLoading={isRootOrgsLoading}
+      value={selectedOrgId}
+      onChange={onSelectOrg}
+      onSearchChange={onSearchOrgs}
+    />
+  ) : null;
+
+  if (subState === "loading" || isReloading) {
+    const isManagedShell = overview ? overview.mode === "managed" : !isInfisicalCloud();
+    const hasHeaderTiles = overview ? overview.subState !== "no-subscription" : true;
+    const keepsBillingHistory = Boolean(
+      overview && (overview.payment || overview.billingDetails || overview.invoices.length > 0)
+    );
+    const hasBillingSection = overview
+      ? overview.isCloud && (overview.subState !== "no-subscription" || keepsBillingHistory)
+      : isInfisicalCloud();
+
+    return (
+      <div className="flex flex-col gap-4">
+        {isManagedShell && (
+          <Banner
+            mode="managed"
+            subState={subState}
+            canManage={false}
+            onUpdatePayment={onUpdatePayment}
+            onManageSubscription={onManageSubscription}
+          />
+        )}
+        {hasHeaderTiles && <StatTilesSkeleton />}
+        <ProductsCard
+          key="products"
+          overview={overview}
+          catalog={catalog}
+          readOnly
+          orgFilter={orgFilter}
+          isReloading
+          onManage={onUpgrade}
+          onSetCommitment={onSetCommitment}
+          onViewBreakdown={onViewBreakdown}
+          onContact={onContact}
+        />
+        {hasBillingSection && <BillingSectionSkeleton />}
+      </div>
+    );
   }
 
   if (subState === "error" || !overview) {
     return (
       <div className="flex flex-col gap-4">
+        {/* The picker stays reachable so a failing organization is not a dead end. */}
+        {orgFilter && <div className="flex justify-end">{orgFilter}</div>}
         <ErrorPanel onRetry={onRetry} />
       </div>
     );
@@ -89,6 +164,29 @@ export const Overview = ({
       </Alert>
     ) : null;
 
+  const showPayment = overview.isCloud && !isManaged;
+
+  const hasBillingHistory =
+    Boolean(overview.payment) || Boolean(overview.billingDetails) || overview.invoices.length > 0;
+
+  const billingSection = !isManaged && (
+    <>
+      <div className="@container">
+        <div className={cn("grid gap-4", showPayment && "@3xl:grid-cols-[2fr_3fr]")}>
+          {showPayment && (
+            <PaymentCard
+              overview={overview}
+              canManage={canManageBilling}
+              onUpdate={onUpdatePayment}
+            />
+          )}
+          <DetailsCard overview={overview} canManage={canManageBilling} onEdit={onEditDetails} />
+        </div>
+      </div>
+      {showPayment && <InvoicesCard invoices={overview.invoices} />}
+    </>
+  );
+
   if (subState === "no-subscription") {
     return (
       <div className="flex flex-col gap-4">
@@ -98,22 +196,37 @@ export const Overview = ({
           mode={mode}
           subState={subState}
           canManage={canManageBilling}
+          paymentAlert={overview.paymentAlert}
           onUpdatePayment={onUpdatePayment}
           onManageSubscription={onManageSubscription}
         />
-        <ProductsCard
+        <TrialBanners
           overview={overview}
           catalog={catalog}
           readOnly={productsReadOnly}
           onManage={onUpgrade}
+          onUpdatePayment={onUpdatePayment}
+          onContact={onContact}
+          onCompleteTrialPayment={onCompleteTrialPayment}
+          isCompletingTrialPayment={isCompletingTrialPayment}
+          hasTrialApproval={hasTrialApproval}
+          onOpenTrialApproval={onOpenTrialApproval}
+        />
+        <ProductsCard
+          key="products"
+          overview={overview}
+          catalog={catalog}
+          readOnly={productsReadOnly}
+          orgFilter={orgFilter}
+          onManage={onUpgrade}
           onSetCommitment={onSetCommitment}
+          onViewBreakdown={onViewBreakdown}
           onContact={onContact}
         />
+        {hasBillingHistory && billingSection}
       </div>
     );
   }
-
-  const showPayment = overview.isCloud && !isManaged;
 
   return (
     <div className="flex flex-col gap-4">
@@ -123,40 +236,35 @@ export const Overview = ({
         mode={mode}
         subState={subState}
         canManage={canManageBilling}
+        paymentAlert={overview.paymentAlert}
         onUpdatePayment={onUpdatePayment}
         onManageSubscription={onManageSubscription}
       />
-      {/* <DeprecationBanners
-        overview={overview}
-        catalog={catalog}
-        onManage={onUpgrade}
-        onContact={onContact}
-      /> */}
-      <BillingHeaderCard overview={overview} catalog={catalog} />
-      <ProductsCard
+      <TrialBanners
         overview={overview}
         catalog={catalog}
         readOnly={productsReadOnly}
         onManage={onUpgrade}
+        onUpdatePayment={onUpdatePayment}
+        onContact={onContact}
+        onCompleteTrialPayment={onCompleteTrialPayment}
+        isCompletingTrialPayment={isCompletingTrialPayment}
+        hasTrialApproval={hasTrialApproval}
+        onOpenTrialApproval={onOpenTrialApproval}
+      />
+      <BillingHeaderCard overview={overview} catalog={catalog} />
+      <ProductsCard
+        key="products"
+        overview={overview}
+        catalog={catalog}
+        readOnly={productsReadOnly}
+        orgFilter={orgFilter}
+        onManage={onUpgrade}
         onSetCommitment={onSetCommitment}
+        onViewBreakdown={onViewBreakdown}
         onContact={onContact}
       />
-      {!isManaged && (
-        // Payment (cloud-only) + details share a row, keyed off container width (sidebar resizes it).
-        <div className="@container">
-          <div className={cn("grid gap-4", showPayment && "@3xl:grid-cols-[2fr_3fr]")}>
-            {showPayment && (
-              <PaymentCard
-                overview={overview}
-                canManage={canManageBilling}
-                onUpdate={onUpdatePayment}
-              />
-            )}
-            <DetailsCard overview={overview} canManage={canManageBilling} onEdit={onEditDetails} />
-          </div>
-        </div>
-      )}
-      {showPayment && <InvoicesCard invoices={overview.invoices} />}
+      {billingSection}
     </div>
   );
 };

@@ -20,12 +20,16 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 
+import { TAlertServiceFactory } from "../alert/alert-service";
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
 import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { ActorType } from "../auth/auth-type";
+import { CERT_MANAGER_APPLICATION_RESOURCE_TYPE } from "../certificate/certificate-alert-events";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
+import { TPkiSyncFilters } from "../pki-sync/pki-sync-types";
 import { TPkiApplicationDALFactory } from "./pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "./pki-application-profile-dal";
 import {
@@ -60,7 +64,9 @@ type TPkiApplicationServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "delete">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "delete">;
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 
 export type TPkiApplicationServiceFactory = ReturnType<typeof pkiApplicationServiceFactory>;
@@ -72,7 +78,9 @@ export const pkiApplicationServiceFactory = ({
   membershipRoleDAL,
   approvalPolicyDAL,
   approvalRequestDAL,
-  permissionService
+  pkiSyncDAL,
+  permissionService,
+  alertService
 }: TPkiApplicationServiceFactoryDep) => {
   const $loadProjectPermission = (
     projectId: string,
@@ -393,6 +401,10 @@ export const pkiApplicationServiceFactory = ({
       }
       await approvalRequestDAL.delete({ scopeType: ApprovalPolicyScope.PkiApplication, scopeId: applicationId }, tx);
       await approvalPolicyDAL.delete({ scopeType: ApprovalPolicyScope.PkiApplication, scopeId: applicationId }, tx);
+      await alertService.deleteAlertsForDeletedResource(
+        { resourceType: CERT_MANAGER_APPLICATION_RESOURCE_TYPE, resourceId: applicationId },
+        tx
+      );
       await pkiApplicationDAL.deleteById(applicationId, tx);
     });
 
@@ -472,7 +484,7 @@ export const pkiApplicationServiceFactory = ({
       );
     }
 
-    return pkiApplicationDAL.transaction(async (tx) => {
+    const profiles = await pkiApplicationDAL.transaction(async (tx) => {
       const existing = await pkiApplicationProfileDAL.findByApplicationId(applicationId, tx);
       const existingProfileIds = new Set(existing.map((row) => row.profileId));
       const toAttach = profileIds.filter((id) => !existingProfileIds.has(id));
@@ -486,6 +498,8 @@ export const pkiApplicationServiceFactory = ({
 
       return pkiApplicationProfileDAL.findByApplicationId(applicationId, tx);
     });
+
+    return { profiles, applicationName: application.name };
   };
 
   const detachProfile = async ({
@@ -537,8 +551,27 @@ export const pkiApplicationServiceFactory = ({
       subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
     );
 
+    const pkiSyncs = await pkiSyncDAL.find({ applicationId });
+    const syncsFilteringOnProfile = pkiSyncs.filter((pkiSync) =>
+      ((pkiSync.filters as TPkiSyncFilters | null)?.profileIds ?? []).includes(profileId)
+    );
+
+    if (syncsFilteringOnProfile.length > 0) {
+      const names = syncsFilteringOnProfile.map(({ name }) => name).sort();
+      const preview = names.slice(0, 5).join(", ");
+      const remaining = names.length - 5;
+      const isSingular = names.length === 1;
+      throw new BadRequestError({
+        message: `Cannot detach this certificate profile while ${names.length} certificate sync${
+          isSingular ? " selects" : "s select"
+        } certificates by it (${
+          remaining > 0 ? `${preview}, and ${remaining} more` : preview
+        }). Remove the certificate profile filter from ${isSingular ? "that sync" : "those syncs"} first.`
+      });
+    }
+
     await pkiApplicationProfileDAL.delete({ applicationId, profileId });
-    return { applicationId, profileId };
+    return { applicationId, applicationName: application.name, profileId };
   };
 
   const getApplicationPermissions = async ({

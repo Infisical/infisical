@@ -12,8 +12,8 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
 import { addSeconds, format, formatISO } from "date-fns";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, ChevronRight, Search } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
@@ -131,7 +131,8 @@ export const SelectOrgPage = () => {
     org_id: orgId,
     callback_port: callbackPort,
     is_admin_login: isBreakglassRoute,
-    mfa_method: mfaMethodFromSearch
+    mfa_method: mfaMethodFromSearch,
+    redirect_to: redirectTo
   } = search;
 
   const { data: orgs, isPending: orgsLoading } = useGetOrganizationsWithSubOrgs();
@@ -298,11 +299,16 @@ export const SelectOrgPage = () => {
           callbackPort
         })
       );
-      navigate({ to: "/cli-redirect" });
+      setAuthToken(token);
+      navigate({ to: "/cli-redirect", search: { org_id: targetOrgId } });
     } else {
       setAuthToken(token);
       createNotification({ text: "Successfully logged in", type: "success" });
-      navigateUserToOrg({ navigate, organizationId: targetOrgId });
+      if (redirectTo?.startsWith(`/organizations/${targetOrgId}/`)) {
+        navigate({ href: redirectTo });
+      } else {
+        navigateUserToOrg({ navigate, organizationId: targetOrgId });
+      }
     }
   };
 
@@ -384,7 +390,7 @@ export const SelectOrgPage = () => {
             {/* While searching, surface matching sub-orgs inline so they stay discoverable */}
             {isSearching && org.subOrganizations.length > 0 && (
               <div className="ml-4 flex flex-col gap-3 border-l border-border pl-4">
-                <p className="px-1 pt-1 font-jetbrains-mono text-xs tracking-widest text-muted uppercase">
+                <p className="px-1 pt-1 font-mono text-xs tracking-widest text-muted uppercase">
                   Sub-organizations
                 </p>
                 {org.subOrganizations.map((sub) => (
@@ -415,7 +421,7 @@ export const SelectOrgPage = () => {
           joinedAt={selectedRootOrg.userJoinedAt}
           onClick={() => handleSelectOrganization(selectedRootOrg)}
         />
-        <p className="px-1 pt-1 font-jetbrains-mono text-xs tracking-widest text-muted uppercase">
+        <p className="px-1 pt-1 font-mono text-xs tracking-widest text-muted uppercase">
           Sub-organizations
         </p>
         {filteredSubOrgs.length === 0 ? (
@@ -436,7 +442,7 @@ export const SelectOrgPage = () => {
 
   if (userLoading || !user) {
     return (
-      <div className="h-screen w-screen bg-bunker-800">
+      <div className="h-screen w-screen bg-page">
         <ContentLoader />
       </div>
     );

@@ -4,7 +4,6 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   Button,
   Dialog,
@@ -23,7 +22,6 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { TSubOrganization, useCreateSubOrganization } from "@app/hooks/api";
-import { selectOrganization } from "@app/hooks/api/auth/queries";
 import { GenericResourceNameSchema, slugSchema } from "@app/lib/schemas";
 
 type Props = {
@@ -41,7 +39,7 @@ const AddOrgSchema = z.object({
 type FormData = z.infer<typeof AddOrgSchema>;
 
 export const NewSubOrganizationModal = ({ isOpen, onOpenChange, onCreated }: Props) => {
-  const { currentOrg, isSubOrganization } = useOrganization();
+  const { isSubOrganization } = useOrganization();
   const createSubOrg = useCreateSubOrganization();
 
   const {
@@ -64,13 +62,7 @@ export const NewSubOrganizationModal = ({ isOpen, onOpenChange, onCreated }: Pro
   };
 
   const onSubmit = async ({ name, slug }: FormData) => {
-    if (isSubOrganization && currentOrg.rootOrgId) {
-      const { token } = await selectOrganization({
-        organizationId: currentOrg.rootOrgId
-      });
-
-      SecurityClient.setToken(token);
-    }
+    if (isSubOrganization) return;
 
     const { organization } = await createSubOrg.mutateAsync({
       name,
@@ -87,7 +79,7 @@ export const NewSubOrganizationModal = ({ isOpen, onOpenChange, onCreated }: Pro
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen && !isSubOrganization} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Sub-Organization</DialogTitle>
@@ -115,6 +107,8 @@ export const NewSubOrganizationModal = ({ isOpen, onOpenChange, onCreated }: Pro
                     }}
                     placeholder="Acme Corp"
                     isError={Boolean(error)}
+                    autoComplete="off"
+                    name="sub-org-name"
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>

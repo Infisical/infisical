@@ -37,21 +37,36 @@ import {
 } from "./clickHouseContract";
 
 const connectionFields = [
-  { name: "inputs.host", type: "text", label: "Host", layout: "half" },
+  {
+    name: "inputs.host",
+    type: "text",
+    label: "Host",
+    placeholder: "https://your-host.clickhouse.cloud",
+    layout: "half"
+  },
   { name: "inputs.port", type: "number", label: "Port", layout: "half" },
-  { name: "inputs.username", type: "text", label: "User", autoComplete: "off", layout: "half" },
+  {
+    name: "inputs.username",
+    type: "text",
+    label: "User",
+    placeholder: "default",
+    autoComplete: "off",
+    layout: "half"
+  },
   {
     name: "inputs.password",
     type: "secret",
     label: "Password",
+    placeholder: "Enter database password",
     autoComplete: "new-password",
     layout: "half"
   },
-  { name: "inputs.database", type: "text", label: "Database" },
+  { name: "inputs.database", type: "text", label: "Database", placeholder: "default" },
   {
     name: "inputs.ca",
     type: "secret",
     label: "CA (SSL)",
+    placeholder: "-----BEGIN CERTIFICATE----- ...",
     description: "Optionally needed for self-signed certificates.",
     isOptional: true
   }

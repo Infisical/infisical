@@ -165,6 +165,7 @@ Jamf Pro
 Ivanti
 WinRM
 PowerShell
+PSReadLine
 Authenticode
 signtool
 DevOps
@@ -234,6 +235,7 @@ SendGrid
 SocketLabs
 Mailgun
 Mailhog
+Twilio
 Zoho
 Tailscale
 1Password
@@ -246,6 +248,7 @@ Nutanix Prism Central
 Devin
 Mintlify
 Ona
+Daytona
 DBT
 Ab Initio
 Initio
@@ -340,9 +343,52 @@ OpenAI
 OpenRouter
 Anthropic
 Claude
+Claude Code
 Codex
 LiteLLM
 Fireworks
+Cohere
+Cursor
+DeepSeek
+Gemini
+Grok
+Groq
+Hermes Agent
+Mistral
+OpenClaw
+OpenCode
+Perplexity
+xAI
+
+# --- Communication and messaging ---
+Discord
+Postmark
+Resend
+SendGrid
+Twilio
+
+# --- Payments and commerce ---
+Stripe
+Shopify
+
+# --- Dev tools and platforms ---
+Cloudflare
+GitLab
+Supabase
+Vercel
+npm
+
+# --- Monitoring and observability ---
+Datadog
+PagerDuty
+Sentry
+
+# --- Productivity ---
+Atlassian
+Google Workspace
+Jira
+Linear
+Notion
 
 # --- Acronyms and initialisms ---
 # The `(?:s|'s)?` suffix accepts the plural and possessive forms.
@@ -437,6 +483,7 @@ NTLM
 OAuth
 OCI
 OCID
+OIDs
 OIDC
 OKMS
 OTLP
@@ -585,6 +632,8 @@ lastName
 firstName
 givenName
 stripPrefix
+trimSuffix
+rsync
 demo_mount
 db_owner
 data_writer
@@ -620,3 +669,10 @@ iss
 # --- Surfaced by the code-signing pages ---
 # Vale strips a trailing `'s`, so the possessive needs no separate entry.
 MSBuild
+
+# --- Surfaced by the PAM Snowflake page ---
+DBeaver
+snowsql
+
+# --- Surfaced by the Stripe API key rotation pages ---
+Stripe

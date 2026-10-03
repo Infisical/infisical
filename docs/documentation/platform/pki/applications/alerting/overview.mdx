@@ -1,83 +1,104 @@
 ---
 title: "Alerting"
 sidebarTitle: "Overview"
-description: "Get notified when certificates expire, are issued, renewed, or revoked."
+description: "Get notified when certificates in an application expire, are issued, renewed, or revoked."
 ---
 
-Certificate alerting keeps your team informed about critical lifecycle events. Alerts are configured per Application and apply to all certificates within that Application.
+Certificate alerting tells your team about certificate lifecycle events in an [Application](/documentation/platform/pki/applications/overview). You create alerts in the application, and each alert watches every certificate in the application for one event.
 
-## Alert types
+## Alert events
 
 <CardGroup cols={2}>
   <Card title="Expiration" icon="clock">
-    Notifies when certificates approach expiration. Configure how far in advance (e.g., 30 days).
+    Notifies a set number of days before a certificate expires.
   </Card>
-  <Card title="Issuance" icon="certificate">
+  <Card title="Issuance" icon="award">
     Notifies immediately when a new certificate is issued.
   </Card>
-  <Card title="Renewal" icon="arrows-spin">
-    Notifies immediately when a certificate is renewed.
+  <Card title="Renewal" icon="rotate-cw">
+    Notifies when a certificate is renewed.
   </Card>
   <Card title="Revocation" icon="ban">
-    Notifies immediately when a certificate is revoked.
+    Notifies when a certificate is revoked.
   </Card>
 </CardGroup>
 
+Expiration alerts are checked once a day. Issuance, renewal, and revocation alerts are sent within seconds of the event. Importing a certificate into the application doesn't trigger an Issuance alert, but expiration and revocation alerts still cover imported certificates.
+
+## Prerequisites
+
+- For email alerts, recipients who are organization members, or addresses on one of your organization's [verified email domains](/documentation/platform/email-domain)
+
 ## Create an alert
 
-In your Application, go to the **Settings** tab and find the **Alerting** section. Click **Create Alert**.
+<Steps>
+  <Step>
+    Go to **Certificate Manager** > **Applications** and select your application.
+  </Step>
+  <Step>
+    Select the **Settings** tab, then select **Create Alert** in the **Alerting** section.
+  </Step>
+  <Step>
+    Choose the **Alert Type**, then enter an **Alert Name** and an optional **Description**.
+  </Step>
+  <Step>
+    For an expiration alert, enter **Alert Before** as a number and a unit, for example `30d` or `2w`, up to 365 days. Turn on **Repeat daily until expiry** to get a reminder every day. See [how often expiration alerts repeat](#faq). Select **Continue**.
+  </Step>
+  <Step>
+    Select **Add Channel** and choose where to send notifications. You can add up to 10 channels. See [Notification channels](#notification-channels). To check a channel, select **Send test** on it. Select **Continue**.
+  </Step>
+  <Step>
+    Check the summary on the **Review** step, then select **Create Alert**.
+  </Step>
+</Steps>
 
-| Field | Description |
-|-------|-------------|
-| **Name** | A slug-friendly name like `expiry-alert` |
-| **Alert Type** | Expiration, Issuance, Renewal, or Revocation |
-| **Description** | Optional context about this alert |
-
-For expiration alerts, you'll also configure:
-
-| Field | Description |
-|-------|-------------|
-| **Alert Before** | How far before expiration to notify (e.g., `30d`, `2w`, `1m`) |
-| **Daily Alerts** | If enabled, sends daily reminders until the certificate expires or is renewed |
+An application can have one alert of each type. To notify more places about the same event, add more channels to that alert.
 
 ## Notification channels
 
-Add one or more channels to receive alerts (up to 10 per alert):
-
-| Channel | Description |
-|---------|-------------|
-| **Email** | Send to a list of email addresses |
-| **[Slack](/documentation/platform/pki/applications/alerting/slack-alerts)** | Post to a Slack channel via Incoming Webhook |
-| **[PagerDuty](/documentation/platform/pki/applications/alerting/pagerduty-alerts)** | Create incidents via Events API v2 |
-| **[Webhook](/documentation/platform/pki/applications/alerting/webhook-alerts)** | POST to any HTTPS endpoint with optional signature verification |
+| Channel | Sends to |
+|---------|----------|
+| **Email** | Organization members, or any address on one of your organization's verified email domains |
+| **[Slack](/documentation/platform/pki/applications/alerting/slack-alerts)** | A Slack channel through an Incoming Webhook |
+| **[PagerDuty](/documentation/platform/pki/applications/alerting/pagerduty-alerts)** | A PagerDuty service through Events API v2 |
+| **[Webhook](/documentation/platform/pki/applications/alerting/webhook-alerts)** | Any HTTPS endpoint, with an optional signature |
 
 ## FAQ
 
 <AccordionGroup>
-  <Accordion title="Do alerts apply to all certificates in the Application?">
-    Yes. When you create an alert on an Application, it monitors all certificates issued within that Application. The Application itself is the scope.
+  <Accordion title="Who receives email alerts?">
+    The addresses you enter on the email channel. An address that belongs to an organization member only receives alerts while that person is still in the organization. Any other address has to be on one of your organization's [verified email domains](/documentation/platform/email-domain) when you add it.
   </Accordion>
-  <Accordion title="When do expiration alerts run?">
-    Expiration alerts are checked on a daily schedule. Event-driven alerts (Issuance, Renewal, Revocation) fire in real-time.
+  <Accordion title="How often does an expiration alert notify about the same certificate?">
+    The alert repeats until the certificate is renewed or expires. How often it repeats depends on the alert's **Alert Before** setting:
+
+    | Alert before | Repeats every |
+    |--------------|---------------|
+    | 7 days or fewer | Day |
+    | 8 to 30 days | 2 days |
+    | 31 to 90 days | 7 days |
+    | More than 90 days | 30 days |
+
+    If you turn on **Repeat daily until expiry**, the alert repeats every day.
   </Accordion>
-  <Accordion title="Can I have multiple alerts on one Application?">
-    Yes. You can create multiple alerts with different types and notification channels. For example, an expiration alert to Slack and an issuance alert to a webhook for audit logging.
+  <Accordion title="What happens to an alert when I delete its application?">
+    The application's alerts and their channels are deleted along with the application.
   </Accordion>
 </AccordionGroup>
 
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Slack Alerts" icon="slack" href="/documentation/platform/pki/applications/alerting/slack-alerts">
-    Set up Slack Incoming Webhook integration.
+  <Card title="Slack" icon="slack" iconType="brands" href="/documentation/platform/pki/applications/alerting/slack-alerts">
+    Set up a Slack Incoming Webhook.
   </Card>
-  <Card title="PagerDuty Alerts" icon="pager" href="/documentation/platform/pki/applications/alerting/pagerduty-alerts">
-    Configure PagerDuty Events API integration.
+  <Card title="PagerDuty" icon="radio-tower" href="/documentation/platform/pki/applications/alerting/pagerduty-alerts">
+    Create incidents with the PagerDuty Events API.
   </Card>
-  <Card title="Webhook Alerts" icon="webhook" href="/documentation/platform/pki/applications/alerting/webhook-alerts">
-    Send alerts to custom endpoints.
+  <Card title="Webhook" icon="webhook" href="/documentation/platform/pki/applications/alerting/webhook-alerts">
+    Send alerts to your own endpoint.
   </Card>
-  <Card title="Certificates" icon="certificate" href="/documentation/platform/pki/applications/certificates">
+  <Card title="Certificates" icon="award" href="/documentation/platform/pki/applications/certificates">
     View and manage your certificate inventory.
   </Card>
 </CardGroup>

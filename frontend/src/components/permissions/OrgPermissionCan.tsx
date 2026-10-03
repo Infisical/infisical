@@ -1,18 +1,18 @@
-import { FunctionComponent, ReactNode } from "react";
+import { ComponentProps, FunctionComponent, ReactNode } from "react";
 import { AbilityTuple, MongoAbility } from "@casl/ability";
 import { Can } from "@casl/react";
 
-import { TooltipProps } from "@app/components/v2/Tooltip/Tooltip";
 import {
   AccessRestrictedDialog,
   AccessRestrictedNotice,
   TAccessRestrictedRequirement,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   toPermissionRequirement
 } from "@app/components/v3";
 import { useOrgPermission } from "@app/context/OrgPermissionContext";
 import { OrgPermissionSet } from "@app/context/OrgPermissionContext/types";
-
-import { Tooltip } from "../v2";
 
 export const OrgPermissionGuardBanner = ({
   requirement,
@@ -36,7 +36,7 @@ type Props<T extends AbilityTuple> = {
   allowedLabel?: string;
   accessRestrictedMode?: "dialog" | "notice";
   renderGuardBanner?: boolean;
-  tooltipProps?: Omit<TooltipProps, "children">;
+  tooltipProps?: Omit<ComponentProps<typeof TooltipContent>, "children">;
   I: T[0];
   ability?: MongoAbility<T>;
   children: ReactNode | ((isAllowed: boolean, ability: T) => ReactNode);
@@ -70,16 +70,18 @@ export const OrgPermissionCan: FunctionComponent<Props<OrgPermissionSet>> = ({
 
         if (!isAllowed && passThrough) {
           return (
-            <Tooltip content={label} {...tooltipProps}>
-              {finalChild}
+            <Tooltip>
+              <TooltipTrigger asChild>{finalChild}</TooltipTrigger>
+              <TooltipContent {...tooltipProps}>{label}</TooltipContent>
             </Tooltip>
           );
         }
 
         if (isAllowed && renderTooltip && allowedLabel) {
           return (
-            <Tooltip content={allowedLabel} {...tooltipProps}>
-              {finalChild}
+            <Tooltip>
+              <TooltipTrigger asChild>{finalChild}</TooltipTrigger>
+              <TooltipContent {...tooltipProps}>{allowedLabel}</TooltipContent>
             </Tooltip>
           );
         }

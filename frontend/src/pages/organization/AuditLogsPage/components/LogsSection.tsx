@@ -17,6 +17,7 @@ import {
   DateRangeQuickPresets,
   DocumentationLinkBadge
 } from "@app/components/v3";
+import { DateRangeFilterAccent } from "@app/components/v3/platform/DateRangeFilter/DateRangeFilter";
 import {
   OrgPermissionAuditLogsActions,
   OrgPermissionSubjects,
@@ -26,6 +27,7 @@ import {
 } from "@app/context";
 import { Timezone } from "@app/helpers/datetime";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { isOrgScopedProduct } from "@app/helpers/project";
 import { withPermission, withProjectPermission } from "@app/hoc";
 import { useGetAuditLogPostgresStorageStatus } from "@app/hooks/api/auditLogs";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
@@ -99,7 +101,9 @@ const LogsSectionComponent = ({
   });
 
   const timezone = dateRange.isUtc ? Timezone.UTC : Timezone.Local;
-  const dateRangeAccent = project ? "primary" : "secondary";
+  // An org-scoped product has its own colour, and "primary" would paint its chrome the secrets yellow.
+  let dateRangeAccent: DateRangeFilterAccent = project ? "primary" : "secondary";
+  if (project?.type === ProjectType.AgentVault) dateRangeAccent = "av";
 
   useEffect(() => {
     if (subscription && !subscription.auditLogs) {
@@ -146,7 +150,7 @@ const LogsSectionComponent = ({
           <CardDescription>
             Search and review a detailed history of events
             {!project && " across your organization"}
-            {project && project.type !== ProjectType.PAM && " in this project"}.
+            {project && !isOrgScopedProduct(project.type) && " in this project"}.
           </CardDescription>
           {showFilters && (
             <CardAction>
@@ -198,7 +202,7 @@ const LogsSectionComponent = ({
               actorType: searchDerived.actorType || presets?.actorType,
               eventType:
                 searchDerived.eventType.length > 0 ? searchDerived.eventType : logFilter?.eventType,
-              userAgentType: searchDerived.userAgentType || logFilter?.userAgentType,
+              userAgentType: searchDerived.userAgentType || logFilter?.userAgentType || undefined,
               environment: searchDerived.environment || logFilter?.environment?.slug,
               secretPath: searchDerived.secretPath,
               secretKey: searchDerived.secretKey,
@@ -210,6 +214,7 @@ const LogsSectionComponent = ({
           />
         </CardContent>
         <UpgradePlanModal
+          paywallKey="organization.logs"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => {
             handlePopUpToggle("upgradePlan", isOpen);
@@ -220,7 +225,7 @@ const LogsSectionComponent = ({
     );
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {showClickHouseWarning && (
         <Alert variant="warning">
           <AlertDescription>
@@ -249,8 +254,8 @@ const LogsSectionComponent = ({
           </AlertDescription>
         </Alert>
       )}
-      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-        {showFilters && (
+      {showFilters && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <ButtonGroup>
             <DateRangeQuickPresets
               value={activePreset}
@@ -270,11 +275,11 @@ const LogsSectionComponent = ({
               accent={dateRangeAccent}
             />
           </ButtonGroup>
-        )}
-        {showFilters && (
-          <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
-        )}
-      </div>
+          <div className="ml-auto">
+            <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
+          </div>
+        </div>
+      )}
       <LogsTable
         refetchInterval={refetchInterval}
         filter={{
@@ -285,7 +290,7 @@ const LogsSectionComponent = ({
           actorType: presets?.actorType,
           limit: 15,
           eventType: logFilter?.eventType,
-          userAgentType: logFilter?.userAgentType,
+          userAgentType: logFilter?.userAgentType ?? undefined,
           startDate: dateRange.startDate,
           endDate: dateRange.endDate,
           environment: logFilter?.environment?.slug,
@@ -294,6 +299,7 @@ const LogsSectionComponent = ({
         timezone={timezone}
       />
       <UpgradePlanModal
+        paywallKey="organization.logs"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("upgradePlan", isOpen);

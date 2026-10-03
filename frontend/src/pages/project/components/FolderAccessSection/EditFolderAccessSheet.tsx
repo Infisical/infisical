@@ -1,19 +1,17 @@
 import { useState } from "react";
-import { FolderIcon, InfoIcon } from "lucide-react";
+import { FolderIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
+  DocumentationLinkBadge,
   Label,
   Sheet,
   SheetContent,
   SheetFooter,
   SheetHeader,
-  SheetTitle,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  SheetTitle
 } from "@app/components/v3";
 import {
   SecretFolderRole,
@@ -107,15 +105,7 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
       <SheetHeader>
         <SheetTitle className="flex items-center gap-2">
           Edit Folder Access
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <InfoIcon className="size-3.5 text-muted" />
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-72">
-              Permissions granted here apply within this folder. The folder itself can still be
-              moved, edited, or deleted by anyone with folder edit or delete permissions.
-            </TooltipContent>
-          </Tooltip>
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/folder-rbac" />
         </SheetTitle>
         <div className="mt-2 flex min-w-0 items-center gap-2 text-xs">
           <FolderIcon className="size-3.5 shrink-0 text-folder" />

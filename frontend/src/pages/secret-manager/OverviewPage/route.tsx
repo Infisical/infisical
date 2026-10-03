@@ -6,6 +6,7 @@ import { OverviewPage } from "./OverviewPage";
 
 const SecretOverviewPageQuerySchema = z.object({
   search: z.string().catch(""),
+  clearSearch: z.boolean().optional(),
   secretPath: z.string().catch("/"),
   connectionId: z.string().optional(),
   connectionName: z.string().optional(),
@@ -26,6 +27,7 @@ export const Route = createFileRoute(
       stripSearchParams({
         secretPath: "/",
         search: "",
+        clearSearch: undefined,
         environments: [],
         tags: undefined,
         filterBy: undefined

@@ -6,6 +6,12 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
+import {
+  TCustomExtensionRule,
+  TProfileCustomExtension,
+  TRequestCustomExtension,
+  TResolvedCustomExtension
+} from "@app/services/certificate-common/certificate-extension-fns";
 
 export type TBasicConstraintsIsCAPolicy = CertPolicyState;
 
@@ -55,6 +61,7 @@ export interface TTemplateV2Policy {
   validity?: {
     max?: string;
   };
+  customExtensions?: TCustomExtensionRule[];
 }
 
 export type TCertificatePolicy = TPkiCertificatePolicies & {
@@ -65,6 +72,7 @@ export type TCertificatePolicy = TPkiCertificatePolicies & {
   algorithms?: TTemplateV2Policy["algorithms"];
   validity?: TTemplateV2Policy["validity"];
   basicConstraints?: TBasicConstraints | null;
+  customExtensions?: TCustomExtensionRule[];
 };
 
 export type TCertificatePolicyInsert = TPkiCertificatePoliciesInsert & {
@@ -75,6 +83,7 @@ export type TCertificatePolicyInsert = TPkiCertificatePoliciesInsert & {
   algorithms?: TTemplateV2Policy["algorithms"] | null;
   validity?: TTemplateV2Policy["validity"] | null;
   basicConstraints?: TBasicConstraints | null;
+  customExtensions?: TCustomExtensionRule[] | null;
 };
 
 export type TCertificatePolicyUpdate = Partial<Pick<TCertificatePolicy, "name" | "description">> & {
@@ -85,6 +94,7 @@ export type TCertificatePolicyUpdate = Partial<Pick<TCertificatePolicy, "name" |
   algorithms?: TTemplateV2Policy["algorithms"] | null;
   validity?: TTemplateV2Policy["validity"] | null;
   basicConstraints?: TBasicConstraints | null;
+  customExtensions?: TCustomExtensionRule[] | null;
 };
 
 export interface TCertificateRequest {
@@ -115,10 +125,17 @@ export interface TCertificateRequest {
     isCA: boolean;
     pathLength?: number;
   };
+  customExtensions?: TRequestCustomExtension[];
+}
+
+export interface TPolicyValidationOptions {
+  skipRequired?: boolean;
+  profileCustomExtensions?: TProfileCustomExtension[] | null;
 }
 
 export interface TPolicyValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
+  resolvedCustomExtensions?: TResolvedCustomExtension[];
 }

@@ -1,6 +1,7 @@
 /* eslint-disable no-nested-ternary */
-import { ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@casl/ability";
 import handlebars from "handlebars";
+import picomatch from "picomatch";
 import { z } from "zod";
 
 import { SecretFolderRole, TOrganizations } from "@app/db/schemas";
@@ -267,7 +268,8 @@ function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
     AuthMethod.OKTA_SAML,
     AuthMethod.JUMPCLOUD_SAML,
     AuthMethod.GOOGLE_SAML,
-    AuthMethod.KEYCLOAK_SAML
+    AuthMethod.KEYCLOAK_SAML,
+    AuthMethod.AUTH0_SAML
   ].includes(actorAuthMethod);
 }
 
@@ -378,13 +380,47 @@ const constructPermissionErrorMessage = (
   }`;
 };
 
-const assertPermissionBoundary = (actorPermission: MongoAbility, managedPermission: MongoAbility, message: string) => {
-  const boundary = validatePermissionBoundary(actorPermission, managedPermission);
-  if (!boundary.isValid) {
-    throw new PermissionBoundaryError({
-      message,
-      details: { missingPermissions: boundary.missingPermissions }
-    });
+type TAssertRoleSetBoundaryArg = {
+  shouldUseNewPrivilegeSystem: boolean;
+  opActions: (OrgPermissionSet[0] | ProjectPermissionSet[0]) | (OrgPermissionSet[0] | ProjectPermissionSet[0])[];
+  opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1];
+  actorPermission: MongoAbility;
+  targetPermissions: { permission: MongoAbility; role?: { slug: string } }[];
+  baseMessage: string;
+  subjectFields?: Record<string, string | undefined>;
+};
+
+// Bounds a privilege change against every role the target holds, not just the first one.
+const assertRoleSetBoundary = ({
+  shouldUseNewPrivilegeSystem,
+  opActions,
+  opSubject,
+  actorPermission,
+  targetPermissions,
+  baseMessage,
+  subjectFields
+}: TAssertRoleSetBoundaryArg) => {
+  const primaryAction = Array.isArray(opActions) ? opActions[0] : opActions;
+
+  const targets = targetPermissions.length ? targetPermissions : [{ permission: createMongoAbility([]) }];
+
+  for (const target of targets) {
+    const targetSubjectFields = target.role ? { ...subjectFields, assignableRole: target.role.slug } : subjectFields;
+
+    const boundary = validatePrivilegeChangeOperation(
+      shouldUseNewPrivilegeSystem,
+      opActions,
+      opSubject,
+      actorPermission,
+      target.permission,
+      targetSubjectFields
+    );
+
+    if (!boundary.isValid)
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(baseMessage, shouldUseNewPrivilegeSystem, primaryAction, opSubject),
+        details: { missingPermissions: boundary.missingPermissions }
+      });
   }
 };
 
@@ -435,6 +471,9 @@ const expandLegacyForbidActions = <T extends RawRuleOf<MongoAbility<ProjectPermi
   });
 };
 
+const HBS_TRIM_SUFFIX_MAX_GLOB_INPUT_LENGTH = 256;
+const HBS_TRIM_SUFFIX_MAX_GLOB_WILDCARDS = 5;
+
 const hbsStripPrefix = (text: string, prefix: string) => {
   const textStr = String(text || "");
   if (!textStr) return textStr;
@@ -442,10 +481,44 @@ const hbsStripPrefix = (text: string, prefix: string) => {
   return textStr.startsWith(prefix) ? textStr.substring(prefix.length) : textStr;
 };
 
+const hbsTrimSuffix = (text: string, suffix: string) => {
+  const textStr = String(text || "");
+  if (!textStr) return textStr;
+
+  if (typeof suffix !== "string" || !suffix) return textStr;
+
+  if (suffix.length > HBS_TRIM_SUFFIX_MAX_GLOB_INPUT_LENGTH) return textStr;
+
+  if (!picomatch.scan(suffix).isGlob) {
+    return textStr.endsWith(suffix) ? textStr.slice(0, -suffix.length) : textStr;
+  }
+
+  // the matcher is run once per suffix position below, so every variable-length wildcard multiplies
+  // the backtracking across that whole scan.
+  const wildcardCount = [...suffix].filter((char) => char === "*" || char === "?").length;
+  if (wildcardCount > HBS_TRIM_SUFFIX_MAX_GLOB_WILDCARDS) return textStr;
+
+  if (textStr.length > HBS_TRIM_SUFFIX_MAX_GLOB_INPUT_LENGTH) return textStr;
+
+  let isSuffixMatch: (input: string) => boolean;
+  try {
+    isSuffixMatch = picomatch(suffix, { dot: true });
+  } catch {
+    return textStr;
+  }
+
+  for (let i = textStr.length; i >= 0; i -= 1) {
+    if (isSuffixMatch(textStr.slice(i))) return textStr.slice(0, i);
+  }
+
+  return textStr;
+};
+
 const handlebarsClient = (() => {
   const hbs = handlebars.create();
 
   hbs.registerHelper("stripPrefix", hbsStripPrefix);
+  hbs.registerHelper("trimSuffix", hbsTrimSuffix);
 
   return hbs;
 })();
@@ -528,34 +601,6 @@ export const fetchFolderScopedPrivileges = async (
   };
 };
 
-export const buildFolderScopedPrivilegeRules = (
-  privileges: TProjectFolderScopedPrivilege[]
-): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
-  const scopedGrants = privileges.map((privilege) => {
-    // make sure the role is valid
-    if (!Object.values(SecretFolderRole).includes(privilege.role as SecretFolderRole)) {
-      throw new NotFoundError({
-        name: "FolderRoleInvalid",
-        message: `Folder access role '${privilege.role}' on grant with ID '${privilege.id}' not found`
-      });
-    }
-    return {
-      role: privilege.role as SecretFolderRole,
-      conditions: { environment: privilege.environmentSlug, secretPath: privilege.secretPath }
-    };
-  });
-
-  const withConditions = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], conditions: object) =>
-    rules.map((rule) => ({ ...rule, conditions }) as RawRuleOf<MongoAbility<ProjectPermissionSet>>);
-
-  // first we deny all tthe defined paths, and later we just allow the ones that the role has access.
-  // on CASL, the last match rule wins, so this works as expected.
-  return [
-    ...scopedGrants.flatMap(({ conditions }) => withConditions(FOLDER_SCOPED_DENY_RULES, conditions)),
-    ...scopedGrants.flatMap(({ role, conditions }) => withConditions(SECRET_FOLDER_ROLE_PERMISSIONS[role], conditions))
-  ];
-};
-
 export const filterOverriddenFolderScopedDenyRules = (
   rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[]
 ): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
@@ -580,6 +625,44 @@ export const filterOverriddenFolderScopedDenyRules = (
   });
 };
 
+const FOLDER_SCOPED_DENY_RULES_BY_ROLE = Object.fromEntries(
+  Object.values(SecretFolderRole).map((role) => [
+    role,
+    filterOverriddenFolderScopedDenyRules([
+      ...FOLDER_SCOPED_DENY_RULES,
+      ...SECRET_FOLDER_ROLE_PERMISSIONS[role]
+    ]).filter((rule) => rule.inverted)
+  ])
+) as Record<SecretFolderRole, RawRuleOf<MongoAbility<ProjectPermissionSet>>[]>;
+
+export const buildFolderScopedPrivilegeRules = (
+  privileges: TProjectFolderScopedPrivilege[]
+): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
+  const scopedGrants = privileges.map((privilege) => {
+    // make sure the role is valid
+    if (!Object.values(SecretFolderRole).includes(privilege.role as SecretFolderRole)) {
+      throw new NotFoundError({
+        name: "FolderRoleInvalid",
+        message: `Folder access role '${privilege.role}' on grant with ID '${privilege.id}' not found`
+      });
+    }
+    return {
+      role: privilege.role as SecretFolderRole,
+      conditions: { environment: privilege.environmentSlug, secretPath: privilege.secretPath }
+    };
+  });
+
+  const withConditions = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], conditions: object) =>
+    rules.map((rule) => ({ ...rule, conditions }) as RawRuleOf<MongoAbility<ProjectPermissionSet>>);
+
+  return [
+    ...scopedGrants.flatMap(({ role, conditions }) =>
+      withConditions(FOLDER_SCOPED_DENY_RULES_BY_ROLE[role], conditions)
+    ),
+    ...scopedGrants.flatMap(({ role, conditions }) => withConditions(SECRET_FOLDER_ROLE_PERMISSIONS[role], conditions))
+  ];
+};
+
 // Compiling a template is the most expensive step of building an ability, and almost no rule set needs
 // it: built-in roles carry no `{{ }}` at all, only custom roles with identity conditions do. A template
 // with no mustaches renders byte-identical to its input, so serializing once to look for one and
@@ -594,8 +677,26 @@ export const interpolatePermissionRules = <T>(rules: T[], identityContext: Recor
   return JSON.parse(templatedRules(identityContext, { data: false })) as T[];
 };
 
+// `identity.auth.*` is read off the credential an identity authenticates with, so it is knowable only
+// for the actor of the live request. Rendered against a context that lacks it, the mustache collapses to
+// an empty string, and the condition it guarded turns into one nothing satisfies, which reads to a
+// privilege boundary as a grant anybody outranks. Rules that reference it keep their mustaches instead,
+// so they stay unsatisfiable on both sides of the comparison.
+const AUTH_TEMPLATE_PATH = "identity.auth";
+
+export const interpolateStoredIdentityRules = <T>(rules: T[], identityContext: Record<string, unknown>): T[] => {
+  const serializedRules = JSON.stringify(rules);
+
+  if (!serializedRules.includes("{{")) return rules;
+  if (!serializedRules.includes(AUTH_TEMPLATE_PATH)) return interpolatePermissionRules(rules, identityContext);
+
+  return rules.map((rule) =>
+    JSON.stringify(rule).includes(AUTH_TEMPLATE_PATH) ? rule : interpolatePermissionRules([rule], identityContext)[0]
+  );
+};
+
 export {
-  assertPermissionBoundary,
+  assertRoleSetBoundary,
   constructPermissionErrorMessage,
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,

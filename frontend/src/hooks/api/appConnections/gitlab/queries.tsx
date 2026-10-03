@@ -29,10 +29,11 @@ export const useGitLabConnectionListProjects = (
 ) => {
   return useQuery({
     queryKey: gitlabConnectionKeys.listProjects(connectionId, search, limit),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data } = await apiRequest.get<TGitLabProject[]>(
         `/api/v1/app-connections/gitlab/${connectionId}/projects`,
         {
+          signal,
           params: {
             ...(search ? { search } : {}),
             ...(limit !== undefined ? { limit } : {})
@@ -42,6 +43,7 @@ export const useGitLabConnectionListProjects = (
 
       return data;
     },
+    retry: false,
     ...options
   });
 };
@@ -62,10 +64,11 @@ export const useGitLabConnectionListGroups = (
 ) => {
   return useQuery({
     queryKey: gitlabConnectionKeys.listGroups(connectionId, search, limit),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data } = await apiRequest.get<TGitLabGroup[]>(
         `/api/v1/app-connections/gitlab/${connectionId}/groups`,
         {
+          signal,
           params: {
             ...(search ? { search } : {}),
             ...(limit !== undefined ? { limit } : {})
@@ -75,6 +78,7 @@ export const useGitLabConnectionListGroups = (
 
       return data;
     },
+    retry: false,
     ...options
   });
 };

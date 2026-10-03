@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  ProviderIcon,
   TableCell,
   TableRow
 } from "@app/components/v3";
@@ -38,9 +39,9 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
         <div className="flex items-center gap-2">
           <div className="relative">
             {providerDetails.image ? (
-              <img
+              <ProviderIcon
                 alt={providerDetails.name}
-                src={`/images/integrations/${providerDetails.image}`}
+                icon={providerDetails.image}
                 className="size-5"
               />
             ) : (

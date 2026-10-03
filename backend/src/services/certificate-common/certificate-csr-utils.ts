@@ -25,6 +25,13 @@ import {
   mapLegacyKeyUsageToStandard,
   SUPPORTED_GENERAL_NAME_TYPES
 } from "./certificate-constants";
+import {
+  appendCustomExtensions,
+  describeCustomExtensionValue,
+  isIssuerGeneratedExtensionOid,
+  isReservedExtensionOid,
+  TIssuedCustomExtension
+} from "./certificate-extension-fns";
 
 /**
  * Extracts certificate request data from a CSR string
@@ -116,6 +123,22 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
       isCA: basicConstraintsExtension.ca,
       pathLength: parsedPathLength !== undefined && parsedPathLength >= 0 ? parsedPathLength : undefined
     };
+  }
+
+  // openssl x509 -x509toreq copies the old issuer's extensions in. Asking a new CA to repeat them
+  // gets the request rejected or produces a certificate that fails validation.
+  const csrCustomExtensions = csrObj.extensions
+    .filter((extension) => !isReservedExtensionOid(extension.type) && !isIssuerGeneratedExtensionOid(extension.type))
+    .map((extension) => ({
+      oid: extension.type,
+      value:
+        describeCustomExtensionValue(extension.type, Buffer.from(new Uint8Array(extension.value)).toString("base64")) ??
+        undefined,
+      critical: extension.critical
+    }));
+
+  if (csrCustomExtensions.length) {
+    certificateRequest.customExtensions = csrCustomExtensions;
   }
 
   return certificateRequest;
@@ -370,28 +393,34 @@ export const extractAlgorithmsFromCSR = (csr: string) => {
 export const generateLeafKeypairAndCsr = async ({
   subjectName,
   algorithm,
-  altNames = []
+  altNames = [],
+  customExtensions = []
 }: {
   subjectName: string;
   algorithm: ReturnType<typeof keyAlgorithmToAlgCfg>;
   altNames?: string[];
+  customExtensions?: TIssuedCustomExtension[];
 }): Promise<{ privateKeyPem: string; csrPem: string; csrDerBase64: string }> => {
   const leafKeys = await crypto.nativeCrypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
   const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
   const privateKeyPem = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
+  const csrExtensions: x509.Extension[] = [];
+  if (altNames.length > 0) {
+    csrExtensions.push(
+      new x509.SubjectAlternativeNameExtension(
+        altNames.map((value) => ({ type: "dns" as TAltNameType, value })),
+        false
+      )
+    );
+  }
+  appendCustomExtensions(csrExtensions, customExtensions);
+
   const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
     name: subjectName,
     keys: leafKeys,
     signingAlgorithm: algorithm,
-    ...(altNames.length > 0 && {
-      extensions: [
-        new x509.SubjectAlternativeNameExtension(
-          altNames.map((value) => ({ type: "dns" as TAltNameType, value })),
-          false
-        )
-      ]
-    })
+    ...(csrExtensions.length > 0 && { extensions: csrExtensions })
   });
 
   return {

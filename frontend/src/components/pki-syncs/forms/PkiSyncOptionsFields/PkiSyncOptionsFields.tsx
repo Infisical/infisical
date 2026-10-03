@@ -63,12 +63,13 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
         <SyncSwitchField
           name="syncOptions.canRemoveCertificates"
           id="can-remove-certificates"
-          label="Enable removal of expired/revoked certificates"
+          label="Allow to remove certificates from destination"
           description={
             <>
-              When enabled, Infisical removes certificates from the destination during a sync once
-              they are no longer active in Infisical. Disable this if you manage some certificates
-              manually outside of Infisical.
+              When enabled, Infisical deletes a certificate from the destination once this sync
+              stops holding it, whether it stopped being active, was deleted, was removed from the
+              sync, or stopped matching the sync&apos;s filters. Disable this if you manage some
+              certificates manually outside of Infisical.
               {currentDestination === PkiSync.AwsElasticLoadBalancer &&
                 " For AWS Elastic Load Balancer, this removes the certificate from both the load balancer listeners and AWS Certificate Manager, affecting only certificates managed by this sync."}
             </>

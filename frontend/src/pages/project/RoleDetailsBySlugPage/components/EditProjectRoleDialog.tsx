@@ -151,6 +151,7 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
                         autoComplete="off"
                         data-1p-ignore
                         isError={Boolean(error)}
+                        name="edit-project-role-name"
                       />
                       <FieldError>{error?.message}</FieldError>
                     </Field>
@@ -208,10 +209,10 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
         </SheetContent>
       </Sheet>
       <UpgradePlanModal
+        paywallKey="project.edit-project-role-dialog"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(open) => handleUpgradePlanPopUpToggle("upgradePlan", open)}
-        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Advanced plan."
       />
     </>
   );

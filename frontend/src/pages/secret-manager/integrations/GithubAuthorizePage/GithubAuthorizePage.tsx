@@ -15,6 +15,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
 import { useGetCloudIntegrations } from "@app/hooks/api";
@@ -38,14 +39,14 @@ export const GithubAuthorizePage = () => {
       <Helmet>
         <title>Select GitHub Integration Auth</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
+      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Select how you'd like to integrate with GitHub. We recommend using the GitHub App method for fine-grained access."
         >
           <div className="flex flex-row items-center">
             <div className="flex items-center pb-0.5">
-              <img src="/images/integrations/GitHub.png" height={30} width={30} alt="Github logo" />
+              <ProviderIcon icon="GitHub.png" height={30} width={30} alt="GitHub logo" />
             </div>
             <span className="ml-2.5">GitHub Integration </span>
             <a
@@ -53,7 +54,7 @@ export const GithubAuthorizePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -71,7 +72,7 @@ export const GithubAuthorizePage = () => {
               onValueChange={(val) => {
                 setSelectedAuthMethod(val as AuthMethod);
               }}
-              className="w-full border border-mineshaft-500"
+              className="w-full border border-border-strong"
             >
               <SelectItem value={AuthMethod.APP}>GitHub App (Recommended)</SelectItem>
               <SelectItem value={AuthMethod.OAUTH}>OAuth</SelectItem>

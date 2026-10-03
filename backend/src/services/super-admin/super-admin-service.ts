@@ -1,5 +1,3 @@
-import { CronJob } from "cron";
-
 import {
   AccessScope,
   IdentityAuthMethod,
@@ -11,8 +9,11 @@ import {
 } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import {
@@ -22,6 +23,7 @@ import {
   overwriteSchema,
   validateOverrides
 } from "@app/lib/config/env";
+import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TIp } from "@app/lib/ip";
@@ -33,7 +35,13 @@ import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/valida
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { IdentitiesMeter, PamIdentities, SecretIdentities, UserIdentities } from "@app/services/license-client";
+import {
+  AgentVaultIdentities,
+  IdentitiesMeter,
+  PamIdentities,
+  SecretIdentities,
+  UserIdentities
+} from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
@@ -87,6 +95,8 @@ type TSuperAdminServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
   emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
@@ -166,7 +176,9 @@ export const superAdminServiceFactory = ({
   membershipUserDAL,
   membershipRoleDAL,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  pamSessionDAL,
+  gatewayV2Service
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -734,6 +746,7 @@ export const superAdminServiceFactory = ({
       usageMeteringService.emit(orgId, UserIdentities.key);
       usageMeteringService.emit(orgId, SecretIdentities.key);
       usageMeteringService.emit(orgId, PamIdentities.key);
+      usageMeteringService.emit(orgId, AgentVaultIdentities.key);
     });
   };
 
@@ -753,7 +766,17 @@ export const superAdminServiceFactory = ({
       actorUserId: userId
     });
 
+    let sendPamCancellations = () => {};
+
     const user = await userDAL.transaction(async (tx) => {
+      sendPamCancellations = await terminatePamSessionsForUsers({
+        orgIds: orgMemberships.map((m) => m.scopeOrgId),
+        userIds: [userId],
+        pamSessionDAL,
+        gatewayV2Service,
+        tx
+      });
+
       const deletedUser = await userDAL.deleteById(userId, tx);
       // principalId carries no FK, so the user row going away leaves recipient rows behind.
       await alertChannelRecipientDAL.deleteByPrincipals(
@@ -762,6 +785,8 @@ export const superAdminServiceFactory = ({
       );
       return deletedUser;
     });
+
+    sendPamCancellations();
 
     emitUserDeletionMeterEvents(orgMemberships);
     return user;
@@ -783,7 +808,17 @@ export const superAdminServiceFactory = ({
       $in: { actorUserId: userIds }
     });
 
+    let sendPamCancellations = () => {};
+
     const users = await userDAL.transaction(async (tx) => {
+      sendPamCancellations = await terminatePamSessionsForUsers({
+        orgIds: orgMemberships.map((m) => m.scopeOrgId),
+        userIds,
+        pamSessionDAL,
+        gatewayV2Service,
+        tx
+      });
+
       const deletedUsers = await userDAL.delete(
         {
           $in: {
@@ -798,6 +833,8 @@ export const superAdminServiceFactory = ({
       );
       return deletedUsers;
     });
+
+    sendPamCancellations();
 
     emitUserDeletionMeterEvents(orgMemberships);
     return users;
@@ -1265,11 +1302,11 @@ export const superAdminServiceFactory = ({
     // initial sync upon startup
     await $syncAdminIntegrationConfig();
 
-    // sync admin integrations config every 5 minutes
-    const job = new CronJob("*/5 * * * *", $syncAdminIntegrationConfig);
-    job.start();
-
-    return job;
+    return startLocalRefresh({
+      name: "admin-integration-config-sync",
+      intervalMs: 5 * 60 * 1000,
+      task: $syncAdminIntegrationConfig
+    });
   };
 
   const initializeEnvConfigSync = async () => {
@@ -1277,11 +1314,11 @@ export const superAdminServiceFactory = ({
 
     await $syncEnvConfig();
 
-    // sync every 5 minutes
-    const job = new CronJob("*/5 * * * *", $syncEnvConfig);
-    job.start();
-
-    return job;
+    return startLocalRefresh({
+      name: "env-config-sync",
+      intervalMs: 5 * 60 * 1000,
+      task: $syncEnvConfig
+    });
   };
 
   const getEmailDomains = async ({ offset, limit, searchTerm }: TAdminGetEmailDomainsDTO) => {

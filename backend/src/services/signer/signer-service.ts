@@ -421,10 +421,8 @@ export const signerServiceFactory = ({
       ProjectPermissionSub.CodeSigners
     );
 
-    // pkiCodeSigning is ignored when null (no restriction); only an explicit boolean gates the feature,
-    // blocking creation when it is explicitly false.
     const plan = await licenseService.getPlan(dto.actorOrgId);
-    if (typeof plan.pkiCodeSigning === "boolean" && !plan.pkiCodeSigning) {
+    if (!plan.pkiCodeSigning) {
       throw new BadRequestError({
         message: "Failed to create code signer due to plan restriction. Upgrade plan to access PKI code signing."
       });
@@ -2138,6 +2136,12 @@ export const signerServiceFactory = ({
     return signer.projectId;
   };
 
+  const getSignerAuditContext = async (signerId: string): Promise<{ projectId: string; name: string }> => {
+    const signer = await signerDAL.findById(signerId);
+    if (!signer) throw new NotFoundError({ message: `Signer '${signerId}' not found.` });
+    return { projectId: signer.projectId, name: signer.name };
+  };
+
   return {
     create,
     list,
@@ -2145,6 +2149,7 @@ export const signerServiceFactory = ({
     checkIssuanceNow,
     getMyPermissions,
     getProjectIdForSigner,
+    getSignerAuditContext,
     update,
     delete: deleteSigner,
     enable,

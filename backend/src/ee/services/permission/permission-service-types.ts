@@ -3,7 +3,13 @@ import { PackRule } from "@casl/ability/extra";
 import { MongoQuery } from "@ucast/mongo2js";
 import { Knex } from "knex";
 
-import { ActionProjectType, OrganizationActionScope, ResourceType, TMemberships } from "@app/db/schemas";
+import {
+  AccessScopeData,
+  ActionProjectType,
+  OrganizationActionScope,
+  ResourceType,
+  TMemberships
+} from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
@@ -103,6 +109,10 @@ export type TGetOrgPermissionArg = {
   scope: OrganizationActionScope;
 };
 
+export type TResolveRolesOpts = {
+  ignoreUnresolvedRoles?: boolean;
+};
+
 export type TPermissionServiceFactory = {
   getOrgPermission: (arg: TGetOrgPermissionArg) => Promise<{
     permission: MongoAbility<OrgPermissionSet, MongoQuery>;
@@ -116,7 +126,16 @@ export type TPermissionServiceFactory = {
   }>;
   getProjectPermission: (arg: TGetProjectPermissionArg) => Promise<{
     permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-    memberships: Array<TMemberships & { roles: { role: string; customRoleSlug?: string | null }[] }>;
+    memberships: Array<
+      TMemberships & {
+        roles: {
+          role: string;
+          customRoleSlug?: string | null;
+          isTemporary?: boolean;
+          temporaryAccessEndTime?: Date | null;
+        }[];
+      }
+    >;
     hasRole: (role: string) => boolean;
     hasProjectEnforcement: (check: "enforceEncryptedSecretManagerSecretMetadata") => boolean;
     folderScopedPrivileges: TProjectFolderScopedPrivilege[];
@@ -159,7 +178,8 @@ export type TPermissionServiceFactory = {
   }>;
   getOrgPermissionByRoles: (
     roles: string[],
-    orgId: string
+    orgId: string,
+    opts?: TResolveRolesOpts
   ) => Promise<
     {
       permission: MongoAbility<OrgPermissionSet, MongoQuery>;
@@ -176,7 +196,8 @@ export type TPermissionServiceFactory = {
   >;
   getProjectPermissionByRoles: (
     roles: string[],
-    projectId: string
+    projectId: string,
+    opts?: TResolveRolesOpts
   ) => Promise<
     {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
@@ -200,6 +221,11 @@ export type TPermissionServiceFactory = {
     projectId: string;
     checkPermissions: ProjectPermissionSet;
   }) => Promise<boolean>;
+  getActorGrantAbilities: (arg: {
+    scopeData: AccessScopeData;
+    actorId: string;
+    actorType: ActorType.USER | ActorType.IDENTITY;
+  }) => Promise<{ permission: MongoAbility }[]>;
   getMembershipPermissionAudit: (arg: TGetMembershipPermissionAuditArg) => Promise<{
     sources: TPermissionAuditSource[];
   }>;

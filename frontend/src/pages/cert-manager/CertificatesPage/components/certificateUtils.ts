@@ -35,6 +35,21 @@ export type SubjectAltName = {
   value: string;
 };
 
+export type SubjectAttribute = {
+  type: CertSubjectAttributeType;
+  value: string;
+};
+
+export const SUBJECT_ATTRIBUTE_LABELS: Record<CertSubjectAttributeType, string> = {
+  [CertSubjectAttributeType.COMMON_NAME]: "Common Name",
+  [CertSubjectAttributeType.ORGANIZATION]: "Organization",
+  [CertSubjectAttributeType.ORGANIZATIONAL_UNIT]: "Organizational Unit",
+  [CertSubjectAttributeType.COUNTRY]: "Country",
+  [CertSubjectAttributeType.STATE]: "State/Province",
+  [CertSubjectAttributeType.LOCALITY]: "Locality",
+  [CertSubjectAttributeType.DOMAIN_COMPONENT]: "Domain Component"
+};
+
 export const sanTypeCandidatesFromValue = (value: string): CertSubjectAlternativeNameType[] => {
   if (isIPv4(value) || isIPv6(value)) return [CertSubjectAlternativeNameType.IP_ADDRESS];
   if (value.includes("@"))

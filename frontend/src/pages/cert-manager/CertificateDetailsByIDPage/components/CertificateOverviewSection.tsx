@@ -19,6 +19,8 @@ import {
   DetailValue
 } from "@app/components/v3";
 import { CertSource, CertStatus, useGetCertificateById } from "@app/hooks/api";
+import { CaType } from "@app/hooks/api/ca/enums";
+import { TCertificateExternalMetadata } from "@app/hooks/api/certificates/types";
 
 import {
   getCertificateDisplayStatus,
@@ -40,6 +42,25 @@ const formatDateLocal = (dateString: string) => {
   return format(new Date(dateString), "EEE, dd MMM yyyy HH:mm:ss");
 };
 
+const getProviderReference = (metadata?: TCertificateExternalMetadata | null) => {
+  if (!metadata) return null;
+
+  switch (metadata.type) {
+    case CaType.DIGICERT:
+      return {
+        provider: "DigiCert CertCentral",
+        label: "Order ID",
+        value: String(metadata.orderId)
+      };
+    case CaType.GODADDY:
+      return { provider: "GoDaddy", label: "Certificate ID", value: metadata.certificateId };
+    case CaType.AWS_ACM_PUBLIC_CA:
+      return { provider: "AWS ACM Public CA", label: "Certificate ARN", value: metadata.arn };
+    default:
+      return null;
+  }
+};
+
 export const CertificateOverviewSection = ({ certificateId }: Props) => {
   const { orgId, projectId } = useParams({
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificates/$certificateId"
@@ -52,7 +73,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
       <div className="flex w-full flex-col gap-5 lg:max-w-[24rem]">
         <Card>
           <CardContent className="flex items-center justify-center py-8">
-            <p className="text-sm text-mineshaft-400">Loading...</p>
+            <p className="text-sm text-muted">Loading...</p>
           </CardContent>
         </Card>
       </div>
@@ -69,6 +90,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
   const displayStatus = getCertificateDisplayStatus(certificate);
 
   const showCaLink = certificate.caId && certificate.caName && certificate.caType === "internal";
+  const providerReference = getProviderReference(certificate.externalMetadata);
 
   return (
     <div className="flex w-full flex-col gap-5 lg:max-w-[24rem]">
@@ -90,6 +112,19 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailValue className="flex items-center gap-2 font-mono text-xs">
                 {certificate.id}
                 <CopyButton value={certificate.id} size="xs" variant="plain" />
+              </DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Order ID</DetailLabel>
+              <DetailValue className="flex items-center gap-2 font-mono text-xs">
+                {certificate.orderId ? (
+                  <>
+                    {certificate.orderId}
+                    <CopyButton value={certificate.orderId} size="xs" variant="plain" />
+                  </>
+                ) : (
+                  <span className="text-muted">—</span>
+                )}
               </DetailValue>
             </Detail>
             <Detail>
@@ -164,7 +199,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     className="inline-flex items-center gap-1 underline"
                   >
                     {certificate.caName}
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 )}
                 {!showCaLink &&
@@ -193,7 +228,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     className="inline-flex items-center gap-1 underline"
                   >
                     {certificate.applicationName}
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 </DetailValue>
               </Detail>
@@ -204,6 +239,18 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 {certificate.profileName || <span className="text-muted">—</span>}
               </DetailValue>
             </Detail>
+            {providerReference && (
+              <>
+                <Detail>
+                  <DetailLabel>Provider</DetailLabel>
+                  <DetailValue>{providerReference.provider}</DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>{providerReference.label}</DetailLabel>
+                  <DetailValue className="font-mono">{providerReference.value}</DetailValue>
+                </Detail>
+              </>
+            )}
             <Detail>
               <DetailLabel>Source</DetailLabel>
               <DetailValue>
@@ -240,7 +287,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                         certificate.renewedFromCertificateId
                       ).displayName
                     }
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 </DetailValue>
               </Detail>
@@ -262,7 +309,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                       getCertificateDisplayName(certificate, 64, certificate.renewedByCertificateId)
                         .displayName
                     }
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 </DetailValue>
               </Detail>

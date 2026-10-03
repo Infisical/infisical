@@ -579,14 +579,6 @@ export const secretApprovalPolicyServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
 
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
-      throw new BadRequestError({
-        message:
-          "Failed to update secret approval policy due to plan restriction. Upgrade plan to update secret approval policy."
-      });
-    }
-
     const deletedPolicy = await secretApprovalPolicyDAL.transaction(async (tx) => {
       await secretApprovalRequestDAL.update(
         { policyId: secretPolicyId, status: RequestState.Open },
@@ -635,8 +627,8 @@ export const secretApprovalPolicyServiceFactory = ({
     return secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id }, tx);
   };
 
-  const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string) => {
-    const policies = await findEnvPolicies(projectId, environment);
+  const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string, tx?: Knex) => {
+    const policies = await findEnvPolicies(projectId, environment, tx);
     if (!policies.length) return;
     return resolvePolicyForPath(policies, removeTrailingSlash(path));
   };

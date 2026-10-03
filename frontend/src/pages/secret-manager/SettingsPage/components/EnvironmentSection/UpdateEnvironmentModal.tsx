@@ -83,7 +83,13 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="updateEnvName">Environment Name</FieldLabel>
-                <Input id="updateEnvName" isError={Boolean(error)} {...field} />
+                <Input
+                  id="updateEnvName"
+                  isError={Boolean(error)}
+                  {...field}
+                  autoComplete="off"
+                  name="updateEnvName"
+                />
                 <FieldError>{error?.message}</FieldError>
               </Field>
             )}

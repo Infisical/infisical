@@ -1,33 +1,76 @@
 ---
 title: "FAQ"
-description: "Frequently Asked Questions about Infisical CLI"
+description: "Frequently Asked Questions about the Infisical CLI."
 ---
 
 Frequently asked questions about the CLI can be found on this page. 
-If you can't find the answer you are looking for, please create an issue on our GitHub repository or join our Slack channel for additional support.
+If you can't find the answer you're looking for, please create an issue on the [CLI's GitHub repository](https://github.com/Infisical/cli/issues) or ask in the [Infisical community](https://community.infisical.com/) for additional support.
 
-<Accordion title="I'm getting a Keyring related error message when trying to login" defaultOpen="true">
+<AccordionGroup>
+
+<Accordion title="I'm getting a Keyring-related error message when trying to login">
 By default, the CLI will choose the most suitable store available on your system. 
 If you experience issues with the default store, you can switch to a different one. 
 If none of the available stores work for you, you can try using the `file` store type by running `infisical vault set file`, which should work in most cases. 
-If you are still experiencing trouble, please seek support. 
+If you're still experiencing trouble, please seek support. 
 
-[Learn more about vault command](./commands/vault)
+[Learn more about the vault command](/cli/reference#vault)
 
 </Accordion>
 
-<Accordion title="Can I fetch secrets with Infisical if I am offline?">
+<Accordion title="How do I keep secret values out of my shell history?">
+Your shell saves the commands you run to a history file, so a secret value you pass to `infisical secrets set` stays in that file. To avoid this, pass the values with `--file` or `name=@path`, or configure your shell to skip those commands.
+
+<Tabs>
+  <Tab title="Bash">
+    Add the pattern to `HISTIGNORE` in `~/.bashrc`:
+
+    ```bash
+    echo 'export HISTIGNORE="*infisical secrets set*:$HISTIGNORE"' >> ~/.bashrc && source ~/.bashrc
+    ```
+  </Tab>
+  <Tab title="Zsh">
+    Add the pattern to `HISTORY_IGNORE` in `~/.zshrc`:
+
+    ```bash
+    echo "HISTORY_IGNORE='(*infisical secrets set*)'" >> ~/.zshrc && source ~/.zshrc
+    ```
+
+    Zsh applies `HISTORY_IGNORE` when it writes the history file, so the command still appears when you press the up arrow in the current session.
+  </Tab>
+  <Tab title="Windows">
+    If you use WSL, follow the Bash or Zsh steps.
+
+    In PowerShell, the PSReadLine module saves your command history. To check its version, run `(Get-Module PSReadLine).Version`.
+
+    PSReadLine 2.2 and later, which ships with PowerShell 7.2 and later, doesn't save commands that contain words such as `secret`, `token`, or `password`, so `infisical secrets set` is already skipped.
+
+    Older versions, including the one that ships with Windows PowerShell 5.1, save every command. Add this line to your [PowerShell profile](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles) to skip `infisical secrets set`:
+
+    ```powershell
+    Set-PSReadLineOption -AddToHistoryHandler { param($line) $line -notlike '*infisical secrets set*' }
+    ```
+
+    Don't add this line on PSReadLine 2.2 or later, because a custom handler replaces the built-in one that skips commands with sensitive words.
+
+    Command Prompt keeps history only until you close the window.
+  </Tab>
+</Tabs>
+
+</Accordion>
+
+<Accordion title="Can I fetch secrets with Infisical while I'm offline?">
 Yes. If you have previously retrieved secrets for a specific project and environment (such as dev, staging, or prod), the  `run`/`secret` command will utilize the saved secrets, even when offline, on subsequent fetch attempts.
 
 </Accordion>
 
-<Accordion title="Can I upload the .infisical.json file that was generated?">
+<Accordion title="Can I upload the `.infisical.json` file that was generated?">
 Yes. This is simply a configuration file and contains no sensitive data.
 </Accordion>
 
 <Accordion title="Where can I find my Project ID?">
 
-  Visit the Infisical website and navigate to a project of your choice. Once on the project page, access the **Project Settings** from the sidebar. Within the Project name section, click the "Copy Project ID" button for copying the current Project ID to clipboard, or simply obtain it from the URL of the current page.
+  Visit the Infisical website and navigate to a project of your choice. Once on the project page, access the **Project Settings** from the sidebar. Within the Project name section, select the "Copy Project ID" button for copying the current Project ID to clipboard, or simply obtain it from the URL of the current page.
   
   ```
     https://app.infisical.com/project/<your_project_id>/settings
@@ -58,3 +101,5 @@ Yes. This is simply a configuration file and contains no sensitive data.
   export INFISICAL_CUSTOM_HEADERS="Header1=value1 Header2=value2 Header3=value3"
   ```
 </Accordion>
+
+</AccordionGroup>

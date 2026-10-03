@@ -9,6 +9,7 @@ import {
 } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { extractExternallyIssuedCertificateFields } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TDigiCertExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -17,7 +18,6 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { extractIssuedCertificateFields } from "../certificate-authority-fns";
 import { createDigiCertApiClient } from "./digicert-api-client";
 import { CodeSigningOrderStatus } from "./digicert-certificate-authority-enums";
 import { DigiCertCaPurpose } from "./digicert-certificate-authority-schemas";
@@ -323,7 +323,7 @@ export const digiCertCodeSigningFns = ({
     const { leaf, chain } = extractLeafAndChain(pemBundle);
 
     const certObj = new x509.X509Certificate(leaf);
-    const issued = extractIssuedCertificateFields(certObj);
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
     const existingCert = await certificateDAL.findOne({ caId: ca.id, serialNumber: certObj.serialNumber });
     if (existingCert) {
@@ -346,21 +346,18 @@ export const digiCertCodeSigningFns = ({
     const createdCertificateId = await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           applicationId: applicationId ?? undefined,
           profileId: profileId ?? undefined,
           status: CertStatus.ACTIVE,
-          friendlyName: issued.commonName || "",
-          commonName: issued.commonName || "",
-          altNames: issued.altNames.length > 0 ? issued.altNames.join(",") : "",
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
-          keyUsages: issued.keyUsages,
-          extendedKeyUsages: issued.extendedKeyUsages,
-          keyAlgorithm: keyAlgorithm ?? undefined,
-          signatureAlgorithm: signatureAlgorithm ?? undefined,
           projectId: ca.projectId,
+          friendlyName: parsedFields.commonName || "",
+          commonName: parsedFields.commonName || "",
+          keyUsages: parsedFields.keyUsages ?? [],
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? [],
+          keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+          signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
           externalMetadata: {
             type: CaType.DIGICERT,
             orderId

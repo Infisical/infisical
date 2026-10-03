@@ -17,7 +17,7 @@ import {
   FieldGroup,
   FieldTitle,
   Separator,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -102,7 +102,7 @@ export const OrgScimSection = () => {
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Scim}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enable-scim"
                     variant="org"
                     checked={currentOrg?.scimEnabled ?? false}
@@ -123,6 +123,7 @@ export const OrgScimSection = () => {
         handlePopUpToggle={handlePopUpToggle}
       />
       <UpgradePlanModal
+        paywallKey="organization.org-scim"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Your current plan does not include access to SCIM Provisioning. To unlock this feature, please upgrade to Infisical Enterprise plan."

@@ -1,0 +1,220 @@
+import { Knex } from "knex";
+
+import { TableName } from "../schemas";
+import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
+
+export async function up(knex: Knex): Promise<void> {
+  if (!(await knex.schema.hasTable(TableName.AgentVaultAccessBundle))) {
+    await knex.schema.createTable(TableName.AgentVaultAccessBundle, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+
+      t.string("projectId", 36).notNullable();
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+
+      t.string("name", 64).notNullable();
+      t.string("description", 256);
+      t.timestamps(true, true, true);
+
+      t.unique(["projectId", "name"]);
+    });
+
+    await createOnUpdateTrigger(knex, TableName.AgentVaultAccessBundle);
+  }
+
+  if (!(await knex.schema.hasTable(TableName.AgentVaultService))) {
+    await knex.schema.createTable(TableName.AgentVaultService, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+
+      t.uuid("accessBundleId").notNullable();
+      t.foreign("accessBundleId").references("id").inTable(TableName.AgentVaultAccessBundle).onDelete("CASCADE");
+
+      t.string("name", 64).notNullable();
+
+      t.string("hostPattern", 1024).notNullable();
+
+      t.string("credentialType", 32).notNullable();
+
+      t.jsonb("credentialConfig").notNullable();
+
+      // NULL exactly when credentialType is passthrough, enforced in the service rather than by a CHECK.
+      t.binary("encryptedCredential");
+
+      t.timestamps(true, true, true);
+
+      t.unique(["accessBundleId", "name"]);
+    });
+
+    await knex.raw(
+      `ALTER TABLE "${TableName.AgentVaultService}" ADD CONSTRAINT "agent_vault_services_credential_type_check" CHECK ("credentialType" IN ('bearer', 'basic', 'passthrough'))`
+    );
+
+    await createOnUpdateTrigger(knex, TableName.AgentVaultService);
+  }
+
+  if (!(await knex.schema.hasTable(TableName.AgentVaultSession))) {
+    await knex.schema.createTable(TableName.AgentVaultSession, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+
+      t.string("projectId", 36).notNullable();
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+
+      t.uuid("userId");
+      t.foreign("userId").references("id").inTable(TableName.Users).onDelete("SET NULL");
+
+      t.uuid("identityId");
+      t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("SET NULL");
+
+      // Snapshotted so a deleted actor still names the session it held, the way pam_sessions does.
+      t.string("actorName", 255).notNullable();
+      t.string("actorEmail", 255);
+
+      t.string("tokenHash", 64).notNullable().unique();
+
+      t.timestamp("expiresAt", { useTz: true }); // NULL means never
+      t.timestamp("revokedAt", { useTz: true });
+
+      t.timestamps(true, true, true);
+
+      t.index(["projectId", "createdAt"]);
+    });
+
+    await knex.raw(
+      `ALTER TABLE "${TableName.AgentVaultSession}" ADD CONSTRAINT "agent_vault_sessions_one_actor" CHECK (num_nonnulls("userId", "identityId") <= 1)`
+    );
+
+    await knex.raw(
+      `CREATE INDEX agent_vault_session_by_user ON "${TableName.AgentVaultSession}" ("userId") WHERE "userId" IS NOT NULL`
+    );
+    await knex.raw(
+      `CREATE INDEX agent_vault_session_by_identity ON "${TableName.AgentVaultSession}" ("identityId") WHERE "identityId" IS NOT NULL`
+    );
+
+    await knex.raw(
+      `CREATE INDEX agent_vault_session_expires_at ON "${TableName.AgentVaultSession}" ("expiresAt") WHERE "expiresAt" IS NOT NULL`
+    );
+    await knex.raw(
+      `CREATE INDEX agent_vault_session_revoked_at ON "${TableName.AgentVaultSession}" ("revokedAt") WHERE "revokedAt" IS NOT NULL`
+    );
+
+    await createOnUpdateTrigger(knex, TableName.AgentVaultSession);
+  }
+
+  if (!(await knex.schema.hasTable(TableName.AgentVaultSessionAccessBundle))) {
+    await knex.schema.createTable(TableName.AgentVaultSessionAccessBundle, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+
+      t.uuid("sessionId").notNullable();
+      t.foreign("sessionId").references("id").inTable(TableName.AgentVaultSession).onDelete("CASCADE");
+      t.index("sessionId");
+
+      t.uuid("accessBundleId");
+      t.foreign("accessBundleId").references("id").inTable(TableName.AgentVaultAccessBundle).onDelete("SET NULL");
+      t.index("accessBundleId");
+
+      t.string("accessBundleName", 64).notNullable();
+
+      t.integer("position").notNullable();
+
+      t.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
+
+      t.unique(["sessionId", "position"]);
+    });
+
+    await knex.raw(
+      `CREATE UNIQUE INDEX agent_vault_session_bundle_unique ON "${TableName.AgentVaultSessionAccessBundle}" ("sessionId", "accessBundleId") WHERE "accessBundleId" IS NOT NULL`
+    );
+
+    await knex.raw(
+      `ALTER TABLE "${TableName.AgentVaultSessionAccessBundle}" ADD CONSTRAINT "agent_vault_session_bundles_position_check" CHECK ("position" >= 0)`
+    );
+  }
+
+  if (!(await knex.schema.hasTable(TableName.AgentVaultProxy))) {
+    await knex.schema.createTable(TableName.AgentVaultProxy, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+
+      t.string("projectId", 36).notNullable();
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+
+      t.string("name", 64).notNullable();
+
+      t.integer("tokenVersion").notNullable().defaultTo(0);
+
+      t.string("rootCaFingerprint", 102);
+      t.timestamp("rootCaExpiresAt", { useTz: true });
+
+      t.timestamp("heartbeat", { useTz: true });
+      // The poll interval the proxy was running when it last checked in. Health cannot be judged by
+      // pollInterval, which changes the moment an admin saves: the proxy only learns a new interval on
+      // its next poll, which is still scheduled at the old one. Gateways keep heartbeatTTL for this.
+      t.integer("heartbeatTTL");
+
+      t.string("trafficPolicy", 32).notNullable().defaultTo("any-host");
+      t.string("allowedHosts", 1024);
+      t.integer("pollInterval").notNullable().defaultTo(60);
+
+      t.timestamps(true, true, true);
+
+      t.unique(["projectId", "name"]);
+    });
+
+    await knex.raw(
+      `ALTER TABLE "${TableName.AgentVaultProxy}" ADD CONSTRAINT "agent_vault_proxies_traffic_policy_check" CHECK ("trafficPolicy" IN ('any-host', 'bundle-hosts'))`
+    );
+    await knex.raw(
+      `ALTER TABLE "${TableName.AgentVaultProxy}" ADD CONSTRAINT "agent_vault_proxies_poll_interval_check" CHECK ("pollInterval" BETWEEN 10 AND 300)`
+    );
+
+    await createOnUpdateTrigger(knex, TableName.AgentVaultProxy);
+  }
+
+  if (await knex.schema.hasTable(TableName.ResourceAuthMethod)) {
+    const hasAgentVaultProxyId = await knex.schema.hasColumn(TableName.ResourceAuthMethod, "agentVaultProxyId");
+    if (!hasAgentVaultProxyId) {
+      await knex.schema.alterTable(TableName.ResourceAuthMethod, (t) => {
+        t.uuid("agentVaultProxyId").nullable();
+        t.foreign("agentVaultProxyId").references("id").inTable(TableName.AgentVaultProxy).onDelete("CASCADE");
+      });
+
+      await knex.schema.raw(`
+        CREATE UNIQUE INDEX one_method_per_agent_vault_proxy
+        ON ${TableName.ResourceAuthMethod} ("agentVaultProxyId")
+        WHERE "agentVaultProxyId" IS NOT NULL
+      `);
+    }
+  }
+}
+
+export async function down(knex: Knex): Promise<void> {
+  if (await knex.schema.hasTable(TableName.ResourceAuthMethod)) {
+    const hasAgentVaultProxyId = await knex.schema.hasColumn(TableName.ResourceAuthMethod, "agentVaultProxyId");
+    if (hasAgentVaultProxyId) {
+      // The column is the only handle on these rows, so they go before it does. Their enrollment tokens
+      // in resource_token_auths cascade with them.
+      await knex(TableName.ResourceAuthMethod).whereNotNull("agentVaultProxyId").delete();
+
+      await knex.schema.raw(`DROP INDEX IF EXISTS one_method_per_agent_vault_proxy`);
+      await knex.schema.alterTable(TableName.ResourceAuthMethod, (t) => {
+        t.dropColumn("agentVaultProxyId");
+      });
+    }
+  }
+
+  await dropOnUpdateTrigger(knex, TableName.AgentVaultProxy);
+  await knex.schema.dropTableIfExists(TableName.AgentVaultProxy);
+
+  await knex.schema.dropTableIfExists(TableName.AgentVaultSessionAccessBundle);
+
+  await dropOnUpdateTrigger(knex, TableName.AgentVaultSession);
+  await knex.schema.dropTableIfExists(TableName.AgentVaultSession);
+
+  await knex(TableName.Membership)
+    .where({ scope: "resource", scopeResourceType: "agent-vault-access-bundle" })
+    .delete();
+
+  await dropOnUpdateTrigger(knex, TableName.AgentVaultService);
+  await knex.schema.dropTableIfExists(TableName.AgentVaultService);
+
+  await dropOnUpdateTrigger(knex, TableName.AgentVaultAccessBundle);
+  await knex.schema.dropTableIfExists(TableName.AgentVaultAccessBundle);
+}

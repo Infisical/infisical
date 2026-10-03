@@ -4,7 +4,7 @@ sidebarTitle: "Kubernetes Operator"
 description: "Learn how to pull, push, and generate dynamic secrets in Kubernetes with the Infisical Operator."
 ---
 
-In this tutorial, you will:
+In this tutorial, you'll:
 
 - Install the Infisical Kubernetes Operator and set up a Machine Identity with Kubernetes Auth.
 - Connect the operator to Infisical with the `InfisicalConnection` and `InfisicalAuth` CRDs.
@@ -30,7 +30,7 @@ Before you begin, make sure you have:
 <Warning>
   **Network reachability matters in both directions.** Kubernetes Auth works by having the Infisical backend call your cluster's TokenReview API at the Kubernetes Host URL you configure later, and the operator calls your Infisical instance's API from inside the cluster.
 
-  If you use Infisical Cloud, a local kind, minikube, or Docker Desktop cluster is not reachable and will not work as-is. Use a cluster with a reachable API endpoint, or self-host Infisical somewhere that can reach the cluster. The same applies to the PostgreSQL database for the dynamic-secret step: it must be reachable from your Infisical instance, not just from your cluster, so use a database with a public or peered address.
+  If you use Infisical Cloud, a local kind, minikube, or Docker Desktop cluster isn't reachable and won't work as-is. Use a cluster with a reachable API endpoint, or self-host Infisical somewhere that can reach the cluster. The same applies to the PostgreSQL database for the dynamic-secret step: it must be reachable from your Infisical instance, not just from your cluster, so use a database with a public or peered address.
 </Warning>
 
 <Info>
@@ -101,7 +101,7 @@ Before you begin, make sure you have:
         - **Environment**: `Production`
     3. Record the **Project Slug** and confirm the environment slug; you need both for the CRDs.
         - In **Project Settings**, copy the **Slug** field (distinct from the project name). It fills the `projectSlug` field in every CRD.
-        - In **Project Settings > Environments**, find the **Production** environment's slug. It is usually `prod`, but confirm it: each CRD's environment field must match exactly, or the sync targets the wrong environment.
+        - In **Project Settings > Environments**, find the **Production** environment's slug. It's usually `prod`, but confirm it: each CRD's environment field must match exactly, or the sync targets the wrong environment.
     4. Open the **Project Access** tab and add the Machine Identity you created. Grant it Admin permissions for this tutorial.
 
     <Note>
@@ -512,7 +512,7 @@ The [`InfisicalStaticSecret`](/integrations/platforms/kubernetes/infisical-stati
 
 The [`InfisicalPushSecret`](/integrations/platforms/kubernetes/infisical-push-secret-crd) CRD does the reverse: it reads a Kubernetes Secret and writes its values into Infisical.
 
-This `v1alpha1` CRD does not use the `InfisicalConnection` or `InfisicalAuth` objects; it carries its own inline `authentication` block with the Identity ID pasted as a plain `identityId` string.
+This `v1alpha1` CRD doesn't use the `InfisicalConnection` or `InfisicalAuth` objects; it carries its own inline `authentication` block with the Identity ID pasted as a plain `identityId` string.
 
 <Steps titleSize="h3">
   <Step title="Create the source Kubernetes Secret">
@@ -590,7 +590,7 @@ This `v1alpha1` CRD does not use the `InfisicalConnection` or `InfisicalAuth` ob
   </Step>
 
   <Step title="Verify the push reached Infisical">
-    Open your project in Infisical, select the environment you pushed to, and confirm `API_KEY` now appears. The operator pushes when you apply the resource and again whenever it changes; it does not re-sync on a timer unless you set `spec.resyncInterval` (for example `1m`). If `API_KEY` is missing, check the resource's status conditions and the operator logs as described in [Troubleshooting](#troubleshooting).
+    Open your project in Infisical, select the environment you pushed to, and confirm `API_KEY` now appears. The operator pushes when you apply the resource and again whenever it changes; it doesn't re-sync on a timer unless you set `spec.resyncInterval` (for example `1m`). If `API_KEY` is missing, check the resource's status conditions and the operator logs as described in [Troubleshooting](#troubleshooting).
 
     ![Infisical project secrets dashboard showing the pushed API_KEY secret](/images/push-secret.png)
   </Step>
@@ -598,14 +598,14 @@ This `v1alpha1` CRD does not use the `InfisicalConnection` or `InfisicalAuth` ob
 
 ## Generate a dynamic secret with the InfisicalDynamicSecret CRD
 
-The [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) CRD tells the operator to create and lease a [Dynamic Secret](/documentation/platform/dynamic-secrets/overview), then write the lease credentials into a Kubernetes Secret that any workload can consume. Like the push CRD, it is a `v1alpha1` resource with its own inline `authentication` block; the shared connection and auth objects are not used here.
+The [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) CRD tells the operator to create and lease a [Dynamic Secret](/documentation/platform/dynamic-secrets/overview), then write the lease credentials into a Kubernetes Secret that any workload can consume. Like the push CRD, it's a `v1alpha1` resource with its own inline `authentication` block; the shared connection and auth objects aren't used here.
 
 <Steps titleSize="h3">
   <Step title="Create the dynamic secret in Infisical">
     1. In your project, open the dropdown next to **Add Secret** and select **Add Dynamic Secret**.
     2. Select **SQL Database**, then [**PostgreSQL**](/documentation/platform/dynamic-secrets/postgresql) as the provider.
     3. Enter your database's **Host**, **Port**, **User**, **Password**, and **Database Name**. The database must be network-reachable from your Infisical instance, as noted in the prerequisites.
-    4. In the CA (SSL) section, upload your database's CA certificate if it enforces TLS with a custom CA. If it does not require a custom CA, leave this empty.
+    4. In the CA (SSL) section, upload your database's CA certificate if it enforces TLS with a custom CA. If it doesn't require a custom CA, leave this empty.
     5. Set the **Secret Name** to `dynamic-secret-lease`.
     6. Select the environment matching the slug you confirmed earlier.
 
@@ -665,7 +665,7 @@ The [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dyna
   </Step>
 
   <Step title="Verify the lease was created">
-    Confirm the operator created the Kubernetes Secret holding the lease credentials. If it is not there yet, wait a few seconds for the first reconcile and run the command again:
+    Confirm the operator created the Kubernetes Secret holding the lease credentials. If it isn't there yet, wait a few seconds for the first reconcile and run the command again:
 
     ```bash
     kubectl get secret dynamic-secret-test -n default -o yaml
@@ -691,7 +691,7 @@ If all five checks pass, you have synced secrets in both directions and generate
 
 ## Troubleshooting
 
-If a sync does not produce the expected result, inspect the resources' status conditions and the operator logs before changing anything. For the pull path, diagnose in dependency order: connection first, then auth, then the static secret. Each resource only becomes ready after the one it references.
+If a sync doesn't produce the expected result, inspect the resources' status conditions and the operator logs before changing anything. For the pull path, diagnose in dependency order: connection first, then auth, then the static secret. Each resource only becomes ready after the one it references.
 
 <AccordionGroup>
   <Accordion title="The InfisicalConnection is not Ready">
@@ -764,7 +764,7 @@ If a sync does not produce the expected result, inspect the resources' status co
 
 ## Clean up
 
-Remove the resources this tutorial created so you do not leave an active database lease or orphaned objects behind. Delete consumers before the objects they reference, so nothing reconciles against a missing dependency.
+Remove the resources this tutorial created so you don't leave an active database lease or orphaned objects behind. Delete consumers before the objects they reference, so nothing reconciles against a missing dependency.
 
 1. Delete the sync resources. Deleting the `InfisicalDynamicSecret` with `leaseRevocationPolicy: Revoke` revokes the active database lease.
 

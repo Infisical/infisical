@@ -15,14 +15,14 @@ The Kubernetes dynamic secret feature enables you to generate short-lived servic
 - **Integration with Private Clusters**: Seamlessly work with private Kubernetes clusters using Infisical's Gateway feature.
 
 <Note>
-  Kubernetes service account tokens cannot be revoked once issued. This is why
+  Kubernetes service account tokens can't be revoked once issued. This is why
   it's important to use short TTLs and carefully manage token generation. The
   tokens will automatically expire after their TTL period.
 </Note>
 
 <Note>
   Kubernetes service account tokens are JWTs (JSON Web Tokens) with a fixed
-  expiration time. Once a token is generated, its lifetime cannot be extended.
+  expiration time. Once a token is generated, its lifetime can't be extended.
   If you need longer access, you'll need to generate a new token.
 </Note>
 
@@ -415,7 +415,7 @@ This feature is ideal for scenarios where you need to:
       Name by which you want the secret to be referenced
     </ParamField>
     <ParamField path="Default TTL" type="string" required>
-      Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
+      Default time-to-live for a generated secret (it's possible to modify this value after a secret is generated)
     </ParamField>
     <ParamField path="Max TTL" type="string" required>
       Maximum time-to-live for a generated secret
@@ -433,7 +433,7 @@ This feature is ideal for scenarios where you need to:
       Custom CA certificate for the Kubernetes API server. Leave blank to use the system/public CA. Not required when using Gateway authentication as the Gateway will use its internal TLS configuration.
     </ParamField>
     <ParamField path="SSL Reject Unauthorized" type="boolean" default="true">
-      If enabled, the server certificate will be verified against the list of supplied CAs. Disable this option if you are using a self-signed certificate.
+      If enabled, the server certificate will be verified against the list of supplied CAs. Disable this option if you're using a self-signed certificate.
     </ParamField>
     <ParamField path="Auth Method" type="string" required>
       Choose between Token (API) or Gateway authentication. If using Gateway, the Gateway must be deployed in your Kubernetes cluster.
@@ -477,14 +477,14 @@ This feature is ideal for scenarios where you need to:
 
   </Step>
   <Step title="Click 'Submit'">
-    After submitting the form, you will see a dynamic secret created in the dashboard.
+    After submitting the form, you'll see a dynamic secret created in the dashboard.
   </Step>
 </Steps>
 
 ## Generate and manage tokens
 
 Once you've successfully configured the dynamic secret, you're ready to generate on-demand service account tokens.
-To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+To do this, simply select the 'Generate' button which appears when hovering over the dynamic secret item.
 Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
 ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -499,18 +499,18 @@ When generating these secrets, it's important to specify a Time-to-Live (TTL) du
   configuring the dynamic secret.
 </Tip>
 
-Once you click the `Submit` button, a new secret lease will be generated and the service account token will be shown to you.
+Once you select the `Submit` button, a new secret lease will be generated and the service account token will be shown to you.
 
 ![Provision Lease](/images/platform/dynamic-secrets/kubernetes-lease-value.png)
 
 ## Audit or revoke leases
 
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+Once you have created one or more leases, you'll be able to access them by selecting the respective dynamic secret item on the dashboard.
 This will allow you to see the lease details and delete the lease ahead of its expiration time.
 
 <Note>
   While you can delete the lease from Infisical, the actual Kubernetes service
-  account token cannot be revoked. The token will remain valid until its TTL
+  account token can't be revoked. The token will remain valid until its TTL
   expires. This is why it's crucial to use appropriate TTL values when
   generating tokens.
 </Note>

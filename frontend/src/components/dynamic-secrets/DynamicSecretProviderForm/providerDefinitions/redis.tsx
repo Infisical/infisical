@@ -14,19 +14,38 @@ import {
 } from "./redisContract";
 
 const redisConnectionFields = [
-  { name: "inputs.host", type: "text", label: "Host", layout: "half" },
+  {
+    name: "inputs.host",
+    type: "text",
+    label: "Host",
+    placeholder: "redis.example.com",
+    layout: "half"
+  },
   { name: "inputs.port", type: "number", label: "Port", layout: "half" },
-  { name: "inputs.username", type: "text", label: "User", layout: "half" },
+  {
+    name: "inputs.username",
+    type: "text",
+    label: "User",
+    placeholder: "default",
+    layout: "half"
+  },
   {
     name: "inputs.password",
     type: "secret",
     label: "Password",
+    placeholder: "Enter Redis password",
     description: "Required if your Redis instance is password protected.",
     autoComplete: "new-password",
     isOptional: true,
     layout: "half"
   },
-  { name: "inputs.ca", type: "secret", label: "CA (SSL)", isOptional: true }
+  {
+    name: "inputs.ca",
+    type: "secret",
+    label: "CA (SSL)",
+    placeholder: "-----BEGIN CERTIFICATE----- ...",
+    isOptional: true
+  }
 ] as const;
 
 const redisStatementFields = buildStatementFields();

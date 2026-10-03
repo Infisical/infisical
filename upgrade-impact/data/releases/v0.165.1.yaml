@@ -1,0 +1,44 @@
+version: v0.165.1
+releasedAt: 2026-09-01T12:58:45-07:00
+sourceTag: v0.165.1
+previousTag: v0.164.1
+impactLevel: low
+summary: Startup applies additive schema changes for PKI, folder RBAC, and
+  identity auth templates. No operator configuration changes are required.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Platform startup migrations
+    description: Database changes add nullable columns, indexes, and one certificate
+      data cleanup. Existing records remain compatible, and the certificate
+      cleanup only removes NULL array elements.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260817120000_folder-scoped-additional-privileges.ts
+        path: backend/src/db/migrations/20260817120000_folder-scoped-additional-privileges.ts
+        description: Adds folder RBAC columns and indexes
+      - type: file
+        ref: backend/src/db/migrations/20260818000000_identity-kubernetes-auth-template.ts
+        path: backend/src/db/migrations/20260818000000_identity-kubernetes-auth-template.ts
+        description: Adds nullable templateId to Kubernetes auth
+      - type: file
+        ref: backend/src/db/migrations/20260827000000_add-gateway-to-identity-auth-templates.ts
+        path: backend/src/db/migrations/20260827000000_add-gateway-to-identity-auth-templates.ts
+        description: Adds nullable gateway references
+      - type: file
+        ref: backend/src/db/migrations/20260831165247_certificates-remove-null-extended-key-usages.ts
+        path: backend/src/db/migrations/20260831165247_certificates-remove-null-extended-key-usages.ts
+        description: Removes NULL certificate usage entries
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-09-01T21:39:48.786Z
+  sourceRange:
+    from: v0.164.1
+    to: v0.165.1

@@ -20,13 +20,60 @@ All commands run from the `backend/` directory:
 
 ### Testing
 
-- `npm run test:unit` — unit tests matching `./src/**/*.test.ts`
-- `npm run test:e2e` — e2e tests matching `./e2e-test/**/*.spec.ts` (single-threaded, requires running DB/Redis)
-- `npm run test:e2e-watch` — e2e tests in watch mode
+Run both suites from the repo root, which is the same entry point CI uses:
+
+- `make test-api-unit` — unit tests matching `./src/**/*.test.ts`
+- `make test-api-e2e` — e2e tests matching `./e2e-test/**/*.spec.ts`
+- `make test-api-e2e SPEC=<pattern>` — narrow to one spec, e.g. `SPEC=secret-sync`
+- `make up-rotation-databases` — start the databases the secret rotation specs need, required
+  only for a full run (`docker-compose.e2e-dbs.yml`, and the Oracle image is large)
+- `make down-test-suite-containers` — stop everything when finished
+
+The secret rotation specs reach their databases by compose service name, so
+`docker-compose.e2e-dbs.yml` pins the same compose project as the test stack and shares its
+network. Without `make up-rotation-databases`, those specs fail on connection; the rest pass.
+
+Both run inside the FIPS image (`Dockerfile.dev.fips`), which carries the native dependencies
+the suites need (SoftHSM2, the Oracle client, the FIPS OpenSSL build) and pins the Node
+version, so the host's does not matter. `docker-compose.test.yml` declares the image,
+environment, mounts and services; `src`, `e2e-test` and both vitest configs are mounted, so
+editing a test needs no rebuild but changing `package.json` or `tsconfig.json` does.
+
+**`npm run test:e2e` directly is possible but destructive if misconfigured.** The Vitest
+environment runs `DROP SCHEMA public CASCADE` on whatever database `.env.test` points at,
+before every run. Copy `.env.test.example`, which targets the throwaway stack, and start it
+with `make up-test-suite-containers`. Never point it at the dev database.
 
 Unit tests go next to source as `*.test.ts` and test pure functions with Vitest globals (`describe`, `test`, `expect`).
 
 E2E tests live in `e2e-test/routes/`. The custom Vitest environment (`e2e-test/vitest-environment-knex.ts`) bootstraps a full server with DB, Redis, and encryption. Tests use injected globals: `testServer` (Fastify instance), `jwtAuthToken` (pre-authenticated JWT). Use `testServer.inject()` for HTTP assertions. Test helpers in `e2e-test/testUtils/` provide CRUD wrappers for secrets, folders, and secret imports. See `e2e-test/routes/v1/org.spec.ts` for a representative e2e test.
+
+#### Faking a third-party provider
+
+**Never add test-only code to `src/`** — no test-mode enum members, no lookup map entries, no
+`isTestMode` branches. Replace the module instead, from `test.alias` in
+`vitest.e2e.config.mts`, with a double under `e2e-test/fakes/`. Production code stays unaware
+a fake exists. `e2e-test/fakes/aws-parameter-store-sync-fns.ts` and its connection counterpart
+are the worked examples, and the pre-existing `./license-fns` alias is the precedent.
+
+Four things decide whether this works:
+
+- **Alias the narrowest specifier.** Entries match the import string, so aliasing one a single
+  file imports (a barrel's `./x-fns` re-export) swaps that seam and leaves the constants,
+  schemas, types, router and lookup maps real.
+- **`test.alias` must stay an array.** Vite's `mergeAlias` concatenates arrays with
+  `test.alias` first, but merges two objects, where the generic `@app` prefix matches before a
+  specific `@app/...` entry and the fake silently stops applying with no error.
+- **Re-export whatever you do not replace.** The alias swaps the whole module, so an export you
+  omit stops existing for every importer of it.
+- **Assert the fake still matches.** Nothing otherwise checks it against the module it
+  replaces. Export an assignment typed as `Pick<typeof RealModule, …>` so a signature change
+  fails type-checking rather than leaving the fake quietly wrong.
+
+A fake must reproduce the contract under test, not merely record its input. The Parameter Store
+fake reimplements the real reconciliation rules (skip empty writes, delete absent keys unless
+deletion is disabled, respect the key schema), because those rules are the behavior the specs
+exist to pin.
 
 #### FIPS test image and the prebuilt toolchain
 
@@ -143,6 +190,15 @@ DALs extend these with custom queries — typically complex joins using Knex que
 
 `updateById` and `update` support atomic `$incr` and `$decr` operators alongside regular field updates.
 
+**A dropped column does not fail type checking if the insert is built in a `.map()`.** TypeScript's
+excess-property check only fires on a fresh object literal at the assignment site, so a stale field
+survives when the literal is returned from a callback:
+
+```ts
+insertMany(names.map((name) => ({ name, role: "member", orgId })));  // compiles, then 500s at runtime
+insertMany([{ name, role: "member", orgId }]);                       // TS2353
+```
+
 See `src/services/secret/secret-dal.ts` for a DAL that overrides the base `update` to auto-increment version and adds complex join queries.
 
 ### Service Module Structure
@@ -226,9 +282,8 @@ judgment. Two adjustments to that rule, both small enough to enumerate:
   body: `POST /v1/identities/search`, `POST /v2/identities/search`, `POST /v2/identities/search/count`,
   and the two `memberships/details` routes. All five check a CASL read ability.
 - **A read that hands back credential material loses it**, because the point of closing administration is
-  that a third-party application should not end up holding the org's secrets. Six routes:
+  that a third-party application should not end up holding the org's secrets. Five routes:
   `GET /v1/sso/oidc/config` (`clientSecret`), `GET /v1/ldap/config` (`bindPass`),
-  `GET /v1/auth/ldap-auth/identities/:identityId` (`bindPass`),
   `GET /v1/workspace/:projectId/kms/backup` (the project's KMS backup blob), and Slack
   `GET /install` / `GET /reinstall`, which gate on `OrgPermissionActions.Create` and exist only to start
   an install. Everything else reads through a sanitized schema — `sanitizedClientSecretSchema` returns a
@@ -378,6 +433,23 @@ Four invariants, each load-bearing:
   their alias, so one request can name the same person twice. Undeduped, that violates
   `membership_unique_user_org` and surfaces as a 500.
 
+Nothing constrains a user to one alias per `(orgId, aliasType)`, and SSO login mints a new one
+whenever the asserted subject differs from what SCIM last wrote, so **a SCIM read must match a
+`userName` against every one of a user's aliases, not the newest**. Matching only the newest made a
+provisioned user vanish from `GET /Users?filter=userName eq "..."` the first time they logged in
+under a different subject, and the IdP answered that empty lookup by provisioning them again. It was
+intermittent because `replaceScimUser` rewrites `externalId` on *all* of a user's aliases, so the
+next PUT healed it until the next login. `$buildScimMembershipQuery` (`org-dal.ts`) therefore
+answers every `userName` comparison with an `EXISTS` over the user's aliases, so the predicate is per
+user rather than per alias row. That matters for negation: evaluated per row, `userName ne "x"` or
+`not (userName eq "x")` would keep a user through their other alias, and a member with no alias at
+all would fall out through a NULL comparison. The parser (`lib/knex/scim.ts`) lets an attribute
+resolve to a handler instead of a column for exactly this. Display is separate: the query still
+joins every alias and collapses the fan-out with `DISTINCT ON`, ranked so the alias row that
+satisfies the filter wins and the newest is the fallback, which is how a lookup by an older alias
+echoes that alias back. The list query also carries a total order, because an IdP walking
+`startIndex`/`count` over an unordered result loses users the same way.
+
 A related case sits on the login side: provisioning can name someone before they have ever logged
 in, leaving a placeholder account keyed on the identifier instead of the mailbox.
 `adoptProvisionedShadowUser` (same file, wired into `oidcLogin`'s no-alias branch) adopts that row
@@ -422,6 +494,55 @@ audit-log entitlement, so on those deployments only the `logger.info` line survi
 Do not special-case this event past the retention gate; treat the application log as the floor and
 the audit event as the addition for licensed instances.
 
+### Profile Sync From The IdP (SSO-enforced orgs)
+
+An IdP keyed on a stable identifier lets someone change mailbox and display name without changing
+who they are, so our copy of both goes stale: notification mail goes to an address that no longer
+exists, and every audit entry written from then on records it. `syncSsoUserProfile`
+(`src/services/user-alias/user-alias-fns.ts`) carries the asserted email and name onto the account,
+and is called from all three login services right after `ensureSsoAccountVerified`, outside the
+caller's transaction, with its result flowing into the session.
+
+The gate is `organization.authEnforced` **and** a verified alias, and both halves matter. Enforcement
+is the org saying the IdP is authoritative for identity, which is the same claim that already skips
+email verification at signup. The verified alias is the proof that the IdP controls *this* account:
+an unverified alias asserting an unrecognized email is exactly what `isStaleSsoAlias` exists to
+catch, and reading that as a rename would let a stale alias rewrite somebody else's account. One
+consequence to know: a legacy unverified alias whose email changed before its next login is stale,
+so it gets the email-verification fallback (a code sent to the dead mailbox) rather than a sync.
+
+Three invariants:
+
+- **It never fails a login.** A rename that could not be applied leaves stale data, which is what we
+  already had; a throw locks the person out of an org that has no other way in. Every failure path
+  returns the unchanged user.
+- **It only renames an address the org owns, onto another address the org owns.** Both halves are
+  checked in the helper against the org's verified domains. The user row is global rather than
+  org-scoped, so without the first half an org could rename an account that merely carries one of
+  its aliases and rewrite the identity every other org of that user sees. Every login path
+  establishes both already (`verifyEmailDomainOwnership` is a positive check: the domain must be
+  verified *for this org*, and the alias branch runs it against the existing account's username),
+  so the helper's copy is there to keep the rename from outliving those checks. It is unreachable
+  today, and audits the skip anyway (`SSO_USER_EMAIL_SYNC_SKIPPED` with
+  `reason: "domain-not-owned"`) so a refactor that removes a caller's check leaves a trail rather
+  than a silently stale account.
+- **It never renames onto an occupied address.** `users.username` is globally unique and the row is
+  global rather than org-scoped, so the asserted address may already be a personal signup or an
+  unmerged duplicate. The conflict is recorded (`SSO_USER_EMAIL_SYNC_SKIPPED` with
+  `reason: "address-taken"`) and the email is left alone; the name still syncs. The preceding read
+  is not a lock, so a unique violation lands on the same path.
+
+SCIM is the other half of the same story and moves with it. `updateScimUser` / `replaceScimUser`
+rejected every email change outright, which left the data stale *and* put the provisioning job in a
+permanent error state (Entra quarantines after repeated failures). Both now accept the change under
+the same `authEnforced` gate via `$resolveScimEmailChange`, and answer an occupied address with
+`409 uniqueness` rather than a constraint-shaped 500. Self-service email change
+(`user-service.ts`) is refused when the next login would overwrite it anyway, which
+`$getManagedEmailReason` narrows to the case that actually would: the account's own address sits on a
+domain one of its SSO-enforced orgs has verified. Membership in an enforced org is not the test, since
+the user row is global and an address outside that org's domains is one `syncSsoUserProfile` will not
+touch. SCIM stays a blanket refusal, because the directory provisions the address either way.
+
 ### Permission System (CASL)
 
 Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in `src/ee/services/permission/`:
@@ -431,7 +552,11 @@ Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in 
 
 **Project permission actions** include standard CRUD plus specialized ones like `DescribeSecret` (see metadata without value), `ReadValue`, `GrantPrivileges`, `AssumePrivileges`, `Lease` (for dynamic secrets). See `ProjectPermissionActions`, `ProjectPermissionSecretActions`, `ProjectPermissionDynamicSecretActions`, and `ProjectPermissionIdentityActions` enums in `project-permission.ts`.
 
-Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. Custom roles use unpacked CASL rules stored in the database. Rules can include conditions with operators `$IN`, `$EQ`, `$NEQ`, `$GLOB` (for pattern matching like `prod-*`). See `PermissionConditionSchema` in `permission-types.ts`.
+Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. For PAM and Agent Vault `getPredefinedRoles` (`project-role-fns.ts`) returns only `Admin` and `Member`, because their permission dispatch resolves every other slug to the member set; the role factory delegates to that one function, so every role picker follows. Custom roles use unpacked CASL rules stored in the database. Rules can include conditions with operators `$IN`, `$EQ`, `$NEQ`, `$GLOB` (for pattern matching like `prod-*`). See `PermissionConditionSchema` in `permission-types.ts`.
+
+**Privilege boundaries mean different things on the two privilege systems.** `organizations.shouldUseNewPrivilegeSystem` (default `true`, backfilled `false` for orgs predating March 2025) picks which. `validatePrivilegeChangeOperation` / `assertRoleSetBoundary` (`permission-fns.ts`) are the shim: on the new system they collapse to `actorPermission.can(action, subject)`, on the legacy one they run `validatePermissionBoundary`, requiring the actor to out-rank every role the target holds. So a boundary at a call site that already gated on the same action is a no-op for new-system orgs and the only protection for legacy ones. Two consequences: "the route checks the action" is not a substitute for a boundary, and adding one is not a behavior change for most tenants. Prefer `getOrgPermissionByRoles` / `getProjectPermissionByRoles` + `assertRoleSetBoundary` over fetching the target's merged ability. It bounds each role separately, and it avoids `getProjectPermission`, which stamps whichever actor it was called for onto the request context the audit log reads.
+
+**Identity auth-method access goes through `assertIdentityAuthAccessAllowed`** (`src/services/identity/identity-auth-permission-fns.ts`), because repointing an identity's auth trust lets the caller authenticate as that identity. All 13 auth services call it once per attach/update/revoke, after the `throwUnlessCan` gate and outside the `identity.projectId` branch so both scopes are covered. A new auth method calls it too. Credential issuance (`createTokenAuthToken`, `createUniversalAuthClientSecret`) goes through it under `create-token`, since minting a credential is the same escalation as repointing the trust, and so do the per-credential paths: `updateTokenAuthToken` under `create-token`, `getUniversalAuthClientSecrets` / `getUniversalAuthClientSecretById` under `get-token`, and `revokeUniversalAuthClientSecret` under `delete-token`. **`PROJECT_ACTION_BY_ORG_ACTION` must map the org action to the same project action the route's own `throwUnlessCan` already checks** — that identity is what keeps the helper a no-op for new-system orgs, so a new entry is only safe once you have confirmed the pair matches. `revokeTokenAuthToken` and `clearUniversalAuthLockouts` are still unbounded in both scopes (and the former gates on `edit` where its UA counterpart gates on `delete-token`); that predates the helper and is a deliberate gap, not an oversight to copy. The target's grants come from `permissionService.getActorGrantAbilities`, not from a membership lookup, and it returns one ability per grant rather than per role. Two things a role-slug resolver misses: a group-derived membership carries a NULL `actorIdentityId`, so `membershipIdentityDAL.getIdentityById` never sees it, and an additional privilege carries a raw permission blob with no slug at all, so no `*PermissionByRoles` path can express it. Either omission clears an actor that out-ranks the target's direct roles but not its effective access. `getActorGrantAbilities` reads the same `permissionDAL.getPermission` query the ability itself is built from, so the bounded set cannot drift from the effective one.
 
 **Project permission caching** uses a fingerprint-based two-tier cache (`withCacheFingerprint` in `src/lib/cache/with-cache.ts`):
 - **Short-lived marker** (10s TTL) in Redis — while present, cached data is served with 0 DB reads.
@@ -493,11 +618,19 @@ Queue handler factories (e.g., `src/services/secret/secret-queue.ts`) follow the
 
 `queueService.start(name, handler, opts)` accepts `concurrency` (per-worker parallelism ceiling) and BullMQ's `limiter: { max, duration }` (fleet-wide throughput cap, coordinated via Redis). Use both to **rate-shape DB-heavy background work** so a large backlog drains as an even plateau instead of a burst — see `src/services/project/project-cleanup-queue.ts`. The cron cadence must not be the pacer; load is bounded by `concurrency × per-job cost`, and the limiter caps steady throughput.
 
-**`QUEUE_WORKER_PROFILE` gates the consumer, never the producer.** Whenever workers are enabled, `start()` creates the BullMQ `Queue` for every queue and only skips creating the `Worker` when the queue isn't in this pod's profile. This invariant is what makes splitting the fleet by profile safe: a pod that doesn't consume a queue must still be able to enqueue onto it, since `queue()` silently no-ops on an uninitialized queue (`await q?.add(...)`) and would otherwise drop every job destined for another profile's worker. `QUEUE_WORKERS_ENABLED=false` is the one exception and is deliberately absolute — it returns before the `Queue` is created (`src/queue/queue-service.ts:786`), so such a pod neither consumes *nor* produces, and both `queue()` and `upsertJobScheduler` are no-ops or throw. Code that schedules work at boot must branch on that flag rather than swallowing the failure, so a genuine Redis/BullMQ error still surfaces (see `src/ee/services/audit-log/audit-log-queue.ts`).
+**`INFISICAL_RUN_MODES` gates the consumer, never the producer.** `start()` creates the BullMQ `Queue` for every queue in every run mode, and only skips creating the `Worker` when the queue isn't consumed by this pod: `secret-scanning` covers `SECRET_SCANNING_QUEUES`, `general-workers` covers everything else. This invariant is what makes splitting the fleet safe — an API-only pod runs no workers at all but must still be able to enqueue, since `queue()` silently no-ops on an uninitialized queue (`await q?.add(...)`) and would otherwise drop every job destined for another pod's worker. It also means `upsertJobScheduler` works from any pod, so boot-time scheduling needs no run-mode branch.
+
+`QUEUE_WORKERS_ENABLED` and `QUEUE_WORKER_PROFILE` were replaced by `INFISICAL_RUN_MODES` and no longer exist.
+
+**Worker heartbeats detect a fleet nobody deployed**, since an ungated producer means an `api`-only deployment silently queues work nothing consumes. In `src/lib/worker-heartbeat/worker-heartbeat.ts`: a `general-workers` pod `startReporting`s itself into a per-worker-type sorted set scored by its heartbeat deadline (60s beat, 5-minute TTL), and an `api` pod that doesn't run the fleet `startMonitoring`s it, logging an error while no instance reports. Observation only — never wire it into `/api/status`; a deployment missing its workers must still serve API traffic.
 
 ### Scheduled Jobs (Cron Manager)
 
 Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cronJobFactory`). A single instance is constructed in `src/server/routes/index.ts` (~line 541) and injected as `cronJob` into any service that needs to schedule periodic work. The factory exposes `register`, `start`, and `stop`; `start` is called once after construction, and `stop` is invoked during graceful shutdown to drain in-flight handlers.
+
+**Only `general-workers` pods start the manager's timers**, so only they execute a scheduled handler; every pod still calls `register`. The separate `cronJobs` array in `src/server/routes/index.ts` is deliberately **not** gated: those refresh the process's own caches (license, rate limits, env overrides), not fleet work.
+
+**Per-process refreshes use `startLocalRefresh` (`src/lib/cron/local-refresh.ts`), never the cron manager and never a raw `new CronJob`.** The cron manager runs a job once per fleet, which would leave every other pod's in-memory state stale; a wall-clock cron pattern makes every pod fire in the same second. The helper starts each process at a random offset within one interval (random per process on purpose, unlike the manager's deterministic hash), skips a tick while the previous run is in flight, logs and swallows errors, and unrefs its timers. Its `stop()` handle is what goes in `cronJobs`. It records `infisical.local_refresh.*` on the `InfisicalCore` meter, labelled by `name` as `job.name`, so a new refresh needs no metric code; keep `name` a fixed string. A failing refresh keeps retrying on every tick rather than giving up after N failures, because stopping would freeze the pod's state at whatever it last loaded. The `consecutive_failures` gauge (reset on success) is the alerting signal.
 
 **Why this exists instead of BullMQ repeatables**: cron runs are coordinated across pods via a slot-election scheme (5 participant slots backed by Redis SET NX/PX) plus per-run redlocks, so each fire executes exactly once across the fleet without the orphaned-scheduler / duplicate-execution failure modes the BullMQ `JobScheduler` had. The manager also handles crash recovery via lease TTLs, hang recovery via per-handler timeouts, and bounded exponential backoff that won't overlap with the next scheduled fire.
 
@@ -531,6 +664,8 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
 - Handlers must be idempotent at the boundary of `handlerTimeoutMs` (default 5 min). A timeout marks the run failed-final and waits for the next fire — it does NOT retry the same fire, because the timed-out handler may still be running.
 - Failures (non-timeout) retry with exponential backoff (base 30 s, max 5 min) up to `maxAttempts`, but only if the retry would still fit before the next scheduled fire. Otherwise the next fire is treated as the natural retry.
 - Long-running handlers should override `handlerTimeoutMs` / `leaseDurationMs` per-entry (must satisfy `handlerTimeoutMs <= leaseDurationMs`).
+- **A fire is not picked up at its scheduled time; it is picked up at a deterministic offset past it.** Cron patterns cluster hard, so without a spread one pod claims a dozen handlers in a single tick. Two knobs bound that, both in `cronJobFactory`:
+  - **Jitter** spreads pickup, and is *derived, never configured*: a job's window is `JITTER_INTERVAL_FRACTION` (0.25) of its own cron interval, capped by the factory's `maxJitterMs` (5 min), so a `*/5` job gets 75s and anything at or past a 20-minute interval gets the full 5 min. Two things follow from the fraction being below 1: a run can never reach its own next fire, and the first retry always fits (worst case `0.25 x interval + 30s backoff + 1s`, under `interval` for anything above ~41s, and cron cannot fire faster than every 60s). The offset within the window is `sha256(name) % window`, never random: every pod computes a run's eligibility independently and the run id is keyed on the *unjittered* fire, so a per-pod offset would break the Redis enqueue dedup and the lease logic. Only the pending-zset score carries the offset; the run id and `scheduled_at` are unchanged. Development wiring passes `maxJitterMs: 0` so a job runs when its pattern says. `register` rejects anything but a 5-field pattern: the retry model assumes minute granularity, and a 6-field pattern firing every 30s would have its first retry land past its own next fire. Sub-minute recurring work belongs on a `setInterval` or a queue, as the event outbox relay does.
 
 **When to use cron vs. queue**:
 - Scheduled/recurring (every N minutes, daily at X, cron pattern) → `cronJob.register(...)`.
@@ -543,26 +678,148 @@ See `src/services/health-alert/health-alert-queue.ts` for a minimal example, `sr
 
 `src/services/alert/` is **the** alerting module: one `alerts` table, one channel stack (email, Slack, webhook, PagerDuty), one recipient resolver, one encryption story for channel configs, one dedup + history + retention path, one cron tick that fans out into the `AlertDispatch` queue, and one set of routes (`src/server/routes/v1/alert-router.ts`, including `POST /channels/test`).
 
-**Any new "notify someone when X happens" capability belongs here as a provider.** Do not write a per-domain alert service, per-domain channel table, or per-domain notification cron — that path produces N half-featured implementations (only one of which gets PagerDuty, or dedup, or a test button). `src/services/pki-alert-v2/` predates this module and is the thing we are converging away from, not a template to copy.
+**Any new "notify someone when X happens" capability belongs here as a provider.** Do not write a per-domain alert service, per-domain channel table, or per-domain notification cron — that path produces N half-featured implementations (only one of which gets PagerDuty, or dedup, or a test button). `src/services/pki-alert-v2/` predates this module and is legacy. New PKI application alerts live here (`cert-manager.application`); existing PKI Alerts V2 rows were not migrated and keep firing, both project-wide and application-scoped, and can still be read and deleted through the deprecated routes. Creating and editing them is refused by `LEGACY_ALERT_WRITES_BLOCKED` (`pki-alert-v2-constants.ts`). Certificate code paths still queue it directly through `pkiAlertV2Queue`, next to the `certificateAlertEventEmitter` call that feeds this module (`emit` inside the issuance and renewal transactions, `notify` where there is none and after a revocation commits, so a failed event insert can never roll back a revocation the upstream CA already made). Don't add features to it or copy it.
 
 Adding a new alertable resource type:
 
-1. Implement `IResourceAlertProvider` (`alert-types.ts`) in `src/services/alert/providers/<name>-alert-provider.ts`, with its DAL alongside it. You supply: a dot-namespaced `resourceType` (e.g. `identity.authentication`), `eventTypes`, a `conditionSchema` for the "when", `findDueTargets`, `buildViewUrl` / `buildPayload` / `targetId` / `buildTestTargets`, and the two authorization hooks `assertPermission` + `assertResourceInScope`.
+1. Implement `IResourceAlertProvider` (`alert-types.ts`) in `src/services/alert/providers/<name>-alert-provider.ts`, with its DAL alongside it. You supply: a dot-namespaced `resourceType` (e.g. `identity.authentication`), an `events` list (each event carries its own `conditionSchema` for the "when", so a scheduled expiry and an event-triggered change on the same resource type don't share one shape), `buildViewUrl` / `buildPayload` / `targetId`, one discovery method per trigger type you declare (below), and the two authorization hooks `assertPermission` + `assertResourceInScope`. Test sends need nothing from you: they go through the generic `buildTestAlertPayload` (`alert-test-payload-fns.ts`).
 2. Register it on the singleton registry in `src/server/routes/index.ts` (`alertProviderRegistry.register(...)`).
 
-That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS encryption, dedup, history, retention pruning, test sends, and dispatch metrics all come for free, because the cron tick enumerates `alertProviderRegistry.resourceTypes()`. See `src/services/alert/providers/identity-credential-alert-provider.ts` for a complete example.
+That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS encryption, dedup, history, retention pruning, test sends, and dispatch metrics all come for free, because the cron tick enumerates `alertProviderRegistry.resourceTypes()`. See `src/services/alert/providers/identity-credential-alert-provider.ts` for a complete example that declares both trigger types (`identity.authentication.expiry` scheduled, `identity.authentication.auth-method-changed` event-triggered).
+
+**Each event declares how it fires**, and the trigger decides which discovery method the provider owes:
+
+- `AlertTriggerType.Scheduled` → **`findScheduledTargets`**. The daily cron asks what is currently due, and the engine dedups per `(channel, target)` so a target rediscovered tomorrow is not alerted on twice.
+- `AlertTriggerType.Event` → **`findEventTargets`**. The target is already known, so nothing is scanned for and **nothing is deduped**: an event that fired is one the customer asked to hear about, and unlike a daily scan it is never rediscovered. These reach the engine from the event outbox (below), never from the cron. The input carries the outbox row's whole `payload` next to `targetIds`: the module only reads `targetIds`, so an emitter can add the facts the notification needs (which auth method, who changed it) and the provider validates them with its own schema at delivery. Encoding facts into the target id is the wrong tool for that.
+
+**`findEnabledForEvent` with no `projectId` matches every alert bound to the resource, any scope.** A resource that has no project of its own (an org-level identity) can still be watched from a project it is a member of, and `assertResourceInScope` already checked that binding at create. Given a `projectId`, it matches that project's alerts plus org-scoped ones.
+
+`alertProviderRegistry.register` asserts that pairing at boot, so a provider that declares an event trigger without `findEventTargets` fails the process rather than silently no-op'ing in production. `triggerType` is derived from the provider's event definition inside `createAlert` and is never accepted from a request.
+
+**Event-path reads go to the primary, `findEventTargets` included.** An empty read there is terminal (the event is marked delivered and never asked about again), so a replica that hasn't seen the commit loses the notification. `findEnabledForEvent` and the engine's channel lookup already do this; a provider's `findEventTargets` must too, since the target usually commits in the same transaction as the event. The scheduled path keeps the replica because tomorrow's scan asks again.
+
+**The history write is retried, then logged, never thrown.** The channels have already sent by then, so a throw can't undo anything and would re-notify on the event path.
 
 Invariants worth knowing before extending it:
 
 - **The alert module owns no CASL subject.** Each provider reuses its own resource's existing permissions inside `assertPermission`, so authorization stays with the domain that owns the resource.
 - **New delivery mediums are channel definitions**, not providers: add one under `src/services/alert/channels/` and register it in `ALERT_CHANNEL_REGISTRY`. `directed: true` means the channel addresses principals and needs recipients (email); undirected channels carry their destination in config. `secretFields` drives masking on read and merge-from-stored on update.
 - **Channel configs are encrypted** with the org/project KMS cipher (`alert-channel-crypto-fns.ts`) — never store or return them in plaintext.
-- **`findDueTargets` must return most-urgent-first.** The engine's per-channel `maxTargetsPerRun` cap keeps the head of the list and defers the tail, so ordering is what guarantees the closest-to-expiry targets are never the dropped ones.
-- **Deleting an alertable resource does NOT delete its alerts. You have to reap them yourself.** `alerts.resourceId` is a plain string column with **no foreign key** to the resource's table (a provider's `resourceType` can point at anything), so nothing cascades. Skip the reap and the row survives as a dangling alert whose `findDueTargets` matches nothing and whose "view" link 404s. Two helpers on `alertService`, and picking the wrong one is the bug:
+- **One alert per `(scope, resource, event)`**, enforced by `alert_unique_scope_resource_event`. **Every provider hook is opt-in, and its absence must reproduce the behaviour identity alerts had before any other provider existed.** `recipientPolicy` decides who can receive: `atOrgScope` validates and resolves user and group recipients against the org instead of the alert's project, and `allowEmailAddresses` accepts plain `EMAIL` recipients and makes test sends validate recipients like create and update do, instead of silently dropping out-of-scope ones (application alerts set both). `includeLastRun` adds `lastRun` to alert responses, and `resourceName` is only returned by providers that implement `getResourceNames`. `assertChannelTypesAllowed` is where a provider gates paid channel types on create and on update (new types only). `getResourceNames` (batched) supplies the resource's display name for alert responses and for a provider's own audit events. `resolveProjectId` lets create, list and test sends omit `projectId` when the resource already belongs to one project (`resolveAlertProjectId` in `alert-types.ts`). `getTelemetryEvent` lets a provider map alert create, update and delete to its own PostHog event, so the shared router never branches on a resource type. `getAuditEvent` does the same for audit logs: a provider that needs distinct event types (application alerts log `create-pki-application-alert` and its siblings, with the application's ID and name) returns its own event, and every other provider falls back to the generic `create-alert` family via `buildGenericAlertAuditEvent`. Add a provider's own event interfaces next to the generic ones; never widen the generic ones. The deprecated `pki/alerts` and `applications/:applicationId/alerts` routes only serve legacy PKI Alerts V2 rows. Add features to `/api/v1/alerts`, not to them.
+- **Email channels accept plain addresses as `EMAIL` recipients when the provider opts in** (`recipientPolicy.allowEmailAddresses`), with the address as `principalId`, besides users and groups. Every address must be on one of the org's verified email domains, checked on create, update and test sends (`alert-channel-service.ts`). The resolver sends to them directly and skips an address that a user recipient on the same channel already covers.
+- **`findScheduledTargets` must return most-urgent-first.** The engine's per-channel `maxTargetsPerRun` cap keeps the head of the list and defers the tail, so ordering is what guarantees the closest-to-expiry targets are never the dropped ones.
+- **Deleting an alertable resource does NOT delete its alerts. You have to reap them yourself.** `alerts.resourceId` is a plain string column with **no foreign key** to the resource's table (a provider's `resourceType` can point at anything), so nothing cascades. Skip the reap and the row survives as a dangling alert whose `findScheduledTargets` matches nothing and whose "view" link 404s. Two helpers on `alertService`, and picking the wrong one is the bug:
   - **`deleteAlertsForDeletedResource({ resourceType, resourceId })`** when the resource **row is gone**. It has **no scope filter** and reaps across every org and project. This is required, not just tidier: the same resource can be watched from another org (a root-org identity invited into a child org), so an `orgId`-filtered reap leaves those rows orphaned.
   - **`deleteAlertsForResource({ orgId, projectId?, resourceType, resourceId })`** when the resource merely **left a scope** (removed from a project, removed from an org) but still exists. Narrow on purpose: leaving one project must not drop the org-level alert, and leaving one org must not touch another org's alerts. Omitting `projectId` reaps the whole org, which is what org-membership removal wants since it cascades the project memberships.
 
   Wire it into **every** path that deletes or detaches the resource, not just the obvious one. A resource usually has several (a hard delete, an org-membership removal, a project-membership removal), and each needs its own reap. Call it **inside the delete transaction** and pass `tx`; the reap is pure DB (no KMS or network), so it is safe there. The `(resourceType, resourceId)` index on `alerts` is what keeps the unscoped reap off a seq scan, so a provider whose resource is deleted in bulk depends on it.
+
+### Event Outbox (transactional and generic; alerting is its first consumer)
+
+`src/services/event-outbox/` writes "this happened" as a row inside the caller's own transaction, so
+an event is exactly as durable as the business write. Enqueueing to Redis after commit loses the event
+whenever the pod dies or Redis is down in that window. It's not alert-specific:
+`alert-event-consumer.ts` is one consumer on the shared registry, and anything else that needs
+at-least-once delivery of a domain event registers next to it.
+
+**Naming:** the outbox is an implementation detail to both sides of it. Emitters depend on
+`TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]`
+(the row minus its lock, attempt, and status columns) and return `TEventConsumerResult` with an
+`EventResultStatus`. Names with "outbox" in them (the DAL, queue, cron jobs, metrics,
+`EventOutboxStatus`, `TOutboxFlushKey`) describe the mechanism and stay inside the module and its
+wiring. A dependency field for the emitter is `eventEmitter`, not `eventOutboxService`.
+
+**Emitting:** `eventEmitter.emit(event, tx)`. Pass the transaction of the write the event describes, so the event is exactly as durable as that write. Omit `tx` only when there is no such write left to be atomic with (for example after it already committed); the insert then runs on its own.
+
+```ts
+await someDAL.transaction(async (tx) => {
+  const request = await approvalRequestDAL.create({ ... }, tx);
+  await eventEmitter.emit(
+    {
+      eventType: "approval.workflow.request_opened",
+      payload: { orgId, projectId, resourceType: "approval.workflow", resourceId: policyId, targetIds: [request.id] }
+    },
+    tx
+  );
+});
+```
+
+- Only `subscribesTo(eventType)` runs before the insert, in memory. Whether a customer configured
+  anything for this resource is decided in the worker; a row nobody wanted is marked `Delivered` and
+  pruned within a day. If that ever matters for a hot event type, cache inside the consumer rather than
+  adding a read to the emit path.
+- Nothing is caught. A swallowed insert failure hands the caller a poisoned transaction (`25P02` on its
+  next statement), and a payload that fails the consumer's `payloadSchema` is a bug at the emit site.
+  Both checks run before any DB access.
+
+**How delivery works:**
+
+- **The row owns retry state** (`attempts`, `nextRetryAt`, backoff, terminal `failed`); the consumer
+  owns what "delivered" means and reports `Delivered` / `Retry` / `Failed` per event. The outbox keeps
+  no per-event state for a consumer: what a retry should skip is recorded wherever the consumer already
+  keeps delivery records, keyed by `TEvent.id` (stable across attempts). The alert consumer files each
+  run under that id in `alert_history.eventId` and the engine skips channels already recorded there.
+  Backoff is exponential with jitter from 30s, and `MAX_OUTBOX_ATTEMPTS` puts the last attempt about an
+  hour after the first, because a `failed` row is a notification nobody will receive. To replay failed
+  rows by hand: `status = 'retry', attempts = 0, nextRetryAt = now()`.
+- **A claim is a lease, and the lease is fenced.** The sweeper hands back any `processing` row whose
+  `lockedAt` is older than `STALE_CLAIM_THRESHOLD_MS`, with the same backoff as a normal failure, and counts
+  exhausted rows on the same metric. `drain` refreshes `lockedAt` while `handle` runs so a slow batch isn't
+  delivered twice. Because `handle` has no time bound (unlike the audit log stream outbox, where every
+  provider call has an HTTP timeout and a claim therefore can't outlive the threshold), that heartbeat can
+  fail while the work carries on, so a claim can be recycled under a worker that is still alive. `claimBatch`
+  stamps a `lockToken` and `extendClaims` / `commitResults` both require it, so the recycled worker's late
+  result can't clear the new owner's lock or drop its outcome. `commitResults` returns how many rows it
+  settled and `drain` logs a short settle: that count is the only signal that a batch went out twice, since
+  the fence protects the bookkeeping but delivery stays at-least-once.
+- **The envelope carries only what the outbox queries on.** `consumer`, `eventType`, and the retry and
+  lock columns. Which tenant and resource an event concerns lives in `payload` under a shape the
+  consumer's `payloadSchema` declares, and that schema is where it is validated (the alert consumer
+  requires `orgId` as a UUID). The outbox never groups, filters or indexes on any of it, so don't add a
+  tenant or resource column back for a query nothing runs.
+- **Discovery only looks at consumers registered in this process.** A row for any other name has nowhere
+  to go here. It waits and shows up on the oldest-pending gauge instead.
+- **Don't let one event's failure escape `handle`.** The outbox retries the whole batch when `handle`
+  throws. Catch per event and report `Retry` for that event alone (see `alert-event-consumer.ts`).
+- **BullMQ owns latency, not correctness.** `attempts: 1` on the flush job is intentional; retry lives
+  on the row. A lost job costs one relay interval.
+- **The relay is a `setInterval`, not a cron job.** It doesn't need exactly-once (`FOR UPDATE SKIP
+  LOCKED` plus the flush `jobId` make concurrent pollers safe) and it needs a sub-minute cadence the
+  cron manager can't give.
+- **Delivery is serial per consumer, and ordering is best-effort.** The flush `jobId` is the consumer
+  name, so one flush per consumer runs at a time and `drain` works through its backlog in bounded batches
+  (`MAX_BATCHES_PER_FLUSH` x `OUTBOX_CLAIM_BATCH_SIZE` per flush; the next relay tick picks up the rest).
+  `claimBatch` sorts by `id` (re-sorting what `RETURNING` gives back, which is arbitrary). A row inside
+  its backoff window is skipped, so a later row can overtake it. That's deliberate: blocking a consumer
+  behind its oldest failing row is the wrong trade for notifications. Don't promise strict ordering, and
+  don't add a partition key back until a consumer needs one: no consumer today depends on the order two
+  events for one resource arrive in, and each event is idempotent on its own through alert history.
+- **Delivery is at-least-once.** `commitResults` is retried in-process, since by then the consumer has
+  already sent; what's left is narrowed by the consumer's own delivery records and by the emitter's
+  `idempotencyKey`.
+
+**Watch `infisical.event_outbox.oldest_pending_age`.** It catches a dead relay, a wedged consumer and a
+stuck claim alike. `lag` and `exhausted.count` are recorded by the outbox, labelled by consumer, so a
+new consumer gets them for free.
+
+**Adding an event-triggered alert** needs no outbox code: declare the event with
+`triggerType: AlertTriggerType.Event`, implement `findEventTargets`, and emit with
+`payload: { orgId, projectId, resourceType, resourceId, targetIds, ...facts }` where `resourceType` is the
+provider's. A
+`resourceType` that doesn't declare the `eventType` fails the row terminally with both named, so a bad
+emit site shows up in the logs on its first event.
+
+**The event contract belongs to the domain that emits it, not to a consumer.** The identity auth method
+event (key, resource type, change enum, payload schema, and the `emitIdentityAuthMethodChanged` helper)
+lives in `src/services/identity/identity-auth-method-events.ts`. The 13 auth method services import the
+helper from there and the alert provider imports the schema from there, so neither depends on the other
+and a second consumer of the same event has one place to import from. When several services fire the same
+event, give it one such helper rather than repeating the `emit` literal: the helper owns the payload shape,
+and the provider's test parses what the helper emits with the delivery schema. A bare `updateById` had to
+become a short transaction for this; the cache invalidation that follows it stays outside, after commit.
+
+The DAL is covered by `e2e-test/event-outbox.spec.ts` against real Postgres; the unit tests only check
+query shape.
 
 ### Soft-Delete + Async Cleanup
 
@@ -595,8 +852,20 @@ Custom error classes in `src/lib/errors/index.ts`:
 - `InternalServerError` (500)
 - `RateLimitError`
 - `ScimRequestError` — SCIM-specific formatting with schemas and status
+- `ClientClosedRequestError` (499, nginx convention) — the client disconnected before the response was written; see below
 
 Global error handler in `src/server/plugins/error-handler.ts` maps these to HTTP status codes and records OpenTelemetry error metrics.
+
+#### Stopping work after a client disconnect
+
+Node keeps running a handler after its client has gone, and a disconnected client usually retries, so a CPU-heavy request that outlives its caller does the full cost again on another pod. Routes whose work can run long after the database reads finish (fan-out over folders, references, or imports) should stop when the connection closes. `GET /api/v3/secrets/raw` and `GET /api/v4/secrets` are examples.
+
+- **Route:** pass `abortSignal: getClientDisconnectSignal(reply)` (`src/server/lib/client-disconnect.ts`) into the service. It aborts only when the socket closes before the response was written, so a normal completion never trips it.
+- **Service:** call `throwIfClientDisconnected(abortSignal)` at fan-out points only: before each unit of work that triggers more reads (each reference, each import level, a shared folder load). Don't add one after every `await`; a check that saves a single query for a client that has already left is noise. Checks are cooperative, so an in-flight query or synchronous block still finishes, and a long synchronous block delays noticing the disconnect. Keep the per-item work linear.
+- **`Promise.allSettled` fan-outs:** they swallow the rejection, so scan the results with `throwIfAnySettledClientClosed(results)` instead of rechecking the signal. A disconnect mid-fan-out means the result is partial and must not be cached or returned as reference errors; a result that completed before the client left should still be cached so the retry is a hit.
+- **Catch blocks** that turn failures into an empty result (a folder that failed to load, a skipped cross-project read) must rethrow `ClientClosedRequestError` first, or the partial state gets cached.
+
+The 499 never reaches the caller. It exists for logs (warn, no stack) and the `error.type="client_closed"` label on `infisical.core.http.error.count`. This is disconnect handling, not a request deadline: a slow client that stays connected is still bounded only by Fastify's 100s socket `connectionTimeout` in `src/server/app.ts`.
 
 ### Logging
 
@@ -617,6 +886,87 @@ logger.error({ sessionId, err }, "Failed to get connection details");
 
 Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
 
+### Certificate revocation: CRL and OCSP
+
+Internal CAs publish revocation two ways, both unauthenticated public endpoints under
+`/api/v1/cert-manager`. CRL is `ee/services/certificate-authority-crl`; OCSP
+([RFC 6960](https://www.rfc-editor.org/rfc/rfc6960)) is `ee/services/certificate-authority-ocsp`, opt-in
+per CA via `internal_certificate_authorities.isOcspEnabled` and gated on the `pkiOcsp` plan flag.
+
+The responder answers a status question for one certificate, so the things that bite are freshness and
+what an anonymous caller can cost us.
+
+- **Serials have two forms and the database knows one.** `certificates.serialNumber` is 40 lowercase hex
+  as issued, and `createSerialNumber` clears the top bit, so ~1 in 8 begins with `0`. A CertID carries a
+  DER INTEGER that may also carry a sign byte. `parseOcspRequest` keeps `rawSerialNumber` and the
+  zero-stripped `serialNumber`, and `$resolveStatuses` queries both. Querying one silently answers
+  `unknown` for every certificate whose serial starts with a zero byte, revoked ones included.
+- **Every read on the revocation path goes to a primary, in Redis and in Postgres.** `keyStore.getItem`
+  and `ormify().find` both default to a replica, and so does `findByIdWithAssociatedCa`. Under lag any of
+  them re-caches a pre-revocation `good` for the full validity window, or answers for a CA whose OCSP was
+  just switched off. Use `getItemPrimary` and pass a `primaryNode()` as the `tx`.
+- **Invalidation is a Postgres counter, not a Redis write.** `internal_certificate_authorities.ocspGeneration`
+  is bumped in the *same transaction* as the certificate status write in `revokeCert`, which is the only
+  place a certificate becomes revoked. Each cached entry records the generation it was signed under and a
+  read rejects a mismatch, so nothing has to delete a key and a Redis outage cannot leave a revoked
+  certificate reading `good`. The responder already reads the CA row from the primary every request, so
+  comparing it is free. A new path that revokes a certificate must bump it too. Deleting a certificate does
+  not, and neither does the expiry cleanup: deletion is not revocation, so a cached `good` for a certificate
+  nobody revoked is still true, and bumping would flush every live certificate's cached response on that CA
+  for nothing. Only single-certID responses are cached; multi-certID requests are answered but never cached.
+  Do not reintroduce a best-effort invalidation call after the commit: that is exactly the shape that failed
+  review, because a failure there is unrecoverable and silent.
+- **Concurrent misses coalesce into one signing.** `inFlightResponses` keys on the cache key plus the
+  generation. The generation is what stops a request arriving after a revoke from joining a flight
+  that began before it. Nonced requests are exempt for free, because their cache key is `null`.
+- **A nonce is an OCTET STRING, and an extnValue that is not one is rejected.** The response always
+  re-encodes the nonce wrapped, so accepting a raw inner value would sign an echo that can never match what
+  the client sent. `parseOcspRequest` returns `null`, which the service answers as `malformedRequest`.
+- **Never take the hash OID out of a CertID without checking `OCSP_HASH_NAME_BY_OID` first.** An OID is an
+  unbounded dotted-decimal string and it keys the per-CA issuer-hash memo, so an unvalidated one is
+  unbounded attacker-controlled heap.
+- **Signing is capped three ways and sheds with `tryLater`**: globally (4), per CA (2), and in aggregate
+  across every CA (`OCSP_SIGNING_MAX_TOTAL_IN_FLIGHT`, checked before a per-CA limiter is created or
+  entered). The global cap matches libuv's default threadpool of 4, where `crypto.subtle.sign` runs, so
+  OCSP never needs more than the pool that password hashing, KMS decrypts and DNS lookups share. The
+  per-CA tier stops one tenant's traffic shedding everyone else's, but on its own it multiplies how many
+  requests are parked at once, because a caller choosing to spray across many valid CA ids gets a fresh
+  queue per id. The aggregate cap is what bounds that, and it is deliberately far above any single CA's
+  own limit so the fairness the per-CA tier buys is preserved. Both are per process, so the rate limiter is the outer
+  bound, and it is only registered under `isProductionMode && isCloud`.
+- **Do not log per request on this path.** The endpoint is unauthenticated and the rate limiter is only
+  registered under `isProductionMode && isCloud`, so on self-hosted an anonymous caller sets the log
+  volume. Malformed and unauthorized results are counted by `ocsp.result` and logged nowhere; the
+  saturation warning is interval-guarded because shedding is by definition high volume.
+- **Protocol shape, not REST.** HTTP 200 with the error in the DER body, and a wildcard GET path carrying
+  url-encoded base64. Required by RFC 6960 appendix A.1. Both routes also carry an `errorHandler`, because
+  a body over `bodyLimit` or a missing `Content-Type` never reaches the handler and would otherwise return
+  a JSON 500 an OCSP client cannot parse.
+- **The responder never consults the plan.** Entitlement gates enabling OCSP, never answering, per
+  `CODE_QUALITY.md`. Note the managed CRL URL beside it *does* re-check at issuance; that asymmetry is
+  deliberate on the OCSP side and should not be "fixed" by copying the CRL pattern.
+- **The response metric keeps those two states on separate dimensions.** `ocsp.status` is the envelope
+  and `ocsp.cert_status` is the per-certificate answer, which only exists inside a `successful` envelope
+  and is `none` otherwise. Flattening them onto one label made `unknown` and `unauthorized` look like
+  siblings when they come from different enumerations. Both names, plus `ocsp.cache`, have to be in
+  `INFISICAL_CORE_METER_ATTRIBUTES`: an attribute missing from that allowlist is dropped by the SDK View
+  with no error, so `ocsp-metric-attributes.test.ts` pins them.
+- **The two "I can't answer" states are different, and RFC 6960 picks between them.** `unauthorized`
+  (2.3, unsigned) is "not capable of responding authoritatively": no such CA, no active CA certificate,
+  issuer hashes that belong to someone else, and OCSP switched off for that CA. `unknown` (2.2, signed,
+  inside a successful response) is "I serve this issuer but have no record of this certificate", which is
+  a serial this CA never issued. Do not answer a disabled CA with `unknown`: we hold a record for those
+  certificates, so it is a false assertion signed with the CA key, and it would make the off switch still
+  cost a signature per request. `unknown` responses carry a short validity window, since their serial is
+  caller-chosen.
+
+**`signTbs` must DER-encode ECDSA itself.** WebCrypto returns raw `r||s`; X.509 and OCSP need the DER
+`ECDSA-Sig-Value` SEQUENCE. The certificate, CSR and CRL generators convert internally, so nothing above
+them ever had to. Without it every ECDSA CA's OCSP responses fail verification in openssl, Go and Windows,
+and nothing on our side errors. `TCaSigner` (`services/certificate-authority/ca-signer.ts`) gained
+`signTbs` for this and abstracts over software, HSM and PQC CAs. PQC needs no special case beyond taking
+the signature OID from `pqcNameToOid`.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:
@@ -626,6 +976,24 @@ Enterprise code lives in `src/ee/`:
 EE routes register before community routes so they can override/extend endpoints. Feature gating via license service (`src/ee/services/license/license-service.ts`) which validates online/offline licenses, caches feature sets in keystore with 5-minute TTL, and exposes `getPlan()` to check feature availability.
 
 **PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/CLAUDE.md`](src/ee/services/pam/CLAUDE.md) for a high-level map of the PAM backend — module layout, permission model, and non-obvious invariants. It is intentionally a concept map, not a spec: read the referenced code for implementation detail. If you add a feature, keep any addition there brief (a concept or invariant, not code mechanics).
+
+**Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/CLAUDE.md`](src/ee/services/agent-vault/CLAUDE.md). PAM and Agent Vault are the two **org-scoped products**: one implicit project per org, resolved lazily, whose roles collapse to admin or member. Anything that branches on `ProjectType.PAM` (metering emits, predefined roles, the billable-project count, invite grants) almost always needs an Agent Vault arm too.
+
+**Gateways: there is only one generation.** Gateway v1 (`ee/services/gateway`, `lib/gateway`, the QUIC
+transport over `@infisical/quic`, and `/api/v1/gateways`) is gone; `gateway-v2` and `gateway-pool` are the
+whole story, and `lib/gateway-v2/types.ts` owns `GatewayProxyProtocol` / `GatewayHttpProxyActions`. What
+survives is DB-only, and deliberately: the `gateways`, `org_gateway_config` and `project_gateways` tables
+and the `gatewayId` columns on `dynamic_secrets`, `identity_kubernetes_auths` and
+`identity_auth_templates` are still populated but never read or written, so the removal stays revertible.
+Those three tables' `TableName` members exist for that reason alone.
+
+Two consequences when touching a gateway dial path. Resolve the gateway with
+`gatewayV2Service.getPlatformConnectionDetailsByGatewayId`, and when it returns nothing **throw**
+(`getMissingGatewayMessage` in `lib/gateway-v2/gateway-errors.ts`) rather than continuing: every one of
+these call sites sits in front of an `if (gatewayId)` guard whose else-branch dials the target host
+directly, so falling through turns a dangling gateway reference into a silent bypass of the network
+boundary the gateway exists to enforce. And `app_connections.gatewayId` is **not** a v1 column — unlike the
+three above it never grew a `gatewayV2Id`, so that one column carries v2 ids and must stay.
 
 ### Server Plugins
 
@@ -646,8 +1014,9 @@ Key plugins in `src/server/plugins/`:
 OpenTelemetry metric setup lives in `src/lib/telemetry/`. Instruments are defined in `metrics.ts` (resolved lazily so they bind to the real MeterProvider installed by `instrumentation.ts` after boot).
 
 **Meter split by cardinality:**
-- **`InfisicalCore`** — the meter for all new metrics. A strict attribute allowlist (`INFISICAL_CORE_METER_ATTRIBUTES` in `telemetry-attributes.ts`) is applied via an SDK View, so **only bounded labels survive** — HTTP method, parameterized `http.route` template, and low-cardinality enums. This is the single choke point: any attribute passed at a call site that isn't in the allowlist is silently dropped.
+- **`InfisicalCore`** — the meter for all new metrics. A strict attribute allowlist (`INFISICAL_CORE_METER_ATTRIBUTES` in `telemetry-attributes.ts`) is applied via an SDK View, so **only bounded labels survive** — HTTP method, parameterized `http.route` template, and low-cardinality enums. This is the choke point for our own call sites: any attribute passed at a call site that isn't in the allowlist is silently dropped.
 - **Legacy `Infisical` / `API` / `SecretSyncs` / `PkiSyncs` / `Integrations`** — carry unbounded per-actor labels (`HIGH_CARDINALITY_METER_NAMES`). Disabled wholesale via `OTEL_DROP_HIGH_CARDINALITY_METERS=true` in multi-tenant/cloud.
+- **`@opentelemetry/instrumentation-http`** — the second allowlist (`HTTP_INSTRUMENTATION_METER_ATTRIBUTES`). `instrumentation.ts` defaults `OTEL_SEMCONV_STABILITY_OPT_IN` to the stable HTTP semconv, because the old conventions label the server metric with the raw `Host` header. An operator's explicit `http/dup` is honoured instead (it is the OTel migration path, emitting both name sets while dashboards move over), which is why the allowlist also carries the old `http.method` / `http.status_code` / `http.flavor` / `http.scheme` names — without them the dup'd metric arrives with an empty attribute set. The `net.*` host and peer names stay off the list in both conventions.
 
 **Recording is fire-and-forget.** Every `.add()` / `.record()` and every `record*Metric` helper is wrapped in `safely()` in `metrics.ts`, so a broken exporter, a bad instrument name, or a config read before `initEnvConfig()` can never throw into the code being measured. A measurement is an observation of the work, never a step in it — so call sites do not need their own try/catch, and must not treat a metric as something that can fail. The swallow is silent because the logger is itself initialised from config.
 
@@ -658,7 +1027,7 @@ The gate has to sit at the call site because **a `DROP` aggregation does not bou
 **Rules for InfisicalCore metrics:**
 - **No per-tenant / per-actor identifiers** as labels — no org id, user id/email, identity id, ip, user agent, request id, or free-form values (e.g. environment slug). These scale series count with customer count, which breaks CloudWatch's 1000-datapoint-per-OTLP-request limit and drives per-GB ingestion cost. Use the **audit log table** for per-org / per-actor breakdowns.
 - Adding a new label means adding it to the allowlist in `telemetry-attributes.ts`. Only add **bounded** keys (fixed enums / static route templates), and document why.
-- `http.route` must be the parameterized template (`req.routeOptions.url`), never the raw request path.
+- `http.route` must be the parameterized template (`req.routeOptions.url`), never the raw request path. `api-metrics.ts` skips routes generated by `@fastify/static` for the same reason: in `STANDALONE_MODE` `serve-ui.ts` registers it with `wildcard: false`, so every built asset gets its own route and `http.route` would be a content-hashed filename.
 
 ### PostHog Product Analytics
 

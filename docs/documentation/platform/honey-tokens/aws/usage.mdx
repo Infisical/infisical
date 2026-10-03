@@ -20,7 +20,7 @@ description: "Create, monitor, and manage AWS honey tokens in your projects."
     Navigate to your project's Secrets Manager dashboard and select the environment and secret path where you want to plant the honey token.
   </Step>
   <Step title="Add a Honey Token">
-    Click the **Add Honey Token** button to open the creation dialog.
+    Select the **Add Honey Token** button to open the creation dialog.
 
     ![Add Honey Token](/images/platform/honey-tokens/create-honey-token.png)
   </Step>
@@ -87,13 +87,13 @@ Open a honey token's detail page to see a chronological log of all trigger event
 
 ### Resetting a triggered token
 
-If a honey token is in **Triggered** status and you've addressed the incident, click **Reset** to return it to **Active** status. This hides previous events from the event log view (events are still stored in the database) and re-enables email notifications.
+If a honey token is in **Triggered** status and you've addressed the incident, select **Reset** to return it to **Active** status. This hides previous events from the event log view (events are still stored in the database) and re-enables email notifications.
 
 ![Honey Token Events](/images/platform/honey-tokens/honey-token-reset.png)
 
 ### Revoking a honey token
 
-To permanently deactivate a honey token, click **Revoke**. This will:
+To permanently deactivate a honey token, select **Revoke**. This will:
 - Delete the IAM user and access key from AWS
 - Remove the decoy secrets from the project
 - Mark the honey token as **Revoked**

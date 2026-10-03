@@ -48,7 +48,6 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
 
   const reachedFromOptions: ReachedFromOption[] = useMemo(() => {
     const gatewayOptions: ReachedFromOption[] = gateways
-      .filter((g) => !g.isV1)
       .filter((g) => g.capabilities?.pkcs11 === true)
       .map((g) => ({ value: `gateway:${g.id}`, label: g.name, group: "gateway" as const }));
     const poolOptions: ReachedFromOption[] = pools.map((p) => ({
@@ -167,7 +166,7 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1500px]">
+      <SheetContent size="workspace" className="flex h-full max-h-full flex-col gap-y-0">
         <SheetHeader className="border-b">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
@@ -175,10 +174,8 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
                 <ShieldCheckIcon className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-x-2 text-mineshaft-300">
-                  Add HSM Connector
-                </div>
-                <p className="text-sm leading-4 text-mineshaft-400">
+                <div className="flex items-center gap-x-2 text-label">Add HSM Connector</div>
+                <p className="text-sm leading-4 text-muted">
                   Register a hardware security module so Infisical can route key operations through
                   it.
                 </p>
@@ -215,7 +212,7 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
 
             <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
               <div className="mb-6">
-                <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+                <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
                 <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
               </div>
 

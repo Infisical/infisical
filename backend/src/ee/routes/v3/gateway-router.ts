@@ -2,15 +2,24 @@ import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { gatewayTransports } from "@app/ee/services/gateway-v2/gateway-v2-transport-fns";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
+import {
+  validateAllowedProjects,
+  validateAllowedServiceAccounts,
+  validateAllowedZones
+} from "@app/ee/services/resource-auth-method/gcp-auth-validators";
 import {
   validateAllowedNames,
   validateAllowedNamespaces,
   validateKubernetesHost
 } from "@app/ee/services/resource-auth-method/kubernetes-auth-validators";
+import { resourceAuthMethodAuditMetadata } from "@app/ee/services/resource-auth-method/resource-auth-method-audit-fns";
 import {
+  GcpAuthType,
   KubernetesTokenReviewMode,
-  ResourceAuthMethodType
+  ResourceAuthMethodType,
+  type TSettableAuthMethod
 } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { ApiDocsTags, GATEWAYS } from "@app/lib/api-docs";
@@ -28,11 +37,14 @@ const loginRateLimit = { windowMs: 60 * 1000, max: 10 };
 const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   id: true,
   identityId: true,
+  relayId: true,
   name: true,
   createdAt: true,
   updatedAt: true,
   heartbeat: true,
-  heartbeatTTL: true
+  heartbeatTTL: true,
+  directAddress: true,
+  directHeartbeat: true
 }).extend({
   canRevoke: z.boolean()
 });
@@ -44,13 +56,6 @@ const GatewayWithAuthMethodSchema = SanitizedGatewayV2Schema.extend({
 const AwsAuthMethodInputSchema = z
   .object({
     method: z.literal(ResourceAuthMethodType.Aws),
-    stsEndpoint: z
-      .string()
-      .trim()
-      .min(1)
-      .max(255)
-      .default("https://sts.amazonaws.com/")
-      .describe(GATEWAYS.AUTH_METHOD.stsEndpoint),
     allowedPrincipalArns: validatePrincipalArns.describe(GATEWAYS.AUTH_METHOD.allowedPrincipalArns),
     allowedAccountIds: validateAccountIds
       .refine((val) => val.length <= 2048, "Allowed account IDs must be at most 2048 characters")
@@ -59,6 +64,25 @@ const AwsAuthMethodInputSchema = z
   .refine((data) => data.allowedPrincipalArns.trim().length > 0 || data.allowedAccountIds.trim().length > 0, {
     message: "At least one of allowedPrincipalArns or allowedAccountIds must be set",
     path: ["allowedPrincipalArns"]
+  });
+
+const GcpAuthMethodInputSchema = z
+  .object({
+    method: z.literal(ResourceAuthMethodType.Gcp),
+    type: z.nativeEnum(GcpAuthType).default(GcpAuthType.Gce).describe(GATEWAYS.AUTH_METHOD.gcpAuthType),
+    allowedServiceAccounts: validateAllowedServiceAccounts.describe(GATEWAYS.AUTH_METHOD.allowedServiceAccounts),
+    allowedProjects: validateAllowedProjects.describe(GATEWAYS.AUTH_METHOD.allowedProjects),
+    allowedZones: validateAllowedZones.describe(GATEWAYS.AUTH_METHOD.allowedZones)
+  })
+  .refine((data) => data.allowedServiceAccounts.trim().length > 0 || data.allowedProjects.trim().length > 0, {
+    message:
+      "At least one of allowedServiceAccounts or allowedProjects must be set. A zone on its own restricts nothing, because any GCP customer can create an instance in a given zone.",
+    path: ["allowedServiceAccounts"]
+  })
+  .refine((data) => data.type !== GcpAuthType.Iam || (!data.allowedProjects.trim() && !data.allowedZones.trim()), {
+    message:
+      "Allowed projects and zones only apply to the Compute Engine token type. Restrict an IAM service account token by service account instead.",
+    path: ["allowedProjects"]
   });
 
 const KubernetesAuthMethodInputSchema = z
@@ -119,6 +143,7 @@ const TokenAuthMethodInputSchema = z.object({
 // Settable methods only — `identity` is read-only and never accepted as input.
 const SettableAuthMethodInputSchema = z.union([
   AwsAuthMethodInputSchema,
+  GcpAuthMethodInputSchema,
   KubernetesAuthMethodInputSchema,
   TokenAuthMethodInputSchema
 ]);
@@ -131,9 +156,19 @@ const toCreateAuthMethodArg = (input: TSettableAuthMethodInput) => {
     return {
       method: ResourceAuthMethodType.Aws,
       config: {
-        stsEndpoint: input.stsEndpoint,
         allowedPrincipalArns: input.allowedPrincipalArns,
         allowedAccountIds: input.allowedAccountIds
+      }
+    } as const;
+  }
+  if (input.method === ResourceAuthMethodType.Gcp) {
+    return {
+      method: ResourceAuthMethodType.Gcp,
+      config: {
+        type: input.type,
+        allowedServiceAccounts: input.allowedServiceAccounts,
+        allowedProjects: input.allowedProjects,
+        allowedZones: input.allowedZones
       }
     } as const;
   }
@@ -161,9 +196,17 @@ const toSetAuthMethodArg = (input: TSettableAuthMethodInput) => {
   if (input.method === ResourceAuthMethodType.Aws) {
     return {
       method: ResourceAuthMethodType.Aws,
-      stsEndpoint: input.stsEndpoint,
       allowedPrincipalArns: input.allowedPrincipalArns,
       allowedAccountIds: input.allowedAccountIds
+    } as const;
+  }
+  if (input.method === ResourceAuthMethodType.Gcp) {
+    return {
+      method: ResourceAuthMethodType.Gcp,
+      type: input.type,
+      allowedServiceAccounts: input.allowedServiceAccounts,
+      allowedProjects: input.allowedProjects,
+      allowedZones: input.allowedZones
     } as const;
   }
   if (input.method === ResourceAuthMethodType.Kubernetes) {
@@ -228,6 +271,21 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         }
       });
 
+      // The allowlist is the authorization, so it belongs in the log at creation, not only on edit.
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.RESOURCE_AUTH_METHOD_CREATE,
+          metadata: resourceAuthMethodAuditMetadata({
+            resourceType: "gateway",
+            resourceId: gateway.id,
+            resourceName: gateway.name,
+            view
+          })
+        }
+      });
+
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(gateway);
       return { ...gateway, canRevoke, authMethod: view };
     }
@@ -269,50 +327,44 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       body: z.object({
+        name: slugSchema({ field: "name" }).optional().describe(GATEWAYS.UPDATE.name),
         authMethod: SettableAuthMethodInputSchema.optional().describe(GATEWAYS.UPDATE.authMethod)
       }),
       response: { 200: GatewayWithAuthMethodSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.body.authMethod) {
-        const setInput = toSetAuthMethodArg(req.body.authMethod);
+      // Before the auth method is touched, so the usual rejection leaves nothing applied.
+      if (req.body.name) {
+        await server.services.gatewayV2.assertGatewayNameAvailable({
+          orgPermission: req.permission,
+          gatewayId: req.params.gatewayId,
+          name: req.body.name
+        });
+      }
 
+      // Auth first: it is the half that fails, so a rejection cannot leave behind a rename.
+      if (req.body.authMethod) {
         const result = await server.services.resourceAuthMethod.setMethod({
           resource: { type: "gateway", id: req.params.gatewayId },
-          authMethod: setInput,
+          authMethod: toSetAuthMethodArg(req.body.authMethod),
           actor: req.permission
         });
 
+        const updated = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
+
+        // Before the rename, so a failed rename cannot lose the record.
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
-            metadata: {
+            metadata: resourceAuthMethodAuditMetadata({
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
-              method: result.method as "aws" | "kubernetes" | "token",
-              methodConfigId:
-                result.method === ResourceAuthMethodType.Aws || result.method === ResourceAuthMethodType.Kubernetes
-                  ? result.config.id
-                  : req.params.gatewayId,
-              ...(result.method === ResourceAuthMethodType.Aws
-                ? {
-                    stsEndpoint: result.config.stsEndpoint,
-                    allowedPrincipalArns: result.config.allowedPrincipalArns,
-                    allowedAccountIds: result.config.allowedAccountIds
-                  }
-                : {}),
-              ...(result.method === ResourceAuthMethodType.Kubernetes
-                ? {
-                    kubernetesHost: result.config.kubernetesHost,
-                    allowedNamespaces: result.config.allowedNamespaces,
-                    allowedNames: result.config.allowedNames,
-                    allowedAudience: result.config.allowedAudience
-                  }
-                : {})
-            }
+              resourceName: updated.name,
+              view: result
+            })
           }
         });
 
@@ -325,7 +377,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
               orgId: req.permission.orgId,
-              method: result.method as "aws" | "kubernetes" | "token"
+              method: result.method as TSettableAuthMethod
             }
           })
           .catch((err) => {
@@ -333,7 +385,30 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           });
       }
 
-      const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
+      // Held onto for the response: it comes from the primary, and a lagging replica read
+      // would hand back the old name.
+      let renamed;
+      if (req.body.name) {
+        const result = await server.services.gatewayV2.renameGateway({
+          orgPermission: req.permission,
+          gatewayId: req.params.gatewayId,
+          name: req.body.name
+        });
+        renamed = result.gateway;
+
+        if (result.previousName !== renamed.name) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            orgId: req.permission.orgId,
+            event: {
+              type: EventType.GATEWAY_UPDATE,
+              metadata: { gatewayId: renamed.id, name: renamed.name, previousName: result.previousName }
+            }
+          });
+        }
+      }
+
+      const gateway = renamed ?? (await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId }));
       const view = await server.services.resourceAuthMethod.getByGatewayId({
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission
@@ -392,7 +467,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       response: {
         200: z.object({
-          method: z.enum(["aws", "kubernetes", "token"])
+          method: z.enum(["aws", "gcp", "kubernetes", "token"])
         })
       }
     },
@@ -430,7 +505,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "loginGateway",
       tags: [ApiDocsTags.GatewaysV3],
-      description: "Gateway login. Body discriminates on `method` for AWS, Kubernetes, or token authentication.",
+      description: "Gateway login. Body discriminates on `method` for AWS, GCP, Kubernetes, or token authentication.",
       body: z.discriminatedUnion("method", [
         z.object({
           method: z.literal(ResourceAuthMethodType.Aws),
@@ -438,6 +513,11 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           iamHttpRequestMethod: z.string().default("POST").describe(GATEWAYS.LOGIN.iamHttpRequestMethod),
           iamRequestBody: z.string().describe(GATEWAYS.LOGIN.iamRequestBody),
           iamRequestHeaders: z.string().describe(GATEWAYS.LOGIN.iamRequestHeaders)
+        }),
+        z.object({
+          method: z.literal(ResourceAuthMethodType.Gcp),
+          gatewayId: z.string().trim().uuid().describe(GATEWAYS.LOGIN.gatewayId),
+          jwt: z.string().trim().min(1).max(8192).describe(GATEWAYS.LOGIN.gcpJwt)
         }),
         z.object({
           method: z.literal(ResourceAuthMethodType.Kubernetes),
@@ -525,6 +605,87 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
                     message: error.message,
                     principalArn: error.detail.principalArn as string | undefined,
                     accountId: error.detail.accountId as string | undefined
+                  }
+                },
+                ipAddress: req.ip,
+                userAgent: req.headers["user-agent"] ?? "",
+                userAgentType: UserAgentType.OTHER
+              })
+              .catch(() => {});
+          }
+          throw error;
+        }
+      }
+
+      if (req.body.method === ResourceAuthMethodType.Gcp) {
+        try {
+          const result = await server.services.resourceAuthMethod.loginWithGcp({
+            resource: { type: "gateway", id: req.body.gatewayId },
+            jwt: req.body.jwt
+          });
+
+          await server.services.auditLog
+            .createAuditLog({
+              orgId: result.orgId,
+              actor: { type: ActorType.GATEWAY, metadata: { gatewayId: result.resourceId } },
+              event: {
+                type: EventType.RESOURCE_AUTH_METHOD_LOGIN,
+                metadata: {
+                  resourceType: "gateway",
+                  resourceId: result.resourceId,
+                  resourceName: result.resourceName,
+                  method: ResourceAuthMethodType.Gcp,
+                  methodConfigId: result.configId,
+                  gcpServiceAccountEmail: result.serviceAccountEmail,
+                  gcpProjectId: result.projectId,
+                  gcpZone: result.zone
+                }
+              },
+              ipAddress: req.ip,
+              userAgent: req.headers["user-agent"] ?? "",
+              userAgentType: UserAgentType.OTHER
+            })
+            .catch(() => {});
+
+          void server.services.telemetry
+            .sendPostHogEvents({
+              event: PostHogEventTypes.ResourceAuthMethodLogin,
+              distinctId: `gateway-${result.resourceId}`,
+              organizationId: result.orgId,
+              properties: {
+                resourceType: "gateway",
+                resourceId: result.resourceId,
+                orgId: result.orgId,
+                method: ResourceAuthMethodType.Gcp
+              }
+            })
+            .catch((err) => {
+              logger.error(err, `Failed to send telemetry [gatewayId=${result.resourceId}]`);
+            });
+
+          return {
+            accessToken: result.accessToken,
+            gatewayId: result.resourceId,
+            tokenType: "Bearer" as const
+          };
+        } catch (error) {
+          if (error instanceof UnauthorizedError && error.detail?.resourceId) {
+            await server.services.auditLog
+              .createAuditLog({
+                orgId: error.detail.orgId as string,
+                actor: { type: ActorType.GATEWAY, metadata: { gatewayId: error.detail.resourceId as string } },
+                event: {
+                  type: EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED,
+                  metadata: {
+                    resourceType: "gateway",
+                    resourceId: error.detail.resourceId as string,
+                    resourceName: error.detail.resourceName as string | undefined,
+                    method: ResourceAuthMethodType.Gcp,
+                    reasonCode: error.detail.reasonCode as string,
+                    message: error.message,
+                    gcpServiceAccountEmail: error.detail.serviceAccountEmail as string | undefined,
+                    gcpProjectId: error.detail.projectId as string | undefined,
+                    gcpZone: error.detail.zone as string | undefined
                   }
                 },
                 ipAddress: req.ip,
@@ -717,33 +878,55 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "connectGateway",
       body: z.object({
-        relayName: z.string().trim().min(1).max(32).optional()
+        relayName: z.string().trim().min(1).max(32).optional(),
+        directAddress: z.string().trim().min(3).max(255).optional()
       }),
       response: {
         200: z.object({
           gatewayId: z.string(),
-          relayHost: z.string(),
+          directAddress: z.string().optional(),
+          relayHost: z.string().optional(),
           pki: z.object({
             serverCertificate: z.string(),
             serverPrivateKey: z.string(),
             clientCertificateChain: z.string()
           }),
-          ssh: z.object({
-            clientCertificate: z.string(),
-            clientPrivateKey: z.string(),
-            serverCAPublicKey: z.string()
-          })
+          ssh: z
+            .object({
+              clientCertificate: z.string(),
+              clientPrivateKey: z.string(),
+              serverCAPublicKey: z.string()
+            })
+            .optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.gatewayV2.connectGateway({
+      const connected = await server.services.gatewayV2.connectGateway({
         orgId: req.permission.orgId,
         actorId: req.permission.id,
         actorType: req.permission.type,
-        relayName: req.body.relayName
+        relayName: req.body.relayName,
+        directAddress: req.body.directAddress
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GATEWAY_CONNECT,
+          metadata: {
+            gatewayId: connected.gatewayId,
+            name: connected.gatewayName,
+            transports: gatewayTransports(connected),
+            directAddress: connected.directAddress,
+            relayName: req.body.relayName
+          }
+        }
+      });
+
+      return connected;
     }
   });
 };

@@ -6,8 +6,8 @@ description: "Learn how to dynamically generate GCP service account tokens."
 The Infisical GCP IAM dynamic secret allows you to generate GCP service account tokens on demand based on service account permissions.
 
 <Warning>
-  GCP service account access tokens cannot be revoked. As such, revoking or
-  regenerating a token does not invalidate the old one; it remains active until
+  GCP service account access tokens can't be revoked. As such, revoking or
+  regenerating a token doesn't invalidate the old one; it remains active until
   it expires.
 </Warning>
 
@@ -123,7 +123,7 @@ The Infisical GCP IAM dynamic secret allows you to generate GCP service account 
     		Name by which you want the secret to be referenced
     	</ParamField>
     	<ParamField path="Default TTL" type="string" required>
-    		Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
+    		Default time-to-live for a generated secret (it's possible to modify this value after a secret is generated)
     	</ParamField>
     	<ParamField path="Max TTL" type="string" required>
     		Maximum time-to-live for a generated secret
@@ -136,12 +136,12 @@ The Infisical GCP IAM dynamic secret allows you to generate GCP service account 
     	</ParamField>
   </Step>
   <Step title="Click `Submit`">
-      After submitting the form, you will see a dynamic secret created in the dashboard.
+      After submitting the form, you'll see a dynamic secret created in the dashboard.
   </Step>
 
   <Step title="Generate dynamic secrets">
     	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
-    	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+    	To do this, simply select the 'Generate' button which appears when hovering over the dynamic secret item.
     	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
     	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -164,7 +164,7 @@ The Infisical GCP IAM dynamic secret allows you to generate GCP service account 
 
 ## Audit or revoke leases
 
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+Once you have created one or more leases, you'll be able to access them by selecting the respective dynamic secret item on the dashboard.
 
 This will allow you to see the expiration time of the lease or delete a lease before its set time to live.
 
@@ -172,11 +172,11 @@ This will allow you to see the expiration time of the lease or delete a lease be
 
 ## Renew leases
 
-To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** button as illustrated below.
+To extend the life of the generated dynamic secret leases past its initial time to live, simply select the **Renew** button as illustrated below.
 
 ![Lease Renew](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-  Lease renewals cannot exceed the maximum TTL set when configuring the dynamic
+  Lease renewals can't exceed the maximum TTL set when configuring the dynamic
   secret
 </Warning>

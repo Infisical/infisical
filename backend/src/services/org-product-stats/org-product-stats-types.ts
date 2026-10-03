@@ -28,4 +28,9 @@ export type TOrgProductStats = {
     accountTemplatesCount: number;
     foldersCount: number;
   };
+  agentVault: {
+    accessBundlesCount: number;
+    servicesCount: number;
+    proxiesCount: number;
+  };
 };

@@ -89,7 +89,12 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate, projectType }: FormP
     <form onSubmit={handleSubmit(onFormSubmit)}>
       <Field>
         <FieldLabel>Name</FieldLabel>
-        <Input autoFocus placeholder="my-project-template" {...register("name")} />
+        <Input
+          autoFocus
+          placeholder="my-project-template"
+          {...register("name")}
+          autoComplete="off"
+        />
         <FieldDescription>Name must be slug-friendly</FieldDescription>
         {errors.name?.message && <FieldError>{errors.name.message}</FieldError>}
       </Field>

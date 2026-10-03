@@ -14,9 +14,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PageHeader,
   Tooltip
 } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
+import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionPkiSubscriberActions,
@@ -28,6 +29,7 @@ import { useDeletePkiSubscriber, useGetPkiSubscriber } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { LegacyPkiDeprecationAlert } from "../components/LegacyPkiDeprecationAlert";
 import { PkiSubscriberModal } from "../PkiSubscribersPage/components/PkiSubscriberModal";
 import { PkiSubscriberCertificatesSection, PkiSubscriberDetailsSection } from "./components";
 
@@ -41,7 +43,8 @@ const Page = () => {
     select: (el) => el.subscriberName
   });
   const { data } = useGetPkiSubscriber({
-    subscriberName
+    subscriberName,
+    projectId
   });
 
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
@@ -54,7 +57,7 @@ const Page = () => {
   const onRemoveSubscriberSubmit = async (subscriberNameToDelete: string) => {
     if (!projectId) return;
 
-    await deletePkiSubscriber({ subscriberName: subscriberNameToDelete });
+    await deletePkiSubscriber({ subscriberName: subscriberNameToDelete, projectId });
 
     createNotification({
       text: "Successfully deleted subscriber",
@@ -72,28 +75,29 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-8xl">
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/subscribers"
-            params={{
-              orgId: currentOrg.id,
-              projectId
-            }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-          >
-            <FontAwesomeIcon icon={faChevronLeft} />
-            Subscribers
-          </Link>
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
+            backLink={
+              <Link
+                to="/organizations/$orgId/projects/cert-manager/$projectId/subscribers"
+                params={{
+                  orgId: currentOrg.id,
+                  projectId
+                }}
+              >
+                <FontAwesomeIcon icon={faChevronLeft} />
+                Subscribers
+              </Link>
+            }
             scope={ProjectType.CertificateManager}
             title={data.name}
             description="Manage PKI subscriber"
           >
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
-                <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                <div className="hover:text-project data-[state=open]:text-project">
                   <Tooltip content="More options">
                     <Button variant="outline_bg">More</Button>
                   </Tooltip>
@@ -108,7 +112,7 @@ const Page = () => {
                     <DropdownMenuItem
                       className={twMerge(
                         isAllowed
-                          ? "hover:bg-red-500! hover:text-white!"
+                          ? "hover:bg-danger! hover:text-white!"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
                       onClick={() =>
@@ -125,6 +129,7 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
+          <LegacyPkiDeprecationAlert resource={LegacyPkiResource.PkiSubscriber} />
           <div className="flex">
             <div className="mr-4 w-96">
               <PkiSubscriberDetailsSection

@@ -94,9 +94,3 @@ export type TAuditReportServiceActor = OrgServiceActor;
 export type TGenerateAuditReportJobPayload = {
   auditReportId: string;
 };
-
-export type TSecretToValidate = {
-  key: string;
-  value?: string;
-  previousValues?: string[];
-};

@@ -18,12 +18,12 @@ Go to Overview, Copy and store `Tenant Id`
 </Step>
 
 <Step>
-Go to Applications > App registrations. Click on New Registration.
+Go to Applications > App registrations. Select New Registration.
 ![Copy Tenant Id](../../../images/platform/dynamic-secrets/dynamic-secret-ad-new-registration.png)
 </Step>
 
 <Step>
-Enter an application name. Click Register.
+Enter an application name. Select Register.
 </Step>
 
 <Step>
@@ -32,11 +32,11 @@ Copy and store `Application Id`.
 </Step>
 
 <Step>
-Go to Clients and Secrets. Click on New Client Secret.
+Go to Clients and Secrets. Select New Client Secret.
 </Step>
 
 <Step>
-Enter a description, select expiry and click Add.
+Enter a description, select expiry and select Add.
 </Step>
 
 <Step>
@@ -45,37 +45,37 @@ Copy and store `Client Secret` value.
 </Step>
 
 <Step>
-Go to API Permissions. Click on Add a permission.
-![Click add a permission](../../../images/platform/dynamic-secrets/dynamic-secret-ad-add-permission.png)
+Go to API Permissions. Select Add a permission.
+![Select add a permission](../../../images/platform/dynamic-secrets/dynamic-secret-ad-add-permission.png)
 </Step>
 
 <Step>
-Click on Microsoft Graph.
-![Click Microsoft Graph](../../../images/platform/dynamic-secrets/dynamic-secret-ad-select-graph.png)
+Select Microsoft Graph.
+![Select Microsoft Graph](../../../images/platform/dynamic-secrets/dynamic-secret-ad-select-graph.png)
 </Step>
 
 <Step>
-Click on Application Permissions. Search and select `User.ReadWrite.All` and click Add permissions.
+Select Application Permissions. Search and select `User.ReadWrite.All` and select Add permissions.
 ![Add User.Read.All](../../../images/platform/dynamic-secrets/dynamic-secret-ad-select-perms.png)
 </Step>
 
 <Step>
-Click on Grant admin consent for app. Click yes to confirm.
+Select Grant admin consent for app. Select yes to confirm.
 ![Grant admin consent](../../../images/platform/dynamic-secrets/dynamic-secret-ad-admin-consent.png)
 </Step>
 
 <Step>
-Go to Dashboard. Click on show more.
+Go to Dashboard. Select show more.
 ![Show more](../../../images/platform/dynamic-secrets/dynamic-secret-ad-show-more.png)
 </Step>
 
 <Step>
-Click on Roles & admins. Search for User Administrator and click on it.
+Select Roles & admins. Search for User Administrator and select it.
 ![User Administrator](../../../images/platform/dynamic-secrets/dynamic-secret-ad-user-admin.png)
 </Step>
 
 <Step>
-Click on Add assignments. Search for the application name you created and select it. Click on Add.
+Select Add assignments. Search for the application name you created and select it. Select Add.
 ![Add assignments](../../../images/platform/dynamic-secrets/dynamic-secret-ad-add-assignments.png)
 </Step>
 </Steps>
@@ -123,12 +123,12 @@ Click on Add assignments. Search for the application name you created and select
 
   </Step>
   <Step title="Click `Submit`">
-  	After submitting the form, you will see a dynamic secret for each user created in the dashboard.
+  	After submitting the form, you'll see a dynamic secret for each user created in the dashboard.
   </Step>
 
   <Step title="Generate dynamic secrets">
 	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
-	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+	To do this, simply select the 'Generate' button which appears when hovering over the dynamic secret item.
 	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
 	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -150,15 +150,15 @@ Click on Add assignments. Search for the application name you created and select
 </Steps>
 
 ## Audit or revoke leases
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+Once you have created one or more leases, you'll be able to access them by selecting the respective dynamic secret item on the dashboard.
 This will allow you to see the expiration time of the lease or delete a lease before its set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew leases
-To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** button as illustrated below.
+To extend the life of the generated dynamic secret leases past its initial time to live, simply select the **Renew** button as illustrated below.
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-	Lease renewals cannot exceed the maximum TTL set when configuring the dynamic secret
+	Lease renewals can't exceed the maximum TTL set when configuring the dynamic secret
 </Warning>

@@ -1,3 +1,5 @@
+import axios from "axios";
+
 import {
   BillingV2Cadence,
   BillingV2CatalogProduct,
@@ -19,6 +21,12 @@ export const catalogById = (
 export const byDisplayOrder = <T extends { displayOrder?: number }>(a: T, b: T): number =>
   (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
 
+// The license server's machine code (details.code) on a failed billing request, if any.
+export const billingV2ErrorCode = (error: unknown): string | undefined =>
+  axios.isAxiosError<{ details?: { code?: string } }>(error)
+    ? error.response?.data?.details?.code
+    : undefined;
+
 export const fmtMoney = (n: number, maximumFractionDigits = 0): string =>
   `$${Number(n).toLocaleString("en-US", { maximumFractionDigits })}`;
 
@@ -37,6 +45,9 @@ export const pluralizeUnit = (noun: string): string => {
   }
   return `${noun}s`;
 };
+
+export const unitForCount = (noun: string, count: number): string =>
+  count === 1 ? noun : pluralizeUnit(noun);
 
 export const cadenceWord = (cad: BillingV2Cadence): string => {
   if (cad === "annual") {

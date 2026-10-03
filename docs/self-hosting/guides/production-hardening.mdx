@@ -112,12 +112,12 @@ DYNAMIC_SECRET_ALLOW_INTERNAL_IP=false
 AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP=false
 ```
 
-**Force direct egress to preserve the IP pin.** If your instance does not rely on
+**Force direct egress to preserve the IP pin.** If your instance doesn't rely on
 an outbound forward proxy, enable `SAFE_REQUEST_FORCE_DIRECT_EGRESS` so requests
-cannot be routed through an ambient `HTTP_PROXY` / `HTTPS_PROXY` that would
-re-resolve the target and bypass the validated-IP pin. It is `false` by default
+can't be routed through an ambient `HTTP_PROXY` / `HTTPS_PROXY` that would
+re-resolve the target and bypass the validated-IP pin. It's `false` by default
 (Infisical Cloud enables it through its own deployment configuration); set it
-explicitly for hardened self-hosted deployments that do not use an egress proxy:
+explicitly for hardened self-hosted deployments that don't use an egress proxy:
 
 ```bash
 # Guarantee outbound requests connect to the validated IP (no proxy re-resolution).
@@ -501,7 +501,7 @@ stringData:
   SITE_URL: "<your-site-url>"
 ```
 
-**Note:** Kubernetes secrets are only base64-encoded by default and are not encrypted at rest unless you explicitly enable etcd encryption. For production environments, you should:
+**Note:** Kubernetes secrets are only base64-encoded by default and aren't encrypted at rest unless you explicitly enable etcd encryption. For production environments, you should:
 
 - Enable [etcd encryption at rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/) to protect secrets stored in the cluster
 - Limit access to etcd and Kubernetes API to only trusted administrators
@@ -544,7 +544,7 @@ These recommendations are specific to deployments using the [Infisical Linux pac
 
 The Infisical Linux package (omnibus) includes several security measures out of the box:
 
-- **Privilege dropping**: The package uses `chpst` to automatically drop the running application process from `root` to the dedicated `infisical` user. You do not need to configure this manually.
+- **Privilege dropping**: The package uses `chpst` to automatically drop the running application process from `root` to the dedicated `infisical` user. You don't need to configure this manually.
 - **Service supervision**: Services are managed by `runsvdir`, which provides automatic process supervision and restart.
 - **Structured directories**: Application files, data, and logs are organized under standard paths (`/opt/infisical-core`, `/var/opt/infisical-core`, `/var/log/infisical-core`).
 
@@ -606,11 +606,11 @@ sudo systemctl restart infisical-runsvdir.service
 ```
 
 <Warning>
-**Do not** set `User=` or `Group=` in the systemd override. The Infisical omnibus package uses `chpst` internally to drop privileges to the `infisical` user. Setting these directives in systemd will conflict with `chpst` and break the service.
+**Don't** set `User=` or `Group=` in the systemd override. The Infisical omnibus package uses `chpst` internally to drop privileges to the `infisical` user. Setting these directives in systemd will conflict with `chpst` and break the service.
 </Warning>
 
 <Warning>
-**Do not** enable `ProtectKernelTunables=true`. The `runsvdir-start` script adjusts `/proc/sys/fs/file-max` at startup. Enabling this setting makes `/proc/sys` read-only, which will cause errors. While the service may still start, it will log warnings and may not perform optimally.
+**Don't** enable `ProtectKernelTunables=true`. The `runsvdir-start` script adjusts `/proc/sys/fs/file-max` at startup. Enabling this setting makes `/proc/sys` read-only, which will cause errors. While the service may still start, it will log warnings and may not perform optimally.
 </Warning>
 
 #### Configuration security

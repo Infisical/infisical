@@ -121,6 +121,7 @@ export const GroupsSection = () => {
         }}
       />
       <UpgradePlanModal
+        paywallKey="project.groups"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan?.data?.text}

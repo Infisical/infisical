@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type DateRange } from "react-day-picker";
-import { addDays, addMonths, format, subMonths } from "date-fns";
+import { addDays, addMonths, format, max, startOfDay, subMonths } from "date-fns";
 import { ArrowRight, CalendarIcon } from "lucide-react";
 import ms from "ms";
 
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "../../generic/Select";
-import { Switch } from "../../generic/Switch";
+import { Toggle } from "../../generic/Toggle";
 
 const MAX_RANGE_MONTHS = 3;
 
@@ -53,14 +53,20 @@ export type DateRangeFilterResult = {
   isUtc: boolean;
 };
 
-export type DateRangeFilterAccent = "primary" | "secondary";
+export type DateRangeFilterAccent = "primary" | "secondary" | "av";
 
 type Props = {
   defaultValue?: DateRangeFilterValue;
   defaultIsUtc?: boolean;
   onChange: (value: DateRangeFilterResult) => void;
+  onClear?: () => void;
   accent?: DateRangeFilterAccent;
   isActive?: boolean;
+  inactiveLabel?: string;
+  showTimezoneToggle?: boolean;
+  earliestDate?: Date;
+  showRelativeRanges?: boolean;
+  size?: Extract<ButtonProps["size"], "sm" | "md">;
   className?: string;
 };
 
@@ -78,13 +84,13 @@ export const ACCENT_STYLES: Record<
   }
 > = {
   primary: {
-    selectedBorderBg: "border-primary bg-primary/5",
-    selectedCard: "border-primary/40 bg-primary/5 shadow-xs",
-    selectedBadge: "rounded-sm bg-primary/5 px-1.5 py-0.5 text-[11px] font-medium text-primary",
-    selectedChip: "border-primary/40 bg-primary/5 text-foreground",
+    selectedBorderBg: "border-project bg-project/5",
+    selectedCard: "border-project/40 bg-project/5 shadow-xs",
+    selectedBadge: "rounded-sm bg-project/5 px-1.5 py-0.5 text-[11px] font-medium text-project",
+    selectedChip: "border-project/40 bg-project/5 text-foreground",
     switchChecked:
-      "data-[state=checked]:border-primary/25 data-[state=checked]:bg-primary/10 data-[state=checked]:hover:border-primary/30 data-[state=checked]:hover:bg-primary/15",
-    applyButton: "border-primary/25 bg-primary/10 hover:bg-primary/15 hover:border-primary/30",
+      "data-[state=checked]:border-project/25 data-[state=checked]:bg-project/10 data-[state=checked]:hover:border-project/30 data-[state=checked]:hover:bg-project/15",
+    applyButton: "border-project/25 bg-project/10 hover:bg-project/15 hover:border-project/30",
     calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]",
     activeVariant: "project"
   },
@@ -98,6 +104,19 @@ export const ACCENT_STYLES: Record<
     applyButton: "border-org/25 bg-org/10 hover:bg-org/15 hover:border-org/30",
     calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]",
     activeVariant: "org"
+  },
+  av: {
+    selectedBorderBg: "border-product-av bg-product-av/5",
+    selectedCard: "border-product-av/40 bg-product-av/5 shadow-xs",
+    selectedBadge:
+      "rounded-sm bg-product-av/5 px-1.5 py-0.5 text-[11px] font-medium text-product-av",
+    selectedChip: "border-product-av/40 bg-product-av/5 text-foreground",
+    switchChecked:
+      "data-[state=checked]:border-product-av/25 data-[state=checked]:bg-product-av/10 data-[state=checked]:hover:border-product-av/30 data-[state=checked]:hover:bg-product-av/15",
+    applyButton:
+      "border-product-av/25 bg-product-av/10 hover:bg-product-av/15 hover:border-product-av/30",
+    calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]",
+    activeVariant: "av"
   }
 };
 
@@ -163,19 +182,37 @@ export function DateRangeFilter({
   defaultValue,
   defaultIsUtc = false,
   onChange,
+  onClear,
   accent = "primary",
   isActive = true,
+  inactiveLabel = "Custom",
+  showTimezoneToggle = true,
+  earliestDate,
+  showRelativeRanges = true,
+  size = "sm",
   className
 }: Props) {
-  const initialValue = defaultValue ?? { type: DateRangeFilterType.Last, value: "1h" };
+  const today = new Date();
+  const earliestDay = earliestDate ?? addDays(subMonths(today, MAX_RANGE_MONTHS), 1);
+  const modes = showRelativeRanges
+    ? [DateRangeFilterType.Last, DateRangeFilterType.Fixed]
+    : [DateRangeFilterType.Fixed];
+  const initialValue: DateRangeFilterValue =
+    defaultValue ??
+    (showRelativeRanges
+      ? { type: DateRangeFilterType.Last, value: "1h" }
+      : { type: DateRangeFilterType.Fixed, startDate: earliestDay, endDate: today });
   const [appliedValue, setAppliedValue] = useState<DateRangeFilterValue>(initialValue);
   const [appliedIsUtc, setAppliedIsUtc] = useState(defaultIsUtc);
   const [isOpen, setIsOpen] = useState(false);
-  const [mode, setMode] = useState<DateRangeFilterType>(
+  const [selectedMode, setMode] = useState<DateRangeFilterType>(
     initialValue.type === DateRangeFilterType.Fixed
       ? DateRangeFilterType.Fixed
       : DateRangeFilterType.Last
   );
+
+  // The tabs can change while mounted, so a hidden Last tab never stays selected.
+  const mode = showRelativeRanges ? selectedMode : DateRangeFilterType.Fixed;
 
   // Last mode state — seed from the initial value if it's a Last type
   const initialLastParsed =
@@ -241,9 +278,16 @@ export function DateRangeFilter({
     setIsOpen(false);
   };
 
-  const today = new Date();
+  const handleClear = () => {
+    setAppliedValue(initialValue);
+    setAppliedIsUtc(defaultIsUtc);
+    onClear?.();
+    setIsOpen(false);
+  };
 
-  const calendarDefaultMonth = pendingRange?.from ? pendingRange.from : addMonths(today, -1);
+  const calendarDefaultMonth = pendingRange?.from
+    ? pendingRange.from
+    : max([addMonths(today, -1), earliestDay]);
 
   const isInvalidFixedRange = useMemo(() => {
     if (mode !== DateRangeFilterType.Fixed || !pendingRange?.from || !pendingRange?.to)
@@ -279,9 +323,9 @@ export function DateRangeFilter({
   const renderTrigger = () => {
     if (!isActive) {
       return (
-        <Button variant="outline" size="sm" className={cn("gap-1.5 font-normal", className)}>
+        <Button variant="outline" size={size} className={cn("gap-1.5 font-normal", className)}>
           <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
-          Custom
+          {inactiveLabel}
         </Button>
       );
     }
@@ -290,7 +334,7 @@ export function DateRangeFilter({
       return (
         <Button
           variant="outline"
-          size="sm"
+          size={size}
           className={cn("gap-1.5 font-normal", accentStyles.selectedChip, className)}
         >
           <span className="text-xs">{format(appliedValue.startDate, "MMM d, yyyy")}</span>
@@ -304,7 +348,7 @@ export function DateRangeFilter({
     return (
       <Button
         variant="outline"
-        size="sm"
+        size={size}
         className={cn("gap-1.5 font-normal", accentStyles.selectedChip, className)}
       >
         <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
@@ -327,7 +371,7 @@ export function DateRangeFilter({
           <div className="flex">
             {/* Left sidebar */}
             <div className="flex w-24 shrink-0 flex-col border-r border-border py-2">
-              {[DateRangeFilterType.Last, DateRangeFilterType.Fixed].map((m) => (
+              {modes.map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -446,12 +490,9 @@ export function DateRangeFilter({
                     numberOfMonths={2}
                     showOutsideDays={false}
                     captionLayout="dropdown"
-                    disabled={[
-                      { after: today },
-                      { before: addDays(subMonths(today, MAX_RANGE_MONTHS), 1) }
-                    ]}
+                    disabled={[{ after: today }, { before: startOfDay(earliestDay) }]}
                     defaultMonth={calendarDefaultMonth}
-                    startMonth={addDays(subMonths(today, MAX_RANGE_MONTHS), 1)}
+                    startMonth={earliestDay}
                     endMonth={today}
                     className="p-0"
                     classNames={{
@@ -490,7 +531,7 @@ export function DateRangeFilter({
                       </div>
                     </div>
                     {isInvalidFixedRange && (
-                      <p className="text-xs text-red-400">Start date must be before end date.</p>
+                      <p className="text-xs text-danger">Start date must be before end date.</p>
                     )}
                   </div>
                 </div>
@@ -500,37 +541,42 @@ export function DateRangeFilter({
 
           {/* Footer */}
           <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-3">
-            {mode === DateRangeFilterType.Fixed ? (
-              <div className="flex shrink-0 cursor-pointer items-center gap-2 select-none">
-                <span
-                  className={cn(
-                    "text-sm transition-colors",
-                    !pendingIsUtc ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  Local
-                </span>
-                <Switch
-                  id="date-range-utc-toggle"
-                  checked={pendingIsUtc}
-                  onCheckedChange={setPendingIsUtc}
-                  size="sm"
-                  className={accentStyles.switchChecked}
-                />
-                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label
-                  htmlFor="date-range-utc-toggle"
-                  className={cn(
-                    "cursor-pointer text-sm transition-colors",
-                    pendingIsUtc ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  UTC
-                </label>
-              </div>
-            ) : (
-              <div />
-            )}
+            <div className="flex items-center gap-4">
+              {onClear && isActive && (
+                <Button variant="ghost" size="sm" onClick={handleClear}>
+                  Clear
+                </Button>
+              )}
+              {mode === DateRangeFilterType.Fixed && showTimezoneToggle && (
+                <div className="flex shrink-0 cursor-pointer items-center gap-2 select-none">
+                  <span
+                    className={cn(
+                      "text-sm transition-colors",
+                      !pendingIsUtc ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    Local
+                  </span>
+                  <Toggle
+                    id="date-range-utc-toggle"
+                    checked={pendingIsUtc}
+                    onCheckedChange={setPendingIsUtc}
+                    size="sm"
+                    className={accentStyles.switchChecked}
+                  />
+                  {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                  <label
+                    htmlFor="date-range-utc-toggle"
+                    className={cn(
+                      "cursor-pointer text-sm transition-colors",
+                      pendingIsUtc ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    UTC
+                  </label>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>
                 Cancel

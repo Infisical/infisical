@@ -5,7 +5,8 @@ export const PROJECT_TYPE_PATH: Record<ProjectType, string> = {
   [ProjectType.CertificateManager]: "cert-manager",
   [ProjectType.KMS]: "kms",
   [ProjectType.PAM]: "pam",
-  [ProjectType.SecretScanning]: "secret-scanning"
+  [ProjectType.SecretScanning]: "secret-scanning",
+  [ProjectType.AgentVault]: "agent-vault"
 };
 
 export type SubmenuItem = {
@@ -33,6 +34,7 @@ export type NavItem = {
   activeMatch?: RegExp | ((pathname: string, search: Record<string, unknown>) => boolean);
   badgeCount?: number;
   badgeVariant?: "warning" | "danger" | "pam";
+  dotVariant?: "warning" | "danger";
   hidden?: boolean;
   submenu?: Submenu;
   /** Query params to append to the link and use for active state matching */

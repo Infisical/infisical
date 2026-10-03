@@ -72,18 +72,42 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
   const findExternalIdentifiersInUse = async (
     externalIdentifiers: string[],
-    excludePkiSyncId: string,
+    { excludePkiSyncId, destination }: { excludePkiSyncId: string; destination: string },
     tx?: Knex
   ): Promise<Set<string>> => {
     try {
       if (externalIdentifiers.length === 0) return new Set();
-      const docs = (await (tx || db.replicaNode())(TableName.CertificateSync)
-        .whereIn("externalIdentifier", externalIdentifiers)
-        .andWhereNot({ pkiSyncId: excludePkiSyncId })
-        .select("externalIdentifier")) as Array<{ externalIdentifier: string | null }>;
+      const docs = (await (tx || db)(TableName.CertificateSync)
+        .join(TableName.PkiSync, `${TableName.PkiSync}.id`, `${TableName.CertificateSync}.pkiSyncId`)
+        .whereIn(`${TableName.CertificateSync}.externalIdentifier`, externalIdentifiers)
+        .where(`${TableName.PkiSync}.destination`, destination)
+        .whereNot(`${TableName.CertificateSync}.pkiSyncId`, excludePkiSyncId)
+        .select(`${TableName.CertificateSync}.externalIdentifier`)) as Array<{ externalIdentifier: string | null }>;
       return new Set(docs.map((doc) => doc.externalIdentifier).filter((v): v is string => Boolean(v)));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindExternalIdentifiersInUse" });
+    }
+  };
+
+  const claimExternalIdentifier = async (
+    pkiSyncId: string,
+    certificateId: string,
+    externalIdentifier: string,
+    tx?: Knex
+  ): Promise<void> => {
+    try {
+      await (tx || db)(TableName.CertificateSync)
+        .insert({ pkiSyncId, certificateId, syncStatus: CertificateSyncStatus.Pending, externalIdentifier })
+        .onConflict(["pkiSyncId", "certificateId"])
+        .ignore();
+      await (tx || db)(TableName.CertificateSync)
+        .where({ pkiSyncId, certificateId })
+        .where((qb) => {
+          void qb.whereNull("externalIdentifier").orWhereNot("externalIdentifier", externalIdentifier);
+        })
+        .update({ externalIdentifier });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "ClaimExternalIdentifier" });
     }
   };
 
@@ -236,6 +260,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     certificateDetails: (TCertificateSyncs & {
       certificateSerialNumber?: string;
       certificateCommonName?: string;
+      certificateOrderId?: string;
       certificateAltNames?: string;
       certificateStatus?: string;
       certificateNotBefore?: Date;
@@ -271,6 +296,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
         .select(
           db.ref("serialNumber").withSchema(TableName.Certificate).as("certificateSerialNumber"),
           db.ref("commonName").withSchema(TableName.Certificate).as("certificateCommonName"),
+          db.ref("orderId").withSchema(TableName.Certificate).as("certificateOrderId"),
           db.ref("altNames").withSchema(TableName.Certificate).as("certificateAltNames"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("notBefore").withSchema(TableName.Certificate).as("certificateNotBefore"),
@@ -294,6 +320,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
       }
 
       const certificateDetails = (await query) as (TCertificateSyncs & {
+        certificateOrderId?: string;
         certificateSerialNumber?: string;
         certificateCommonName?: string;
         certificateAltNames?: string;
@@ -313,7 +340,10 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  const primaryNode = () => db.primaryNode();
+
   return {
+    primaryNode,
     ...certificateSyncOrm,
     findByPkiSyncId,
     findByCertificateId,
@@ -321,6 +351,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     findCertificateIdsByPkiSyncId,
     findPkiSyncIdsByCertificateId,
     findExternalIdentifiersInUse,
+    claimExternalIdentifier,
     addCertificates,
     removeCertificates,
     updateSyncStatus,

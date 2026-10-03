@@ -32,6 +32,7 @@ import {
   checkFolderMovePolicyBlock,
   TFolderMoveAccessScope
 } from "@app/services/secret-folder/secret-folder-fns";
+import { TSecretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
 
 import {
   ChangeType,
@@ -109,6 +110,7 @@ type TSecretFolderServiceFactoryDep = {
     "insertV2Bridge" | "insertApprovalSecretV2Tags"
   >;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "existsByFolderIds">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
@@ -139,6 +141,7 @@ export const secretFolderServiceFactory = ({
   secretApprovalRequestDAL,
   secretApprovalRequestSecretDAL,
   secretQueueService,
+  secretSyncQueue,
   dynamicSecretDAL,
   secretRotationV2DAL,
   honeyTokenDAL,
@@ -824,6 +827,15 @@ export const secretFolderServiceFactory = ({
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     await permissionService.invalidateProjectFolderPermissionCache(projectId);
+
+    // A recursive sync rooted above this folder just lost every secret it held, and no secret-level
+    // write carries that. Queued after the commit so a worker cannot read the folder back.
+    await secretSyncQueue.queueSecretSyncsSyncSecretsByPath({
+      projectId,
+      environmentSlug: environment,
+      secretPath: path.join(secretPath, folder.name)
+    });
+
     return folder;
   };
 
@@ -1043,7 +1055,18 @@ export const secretFolderServiceFactory = ({
 
     const folders = await folderDAL.findByEnvsDeep({ parentIds: parentFolders.map((parent) => parent.id) });
 
-    return folders;
+    // findByEnvsDeep paths are relative to the walk root, which is the resolved secretPath
+    const rootPath = parentFolders[0].path;
+    const resolvePathFromWalkRoot = (relativePath: string) => {
+      if (relativePath === "/") return rootPath;
+      if (rootPath === "/") return relativePath;
+      return `${rootPath}${relativePath}`;
+    };
+
+    return folders.map((folder) => ({
+      ...folder,
+      path: resolvePathFromWalkRoot(folder.path)
+    }));
   };
 
   const getProjectEnvironmentsFolders = async (projectId: string, actor: OrgServiceActor) => {
@@ -1183,7 +1206,7 @@ export const secretFolderServiceFactory = ({
       const createdFolders = [];
 
       for (const [environment, envFolders] of Object.entries(foldersByEnv)) {
-        const env = await projectEnvDAL.findOne({ projectId, slug: environment });
+        const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
         if (!env) {
           throw new NotFoundError({
             message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`

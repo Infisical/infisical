@@ -121,7 +121,7 @@ export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateSt
                     <Link
                       to={ROUTE_PATHS.CertManager.CertificateAuthoritiesPage.path}
                       params={{ orgId, projectId }}
-                      className="text-primary underline hover:text-primary/80"
+                      className="text-project underline hover:text-project/80"
                     >
                       Create one first.
                     </Link>

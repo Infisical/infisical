@@ -1,3 +1,4 @@
+import { AGENT_VAULT_MAX_REFERENCES_PER_FIELD } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   SECRET_ROTATION_CONNECTION_MAP,
@@ -15,6 +16,9 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS } from "@app/services/secret-validation-rule/secret-validation-rule-constants";
+import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-enums";
+import { SECRET_VALIDATION_RULE_NAME_MAP } from "@app/services/secret-validation-rule/secret-validation-rule-maps";
 
 const IDENTITY_AUTH_SUB_ORGANIZATION_NAME =
   "When set, this will scope the login session to the specified organization the machine identity has access to. If omitted, the session defaults to the organization where the machine identity was created in.";
@@ -98,7 +102,16 @@ export enum ApiDocsTags {
   PamMemberships = "PAM Memberships",
   PamRoles = "PAM Roles",
   PamDiscovery = "PAM Discovery",
-  KmipServers = "KMIP Servers"
+  AgentVault = "Agent Vault",
+  AgentVaultAccessBundles = "Agent Vault Access Bundles",
+  AgentVaultSessions = "Agent Vault Sessions",
+  AgentVaultProxies = "Agent Vault Proxies",
+  AgentVaultMembers = "Agent Vault Members",
+  AgentVaultSessionLogs = "Agent Vault Session Logs",
+  AgentVaultSettings = "Agent Vault Settings",
+  AgentVaultAppConnections = "Agent Vault App Connections",
+  KmipServers = "KMIP Servers",
+  Instance = "Instance"
 }
 
 export const GROUPS = {
@@ -614,6 +627,8 @@ export const KUBERNETES_AUTH = {
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
+    templateId:
+      "The ID of the Kubernetes auth template to source connection settings from. When provided, the host, CA certificate, token reviewer JWT, token review mode, gateway, and allowed audience are taken from the template and cannot be set individually.",
     kubernetesHost: "The host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert:
       "The PEM-encoded CA certificate used to validate the Kubernetes API server's TLS certificate. Required when verifyTlsCertificate is true. Supplying a non-empty caCert always implies verifyTlsCertificate=true; explicitly setting the toggle to false in the same request is rejected.",
@@ -622,7 +637,7 @@ export const KUBERNETES_AUTH = {
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     tokenReviewMode:
-      "The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.",
+      "The mode to use for token review. Must be one of: 'api', 'gateway'. Defaults to 'api' when omitted. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The comma-separated list of trusted service account names that can authenticate with Infisical.",
@@ -636,6 +651,8 @@ export const KUBERNETES_AUTH = {
   },
   UPDATE: {
     identityId: "The ID of the machine identity to update the auth method for.",
+    templateId:
+      "The ID of the Kubernetes auth template to link. While linked, connection settings are managed by the template and cannot be set individually. Pass null to unlink the template; the settings copied from it are kept.",
     kubernetesHost: "The new host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert:
       "The new PEM-encoded CA certificate used to validate the Kubernetes API server's TLS certificate. Required when verifyTlsCertificate is true. Supplying a non-empty caCert always implies verifyTlsCertificate=true; the update is rejected if the resulting effective state would store a CA together with verifyTlsCertificate=false.",
@@ -715,6 +732,8 @@ export const OIDC_AUTH = {
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
+    templateId:
+      "The ID of the OIDC auth template to source identity provider settings from. When provided, the OIDC discovery URL, issuer, audiences, and CA certificate are taken from the template and cannot be set individually.",
     oidcDiscoveryUrl: "The URL used to retrieve the OpenID Connect configuration from the identity provider.",
     caCert: "The PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.",
     boundIssuer: "The unique identifier of the identity provider issuing the JWT.",
@@ -729,6 +748,8 @@ export const OIDC_AUTH = {
   },
   UPDATE: {
     identityId: "The ID of the machine identity to update the auth method for.",
+    templateId:
+      "The ID of the OIDC auth template to link. While linked, identity provider settings are managed by the template and cannot be set individually. Pass null to unlink the template; the settings copied from it are kept.",
     oidcDiscoveryUrl: "The new URL used to retrieve the OpenID Connect configuration from the identity provider.",
     caCert: "The new PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.",
     boundIssuer: "The new unique identifier of the identity provider issuing the JWT.",
@@ -1044,7 +1065,9 @@ export const PROJECTS = {
     defaultProduct: "The default product in which the project will open",
     secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection.",
     enforceEncryptedSecretManagerSecretMetadata:
-      "Enable or disable enforcement of encrypted secret metadata for the project."
+      "Enable or disable enforcement of encrypted secret metadata for the project.",
+    auditLogsRetentionDays:
+      "The number of days to retain audit logs for. Can only be set on self-hosted and dedicated instances, and cannot exceed the retention period included in your plan."
   },
   GET_KEY: {
     projectId: "The ID of the project to get the key from."
@@ -1484,6 +1507,24 @@ export const SECRET_IMPORTS = {
 } as const;
 
 export const DASHBOARD = {
+  SECRET_METADATA_LIST: {
+    projectId: "The ID of the project containing the secrets.",
+    environment: "The slug of the environment containing the secrets.",
+    secretPath: "The root folder to list shared secret metadata from, including all descendant folders.",
+    cursor:
+      "The opaque nextCursor returned by the previous page, valid for five minutes for the same caller and query. Omit it to restart.",
+    limit: "The maximum number of accessible shared secrets to return.",
+    secrets: "Shared secrets the caller can describe. Values, comments, tags and custom metadata are not returned.",
+    nextCursor:
+      "An opaque continuation cursor, or null when scanning is complete. Continue even when the page is empty or shorter than the limit.",
+    id: "The secret ID.",
+    secretKey: "The secret key.",
+    path: "The absolute folder path containing the secret.",
+    type: "The secret type. Only shared secrets are returned.",
+    isHoneyTokenSecret: "Whether the secret belongs to a honey token.",
+    isRotatedSecret: "Whether the secret is managed by a rotation.",
+    secretValueHidden: "Whether the caller lacks permission to read this secret's value. No values are returned."
+  },
   SECRET_OVERVIEW_LIST: {
     projectId: "The ID of the project to list secrets/folders from.",
     environments:
@@ -1493,6 +1534,8 @@ export const DASHBOARD = {
     limit: "The number of secrets/folders to return.",
     orderBy: "The column to order secrets/folders by.",
     orderDirection: "The direction to order secrets/folders in.",
+    sortEnvironment:
+      "The environment slug whose secret timestamps determine recency ordering. Required for multi-environment recency sorting.",
     search: "The text string to filter secret keys and folder names by.",
     tags: "The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').",
     includeSecrets: "Whether to include project secrets in the response.",
@@ -2226,6 +2269,8 @@ export const CERTIFICATES = {
     id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    externalMetadata:
+      "Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.",
     latestRenewalCertificateId:
       "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked. Use this to follow renewals without walking the chain one certificate at a time."
   },
@@ -2237,6 +2282,15 @@ export const CERTIFICATES = {
     attributes:
       "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
     removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
+  },
+  RENEWAL_PREVIEW: {
+    id: "The ID of the certificate to preview a renewal for.",
+    hasOriginatingRequest:
+      "Whether the certificate has a recorded originating request. When false the preview falls back to the issued certificate, which is the case for imported and discovered certificates.",
+    request:
+      "The values a renewal will request, taken from the request that produced this certificate including any profile defaults it recorded.",
+    issuerModifiedFields:
+      "Fields the issuing authority set differently from the request, each with the requested and issued values. A renewal asks for the requested value again unless it is changed."
   },
   REVOKE: {
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
@@ -2265,7 +2319,12 @@ export const CERTIFICATES = {
     chainPem: "Optional PEM-encoded chain of intermediate certificates.",
     friendlyName: "A friendly name for the certificate.",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
+    profileId:
+      "The certificate profile that will manage this certificate's lifecycle. The certificate must satisfy the profile's certificate policy, or the request is rejected with a 400 naming the attributes that failed. Omit to track the certificate without renewal, reissue or revocation.",
+    externalMetadata:
+      'Identifies this certificate at the provider that issued it. Required when the chosen profile issues from an external certificate authority. For DigiCert, pass the CertCentral order ID as { type: "digicert", orderId: 2081714 }.',
 
+    certificateId: "The ID of the imported certificate.",
     certificate: "The imported certificate.",
     certificateChain:
       "The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.",
@@ -2281,6 +2340,16 @@ const domainComponentRule = (rule: string) =>
 const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
 
 export const CERTIFICATE_POLICIES = {
+  CUSTOM_EXTENSION_RULES:
+    "Rules for custom X.509 extensions, one per OID. Omit the field to leave custom extensions unconstrained; send an empty array to forbid them entirely.",
+  CUSTOM_EXTENSION_RULE: {
+    allowed:
+      "Value patterns this extension may take, with * as a wildcard. Use * on its own to accept any value. Omit to place no allow-list constraint on the value.",
+    required:
+      "Value patterns this extension must match, with * as a wildcard. Setting any required pattern also makes the extension mandatory on every request.",
+    denied:
+      "Value patterns this extension must not take, with * as a wildcard. A denied match is rejected even when an allowed pattern also matches."
+  },
   SUBJECT_DOMAIN_COMPONENT_RULE: {
     allowed: domainComponentRule("permitted"),
     required: domainComponentRule("required"),
@@ -2711,7 +2780,9 @@ export const CertificateAuthorities = {
       crlDistributionPointUrls:
         "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
       disableManagedCrlDistributionPointUrl:
-        "When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included."
+        "When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included.",
+      isOcspEnabled:
+        "When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled."
     }
   }
 };
@@ -2870,6 +2941,11 @@ export const AppConnections = {
     },
     DEVIN: {
       apiKey: "The Devin service-user API key used to authenticate against the Devin v3 API."
+    },
+    DAYTONA: {
+      apiKey: "The Daytona API key used to authenticate with Daytona. It must carry the manage:secrets permission.",
+      organizationId:
+        "The Daytona organization the API key belongs to. Resolved from Daytona when the connection is created."
     },
     GITLAB: {
       instanceUrl: "The GitLab instance URL to connect with.",
@@ -3086,7 +3162,8 @@ export const SecretSyncs = {
     return {
       initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`,
       keySchema: `Specify the format to use for structuring secret keys in the ${destinationName} destination.`,
-      disableSecretDeletion: `Enable this flag to prevent removal of secrets from the ${destinationName} destination when syncing.`
+      disableSecretDeletion: `Enable this flag to prevent removal of secrets from the ${destinationName} destination when syncing.`,
+      includeAllSubFolders: `Whether to sync secrets from folders beneath the source path as well.`
     };
   },
   ADDITIONAL_SYNC_OPTIONS: {
@@ -3589,6 +3666,12 @@ export const SecretRotations = {
       username:
         "The Snowflake user whose RSA key pair will be rotated. If the user does not exist, it is created as a key-pair-only SERVICE user.",
       modulusLength: "The modulus length in bits of the generated RSA key pairs. Defaults to 2048."
+    },
+    STRIPE_API_KEY: {
+      keyName:
+        "The name for each Stripe API key this rotation creates, up to 80 characters. Infisical appends a timestamp so the old and new key can be told apart. Defaults to 'infisical-managed'.",
+      permissions:
+        "The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do."
     }
   },
   SECRETS_MAPPING: {
@@ -3688,6 +3771,9 @@ export const SecretRotations = {
     SNOWFLAKE_USER_KEY_PAIR: {
       privateKey: "The name of the secret that the generated RSA private key (PKCS#8 PEM) will be mapped to.",
       publicKey: "The name of the secret that the generated RSA public key (SPKI PEM) will be mapped to."
+    },
+    STRIPE_API_KEY: {
+      apiKey: "The name of the secret that the rotated Stripe API key will be mapped to."
     }
   }
 };
@@ -3963,18 +4049,26 @@ export const GATEWAYS = {
   CREATE: {
     name: "Name of the gateway.",
     authMethod:
-      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `kubernetes` carries the cluster host and namespace/service account allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
+      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `gcp` carries the GCP token type and service account/project/zone allowlists; `kubernetes` carries the cluster host and namespace/service account allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
   },
   UPDATE: {
+    name: "New name for the gateway. Renaming does not affect the gateway's ID, so resources referencing it keep working.",
     authMethod:
-      "Replacement auth method. Same shape as in create: `aws` with allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
+      "Replacement auth method. Same shape as in create: `aws` with allowlists, `gcp` with GCP allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },
   AUTH_METHOD: {
-    stsEndpoint: "The endpoint URL for the AWS STS API.",
     allowedPrincipalArns:
       "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
       "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical.",
+    gcpAuthType:
+      "How the gateway proves its GCP identity. 'gce' verifies an ID token from the instance metadata server, which covers Compute Engine VMs and GKE workload identity. 'iam' verifies a JWT the service account signed through the IAM Credentials API, for hosts outside Compute Engine.",
+    allowedServiceAccounts:
+      "The comma-separated list of GCP service account emails that are allowed to authenticate as this gateway.",
+    allowedProjects:
+      "The comma-separated list of GCP project IDs whose Compute Engine instances are allowed to authenticate as this gateway. Only applies to the 'gce' type, and requires a token carrying Compute Engine instance details.",
+    allowedZones:
+      "The comma-separated list of GCP zones whose Compute Engine instances are allowed to authenticate as this gateway. Only applies to the 'gce' type, and requires a token carrying Compute Engine instance details.",
     kubernetesHost:
       "The URL of the Kubernetes API server that Infisical reviews the gateway's service account token against (e.g. https://my-cluster.example.com:6443). Omit only when tokenReviewMode is 'gateway', where the reviewing gateway calls its own API server.",
     tokenReviewMode:
@@ -3997,11 +4091,13 @@ export const GATEWAYS = {
       "Whether to verify the Kubernetes API server's TLS certificate. Verified against the CA certificate when one is configured, otherwise against the system trust store."
   },
   LOGIN: {
-    gatewayId: "The ID of the gateway logging in (AWS and Kubernetes methods only).",
+    gatewayId: "The ID of the gateway logging in (AWS, GCP and Kubernetes methods only).",
     iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
     iamRequestBody: "The base64-encoded body of the signed STS request.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
     jwt: "The projected Kubernetes service account token of the pod the gateway runs in (Kubernetes method only).",
+    gcpJwt:
+      "The GCP token proving the gateway's identity, carrying the gateway ID as its audience: a metadata server ID token for the 'gce' type, or a service-account-signed JWT for the 'iam' type (GCP method only).",
     token: "The one-time enrollment token previously issued for this gateway (token method only)."
   }
 } as const;
@@ -4026,50 +4122,71 @@ export const RELAYS = {
   }
 } as const;
 
-export const SECRET_VALIDATION_RULES = {
-  RULE: {
-    type: "The kind of secret the rule applies to. Determines which fields the rule accepts and where the constraints are enforced: `static-secrets` constraints run on write, while `dynamic-secrets` and `secret-rotations` constraints shape the generated credential.",
-    constraints:
-      "The constraints enforced by this rule. Each constraint names what it checks (`type`), what it applies to (`appliesTo`), and its `value`, e.g. the minimum character count for `min-length` or the pattern for `regex-pattern`.",
-    dynamicSecretProviders:
-      "The dynamic secret providers this rule applies to. A lease is only constrained when its provider is listed here.",
-    secretRotationProviders:
-      "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here.",
-    appliesToStatic: "What the constraint checks: the secret key or the secret value.",
-    appliesToGenerated: "What the constraint checks: the generated credential.",
-    constraintTypeStatic:
-      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, `required-prefix`, or `prevent-value-reuse`.",
-    constraintTypeGenerated:
-      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, or `required-prefix`.",
-    constraintValue:
-      "The value the constraint is checked against, e.g. the minimum length, the regex pattern, or the required prefix/suffix string."
+export const SecretValidationRules = {
+  LIST: (type?: SecretValidationRuleType) => ({
+    projectId: `The ID of the project to list ${
+      type ? SECRET_VALIDATION_RULE_NAME_MAP[type] : "Secret"
+    } Validation Rules from.`
+  }),
+  GET_BY_ID: (type: SecretValidationRuleType) => ({
+    ruleId: `The ID of the ${SECRET_VALIDATION_RULE_NAME_MAP[type]} Validation Rule to retrieve.`
+  }),
+  CREATE: (type: SecretValidationRuleType) => {
+    const name = SECRET_VALIDATION_RULE_NAME_MAP[type];
+    return {
+      name: `The name of the ${name} Validation Rule to create.`,
+      projectId: `The ID of the project to create the ${name} Validation Rule in.`,
+      description: `An optional description of the ${name} Validation Rule.`,
+      environment: `The slug of the environment to scope this rule to. Omit to enforce the rule in every environment of the project.`,
+      secretPath: `The secret path to scope this rule to. Supports glob patterns such as \`/apps/**\`.`,
+      isActive: `Whether the rule is enforced. An inactive rule is kept but ignored.`
+    };
   },
-  LIST: {
-    projectId: "The ID of the project to list secret validation rules for."
+  UPDATE: (type: SecretValidationRuleType) => {
+    const name = SECRET_VALIDATION_RULE_NAME_MAP[type];
+    return {
+      ruleId: `The ID of the ${name} Validation Rule to update.`,
+      name: `The updated name of the ${name} Validation Rule.`,
+      description: `The updated description of the ${name} Validation Rule.`,
+      environment: `The slug of the environment to scope this rule to. Pass null to enforce the rule in every environment of the project.`,
+      secretPath: `The secret path to scope this rule to. Supports glob patterns such as \`/apps/**\`.`,
+      isActive: `Whether the rule is enforced. An inactive rule is kept but ignored.`
+    };
   },
-  CREATE: {
-    projectId: "The ID of the project to create the secret validation rule in.",
-    name: "The name of the secret validation rule.",
-    description: "An optional description of the secret validation rule.",
-    environmentSlug:
-      "The slug of the environment this rule is scoped to. Omit to apply the rule to every environment in the project.",
-    secretPath: "The secret path this rule is scoped to.",
-    rule: "The rule configuration: which secret type it targets and the constraints to enforce."
+  DELETE: (type: SecretValidationRuleType) => ({
+    ruleId: `The ID of the ${SECRET_VALIDATION_RULE_NAME_MAP[type]} Validation Rule to delete.`
+  }),
+  // Each constraint field reads the same way whichever target it sits on, so one template covers
+  // the secret key, the secret value and a generated password.
+  CONSTRAINTS: (target: string) => ({
+    minLength: `The minimum number of characters the ${target} must contain.`,
+    maxLength: `The maximum number of characters the ${target} may contain.`,
+    regexPattern: `A regular expression the ${target} must match.`,
+    requiredPrefix: `A string the ${target} must start with.`,
+    requiredSuffix: `A string the ${target} must end with.`
+  }),
+  REUSE_PREVENTION: {
+    uniqueAcrossLastVersions: `How many of the secret's own previous versions the new value must differ from. Between 1 and ${MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS}. Omit to accept a value the secret has held before.`,
+    uniqueWithinScope:
+      "Set to true to reject a value that another secret in the rule's scope already holds. Requires blind indexing on the project."
   },
-  UPDATE: {
-    projectId: "The ID of the project the secret validation rule belongs to.",
-    ruleId: "The ID of the secret validation rule to update.",
-    name: "The name of the secret validation rule.",
-    description: "An optional description of the secret validation rule.",
-    environmentSlug:
-      "The slug of the environment this rule is scoped to. Omit to leave the current scope unchanged; pass `null` to make the rule apply to every environment in the project.",
-    secretPath: "The secret path this rule is scoped to.",
-    rule: "The rule configuration: which secret type it targets and the constraints to enforce. Replaces the existing configuration as a whole, or omits to leave it untouched.",
-    isActive: "Whether the secret validation rule is active."
+  STATIC_SECRETS: {
+    keyConstraints:
+      "Constraints enforced on the secret key when a secret is created or renamed. Omit to leave keys unconstrained.",
+    valueConstraints:
+      "Constraints enforced on the secret value when a secret is created or updated. Omit to leave values unconstrained."
   },
-  DELETE: {
-    projectId: "The ID of the project the secret validation rule belongs to.",
-    ruleId: "The ID of the secret validation rule to delete."
+  GENERATED_CREDENTIALS: {
+    passwordConstraints:
+      "Constraints the generated password must satisfy. These replace any password requirements configured on the resource itself."
+  },
+  DYNAMIC_SECRETS: {
+    providers:
+      "The dynamic secret providers this rule applies to. A lease is only constrained when its provider is listed here."
+  },
+  SECRET_ROTATIONS: {
+    providers:
+      "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here."
   }
 } as const;
 
@@ -4136,4 +4253,264 @@ export const ENCRYPTION_KEY_ROTATION = {
     force:
       "Remove the key even though an instance started on it recently. This overrides only that check: a label that does not match the key currently held still fails. Any instance still using that key will fail its next restart until it is given the new one."
   }
+};
+
+const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to the access bundle's variables, written as \`{{KEY}}\`. A reference that repeats counts each time.`;
+
+export const AGENT_VAULT = {
+  ACCESS_BUNDLE: {
+    accessBundleId: "The ID of the access bundle.",
+    name: "The name of the access bundle.",
+    description: "A description of what this access bundle is for.",
+    serviceCount: "How many services the access bundle holds.",
+    memberCount: "How many users, machine identities and groups can reach the access bundle.",
+    orderBy: "What to sort access bundles by: name, serviceCount or createdAt.",
+    orderDirection: "Which way to sort: asc or desc.",
+    search: "Match access bundles by name or description.",
+    limit: "The maximum number of access bundles to return.",
+    offset: "How many access bundles to skip.",
+    hostPatterns: "Every host pattern the access bundle's services cover."
+  },
+  SERVICE: {
+    serviceId: "The ID of the service.",
+    name: "The name of the service.",
+    hostPattern:
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
+    headerName: "The header the credential is written to. Defaults to `Authorization`.",
+    headerPrefix:
+      "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. Can't contain `{{` or `}}`. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
+    username: `The username half of the basic credential. May be empty if a password is set. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved, since some APIs put the whole key here.`,
+    updateUsername: `The username half of the basic credential. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored username; send an empty string to remove it, which requires a password.`,
+    updateValue: `The secret. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored secret.`,
+    updatePassword: `The password half of the basic credential. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored password; send an empty string to remove it, which requires a username.`,
+    createdAt: "When the service was added to the access bundle.",
+    updatedAt: "When the service was last changed.",
+    value: `The secret. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    password: `The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    allowedMethods:
+      "The HTTP methods this service allows. Null allows every method. Anything else is refused by the proxy with a 403.",
+    allowedPathPrefixes:
+      "The path prefixes this service allows, matched on whole segments, so `/repos` covers `/repos/octo` but not `/repositories`. `null` allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
+    customHeaders:
+      "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's `id` to change it in place and keep its stored value. Without an `id`, a header is matched by name.",
+    customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
+    customHeaderName: "The name of the header, which must not be the credential's own header.",
+    customHeaderPrefix:
+      "Written before the header value, separated by one space. Leave empty to send the value alone. Can't contain `{{` or `}}`.",
+    updateCustomHeaderPrefix:
+      "Written before the header value, separated by one space. Can't contain `{{` or `}}`. Unlike the value, an omitted prefix is cleared rather than kept, since the stored prefix is returned and can be resent.",
+    customHeaderValue: `The header value. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    updateCustomHeaderValue: `The header value. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored for this header.`,
+    substitutions:
+      "Placeholders the proxy swaps for a real secret before forwarding. Send the full list. A substitution you leave out is deleted. Send a substitution's `id` to change it in place and keep its stored value. Without an `id`, it is matched by its placeholder.",
+    substitutionId:
+      "The ID of the substitution. Send it to change that substitution in place. Omit it to match by placeholder.",
+    placeholder:
+      "The fake value your agent already sends. The proxy replaces it with the real secret. Matched as a plain string, so a distinctive placeholder is worth choosing. Can't contain `{{` or `}}`.",
+    surfaces: "Where in the request to look for the placeholder: path, query, header or body.",
+    substitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    updateSubstitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored.`,
+    variableReferences:
+      "The variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see variables.",
+    referenceField:
+      "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
+    referenceCustomHeaderId: "The custom header whose value uses the variable.",
+    referenceSubstitutionId: "The substitution whose value uses the variable."
+  },
+  VARIABLE: {
+    variableId: "The ID of the variable.",
+    key: "The name services use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
+    value: "The value the proxy puts in place of each `{{KEY}}`.",
+    updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
+    isSecret: "Whether the value is hidden once saved. A secret value is only returned by the value endpoint.",
+    listedValue:
+      "The value, for a variable that is not secret. Null for a secret one: read it from the value endpoint.",
+    revealedValue: "The variable's value.",
+    serviceIds:
+      "The IDs of the services in the access bundle that use this variable. A variable in use can't be deleted.",
+    createdAt: "When the variable was added to the access bundle.",
+    updatedAt: "When the variable was last changed."
+  },
+  MEMBER: {
+    memberId: "The ID of the access bundle membership.",
+    createdAt: "When the access bundle was granted.",
+    userId: "The ID of the user whose Agent Vault membership this is.",
+    identityId: "The ID of the machine identity whose Agent Vault membership this is.",
+    groupId: "The ID of the group whose Agent Vault membership this is.",
+    userIds: "The IDs of the users to grant the access bundle to.",
+    machineIdentityIds: "The IDs of the machine identities to grant the access bundle to.",
+    groupIds: "The IDs of the groups to grant the access bundle to.",
+    actorType: "Whether this member is a user, a machine identity or a group.",
+    actorId: "The ID of the user, machine identity or group.",
+    username: "The username of the user.",
+    email: "The email address of the user.",
+    firstName: "The first name of the user.",
+    lastName: "The last name of the user.",
+    identityName: "The name of the machine identity.",
+    groupName: "The name of the group.",
+    isOrgMembershipPending: "Whether the user still has an unaccepted invitation to the organization.",
+    isManagedByAgentVault:
+      "Whether Agent Vault created the machine identity. One it owns is deleted rather than removed.",
+    machineIdentityOrgId: "The ID of the organization the machine identity belongs to.",
+    revokeUserIds: "The IDs of the users to revoke the access bundle from.",
+    revokeMachineIdentityIds: "The IDs of the machine identities to revoke the access bundle from.",
+    revokeGroupIds: "The IDs of the groups to revoke the access bundle from.",
+    skipped: "The requested grantees who already had the access bundle and were left as they were.",
+    revokeSkipped: "The requested grantees who did not have the access bundle, so nothing was revoked.",
+    search: "Match members by name, username or email address.",
+    limit: "The maximum number of members to return.",
+    offset: "How many members to skip."
+  },
+  MEMBERSHIP: {
+    role: "The Agent Vault role: admin or member.",
+    isActive: "Whether the member can currently reach Agent Vault.",
+    userIds: "The IDs of the users to act on.",
+    machineIdentityIds: "The IDs of the machine identities to act on.",
+    groupIds: "The IDs of the groups to act on.",
+    emails: "The email addresses of the users to give access to. Each must already be in the organization.",
+    identifier: "The ID or email address the request named, echoed back so a reply can be matched to it.",
+    addSkipped: "The requested members who already had access to Agent Vault and were left as they were.",
+    revokeSkipped: "The requested members who did not have access to Agent Vault, so nothing was removed.",
+    actorTypeFilter: "List only users, only groups or only machine identities.",
+    search: "Match members by name, username or email address.",
+    limit: "The maximum number of members to return.",
+    offset: "How many members to skip."
+  },
+  AVAILABLE_MEMBER: {
+    actorTypeFilter: "List only users, only groups or only machine identities.",
+    search: "Match candidates by name, username or email address.",
+    limit: "The maximum number of candidates to return.",
+    offset: "How many candidates to skip."
+  },
+  AVAILABLE_GRANTEE: {
+    search: "Match candidates by name, username or email address.",
+    limit: "The maximum number of candidates to return.",
+    offset: "How many candidates to skip."
+  },
+  PROXY: {
+    proxyId: "The ID of the proxy.",
+    name: "The name of the proxy.",
+    orderBy: "What to sort proxies by: name or createdAt.",
+    orderDirection: "Which way to sort: asc or desc.",
+    search: "Match proxies by name.",
+    limit: "The maximum number of proxies to return.",
+    offset: "How many proxies to skip.",
+    heartbeat: "When the proxy last checked in, or `null` if it never has.",
+    isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
+    enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",
+    rootCaCertificate:
+      "The proxy's own certificate authority, in PEM form. Sent once at enrollment so Infisical can check it is a real certificate authority and record its fingerprint; the certificate itself is not stored.",
+    rootCaFingerprint:
+      "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
+    rootCaExpiresAt: "When the proxy's certificate authority expires.",
+    trafficPolicy:
+      "Which hosts an agent may reach through this proxy. `any-host` lets every request out; `bundle-hosts` allows only hosts an access bundle covers, plus anything in `allowedHosts`, and refuses the rest with a 403.",
+    allowedHosts:
+      "Hosts that stay reachable under the `bundle-hosts` traffic policy even though no access bundle covers them. Still intercepted, and given no credential.",
+    pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",
+    sessionToken: "The session an agent is running with. A selector, not a second credential.",
+    createdAt: "When the proxy was registered."
+  },
+  SESSION_LOGS: {
+    chunkId: "The ID of the chunk.",
+    proxyId: "The ID of the proxy that uploaded the chunk.",
+    proxyName: "The name of the proxy that uploaded the chunk. If the proxy was deleted, the name it had at the time.",
+    startedAt: "The time of the first record in the chunk.",
+    endedAt: "The time of the last record in the chunk.",
+    firstSeq: "The sequence number of the first record in the chunk. Each proxy numbers its own records.",
+    lastSeq: "The sequence number of the last record in the chunk. Each proxy numbers its own records.",
+    recordCount: "The number of records in the chunk.",
+    droppedCount:
+      "The number of requests the proxy couldn't record, for example because too many requests came in at once or session logs were off. They're reported on the next chunk the proxy sends, so they happened before this chunk, but not necessarily right before its first record.",
+    ciphertextBytes: "The size of the encrypted chunk, in bytes.",
+    iv: "The AES-GCM initialization vector for the chunk, as base64.",
+    ciphertextSha256:
+      "The SHA-256 digest of the encrypted chunk, as base64 without padding. If the downloaded chunk has a different digest, the chunk was changed after it was uploaded.",
+    uploadUrl:
+      "The URL to upload the encrypted chunk to with a PUT request. The body must be exactly `ciphertextBytes` bytes.",
+    presignedGetUrl:
+      "The URL to download the chunk from. Null if the chunk is in a bucket session logs no longer use, or if `sessionLogs.storageUnavailable` is set.",
+    expiresInSeconds: "The number of seconds before the URL expires.",
+    chunkCreatedAt:
+      "When the proxy registered the chunk with Infisical. Its upload to the bucket finishes shortly after, so a download in between returns 404.",
+    isRecordable: "False if this session's requests can't be recorded.",
+    sessionKey: "The key that decrypts every chunk in this response, as base64. Null if no chunk can be read.",
+    storageUnavailable: "The reason the chunks can't be downloaded right now. Null if they can.",
+    storageUnavailableReason:
+      "`no-connection` if no AWS connection is set for session logs, or `connection-unusable` if Infisical can't use the AWS connection.",
+    storageUnavailableMessage: "The error Infisical got from the AWS connection. Returned only to Agent Vault admins.",
+    sessionLogs:
+      "Whether session logs are on, the key that decrypts the chunks, and why they can't be downloaded, if they can't.",
+    historyCursor: "The `nextCursor` from the previous response. Leave it out to start from the newest logs.",
+    historyNextCursor: "Pass this as `cursor` to get older logs. Null when there's nothing older.",
+    liveCursor:
+      "Pass this to [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail) to get new logs as they arrive.",
+    tailCursor:
+      "The `liveCursor` from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list), or the `nextCursor` from your last call. Leave it out to start from now.",
+    tailNextCursor: "Pass this as `cursor` on your next call.",
+    tailHasMore: "Whether more logs are ready now. If false, wait a few seconds before calling again.",
+    limit: "How many records to return. Only whole chunks are returned, so a response can have slightly more.",
+    from: "Return only chunks with records at or after this time.",
+    to: "Return only chunks with records at or before this time.",
+    enabled: "Whether session logs are on.",
+    configEnabled: "Whether session logs are on. Turning them off stops recording but keeps what's already recorded.",
+    appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
+    bucket:
+      "The name of the S3 bucket. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",
+    region: "The AWS region of the bucket.",
+    keyPrefix:
+      "The folder in the bucket to store session logs in, such as `logs/agent-vault`. Up to 512 characters: letters, numbers and `! - _ . ' ( ) /`, with no slash at the start or end, no empty folder name, and no folder named `.` or `..`.",
+    corsProbeUrl: "A URL that fails to load in a browser if the bucket's CORS rule doesn't allow Infisical.",
+    connectionError:
+      "The error Infisical got when it tried to use the AWS connection, for example because AWS refused to let it assume the role. Null if there's no error or no connection.",
+    isStorageFull: "Whether your organization has reached its session log storage limit.",
+    hasSessionLogKey: "Whether the proxy already has this session's log key. If true, the key isn't returned again.",
+    proxySessionKey:
+      "The session's log key, as base64, sent once. Null when session logs are off or the proxy already has it."
+  },
+
+  SESSION: {
+    sessionId: "The ID of the session.",
+    accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
+    ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
+    token: "The session token. Returned once, at mint, and never again.",
+    expiresAt: "When the session expires, or null when it never does.",
+    recentSessionLogCounts:
+      "How many of the session's requests were recorded in its session log, and how many the proxy couldn't record, over the 24 hours before its most recent recorded request.",
+    recentRecordedCount: "The number of requests recorded in the session log.",
+    recentDroppedCount: "The number of requests the proxy couldn't record in the session log.",
+    scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
+    status:
+      "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
+    search: "Match sessions by actor name, actor email or access bundle name.",
+    limit: "The maximum number of sessions to return.",
+    offset: "How many sessions to skip.",
+    actorType: "Whether the session belongs to a user or a machine identity.",
+    actorId: "The ID of the user or machine identity the session belongs to, or null if it was deleted.",
+    username: "The username of the user. Once the user is deleted, the email recorded when the session was created.",
+    email: "The email address of the user. Once the user is deleted, the email recorded when the session was created.",
+    firstName:
+      "The first name of the user. Once the user is deleted, the full name recorded when the session was created.",
+    lastName: "The last name of the user, or null once the user is deleted.",
+    identityName:
+      "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created."
+  }
+};
+
+export const PKI_SYNC_FILTERS = {
+  filters:
+    "Which of the Application's certificates this sync holds. A certificate must match every field that is set, and a sync with no filters holds nothing.",
+  updateFilters:
+    "Replaces which of the Application's certificates this sync holds. Omit to leave them unchanged, or set to null to empty the sync.",
+  profileIds: "Match certificates issued from any one of these certificate profiles.",
+  certificateOrderIds:
+    "Match any certificate belonging to any one of these certificate orders. An order groups a certificate with every renewal of it, so this keeps matching as the certificate is renewed.",
+  metadata:
+    "Match certificates carrying every one of these metadata pairs. Give a key on its own to match any value for that key.",
+  metadataKey: "Metadata key the certificate must carry.",
+  metadataValue: "Metadata value the key must have. Omit it to match any value.",
+  previewPkiSyncId: "Preview the filters against this existing PKI Sync.",
+  previewApplicationId: "Preview the filters against this Application, for a PKI Sync that does not exist yet.",
+  previewOffset: "The offset to start from. If you enter 10, it will start from the 10th matching certificate.",
+  previewLimit: "The number of matching certificates to return."
 };

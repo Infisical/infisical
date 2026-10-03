@@ -110,8 +110,14 @@ export const OnaConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel htmlFor="personal-access-token">Personal Access Token</FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-              <FieldError errors={[error]} />
+              <SecretInput
+                aria-describedby={error ? "personal-access-token-error" : undefined}
+                id="personal-access-token"
+                isError={Boolean(error)}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              <FieldError id="personal-access-token-error" errors={[error]} />
             </Field>
           )}
         />

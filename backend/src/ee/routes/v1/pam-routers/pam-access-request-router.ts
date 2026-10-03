@@ -2,10 +2,12 @@ import z from "zod";
 
 import { ApprovalRequestsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PamAccessType } from "@app/ee/services/pam/pam-enums";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ApprovalRequestApprovalDecision, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import { ApprovalPolicyType, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import { parsePamAccessDuration } from "@app/services/approval-policy/pam-access/pam-access-policy-fns";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -13,8 +15,12 @@ const EnrichedRequestSchema = ApprovalRequestsSchema.extend({
   accountName: z.string().nullable(),
   accountType: z.string().nullable(),
   folderName: z.string().nullable(),
+  accessType: z.nativeEnum(PamAccessType),
+  grantId: z.string().uuid().nullable(),
   grantExpiresAt: z.date().nullable(),
-  grantStatus: z.string().nullable()
+  grantStatus: z.string().nullable(),
+  isBreakGlass: z.boolean(),
+  bypassReason: z.string().nullable()
 });
 
 export const registerPamAccessRequestRouter = async (server: FastifyZodProvider) => {
@@ -28,7 +34,24 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
           accountId: z.string().uuid().optional(),
           path: z.string().min(3).optional().describe("Account path in the format 'folderName/accountName'"),
           reason: z.string().max(500).optional(),
-          duration: z.string().min(1)
+          duration: z
+            .string()
+            .trim()
+            .min(1)
+            .max(32)
+            .refine((val) => parsePamAccessDuration(val) !== null, {
+              message: "Invalid access duration. Use a single unit like '30m', '2h', or '1d'"
+            }),
+          accessType: z
+            .nativeEnum(PamAccessType)
+            .default(PamAccessType.Session)
+            .describe("Whether the request unlocks launching sessions or viewing the account's credentials"),
+          breakGlass: z
+            .boolean()
+            .optional()
+            .describe(
+              "Self-approve the request immediately instead of waiting for an approver. Requires break-glass eligibility and a reason of at least 10 characters, which is reused as the bypass reason."
+            )
         })
         .refine((b) => Boolean(b.accountId) || Boolean(b.path), {
           message: "Either 'accountId' or 'path' is required"
@@ -47,6 +70,8 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         projectId: req.internalPamProjectId,
         reason: req.body.reason,
         duration: req.body.duration,
+        accessType: req.body.accessType,
+        breakGlass: req.body.breakGlass,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -62,12 +87,47 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
           metadata: {
             requestId: result.request.id,
             accountId: result.accountId,
+            accountName: result.accountName,
             folderId: result.folderId,
+            folderName: result.folderName ?? undefined,
+            requesterName: result.request.requesterName,
+            requesterEmail: result.request.requesterEmail,
             duration: req.body.duration,
+            accessType: result.accessType,
             reason: req.body.reason
           }
         }
       });
+
+      if (result.brokeGlass) {
+        const bypass = result.breakGlassMetadata;
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalPamProjectId,
+          event: {
+            type: EventType.PAM_ACCESS_POLICY_BYPASSED,
+            metadata: {
+              policyType: ApprovalPolicyType.PamAccess,
+              policyId: bypass.policyId,
+              policyName: bypass.policyName,
+              requestId: result.request.id,
+              grantId: bypass.grantId,
+              granteeUserId: req.permission.id,
+              granteeName: bypass.granteeName ?? undefined,
+              granteeEmail: bypass.granteeEmail ?? undefined,
+              accountId: bypass.accountId,
+              folderId: bypass.folderId,
+              folderName: bypass.folderName ?? undefined,
+              resourceName: bypass.folderName ?? undefined,
+              accountName: bypass.accountName,
+              accessDuration: bypass.accessDuration,
+              bypassReason: req.body.reason as string,
+              approverCount: bypass.approverCount
+            }
+          }
+        });
+      }
 
       void server.services.telemetry
         .sendPostHogEvents({
@@ -181,6 +241,9 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
       params: z.object({
         accountId: z.string().uuid()
       }),
+      querystring: z.object({
+        accessType: z.nativeEnum(PamAccessType).default(PamAccessType.Session)
+      }),
       response: {
         200: z.object({
           steps: z.array(
@@ -203,140 +266,13 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
       const result = await server.services.pamAccessRequest.getAccountApprovers({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
+        accessType: req.query.accessType,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
       return result;
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/:requestId/review",
-    config: { rateLimit: writeLimit },
-    schema: {
-      params: z.object({
-        requestId: z.string().uuid()
-      }),
-      body: z.object({
-        status: z.nativeEnum(ApprovalRequestApprovalDecision),
-        comment: z.string().max(500).optional()
-      }),
-      response: {
-        200: z.object({
-          request: ApprovalRequestsSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
-    handler: async (req) => {
-      const result = await server.services.pamAccessRequest.reviewRequest({
-        requestId: req.params.requestId,
-        projectId: req.internalPamProjectId,
-        status: req.body.status,
-        comment: req.body.comment,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalPamProjectId,
-        event: {
-          type: EventType.PAM_ACCESS_REQUEST_REVIEW,
-          metadata: {
-            requestId: req.params.requestId,
-            accountId: result.accountId,
-            folderId: result.folderId,
-            status: req.body.status,
-            comment: req.body.comment
-          }
-        }
-      });
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.PamAccessRequestReviewed,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            orgId: req.permission.orgId,
-            status: req.body.status
-          }
-        })
-        .catch(() => {});
-
-      return { request: result.request };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/:requestId/revoke",
-    config: { rateLimit: writeLimit },
-    schema: {
-      params: z.object({
-        requestId: z.string().uuid()
-      }),
-      response: {
-        200: z.object({
-          grant: z.object({
-            id: z.string().uuid(),
-            status: z.string(),
-            revokedAt: z.date().nullable()
-          })
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
-    handler: async (req) => {
-      const result = await server.services.pamAccessRequest.revokeGrant({
-        requestId: req.params.requestId,
-        projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalPamProjectId,
-        event: {
-          type: EventType.PAM_ACCESS_GRANT_REVOKE,
-          metadata: {
-            requestId: req.params.requestId,
-            grantId: result.grant.id,
-            accountId: result.accountId,
-            folderId: result.folderId
-          }
-        }
-      });
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.PamAccessGrantRevoked,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            orgId: req.permission.orgId
-          }
-        })
-        .catch(() => {});
-
-      return {
-        grant: {
-          id: result.grant.id,
-          status: result.grant.status,
-          revokedAt: result.grant.revokedAt ?? null
-        }
-      };
     }
   });
 };

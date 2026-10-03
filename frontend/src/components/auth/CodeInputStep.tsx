@@ -4,7 +4,6 @@ import HCaptcha from "@hcaptcha/react-hcaptcha";
 import axios from "axios";
 
 import {
-  Button,
   CardContent,
   VerificationCodeForm,
   VerificationCodeHeader,
@@ -179,11 +178,6 @@ export default function CodeInputStep({
               remainingSeconds={remainingCooldown}
               onResend={handleResend}
             />
-            {import.meta.env.DEV && (
-              <Button variant="ghost" size="sm" isFullWidth onClick={onComplete}>
-                Preview next step (development only)
-              </Button>
-            )}
           </VerificationCodeForm>
         </CardContent>
       </AuthPagePanel>

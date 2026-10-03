@@ -23,11 +23,15 @@ type ProjectAccessErrorProps = {
 const getPamOrgIdFromPath = () =>
   window.location.pathname.match(/\/organizations\/([^/]+)\/pam(\/|$)/)?.[1];
 
+const getAgentVaultOrgIdFromPath = () =>
+  window.location.pathname.match(/\/organizations\/([^/]+)\/agent-vault(\/|$)/)?.[1];
+
 // Products users experience as a single app rather than something they pick a project for
 // (ProjectSelect hides itself for both), so the copy names the product instead of "this project".
 // Cert Manager still carries a $projectId in its route for legacy multi-instance orgs.
 const PRODUCTS = [
   { pattern: /\/organizations\/[^/]+\/pam(\/|$)/, name: "Privileged Access Manager" },
+  { pattern: /\/organizations\/[^/]+\/agent-vault(\/|$)/, name: "Agent Vault" },
   {
     pattern: /\/organizations\/[^/]+\/projects\/cert-manager(\/|$)/,
     name: "Certificate Manager"
@@ -55,11 +59,17 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
   const productName = getProductNameFromPath();
   const needsPamFallback = !projectIdProp && !routeProjectId;
   const pamOrgId = needsPamFallback ? getPamOrgIdFromPath() : undefined;
-  const { data: pamOrg, isPending: isPamOrgPending } = useGetOrganizationById(pamOrgId ?? "", {
-    enabled: Boolean(pamOrgId)
-  });
+  const agentVaultOrgId = needsPamFallback && !pamOrgId ? getAgentVaultOrgIdFromPath() : undefined;
+  const orgScopedOrgId = pamOrgId ?? agentVaultOrgId;
+  const { data: pamOrg, isPending: isPamOrgPending } = useGetOrganizationById(
+    orgScopedOrgId ?? "",
+    {
+      enabled: Boolean(orgScopedOrgId)
+    }
+  );
 
-  const projectId = projectIdProp ?? routeProjectId ?? pamOrg?.pamProjectId ?? undefined;
+  const orgScopedProjectId = agentVaultOrgId ? pamOrg?.agentVaultProjectId : pamOrg?.pamProjectId;
+  const projectId = projectIdProp ?? routeProjectId ?? orgScopedProjectId ?? undefined;
 
   const { data, isPending: isProjectSearchPending } = useSearchProjects({
     projectIds: projectId ? [projectId] : [],
@@ -71,7 +81,7 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
   const [project] = data?.projects ?? [];
 
   // A disabled query reports isPending forever, so only an enabled query counts as in-flight
-  const isResolvingProjectId = Boolean(pamOrgId) && isPamOrgPending;
+  const isResolvingProjectId = Boolean(orgScopedOrgId) && isPamOrgPending;
   const isProjectResolving = isResolvingProjectId || (Boolean(projectId) && isProjectSearchPending);
   // Nothing in flight and still no project: the search errored or returned nothing, or no id
   // could be resolved. The request flow needs the resolved project (the modal renders nothing

@@ -35,6 +35,27 @@ export type DashboardProjectSecretsOverviewResponse = {
   totalUniqueSecretRotationsInPage: number;
 };
 
+export type TGetSecretMetadataDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  cursor?: string;
+  limit: number;
+};
+
+export type TSecretMetadataPage = {
+  secrets: {
+    id: string;
+    secretKey: string;
+    secretPath: string;
+    type: "shared";
+    secretValueHidden: boolean;
+    isHoneyTokenSecret: boolean;
+    isRotatedSecret: boolean;
+  }[];
+  nextCursor: string | null;
+};
+
 export type UsedBySecretSyncs = {
   name: string;
   destination: string;
@@ -104,7 +125,9 @@ export type DashboardProjectSecretsDetails = Omit<
 };
 
 export enum DashboardSecretsOrderBy {
-  Name = "name"
+  Name = "name",
+  CreatedAt = "createdAt",
+  UpdatedAt = "updatedAt"
 }
 
 export type TGetDashboardProjectSecretsOverviewDTO = {
@@ -114,6 +137,7 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
   limit?: number;
   orderBy?: DashboardSecretsOrderBy;
   orderDirection?: OrderByDirection;
+  sortEnvironment?: string;
   search?: string;
   tags?: Record<string, boolean>;
   includeSecrets?: boolean;
@@ -128,9 +152,10 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
 
 export type TGetDashboardProjectSecretsDetailsDTO = Omit<
   TGetDashboardProjectSecretsOverviewDTO,
-  "environments"
+  "environments" | "orderBy" | "sortEnvironment"
 > & {
   environment: string;
+  orderBy?: DashboardSecretsOrderBy.Name;
   includeImports?: boolean;
   tags: Record<string, boolean>;
 };
@@ -212,6 +237,7 @@ export type TGetDashboardProjectSecretsByKeys = {
   secretPath: string;
   environment: string;
   keys: string[];
+  viewSecretValue?: boolean;
 };
 
 export type TGetAccessibleSecretsDTO = {

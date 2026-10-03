@@ -1,20 +1,16 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import {
-  TQoveryConnectionEnvironment,
-  TQoveryConnectionOrganization,
-  TQoveryConnectionProject,
   useQoveryConnectionListEnvironments,
   useQoveryConnectionListOrganizations,
   useQoveryConnectionListProjects
@@ -70,14 +66,23 @@ export const QoverySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Organization</FieldLabel>
+            <FieldLabel
+              id="secret-sync-qovery-organization-id-label"
+              htmlFor="secret-sync-qovery-organization-id"
+            >
+              Organization
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-qovery-organization-id-label"
+                aria-describedby={error ? "secret-sync-qovery-organization-id-error" : undefined}
+                id="secret-sync-qovery-organization-id"
+                isError={Boolean(error)}
                 isLoading={isOrganizationsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={organizations?.find((org) => org.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TQoveryConnectionOrganization>;
+                onValueChange={(option) => {
+                  const selected = option;
                   onChange(selected?.id ?? "");
                   setValue("destinationConfig.organizationName", selected?.name ?? "");
                   setValue("destinationConfig.projectId", "");
@@ -89,8 +94,10 @@ export const QoverySyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-qovery-organization-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -101,14 +108,23 @@ export const QoverySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Project</FieldLabel>
+            <FieldLabel
+              id="secret-sync-qovery-project-id-label"
+              htmlFor="secret-sync-qovery-project-id"
+            >
+              Project
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-qovery-project-id-label"
+                aria-describedby={error ? "secret-sync-qovery-project-id-error" : undefined}
+                id="secret-sync-qovery-project-id"
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId && organizationId)}
                 isDisabled={!organizationId}
                 value={projects?.find((project) => project.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TQoveryConnectionProject>;
+                onValueChange={(option) => {
+                  const selected = option;
                   onChange(selected?.id ?? "");
                   setValue("destinationConfig.projectName", selected?.name ?? "");
                   setValue("destinationConfig.environmentId", "");
@@ -118,8 +134,10 @@ export const QoverySyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-qovery-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -130,30 +148,46 @@ export const QoverySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-qovery-environment-id-label"
+              htmlFor="secret-sync-qovery-environment-id"
+            >
               Environment <span className="text-xs text-muted">(optional)</span>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
-                isClearable
+              <Combobox
+                aria-labelledby="secret-sync-qovery-environment-id-label"
+                aria-describedby={
+                  error
+                    ? "secret-sync-qovery-environment-id-description secret-sync-qovery-environment-id-error"
+                    : "secret-sync-qovery-environment-id-description"
+                }
+                id="secret-sync-qovery-environment-id"
+                isError={Boolean(error)}
                 isLoading={isEnvironmentsLoading && Boolean(connectionId && projectId)}
                 isDisabled={!projectId}
                 value={environments?.find((environment) => environment.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TQoveryConnectionEnvironment>;
+                onValueChange={(option) => {
+                  const selected = option;
                   onChange(selected?.id ?? "");
                   setValue("destinationConfig.environmentName", selected?.name ?? "");
+                }}
+                onClear={() => {
+                  onChange("");
+                  setValue("destinationConfig.environmentName", "");
                 }}
                 options={environments}
                 placeholder="Select an environment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldDescription>
+              <FieldDescription id="secret-sync-qovery-environment-id-description">
                 Leave empty to sync at the project level, or select an environment to sync at the
                 environment level.
               </FieldDescription>
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-qovery-environment-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

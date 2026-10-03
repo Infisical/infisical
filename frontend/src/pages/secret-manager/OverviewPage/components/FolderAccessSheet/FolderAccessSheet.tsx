@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { FolderIcon, InfoIcon, SearchIcon, UsersIcon } from "lucide-react";
+import { FolderIcon, SearchIcon, UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
+  DocumentationLinkBadge,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -18,11 +19,9 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  Skeleton,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  Skeleton
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   SecretFolderRole,
@@ -36,6 +35,7 @@ import {
   useUpdateIdentityFolderAccess,
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 import { AddFolderAccessSheet } from "./AddFolderAccessSheet";
 import { FOLDER_ROLE_TIER_LABELS } from "./folder-access.const";
@@ -68,6 +68,7 @@ export const FolderAccessSheet = ({
   folderPath,
   environmentName
 }: Props) => {
+  const { currentOrg } = useOrganization();
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
@@ -188,16 +189,7 @@ export const FolderAccessSheet = ({
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               Manage Permissions
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <InfoIcon className="size-3.5 text-muted" />
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-72">
-                  Permissions granted here apply only to this folder, nested folders do not inherit
-                  these permissions. The folder can still be moved, edited, or deleted by anyone
-                  with folder edit or delete permissions.
-                </TooltipContent>
-              </Tooltip>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/folder-rbac" />
             </SheetTitle>
             <div className="mt-2 flex min-w-0 items-center gap-2 text-xs">
               <Badge variant="project" className="shrink-0">
@@ -205,7 +197,7 @@ export const FolderAccessSheet = ({
               </Badge>
 
               <FolderIcon className="size-3.5 shrink-0 text-folder" />
-              <span className="truncate font-mono text-mineshaft-100/80">{folderPath}</span>
+              <span className="truncate font-mono text-foreground/80">{folderPath}</span>
             </div>
           </SheetHeader>
 
@@ -228,7 +220,14 @@ export const FolderAccessSheet = ({
                 variant="project"
                 size="sm"
                 className="shrink-0"
-                onClick={() => setIsAddOpen(true)}
+                onClick={() => {
+                  setIsAddOpen(true);
+                  analytics.captureForOrganization(
+                    AnalyticsEvent.FolderAccessAddSheetOpened,
+                    currentOrg.id,
+                    { projectId }
+                  );
+                }}
               >
                 Add Access
               </Button>

@@ -1,3 +1,5 @@
+import { BadRequestError } from "@app/lib/errors";
+
 import { CaCapability, CaType } from "./certificate-authority-enums";
 
 export const CERTIFICATE_AUTHORITIES_TYPE_MAP: Record<CaType, string> = {
@@ -16,7 +18,8 @@ export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapabili
   [CaType.INTERNAL]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,
-    CaCapability.RENEW_CERTIFICATES
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.CUSTOM_EXTENSIONS
   ],
   [CaType.ACME]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.REVOKE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES],
   [CaType.AZURE_AD_CS]: [
@@ -24,11 +27,17 @@ export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapabili
     CaCapability.RENEW_CERTIFICATES
     // Note: REVOKE_CERTIFICATES intentionally omitted - not supported by ADCS connector
   ],
-  [CaType.ADCS]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.REVOKE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES],
+  [CaType.ADCS]: [
+    CaCapability.ISSUE_CERTIFICATES,
+    CaCapability.REVOKE_CERTIFICATES,
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.CUSTOM_EXTENSIONS
+  ],
   [CaType.AWS_PCA]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,
-    CaCapability.RENEW_CERTIFICATES
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.CUSTOM_EXTENSIONS
   ],
   [CaType.DIGICERT]: [
     CaCapability.ISSUE_CERTIFICATES,
@@ -50,4 +59,33 @@ export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapabili
 export const caSupportsCapability = (caType: CaType, capability: CaCapability): boolean => {
   const capabilities = CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP[caType] || [];
   return capabilities.includes(capability);
+};
+
+/**
+ * Internal CAs sign inline; every other type places an order with an upstream CA asynchronously via
+ * the certificate issuance queue. Exhaustive by type so a new CaType cannot be added without
+ * choosing an issuance path — the direct and post-approval dispatches previously kept separate
+ * inline lists and drifted apart.
+ */
+export const CERTIFICATE_AUTHORITIES_EXTERNAL_ISSUANCE_MAP: Record<CaType, boolean> = {
+  [CaType.INTERNAL]: false,
+  [CaType.ACME]: true,
+  [CaType.AZURE_AD_CS]: true,
+  [CaType.ADCS]: true,
+  [CaType.AWS_PCA]: true,
+  [CaType.DIGICERT]: true,
+  [CaType.AWS_ACM_PUBLIC_CA]: true,
+  [CaType.VENAFI_TPP]: true,
+  [CaType.GODADDY]: true
+};
+
+export const caUsesExternalIssuanceQueue = (caType: CaType): boolean =>
+  CERTIFICATE_AUTHORITIES_EXTERNAL_ISSUANCE_MAP[caType] ?? false;
+
+export const assertCaSupportsCustomExtensions = (caType: CaType, count: number): void => {
+  if (!count || caSupportsCapability(caType, CaCapability.CUSTOM_EXTENSIONS)) return;
+
+  throw new BadRequestError({
+    message: `${CERTIFICATE_AUTHORITIES_TYPE_MAP[caType] ?? caType} certificate authorities cannot carry custom extensions, but this request resolved ${count} of them. Update the certificate profile.`
+  });
 };

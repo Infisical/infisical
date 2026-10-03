@@ -71,6 +71,12 @@ export const getRequiredMfaMethod = (
   return { isMfaRequired, requiredMfaMethod };
 };
 
+export const RECOVERY_CODE_MFA_ASSURANCE = "recovery-code";
+export type TMfaAssurance = MfaMethod | typeof RECOVERY_CODE_MFA_ASSURANCE;
+
+export const isMfaProofAccepted = (proven: string | null | undefined, acceptedMethods: MfaMethod[]): boolean =>
+  proven === RECOVERY_CODE_MFA_ASSURANCE || acceptedMethods.includes(proven as MfaMethod);
+
 export const extractBearerToken = (token?: string): string => {
   if (!token) {
     throw new UnauthorizedError({ message: "Missing Authorization Header in the request header." });

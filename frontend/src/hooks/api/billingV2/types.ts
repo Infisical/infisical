@@ -34,8 +34,12 @@ export type BillingV2Plan = {
   name: string;
   selfServe: boolean;
   salesLed: boolean;
-  // Offers a self-serve trial; the trial CTA shows only when selfServe && trialable.
+  // Org-aware: whether this org may trial / upgrade to this plan. The server computes both from the
+  // same rules the mutating endpoints enforce, so gating a CTA on them can never offer a 409.
   trialable: boolean;
+  upgradeable: boolean;
+  // Trial length in days; 0 when the plan offers no trial.
+  trialDays: number;
   // Kept for existing customers, closed to new ones; deprecation carries the reason/nextSteps/date.
   deprecated?: boolean;
   deprecation?: BillingV2Deprecation;
@@ -135,6 +139,14 @@ export type BillingV2Entitlement = {
   status?: string;
   isTrialing?: boolean;
   trialEndsAt?: string | null;
+  trialPlan?: string;
+  trialPlanName?: string;
+  trialPlanEndsAt?: string | null;
+  trialPlanDaysLeft?: number | null;
+  // Formatted grace deadline while the trial's conversion charge waits on the customer's bank. The
+  // product stays trialing and usable until then, even though trialEndsAt has passed.
+  trialPaymentDueAt?: string | null;
+  trialPlanPaymentDueAt?: string | null;
   // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
   // the product has no dated line.
   renewsOn?: string | null;
@@ -145,6 +157,27 @@ export type BillingV2Entitlement = {
   used?: number;
   // Singular noun for the limited dimension (e.g. "certificate"); rendered, pluralized, beside the count.
   unit?: string | null;
+};
+
+export type BillingV2TrialOutcome =
+  | "trialing"
+  | "converted"
+  | "expired"
+  | "canceled"
+  | "completed"
+  | "reverted";
+
+export type BillingV2Trial = {
+  productKey: string;
+  planTier: string | null;
+  basePlanTier: string | null;
+  outcome: BillingV2TrialOutcome | string;
+  // Why the trial ended (e.g. payment_not_completed). endedDetail is a machine code only when outcome
+  // is "reverted"; on "canceled" it is free text, so never map it outside that case.
+  endedReason: string | null;
+  endedDetail: string | null;
+  endedAt: string | null;
+  endedDaysAgo: number | null;
 };
 
 export type BillingV2Overview = {
@@ -185,8 +218,10 @@ export type BillingV2Overview = {
   } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
-  // Product keys whose one-per-product trial is used up (any outcome); gates the trial CTA.
   trialedProductKeys: string[];
+  trials: BillingV2Trial[];
+  trialPaymentDue: { dueAt: string; productKeys: string[] } | null;
+  paymentAlert: { state: "needs_action" | "failed"; actionUrl: string } | null;
   // Mutating billing actions are frozen server-side; the UI disables purchase/commit/remove controls.
   checkoutFrozen: boolean;
   // false for an enterprise-managed org: render the self-serve billing UI but disable its controls
@@ -194,9 +229,12 @@ export type BillingV2Overview = {
   selfServe: boolean;
 };
 
+// payment_action_required: the bank wants the customer to approve the charge on the Stripe invoice at
+// paymentUrl, which has no return URL, so open it in a new tab rather than redirecting.
 export type BillingV2CheckoutResult = {
-  outcome: "checkout_created" | "subscription_updated";
+  outcome: "checkout_created" | "subscription_updated" | "payment_action_required";
   checkoutUrl?: string;
+  paymentUrl?: string;
   subscriptionId?: string;
 };
 
@@ -239,14 +277,16 @@ export type BillingV2Preview = {
   totalDueNow: number;
   nextInvoiceTotal: number;
   nextRecurringTotal: number;
+  prorationDate?: number | null;
+  // Upgrade previews only; must be echoed back on apply.
+  toPlanVersionId?: string | null;
   lines: BillingV2PreviewLine[];
 };
 
 export type BillingV2MutationResult = {
-  // checkout_created is returned when committing on a trialing org with no card created the
-  // subscription and it needs hosted checkout (checkoutUrl); otherwise subscription_updated.
-  outcome?: "checkout_created" | "subscription_updated";
+  outcome?: "checkout_created" | "subscription_updated" | "payment_action_required";
   checkoutUrl?: string;
+  paymentUrl?: string;
   subscriptionId?: string;
 };
 
@@ -267,6 +307,26 @@ export type TPreviewBillingV2ChangeDTO = {
   removeProductId?: string;
   // Per_resource commitment quantity changes to preview against the existing subscription.
   commitmentChanges?: BillingV2CommitmentChange[];
+  // Plan change for a product already held. Carries no quantities or cadence: the server moves the
+  // existing lines as they are.
+  upgradeProductId?: string;
+  upgradePlan?: string;
+};
+
+export type TUpgradeBillingV2ProductDTO = {
+  orgId: string;
+  productId: string;
+  plan: string;
+  expectedPlanVersionId: string;
+  prorationDate?: number;
+};
+
+export type BillingV2UpgradeResult = {
+  outcome: "upgraded" | "payment_action_required";
+  paymentUrl?: string;
+  subscriptionId?: string;
+  fromPlanKey?: string;
+  toPlanKey?: string;
 };
 
 export type TRemoveBillingV2ProductDTO = {
@@ -307,6 +367,70 @@ export type BillingV2TrialCancelResult = {
   outcome: "trial_completed";
 };
 
+export type TConfirmBillingV2TrialPaymentDTO = {
+  orgId: string;
+  returnPath?: string;
+};
+
+export type BillingV2ConfirmTrialPaymentResult =
+  | { outcome: "checkout_created" | "payment_action_required"; redirectUrl: string }
+  | { outcome: "upgraded" };
+
+// License-server machine codes the billing UI branches on (read from the error's details.code).
+export const BillingV2ErrorCode = {
+  PaymentActionRequired: "payment_action_required",
+  NoTrialAwaitingPayment: "no_trial_awaiting_payment"
+} as const;
+
 export type TBillingV2LifecycleDTO = {
   orgId: string;
+};
+
+export enum BillingV2BreakdownDimension {
+  Identities = "identities",
+  UserIdentities = "user_identities",
+  SecretIdentities = "secret_identities",
+  PamIdentities = "pam_identities",
+  InternalCas = "internal_cas",
+  ActiveCerts = "active_certs",
+  WildcardCerts = "wildcard_certs"
+}
+
+export type BillingV2BreakdownProject = {
+  id: string;
+  name: string;
+  count: number;
+};
+
+export type BillingV2BreakdownScope = {
+  orgId: string;
+  name: string;
+  isRoot: boolean;
+  parentOrgName: string | null;
+  count: number;
+  orgLevelCount: number;
+  projects: BillingV2BreakdownProject[];
+};
+
+export type BillingV2UsageBreakdown = {
+  dimensionKey: string;
+  total: number;
+  userCount: number;
+  scopedCount: number;
+  hasProjectDetail: boolean;
+  unit: string;
+  scopes: BillingV2BreakdownScope[];
+};
+
+export type BillingV2BreakdownScopeKind = "instance" | "organization";
+
+export type BillingV2Organization = {
+  id: string;
+  name: string;
+  slug?: string;
+};
+
+export type BillingV2OrganizationsPage = {
+  organizations: BillingV2Organization[];
+  totalCount: number;
 };

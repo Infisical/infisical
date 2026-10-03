@@ -31,7 +31,7 @@ sequenceDiagram
 
 ## Concept
 
-At a high-level, Infisical authenticates an application in Kubernetes by verifying its identity and checking that it meets specific requirements (e.g. it is bound to an allowed service account) at the `/api/v1/auth/kubernetes-auth/login` endpoint. If successful,
+At a high-level, Infisical authenticates an application in Kubernetes by verifying its identity and checking that it meets specific requirements (e.g. it's bound to an allowed service account) at the `/api/v1/auth/kubernetes-auth/login` endpoint. If successful,
 then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
 To be more specific:
@@ -216,11 +216,11 @@ In the following steps, we explore how to create and use identities for your app
     </Step>
 
   <Step title="Creating an identity">
-    To create an identity, head to your Organization Settings > Access Control > Identities and press **Create identity**.
+    To create an identity, go to **Access Control** > **Machine Identities** in your organization and select **Create**.
 
     ![identities organization](/images/platform/identities/identities-org.png)
 
-    When creating an identity, you specify an organization level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
+    When creating an identity, you specify an organization level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in **Access Control** > **Roles**.
 
     ![identities organization create](/images/platform/identities/identities-org-create.png)
 
@@ -259,9 +259,9 @@ In the following steps, we explore how to create and use identities for your app
   <Step title="Adding an identity to a project">
     To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.
 
-    To do this, head over to the project you want to add the identity to and go to Project Settings > Access Control > Machine Identities and press **Add identity**.
+    To do this, open the project you want to add the identity to, go to **Access Control** > **Machine Identities**, and select **Add Machine Identity to Project**.
 
-    Next, select the identity you want to add to the project and the project level role you want to allow it to assume. The project role assigned will determine what project level resources this identity can have access to.
+    Next, select **Assign Existing**, choose the identity you want to add, and set the project role it should assume. The project role assigned will determine what project level resources this identity can have access to.
 
     ![identities project](/images/platform/identities/identities-project.png)
 
@@ -328,7 +328,7 @@ In the following steps, we explore how to create and use identities for your app
   There are a few reasons for why this might happen:
   - The Kubernetes Auth authentication method configuration is invalid.
   - The service account JWT token has expired is malformed or invalid.
-  - The service account associated with the JWT token does not meet the criteria set forth in the Kubernetes Auth authentication method configuration such as **Allowed Service Account Names** and **Allowed Namespaces**.
+  - The service account associated with the JWT token doesn't meet the criteria set forth in the Kubernetes Auth authentication method configuration such as **Allowed Service Account Names** and **Allowed Namespaces**.
 </Accordion>
 <Accordion title="Why is the Infisical API rejecting my access token?">
   There are a few reasons for why this might happen:

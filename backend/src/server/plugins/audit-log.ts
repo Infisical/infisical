@@ -2,6 +2,7 @@ import { requestContext } from "@fastify/request-context";
 import fp from "fastify-plugin";
 
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { isCliUserAgent } from "@app/lib/cli-version/cli-version-fns";
 import { BadRequestError } from "@app/lib/errors";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -10,7 +11,7 @@ export const getUserAgentType = (userAgent: string | undefined) => {
   if (userAgent === undefined) {
     return UserAgentType.OTHER;
   }
-  if (userAgent === UserAgentType.CLI) {
+  if (isCliUserAgent(userAgent)) {
     return UserAgentType.CLI;
   }
   // also match the versioned UA, e.g. "k8-operator/0.11.4"
@@ -111,6 +112,13 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
         type: ActorType.KMIP_SERVER,
         metadata: {
           kmipServerId: req.permission.id
+        }
+      };
+    } else if (req.auth.actor === ActorType.AGENT_VAULT_PROXY) {
+      payload.actor = {
+        type: ActorType.AGENT_VAULT_PROXY,
+        metadata: {
+          agentVaultProxyId: req.permission.id
         }
       };
     } else {

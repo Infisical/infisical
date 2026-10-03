@@ -36,7 +36,7 @@ const addMemberFormSchema = projectAssignmentSchema.extend({
   organizationRole: z.object({
     name: z.string(),
     slug: z.string(),
-    description: z.string().optional()
+    description: z.string().nullish()
   })
 });
 
@@ -159,7 +159,7 @@ export const AddSubOrgMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="add-sub-org-member-users">Emails</FieldLabel>
-                <Combobox
+                <Combobox<{ username: string }>
                   id="add-sub-org-member-users"
                   multiple
                   placeholder="Add one or more users..."

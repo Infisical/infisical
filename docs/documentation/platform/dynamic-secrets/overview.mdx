@@ -14,7 +14,7 @@ description: "Learn how to generate secrets dynamically on-demand."
 
 Contrary to static key-value secrets, which require manual input of data into the secure Infisical storage, **dynamic secrets are generated on-demand upon access**. 
 
-**Dynamic secrets are unique to every identity using them**. Such secrets are generated only at the moment they are retrieved, eliminating the possibility of theft or reuse by another identity. Thanks to Infisical's integrated revocation capabilities, dynamic secrets can be promptly invalidated post-use, significantly reducing their lifespan.
+**Dynamic secrets are unique to every identity using them**. Such secrets are generated only at the moment they're retrieved, eliminating the possibility of theft or reuse by another identity. Thanks to Infisical's integrated revocation capabilities, dynamic secrets can be promptly invalidated post-use, significantly reducing their lifespan.
 
 ## Benefits of dynamic secrets
 
@@ -22,7 +22,7 @@ This approach offers several advantages in terms of security and management:
 
 - **Enhanced Security**: By frequently changing secrets, dynamic secrets minimize the risk associated with secret compromise. Even if an attacker manages to obtain a secret, it would likely be invalid by the time they attempt to use it.
 
-- **Reduced Secret Lifetime**: The limited validity period of dynamic secrets means that they are less valuable targets for attackers. This inherently reduces the time window during which a secret can be exploited.
+- **Reduced Secret Lifetime**: The limited validity period of dynamic secrets means that they're less valuable targets for attackers. This inherently reduces the time window during which a secret can be exploited.
 
 - **Automated Management**: Dynamic secrets enable automated systems to handle the generation, distribution, revocation, and rotation of secrets without human intervention, thus reducing the risk of human error.
 
@@ -45,7 +45,7 @@ Dynamic secrets are particularly useful in environments with stringent security 
 
 <AccordionGroup>
 <Accordion title="Why is my SQL dynamic secret failing when I generate a lease?">
-  This usually happens when the SQL statements defined for creating or revoking the secret are not compatible with your database provider.
+  This usually happens when the SQL statements defined for creating or revoking the secret aren't compatible with your database provider.
 
   Different SQL engines have different expectations for quoting identifiers and values. For example, some use backticks (`` `username` ``), others use single quotes (`'username'`), and some expect double quotes (`"username"`). A statement that works on one provider might fail on another.
 

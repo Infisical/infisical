@@ -25,6 +25,7 @@ import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
+process.env.ALLOW_INTERNAL_IP_CONNECTIONS = "true";
 export default {
   name: "knex-env",
   transformMode: "ssr",

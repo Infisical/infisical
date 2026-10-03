@@ -1,4 +1,6 @@
 /* eslint-disable no-await-in-loop, no-continue */
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -55,6 +57,8 @@ type TCertificateAuthorityQueueFactoryDep = {
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "find">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TCertificateAuthorityQueueFactory = ReturnType<typeof certificateAuthorityQueueFactory>;
@@ -78,7 +82,9 @@ export const certificateAuthorityQueueFactory = ({
   pkiSyncDAL,
   pkiSyncQueue,
   internalCertificateAuthorityDAL,
-  hsmConnectorService
+  hsmConnectorService,
+  gatewayV2Service,
+  gatewayPoolService
 }: TCertificateAuthorityQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -92,7 +98,10 @@ export const certificateAuthorityQueueFactory = ({
     pkiSubscriberDAL,
     projectDAL,
     pkiSyncDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    gatewayV2Service,
+    gatewayPoolService,
+    keyStore
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({

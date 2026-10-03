@@ -2,7 +2,6 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
-  CertificatesSchema,
   IntegrationsSchema,
   PkiAlertsSchema,
   PkiCollectionsSchema,
@@ -26,6 +25,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
@@ -78,6 +78,31 @@ const projectWithEnv = SanitizedProjectSchema.merge(
 );
 
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/accessible-with-sub-orgs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "listAccessibleProjectsWithSubOrgs",
+      response: {
+        200: z.object({
+          projects: SanitizedProjectSchema.pick({ id: true, orgId: true, name: true, slug: true, type: true }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const projects = await server.services.project.getAccessibleProjectsWithSubOrgs({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId
+      });
+      return { projects };
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/me/project-access-requests",
@@ -516,7 +541,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .array(z.string())
           .optional()
           .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues),
-        pitVersionLimit: z.number().min(1).max(100).optional()
+        pitVersionLimit: z.number().min(1).max(100).optional(),
+        auditLogsRetentionDays: z.number().min(1).max(365).optional().describe(PROJECTS.UPDATE.auditLogsRetentionDays)
       }),
       response: {
         200: z.object({
@@ -541,7 +567,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           showSnapshotsLegacy: req.body.showSnapshotsLegacy,
           secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues,
           pitVersionLimit: req.body.pitVersionLimit,
-          enforceEncryptedSecretManagerSecretMetadata: req.body.enforceEncryptedSecretManagerSecretMetadata
+          enforceEncryptedSecretManagerSecretMetadata: req.body.enforceEncryptedSecretManagerSecretMetadata,
+          auditLogsRetentionDays: req.body.auditLogsRetentionDays
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
@@ -1274,7 +1301,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificates: z.array(CertificatesSchema.omit({ orderId: true }).extend({ hasPrivateKey: z.boolean() })),
+          certificates: z.array(SanitizedCertificateSchema.extend({ hasPrivateKey: z.boolean() })),
           totalCount: z.number()
         })
       }
@@ -1365,7 +1392,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           certificates: z.array(
-            CertificatesSchema.omit({ orderId: true }).extend({
+            SanitizedCertificateSchema.extend({
               hasPrivateKey: z.boolean(),
               caName: z.string().nullable().optional(),
               profileName: z.string().nullable().optional(),
@@ -1427,7 +1454,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           distributions: z.object({
             byEnrollmentMethod: z.array(z.object({ label: z.string(), count: z.number() })),
             byAlgorithm: z.array(z.object({ label: z.string(), count: z.number() })),
-            byCA: z.array(z.object({ id: z.string(), label: z.string(), count: z.number() })),
+            byCA: z.array(z.object({ id: z.string().optional(), label: z.string(), count: z.number() })),
             byStatus: z.array(z.object({ label: z.string(), count: z.number() }))
           }),
           expirationBuckets: z.array(z.object({ bucket: z.string(), count: z.number() })),

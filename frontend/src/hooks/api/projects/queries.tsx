@@ -33,6 +33,7 @@ import {
   TGetMembershipPermissionAuditResponse,
   TGetUpgradeProjectStatusDTO,
   TMyPendingProjectAccessRequestsResponse,
+  TProjectNavigation,
   TSearchProjectsDTO,
   TUpdateWorkspaceUserRoleDTO,
   UpdateAuditLogsRetentionDTO,
@@ -140,6 +141,19 @@ export const useGetUserProjectsByType = (type: ProjectType) =>
     queryKey: [...projectKeys.getAllUserProjects(), type],
     queryFn: () => fetchUserWorkspaces(false, type),
     select: (projects) => projects.slice(0, 100)
+  });
+
+export const useGetAccessibleProjectsWithSubOrgs = (orgId: string) =>
+  useQuery({
+    queryKey: projectKeys.getAccessibleProjectsWithSubOrgs(orgId),
+    queryFn: async ({ signal }) => {
+      const { data } = await apiRequest.get<{ projects: TProjectNavigation[] }>(
+        "/api/v1/projects/accessible-with-sub-orgs",
+        { signal }
+      );
+      return data.projects;
+    },
+    enabled: Boolean(orgId)
   });
 
 export const useSearchProjects = ({ options, ...dto }: TSearchProjectsDTO) =>
@@ -377,7 +391,8 @@ export const useRestoreEnvironment = () => {
 export const useGetWorkspaceUsers = (
   projectId: string,
   includeGroupMembers?: boolean,
-  roles?: string[]
+  roles?: string[],
+  options?: { enabled?: boolean }
 ) => {
   return useQuery({
     queryKey: projectKeys.getProjectUsers(projectId, includeGroupMembers, roles),
@@ -395,7 +410,7 @@ export const useGetWorkspaceUsers = (
       });
       return users;
     },
-    enabled: true
+    enabled: options?.enabled ?? true
   });
 };
 
@@ -543,7 +558,11 @@ export const useGetWorkspaceGroupMembershipDetails = (
   });
 };
 
-export const useListWorkspaceGroups = (projectId: string, projectType?: string) => {
+export const useListWorkspaceGroups = (
+  projectId: string,
+  projectType?: string,
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: projectKeys.getProjectGroupMemberships(projectId),
     queryFn: async () => {
@@ -554,7 +573,7 @@ export const useListWorkspaceGroups = (projectId: string, projectType?: string) 
       );
       return groupMemberships;
     },
-    enabled: true
+    enabled: options?.enabled ?? true
   });
 };
 

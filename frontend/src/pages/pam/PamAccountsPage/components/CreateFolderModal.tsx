@@ -85,6 +85,7 @@ export const CreateFolderModal = ({ isOpen, onOpenChange, onCreated }: Props) =>
                 placeholder="e.g. backend-team, checkout-service"
                 isError={!!errors.name}
                 {...register("name")}
+                autoComplete="off"
               />
               <FieldError>{errors.name?.message}</FieldError>
             </FieldContent>

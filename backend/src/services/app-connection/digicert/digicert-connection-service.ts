@@ -69,14 +69,8 @@ export const digicertConnectionService = (getAppConnection: TGetAppConnectionFun
     productNameId: string,
     actor: OrgServiceActor
   ) => {
-    assertCodeSigningProduct(productNameId);
     const appConnection = await getAppConnection(AppConnection.DigiCert, connectionId, actor);
-    try {
-      return await listDigiCertOrders(appConnection, organizationId, productNameId);
-    } catch (error) {
-      logger.error(error, `Failed to list DigiCert orders [connectionId=${connectionId}]`);
-      return [];
-    }
+    return listDigiCertOrders(appConnection, organizationId, productNameId);
   };
 
   return {

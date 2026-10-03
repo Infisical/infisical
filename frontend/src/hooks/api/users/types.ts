@@ -7,6 +7,7 @@ export const SAML_AUTH_METHODS = [
   "jumpcloud-saml",
   "keycloak-saml",
   "google-saml",
+  "auth0-saml",
   "saml"
 ] as const;
 
@@ -19,6 +20,7 @@ export enum AuthMethod {
   AZURE_SAML = "azure-saml",
   JUMPCLOUD_SAML = "jumpcloud-saml",
   KEYCLOAK_SAML = "keycloak-saml",
+  AUTH0_SAML = "auth0-saml",
   GOOGLE_SAML = "google-saml",
   LDAP = "ldap",
   OIDC = "oidc",
@@ -185,6 +187,7 @@ export type AddUserToOrgDTO = {
   projectIds?: string[];
   /** Also grant invitees member access to the org's PAM product. */
   grantPamAccess?: boolean;
+  grantAgentVaultAccess?: boolean;
 };
 
 export type CreateAPIKeyRes = {

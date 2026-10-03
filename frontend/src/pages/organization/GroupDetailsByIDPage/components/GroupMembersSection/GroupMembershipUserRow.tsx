@@ -45,7 +45,7 @@ export const GroupMembershipUserRow = ({
   return (
     <TableRow key={`group-user-${id}`}>
       <TableCell>
-        <UserIcon size={14} className="text-mineshaft-400" />
+        <UserIcon size={14} className="text-muted" />
       </TableCell>
       <TableCell isTruncatable>
         {fullName ? (

@@ -5,6 +5,7 @@ import { ArrowLeftIcon, Loader2Icon, Lock, type LucideIcon, Search } from "lucid
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Badge,
   Button,
   Field,
   FieldDescription,
@@ -14,13 +15,14 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ProviderIcon,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import {
   TAvailableAppConnection,
   useListAvailableAppConnections
@@ -34,6 +36,7 @@ import {
 } from "@app/hooks/api/appConnections/digicert";
 import { useDNSMadeEasyConnectionListZones } from "@app/hooks/api/appConnections/dns-made-easy";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { usePowerDnsConnectionListZones } from "@app/hooks/api/appConnections/powerdns";
 import {
   AcmeDnsProvider,
   CaStatus,
@@ -175,19 +178,28 @@ const CA_TYPE_MEDIA: Partial<Record<CaType, Pick<ExternalCaOption, "image" | "ic
     EXTERNAL_CA_OPTIONS.map((option) => [option.type, { image: option.image, icon: option.icon }])
   );
 
-const CaTypeCard = ({ option, onClick }: { option: ExternalCaOption; onClick: () => void }) => {
+const CaTypeCard = ({
+  option,
+  onClick,
+  isLocked
+}: {
+  option: ExternalCaOption;
+  onClick: () => void;
+  isLocked?: boolean;
+}) => {
   const Icon = option.icon;
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
+      disabled={isLocked}
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors enabled:hover:border-border-strong enabled:hover:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-60"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
           {option.image ? (
-            <img
-              src={`/images/integrations/${option.image}`}
+            <ProviderIcon
+              icon={option.image}
               alt={`${option.name} logo`}
               className="h-6 w-6 object-contain"
             />
@@ -195,9 +207,13 @@ const CaTypeCard = ({ option, onClick }: { option: ExternalCaOption; onClick: ()
             Icon && <Icon className="h-5 w-5 text-foreground" />
           )}
         </div>
-        <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
-          {option.category}
-        </span>
+        {isLocked ? (
+          <Badge variant="info">Enterprise</Badge>
+        ) : (
+          <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
+            {option.category}
+          </span>
+        )}
       </div>
       <div className="flex flex-col gap-1">
         <p className="text-sm font-semibold text-foreground">{option.name}</p>
@@ -209,6 +225,7 @@ const CaTypeCard = ({ option, onClick }: { option: ExternalCaOption; onClick: ()
 
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
 
   const { data: ca, isLoading: isCaLoading } = useGetCa({
     caId: (popUp?.ca?.data as { caId: string })?.caId || "",
@@ -334,7 +351,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   };
 
+  const isCaTypeLocked = (type: CaType) =>
+    type !== CaType.ACME && !subscription.pkiEnterpriseCaIntegrations;
+
   const handleSelectType = (type: CaType) => {
+    if (isCaTypeLocked(type)) return;
     reset(getInitialValuesForType(type));
     setSelectedType(type);
   };
@@ -372,6 +393,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { data: availableAzureDNSConnections, isPending: isAzureDNSPending } =
     useListAvailableAppConnections(AppConnection.AzureDNS, currentProject.id, {
+      enabled: caType === CaType.ACME
+    });
+
+  const { data: availablePowerDnsConnections, isPending: isPowerDnsPending } =
+    useListAvailableAppConnections(AppConnection.PowerDns, currentProject.id, {
       enabled: caType === CaType.ACME
     });
 
@@ -431,7 +457,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       ...(availableRoute53Connections || []),
       ...(availableCloudflareConnections || []),
       ...(availableDNSMadeEasyConnections || []),
-      ...(availableAzureDNSConnections || [])
+      ...(availableAzureDNSConnections || []),
+      ...(availablePowerDnsConnections || [])
     ];
   }, [
     caType,
@@ -439,6 +466,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableCloudflareConnections,
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
+    availablePowerDnsConnections,
     availableAzureConnections,
     availableAdcsConnections,
     availableAwsConnections,
@@ -447,8 +475,36 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableGoDaddyConnections
   ]);
 
+  const dnsAppConnections: TAvailableAppConnection[] = useMemo(() => {
+    switch (dnsProvider) {
+      case AcmeDnsProvider.ROUTE53:
+        return availableRoute53Connections || [];
+      case AcmeDnsProvider.Cloudflare:
+        return availableCloudflareConnections || [];
+      case AcmeDnsProvider.DNSMadeEasy:
+        return availableDNSMadeEasyConnections || [];
+      case AcmeDnsProvider.AzureDNS:
+        return availableAzureDNSConnections || [];
+      case AcmeDnsProvider.PowerDns:
+        return availablePowerDnsConnections || [];
+      default:
+        return [];
+    }
+  }, [
+    dnsProvider,
+    availableRoute53Connections,
+    availableCloudflareConnections,
+    availableDNSMadeEasyConnections,
+    availableAzureDNSConnections,
+    availablePowerDnsConnections
+  ]);
+
   const isPending =
-    ((isRoute53Pending || isCloudflarePending || isDNSMadeEasyPending || isAzureDNSPending) &&
+    ((isRoute53Pending ||
+      isCloudflarePending ||
+      isDNSMadeEasyPending ||
+      isAzureDNSPending ||
+      isPowerDnsPending) &&
       caType === CaType.ACME) ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
     (isAdcsPending && caType === CaType.ADCS) ||
@@ -475,6 +531,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: azureDnsZones = [], isPending: isAzureDNSZonesPending } =
     useAzureDNSConnectionListZones(dnsAppConnection.id, {
       enabled: dnsProvider === AcmeDnsProvider.AzureDNS && !!dnsAppConnection.id
+    });
+
+  const { data: powerDnsZones = [], isPending: isPowerDnsZonesPending } =
+    usePowerDnsConnectionListZones(dnsAppConnection.id, {
+      enabled: dnsProvider === AcmeDnsProvider.PowerDns && !!dnsAppConnection.id
     });
 
   // Populate form with CA data when editing
@@ -877,6 +938,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   key={option.type}
                   option={option}
                   onClick={() => handleSelectType(option.type)}
+                  isLocked={isCaTypeLocked(option.type)}
                 />
               ))}
             </div>
@@ -908,6 +970,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       placeholder="my-external-ca"
                       disabled={Boolean(ca)}
                       isError={Boolean(error)}
+                      autoComplete="off"
+                      name="certificate-authority-name"
                     />
                     {!error && (
                       <FieldDescription>
@@ -925,7 +989,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   dnsProvider={dnsProvider}
                   directoryUrl={directoryUrl}
                   dnsAppConnection={dnsAppConnection}
-                  availableConnections={availableConnections}
+                  availableConnections={dnsAppConnections}
                   isPending={isPending}
                   cloudflareZones={cloudflareZones}
                   isZonesPending={isZonesPending}
@@ -933,6 +997,13 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   isDNSMadeEasyZonesPending={isDNSMadeEasyZonesPending}
                   azureDnsZones={azureDnsZones}
                   isAzureDNSZonesPending={isAzureDNSZonesPending}
+                  powerDnsZones={powerDnsZones}
+                  isPowerDnsZonesPending={isPowerDnsZonesPending}
+                  onDnsSelectionChange={() =>
+                    setValue("configuration.dnsProviderConfig.hostedZoneId", "", {
+                      shouldDirty: true
+                    })
+                  }
                 />
               )}
               {caType === CaType.AZURE_AD_CS && (

@@ -16,7 +16,7 @@ import {
   FieldTitle,
   IconButton,
   Input,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
@@ -47,14 +47,37 @@ const COUCHBASE_ROLES = [
 ] as const;
 
 const couchbaseConnectionFields = [
-  { name: "inputs.url", type: "text", label: "URL" },
-  { name: "inputs.orgId", type: "text", label: "Organization ID", layout: "half" },
-  { name: "inputs.projectId", type: "text", label: "Project ID", layout: "half" },
-  { name: "inputs.clusterId", type: "text", label: "Cluster ID" },
+  {
+    name: "inputs.url",
+    type: "text",
+    label: "URL",
+    placeholder: "https://cloudapi.cloud.couchbase.com"
+  },
+  {
+    name: "inputs.orgId",
+    type: "text",
+    label: "Organization ID",
+    placeholder: "00000000-0000-0000-0000-000000000000",
+    layout: "half"
+  },
+  {
+    name: "inputs.projectId",
+    type: "text",
+    label: "Project ID",
+    placeholder: "00000000-0000-0000-0000-000000000000",
+    layout: "half"
+  },
+  {
+    name: "inputs.clusterId",
+    type: "text",
+    label: "Cluster ID",
+    placeholder: "00000000-0000-0000-0000-000000000000"
+  },
   {
     name: "inputs.auth.apiKey",
     type: "secret",
     label: "API Key",
+    placeholder: "Enter API key",
     autoComplete: "new-password"
   }
 ] satisfies readonly TDynamicSecretProviderField<TCouchbaseValues>[];
@@ -192,7 +215,7 @@ const CouchbaseBucketFields = () => {
                 Limit access by bucket, scope, and collection instead of using a bucket pattern.
               </FieldDescription>
             </FieldContent>
-            <Switch
+            <Toggle
               ref={field.ref}
               id="couchbase-advanced-buckets"
               variant="project"

@@ -8,7 +8,7 @@ import { Play, Radar, Search, TriangleAlert } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Badge,
   Button,
@@ -30,6 +30,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  ProviderIcon,
   Table,
   TableBody,
   TableCell,
@@ -106,7 +107,12 @@ const NameField = ({ control }: { control: Control<{ name: string }> }) => (
       <Field>
         <FieldLabel>Name</FieldLabel>
         <FieldContent>
-          <Input {...field} isError={!!fieldState.error} />
+          <Input
+            {...field}
+            isError={!!fieldState.error}
+            autoComplete="off"
+            name="pam-discovery-source-name"
+          />
           <FieldError>{fieldState.error?.message}</FieldError>
         </FieldContent>
       </Field>
@@ -543,8 +549,8 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {typeDetails && (
-                              <img
-                                src={`/images/integrations/${typeDetails.icon}`}
+                              <ProviderIcon
+                                icon={typeDetails.icon}
                                 alt={typeDetails.name}
                                 className="size-5 shrink-0 rounded-sm"
                               />
@@ -669,8 +675,8 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {typeDetails && (
-                              <img
-                                src={`/images/integrations/${typeDetails.icon}`}
+                              <ProviderIcon
+                                icon={typeDetails.icon}
                                 alt={typeDetails.name}
                                 className="size-5 shrink-0 rounded-sm"
                               />
@@ -844,8 +850,8 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
         icon={
           <div className="mb-4 flex size-16 items-center justify-center rounded-lg border border-border bg-container">
             {typeMeta?.icon ? (
-              <img
-                src={`/images/integrations/${typeMeta.icon}`}
+              <ProviderIcon
+                icon={typeMeta.icon}
                 alt={typeMeta.name}
                 className="size-10 rounded-sm"
               />

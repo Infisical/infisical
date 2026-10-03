@@ -29,7 +29,8 @@ export enum AcmeDnsProvider {
   ROUTE53 = "route53",
   Cloudflare = "cloudflare",
   DNSMadeEasy = "dns-made-easy",
-  AzureDNS = "azure-dns"
+  AzureDNS = "azure-dns",
+  PowerDns = "powerdns"
 }
 
 export enum CaRenewalStatus {
@@ -41,7 +42,8 @@ export enum CaRenewalStatus {
 export enum CaCapability {
   ISSUE_CERTIFICATES = "issue-certificates",
   REVOKE_CERTIFICATES = "revoke-certificates",
-  RENEW_CERTIFICATES = "renew-certificates"
+  RENEW_CERTIFICATES = "renew-certificates",
+  CUSTOM_EXTENSIONS = "custom-extensions"
 }
 
 export enum CaSigningConfigType {

@@ -9,11 +9,13 @@ import {
   TBuyProductPayload,
   TCancelTrialPayload,
   TChangeCommitmentsPayload,
+  TConfirmTrialPaymentPayload,
   TCreatePortalPayload,
   TEntitlementOrg,
   TLicenseClientBackend,
   TStartTrialPayload,
-  TSubscriptionPreviewPayload
+  TSubscriptionPreviewPayload,
+  TUpgradePayload
 } from "./license-client-types";
 import { createSelfHostedTokenProvider } from "./license-token-provider";
 
@@ -176,6 +178,13 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
     return backend.removeProduct(orgId, productId);
   };
 
+  const upgradeProduct = async (orgId: string, payload: TUpgradePayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.upgradeProduct(orgId, payload);
+  };
+
   const changeCommitments = async (orgId: string, payload: TChangeCommitmentsPayload) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
@@ -195,6 +204,13 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
       throw new Error("license client backend is not configured");
     }
     return backend.cancelTrial(orgId, payload);
+  };
+
+  const confirmTrialPayment = async (orgId: string, payload: TConfirmTrialPaymentPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.confirmTrialPayment(orgId, payload);
   };
 
   // The org's trial history; returns an empty history when no backend is configured (self-hosted).
@@ -236,9 +252,11 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
     previewSubscriptionChange,
     buyProduct,
     removeProduct,
+    upgradeProduct,
     changeCommitments,
     startTrial,
     cancelTrial,
+    confirmTrialPayment,
     getTrials,
     cancelSubscription,
     resumeSubscription

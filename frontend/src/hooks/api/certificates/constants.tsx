@@ -105,6 +105,7 @@ export const EXTENDED_KEY_USAGE_LABELS: Record<CertExtendedKeyUsage, string> = {
   [CertExtendedKeyUsage.SERVER_AUTH]: "Server Auth",
   [CertExtendedKeyUsage.EMAIL_PROTECTION]: "Email Protection",
   [CertExtendedKeyUsage.OCSP_SIGNING]: "OCSP Signing",
+  [CertExtendedKeyUsage.SMART_CARD_LOGON]: "Smart Card Logon",
   [CertExtendedKeyUsage.CODE_SIGNING]: "Code Signing",
   [CertExtendedKeyUsage.TIMESTAMPING]: "Timestamping",
   [CertExtendedKeyUsage.ANY_PURPOSE]: "Any Extended Key Usage"

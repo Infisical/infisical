@@ -330,7 +330,9 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           sessionId: z.string().describe("The ID of the created session"),
           accountType: z.nativeEnum(PamAccountType).describe("The account type"),
           metadata: z.record(z.string()).optional().describe("Account-type-specific metadata (e.g., username)"),
+          gatewayId: z.string().optional().describe("The ID of the gateway the connection details are for"),
           relayHost: z.string().optional().describe("The relay host to connect to"),
+          directAddress: z.string().optional().describe("The gateway address for a direct connection"),
           relayClientCertificate: z.string().optional().describe("Client certificate for the relay connection"),
           relayClientPrivateKey: z.string().optional().describe("Client private key for the relay connection"),
           relayServerCertificateChain: z
@@ -375,6 +377,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         reason: req.body.reason,
         duration: req.body.duration,
         mfaSessionId: req.body.mfaSessionId,
+        tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
         accessMethod: req.body.accessMethod === "web" ? PamAccessMethod.Web : PamAccessMethod.Cli,
         targetHost: req.body.targetHost
       });
@@ -412,7 +415,9 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         sessionId: result.sessionId,
         accountType: result.accountType,
         metadata: result.metadata,
+        gatewayId: result.gatewayId,
         relayHost: result.relayHost,
+        directAddress: result.directAddress,
         relayClientCertificate: result.relayClientCertificate,
         relayClientPrivateKey: result.relayClientPrivateKey,
         relayServerCertificateChain: result.relayServerCertificateChain,
@@ -462,6 +467,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         actor: req.permission,
         actorEmail: req.auth.user.email ?? "",
         actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
+        tokenVersionId: req.auth.tokenVersionId,
+        accessVersion: req.auth.token.accessVersion,
         auditLogInfo: req.auditLogInfo,
         reason: req.body.reason,
         mfaSessionId: req.body.mfaSessionId,
@@ -550,6 +557,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
             accountType: z.string(),
             actorEmail: z.string(),
             actorName: z.string(),
+            tokenVersionId: z.string().uuid().optional(),
+            accessVersion: z.number().optional(),
             reason: z.string().nullable().optional(),
             maxSessionDurationMs: z.number().optional(),
             selectedHost: z.string().nullable().optional(),
@@ -569,6 +578,15 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           connection.off("message", preAuthHandler);
           connection.close(4001, "Invalid or expired ticket");
           return;
+        }
+
+        if (payload.tokenVersionId && payload.accessVersion !== undefined) {
+          await server.services.authToken.validateUserSessionFreshness({
+            userId,
+            tokenVersionId: payload.tokenVersionId,
+            accessVersion: payload.accessVersion,
+            readFromPrimary: true
+          });
         }
 
         await server.services.pamWebAccess.handleWebSocketConnection({

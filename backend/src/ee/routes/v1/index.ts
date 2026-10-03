@@ -5,9 +5,11 @@ import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-mana
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAgentProxyCaRouter } from "./agent-proxy-ca-router";
+import { registerAgentVaultRouters } from "./agent-vault-routers";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
+import { registerCaOcspRouter } from "./certificate-authority-ocsp-router";
 import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
 import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
 import { registerDeprecatedSecretApprovalPolicyRouter } from "./deprecated-secret-approval-policy-router";
@@ -18,7 +20,6 @@ import { registerEmailDomainRouter } from "./email-domain-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
 import { EXTERNAL_KMS_REGISTER_ROUTER_MAP } from "./external-kms-routers";
 import { registerGatewayPoolRouter } from "./gateway-pool-router";
-import { registerGatewayRouter } from "./gateway-router";
 import { registerGithubOrgSyncRouter } from "./github-org-sync-router";
 import { registerGroupRouter } from "./group-router";
 import { registerHoneyTokenRouter } from "./honey-token-router";
@@ -100,7 +101,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     { prefix: "/dynamic-secrets" }
   );
 
-  await server.register(registerGatewayRouter, { prefix: "/gateways" });
   await server.register(registerGatewayPoolRouter, { prefix: "/gateway-pools" });
   await server.register(registerRelayRouter, { prefix: "/relays" });
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
@@ -116,6 +116,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(injectCertManagerProjectId);
 
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
+      await pkiRouter.register(registerCaOcspRouter, { prefix: "/ocsp" });
       await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
       await pkiRouter.register(registerPkiDiscoveryRouter, { prefix: "/discovery-jobs" });
       await pkiRouter.register(registerPkiInstallationRouter, { prefix: "/installations" });
@@ -202,4 +203,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerPamRouters, { prefix: "/pam" });
+
+  await server.register(registerAgentVaultRouters, { prefix: "/agent-vault" });
 };

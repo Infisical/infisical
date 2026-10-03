@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   CheckIcon,
@@ -160,6 +160,8 @@ export const OrgSubOrgsTab = () => {
 
   useResetPageHelper({ setPage, offset, totalCount });
 
+  const location = useLocation();
+
   const handleLoginSubOrg = async (subOrgId: string) => {
     const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
       organizationId: subOrgId
@@ -180,7 +182,12 @@ export const OrgSubOrgsTab = () => {
     SecurityClient.setToken(token);
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
-    await navigateUserToOrg({ navigate, organizationId: subOrgId });
+    await navigateUserToOrg({
+      navigate,
+      organizationId: subOrgId,
+      switchFrom: location,
+      isSubOrganization: true
+    });
   };
 
   const handleOpenEditModal = (subOrg: TSubOrganization) => {
@@ -457,7 +464,7 @@ export const OrgSubOrgsTab = () => {
               isError={Boolean(errors.name)}
               errorText={errors.name?.message}
             >
-              <Input {...register("name")} placeholder="My Sub-Organization" />
+              <Input {...register("name")} placeholder="My Sub-Organization" autoComplete="off" />
             </FormControl>
             <FormControl
               label="Slug"

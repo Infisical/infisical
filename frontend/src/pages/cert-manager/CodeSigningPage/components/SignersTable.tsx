@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { AlertTriangleIcon, PlusIcon, SearchIcon } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -35,7 +36,8 @@ import {
 import {
   ProjectPermissionCodeSigningActions,
   ProjectPermissionSub,
-  useOrganization
+  useOrganization,
+  useSubscription
 } from "@app/context";
 import {
   getSignerStatusBadgeVariant,
@@ -45,6 +47,7 @@ import {
   useListSigners
 } from "@app/hooks/api/signers";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 
@@ -56,6 +59,16 @@ type Props = {
 export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
+  const { subscription } = useSubscription();
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+
+  const handleCreateSigner = () => {
+    if (!subscription.pkiCodeSigning) {
+      handlePopUpOpen("upgradePlan");
+      return;
+    }
+    onCreateSigner();
+  };
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(SIGNER_TABLE_PAGE_SIZE);
   const [search, setSearch] = useState("");
@@ -85,7 +98,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
             a={ProjectPermissionSub.CodeSigners}
           >
             {(isAllowed) => (
-              <Button variant="project" isDisabled={!isAllowed} onClick={onCreateSigner}>
+              <Button variant="project" isDisabled={!isAllowed} onClick={handleCreateSigner}>
                 <PlusIcon />
                 Create Signer
               </Button>
@@ -125,7 +138,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                 signers.map((signer) => (
                   <TableRow
                     key={signer.id}
-                    className="cursor-pointer hover:bg-mineshaft-700"
+                    className="cursor-pointer hover:bg-surface-hover"
                     onClick={() =>
                       navigate({
                         to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
@@ -214,6 +227,12 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
           />
         )}
       </CardContent>
+      <UpgradePlanModal
+        paywallKey="cert-manager.signers"
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="Code signing is available on Infisical's Enterprise plan."
+      />
     </Card>
   );
 };

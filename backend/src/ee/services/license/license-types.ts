@@ -36,6 +36,13 @@ export type TOrgSeatUsage = {
 export type TFeatureSet = {
   _id: null;
   slug: string | null;
+  productPlans?: {
+    productKey: string;
+    planKey: string | null;
+    status: string | null;
+    trialPlanKey: string | null;
+    trialEndsAt: string | null;
+  }[];
   // True when features are sourced from an offline (air-gapped) license; the billing UI renders a
   // read-only offline banner instead of the live billing surface.
   isOffline?: boolean;
@@ -73,7 +80,6 @@ export type TFeatureSet = {
   has_used_trial: true;
   secretApproval: false;
   secretRotation: false;
-  caCrl: false;
   instanceUserManagement: false;
   externalKms: false;
   rateLimits: {
@@ -81,13 +87,6 @@ export type TFeatureSet = {
     writeLimit: number;
     secretsLimit: number;
   };
-  pkiEst: boolean;
-  pkiAcme: true;
-  pkiScep: false;
-  pkiPqc: false;
-  // PKI code signing capability. null (default) is ignored (no restriction); an explicit boolean gates
-  // code signer creation.
-  pkiCodeSigning: null;
   kmsPqc: false;
   enforceMfa: false;
   projectTemplates: false;
@@ -97,19 +96,46 @@ export type TFeatureSet = {
   pamSlackNotifications: boolean;
   secretScanning: false;
   enterpriseSecretSyncs: false;
-  enterpriseCertificateSyncs: false;
   enterpriseAppConnections: false;
   machineIdentityAuthTemplates: false;
-  pkiLegacyTemplates: false;
   fips: false;
   eventSubscriptions: false;
   secretShareExternalBranding: false;
   honeyTokens: false;
   honeyTokenLimit: 0;
   secretsBrokering: true;
+  agentVaultByoS3: false;
   secretSyncLimit: null;
-  maxInternalCas: null;
   maxPamAccounts: null;
+
+  // PKI / Cert Manager
+  pkiAcme: true;
+  pkiEst: boolean;
+  pkiScep: false;
+  pkiPqc: false;
+  // caCrl defaults on, so self-hosted OSS keeps it; the License Server's free-plan default is what
+  // withholds it on cloud.
+  caCrl: boolean;
+  pkiOcsp: false;
+  pkiEnterpriseCaIntegrations: false;
+  pkiExternalIntermediateCa: false;
+  pkiDiscovery: false;
+  pkiEnterpriseAlerting: false;
+  pkiApprovals: false;
+  pkiSyncs: false;
+  pkiLegacyTemplates: false;
+  pkiCodeSigning: false;
+  // maxCas covers every CA type, maxInternalCas covers INTERNAL only. Both enforced, whichever binds
+  // first. Typed number | null rather than the literal null the flags above use, so consumers can
+  // name the limit in an error without casting.
+  maxCas: number | null;
+  maxInternalCas: number | null;
+  maxCertificates: number | null;
+  // Wildcards have no separate boolean gate: 0 means the plan does not include them at all, which is
+  // how the free tier withholds them. A wildcard certificate counts against maxCertificates too.
+  maxWildcardCertificates: number | null;
+  maxSansPerCertificate: number | null;
+
   pam: null;
   certManager: null;
   secretsTemporaryAccess: null;

@@ -25,7 +25,7 @@ Before starting the migration, ensure you have the following command line tools 
 
 <Steps>
   <Step title="Backup Production MongoDB Data">
-     While the migration script will not mutate any MongoDB production data, we recommend you to take a backup of your MongoDB instance if possible.
+     While the migration script won't mutate any MongoDB production data, we recommend you to take a backup of your MongoDB instance if possible.
   </Step>
   <Step title="Set Migration Mode">
     To prevent new data entries during the migration, set your Infisical instance to migration mode by setting the environment variable `MIGRATION_MODE=true` and redeploying your instance. 

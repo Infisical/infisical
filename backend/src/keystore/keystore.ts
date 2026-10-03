@@ -17,10 +17,9 @@ export const PgSqlLock = {
   KmsRootKeyInit: 2025,
   SanitizedSchemaGeneration: 2026,
   EmailDomainCreationLock: () => pgAdvisoryLockHashText(`org-email-domain-creation`),
-  OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
-  OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
+  CreateOrganization: (userId: string) => pgAdvisoryLockHashText(`create-organization:${userId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
   InstanceRelayConfigInit: () => pgAdvisoryLockHashText("instance-relay-config-init"),
   OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
@@ -31,16 +30,20 @@ export const PgSqlLock = {
   PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`),
   CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
   CreateGateway: (orgId: string) => pgAdvisoryLockHashText(`create-gateway:${orgId}`),
+  CreateAgentVaultProxy: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-proxy:${projectId}`),
   AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
   KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
   KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
   KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
-  LastAdminGuard: (scope: "org", scopeId: string) => pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
+  LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
+    pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
   OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
-  OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
+  OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`),
+  ExternalGroupOrgRoleMappingUpdate: (orgId: string) =>
+    pgAdvisoryLockHashText(`external-group-org-role-mapping-update:${orgId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -58,12 +61,20 @@ export const KeyStorePrefixes = {
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
-  AppConnectionConcurrentJobs: (connectionId: string) => `app-connection-concurrency-${connectionId}` as const,
-  AppConnectionCommandLock: (connectionId: string) => `app-connection-command-mutex-${connectionId}` as const,
+  PkiSyncFilterLock: (syncId: string) => `pki-sync-filter-mutex-${syncId}` as const,
+  AppConnectionConcurrentJobs: (connectionId: string, targetHost?: string) =>
+    `app-connection-concurrency-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
+  AppConnectionCommandLock: (connectionId: string, targetHost?: string) =>
+    `app-connection-command-mutex-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
+  AcmeDnsRecordLock: (connectionId: string, zoneId: string, recordName: string) =>
+    `acme-dns-record-mutex-${connectionId}-${zoneId.toLowerCase()}-${recordName.toLowerCase()}` as const,
+  LdapHostLogin: (fingerprint: string) => `ldap-host-login-${fingerprint}` as const,
+  LdapDirectoryMachines: (connectionId: string, search: string, limit: number) =>
+    `ldap-directory-machines-${connectionId}-${limit}-${search}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
+  StripeConnectionRefreshLock: (connectionId: string) => `stripe-connection-refresh-mutex-${connectionId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
-  SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
-    `secret-scanning-v2-mutex-${dataSourceId}-${resourceExternalId}` as const,
+  SecretScanningFullScanLease: (resourceId: string) => `secret-scanning-v2-full-scan-lease-${resourceId}` as const,
   IdentityLockoutLock: (lockoutKey: string) => `identity-lockout-lock-${lockoutKey}` as const,
   CaOrderCertificateForSubscriberLock: (subscriberId: string) =>
     `ca-order-certificate-for-subscriber-lock-${subscriberId}` as const,
@@ -80,9 +91,9 @@ export const KeyStorePrefixes = {
   IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
     `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
   IdentityLastLoginDebounce: (identityId: string) => `identity-last-login-debounce:${identityId}` as const,
+  SpiffeKidMissRefresh: (configId: string) => `spiffe-kid-miss-refresh:${configId}` as const,
   ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
-  GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
   // The braces are a Redis Cluster hash tag: only the tagged part picks the slot, so these land on
   // one node. Selection reads them for several gateways at once (one Lua script and two MGETs), and
   // cluster refuses a multi-key command whose keys span slots. They are small counters, so
@@ -153,6 +164,7 @@ export const KeyStorePrefixes = {
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
+  AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
@@ -172,12 +184,21 @@ export const KeyStorePrefixes = {
   // UUIDs and the endpoint segments do not overlap, so one prefix serves both without collision.
   InsightsCache: (scopeId: string, endpoint: string) => `insights-cache:${scopeId}:${endpoint}` as const,
 
+  // Braces are a Redis Cluster hash tag: the index zset and every member's payload key must land on
+  // one slot for the multi-key upsert/delete scripts.
+  WorkerHeartbeatIndex: (workerType: string) => `worker-heartbeat:{${workerType}}` as const,
+  WorkerHeartbeat: (workerType: string, instanceId: string) =>
+    `worker-heartbeat:{${workerType}}:${instanceId}` as const,
+
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
   InvalidatingCache: "invalidating-cache",
   SecretManagerCachePattern: "secret-manager:*",
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
+  // Set alongside the free plan getPlan caches when the License Server fails, so callers can tell it from a real answer.
+  LicenseCloudPlanFallback: (orgId: string) => `infisical-cloud-plan-fallback-${orgId}` as const,
+  LicenseCloudPlanLastKnown: (orgId: string) => `infisical-cloud-plan-last-known-${orgId}` as const,
   // Set after a billing mutation to flag the org's plan cache for stale-while-revalidate reads.
   LicenseCachePassThrough: (orgId: string) => `license-cache-passthrough-${orgId}` as const,
   // Single-flight guard so only one background revalidation runs per org per lock window.
@@ -186,6 +207,8 @@ export const KeyStorePrefixes = {
   LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
+  PkiCertificateQuotaCount: (orgId: string) => `pki-certificate-quota-count-${orgId}` as const,
+  PkiWildcardCertificateQuotaCount: (orgId: string) => `pki-wildcard-certificate-quota-count-${orgId}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
     `lockout:identity:{${identityId}}:${authMethod}:${slug}` as const,
   // Sorted set of the identity's *locked* auth methods, scored by when each lockout ends.
@@ -200,10 +223,16 @@ export const KeyStorePrefixes = {
 
   // period is a YYYY-MM stamp so the monthly notice can only go out once per org per month
   NativeIntegrationDeprecationNotice: (orgId: string, period: string) =>
-    `native-integration-deprecation-notice:${orgId}:${period}` as const
+    `native-integration-deprecation-notice:${orgId}:${period}` as const,
+
+  LegacyPkiDeprecationNotice: (orgId: string, period: string) =>
+    `legacy-pki-deprecation-notice:${orgId}:${period}` as const
 };
 
 export const KeyStoreTtls = {
+  LdapDirectoryMachinesInSeconds: 60,
+  LdapHostLoginInSeconds: 3600,
+  LdapGuessedHostLoginInSeconds: 30,
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
   SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120,
@@ -239,7 +268,9 @@ export const KeyStoreTtls = {
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 900, // 15 minutes
+  LicenseCloudPlanLastKnownInSeconds: 86400, // 24 hours
   PamDefaultProjectInSeconds: 300, // 5 minutes
+  AgentVaultDefaultProjectInSeconds: 300, // 5 minutes
   // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
   LicenseCachePassThroughInSeconds: 180, // 3 minutes
   // Longer window for redirect-to-Stripe-checkout paths, where the purchase applies via webhook only
@@ -250,6 +281,9 @@ export const KeyStoreTtls = {
   // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
   LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
   LicenseUsageLastReportedInSeconds: 604800, // 7 days
+  // Short: the count drifts high as certificates expire and low when an ungated path such as a
+  // discovery scan inserts rows, and only this expiry corrects either.
+  PkiCertificateQuotaCountInSeconds: 60,
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,
@@ -260,9 +294,10 @@ export const KeyStoreTtls = {
   TelemetryAuditLogsViewedInSeconds: 3600, // 1 hour
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
-  GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
   SecretReplicationSuccessInSeconds: 10,
-  NativeIntegrationDeprecationNoticeInSeconds: 3888000 // 45 days - outlives one monthly cycle
+  NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
+  LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
+  WorkerHeartbeatInSeconds: 300 // 5 minutes - tolerates several missed 60s beats
 };
 
 type TDeleteItems = {
@@ -284,6 +319,7 @@ type TWaitTillReady = {
 export type TKeyStoreFactory = {
   setItem: (key: string, value: string | number | Buffer, prefix?: string) => Promise<"OK">;
   getItem: (key: string, prefix?: string) => Promise<string | null>;
+  getItemBuffer: (key: string, prefix?: string) => Promise<Buffer | null>;
   getItemPrimary: (key: string, prefix?: string) => Promise<string | null>;
   getItems: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
   getItemsPrimary: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
@@ -400,6 +436,11 @@ export const keyStoreFactory = (
 
   const getItem = async (key: string, prefix?: string) =>
     pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).get(prefix ? `${prefix}:${key}` : key);
+
+  // Reads a value written as raw bytes. Callers holding binary blobs (ciphertext) use this instead of
+  // getItem so the payload never round-trips through a base64 string on either side.
+  const getItemBuffer = async (key: string, prefix?: string) =>
+    pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).getBuffer(prefix ? `${prefix}:${key}` : key);
 
   const getItemPrimary = async (key: string, prefix?: string) => primaryRedis.get(prefix ? `${prefix}:${key}` : key);
 
@@ -813,6 +854,7 @@ export const keyStoreFactory = (
   return {
     setItem,
     getItem,
+    getItemBuffer,
     getItemPrimary,
     setExpiry,
     ttl,

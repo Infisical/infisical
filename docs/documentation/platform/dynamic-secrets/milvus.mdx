@@ -90,7 +90,7 @@ The Infisical Milvus dynamic secret allows you to generate Milvus credentials on
 
   </Step>
   <Step title="Click `Submit`">
-    After submitting the form, you will see the Milvus dynamic secret created in the dashboard.
+    After submitting the form, you'll see the Milvus dynamic secret created in the dashboard.
 
     <Note>
       Infisical validates the connection by calling the Milvus `/v2/vectordb/users/describe` endpoint. If validation fails, double-check the host, port, and admin credentials.
@@ -98,7 +98,7 @@ The Infisical Milvus dynamic secret allows you to generate Milvus credentials on
 
   </Step>
   <Step title="Generate dynamic secrets">
-    Once configured, click `Generate` (or `New Lease`) on the dynamic secret to issue an on-demand credential.
+    Once configured, select `Generate` (or `New Lease`) on the dynamic secret to issue an on-demand credential.
 
     Each lease creates a Milvus user with a random username and password. When you configure privileges, Infisical also creates an ephemeral role per lease, grants the configured privileges to it, and assigns the role to the user. On revoke, the user and role are deleted together.
 
@@ -117,17 +117,17 @@ The Infisical Milvus dynamic secret allows you to generate Milvus credentials on
 
 ## Audit or revoke leases
 
-Once you have created one or more leases, you can access them by clicking on the dynamic secret item on the dashboard. From there you can view the expiration time or revoke a lease early.
+Once you have created one or more leases, you can access them by selecting the dynamic secret item on the dashboard. From there you can view the expiration time or revoke a lease early.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew leases
 
-To extend the life of a generated lease, click the **Renew** button.
+To extend the life of a generated lease, select the **Renew** button.
 
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-  Lease renewals cannot exceed the maximum TTL set when configuring the dynamic
+  Lease renewals can't exceed the maximum TTL set when configuring the dynamic
   secret.
 </Warning>

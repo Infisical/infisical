@@ -32,9 +32,9 @@ swap:
   '\bMongo DB\b': MongoDB
   '\bDigital Ocean\b': DigitalOcean
   '\bSDK''s\b': SDKs
-  # "+ New Sub-Organization" and "Create Sub-Organization" are UI labels quoted
-  # verbatim; the product capitalizes those.
-  '(?<!\+ New |Create )\bSub-Organization\b': Sub-organization
+  # "+ New Sub-Organization", "Create Sub-Organization" and "Assign to Sub-Organization"
+  # are UI labels quoted verbatim; the product capitalizes those.
+  '(?<!\+ New |Create |Assign to )\bSub-Organization\b': Sub-organization
   '\bSub-Organizations\b': Sub-organizations
 
   # --- Vendor casing ---

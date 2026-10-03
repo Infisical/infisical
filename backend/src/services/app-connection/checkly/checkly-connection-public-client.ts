@@ -3,6 +3,7 @@
 import { AxiosInstance, AxiosRequestConfig, AxiosResponse, HttpStatusCode, isAxiosError } from "axios";
 
 import { createRequestClient } from "@app/lib/config/request";
+import { RateLimitError } from "@app/lib/errors";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 
@@ -67,7 +68,12 @@ class ChecklyPublicClient {
     });
     const limiter = getChecklyRatelimiter(response);
 
-    if (limiter.isRatelimited && retryAttempt <= limiter.maxAttempts) {
+    if (limiter.isRatelimited) {
+      if (retryAttempt >= limiter.maxAttempts) {
+        throw new RateLimitError({
+          message: "Checkly rate limit reached. Wait a moment and try again."
+        });
+      }
       await limiter.wait();
       return this.send(connection, config, retryAttempt + 1);
     }

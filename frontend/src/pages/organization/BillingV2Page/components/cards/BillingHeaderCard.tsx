@@ -51,9 +51,9 @@ type StatTileProps = {
 };
 
 const StatTile = ({ title, tone, icon, value, footer }: StatTileProps) => (
-  <Card className="flex-1 gap-2 p-4 shadow-none">
+  <Card className="flex-1 gap-2 p-4">
     <CardHeader>
-      <CardTitle className="text-xs font-medium text-muted capitalize">{title}</CardTitle>
+      <CardTitle className="text-xs font-normal text-muted capitalize">{title}</CardTitle>
       <CardAction>
         <div
           className={cn(

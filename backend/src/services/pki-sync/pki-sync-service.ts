@@ -1,36 +1,54 @@
 import { ForbiddenError, subject } from "@casl/ability";
+import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType, TCertificateSyncs } from "@app/db/schemas";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionPkiSyncActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionPkiSyncActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionCertificateActions,
   ResourcePermissionPkiSyncActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { deepEqual } from "@app/lib/fn/object";
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
+import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { CertStatus } from "../certificate/certificate-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { TSyncMetadata } from "../certificate-sync/certificate-sync-schemas";
-import { certificateNameSchemaAllowsMultipleCertificates } from "./pki-sync-certificate-name-fns";
 import { encryptPkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncExportFormat } from "./pki-sync-export-fns";
+import { hasAnyPkiSyncFilter, PKI_SYNC_FILTER_KINDS, PKI_SYNC_PREVIEW_PAGE_SIZE } from "./pki-sync-filter-fns";
 import {
-  assertPkiSyncDestinationConfigAllowsCertificateCount,
-  enterprisePkiSyncCheck,
-  getPkiSyncMaxCertificates,
+  applyPkiSyncCertificateDiff,
+  assertPkiSyncCanHoldMatchedCertificates,
+  computePkiSyncCertificateDiff,
+  TPkiSyncReconcileTarget,
+  withPkiSyncFilterLock
+} from "./pki-sync-filter-reconcile-fns";
+import {
+  assertFiltersCannotExceedCertificateCap,
+  assertPkiSyncCertificateCapsAllowCount,
+  assertPkiSyncLicense,
   getPkiSyncProviderCapabilities,
   listPkiSyncOptions,
   resolvePkiSyncDestinationConfigUpdate
@@ -42,19 +60,19 @@ import {
   toHealthCheckApiResult
 } from "./pki-sync-health-check-command-fns";
 import { TPkiSyncHealthCheckQueueFactory } from "./pki-sync-health-check-queue";
-import {
-  findSingleCertificateHostCommandVariables,
-  formatHostCommandVariables,
-  HostCommandKind
-} from "./pki-sync-host-command-fns";
-import { PKI_SYNC_CONNECTION_MAP, PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
+import { HostCommandKind } from "./pki-sync-host-command-fns";
+import { getPkiSyncConnectionApps, PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
 import {
   applyPostSyncCommandUpdate,
-  getPostSyncCommand,
   normalizeNewPostSyncCommand,
   POST_SYNC_COMMAND_OPTION_KEY
 } from "./pki-sync-post-sync-command-fns";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
+import {
+  assertTargetHostMatchesConnection,
+  getPkiSyncTargetHost,
+  TPkiSyncDeliveryTarget
+} from "./pki-sync-target-host-fns";
 import {
   TAddCertificatesToPkiSyncDTO,
   TClearDefaultCertificateDTO,
@@ -65,7 +83,14 @@ import {
   TListPkiSyncsByProjectId,
   TPkiSync,
   TPkiSyncCertificate,
+  TPkiSyncCertificateOrder,
+  TPkiSyncCertificateRef,
+  TPkiSyncFilterPreview,
+  TPkiSyncFilters,
+  TPkiSyncRaw,
+  TPreviewPkiSyncFiltersDTO,
   TRemoveCertificatesFromPkiSyncDTO,
+  TSearchPkiSyncCertificateOrdersDTO,
   TSetCertificateAsDefaultDTO,
   TTriggerPkiSyncImportCertificatesByIdDTO,
   TTriggerPkiSyncRemoveCertificatesByIdDTO,
@@ -73,22 +98,27 @@ import {
   TUpdatePkiSyncDTO
 } from "./pki-sync-types";
 
-const getDestinationAppType = (destination: PkiSync): AppConnection => {
-  const appConnection = PKI_SYNC_CONNECTION_MAP[destination];
-  if (!appConnection) {
-    throw new BadRequestError({
-      message: `Unsupported PKI sync destination: ${destination}`
-    });
-  }
-  return appConnection;
-};
-
 type TPkiSyncServiceFactoryDep = {
   pkiSyncDAL: Pick<
     TPkiSyncDALFactory,
-    "findById" | "findByProjectIdWithSubscribers" | "findByNameAndProjectId" | "create" | "updateById" | "deleteById"
+    | "findById"
+    | "findByProjectIdWithSubscribers"
+    | "findByNameAndProjectId"
+    | "create"
+    | "updateById"
+    | "deleteById"
+    | "primaryNode"
   >;
-  certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    | "find"
+    | "findCertificatesMatchingSyncFilters"
+    | "countCertificatesMatchingSyncFilters"
+    | "findReadableCertificateIds"
+    | "findLatestCertificatesByOrderIds"
+    | "primaryNode"
+  >;
+  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findByApplicationId">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "findByPkiSyncId"
@@ -100,18 +130,34 @@ type TPkiSyncServiceFactoryDep = {
     | "findWithDetails"
     | "updateSyncMetadata"
     | "clearSyncMetadataFlag"
+    | "transaction"
+    | "primaryNode"
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  pkiSyncHealthCheckQueue: Pick<TPkiSyncHealthCheckQueueFactory, "runHealthCheckNow" | "testHealthCheckCommand">;
+  pkiSyncHealthCheckQueue: Pick<
+    TPkiSyncHealthCheckQueueFactory,
+    "runHealthCheckNow" | "testHealthCheckCommand" | "testTargetHostReachable"
+  >;
   pkiSyncQueue: Pick<
     TPkiSyncQueueFactory,
     "queuePkiSyncSyncCertificatesById" | "queuePkiSyncImportCertificatesById" | "queuePkiSyncRemoveCertificatesById"
   >;
+};
+
+const $assertSyncAcceptsFilters = (pkiSync: Pick<TPkiSyncRaw, "applicationId">) => {
+  if (!pkiSync.applicationId) {
+    throw new BadRequestError({
+      message:
+        "This PKI sync is not attached to an Application, so its certificates cannot be changed. Create a sync inside an Application to select certificates by filter."
+    });
+  }
 };
 
 export type TPkiSyncServiceFactory = ReturnType<typeof pkiSyncServiceFactory>;
@@ -119,11 +165,14 @@ export type TPkiSyncServiceFactory = ReturnType<typeof pkiSyncServiceFactory>;
 export const pkiSyncServiceFactory = ({
   pkiSyncDAL,
   certificateDAL,
+  pkiApplicationProfileDAL,
   certificateSyncDAL,
   pkiSubscriberDAL,
+  pkiApplicationDAL,
   appConnectionService,
   permissionService,
   licenseService,
+  keyStore,
   kmsService,
   pkiSyncQueue,
   pkiSyncHealthCheckQueue,
@@ -234,6 +283,63 @@ export const pkiSyncServiceFactory = ({
     await $assertSyncAction(actions.project, actions.resource, pkiSync, subscriberName, actor);
   };
 
+  const $deliveryTarget = (destinationConfig: Record<string, unknown> | null | undefined) => {
+    const config = destinationConfig as TPkiSyncDeliveryTarget | undefined;
+    return JSON.stringify([
+      config?.host?.toLowerCase(),
+      config?.port,
+      config?.sslEnabled,
+      config?.sslRejectUnauthorized,
+      config?.sslCertificate,
+      config?.sshHostKeys
+    ]);
+  };
+
+  const $assertMaySetTargetHost = async ({
+    nextConfig,
+    currentConfig,
+    pkiSync,
+    subscriberName,
+    actor,
+    isRetargetedByConnection = false
+  }: {
+    nextConfig: Record<string, unknown> | null | undefined;
+    currentConfig: Record<string, unknown> | null | undefined;
+    pkiSync: { projectId: string; applicationId?: string | null; name: string };
+    subscriberName: string | undefined;
+    actor: OrgServiceActor;
+    isRetargetedByConnection?: boolean;
+  }) => {
+    if (!isRetargetedByConnection && $deliveryTarget(nextConfig) === $deliveryTarget(currentConfig)) return;
+
+    await $assertSyncAction(
+      ProjectPermissionPkiSyncActions.SetTargetHost,
+      ResourcePermissionPkiSyncActions.SetTargetHost,
+      pkiSync,
+      subscriberName,
+      actor
+    );
+  };
+
+  const $assertTargetHostReachable = async ({
+    destination,
+    connection,
+    destinationConfig
+  }: {
+    destination: PkiSync;
+    connection: { id: string; app: AppConnection };
+    destinationConfig: Record<string, unknown> | null | undefined;
+  }) => {
+    if (connection.app !== AppConnection.LDAP) return;
+    if (!getPkiSyncTargetHost(destinationConfig)) return;
+
+    await pkiSyncHealthCheckQueue.testTargetHostReachable({
+      destination,
+      connectionId: connection.id,
+      destinationConfig: destinationConfig as Record<string, unknown>
+    });
+  };
+
   const HOST_COMMAND_ACTIONS = {
     [HEALTH_CHECK_COMMAND_OPTION_KEY]: {
       project: ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
@@ -286,92 +392,230 @@ export const pkiSyncServiceFactory = ({
     $assertHostCommandsAreSupported(destination, nextSyncOptions, await resolveConnection());
   };
 
-  const validateCertificatesForSync = async (
+  const $certificateReadFilters = async (projectId: string, applicationId: string, actor: OrgServiceActor) => {
+    const { permission: resourcePermission } = await permissionService.getResourcePermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      resourceType: ResourceType.CertificateApplication,
+      resourceId: applicationId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    if (resourcePermission.can(ResourcePermissionCertificateActions.Read, ResourcePermissionSub.Certificates)) {
+      return undefined;
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
+    return getProcessedPermissionRules(
+      permission,
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+  };
+
+  const $assertActorCanReadFilterMatches = async (
+    projectId: string,
+    applicationId: string | null | undefined,
+    filters: TPkiSyncFilters | null | undefined,
+    actor: OrgServiceActor
+  ) => {
+    if (!applicationId || !hasAnyPkiSyncFilter(filters)) return;
+
+    const permissionFilters = await $certificateReadFilters(projectId, applicationId, actor);
+    if (!permissionFilters) return;
+
+    const growingKinds = PKI_SYNC_FILTER_KINDS.filter(
+      (kind) => kind !== "certificateOrderIds" && filters?.[kind] !== undefined
+    );
+
+    if (growingKinds.length > 0) {
+      throw new ForbiddenRequestError({
+        message:
+          "Certificate profile and metadata filters also take certificates issued later, so they need access to read every certificate in this Application. Name the certificates instead, or ask for broader access."
+      });
+    }
+
+    const scope = { projectId, applicationId };
+    const [matchedCount, readableCount] = await Promise.all([
+      certificateDAL.countCertificatesMatchingSyncFilters(filters, scope),
+      certificateDAL.countCertificatesMatchingSyncFilters(filters, scope, permissionFilters)
+    ]);
+
+    if (matchedCount !== readableCount) {
+      throw new ForbiddenRequestError({
+        message: `These filters match ${matchedCount - readableCount} certificate${
+          matchedCount - readableCount === 1 ? "" : "s"
+        } you do not have access to read. Narrow the filters to the certificates you can access.`
+      });
+    }
+  };
+
+  const $assertActorCanReadCertificates = async (
+    certificateIds: string[],
+    projectId: string,
+    applicationId: string | null | undefined,
+    actor: OrgServiceActor
+  ) => {
+    if (!applicationId || certificateIds.length === 0) return;
+
+    const permissionFilters = await $certificateReadFilters(projectId, applicationId, actor);
+    if (!permissionFilters) return;
+
+    const readableIds = new Set(
+      await certificateDAL.findReadableCertificateIds(certificateIds, projectId, permissionFilters)
+    );
+    const hiddenIds = certificateIds.filter((id) => !readableIds.has(id));
+
+    if (hiddenIds.length > 0) {
+      throw new NotFoundError({ message: `Certificates not found: ${hiddenIds.join(", ")}` });
+    }
+  };
+
+  const $findApplicationCertificates = async (
     certificateIds: string[],
     expectedProjectId: string,
     expectedApplicationId: string | null | undefined
   ) => {
-    if (certificateIds.length === 0) return;
+    const certificates = await certificateDAL.find({ projectId: expectedProjectId, $in: { id: certificateIds } });
 
-    const certificates = await certificateDAL.findActiveCertificatesByIds(certificateIds);
-
-    if (certificates.length !== certificateIds.length) {
-      const foundIds = certificates.map((cert) => cert.id);
-      const missingIds = certificateIds.filter((id) => !foundIds.includes(id));
-      throw new NotFoundError({
-        message: `Certificates not found or not active: ${missingIds.join(", ")}`
-      });
-    }
-
-    const invalidProjectCertificates = certificates.filter((cert) => cert.projectId !== expectedProjectId);
-    if (invalidProjectCertificates.length > 0) {
-      throw new BadRequestError({
-        message: `Certificates do not belong to the same project: ${invalidProjectCertificates.map((cert) => cert.id).join(", ")}`
-      });
+    const foundIds = new Set(certificates.map((cert) => cert.id));
+    const missingIds = certificateIds.filter((id) => !foundIds.has(id));
+    if (missingIds.length > 0) {
+      throw new NotFoundError({ message: `Certificates not found: ${missingIds.join(", ")}` });
     }
 
     if (expectedApplicationId) {
-      const invalidApplicationCertificates = certificates.filter(
-        (cert) => cert.applicationId !== expectedApplicationId
+      const outsideApplication = certificates.filter((cert) => cert.applicationId !== expectedApplicationId);
+      if (outsideApplication.length > 0) {
+        throw new NotFoundError({
+          message: `Certificates not found in this Application: ${outsideApplication.map((cert) => cert.id).join(", ")}`
+        });
+      }
+    }
+
+    return certificates;
+  };
+
+  const $resolveCertificateOrderIds = async (
+    certificateIds: string[],
+    expectedProjectId: string,
+    expectedApplicationId: string | null | undefined,
+    { requireSyncable, actor }: { requireSyncable: boolean; actor?: OrgServiceActor }
+  ): Promise<string[]> => {
+    if (certificateIds.length === 0) return [];
+
+    const certificates = await $findApplicationCertificates(certificateIds, expectedProjectId, expectedApplicationId);
+
+    if (actor) {
+      await $assertActorCanReadCertificates(certificateIds, expectedProjectId, expectedApplicationId, actor);
+    }
+
+    const orderIds = [...new Set(certificates.map((cert) => cert.orderId))];
+
+    if (requireSyncable && expectedApplicationId) {
+      const syncable = await certificateDAL.findCertificatesMatchingSyncFilters(
+        { certificateOrderIds: orderIds },
+        { projectId: expectedProjectId, applicationId: expectedApplicationId }
       );
-      if (invalidApplicationCertificates.length > 0) {
+      const liveOrderIds = new Set(syncable.map((cert) => cert.orderId));
+      const dead = certificates.filter((cert) => !liveOrderIds.has(cert.orderId));
+
+      if (dead.length > 0) {
         throw new BadRequestError({
-          message: `Certificates do not belong to this Application: ${invalidApplicationCertificates
-            .map((cert) => cert.id)
+          message: `Certificate orders with no active certificate cannot be synced: ${dead
+            .map((cert) => `'${cert.commonName}'`)
             .join(", ")}`
         });
       }
     }
 
-    const invalidRenewedCertificates = certificates.filter((cert) => cert.renewedByCertificateId);
-    if (invalidRenewedCertificates.length > 0) {
-      throw new BadRequestError({
-        message: `Cannot add renewed certificates to PKI sync: ${invalidRenewedCertificates.map((cert) => cert.id).join(", ")}`
-      });
-    }
+    return orderIds;
   };
 
-  // Enforced only on user-initiated changes. The renewal path writes membership rows
-  // directly via the DAL and relies on a transient old+new overlap, so it must not be capped here.
-  const assertWithinCertificateLimit = (destination: PkiSync, prospectiveCount: number) => {
-    const maxCertificates = getPkiSyncMaxCertificates(destination);
-    if (maxCertificates !== undefined && prospectiveCount > maxCertificates) {
-      throw new BadRequestError({
-        message: `${PKI_SYNC_NAME_MAP[destination]} PKI sync supports at most ${maxCertificates} certificate${
-          maxCertificates === 1 ? "" : "s"
-        }`
-      });
-    }
-  };
-
-  const assertSyncOptionsAllowCertificateCount = (
-    syncOptions: Record<string, unknown> | undefined,
-    resultingCertificateCount: number
+  const validateCertificatesForSync = async (
+    certificateIds: string[],
+    expectedProjectId: string,
+    expectedApplicationId: string | null | undefined,
+    actor?: OrgServiceActor
   ) => {
-    if (resultingCertificateCount <= 1) return;
+    if (certificateIds.length === 0) return [];
 
-    const schema = syncOptions?.certificateNameSchema as string | undefined;
-    if (!certificateNameSchemaAllowsMultipleCertificates(schema)) {
+    const certificates = await $findApplicationCertificates(certificateIds, expectedProjectId, expectedApplicationId);
+
+    if (actor) {
+      await $assertActorCanReadCertificates(certificateIds, expectedProjectId, expectedApplicationId, actor);
+    }
+
+    const now = new Date();
+    const ineligibleReasons = certificates
+      .filter(
+        (cert) => cert.status !== CertStatus.ACTIVE || cert.notAfter <= now || Boolean(cert.renewedByCertificateId)
+      )
+      .map((cert) => {
+        if (cert.status === CertStatus.REVOKED) return `'${cert.commonName}' is revoked`;
+        if (cert.renewedByCertificateId)
+          return `'${cert.commonName}' has been renewed, so link the certificate that replaced it instead`;
+        if (cert.notAfter <= now) return `'${cert.commonName}' has expired`;
+        return `'${cert.commonName}' is not active`;
+      });
+    if (ineligibleReasons.length > 0) {
       throw new BadRequestError({
-        message:
-          "This sync's certificate name schema has no placeholder, so it can be linked to only one certificate. Add a placeholder such as {{commonName}} or {{certificateId}} to sync multiple certificates."
+        message: `Only active certificates can be linked to a PKI sync: ${ineligibleReasons.join("; ")}`
       });
     }
 
-    [
-      { kind: HostCommandKind.HealthCheck, command: getHealthCheckCommand(syncOptions) },
-      { kind: HostCommandKind.PostSync, command: getPostSyncCommand(syncOptions) }
-    ].forEach(({ kind, command }) => {
-      const singleCertificateVariables = findSingleCertificateHostCommandVariables(command);
+    return certificates;
+  };
 
-      if (singleCertificateVariables.length > 0) {
-        throw new BadRequestError({
-          message: `This sync's ${kind} uses ${formatHostCommandVariables(
-            singleCertificateVariables
-          )}. A variable that names one certificate can only be used on a sync with a single certificate linked. Use {{certificateFiles}} or {{certificateDirectory}} to write a command that covers every certificate in the run.`
-        });
-      }
-    });
+  const $assertFilterProfilesInApplication = async (
+    filters: TPkiSyncFilters | null | undefined,
+    applicationId: string | null | undefined
+  ) => {
+    const profileIds = filters?.profileIds;
+    if (!profileIds?.length || !applicationId) return;
+
+    const applicationProfiles = await pkiApplicationProfileDAL.findByApplicationId(applicationId);
+    const profileIdsInApplication = new Set(applicationProfiles.map(({ profileId }) => profileId));
+    const profileIdsOutsideApplication = profileIds.filter((id) => !profileIdsInApplication.has(id));
+    if (profileIdsOutsideApplication.length > 0) {
+      throw new NotFoundError({
+        message: `Certificate profiles not found in this Application: ${profileIdsOutsideApplication.join(", ")}`
+      });
+    }
+  };
+
+  const $withFilterLock = <T>(syncId: string, run: () => Promise<T>): Promise<T> =>
+    withPkiSyncFilterLock(keyStore, syncId, run);
+
+  const $reconcileFilters = async (
+    pkiSync: TPkiSyncReconcileTarget,
+    filters: TPkiSyncFilters | null | undefined,
+    opts: { auditLogInfo?: AuditLogInfo; writeFilters?: (tx: Knex) => Promise<void> } = {}
+  ): Promise<{ linked: TPkiSyncCertificateRef[]; unlinked: TPkiSyncCertificateRef[] }> => {
+    const diff = await computePkiSyncCertificateDiff(pkiSync, filters, { certificateDAL, certificateSyncDAL });
+    assertPkiSyncCanHoldMatchedCertificates(pkiSync, diff.matched.length);
+    return applyPkiSyncCertificateDiff(
+      pkiSync,
+      diff,
+      { certificateDAL, certificateSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL },
+      opts.auditLogInfo,
+      opts.writeFilters
+    );
   };
 
   const createPkiSync = async (
@@ -386,9 +630,11 @@ export const pkiSyncServiceFactory = ({
       connectionId,
       projectId,
       applicationId,
-      certificateIds = [],
-      credentials
-    }: Omit<TCreatePkiSyncDTO, "auditLogInfo">,
+      certificateIds,
+      filters,
+      credentials,
+      auditLogInfo
+    }: TCreatePkiSyncDTO,
     actor: OrgServiceActor
   ): Promise<TPkiSync> => {
     if (!applicationId) {
@@ -398,7 +644,7 @@ export const pkiSyncServiceFactory = ({
       });
     }
 
-    await enterprisePkiSyncCheck(licenseService, actor.orgId, destination);
+    await assertPkiSyncLicense(licenseService, actor.orgId);
 
     let subscriber;
     if (subscriberId) {
@@ -418,11 +664,24 @@ export const pkiSyncServiceFactory = ({
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
 
-    // Get the destination app type based on PKI sync destination
-    const destinationApp = getDestinationAppType(destination);
+    const destinationApps = getPkiSyncConnectionApps(destination);
 
     // Validates permission to connect and app is valid for sync destination
-    const connection = await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
+    const connection = await appConnectionService.validateAppConnectionUsageById(
+      destinationApps,
+      { connectionId, projectId },
+      actor
+    );
+
+    assertTargetHostMatchesConnection({ destination, connection, destinationConfig });
+
+    await $assertMaySetTargetHost({
+      nextConfig: destinationConfig,
+      currentConfig: undefined,
+      pkiSync: { projectId, applicationId, name },
+      subscriberName: undefined,
+      actor
+    });
 
     const providerCapabilities = getPkiSyncProviderCapabilities(destination);
     const resolvedSyncOptions = normalizeNewHealthCheckCommand(
@@ -442,12 +701,38 @@ export const pkiSyncServiceFactory = ({
       resolveConnection: async () => connection
     });
 
-    if (certificateIds.length > 0) {
-      assertWithinCertificateLimit(destination, certificateIds.length);
-      await validateCertificatesForSync(certificateIds, projectId, applicationId);
-      assertSyncOptionsAllowCertificateCount(resolvedSyncOptions, certificateIds.length);
-      assertPkiSyncDestinationConfigAllowsCertificateCount(destination, destinationConfig, certificateIds.length);
+    if (filters !== undefined && certificateIds !== undefined) {
+      throw new BadRequestError({
+        message: "Pass certificates as either 'certificateIds' or the 'certificateOrderIds' filter, not both."
+      });
     }
+
+    const resolvedFilters =
+      filters !== undefined
+        ? filters
+        : {
+            certificateOrderIds: await $resolveCertificateOrderIds(certificateIds ?? [], projectId, applicationId, {
+              requireSyncable: true,
+              actor
+            })
+          };
+
+    await $assertFilterProfilesInApplication(resolvedFilters, applicationId);
+    await $assertActorCanReadFilterMatches(projectId, applicationId, resolvedFilters, actor);
+    assertFiltersCannotExceedCertificateCap(destination, resolvedSyncOptions, destinationConfig, resolvedFilters);
+
+    if (hasAnyPkiSyncFilter(resolvedFilters)) {
+      const matched = await certificateDAL.findCertificatesMatchingSyncFilters(resolvedFilters, {
+        projectId,
+        applicationId
+      });
+      assertPkiSyncCanHoldMatchedCertificates(
+        { destination, destinationConfig, syncOptions: resolvedSyncOptions } as TPkiSyncReconcileTarget,
+        matched.length
+      );
+    }
+
+    await $assertTargetHostReachable({ destination, connection, destinationConfig });
 
     const encryptedCredentials = credentials?.exportPassword
       ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId, credentials, kmsService })
@@ -466,17 +751,19 @@ export const pkiSyncServiceFactory = ({
         connectionId,
         projectId,
         applicationId: applicationId ?? null,
+        filters: resolvedFilters ?? null,
         ...(isAutoSyncEnabled && { syncStatus: PkiSyncStatus.Pending })
       });
 
-      if (certificateIds.length > 0) {
-        await certificateSyncDAL.addCertificates(
-          pkiSync.id,
-          certificateIds.map((id) => ({ certificateId: id }))
-        );
-      }
+      const { linked: linkedCertificates } = await $reconcileFilters(
+        pkiSync as TPkiSyncReconcileTarget,
+        resolvedFilters,
+        {
+          auditLogInfo
+        }
+      );
 
-      if (pkiSync.isAutoSyncEnabled) {
+      if (pkiSync.isAutoSyncEnabled && linkedCertificates.length === 0) {
         await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSync.id });
       }
 
@@ -502,8 +789,10 @@ export const pkiSyncServiceFactory = ({
       syncOptions,
       subscriberId,
       connectionId,
-      credentials
-    }: Omit<TUpdatePkiSyncDTO, "auditLogInfo" | "projectId">,
+      filters,
+      credentials,
+      auditLogInfo
+    }: Omit<TUpdatePkiSyncDTO, "projectId">,
     actor: OrgServiceActor
   ): Promise<TPkiSync> => {
     const pkiSync = await pkiSyncDAL.findById(id);
@@ -561,6 +850,7 @@ export const pkiSyncServiceFactory = ({
       }
     }
 
+    // main's per-destination merge hook; a passthrough for every destination except GCP
     const resolvedDestinationConfig = destinationConfig
       ? resolvePkiSyncDestinationConfigUpdate(
           pkiSync.destination as PkiSync,
@@ -569,14 +859,50 @@ export const pkiSyncServiceFactory = ({
         )
       : undefined;
 
-    let effectiveConnection: { gatewayId?: string | null; gatewayPoolId?: string | null } | undefined;
-    if (connectionId && connectionId !== pkiSync.connectionId) {
-      const destinationApp = getDestinationAppType(pkiSync.destination);
-      effectiveConnection = await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
+    // Swapping the connection re-runs the App Connection Connect check, as it always has. Editing the
+    // sync's own fields must not: the delivery target is gated by SetTargetHost below, and the sync row
+    // already carries enough of its current connection to validate against.
+    let resolvedConnection: Awaited<ReturnType<typeof appConnectionService.validateAppConnectionUsageById>> | undefined;
+    const resolveConnection = async () => {
+      resolvedConnection ??= await appConnectionService.validateAppConnectionUsageById(
+        getPkiSyncConnectionApps(pkiSync.destination),
+        { connectionId: connectionId ?? pkiSync.connectionId, projectId: pkiSync.projectId },
+        actor
+      );
+      return resolvedConnection;
+    };
+
+    const isConnectionChanging = Boolean(connectionId && connectionId !== pkiSync.connectionId);
+
+    // Compared structurally, not by JSON text: the stored value comes back from a jsonb column with its
+    // keys reordered, so stringify never matches once the config has more than one key.
+    const isDestinationConfigChanging =
+      Boolean(destinationConfig) && !deepEqual(resolvedDestinationConfig, pkiSync.destinationConfig);
+
+    const effectiveDestinationConfig = (resolvedDestinationConfig ?? pkiSync.destinationConfig) as
+      | (Record<string, unknown> & { host?: string })
+      | undefined;
+
+    if (isConnectionChanging || destinationConfig !== undefined) {
+      assertTargetHostMatchesConnection({
+        destination: pkiSync.destination,
+        connection: isConnectionChanging
+          ? await resolveConnection()
+          : { ...pkiSync.connection, app: pkiSync.connection.app as AppConnection },
+        destinationConfig: effectiveDestinationConfig
+      });
     }
 
-    const isDestinationConfigChanging =
-      Boolean(destinationConfig) && JSON.stringify(destinationConfig) !== JSON.stringify(pkiSync.destinationConfig);
+    await $assertMaySetTargetHost({
+      nextConfig: effectiveDestinationConfig,
+      currentConfig: pkiSync.destinationConfig as Record<string, unknown> | undefined,
+      pkiSync,
+      subscriberName: currentSubscriber?.name,
+      actor,
+      isRetargetedByConnection:
+        isConnectionChanging &&
+        (pkiSync.connection.app === AppConnection.LDAP || (await resolveConnection()).app === AppConnection.LDAP)
+    });
 
     const storedSyncOptions = pkiSync.syncOptions as Record<string, unknown> | undefined;
     let resolvedSyncOptions = syncOptions;
@@ -601,10 +927,20 @@ export const pkiSyncServiceFactory = ({
       );
     }
 
+    if (isConnectionChanging || isDestinationConfigChanging) {
+      await $assertTargetHostReachable({
+        destination: pkiSync.destination,
+        connection: isConnectionChanging
+          ? await resolveConnection()
+          : { id: pkiSync.connectionId, app: pkiSync.connection.app as AppConnection },
+        destinationConfig: effectiveDestinationConfig
+      });
+    }
+
     const effectiveSyncOptions = (resolvedSyncOptions ?? pkiSync.syncOptions) as Record<string, unknown> | undefined;
-    const effectiveDestinationConfig = (resolvedDestinationConfig ?? pkiSync.destinationConfig) as
-      | Record<string, unknown>
-      | undefined;
+
+    await $assertFilterProfilesInApplication(filters, pkiSync.applicationId);
+    await $assertActorCanReadFilterMatches(pkiSync.projectId, pkiSync.applicationId, filters, actor);
 
     await $assertHostCommandWrite({
       destination: pkiSync.destination,
@@ -613,23 +949,23 @@ export const pkiSyncServiceFactory = ({
       pkiSync,
       subscriberName: currentSubscriber?.name,
       actor,
-      isExecutionTargetChanging: Boolean(effectiveConnection) || isDestinationConfigChanging,
-      resolveConnection: async () =>
-        effectiveConnection ??
-        appConnectionService.connectAppConnectionById(
-          getDestinationAppType(pkiSync.destination),
-          pkiSync.connectionId,
-          actor
-        )
+      isExecutionTargetChanging: isConnectionChanging || isDestinationConfigChanging,
+      resolveConnection
     });
 
     if (syncOptions || destinationConfig) {
       const existingCount = (await certificateSyncDAL.findByPkiSyncId(id)).length;
-      assertSyncOptionsAllowCertificateCount(effectiveSyncOptions, existingCount);
-      assertPkiSyncDestinationConfigAllowsCertificateCount(
+      assertPkiSyncCertificateCapsAllowCount(
         pkiSync.destination,
+        effectiveSyncOptions,
         effectiveDestinationConfig,
         existingCount
+      );
+      assertFiltersCannotExceedCertificateCap(
+        pkiSync.destination,
+        effectiveSyncOptions,
+        effectiveDestinationConfig,
+        filters === undefined ? (pkiSync.filters as TPkiSyncFilters | null) : filters
       );
     }
 
@@ -658,15 +994,52 @@ export const pkiSyncServiceFactory = ({
       syncOptions: resolvedSyncOptions,
       subscriberId,
       connectionId,
+      ...(filters === undefined ? {} : { filters }),
       ...(encryptedCredentials ? { encryptedCredentials } : {}),
       ...(isHealthCheckBeingCleared
         ? { lastHealthCheckRanAt: null, lastHealthCheckStatus: null, lastHealthCheckMessage: null }
         : {})
     };
 
-    if (Object.values(update).every((value) => value === undefined)) return pkiSync as TPkiSync;
+    if (Object.values(update).every((value) => value === undefined)) {
+      return pkiSync as TPkiSync;
+    }
 
-    const updatedPkiSync = await pkiSyncDAL.updateById(id, update);
+    const storedFilters = pkiSync.filters as TPkiSyncFilters | null;
+    const areFiltersChanging =
+      filters !== undefined && JSON.stringify(filters ?? null) !== JSON.stringify(storedFilters ?? null);
+
+    if (areFiltersChanging) $assertSyncAcceptsFilters(pkiSync);
+
+    if (!areFiltersChanging) {
+      const written = await pkiSyncDAL.updateById(id, update);
+      return written as TPkiSync;
+    }
+
+    const { updatedPkiSync } = await $withFilterLock(id, async () => {
+      const current = await pkiSyncDAL.findById(id, pkiSyncDAL.primaryNode());
+      if (!current) throw new NotFoundError({ message: `Could not find PKI sync with ID ${id}` });
+
+      const changedFields = Object.fromEntries(Object.entries(update).filter(([, value]) => value !== undefined));
+      const target = { ...current, ...changedFields, syncOptions: effectiveSyncOptions } as TPkiSyncReconcileTarget;
+      assertFiltersCannotExceedCertificateCap(
+        current.destination as PkiSync,
+        effectiveSyncOptions,
+        effectiveDestinationConfig,
+        filters
+      );
+
+      await $reconcileFilters(target, filters, {
+        auditLogInfo,
+        writeFilters: async (tx) => {
+          await pkiSyncDAL.updateById(id, update, tx);
+        }
+      });
+
+      const written = await pkiSyncDAL.findById(id, pkiSyncDAL.primaryNode());
+
+      return { updatedPkiSync: written ?? current };
+    });
 
     return updatedPkiSync as TPkiSync;
   };
@@ -718,7 +1091,8 @@ export const pkiSyncServiceFactory = ({
       );
     }
 
-    return pkiSyncDAL.deleteById(id);
+    const deleted = await pkiSyncDAL.deleteById(id);
+    return { ...deleted, applicationName: pkiSync.applicationName };
   };
 
   const listPkiSyncsByProjectId = async (
@@ -883,7 +1257,12 @@ export const pkiSyncServiceFactory = ({
         throw new NotFoundError({ message: `PKI sync with id "${args.syncId}" not found` });
       }
 
-      return { projectId: pkiSync.projectId, applicationId: pkiSync.applicationId, name: pkiSync.name };
+      return {
+        projectId: pkiSync.projectId,
+        applicationId: pkiSync.applicationId,
+        name: pkiSync.name,
+        destinationConfig: pkiSync.destinationConfig as Record<string, unknown> | undefined
+      };
     }
 
     if (!args.applicationId) {
@@ -893,7 +1272,7 @@ export const pkiSyncServiceFactory = ({
       });
     }
 
-    return { projectId: args.projectId, applicationId: args.applicationId, name: "" };
+    return { projectId: args.projectId, applicationId: args.applicationId, name: "", destinationConfig: undefined };
   };
 
   const testPkiSyncHealthCheckCommand = async (
@@ -903,6 +1282,7 @@ export const pkiSyncServiceFactory = ({
       applicationId?: string;
       syncId?: string;
       certificateIds?: string[];
+      filters?: TPkiSyncFilters | null;
       destinationConfig: Record<string, unknown>;
       syncOptions: Record<string, unknown>;
       projectId: string;
@@ -910,10 +1290,12 @@ export const pkiSyncServiceFactory = ({
     actor: OrgServiceActor,
     auditLogInfo?: AuditLogInfo
   ) => {
+    const testTarget = await $resolveHealthCheckTestTarget(args);
+
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
       ResourcePermissionPkiSyncActions.SetHealthCheckCommand,
-      await $resolveHealthCheckTestTarget(args),
+      testTarget,
       undefined,
       actor
     );
@@ -924,14 +1306,31 @@ export const pkiSyncServiceFactory = ({
     }
 
     if (args.certificateIds?.length) {
-      await validateCertificatesForSync(args.certificateIds, args.projectId, args.applicationId);
+      await validateCertificatesForSync(args.certificateIds, args.projectId, args.applicationId, actor);
     }
 
-    const connection = await appConnectionService.connectAppConnectionById(
-      getDestinationAppType(args.destination),
-      args.connectionId,
+    await $assertFilterProfilesInApplication(args.filters, args.applicationId);
+    await $assertActorCanReadFilterMatches(args.projectId, args.applicationId, args.filters, actor);
+
+    const connection = await appConnectionService.validateAppConnectionUsageById(
+      getPkiSyncConnectionApps(args.destination),
+      { connectionId: args.connectionId, projectId: args.projectId },
       actor
     );
+
+    assertTargetHostMatchesConnection({
+      destination: args.destination,
+      connection,
+      destinationConfig: args.destinationConfig
+    });
+
+    await $assertMaySetTargetHost({
+      nextConfig: args.destinationConfig,
+      currentConfig: testTarget.destinationConfig,
+      pkiSync: testTarget,
+      subscriberName: undefined,
+      actor
+    });
 
     $assertHostCommandsAreSupported(args.destination, args.syncOptions, connection);
 
@@ -939,7 +1338,9 @@ export const pkiSyncServiceFactory = ({
       destination: args.destination,
       connectionId: args.connectionId,
       syncId: args.syncId,
+      applicationId: args.applicationId,
       certificateIds: args.certificateIds,
+      filters: args.filters,
       projectId: args.projectId,
       destinationConfig: args.destinationConfig,
       syncOptions: args.syncOptions
@@ -1054,17 +1455,247 @@ export const pkiSyncServiceFactory = ({
     return { message: "PKI sync remove job added to queue successfully" };
   };
 
+  const searchPkiSyncCertificateOrders = async (
+    { applicationId, pkiSyncId, certificateOrderIds }: TSearchPkiSyncCertificateOrdersDTO,
+    actor: OrgServiceActor
+  ): Promise<{ orders: TPkiSyncCertificateOrder[] }> => {
+    let scope: { projectId: string; applicationId: string };
+
+    if (pkiSyncId) {
+      const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
+      if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
+      if (!pkiSync.applicationId) return { orders: [] };
+
+      const allowedByResource = await $resourceFallback(
+        ResourcePermissionPkiSyncActions.Read,
+        pkiSync.projectId,
+        pkiSync.applicationId,
+        actor
+      );
+      if (!allowedByResource) {
+        throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+      }
+
+      scope = { projectId: pkiSync.projectId, applicationId: pkiSync.applicationId };
+    } else {
+      if (!applicationId) {
+        throw new BadRequestError({ message: "Provide either pkiSyncId or applicationId." });
+      }
+
+      const application = await pkiApplicationDAL.findById(applicationId);
+      if (!application) throw new NotFoundError({ message: "Application not found" });
+
+      const allowedByResource = await $resourceFallback(
+        ResourcePermissionPkiSyncActions.Read,
+        application.projectId,
+        applicationId,
+        actor
+      );
+      if (!allowedByResource) {
+        throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+      }
+
+      scope = { projectId: application.projectId, applicationId };
+    }
+
+    const permissionFilters = await $certificateReadFilters(scope.projectId, scope.applicationId, actor);
+    const certificates = await certificateDAL.findLatestCertificatesByOrderIds(
+      certificateOrderIds,
+      scope,
+      permissionFilters
+    );
+
+    return {
+      orders: certificates.map(({ orderId, commonName, altNames }) => ({
+        certificateOrderId: orderId,
+        commonName,
+        altNames
+      }))
+    };
+  };
+
+  const previewPkiSyncFilters = async (
+    {
+      applicationId,
+      pkiSyncId,
+      filters,
+      offset = 0,
+      limit = PKI_SYNC_PREVIEW_PAGE_SIZE
+    }: Omit<TPreviewPkiSyncFiltersDTO, "projectId">,
+    actor: OrgServiceActor
+  ): Promise<TPkiSyncFilterPreview> => {
+    if (pkiSyncId) {
+      const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
+      if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
+
+      let pkiSyncSubscriber;
+      if (pkiSync.subscriberId) {
+        pkiSyncSubscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);
+      }
+
+      await $assertSyncAction(
+        ProjectPermissionPkiSyncActions.Edit,
+        ResourcePermissionPkiSyncActions.Edit,
+        pkiSync,
+        pkiSyncSubscriber?.name,
+        actor
+      );
+
+      await $assertFilterProfilesInApplication(filters, pkiSync.applicationId);
+
+      const diff = await computePkiSyncCertificateDiff(pkiSync as TPkiSyncReconcileTarget, filters, {
+        certificateDAL,
+        certificateSyncDAL
+      });
+
+      const canRemoveCertificates = Boolean(
+        (pkiSync.syncOptions as { canRemoveCertificates?: boolean } | null)?.canRemoveCertificates
+      );
+
+      const permissionFilters = pkiSync.applicationId
+        ? await $certificateReadFilters(pkiSync.projectId, pkiSync.applicationId, actor)
+        : undefined;
+
+      if (!permissionFilters) {
+        return {
+          matchedCount: diff.matched.length,
+          certificates: diff.matched.slice(offset, offset + limit),
+          toUnlink: diff.toUnlink,
+          willRemoveFromDestination: canRemoveCertificates && diff.toUnlink.length > 0
+        };
+      }
+
+      const scope = { projectId: pkiSync.projectId, applicationId: pkiSync.applicationId as string };
+
+      const [matchedCount, certificates, readableUnlinkIds] = await Promise.all([
+        certificateDAL.countCertificatesMatchingSyncFilters(filters, scope, permissionFilters),
+        certificateDAL.findCertificatesMatchingSyncFilters(filters, scope, { permissionFilters, offset, limit }),
+        certificateDAL.findReadableCertificateIds(
+          diff.toUnlink.map((certificate) => certificate.id),
+          pkiSync.projectId,
+          permissionFilters
+        )
+      ]);
+
+      const readableUnlinkIdSet = new Set(readableUnlinkIds);
+
+      return {
+        matchedCount,
+        certificates,
+        toUnlink: diff.toUnlink.filter((certificate) => readableUnlinkIdSet.has(certificate.id)),
+        willRemoveFromDestination: canRemoveCertificates && diff.toUnlink.length > 0
+      };
+    }
+
+    if (!applicationId) {
+      throw new BadRequestError({ message: "Provide either pkiSyncId or applicationId." });
+    }
+
+    const application = await pkiApplicationDAL.findById(applicationId);
+    if (!application) throw new NotFoundError({ message: "Application not found" });
+
+    const allowedByResource = await $resourceFallback(
+      ResourcePermissionPkiSyncActions.Create,
+      application.projectId,
+      applicationId,
+      actor
+    );
+    if (!allowedByResource) {
+      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+    }
+
+    await $assertFilterProfilesInApplication(filters, applicationId);
+
+    if (!hasAnyPkiSyncFilter(filters)) {
+      return { matchedCount: 0, certificates: [], toUnlink: [], willRemoveFromDestination: false };
+    }
+
+    const scope = { projectId: application.projectId, applicationId };
+    const permissionFilters = await $certificateReadFilters(application.projectId, applicationId, actor);
+
+    const [matchedCount, certificates] = await Promise.all([
+      certificateDAL.countCertificatesMatchingSyncFilters(filters, scope, permissionFilters),
+      certificateDAL.findCertificatesMatchingSyncFilters(filters, scope, { permissionFilters, offset, limit })
+    ]);
+
+    return {
+      matchedCount,
+      certificates,
+      toUnlink: [],
+      willRemoveFromDestination: false
+    };
+  };
+
+  const $assertCertificateOrderListIsTheOnlySyncFilter = (pkiSync: TPkiSyncRaw) => {
+    $assertSyncAcceptsFilters(pkiSync);
+
+    const filters = pkiSync.filters as TPkiSyncFilters | null;
+    const otherFilterKinds = PKI_SYNC_FILTER_KINDS.filter(
+      (kind) => kind !== "certificateOrderIds" && filters?.[kind] !== undefined
+    );
+
+    if (!filters || otherFilterKinds.length > 0) {
+      throw new BadRequestError({
+        message: !filters
+          ? "This PKI sync has no filters, so certificates cannot be attached one at a time. Set its filters instead."
+          : "This PKI sync selects certificates by another filter, so they cannot be attached one at a time. Edit its filters instead."
+      });
+    }
+
+    return filters;
+  };
+
+  const $writeCertificateOrderIdsFilter = async (
+    pkiSync: TPkiSyncRaw,
+    nextOrderIds: (currentOrderIds: string[]) => string[],
+    auditLogInfo?: AuditLogInfo
+  ) => {
+    return $withFilterLock(pkiSync.id, async () => {
+      const current = await pkiSyncDAL.findById(pkiSync.id, pkiSyncDAL.primaryNode());
+      if (!current) throw new NotFoundError({ message: `Could not find PKI sync with ID ${pkiSync.id}` });
+
+      const stored = $assertCertificateOrderListIsTheOnlySyncFilter(current);
+      const storedOrderIds = stored.certificateOrderIds ?? [];
+      const requestedOrderIds = nextOrderIds(storedOrderIds);
+
+      if (deepEqual(storedOrderIds, requestedOrderIds)) return { linked: [], unlinked: [] };
+
+      const nextFilters = { ...stored, certificateOrderIds: requestedOrderIds };
+
+      const applied = await $reconcileFilters(current as TPkiSyncReconcileTarget, nextFilters, {
+        auditLogInfo,
+        writeFilters: async (tx) => {
+          await pkiSyncDAL.updateById(pkiSync.id, { filters: nextFilters }, tx);
+        }
+      });
+
+      await auditLogService.createAuditLog({
+        ...(auditLogInfo ?? { actor: { type: ActorType.PLATFORM, metadata: {} } }),
+        projectId: current.projectId,
+        event: {
+          type: EventType.UPDATE_PKI_SYNC,
+          metadata: {
+            pkiSyncId: current.id,
+            name: current.name,
+            destination: current.destination,
+            hasFilters: hasAnyPkiSyncFilter(nextFilters),
+            ...(current.applicationId && { applicationId: current.applicationId })
+          }
+        }
+      });
+
+      return applied;
+    });
+  };
+
   const getPkiSyncOptions = () => {
     return listPkiSyncOptions();
   };
 
   const addCertificatesToPkiSync = async (
-    { pkiSyncId, certificateIds }: Omit<TAddCertificatesToPkiSyncDTO, "auditLogInfo" | "projectId">,
+    { pkiSyncId, certificateIds, auditLogInfo }: Omit<TAddCertificatesToPkiSyncDTO, "projectId">,
     actor: OrgServiceActor
-  ): Promise<{
-    addedCertificates: TCertificateSyncs[];
-    pkiSyncInfo: { projectId: string; destination: string; name: string; applicationId?: string | null };
-  }> => {
+  ): Promise<{ addedCertificates: TCertificateSyncs[] }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
 
@@ -1081,54 +1712,34 @@ export const pkiSyncServiceFactory = ({
       actor
     );
 
-    const existingCertificateIds = await certificateSyncDAL.findCertificateIdsByPkiSyncId(pkiSyncId);
-    const prospectiveCount = new Set([...existingCertificateIds, ...certificateIds]).size;
-    assertWithinCertificateLimit(pkiSync.destination, prospectiveCount);
-
-    await validateCertificatesForSync(certificateIds, pkiSync.projectId, pkiSync.applicationId);
-
-    assertSyncOptionsAllowCertificateCount(
-      pkiSync.syncOptions as Record<string, unknown> | undefined,
-      prospectiveCount
-    );
-    assertPkiSyncDestinationConfigAllowsCertificateCount(
-      pkiSync.destination,
-      pkiSync.destinationConfig,
-      prospectiveCount
+    $assertCertificateOrderListIsTheOnlySyncFilter(pkiSync);
+    const requestedOrderIds = await $resolveCertificateOrderIds(
+      certificateIds,
+      pkiSync.projectId,
+      pkiSync.applicationId,
+      { requireSyncable: true, actor }
     );
 
-    const alreadyLinked = new Set(existingCertificateIds);
-    const certificateIdsToAdd = certificateIds.filter((id) => !alreadyLinked.has(id));
+    const { linked } = await $writeCertificateOrderIdsFilter(
+      pkiSync,
+      (currentOrderIds) => [...currentOrderIds, ...requestedOrderIds.filter((id) => !currentOrderIds.includes(id))],
+      auditLogInfo
+    );
 
-    const addedCertificates = certificateIdsToAdd.length
-      ? await certificateSyncDAL.addCertificates(
-          pkiSyncId,
-          certificateIdsToAdd.map((id) => ({ certificateId: id }))
+    const linkedIds = new Set(linked.map(({ id }) => id));
+    const addedCertificates = linked.length
+      ? (await certificateSyncDAL.findByPkiSyncId(pkiSyncId)).filter(
+          (record) => record.certificateId && linkedIds.has(record.certificateId)
         )
       : [];
 
-    if (pkiSync.isAutoSyncEnabled) {
-      await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
-    }
-
-    return {
-      addedCertificates,
-      pkiSyncInfo: {
-        projectId: pkiSync.projectId,
-        destination: pkiSync.destination,
-        name: pkiSync.name,
-        applicationId: pkiSync.applicationId
-      }
-    };
+    return { addedCertificates };
   };
 
   const removeCertificatesFromPkiSync = async (
-    { pkiSyncId, certificateIds }: Omit<TRemoveCertificatesFromPkiSyncDTO, "auditLogInfo" | "projectId">,
+    { pkiSyncId, certificateIds, auditLogInfo }: Omit<TRemoveCertificatesFromPkiSyncDTO, "projectId">,
     actor: OrgServiceActor
-  ): Promise<{
-    removedCount: number;
-    pkiSyncInfo: { projectId: string; destination: string; name: string; applicationId?: string | null };
-  }> => {
+  ): Promise<{ removedCount: number }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
 
@@ -1145,27 +1756,20 @@ export const pkiSyncServiceFactory = ({
       actor
     );
 
-    const syncOptions = pkiSync.syncOptions as { canRemoveCertificates?: boolean } | undefined;
-    let removedCount: number;
-    if (syncOptions?.canRemoveCertificates) {
-      await pkiSyncQueue.queuePkiSyncRemoveCertificatesById({ syncId: pkiSyncId, certificateIds });
-      removedCount = certificateIds.length;
-    } else {
-      removedCount = await certificateSyncDAL.removeCertificates(pkiSyncId, certificateIds);
-      if (pkiSync.isAutoSyncEnabled) {
-        await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
-      }
-    }
+    $assertCertificateOrderListIsTheOnlySyncFilter(pkiSync);
+    const removalSet = new Set(
+      await $resolveCertificateOrderIds(certificateIds, pkiSync.projectId, pkiSync.applicationId, {
+        requireSyncable: false
+      })
+    );
 
-    return {
-      removedCount,
-      pkiSyncInfo: {
-        projectId: pkiSync.projectId,
-        destination: pkiSync.destination,
-        name: pkiSync.name,
-        applicationId: pkiSync.applicationId
-      }
-    };
+    const { unlinked } = await $writeCertificateOrderIdsFilter(
+      pkiSync,
+      (currentOrderIds) => currentOrderIds.filter((id) => !removalSet.has(id)),
+      auditLogInfo
+    );
+
+    return { removedCount: unlinked.length };
   };
 
   const listPkiSyncCertificates = async (
@@ -1174,7 +1778,13 @@ export const pkiSyncServiceFactory = ({
   ): Promise<{
     certificates: TPkiSyncCertificate[];
     totalCount: number;
-    pkiSyncInfo: { projectId: string; destination: string; name: string; applicationId?: string | null };
+    pkiSyncInfo: {
+      projectId: string;
+      destination: string;
+      name: string;
+      applicationId?: string | null;
+      applicationName?: string | null;
+    };
   }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
@@ -1210,6 +1820,7 @@ export const pkiSyncServiceFactory = ({
       updatedAt: detail.updatedAt,
       certificateSerialNumber: detail.certificateSerialNumber || undefined,
       certificateCommonName: detail.certificateCommonName || undefined,
+      certificateOrderId: detail.certificateOrderId || undefined,
       certificateAltNames: detail.certificateAltNames || undefined,
       certificateStatus: detail.certificateStatus || undefined,
       certificateNotBefore: detail.certificateNotBefore || undefined,
@@ -1231,7 +1842,8 @@ export const pkiSyncServiceFactory = ({
         projectId: pkiSync.projectId,
         destination: pkiSync.destination,
         name: pkiSync.name,
-        applicationId: pkiSync.applicationId
+        applicationId: pkiSync.applicationId,
+        applicationName: pkiSync.applicationName
       }
     };
   };
@@ -1239,7 +1851,10 @@ export const pkiSyncServiceFactory = ({
   const setCertificateAsDefault = async (
     { pkiSyncId, certificateId }: Omit<TSetCertificateAsDefaultDTO, "auditLogInfo">,
     actor: OrgServiceActor
-  ): Promise<{ message: string; pkiSyncInfo: { projectId: string; name: string; applicationId?: string | null } }> => {
+  ): Promise<{
+    message: string;
+    pkiSyncInfo: { projectId: string; name: string; applicationId?: string | null; applicationName?: string | null };
+  }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
 
@@ -1277,14 +1892,22 @@ export const pkiSyncServiceFactory = ({
 
     return {
       message: "Certificate set as default",
-      pkiSyncInfo: { projectId: pkiSync.projectId, name: pkiSync.name, applicationId: pkiSync.applicationId }
+      pkiSyncInfo: {
+        projectId: pkiSync.projectId,
+        name: pkiSync.name,
+        applicationId: pkiSync.applicationId,
+        applicationName: pkiSync.applicationName
+      }
     };
   };
 
   const clearDefaultCertificate = async (
     { pkiSyncId }: Omit<TClearDefaultCertificateDTO, "auditLogInfo">,
     actor: OrgServiceActor
-  ): Promise<{ message: string; pkiSyncInfo: { projectId: string; name: string; applicationId?: string | null } }> => {
+  ): Promise<{
+    message: string;
+    pkiSyncInfo: { projectId: string; name: string; applicationId?: string | null; applicationName?: string | null };
+  }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
 
@@ -1309,7 +1932,12 @@ export const pkiSyncServiceFactory = ({
 
     return {
       message: "Default certificate cleared",
-      pkiSyncInfo: { projectId: pkiSync.projectId, name: pkiSync.name, applicationId: pkiSync.applicationId }
+      pkiSyncInfo: {
+        projectId: pkiSync.projectId,
+        name: pkiSync.name,
+        applicationId: pkiSync.applicationId,
+        applicationName: pkiSync.applicationName
+      }
     };
   };
 
@@ -1325,6 +1953,8 @@ export const pkiSyncServiceFactory = ({
     triggerPkiSyncImportCertificatesById,
     triggerPkiSyncRemoveCertificatesById,
     getPkiSyncOptions,
+    previewPkiSyncFilters,
+    searchPkiSyncCertificateOrders,
     addCertificatesToPkiSync,
     removeCertificatesFromPkiSync,
     listPkiSyncCertificates,

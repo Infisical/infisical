@@ -1,14 +1,13 @@
 import RE2 from "re2";
 
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { throwIfAnySettledClientClosed, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
@@ -142,7 +141,8 @@ export const fnSecretsFromImports = async ({
   secretDAL,
   secretImportDAL,
   depth = 0,
-  cyclicDetector = new Set()
+  cyclicDetector = new Set(),
+  abortSignal
 }: {
   allowedImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string };
@@ -152,9 +152,11 @@ export const fnSecretsFromImports = async ({
   secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds">;
   depth?: number;
   cyclicDetector?: Set<string>;
+  abortSignal?: AbortSignal;
 }) => {
   // avoid going more than a depth
   if (depth >= LEVEL_BREAK) return [];
+  throwIfClientDisconnected(abortSignal);
 
   const allowedImports = possibleCyclicImports.filter(
     ({ importPath, importEnv }) => !cyclicDetector.has(getImportUniqKey(importEnv.slug, importPath))
@@ -209,7 +211,8 @@ export const fnSecretsFromImports = async ({
       folderDAL,
       secretDAL,
       depth: depth + 1,
-      cyclicDetector
+      cyclicDetector,
+      abortSignal
     });
   }
   const secretsFromdeeperImportGroupedByFolderId = groupBy(secretsFromDeeperImports, (i) => i.importFolderId);
@@ -259,7 +262,7 @@ export const fnSecretsV2FromImports = async ({
   kmsService,
   actorOrgId,
   orgDAL,
-  licenseService
+  abortSignal
 }: {
   secretImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string; projectId?: string };
@@ -285,7 +288,7 @@ export const fnSecretsV2FromImports = async ({
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   actorOrgId: string;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  abortSignal?: AbortSignal;
 }) => {
   const cyclicDetector = new Set();
   // Cache decryptors per source project to avoid redundant KMS calls across loop iterations
@@ -315,6 +318,7 @@ export const fnSecretsV2FromImports = async ({
   type TImportedSecret = Omit<Awaited<ReturnType<typeof secretDAL.find>>[number], "projectId">;
 
   while (stack.length) {
+    throwIfClientDisconnected(abortSignal);
     const { secretImports, depth, parentImportedSecrets, inheritedSecretPath } = stack.pop()!;
 
     if (depth > LEVEL_BREAK) continue;
@@ -401,8 +405,8 @@ export const fnSecretsV2FromImports = async ({
     // Reserved (replication) imports are excluded: their secrets are already
     // stored locally and encrypted with the target project's key.
     const grantedFolderIds = new Set<string>();
-    const plan = await licenseService.getPlan(actorOrgId);
-    const crossProjectAllowed = await isCrossProjectEnabled(actorOrgId, orgDAL, plan);
+    const org = await orgDAL.findOrgById(actorOrgId);
+    const crossProjectAllowed = org?.allowCrossProjectSecretSharing ?? false;
     if (projectId && projectFolderGrantDAL && crossProjectAllowed) {
       const crossProjectItems: { sourceFolderId: string; sourceProjectId: string }[] = [];
       for (const { importPath, importEnv, isReserved } of processedBatchImports) {
@@ -519,7 +523,8 @@ export const fnSecretsV2FromImports = async ({
   }
   /* eslint-enable */
   if (expandSecretReferences) {
-    await Promise.allSettled(
+    throwIfClientDisconnected(abortSignal);
+    const settledImports = await Promise.allSettled(
       processedImports.map((processedImport) => {
         // eslint-disable-next-line
         processedImport.secrets = unique(processedImport.secrets, (i) => i.key);
@@ -539,6 +544,9 @@ export const fnSecretsV2FromImports = async ({
           })
         );
       })
+    );
+    throwIfAnySettledClientClosed(
+      settledImports.flatMap((outerResult) => (outerResult.status === "fulfilled" ? outerResult.value : [outerResult]))
     );
   }
 

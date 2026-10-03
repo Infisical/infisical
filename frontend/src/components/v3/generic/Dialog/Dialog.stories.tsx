@@ -75,6 +75,37 @@ export const Default: Story = {
   )
 };
 
+export const FixedHeight: Story = {
+  name: "Variant: Fixed Height",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Use height="fixed" for changing content such as announcement slides. The dialog reserves 40rem, capped to the available viewport height. Keep scrolling content in DialogBody and actions in DialogFooter; the default padding, spacing, and footer styling are preserved.'
+      }
+    }
+  },
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">Open Fixed Height Dialog</Button>
+      </DialogTrigger>
+      <DialogContent height="fixed">
+        <DialogHeader>
+          <DialogTitle>What&apos;s New</DialogTitle>
+          <DialogDescription>Review the latest updates.</DialogDescription>
+        </DialogHeader>
+        <DialogBody>Short content keeps the same dialog height as longer content.</DialogBody>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Close</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+};
+
 export const WithForm: Story = {
   name: "Example: With Form",
   parameters: {

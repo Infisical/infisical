@@ -1,8 +1,9 @@
-import { createFileRoute, redirect, stripSearchParams } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, redirect, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { addSeconds, formatISO } from "date-fns";
 import { z } from "zod";
 
+import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { createNotification } from "@app/components/notifications";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { SessionStorageKeys } from "@app/const";
@@ -17,7 +18,7 @@ import {
   TOrgWithSubOrgs
 } from "@app/hooks/api/organization/queries";
 import { onRequestError, setAuthToken } from "@app/hooks/api/reactQuery";
-import { fetchUserDetails, logoutUser } from "@app/hooks/api/users/queries";
+import { clearSession, fetchUserDetails, logoutUser } from "@app/hooks/api/users/queries";
 import { userKeys } from "@app/hooks/api/users/query-keys";
 
 import { getSsoEnforcementError } from "./SelectOrg.utils";
@@ -29,6 +30,7 @@ export const SelectOrganizationPageQueryParams = z.object({
   is_admin_login: z.boolean().optional().catch(false),
   force: z.boolean().optional(),
   mfa_method: z.string().optional().catch(undefined),
+  redirect_to: z.string().startsWith("/organizations/").optional().catch(undefined),
   // set by the provider-verified OAuth signup redirect so this page can fire the GTM conversion
   // event that the bypassed signup page would have pushed
   signup_completed: z.boolean().optional().catch(false)
@@ -57,9 +59,8 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         window.dataLayer.push({ event: "signup_completed" });
       }
 
-      // posthog-js never initializes on the signup path, so the anonymous marketing-site visitor
-      // is never merged into the new account. Identify on user.username, the distinct id the
-      // backend captures signup events with.
+      // Identify on user.username, the distinct id the backend captures signup events with, before
+      // recording the provider-verified conversion.
       try {
         const user = await context.queryClient.ensureQueryData({
           queryKey: userKeys.getUser,
@@ -70,6 +71,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
       } catch {
         // best-effort attribution; it must never block the signup redirect
       }
+      captureSignupCompleted("sso");
 
       // Provider-verified signups arrive with no org; send them to org setup instead of the
       // personal-org fallback. Fetch errors fall through to the strip-redirect, whose main
@@ -85,7 +87,11 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         hasNoOrg = false;
       }
       if (hasNoOrg) {
-        throw redirect({ to: "/organizations/onboarding", replace: true });
+        throw redirect({
+          to: "/organizations/onboarding",
+          search: { callback_port: search.callback_port },
+          replace: true
+        });
       }
 
       // Consume the one-shot param so refresh/back-nav can't re-fire the conversion event
@@ -161,7 +167,8 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
             search: {
               mfa_method: result.mfaMethod,
               org_id: targetOrgId,
-              callback_port: search.callback_port
+              callback_port: search.callback_port,
+              redirect_to: search.redirect_to
             }
           });
         }
@@ -182,7 +189,8 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
               callbackPort: search.callback_port
             })
           );
-          throw redirect({ to: "/cli-redirect" });
+          setAuthToken(result.token);
+          throw redirect({ to: "/cli-redirect", search: { org_id: targetOrgId } });
         }
 
         setAuthToken(result.token);
@@ -191,6 +199,10 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         await context.queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
 
         createNotification({ text: "Successfully logged in", type: "success" });
+
+        if (search.redirect_to?.startsWith(`/organizations/${targetOrgId}/`)) {
+          throw redirect({ href: search.redirect_to });
+        }
 
         // Check for a stored redirect URL from before login (e.g., deep links like /pam/access)
         const loginRedirectUrl = consumeLoginRedirectUrl();
@@ -206,9 +218,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
       }
     } catch (error) {
       // If it's a redirect, re-throw it
-      if (error instanceof Error && error.message === "REDIRECT") throw error;
-      // For redirect objects from TanStack Router
-      if (typeof error === "object" && error !== null && "to" in error) throw error;
+      if (isRedirect(error)) throw error;
       // selectOrganization is called directly (not via mutation hook), so MutationCache.onError
       // never fires for it — surface SMTP and lockout errors manually and log the user out.
       if (typeof error === "object" && error !== null && "response" in error) {
@@ -219,14 +229,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
           response?.data?.error === "UserLocked" || response?.data?.message === "Account is locked";
         if (response?.data?.error === "SmtpError" || isLockError) {
           onRequestError(error);
-          // We can't use the useLogoutUser hook here (beforeLoad runs outside React),
-          // so we replicate its mutationFn manually:
-          // - setAuthToken("") stops outgoing requests from carrying the stale token.
-          // - removeQueries drops the cached auth token so the restrict-login-signup
-          //   middleware doesn't find it and redirect back to select-organization.
-          // - logoutUser() invalidates the session on the server.
-          setAuthToken("");
-          context.queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+          clearSession();
           await logoutUser().catch(() => {}); // best-effort — redirect must always fire
           throw redirect({ to: "/login" });
         }

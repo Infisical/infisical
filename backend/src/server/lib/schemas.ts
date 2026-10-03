@@ -9,12 +9,12 @@ interface SlugSchemaInputs {
   min?: number;
   max?: number;
   field?: string;
+  trim?: boolean;
 }
 
-export const slugSchema = ({ min = 1, max = 64, field = "Slug" }: SlugSchemaInputs = {}) => {
-  return z
-    .string()
-    .trim()
+export const slugSchema = ({ min = 1, max = 64, field = "Slug", trim = true }: SlugSchemaInputs = {}) => {
+  const base = trim ? z.string().trim() : z.string();
+  return base
     .min(min, {
       message: `${field} field must be at least ${min} lowercase character${min === 1 ? "" : "s"}`
     })

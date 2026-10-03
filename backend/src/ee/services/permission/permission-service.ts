@@ -14,9 +14,12 @@ import {
   ServiceTokenScopes,
   TProjects
 } from "@app/db/schemas";
+import { AgentVaultResourceRole } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import {
+  agentVaultProjectAdminPermissions,
+  agentVaultProjectMemberPermissions,
   applicationAdminPermissions,
   applicationAuditorPermissions,
   applicationOperatorPermissions,
@@ -26,6 +29,7 @@ import {
   pamResourceAdminPermissions,
   pamResourceAuditorPermissions,
   pamResourceConnectorPermissions,
+  pamResourceOperatorPermissions,
   projectAdminApplicationFallbackPermissions,
   projectAdminPermissions,
   projectAdminSignerFallbackPermissions,
@@ -49,6 +53,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import {
   applyOauthScopeToOrgRules,
   applyOauthScopeToProjectRules,
@@ -75,9 +80,9 @@ import {
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
   fetchFolderScopedPrivileges,
-  filterOverriddenFolderScopedDenyRules,
   getProjectPermissionFingerprint,
   interpolatePermissionRules,
+  interpolateStoredIdentityRules,
   isActiveRole,
   validateOrgSSO
 } from "./permission-fns";
@@ -140,6 +145,9 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
 const resolvePamProjectRoleRules = (role: string) =>
   role === ProjectMembershipRole.Admin ? pamProjectAdminPermissions : pamProjectMemberPermissions;
 
+const resolveAgentVaultProjectRoleRules = (role: string) =>
+  role === ProjectMembershipRole.Admin ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions;
+
 export const buildProjectPermissionRules = (
   projectUserRoles: TBuildProjectPermissionDTO,
   projectType?: string,
@@ -149,6 +157,7 @@ export const buildProjectPermissionRules = (
     projectUserRoles
       .map(({ role, permissions }) => {
         if (projectType === ProjectType.PAM) return resolvePamProjectRoleRules(role);
+        if (projectType === ProjectType.AgentVault) return resolveAgentVaultProjectRoleRules(role);
 
         switch (role) {
           case ProjectMembershipRole.Admin:
@@ -208,6 +217,8 @@ export const resolveResourceRoleRules = (resourceType: ResourceType, role: strin
     switch (role) {
       case PamResourceRole.Admin:
         return pamResourceAdminPermissions;
+      case PamResourceRole.Operator:
+        return pamResourceOperatorPermissions;
       case PamResourceRole.Connector:
         return pamResourceConnectorPermissions;
       case PamResourceRole.Auditor:
@@ -215,6 +226,12 @@ export const resolveResourceRoleRules = (resourceType: ResourceType, role: strin
       default:
         throw new NotFoundError({ name: "PamRoleInvalid", message: `PAM role '${role}' not found` });
     }
+  }
+
+  // The arm exists so this switch never reads an Agent Vault row as a cert-manager application.
+  if (resourceType === ResourceType.AgentVaultAccessBundle) {
+    if (role === AgentVaultResourceRole.Consumer) return [];
+    throw new NotFoundError({ name: "AgentVaultRoleInvalid", message: `Agent Vault role '${role}' not found` });
   }
 
   switch (role) {
@@ -243,9 +260,16 @@ const buildResourcePermissionRules = (appUserRoles: TBuildProjectPermissionDTO, 
   return rules;
 };
 
+const resolveResourceActionProjectType = (resourceType: ResourceType) => {
+  if (resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount) return ActionProjectType.PAM;
+  if (resourceType === ResourceType.AgentVaultAccessBundle) return ActionProjectType.AgentVault;
+  return ActionProjectType.CertificateManager;
+};
+
 const resolveResourceProjectAdminFallback = (resourceType: ResourceType) => {
   if (resourceType === ResourceType.Signer) return projectAdminSignerFallbackPermissions;
   if (resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount) return [];
+  if (resourceType === ResourceType.AgentVaultAccessBundle) return [];
   return projectAdminApplicationFallbackPermissions;
 };
 
@@ -849,10 +873,7 @@ export const permissionServiceFactory = ({
           projectId,
           actorAuthMethod,
           actorOrgId,
-          actionProjectType:
-            resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount
-              ? ActionProjectType.PAM
-              : ActionProjectType.CertificateManager
+          actionProjectType: resolveResourceActionProjectType(resourceType)
         });
         isProjectAdmin = projectPerm.hasRole(ProjectMembershipRole.Admin);
         isProjectMember = true;
@@ -1026,7 +1047,7 @@ export const permissionServiceFactory = ({
 
   // instead of actor type this will fetch by role slug. meaning it can be the pre defined slugs like
   // admin member or user defined ones like biller etc
-  const getOrgPermissionByRoles: TPermissionServiceFactory["getOrgPermissionByRoles"] = async (roles, orgId) => {
+  const getOrgPermissionByRoles: TPermissionServiceFactory["getOrgPermissionByRoles"] = async (roles, orgId, opts) => {
     const formattedRoles = roles.map((role) => ({
       name: role,
       isCustom: !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole)
@@ -1041,24 +1062,25 @@ export const permissionServiceFactory = ({
           }
         })
       : [];
-    if (customRoles.length !== customRoleDetails.length) {
+    if (customRoles.length !== customRoleDetails.length && !opts?.ignoreUnresolvedRoles) {
       const missingRoles = customRoles.filter((role) => !customRoleDetails.find((el) => el.slug === role));
       throw new NotFoundError({
         message: `Specified roles '${missingRoles.join(",")}' was not found in the organization with ID '${orgId}'`
       });
     }
 
-    return formattedRoles.map((el) => {
+    return formattedRoles.flatMap((el) => {
       if (el.isCustom) {
         const roleDetails = customRoleDetails.find((role) => role.slug === el.name);
+        if (!roleDetails) return [];
         return {
           permission: createMongoAbility<OrgPermissionSet>(
-            buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: roleDetails?.permissions || [] }]),
+            buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: roleDetails.permissions || [] }]),
             {
               conditionsMatcher
             }
           ),
-          role: roleDetails!
+          role: roleDetails
         };
       }
 
@@ -1075,7 +1097,8 @@ export const permissionServiceFactory = ({
 
   const getProjectPermissionByRoles: TPermissionServiceFactory["getProjectPermissionByRoles"] = async (
     roles,
-    projectId
+    projectId,
+    opts
   ) => {
     const formattedRoles = roles.map((role) => ({
       name: role,
@@ -1098,27 +1121,28 @@ export const permissionServiceFactory = ({
           }
         })
       : [];
-    if (customRoles.length !== customRoleDetails.length) {
+    if (customRoles.length !== customRoleDetails.length && !opts?.ignoreUnresolvedRoles) {
       const missingRoles = customRoles.filter((role) => !customRoleDetails.find((el) => el.slug === role));
       throw new NotFoundError({
         message: `Specified roles '${missingRoles.join(",")}' was not found in the project with ID '${projectId}'`
       });
     }
 
-    return formattedRoles.map((el) => {
+    return formattedRoles.flatMap((el) => {
       if (el.isCustom) {
         const roleDetails = customRoleDetails.find((role) => role.slug === el.name);
+        if (!roleDetails) return [];
         return {
           permission: createMongoAbility<ProjectPermissionSet>(
             buildProjectPermissionRules(
-              [{ role: ProjectMembershipRole.Custom, permissions: roleDetails?.permissions || [] }],
+              [{ role: ProjectMembershipRole.Custom, permissions: roleDetails.permissions || [] }],
               project?.type
             ),
             {
               conditionsMatcher
             }
           ),
-          role: roleDetails!
+          role: roleDetails
         };
       }
 
@@ -1184,11 +1208,111 @@ export const permissionServiceFactory = ({
         isTemporary: Boolean(priv.isTemporary),
         temporaryAccessStartTime: privilegeById[priv.id]?.temporaryAccessStartTime?.toISOString(),
         temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
-        permissions: packRules(filterOverriddenFolderScopedDenyRules(buildFolderScopedPrivilegeRules([priv])))
+        permissions: packRules(buildFolderScopedPrivilegeRules([priv]))
       });
     });
 
     return sources;
+  };
+
+  const $folderScopedGrantAbilities = async (
+    projectId: string,
+    actorType: ActorType.USER | ActorType.IDENTITY,
+    actorId: string,
+    memberships: Awaited<ReturnType<TPermissionDALFactory["getPermission"]>>
+  ) => {
+    if (hasActiveProjectAdminRole(memberships)) return [];
+
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (project?.type !== ProjectType.SecretManager) return [];
+
+    const { privileges } = await fetchFolderScopedPrivileges(projectId, actorType, actorId, {
+      additionalPrivilegeDAL,
+      secretFolderDAL
+    });
+
+    return privileges.filter(isActiveRole).map((privilege) =>
+      createMongoAbility<ProjectPermissionSet>(
+        buildFolderScopedPrivilegeRules([privilege]).filter((rule) => !rule.inverted),
+        { conditionsMatcher }
+      )
+    );
+  };
+
+  const $interpolateGrantsForActor = async (
+    grants: MongoAbility[],
+    memberships: Awaited<ReturnType<TPermissionDALFactory["getPermission"]>>,
+    actorId: string,
+    actorType: ActorType.USER | ActorType.IDENTITY
+  ) => {
+    const username =
+      actorType === ActorType.USER
+        ? (await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId)))?.username
+        : (await requestMemoize(requestMemoKeys.identityFindById(actorId), () => identityDAL.findById(actorId)))?.name;
+
+    const identityContext = {
+      identity: {
+        id: actorId,
+        username: username ?? "",
+        metadata: escapeHandlebarsMissingDict(
+          objectify(
+            memberships[0]?.metadata ?? [],
+            (i) => i.key,
+            (i) => i.value
+          ),
+          "identity.metadata"
+        )
+      }
+    };
+
+    return grants.map((grant) =>
+      createMongoAbility(interpolateStoredIdentityRules(grant.rules, identityContext), { conditionsMatcher })
+    );
+  };
+
+  const getActorGrantAbilities: TPermissionServiceFactory["getActorGrantAbilities"] = async ({
+    scopeData,
+    actorId,
+    actorType
+  }) => {
+    const memberships = await permissionDAL.getPermission({ scopeData, actorId, actorType });
+    const roleSlugs = resolveMembershipRoleSlugs(memberships.flatMap((membership) => membership.roles));
+    const isProjectScope = scopeData.scope === AccessScope.Project;
+
+    const rolePermissions = isProjectScope
+      ? await getProjectPermissionByRoles(roleSlugs, scopeData.projectId, { ignoreUnresolvedRoles: true })
+      : await getOrgPermissionByRoles(roleSlugs, scopeData.orgId, { ignoreUnresolvedRoles: true });
+
+    const privilegePermissions = memberships.flatMap((membership) =>
+      (membership.additionalPrivileges ?? [])
+        .filter(isActiveRole)
+        .map(({ permissions }) =>
+          isProjectScope
+            ? createMongoAbility<ProjectPermissionSet>(
+                buildProjectPermissionRules([{ role: ProjectMembershipRole.Custom, permissions: permissions || [] }]),
+                { conditionsMatcher }
+              )
+            : createMongoAbility<OrgPermissionSet>(
+                buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: permissions || [] }]),
+                { conditionsMatcher }
+              )
+        )
+    );
+
+    const grants: MongoAbility[] = [...rolePermissions.map(({ permission }) => permission), ...privilegePermissions];
+
+    const folderGrants = isProjectScope
+      ? await $folderScopedGrantAbilities(scopeData.projectId, actorType, actorId, memberships)
+      : [];
+
+    const isTemplated = grants.some((grant) => JSON.stringify(grant.rules).includes("{{"));
+    const resolvedGrants = isTemplated
+      ? await $interpolateGrantsForActor(grants, memberships, actorId, actorType)
+      : grants;
+
+    return [...resolvedGrants, ...folderGrants].map((permission) => ({ permission }));
   };
 
   const getMembershipPermissionAudit: TPermissionServiceFactory["getMembershipPermissionAudit"] = async ({
@@ -1420,6 +1544,7 @@ export const permissionServiceFactory = ({
     getOrgPermissionByRoles,
     getProjectPermissionByRoles,
     checkGroupProjectPermission,
+    getActorGrantAbilities,
     getMembershipPermissionAudit,
     getIdentityPermissionAudit,
     invalidateProjectFolderPermissionCache,

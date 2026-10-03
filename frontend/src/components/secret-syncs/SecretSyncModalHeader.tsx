@@ -1,4 +1,5 @@
 import { DocumentationLinkBadge } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -14,14 +15,14 @@ export const SecretSyncModalHeader = ({ destination, isConfigured, showDocLink =
   return (
     <div className="flex w-full items-start gap-2">
       <div className="flex h-10 w-10 items-center justify-center rounded-md bg-container">
-        <img
+        <ProviderIcon
           alt={`${destinationDetails.name} logo`}
-          src={`/images/integrations/${destinationDetails.image}`}
+          icon={destinationDetails.image}
           className="h-7 w-7 object-contain"
         />
       </div>
       <div>
-        <div className="flex items-center gap-x-2 text-mineshaft-300">
+        <div className="flex items-center gap-x-2 font-semibold text-label">
           {destinationDetails.name} Sync
           {showDocLink && (
             <DocumentationLinkBadge
@@ -29,7 +30,7 @@ export const SecretSyncModalHeader = ({ destination, isConfigured, showDocLink =
             />
           )}
         </div>
-        <p className="text-sm leading-4 text-mineshaft-400">
+        <p className="text-sm leading-4 text-muted">
           {isConfigured
             ? `Edit ${destinationDetails.name} Sync`
             : `Sync secrets to ${destinationDetails.name}`}

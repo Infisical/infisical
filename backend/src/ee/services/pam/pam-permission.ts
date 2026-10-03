@@ -128,6 +128,24 @@ export const checkAccountAccess = async (
   ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
 };
 
+// Non-throwing counterpart to checkAccountAccess, for deciding what a caller may do.
+export const accountAccessAllows = async (
+  permissionService: TPermissionDep,
+  accountId: string,
+  folderId: string | null | undefined,
+  projectId: string,
+  action: ResourcePermissionPamResourceActions,
+  ctx: TActorContext
+): Promise<boolean> => {
+  try {
+    await checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
+    return true;
+  } catch (err) {
+    if (err instanceof ForbiddenError || err instanceof ForbiddenRequestError) return false;
+    throw err;
+  }
+};
+
 // `tx` is for callers that must see their own uncommitted membership writes (revoking access and closing
 // the sessions it was holding open, in one transaction). Without it these are replica reads.
 export const getResourceIdsWithActions = async (

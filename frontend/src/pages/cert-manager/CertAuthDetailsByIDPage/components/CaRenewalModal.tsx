@@ -54,7 +54,7 @@ const ExternalCaRenewal = ({
   onCancel
 }: ExternalCaRenewalProps) => (
   <div>
-    <p className="mb-4 text-sm text-mineshaft-300">{description}</p>
+    <p className="mb-4 text-sm text-label">{description}</p>
     <div className="flex items-center">
       <Button
         className="mr-4"

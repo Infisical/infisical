@@ -1,5 +1,6 @@
 import { ForbiddenError, PureAbility } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
+import { errorCodes, FastifyError } from "fastify";
 import fastifyPlugin from "fastify-plugin";
 import jwt from "jsonwebtoken";
 import { ZodError } from "zod";
@@ -8,6 +9,7 @@ import { AcmeError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
+  ClientClosedRequestError,
   ConflictError,
   CryptographyError,
   DatabaseError,
@@ -28,6 +30,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import {
   coreHttpErrorCounter,
   highCardinalityMeter,
+  normalizeHttpMethod,
   rateLimitExceededCounter,
   shouldRecordHighCardinalityMetrics
 } from "@app/lib/telemetry/metrics";
@@ -49,8 +52,23 @@ enum HttpStatusCodes {
   // eslint-disable-next-line @typescript-eslint/no-shadow
   InternalServerError = 500,
   GatewayTimeout = 504,
-  TooManyRequests = 429
+  TooManyRequests = 429,
+  // Non-standard (nginx convention). The client is gone, so this only reaches logs and metrics.
+  ClientClosedRequest = 499
 }
+
+const BODY_PARSER_ERRORS = [
+  errorCodes.FST_ERR_CTP_EMPTY_JSON_BODY,
+  errorCodes.FST_ERR_CTP_INVALID_JSON_BODY,
+  errorCodes.FST_ERR_CTP_INVALID_MEDIA_TYPE,
+  errorCodes.FST_ERR_CTP_BODY_TOO_LARGE,
+  errorCodes.FST_ERR_CTP_INVALID_CONTENT_LENGTH
+];
+
+const isBodyParserError = (error: Error): error is FastifyError =>
+  BODY_PARSER_ERRORS.some((BodyParserError) => error instanceof BodyParserError);
+
+const API_REFERENCE_DOCS_URL = "https://infisical.com/docs/api-reference";
 
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -67,11 +85,23 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     unit: "{error}"
   });
 
+  // only undefined routes include documentationUrl in the response; a "NotFounDerror" thrown by a handler means the route exists = not included
+  server.setNotFoundHandler((req, res) => {
+    void res.status(HttpStatusCodes.NotFound).send({
+      reqId: req.id,
+      statusCode: HttpStatusCodes.NotFound,
+      message: `Route ${req.method}:${req.url} not found`,
+      error: "Not Found",
+      documentationUrl: API_REFERENCE_DOCS_URL
+    });
+  });
+
   server.setErrorHandler((error: Error, req, res) => {
     // Expected client errors don't need stack traces. Log them without the Error object to
     // avoid stack serialization; keep full-stack logging for unexpected / server errors.
     const isExpectedClientError =
       error instanceof BadRequestError ||
+      error instanceof ClientClosedRequestError ||
       error instanceof NotFoundError ||
       error instanceof ConflictError ||
       error instanceof UnauthorizedError ||
@@ -79,6 +109,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       error instanceof ForbiddenRequestError ||
       error instanceof PermissionBoundaryError ||
       error instanceof ZodError ||
+      isBodyParserError(error) ||
       (error instanceof OauthTokenError && error.statusCode < HttpStatusCodes.InternalServerError) ||
       error instanceof RateLimitError ||
       error instanceof PolicyViolationError ||
@@ -108,6 +139,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     }
 
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+      // Normalized only for the InfisicalCore instrument, we drop the per-actor meters there.
+      const coreMethod = normalizeHttpMethod(req.method);
       const { method } = req;
       const route = req.routeOptions.url;
 
@@ -185,7 +218,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       }
 
       const coreAttrs: Record<string, string | number> = {
-        "http.request.method": method,
+        "http.request.method": coreMethod,
         "http.route": route ?? "unknown",
         "error.type": classifyError(error)
       };
@@ -215,6 +248,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message: error.message,
         error: error.name,
         details: error.details
+      });
+    } else if (error instanceof ClientClosedRequestError) {
+      void res.status(HttpStatusCodes.ClientClosedRequest).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.ClientClosedRequest,
+        message: error.message,
+        error: error.name
       });
     } else if (error instanceof ConflictError) {
       void res
@@ -295,7 +335,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     } else if (error instanceof RateLimitError) {
       rateLimitExceededCounter.add(1, {
         "http.route": req.routeOptions.url ?? "unknown",
-        "http.request.method": req.method
+        "http.request.method": normalizeHttpMethod(req.method)
       });
       void res.status(HttpStatusCodes.TooManyRequests).send({
         reqId: req.id,
@@ -309,7 +349,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         schemas: error.schemas,
         status: error.status,
         detail: error.detail,
-        mutability: error.mutability
+        mutability: error.mutability,
+        scimType: error.scimType
       });
     } else if (error instanceof OidcAuthError) {
       void res.status(HttpStatusCodes.InternalServerError).send({
@@ -375,6 +416,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message:
           "Invalid JSON in request body. If you are sending a Certificate Signing Request (CSR), ensure newlines are escaped as \\n characters, not literal line breaks.",
         error: "BadRequestError"
+      });
+    } else if (isBodyParserError(error)) {
+      void res.status(error.statusCode ?? HttpStatusCodes.BadRequest).send({
+        reqId: req.id,
+        statusCode: error.statusCode ?? HttpStatusCodes.BadRequest,
+        message: error.message,
+        error: "BodyParserError"
       });
     } else {
       void res.status(HttpStatusCodes.InternalServerError).send({

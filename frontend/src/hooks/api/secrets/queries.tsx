@@ -5,8 +5,8 @@ import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
+import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useToggle } from "@app/hooks/useToggle";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { ERROR_NOT_ALLOWED_READ_SECRETS } from "./constants";
 import {
@@ -38,7 +38,21 @@ export const secretKeys = {
     secretPath,
     viewSecretValue
   }: TGetProjectSecretsKey) =>
-    [{ projectId, environment, secretPath, viewSecretValue }, "secrets"] as const,
+    [
+      {
+        projectId,
+        environment,
+        secretPath,
+        ...(viewSecretValue === undefined ? {} : { viewSecretValue })
+      },
+      "secrets"
+    ] as const,
+  getProjectSecretExportPreflight: ({
+    projectId,
+    environment,
+    secretPath
+  }: Pick<TGetProjectSecretsKey, "projectId" | "environment" | "secretPath">) =>
+    [{ projectId, environment, secretPath }, "secrets", "export-preflight"] as const,
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const,
   getSecretVersionValue: (secretId: string, version: number) =>
     ["secret-versions", secretId, version] as const,
@@ -78,6 +92,28 @@ export const fetchProjectSecrets = async ({
 
   return data;
 };
+
+export const useGetProjectSecretsExportPreflight = ({
+  projectId,
+  environment,
+  secretPath
+}: Pick<TGetProjectSecretsKey, "projectId" | "environment" | "secretPath">) =>
+  useQuery({
+    enabled: Boolean(projectId && environment),
+    queryKey: secretKeys.getProjectSecretExportPreflight({
+      projectId,
+      environment,
+      secretPath
+    }),
+    queryFn: () =>
+      fetchProjectSecrets({
+        projectId,
+        environment,
+        secretPath,
+        includeImports: true,
+        viewSecretValue: false
+      })
+  });
 
 export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
   const personalSecrets: Record<

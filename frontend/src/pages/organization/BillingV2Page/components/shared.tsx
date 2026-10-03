@@ -1,8 +1,11 @@
-import { Fragment, ReactNode, useState } from "react";
-import { Box, MinusIcon, PlusIcon } from "lucide-react";
+import { CSSProperties, Fragment, ReactNode, useState } from "react";
+import { Box, ExternalLink, MinusIcon, PlusIcon, TriangleAlert } from "lucide-react";
 import { DynamicIcon, type IconName } from "lucide-react/dynamic";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   Empty,
@@ -17,7 +20,11 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { BillingV2CatalogProduct, BillingV2EntitlementDim } from "@app/hooks/api";
+import {
+  BillingV2CatalogProduct,
+  BillingV2EntitlementDim,
+  useCreateBillingV2PortalSession
+} from "@app/hooks/api";
 
 import {
   dimBarSegments,
@@ -26,7 +33,7 @@ import {
   dimMonthlyRate,
   dimOnDemandQuantity,
   fmtMoney,
-  pluralizeUnit
+  unitForCount
 } from "../billing-v2-format";
 
 type ProductIconProps = {
@@ -50,14 +57,18 @@ export const ProductIcon = ({ product, size = 36 }: ProductIconProps) => {
   const iconName = product.icon.replace(/_/g, "-") as IconName;
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-md border transition-colors duration-200"
-      style={{
-        width: size,
-        height: size,
-        background: `linear-gradient(to bottom right, color-mix(in srgb, ${color} 20%, transparent), color-mix(in srgb, ${color} 5%, transparent))`,
-        borderColor: `color-mix(in srgb, ${color} 30%, transparent)`,
-        color
-      }}
+      className="product-color flex shrink-0 items-center justify-center rounded-md border transition-colors duration-200"
+      style={
+        {
+          "--product-color": color,
+          width: size,
+          height: size,
+          background:
+            "linear-gradient(to bottom right, color-mix(in srgb, var(--product-color-resolved) 20%, transparent), color-mix(in srgb, var(--product-color-resolved) 5%, transparent))",
+          borderColor: "color-mix(in srgb, var(--product-color-resolved) 30%, transparent)",
+          color: "var(--product-color-resolved)"
+        } as CSSProperties
+      }
     >
       <DynamicIcon name={iconName} size={glyphSize} fallback={ProductIconFallback} />
     </div>
@@ -120,7 +131,7 @@ export const CostSummaryRow = ({
 // Committed usage (meter fill + legend dot) takes the product's catalog tint, the same source as
 // ProductIcon, at the 85% strength the old static token used. On-demand keeps the warning token:
 // it flags overage cost, not product identity.
-const committedTint = (color: string) => `color-mix(in srgb, ${color} 85%, transparent)`;
+const committedTint = "color-mix(in srgb, var(--product-color-resolved) 85%, transparent)";
 
 // Rate legend for annually-committed dimensions. DimensionMeter renders it per dim by default; a
 // caller can hideLegend the meters and render one combined legend for the block.
@@ -139,12 +150,15 @@ export const DimensionRateLegend = ({
     return null;
   }
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+    <div
+      className="product-color flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted"
+      style={{ "--product-color": color } as CSSProperties}
+    >
       {entries.map((dim) => (
         <Fragment key={dim.key}>
           {dim.committedRate !== undefined && (
             <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full" style={{ background: committedTint(color) }} />
+              <span className="size-2 rounded-full" style={{ background: committedTint }} />
               Committed {`${fmtMoney(dim.committedRate)} / ${dim.noun} /yr`}
             </span>
           )}
@@ -200,16 +214,21 @@ export const DimensionMeter = ({ dim, color, hideLegend }: DimensionMeterProps) 
     right = (
       <>
         <span className="font-medium text-foreground">{dim.used.toLocaleString()}</span>
-        {dim.limit !== null ? ` / ${dim.limit.toLocaleString()}` : ` ${pluralizeUnit(dim.noun)}`}
+        {dim.limit !== null
+          ? ` / ${dim.limit.toLocaleString()}`
+          : ` ${unitForCount(dim.noun, dim.used)}`}
         {monthlyRate > 0 && <span> · {`${fmtMoney(monthlyRate)}/${dim.noun}/mo`}</span>}
       </>
     );
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div
+      className="product-color flex flex-col gap-1.5"
+      style={{ "--product-color": color } as CSSProperties}
+    >
       <div className="flex items-baseline justify-between gap-2.5 text-xs">
-        <span className="text-muted">{dim.label}</span>
+        <span className="text-accent">{dim.label}</span>
         <span className="text-muted tabular-nums">{right}</span>
       </div>
       {hasCeiling && (
@@ -217,7 +236,7 @@ export const DimensionMeter = ({ dim, color, hideLegend }: DimensionMeterProps) 
           {/* Segments keep the soft outer corner but sit square against each other at the joint. */}
           <div
             className={cn("h-full rounded-xs transition-all", onDemandPct > 0 && "rounded-r-none")}
-            style={{ width: `${committedPct}%`, background: committedTint(color) }}
+            style={{ width: `${committedPct}%`, background: committedTint }}
           />
           {onDemandPct > 0 && (
             <div
@@ -306,3 +325,57 @@ export const Stepper = ({ value, min = 0, max = 9999, onChange, isDisabled }: St
     </div>
   );
 };
+
+// Shown when the bank declined or held a charge (payment_action_required). The change was not applied,
+// so the way forward is a different card from the billing portal and a retry.
+export const PaymentActionRequiredNotice = ({ orgId }: { orgId: string }) => {
+  const portalSession = useCreateBillingV2PortalSession();
+  return (
+    <Alert variant="warning">
+      <TriangleAlert />
+      <AlertTitle>Your bank didn&apos;t approve this charge</AlertTitle>
+      <AlertDescription>
+        Nothing was changed. Try a different card from the billing portal, then retry.
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="xs"
+            isPending={portalSession.isPending}
+            onClick={() =>
+              portalSession.mutate(
+                { orgId, returnPath: window.location.pathname },
+                {
+                  onSuccess: (url) => {
+                    window.location.href = url;
+                  }
+                }
+              )
+            }
+          >
+            Open Billing Portal
+          </Button>
+        </div>
+      </AlertDescription>
+    </Alert>
+  );
+};
+
+export const PaymentApprovalNotice = ({ paymentUrl }: { paymentUrl: string }) => (
+  <Alert variant="warning">
+    <TriangleAlert />
+    <AlertTitle>Approve this payment with your bank</AlertTitle>
+    <AlertDescription>
+      Your bank needs you to confirm this charge. Approve it to finish the change.
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          variant="warning"
+          size="xs"
+          onClick={() => window.open(paymentUrl, "_blank", "noopener,noreferrer")}
+        >
+          <ExternalLink />
+          Approve Payment
+        </Button>
+      </div>
+    </AlertDescription>
+  </Alert>
+);

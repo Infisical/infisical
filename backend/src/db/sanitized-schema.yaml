@@ -34,6 +34,107 @@ tables:
       - createdAt
       - updatedAt
 
+  - name: agent_vault_access_bundles
+    source: public.agent_vault_access_bundles
+    columns:
+      - id
+      - projectId
+      - name
+      - createdAt
+      - updatedAt
+
+  - name: agent_vault_proxies
+    source: public.agent_vault_proxies
+    columns:
+      - id
+      - projectId
+      - heartbeat
+      - heartbeatTTL
+      - pollInterval
+      - trafficPolicy
+      - createdAt
+      - updatedAt
+
+  - name: agent_vault_service_custom_headers
+    source: public.agent_vault_service_custom_headers
+    columns:
+      - id
+      - serviceId
+      - createdAt
+
+  - name: agent_vault_service_substitutions
+    source: public.agent_vault_service_substitutions
+    columns:
+      - id
+      - serviceId
+      - createdAt
+
+  - name: agent_vault_services
+    source: public.agent_vault_services
+    columns:
+      - id
+      - accessBundleId
+      - hostPattern
+      - credentialType
+      - allowedMethods
+      - allowedPathPrefixes
+      - createdAt
+      - updatedAt
+
+  - name: agent_vault_session_access_bundles
+    source: public.agent_vault_session_access_bundles
+    columns:
+      - id
+      - sessionId
+      - accessBundleId
+      - createdAt
+
+  - name: agent_vault_session_log_chunks
+    source: public.agent_vault_session_log_chunks
+    columns:
+      - id
+      - sessionId
+      - projectId
+      - proxyId
+      - startedAt
+      - endedAt
+      - recordCount
+      - droppedCount
+      - ciphertextBytes
+      - createdAt
+
+  - name: agent_vault_session_log_configs
+    source: public.agent_vault_session_log_configs
+    columns:
+      - id
+      - projectId
+      - enabled
+      - storedChunkCount
+      - createdAt
+      - updatedAt
+
+  - name: agent_vault_sessions
+    source: public.agent_vault_sessions
+    columns:
+      - id
+      - projectId
+      - userId
+      - identityId
+      - actorType
+      - expiresAt
+      - revokedAt
+      - createdAt
+      - updatedAt
+
+  - name: agent_vault_variables
+    source: public.agent_vault_variables
+    columns:
+      - id
+      - accessBundleId
+      - isSecret
+      - createdAt
+      - updatedAt
+
   - name: app_connections
     source: public.app_connections
     columns:
@@ -203,6 +304,8 @@ tables:
       - relayId
       - name
       - heartbeat
+      - directAddress
+      - directHeartbeat
       - healthAlertedAt
 
   - name: groups
@@ -349,6 +452,7 @@ tables:
       - accessTokenPeriod
       - tokenReviewMode
       - gatewayV2Id
+      - templateId
 
   - name: identity_ldap_auths
     source: public.identity_ldap_auths
@@ -406,6 +510,7 @@ tables:
       - updatedAt
       - claimMetadataMapping
       - accessTokenPeriod
+      - templateId
 
   - name: identity_tls_cert_auths
     source: public.identity_tls_cert_auths

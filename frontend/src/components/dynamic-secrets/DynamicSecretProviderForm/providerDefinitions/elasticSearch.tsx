@@ -33,12 +33,25 @@ import {
 } from "./elasticSearchContract";
 
 const hostPortFields = [
-  { name: "inputs.host", type: "text", label: "Host", layout: "half" },
+  {
+    name: "inputs.host",
+    type: "text",
+    label: "Host",
+    placeholder: "elasticsearch.example.com",
+    layout: "half"
+  },
   { name: "inputs.port", type: "number", label: "Port", layout: "half" }
 ] satisfies readonly TDynamicSecretProviderField<TElasticSearchFormValues>[];
 
 const advancedFields = [
-  { name: "inputs.ca", type: "textarea", label: "CA (SSL)", isOptional: true, rows: 3 },
+  {
+    name: "inputs.ca",
+    type: "textarea",
+    label: "CA (SSL)",
+    placeholder: "-----BEGIN CERTIFICATE----- ...",
+    isOptional: true,
+    rows: 3
+  },
   {
     name: "usernameTemplate",
     type: "text",
@@ -102,6 +115,7 @@ const ElasticSearchFields = () => {
                 <Input
                   {...field}
                   id="elasticsearch-auth-identity"
+                  placeholder={authType === "user" ? "elastic" : "Enter API key ID"}
                   autoComplete="off"
                   isError={Boolean(error)}
                 />
@@ -121,6 +135,7 @@ const ElasticSearchFields = () => {
                   {...field}
                   id="elasticsearch-auth-secret"
                   type="password"
+                  placeholder={authType === "user" ? "Enter password" : "Enter API key"}
                   autoComplete="new-password"
                   isError={Boolean(error)}
                 />

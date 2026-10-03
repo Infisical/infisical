@@ -21,9 +21,11 @@ import {
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
   TGetDashboardProjectSecretsQuickSearchDTO,
+  TGetSecretMetadataDTO,
   TGetSecretValueDTO,
   TSearchSecretsByMetadataDTO,
-  TSearchSecretsByMetadataResponse
+  TSearchSecretsByMetadataResponse,
+  TSecretMetadataPage
 } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
@@ -115,6 +117,14 @@ export const dashboardKeys = {
     ] as const
 };
 
+export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?: AbortSignal) => {
+  const { data } = await apiRequest.get<TSecretMetadataPage>(
+    "/api/v1/dashboard/accessible-secrets/metadata",
+    { params, signal }
+  );
+  return data;
+};
+
 export const fetchProjectSecretsOverview = async ({
   environments,
   tags,
@@ -203,6 +213,7 @@ export const useGetProjectSecretsOverview = (
     limit = 100,
     orderBy = DashboardSecretsOrderBy.Name,
     orderDirection = OrderByDirection.ASC,
+    sortEnvironment,
     search = "",
     tags,
     includeSecrets,
@@ -237,6 +248,7 @@ export const useGetProjectSecretsOverview = (
       limit,
       orderBy,
       orderDirection,
+      sortEnvironment,
       offset,
       projectId,
       includeSecrets,
@@ -256,6 +268,7 @@ export const useGetProjectSecretsOverview = (
         limit,
         orderBy,
         orderDirection,
+        sortEnvironment,
         offset,
         projectId,
         includeSecrets,

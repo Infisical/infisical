@@ -98,7 +98,7 @@ const Page = () => {
   if (isPending) {
     return (
       <div
-        className="mx-auto flex max-w-8xl flex-col gap-5"
+        className="@container mx-auto flex max-w-8xl flex-col gap-5"
         role="status"
         aria-label="Loading group details"
         aria-busy="true"
@@ -108,30 +108,28 @@ const Page = () => {
           <Skeleton className="h-8 w-64" />
           <Skeleton className="h-4 w-80 max-w-full" />
         </div>
-        <div className="flex flex-col gap-5 lg:flex-row">
-          <Skeleton className="h-64 w-full lg:max-w-[24rem]" />
-          <Skeleton className="h-64 flex-1" />
+        <div className="flex flex-col gap-5 @4xl:flex-row">
+          <Skeleton className="h-64 w-full @4xl:max-w-[24rem] @4xl:shrink-0" />
+          <Skeleton className="h-64 min-w-0 flex-1" />
         </div>
       </div>
     );
   }
 
+  const backLinkProps = {
+    to: `${getProjectBaseURL(currentProject.type)}/access-management`,
+    params: {
+      projectId: currentProject.id,
+      orgId: currentOrg.id
+    },
+    search: {
+      selectedTab: ProjectAccessControlTabs.Groups
+    }
+  } as const;
+  const backLinkLabel = isCertManager ? "Groups" : "Project Groups";
+
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
-      <Link
-        to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-        params={{
-          projectId: currentProject.id,
-          orgId: currentOrg.id
-        }}
-        search={{
-          selectedTab: ProjectAccessControlTabs.Groups
-        }}
-        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
-        <ChevronLeftIcon size={16} />
-        {isCertManager ? "Groups" : "Project Groups"}
-      </Link>
+    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
       {groupMembership ? (
         <>
           <PageHeader
@@ -141,6 +139,12 @@ const Page = () => {
               isCertManager
                 ? "Configure and manage certificate manager access control"
                 : "Configure and manage project access control"
+            }
+            backLink={
+              <Link {...backLinkProps}>
+                <ChevronLeftIcon aria-hidden className="size-4" />
+                {backLinkLabel}
+              </Link>
             }
           >
             <DropdownMenu>
@@ -180,21 +184,30 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <GroupDetailsSection groupMembership={groupMembership} />
             <GroupMembersSection groupMembership={groupMembership} />
           </div>
         </>
       ) : (
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>Group Not Found</EmptyTitle>
-            <EmptyDescription>
-              This group is unavailable or is no longer assigned to the {productLabel.toLowerCase()}
-              .
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <>
+          <Link
+            {...backLinkProps}
+            className="flex w-fit items-center gap-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <ChevronLeftIcon aria-hidden className="size-4" />
+            {backLinkLabel}
+          </Link>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>Group Not Found</EmptyTitle>
+              <EmptyDescription>
+                This group is unavailable or is no longer assigned to the{" "}
+                {productLabel.toLowerCase()}.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </>
       )}
       <DeleteConfirmDialog
         isOpen={popUp.deleteGroup.isOpen}

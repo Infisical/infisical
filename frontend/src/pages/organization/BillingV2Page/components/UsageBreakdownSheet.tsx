@@ -1,0 +1,567 @@
+import { Fragment, useMemo, useState } from "react";
+import { ArrowDownAZ, ArrowDownWideNarrow, Search } from "lucide-react";
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Button,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  OrgIcon,
+  ProjectIcon,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Skeleton,
+  SubOrgIcon,
+  Tabs,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
+import {
+  BillingV2BreakdownDimension,
+  BillingV2BreakdownScope,
+  BillingV2BreakdownScopeKind,
+  BillingV2CatalogProduct,
+  BillingV2Entitlement,
+  BillingV2UsageBreakdown,
+  useGetBillingV2UsageBreakdown
+} from "@app/hooks/api";
+
+import { pluralizeUnit, unitForCount } from "../billing-v2-format";
+import { ProductIcon } from "./shared";
+
+// user_identities is deliberately absent: it is already the user half of the summary split, and it
+// carries no scope tree, so a tab for it would show a number the reader has just seen and nothing else.
+const BREAKDOWN_DIMENSIONS = new Set<string>(
+  Object.values(BillingV2BreakdownDimension).filter(
+    (key) => key !== BillingV2BreakdownDimension.UserIdentities
+  )
+);
+
+// A product's dimensions that can be explained by scope, in the order the entitlement lists them. More
+// than one turns the sheet's body into tabs, the way Certificate Management carries CAs and both
+// certificate meters.
+export const breakdownableDimensions = (entitlement?: BillingV2Entitlement) =>
+  (entitlement?.dimensions ?? []).filter((dim) => BREAKDOWN_DIMENSIONS.has(dim.key));
+
+type SortOrder = "count" | "name";
+
+const pct = (part: number, whole: number) => (whole > 0 ? `${(part / whole) * 100}%` : "0%");
+const share = (part: number, whole: number) =>
+  whole > 0 ? `${Math.round((part / whole) * 100)}%` : "0%";
+const sentenceCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+
+type CountShareProps = {
+  count: number;
+  total: number;
+  unitLabel?: string;
+};
+
+const CountShare = ({ count, total, unitLabel }: CountShareProps) => (
+  <span className="shrink-0 text-xs whitespace-nowrap text-muted tabular-nums">
+    <span className="font-semibold text-foreground">{count.toLocaleString()}</span> ·{" "}
+    {share(count, total)}
+    {unitLabel ? ` of ${unitLabel}` : ""}
+  </span>
+);
+
+type MeterProps = { className: string; width: string; height?: string };
+
+const Meter = ({ className, width, height = "h-[3px]" }: MeterProps) => (
+  <div className={cn("w-full overflow-hidden rounded-xs bg-background", height)}>
+    <div className={cn("animate-bar-grow h-full rounded-xs", className)} style={{ width }} />
+  </div>
+);
+
+type ScopeRowProps = {
+  scope: BillingV2BreakdownScope;
+  scopedCount: number;
+  unit: string;
+  hasProjectDetail: boolean;
+  showParentOrg: boolean;
+};
+
+const ScopeRow = ({ scope, scopedCount, unit, hasProjectDetail, showParentOrg }: ScopeRowProps) => {
+  const scopeTint = scope.isRoot ? "bg-org/85" : "bg-sub-org/85";
+  const orgLevelTint = "bg-neutral/85";
+  const canExpand = hasProjectDetail && scope.count > 0;
+  const ScopeIcon = scope.isRoot ? OrgIcon : SubOrgIcon;
+
+  const header = (
+    <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+          <ScopeIcon
+            className={cn("size-3.5 shrink-0", scope.isRoot ? "text-org" : "text-sub-org")}
+          />
+          <span className="flex min-w-0 items-baseline gap-2">
+            <span className="truncate">{scope.name}</span>
+            {showParentOrg && scope.parentOrgName && (
+              <span className="min-w-0 truncate text-xs font-normal text-muted">
+                {scope.parentOrgName}
+              </span>
+            )}
+          </span>
+        </span>
+        <CountShare count={scope.count} total={scopedCount} unitLabel={pluralizeUnit(unit)} />
+      </div>
+      <Meter className={scopeTint} width={pct(scope.count, scopedCount)} />
+    </div>
+  );
+
+  if (!canExpand) {
+    return (
+      <div className="rounded-md border border-border px-3 py-4">
+        <div className="flex">{header}</div>
+      </div>
+    );
+  }
+
+  return (
+    <Accordion
+      variant="ghost"
+      type="single"
+      collapsible
+      className="rounded-md border border-border"
+    >
+      <AccordionItem value={scope.orgId}>
+        <AccordionTrigger className="px-3 group-data-[variant=ghost]/accordion:py-4">
+          {header}
+        </AccordionTrigger>
+        <AccordionContent className="border-t border-border pr-3 pl-9 group-data-[variant=ghost]/accordion:pt-3 group-data-[variant=ghost]/accordion:pb-4">
+          <div className="flex flex-col gap-2.5">
+            <span className="text-2xs tracking-wide text-muted uppercase">
+              {scope.count === 1
+                ? `Where this ${unit} was created`
+                : `Where these ${pluralizeUnit(unit)} were created`}
+            </span>
+            {scope.orgLevelCount > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-2 text-xs text-accent">
+                    <ScopeIcon className="size-3.5 shrink-0 text-neutral" />
+                    <span className="truncate">{scope.isRoot ? "Org" : "Sub-Org"}</span>
+                  </span>
+                  <CountShare count={scope.orgLevelCount} total={scope.count} />
+                </div>
+                <Meter
+                  className={orgLevelTint}
+                  width={pct(scope.orgLevelCount, scope.count)}
+                  height="h-[2px]"
+                />
+              </div>
+            )}
+            {scope.projects.length > 0 && (
+              <div className="flex items-center justify-between gap-3 border-t border-border pt-2.5">
+                <span className="text-2xs tracking-wide text-muted uppercase">Projects</span>
+                <span className="text-2xs text-muted tabular-nums">{scope.projects.length}</span>
+              </div>
+            )}
+            {scope.projects.map((project) => (
+              <div key={project.id} className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-2 text-xs text-accent">
+                    <ProjectIcon className="size-3 shrink-0 text-project" />
+                    <span className="truncate">{project.name}</span>
+                  </span>
+                  <CountShare count={project.count} total={scope.count} />
+                </div>
+                <Meter
+                  className="bg-project/85"
+                  width={pct(project.count, scope.count)}
+                  height="h-[2px]"
+                />
+              </div>
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+};
+
+const SUB_ORG_ROWS = ["row-a", "row-b", "row-c"];
+
+const ScopeRowSkeleton = () => (
+  <div className="flex flex-col gap-2 rounded-md border border-border p-3">
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex h-5 min-w-0 items-center gap-2">
+        <Skeleton className="size-3.5 shrink-0 rounded-xs" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+      <div className="flex h-4 items-center">
+        <Skeleton className="h-3 w-24" />
+      </div>
+    </div>
+    <Skeleton className="h-[3px] w-full rounded-xs" />
+  </div>
+);
+
+const BreakdownSkeleton = () => (
+  <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+      <div className="flex h-8 items-center gap-2">
+        <Skeleton className="h-6 w-12" />
+        <Skeleton className="h-3 w-28" />
+      </div>
+      <div className="flex h-4 items-center gap-4">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+    </div>
+
+    <div className="flex flex-col gap-1 pt-1">
+      <div className="flex h-6 items-center">
+        <Skeleton className="h-4 w-44" />
+      </div>
+      <div className="flex h-4 items-center">
+        <Skeleton className="h-3 w-64" />
+      </div>
+    </div>
+
+    <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+      <div className="flex h-8 items-center gap-2">
+        <Skeleton className="h-6 w-12" />
+        <Skeleton className="h-3 w-28" />
+      </div>
+      <Skeleton className="h-[5px] w-full rounded-xs" />
+      <div className="flex h-4 items-center gap-5">
+        <Skeleton className="h-3 w-40" />
+        <Skeleton className="h-3 w-36" />
+      </div>
+    </div>
+
+    <ScopeRowSkeleton />
+
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-9 flex-1 rounded-md" />
+        <Skeleton className="h-9 w-36 shrink-0 rounded-md" />
+      </div>
+      <div className="flex h-4 items-center justify-between gap-3 px-0.5">
+        <Skeleton className="h-2.5 w-32" />
+        <Skeleton className="h-2.5 w-6" />
+      </div>
+      <div className="flex flex-col gap-2">
+        {SUB_ORG_ROWS.map((row) => (
+          <ScopeRowSkeleton key={row} />
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const BreakdownBody = ({
+  breakdown,
+  scopeKind
+}: {
+  breakdown: BillingV2UsageBreakdown;
+  scopeKind: BillingV2BreakdownScopeKind;
+}) => {
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortOrder>("count");
+
+  const { total, userCount, scopedCount, unit, hasProjectDetail, scopes } = breakdown;
+  const unitLabel = pluralizeUnit(unit);
+  const isInstanceScope = scopeKind === "instance";
+  const uniqueNoun = total === 1 ? "unique identity" : "unique identities";
+  const totalNoun = userCount > 0 ? uniqueNoun : unitForCount(unit, total);
+  const totalLabel = isInstanceScope ? totalNoun : `${totalNoun} from this organization`;
+  const rootScopes = useMemo(() => scopes.filter((scope) => scope.isRoot), [scopes]);
+  const subOrgScopes = useMemo(() => scopes.filter((scope) => !scope.isRoot), [scopes]);
+  // The instance-wide breakdown counts every organization on the instance, so it can carry several
+  // root orgs. Their usage is in the headline either way, which only reconciles with the rows below
+  // when each root is listed: with more than one there is no single root to pin, so the roots become
+  // a section of the list rather than the card above it.
+  const isSingleTree = rootScopes.length <= 1;
+  const pinnedScope = isSingleTree ? rootScopes[0] : undefined;
+  const rootCount = rootScopes.reduce((sum, scope) => sum + scope.count, 0);
+  const subOrgCount = subOrgScopes.reduce((sum, scope) => sum + scope.count, 0);
+  const rootLabel = isSingleTree ? "the root org" : "root orgs";
+  const listNoun = isSingleTree ? "sub-organizations" : "organizations";
+  const hasListedScopes = isSingleTree ? subOrgScopes.length > 0 : scopes.length > 0;
+
+  const projectCount = scopes.reduce((sum, scope) => sum + scope.projects.length, 0);
+  const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
+  const spanSummary = [
+    isSingleTree
+      ? "Created across the root org"
+      : `Created across ${plural(rootScopes.length, "root org")}`,
+    subOrgScopes.length > 0 ? plural(subOrgScopes.length, "sub-org") : null,
+    hasProjectDetail && projectCount > 0 ? plural(projectCount, "project") : null
+  ]
+    .filter(Boolean)
+    .join(subOrgScopes.length > 0 && hasProjectDetail && projectCount > 0 ? ", " : " and ")
+    .replace(/, ([^,]*)$/, " and $1");
+
+  const sections = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const prepare = (list: BillingV2BreakdownScope[]) =>
+      [...(term ? list.filter((scope) => scope.name.toLowerCase().includes(term)) : list)].sort(
+        (a, b) => (sort === "name" ? a.name.localeCompare(b.name) : b.count - a.count)
+      );
+    return [
+      ...(isSingleTree ? [] : [{ title: "Organizations", scopes: prepare(rootScopes) }]),
+      { title: "Sub-organizations", scopes: prepare(subOrgScopes) }
+    ].filter((section) => section.scopes.length > 0);
+  }, [isSingleTree, rootScopes, subOrgScopes, query, sort]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-semibold text-foreground tabular-nums">
+            {total.toLocaleString()}
+          </span>
+          <span className="text-xs text-muted">{totalLabel}</span>
+        </div>
+        {userCount > 0 && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-accent">
+            <span>
+              <span className="font-semibold text-foreground">{userCount.toLocaleString()}</span>{" "}
+              {userCount === 1 ? "user identity" : "user identities"}
+            </span>
+            <span className="text-border">·</span>
+            <span>
+              <span className="font-semibold text-foreground">{scopedCount.toLocaleString()}</span>{" "}
+              {unitForCount(unit, scopedCount)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {scopedCount === 0 ? (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Nothing counted yet</EmptyTitle>
+            <EmptyDescription>
+              No {unitLabel} have been created{" "}
+              {isInstanceScope
+                ? "anywhere on this instance"
+                : "in this organization or its sub-organizations"}
+              .
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <>
+          <div className="flex flex-col gap-1 pt-1">
+            <span className="text-base font-semibold text-foreground">
+              {sentenceCase(unitLabel)} by scope
+            </span>
+            <span className="text-xs text-muted">{spanSummary}</span>
+          </div>
+
+          {subOrgScopes.length > 0 && rootScopes.length > 0 && (
+            <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-foreground tabular-nums">
+                  {scopedCount.toLocaleString()}
+                </span>
+                <span className="text-xs text-muted">{unitForCount(unit, scopedCount)}</span>
+              </div>
+              <div className="flex h-[5px] w-full gap-0.5 overflow-hidden rounded-xs bg-background">
+                <div
+                  className="animate-bar-grow h-full rounded-xs rounded-r-none bg-org/85"
+                  style={{ width: pct(rootCount, scopedCount) }}
+                />
+                <div
+                  className="animate-bar-grow h-full rounded-xs rounded-l-none bg-sub-org/85"
+                  style={{ width: pct(subOrgCount, scopedCount), animationDelay: "60ms" }}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-accent">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-[5px] w-3 rounded-xs bg-org/85" />
+                  <span className="font-semibold text-foreground">
+                    {rootCount.toLocaleString()}
+                  </span>{" "}
+                  created in {rootLabel}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-[5px] w-3 rounded-xs bg-sub-org/85" />
+                  <span className="font-semibold text-foreground">
+                    {subOrgCount.toLocaleString()}
+                  </span>{" "}
+                  created in sub-orgs
+                </span>
+              </div>
+            </div>
+          )}
+
+          {pinnedScope && (
+            <ScopeRow
+              scope={pinnedScope}
+              scopedCount={scopedCount}
+              unit={unit}
+              hasProjectDetail={hasProjectDetail}
+              showParentOrg={isInstanceScope}
+            />
+          )}
+
+          {hasListedScopes && (
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center gap-2">
+                <InputGroup className="flex-1">
+                  <InputGroupAddon align="inline-start">
+                    <Search className="size-3.5" />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={`Search ${listNoun}...`}
+                    aria-label={`Search ${listNoun}`}
+                  />
+                </InputGroup>
+                <Button
+                  variant="outline"
+                  size="md"
+                  className="w-36 shrink-0 justify-start"
+                  onClick={() => setSort((current) => (current === "count" ? "name" : "count"))}
+                >
+                  {sort === "count" ? <ArrowDownWideNarrow /> : <ArrowDownAZ />}
+                  {sort === "count" ? "Highest usage" : "Alphabetical"}
+                </Button>
+              </div>
+
+              {sections.length === 0 ? (
+                <Empty className="border">
+                  <EmptyHeader>
+                    <EmptyTitle>No matching {listNoun}</EmptyTitle>
+                    <EmptyDescription>Clear the search to see all of them.</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                sections.map((section) => (
+                  <Fragment key={section.title}>
+                    <div className="flex items-center justify-between gap-3 px-0.5">
+                      <span className="text-2xs tracking-wide text-muted uppercase">
+                        {section.title}
+                      </span>
+                      <span className="text-2xs text-muted tabular-nums">
+                        {section.scopes.length}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {section.scopes.map((scope) => (
+                        <ScopeRow
+                          key={scope.orgId}
+                          scope={scope}
+                          scopedCount={scopedCount}
+                          unit={unit}
+                          hasProjectDetail={hasProjectDetail}
+                          showParentOrg={isInstanceScope}
+                        />
+                      ))}
+                    </div>
+                  </Fragment>
+                ))
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+type UsageBreakdownSheetProps = {
+  orgId: string;
+  scope: BillingV2BreakdownScopeKind;
+  prod: BillingV2CatalogProduct;
+  entitlement?: BillingV2Entitlement;
+  onClose: () => void;
+};
+
+export const UsageBreakdownSheet = ({
+  orgId,
+  scope,
+  prod,
+  entitlement,
+  onClose
+}: UsageBreakdownSheetProps) => {
+  const dimensions = breakdownableDimensions(entitlement);
+  const [activeKey, setActiveKey] = useState(dimensions[0]?.key ?? "");
+  const activeDim = dimensions.find((dim) => dim.key === activeKey) ?? dimensions[0];
+
+  const dimensionKey = activeDim?.key ?? null;
+  const {
+    data: breakdown,
+    isPending,
+    isError
+  } = useGetBillingV2UsageBreakdown(orgId, dimensionKey, scope);
+  const isLoading = isPending && Boolean(dimensionKey);
+
+  return (
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-2xl">
+        <SheetHeader className="flex-row items-center gap-3 pr-12">
+          <ProductIcon product={prod} />
+          <div className="min-w-0">
+            <SheetTitle className="text-base">Usage breakdown</SheetTitle>
+            <SheetDescription className="mt-0.5">{prod.name}</SheetDescription>
+          </div>
+        </SheetHeader>
+
+        <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+          {dimensions.length > 1 && (
+            <Tabs value={activeDim?.key} onValueChange={setActiveKey}>
+              <TabsList variant="org">
+                {dimensions.map((dim) => (
+                  <TabsTrigger key={dim.key} value={dim.key}>
+                    {dim.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          )}
+
+          {isLoading && <BreakdownSkeleton />}
+
+          {!dimensionKey && (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>Nothing to break down</EmptyTitle>
+                <EmptyDescription>
+                  This product no longer meters usage that can be traced to an organization.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+
+          {isError && (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>Couldn&apos;t load the breakdown</EmptyTitle>
+                <EmptyDescription>
+                  We couldn&apos;t work out where this usage comes from. Close this and try again in
+                  a moment.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+
+          {breakdown && !isError && <BreakdownBody breakdown={breakdown} scopeKind={scope} />}
+        </div>
+
+        <SheetFooter className="flex-row items-center justify-end border-t">
+          <Button variant="org" size="sm" onClick={onClose}>
+            Done
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+};

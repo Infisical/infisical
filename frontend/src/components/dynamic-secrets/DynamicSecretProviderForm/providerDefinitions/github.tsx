@@ -59,6 +59,8 @@ const GithubFields = () => {
               <SecretInput
                 {...field}
                 id="github-private-key"
+                placeholder="-----BEGIN PRIVATE KEY----- ..."
+                isError={Boolean(error)}
                 aria-describedby={error ? "github-private-key-error" : undefined}
               />
               <FieldError id="github-private-key-error">{error?.message}</FieldError>

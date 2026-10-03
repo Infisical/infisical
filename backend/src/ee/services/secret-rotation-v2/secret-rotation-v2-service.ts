@@ -4,7 +4,6 @@ import isEqual from "lodash.isequal";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -96,9 +95,9 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-enums";
 import { convertSecretRotationToValidationRuleProvider } from "@app/services/secret-validation-rule/secret-validation-rule-fns";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
-import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { WebhookEvents } from "@app/services/webhook/webhook-types";
@@ -117,6 +116,7 @@ import { openRouterApiKeyRotationFactory } from "./open-router-api-key/open-rout
 import { openAIServiceAccountRotationFactory } from "./openai-service-account/openai-service-account-rotation-fns";
 import { redisCredentialsRotationFactory } from "./redis-credentials/redis-credentials-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
+import { stripeApiKeyRotationFactory } from "./stripe-api-key/stripe-api-key-rotation-fns";
 import { supabaseApiKeyRotationFactory } from "./supabase-api-key/supabase-api-key-rotation-fns";
 import { unixLinuxLocalAccountRotationFactory } from "./unix-linux-local-account-rotation/unix-linux-local-account-rotation-fns";
 import { UnixLinuxLocalAccountRotationMethod } from "./unix-linux-local-account-rotation/unix-linux-local-account-rotation-schemas";
@@ -169,9 +169,8 @@ export type TSecretRotationV2ServiceFactoryDep = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   queueService: Pick<TQueueServiceFactory, "queue">;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById" | "transaction">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -218,7 +217,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.FireworksApiKey]: fireworksApiKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.SnowflakeUserKeyPair]: snowflakeUserKeyPairRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.CloudflareApiToken]: cloudflareApiTokenRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.CloudflareR2AccessKey]: cloudflareR2AccessKeyRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.CloudflareR2AccessKey]: cloudflareR2AccessKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.StripeApiKey]: stripeApiKeyRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -240,7 +240,6 @@ export const secretRotationV2ServiceFactory = ({
   queueService,
   folderCommitService,
   appConnectionDAL,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
   telemetryService,
@@ -267,7 +266,7 @@ export const secretRotationV2ServiceFactory = ({
       type: SecretValidationRuleType.SecretRotations,
       provider
     });
-    if (!matched.constraints.length) return undefined;
+    if (!matched.ruleNames.length) return undefined;
     return matched;
   };
 
@@ -620,9 +619,9 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService,
+      keyStore,
       passwordValidationContext
     );
 
@@ -996,9 +995,9 @@ export const secretRotationV2ServiceFactory = ({
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
         kmsService,
-        gatewayService,
         gatewayV2Service,
         gatewayPoolService,
+        keyStore,
         passwordValidationContext
       );
 
@@ -1340,9 +1339,9 @@ export const secretRotationV2ServiceFactory = ({
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
         kmsService,
-        gatewayService,
         gatewayV2Service,
         gatewayPoolService,
+        keyStore,
         passwordValidationContext
       );
 
@@ -1666,9 +1665,9 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      keyStore
     );
 
     if (!rotationFactory.checkActiveCredentials)
@@ -2066,9 +2065,9 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService,
+      keyStore,
       passwordValidationContext
     );
 

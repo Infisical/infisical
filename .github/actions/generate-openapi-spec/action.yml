@@ -29,10 +29,23 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Read pinned versions
+      id: pins
+      shell: bash
+      # A step output, not GITHUB_ENV: this action runs twice in one job and
+      # GITHUB_ENV would carry the first checkout's value into the second.
+      run: |
+        f="${{ inputs.source-path }}/build-versions.env"
+        v=""
+        if [ -f "$f" ]; then v="$(grep -oE '^INFISICAL_CLI_VERSION=.+' "$f" | cut -d= -f2 || true)"; fi
+        echo "cli=$v" >> "$GITHUB_OUTPUT"
+
     - name: Build the API image
       uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
       with:
         context: ${{ inputs.source-path }}/backend
+        # Omitted when unknown; an explicit empty arg would override the ARG default.
+        build-args: ${{ steps.pins.outputs.cli != '' && format('INFISICAL_CLI_VERSION={0}', steps.pins.outputs.cli) || '' }}
         load: true
         tags: ${{ inputs.container-name }}
         cache-from: type=gha,scope=openapi-spec

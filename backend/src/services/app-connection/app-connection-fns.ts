@@ -10,12 +10,12 @@ import {
   validateOCIConnectionCredentials
 } from "@app/ee/services/app-connections/oci";
 import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee/services/app-connections/oracledb";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
@@ -120,6 +120,7 @@ import {
   validateDatabricksConnectionCredentials
 } from "./databricks/databricks-connection-fns";
 import { DatadogConnectionMethod, getDatadogConnectionListItem, validateDatadogConnectionCredentials } from "./datadog";
+import { DaytonaConnectionMethod, getDaytonaConnectionListItem, validateDaytonaConnectionCredentials } from "./daytona";
 import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
 import { DevinConnectionMethod, getDevinConnectionListItem, validateDevinConnectionCredentials } from "./devin";
 import {
@@ -239,6 +240,11 @@ import {
 import { getOpenAIConnectionListItem, OpenAIConnectionMethod, validateOpenAIConnectionCredentials } from "./openai";
 import { getOvhConnectionListItem, OVHConnectionMethod, validateOvhConnectionCredentials } from "./ovh";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
+import {
+  getPowerDnsConnectionListItem,
+  PowerDnsConnectionMethod,
+  validatePowerDnsConnectionCredentials
+} from "./powerdns";
 import { getQoveryConnectionListItem, QoveryConnectionMethod, validateQoveryConnectionCredentials } from "./qovery";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
@@ -262,6 +268,8 @@ import {
   validateSpaceliftConnectionCredentials
 } from "./spacelift";
 import { getSshConnectionListItem, SshConnectionMethod, validateSshConnectionCredentials } from "./ssh";
+import { StripeConnectionMethod } from "./stripe";
+import { getStripeConnectionListItem, validateStripeConnectionCredentials } from "./stripe/stripe-connection-fns";
 import {
   getSupabaseConnectionListItem,
   SupabaseConnectionMethod,
@@ -327,6 +335,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.Chef,
   AppConnection.DNSMadeEasy,
   AppConnection.AzureDNS,
+  AppConnection.PowerDns,
   AppConnection.Venafi,
   AppConnection.VenafiTpp,
   AppConnection.NetScaler,
@@ -336,11 +345,41 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.GoDaddy,
   AppConnection.SSH,
   AppConnection.WinRM,
+  AppConnection.LDAP,
   AppConnection.NutanixPrismCentral,
   AppConnection.MicrosoftIntune
 ];
 
-export const listAppConnectionOptions = (projectType?: ProjectType) => {
+const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
+
+export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
+  switch (projectType) {
+    case ProjectType.SecretManager:
+      return (
+        Boolean(SECRET_SYNC_APP_CONNECTION_MAP[app]) ||
+        Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[app]) ||
+        EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(app)
+      );
+    case ProjectType.SecretScanning:
+      return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[app]);
+    case ProjectType.CertificateManager:
+      return PKI_APP_CONNECTIONS.includes(app);
+    case ProjectType.KMS:
+      return false;
+    case ProjectType.PAM:
+      return false;
+    case ProjectType.AgentVault:
+      return AGENT_VAULT_APP_CONNECTIONS.includes(app);
+    default:
+      return true;
+  }
+};
+
+// Products whose allowed connection types are also enforced on create. Other products only use them to filter the picker.
+// Add a product only once nothing creates other connection types in it through the API.
+export const PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES = [ProjectType.AgentVault];
+
+export const listAppConnectionOptions = (orgId: string, projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
     getGitHubConnectionListItem(),
@@ -424,27 +463,19 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
     getNutanixPrismCentralConnectionListItem(),
-    getSpaceliftConnectionListItem()
+    getPowerDnsConnectionListItem(),
+    getSpaceliftConnectionListItem(),
+    getDaytonaConnectionListItem(),
+    getStripeConnectionListItem()
   ]
     .filter((option) => {
-      switch (projectType) {
-        case ProjectType.SecretManager:
-          return (
-            Boolean(SECRET_SYNC_APP_CONNECTION_MAP[option.app]) ||
-            Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[option.app]) ||
-            EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(option.app)
-          );
-        case ProjectType.SecretScanning:
-          return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[option.app]);
-        case ProjectType.CertificateManager:
-          return PKI_APP_CONNECTIONS.includes(option.app);
-        case ProjectType.KMS:
+      if (option.app === AppConnection.Stripe) {
+        if (!getConfig().WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.includes(orgId)) {
           return false;
-        case ProjectType.PAM:
-          return false;
-        default:
-          return true;
+        }
       }
+
+      return isAppConnectionAllowedInProject(option.app, projectType);
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -569,7 +600,6 @@ export const decryptAppConnectionConfiguration = async ({
 
 export const validateAppConnectionCredentials = async (
   appConnection: TAppConnectionConfig,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   deps: {
     identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
@@ -582,8 +612,8 @@ export const validateAppConnectionCredentials = async (
   const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnectionCredentialsValidator> = {
     [AppConnection.AWS]: validateAwsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Databricks]: validateDatabricksConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.GitHub]: ((config: TAppConnectionConfig, gw, gw2) =>
-      validateGitHubConnectionCredentials(config as TGitHubConnectionConfig, gw, gw2, {
+    [AppConnection.GitHub]: ((config: TAppConnectionConfig, gw) =>
+      validateGitHubConnectionCredentials(config as TGitHubConnectionConfig, gw, {
         gitHubAppDAL: deps.gitHubAppDAL,
         kmsService: deps.kmsService
       })) as TAppConnectionCredentialsValidator,
@@ -677,10 +707,13 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.NutanixPrismCentral]:
       validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.PowerDns]: validatePowerDnsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
-  return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
+  return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
 };
 
 export const getAppConnectionMethodName = (method: TAppConnection["method"]) => {
@@ -701,6 +734,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case HerokuConnectionMethod.OAuth:
     case GitLabConnectionMethod.OAuth:
     case VenafiTppConnectionMethod.OAuth:
+    case StripeConnectionMethod.OAuth:
       return "OAuth";
     case HerokuConnectionMethod.AuthToken:
       return "Auth Token";
@@ -786,6 +820,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TriggerDevConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
     case NutanixPrismCentralConnectionMethod.ApiKey:
+    case PowerDnsConnectionMethod.ApiKey:
+    case DaytonaConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -947,7 +983,10 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
   [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported,
-  [AppConnection.Spacelift]: platformManagedCredentialsNotSupported
+  [AppConnection.PowerDns]: platformManagedCredentialsNotSupported,
+  [AppConnection.Spacelift]: platformManagedCredentialsNotSupported,
+  [AppConnection.Daytona]: platformManagedCredentialsNotSupported,
+  [AppConnection.Stripe]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

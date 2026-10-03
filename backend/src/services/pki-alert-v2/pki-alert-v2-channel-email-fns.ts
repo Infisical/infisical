@@ -51,9 +51,12 @@ export const sendEmailNotification = async (
 
   await smtpService.sendMail({
     recipients: config.recipients,
-    subjectLine: `Infisical Certificate ${eventLabel} Alert - ${alert.name}`,
+    subjectLine: `Infisical Certificate ${eventLabel} Alert - ${alert.name}${
+      alert.applicationName ? ` (${alert.applicationName})` : ""
+    }`,
     substitutions: {
       alertName: alert.name,
+      applicationName: alert.applicationName,
       alertBeforeDays,
       viewUrl,
       eventLabel,

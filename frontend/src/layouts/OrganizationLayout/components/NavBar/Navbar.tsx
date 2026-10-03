@@ -14,9 +14,12 @@ import {
   Info,
   LogOut,
   Mail,
+  MessagesSquare,
+  Monitor,
+  Moon,
   Plus,
   Settings,
-  Slack,
+  Sun,
   TriangleAlertIcon,
   User,
   UserPlus,
@@ -30,7 +33,6 @@ import { createNotification } from "@app/components/notifications";
 import { NewSubOrganizationModal } from "@app/components/organization/NewSubOrganizationModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button as V2Button, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -42,9 +44,19 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
@@ -56,9 +68,10 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
+import { type Theme, useTheme } from "@app/components/v3/platform/ThemeProvider";
 import { envConfig } from "@app/config/env";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useServerConfig,
@@ -67,19 +80,13 @@ import {
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { getOrgScopedProductFromPath } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
-import {
-  adminQueryKeys,
-  projectKeys,
-  subOrganizationsQuery,
-  useGetOrganizations,
-  useLogoutUser
-} from "@app/hooks/api";
-import { appConnectionKeys } from "@app/hooks/api/appConnections";
-import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
+import { subOrganizationsQuery, useGetOrganizations, useLogoutUser } from "@app/hooks/api";
+import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
-import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import {
@@ -126,7 +133,7 @@ Thank you,
 };
 
 export const INFISICAL_SUPPORT_OPTIONS = [
-  [Slack, "Support Forum", () => "https://infisical.com/slack"],
+  [MessagesSquare, "Support Forum", () => "https://community.infisical.com"],
   [
     Book,
     "Read Docs",
@@ -139,6 +146,7 @@ export const INFISICAL_SUPPORT_OPTIONS = [
 
 export const Navbar = () => {
   const { user } = useUser();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { config: serverConfig } = useServerConfig();
@@ -194,10 +202,12 @@ export const Navbar = () => {
   const handleOrgSelection = async ({
     organizationId,
     navigateTo,
+    isSubOrganization: targetIsSubOrganization = false,
     onSuccess
   }: {
     organizationId?: string;
     navigateTo?: string;
+    isSubOrganization?: boolean;
     onSuccess?: () => void | Promise<void>;
   }) => {
     if (!organizationId) return;
@@ -213,22 +223,30 @@ export const Navbar = () => {
       }
       toggleShowMfa.on();
       setMfaSuccessCallback(() => async () => {
-        await handleOrgSelection({ organizationId, onSuccess });
+        await handleOrgSelection({
+          organizationId,
+          navigateTo,
+          isSubOrganization: targetIsSubOrganization,
+          onSuccess
+        });
       });
       return;
     }
 
     SecurityClient.setToken(token);
-    queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
-    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
-    queryClient.removeQueries({ queryKey: appConnectionKeys.all });
+    await queryClient.fetchQuery({
+      queryKey: authKeys.getAuthToken,
+      queryFn: fetchAuthToken,
+      staleTime: 0
+    });
 
-    await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
-    await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
-
-    await navigateUserToOrg({ navigate, organizationId, navigateTo });
-    queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
+    await navigateUserToOrg({
+      navigate,
+      organizationId,
+      navigateTo,
+      switchFrom: location,
+      isSubOrganization: targetIsSubOrganization
+    });
 
     if (onSuccess) {
       await onSuccess();
@@ -248,7 +266,11 @@ export const Navbar = () => {
     };
 
     if (isSubOrganization) {
-      await handleOrgSelection({ organizationId: rootOrg.id, onSuccess });
+      await handleOrgSelection({
+        organizationId: rootOrg.id,
+        navigateTo: "/organizations/$orgId/billing",
+        onSuccess
+      });
     } else {
       await navigateToBilling();
     }
@@ -304,9 +326,11 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
-  const isPamScope = location.pathname.startsWith(`/organizations/${currentOrg.id}/pam/`);
+  const orgScopedProduct = getOrgScopedProductFromPath(location.pathname);
+  const isPamScope = orgScopedProduct === ProjectType.PAM;
+  const isAgentVaultScope = orgScopedProduct === ProjectType.AgentVault;
   const isProjectScope =
-    isPamScope ||
+    Boolean(orgScopedProduct) ||
     (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
       location.pathname !== `/organizations/${currentOrg.id}/projects`);
 
@@ -341,10 +365,11 @@ export const Navbar = () => {
   return (
     <div
       className={twMerge(
-        "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent",
+        "z-10 flex min-h-12 items-center border-b border-border-soft bg-gradient-to-br to-transparent in-data-[theme=light]:bg-none",
         isServerAdminPanel && "from-admin/5",
         !isServerAdminPanel && isPamScope && "from-product-pam/5",
-        !isServerAdminPanel && isProjectScope && !isPamScope && "from-project/5",
+        !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
+        !isServerAdminPanel && isProjectScope && !orgScopedProduct && "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}
@@ -358,7 +383,7 @@ export const Navbar = () => {
                 <Link
                   to="/organizations/$orgId/projects"
                   params={{ orgId: currentOrg.id }}
-                  className="flex h-full items-center gap-x-1 border-r border-border pr-4 pl-2 text-muted transition-colors hover:text-foreground"
+                  className="flex h-full items-center gap-x-1 border-r border-border-soft pr-4 pl-2 text-muted transition-colors hover:text-foreground"
                 >
                   <ChevronLeft className="size-4" />
                   <OrgIcon className="size-3.5" />
@@ -368,7 +393,7 @@ export const Navbar = () => {
             </Tooltip>
             <Link
               to="/admin"
-              className="group flex cursor-pointer items-center gap-2 pl-4 text-sm text-white transition-all duration-100"
+              className="group flex cursor-pointer items-center gap-2 pl-4 text-sm text-foreground-inverse transition-all duration-100"
             >
               <InstanceIcon className="size-3.5 text-admin" />
               <div className="whitespace-nowrap">Server Console</div>
@@ -378,12 +403,12 @@ export const Navbar = () => {
           <>
             <div
               className={twMerge(
-                "flex h-full min-w-0 items-center overflow-hidden border-border pr-2 pl-4 transition-all duration-300 ease-in-out",
+                "flex h-full min-w-0 items-center overflow-hidden border-border-soft pr-2 pl-4 transition-all duration-300 ease-in-out",
                 isProjectScope ? "mr-2 w-[72px] border-r" : "mr-4 w-96 max-w-96"
               )}
             >
               <NavbarSwitcher open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
-                <div className="group mr-1 flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100">
+                <div className="group mr-1 flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-foreground transition-all duration-100">
                   <button
                     className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
                     type="button"
@@ -515,7 +540,10 @@ export const Navbar = () => {
                                 keywords={[subOrg.name]}
                                 onSelect={() => {
                                   setIsOrgSelectOpen(false);
-                                  handleOrgSelection({ organizationId: subOrg.id });
+                                  handleOrgSelection({
+                                    organizationId: subOrg.id,
+                                    isSubOrganization: true
+                                  });
                                 }}
                               >
                                 <Check
@@ -531,7 +559,7 @@ export const Navbar = () => {
                               a={OrgPermissionSubjects.SubOrganization}
                             >
                               {(isAllowed) =>
-                                isAllowed ? (
+                                isAllowed && !isSubOrganization ? (
                                   <CommandItem
                                     className="text-muted"
                                     onSelect={() => {
@@ -595,9 +623,6 @@ export const Navbar = () => {
       </div>
 
       <VersionBadge />
-      <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
-        {getSubscriptionPlanLabel(subscription)}
-      </Badge>
       {!location.pathname.startsWith("/admin") && user.superAdmin && (
         <Button variant="outline" size="xs" className="mt-px mr-2" asChild>
           <Link to="/admin" onClick={handleNavigateToAdminConsole}>
@@ -607,7 +632,7 @@ export const Navbar = () => {
         </Button>
       )}
       {!location.pathname.startsWith("/admin") && !user.superAdmin && (
-        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+        <OrgPermissionCan I={OrgPermissionMemberActions.Create} a={OrgPermissionSubjects.Member}>
           {(isAllowed) =>
             isAllowed ? (
               <Button variant="outline" size="sm" className="mr-2" asChild>
@@ -634,7 +659,7 @@ export const Navbar = () => {
               <CircleHelp />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="bottom" sideOffset={8}>
+          <DropdownMenuContent align="end" side="bottom">
             {INFISICAL_SUPPORT_OPTIONS.map(([Icon, text, getUrl]) => {
               const url =
                 text === "Email Support"
@@ -689,13 +714,33 @@ export const Navbar = () => {
         </DropdownMenu>
         <AnnouncementNavButton />
         <NotificationDropdown />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <IconButton
+              variant="outline"
+              size="sm"
+              className="hidden sm:inline-flex"
+              aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} theme`}
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark", "navbar-toggle")}
+            >
+              {resolvedTheme === "dark" ? <Sun /> : <Moon />}
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            Switch to {resolvedTheme === "dark" ? "light" : "dark"} theme
+          </TooltipContent>
+        </Tooltip>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <IconButton variant="outline" size="sm" aria-label="User menu">
               <User />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="bottom" align="end" sideOffset={8}>
+          <DropdownMenuContent
+            side="bottom"
+            align="end"
+            className="[&_[data-slot=dropdown-menu-item]]:h-9 [&_[data-slot=dropdown-menu-radio-item]]:h-9"
+          >
             <div className="cursor-default px-3 py-2">
               <div className="text-sm font-medium capitalize">
                 {user?.firstName} {user?.lastName}
@@ -709,7 +754,10 @@ export const Navbar = () => {
                 Personal Settings
               </Link>
             </DropdownMenuItem>
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+            <OrgPermissionCan
+              I={OrgPermissionMemberActions.Create}
+              a={OrgPermissionSubjects.Member}
+            >
               {(isAllowed) =>
                 isAllowed ? (
                   <DropdownMenuItem asChild>
@@ -729,6 +777,25 @@ export const Navbar = () => {
               }
             </OrgPermissionCan>
             <DropdownMenuSeparator />
+            <DropdownMenuLabel>Theme</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={theme}
+              onValueChange={(value) => setTheme(value as Theme, "profile-menu")}
+            >
+              <DropdownMenuRadioItem value="system" className="gap-2">
+                <Monitor className="size-4" />
+                System
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="dark" className="gap-2">
+                <Moon className="size-4" />
+                Dark
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="light" className="gap-2">
+                <Sun className="size-4" />
+                Light
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <a
                 href="https://infisical.com/docs/documentation/getting-started/introduction"
@@ -741,9 +808,9 @@ export const Navbar = () => {
               </a>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <a href="https://infisical.com/slack" target="_blank" rel="noopener noreferrer">
-                <Slack />
-                Join Slack Community
+              <a href="https://community.infisical.com" target="_blank" rel="noopener noreferrer">
+                <MessagesSquare />
+                Join Community
                 <ExternalLink className="ml-auto size-3.5 opacity-50" />
               </a>
             </DropdownMenuItem>
@@ -770,64 +837,52 @@ export const Navbar = () => {
         </DropdownMenu>
       </ButtonGroup>
 
-      <Modal
-        isOpen={showCardDeclinedModal}
-        onOpenChange={() => !isModalIntrusive && setShowCardDeclinedModal(false)}
+      <Dialog
+        open={showCardDeclinedModal}
+        onOpenChange={(isOpen) => {
+          if (!isModalIntrusive) setShowCardDeclinedModal(isOpen);
+        }}
       >
-        <ModalContent
-          title={
-            <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-primary-400" />
+        <DialogContent showCloseButton={!isModalIntrusive}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-warning" />
               Your payment could not be processed.
-            </div>
-          }
-          showCloseButton={!isModalIntrusive}
-        >
-          <div>
-            <div>
-              <div className="mb-1">
-                <p>
-                  We were unable to process your last payment
-                  {subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}.
-                  Please update your payment information to continue using premium features.
-                </p>
-              </div>
-              <div className="mt-4">
-                <div className="flex space-x-3">
-                  <V2Button
-                    colorSchema="primary"
-                    variant="solid"
-                    onClick={handleNavigateToRootOrgBilling}
-                  >
-                    Update Payment Method
-                  </V2Button>
-                  {!isModalIntrusive && (
-                    <V2Button
-                      colorSchema="secondary"
-                      variant="outline"
-                      onClick={() => setShowCardDeclinedModal(false)}
-                    >
-                      Dismiss
-                    </V2Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </ModalContent>
-      </Modal>
+            </DialogTitle>
+            <DialogDescription>
+              We were unable to process your last payment
+              {subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}.
+              Please update your payment information to continue using premium features.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            {!isModalIntrusive && (
+              <Button variant="outline" onClick={() => setShowCardDeclinedModal(false)}>
+                Dismiss
+              </Button>
+            )}
+            <Button variant="org" onClick={handleNavigateToRootOrgBilling}>
+              Update Payment Method
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <NewSubOrganizationModal
         isOpen={showSubOrgForm}
         onOpenChange={setShowSubOrgForm}
-        onCreated={({ id }) => handleOrgSelection({ organizationId: id })}
+        onCreated={({ id }) => handleOrgSelection({ organizationId: id, isSubOrganization: true })}
       />
-      <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
-        <ModalContent title="Server Administrators" subTitle="View all server administrators">
-          <div className="mb-2">
+      <Dialog open={showAdminsModal} onOpenChange={setShowAdminsModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Server Administrators</DialogTitle>
+            <DialogDescription>View all server administrators</DialogDescription>
+          </DialogHeader>
+          <DialogBody className="flex flex-col overflow-visible">
             <ServerAdminsPanel />
-          </div>
-        </ModalContent>
-      </Modal>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

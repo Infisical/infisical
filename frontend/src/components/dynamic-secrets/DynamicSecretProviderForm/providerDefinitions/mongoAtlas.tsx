@@ -52,12 +52,14 @@ const mongoAtlasCredentialFields = [
     name: "inputs.adminPublicKey",
     type: "text",
     label: "Admin Public Key",
+    placeholder: "Enter Atlas public key",
     layout: "half"
   },
   {
     name: "inputs.adminPrivateKey",
     type: "secret",
     label: "Admin Private Key",
+    placeholder: "Enter Atlas private key",
     autoComplete: "new-password",
     layout: "half"
   },
@@ -65,6 +67,7 @@ const mongoAtlasCredentialFields = [
     name: "inputs.groupId",
     type: "text",
     label: "Group/Project ID",
+    placeholder: "507f1f77bcf86cd799439011",
     description: "Unique 24-hexadecimal digit string that identifies your project."
   }
 ] satisfies readonly TDynamicSecretProviderField<TMongoAtlasValues>[];

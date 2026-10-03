@@ -61,7 +61,9 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import {
   adoptProvisionedShadowUser,
   ensureSsoAccountVerified,
-  isStaleSsoAlias
+  isStaleSsoAlias,
+  resolveAssertedProfileName,
+  syncSsoUserProfile
 } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
@@ -541,6 +543,22 @@ export const oidcConfigServiceFactory = ({
       }));
     }
 
+    // The IdP is authoritative for identity in an org that enforces SSO, so a mailbox or name
+    // changed there is carried onto the account rather than left to go stale.
+    user = await syncSsoUserProfile({
+      user,
+      userAlias,
+      assertedEmail: sanitizedEmail,
+      assertedFirstName: firstName,
+      assertedLastName: lastName,
+      orgId,
+      isAuthEnforced: Boolean(organization.authEnforced),
+      userDAL,
+      userAliasDAL,
+      emailDomainDAL,
+      auditLogService
+    });
+
     if (user.email && (!userAlias.isEmailVerified || !user.isAccepted)) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
@@ -880,8 +898,12 @@ export const oidcConfigServiceFactory = ({
           });
         }
 
-        const name = claims?.given_name || claims?.name;
-        if (!name) {
+        const assertedName = resolveAssertedProfileName({
+          givenName: claims?.given_name,
+          familyName: claims?.family_name,
+          displayName: claims?.name
+        });
+        if (!assertedName) {
           throw new BadRequestError({
             message: "Invalid request. Missing name claim."
           });
@@ -892,8 +914,8 @@ export const oidcConfigServiceFactory = ({
         oidcLogin({
           email: claims.email.toLowerCase(),
           externalId: claims.sub,
-          firstName: name,
-          lastName: claims.family_name ?? "",
+          firstName: assertedName.firstName,
+          lastName: assertedName.lastName,
           orgId: org.id,
           ip: requestContext.get("ip") || "",
           userAgent: requestContext.get("userAgent") || "",

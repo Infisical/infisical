@@ -793,6 +793,18 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.FolderAccessGrantCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          actorType: ActorType.USER,
+          permission: folderAccess.permission,
+          isTemporary: folderAccess.isTemporary
+        }
+      });
+
       return { folderAccess: { ...folderAccess, userId: req.params.userId } };
     }
   });
@@ -851,6 +863,18 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.FolderAccessGrantUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          actorType: ActorType.USER,
+          permission: folderAccess.permission,
+          isTemporary: folderAccess.isTemporary
+        }
+      });
+
       return { folderAccess: { ...folderAccess, userId: req.params.userId } };
     }
   });
@@ -897,6 +921,18 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         event: {
           type: EventType.DELETE_SECRET_FOLDER_ACCESS,
           metadata: toSecretFolderAccessAuditMetadata(folderAccess, { userId: req.params.userId })
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.FolderAccessGrantDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          actorType: ActorType.USER,
+          permission: folderAccess.permission,
+          isTemporary: folderAccess.isTemporary
         }
       });
 

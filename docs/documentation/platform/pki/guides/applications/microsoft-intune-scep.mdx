@@ -15,7 +15,7 @@ By the end, your Intune-managed devices will hold certificates from a CA you own
 <Accordion title="How it works">
   Three systems are involved, and each has one job:
 
-  - **Infisical** is the certificate authority. Of the three, it is the only one that signs certificates.
+  - **Infisical** is the certificate authority. Of the three, it's the only one that signs certificates.
   - **Intune** decides which devices should get a certificate and confirms that each request is genuine. It never issues a certificate itself.
   - **The device** generates a key pair, keeps the private key, and asks Infisical for a certificate covering the public half. The device does the asking. Nothing is pushed onto it.
 
@@ -374,10 +374,10 @@ Infisical's **Allow cert-based renewal** option stays off for Intune validation,
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified before these certificates expire.
   </Card>
-  <Card title="Certificate Policies" icon="shield-halved" href="/documentation/platform/pki/settings/policies">
+  <Card title="Certificate Policies" icon="file-text" href="/documentation/platform/pki/settings/policies">
     Tighten what this profile is allowed to issue.
   </Card>
-  <Card title="SCEP Enrollment" icon="mobile" href="/documentation/platform/pki/applications/enrollment-methods/scep">
+  <Card title="SCEP Enrollment" icon="smartphone" href="/documentation/platform/pki/applications/enrollment-methods/scep">
     Review the full set of SCEP enrollment options.
   </Card>
   <Card title="Managing Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">

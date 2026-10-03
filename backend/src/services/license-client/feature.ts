@@ -30,7 +30,10 @@ export const defineFeature = <T extends TFeatureValue>(key: string, fallback: T)
   fallback
 });
 
-export const defineLimitFeature = (key: string, fallback: number): TLimitFeatureDescriptor => ({
+export const defineLimitFeature = <K extends string>(
+  key: K,
+  fallback: number
+): TLimitFeatureDescriptor & { readonly key: K } => ({
   key,
   fallback,
   limit: true

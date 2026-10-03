@@ -83,6 +83,13 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
         return Array.from(next);
       });
     }
+
+    const fieldError = Object.entries(formErrors).find(
+      ([field, error]) => field !== "permissions" && error?.message
+    );
+    if (fieldError) {
+      createNotification({ type: "error", text: `${fieldError[0]}: ${fieldError[1]?.message}` });
+    }
   });
 
   const isCustomRole = !["admin", "member", "no-access"].includes(role?.slug ?? "");
@@ -103,7 +110,7 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
       >
         <div className="mx-4 flex items-center justify-between border-b border-border pb-4">
           <div>
-            <h3 className="text-lg font-medium text-foreground">Policies</h3>
+            <h3 className="text-lg font-normal text-foreground">Policies</h3>
             <p className="text-sm leading-3 text-muted">Configure granular access policies</p>
           </div>
           {isCustomRole && (

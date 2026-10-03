@@ -81,17 +81,6 @@ services:
       - "3008:3000"
     profiles: [queue]
 
-  db-test:
-    profiles: ["test"]
-    image: postgres:14-alpine
-    ports:
-      - "5430:5432"
-    environment:
-      POSTGRES_PASSWORD: infisical
-      POSTGRES_USER: infisical
-      POSTGRES_DB: infisical-test
-    command: postgres -c max_locks_per_transaction=512
-
   backend:
     container_name: infisical-dev-api
     build:

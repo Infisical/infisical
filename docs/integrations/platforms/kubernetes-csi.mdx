@@ -49,7 +49,7 @@ Currently, the Infisical CSI provider only supports static secrets.
 
 ### Install Secrets Store CSI Driver
 
-In order to use the Infisical CSI provider, you will first have to install the [Secrets Store CSI driver](https://secrets-store-csi-driver.sigs.k8s.io/getting-started/installation) to your cluster.
+In order to use the Infisical CSI provider, you'll first have to install the [Secrets Store CSI driver](https://secrets-store-csi-driver.sigs.k8s.io/getting-started/installation) to your cluster.
 
 #### Standard installation
 
@@ -76,11 +76,11 @@ The flags configure the following:
 - `syncSecret.enabled=true`: Enables syncing secrets to Kubernetes secrets
 
 <Info>
-  If you do not wish to use the auto-syncing feature of the secrets store CSI
+  If you don't wish to use the auto-syncing feature of the secrets store CSI
   driver, you can omit the `enableSecretRotation` and the `rotationPollInterval`
   flags. Do note that by default, secrets from Infisical are only fetched and
   mounted during pod creation. If there are any changes made to the secrets in
-  Infisical, they will not propagate to the pods unless auto-syncing is enabled
+  Infisical, they won't propagate to the pods unless auto-syncing is enabled
   for the CSI driver.
 </Info>
 
@@ -97,7 +97,7 @@ helm install csi secrets-store-csi-driver/secrets-store-csi-driver \
 ```
 
 <Warning>
-  **Environments without custom audience support**: Do not set a custom audience
+  **Environments without custom audience support**: Don't set a custom audience
   when installing the CSI driver in environments that reject custom audiences.
   Instead, use the installation above and set `useDefaultAudience: "true"` in
   your SecretProviderClass configuration.
@@ -129,7 +129,7 @@ helm show values infisical-helm-charts/infisical-csi-provider
 
 ### Authentication
 
-In order for the Infisical CSI provider to pull secrets from your Infisical project, you will have to configure
+In order for the Infisical CSI provider to pull secrets from your Infisical project, you'll have to configure
 a machine identity with [Kubernetes authentication](https://infisical.com/docs/documentation/platform/identities/kubernetes-auth) configured with your cluster.
 You can refer to the documentation for setting it up [here](https://infisical.com/docs/documentation/platform/identities/kubernetes-auth#guide).
 
@@ -260,7 +260,7 @@ spec:
   When set to `"true"`, the Infisical CSI provider will use the default
   Kubernetes audience instead of a custom audience. This is required for
   environments that don't support custom audiences (such as AWS EKS), which
-  reject tokens with non-default audiences. When using this option, do not set a
+  reject tokens with non-default audiences. When using this option, don't set a
   custom audience in the CSI driver installation. This defaults to `false`.
   <Note>
     When enabled, the CSI provider will dynamically create service account
@@ -358,7 +358,7 @@ For additional guidance on setting this up for your production cluster, you can 
 
 <AccordionGroup>
   <Accordion title="Do I have to list out every Infisical single secret that I want to sync?">
-    Yes, you will need to explicitly list each secret you want to sync in the
+    Yes, you'll need to explicitly list each secret you want to sync in the
     Secret Provider Class configuration. This is a common requirement across all
     CSI providers as the Secrets Store CSI Driver architecture requires specific
     mapping of secrets to their mounted file locations.

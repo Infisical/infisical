@@ -1,3 +1,10 @@
+export type TProfileCustomExtension = {
+  oid: string;
+  label?: string;
+  critical?: boolean;
+  value?: string;
+};
+
 export enum EnrollmentType {
   API = "api",
   EST = "est",
@@ -31,6 +38,7 @@ export type TCertificateProfileDefaults = {
   locality?: string;
   subjectAltNames?: { type: string; value: string }[];
   domainComponents?: string[];
+  customExtensions?: TProfileCustomExtension[];
 };
 
 export type TCertificateProfile = {
@@ -55,6 +63,7 @@ export type TCertificateProfile = {
     name: string;
     isExternal?: boolean;
     externalType?: string | null;
+    productNameId?: string | null;
     keyAlgorithm?: string | null;
   };
 };
@@ -67,6 +76,7 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
     name: string;
     isExternal?: boolean;
     externalType?: string | null;
+    productNameId?: string | null;
     keyAlgorithm?: string | null;
   };
   certificatePolicy?: {
@@ -138,6 +148,7 @@ export type TListCertificateProfilesDTO = {
   issuerType?: IssuerType;
   caId?: string;
   applicationId?: string;
+  enabled?: boolean;
 };
 
 export type TGetCertificateProfileByIdDTO = {

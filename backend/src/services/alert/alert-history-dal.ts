@@ -22,17 +22,28 @@ const ALERT_HISTORY_PRUNE_BATCH_SIZE = 5_000;
 const ALERT_HISTORY_PRUNE_MAX_BATCHES = 20;
 const ALERT_HISTORY_PRUNE_TIMEOUT_MS = 30_000;
 
+const DEDUP_DRIFT_BUFFER_MINUTES = 15;
+
+export const getDedupCutoff = (withinHours: number): Date => {
+  const cutoffDate = new Date();
+  cutoffDate.setHours(cutoffDate.getHours() - withinHours);
+  cutoffDate.setMinutes(cutoffDate.getMinutes() - DEDUP_DRIFT_BUFFER_MINUTES);
+  return cutoffDate;
+};
+
 export const alertHistoryDALFactory = (db: TDbClient) => {
   const alertHistoryOrm = ormify(db, TableName.AlertHistory);
 
   const createWithTargets = async (
     alertId: string,
-    options: { status: string },
+    options: { status: string; eventId?: string },
     deliveries: TAlertTargetDelivery[]
   ): Promise<TAlertHistory> => {
     try {
       return await db.transaction(async (tx) => {
-        const [history] = await tx(TableName.AlertHistory).insert({ alertId, status: options.status }).returning("*");
+        const [history] = await tx(TableName.AlertHistory)
+          .insert({ alertId, status: options.status, eventId: options.eventId ?? null })
+          .returning("*");
 
         if (deliveries.length > 0) {
           await tx(TableName.AlertHistoryTarget).insert(
@@ -62,10 +73,7 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
     try {
       if (targetIds.length === 0) return [];
 
-      const DEDUP_DRIFT_BUFFER_MINUTES = 15;
-      const cutoffDate = new Date();
-      cutoffDate.setHours(cutoffDate.getHours() - withinHours);
-      cutoffDate.setMinutes(cutoffDate.getMinutes() - DEDUP_DRIFT_BUFFER_MINUTES);
+      const cutoffDate = getDedupCutoff(withinHours);
 
       const rows = (await (tx || db)(`${TableName.AlertHistory} as hist`)
         .join(`${TableName.AlertHistoryTarget} as tgt`, "hist.id", "tgt.alertHistoryId")
@@ -80,6 +88,42 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
       return rows;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindRecentlyAlertedTargets" });
+    }
+  };
+
+  const findDeliveredChannelIdsForEvent = async (alertId: string, eventId: string): Promise<string[]> => {
+    try {
+      const rows = (await db(`${TableName.AlertHistory} as hist`)
+        .join(`${TableName.AlertHistoryTarget} as tgt`, "hist.id", "tgt.alertHistoryId")
+        .where("hist.alertId", alertId)
+        .where("hist.eventId", eventId)
+        .where("tgt.status", AlertRunStatus.SUCCESS)
+        .whereNotNull("tgt.channelId")
+        .distinct("tgt.channelId")
+        .select("tgt.channelId")) as { channelId: string }[];
+
+      return rows.map((row) => row.channelId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindDeliveredChannelIdsForEvent" });
+    }
+  };
+
+  const findLatestByAlertIds = async (
+    alertIds: string[]
+  ): Promise<Pick<TAlertHistory, "alertId" | "triggeredAt" | "status">[]> => {
+    if (alertIds.length === 0) return [];
+    try {
+      return (await db
+        .replicaNode()(TableName.AlertHistory)
+        .whereIn("alertId", alertIds)
+        .distinctOn("alertId")
+        .select("alertId", "triggeredAt", "status")
+        .orderBy([{ column: "alertId" }, { column: "triggeredAt", order: "desc" }])) as Pick<
+        TAlertHistory,
+        "alertId" | "triggeredAt" | "status"
+      >[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindLatestByAlertIds" });
     }
   };
 
@@ -126,6 +170,8 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
     ...alertHistoryOrm,
     createWithTargets,
     findRecentlyAlertedTargets,
+    findDeliveredChannelIdsForEvent,
+    findLatestByAlertIds,
     deleteExpiredHistory
   };
 };

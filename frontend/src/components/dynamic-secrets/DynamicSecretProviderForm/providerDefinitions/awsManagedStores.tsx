@@ -20,26 +20,64 @@ import {
 } from "./awsManagedStoresContract";
 
 const elastiCacheConnectionFields = [
-  { name: "inputs.clusterName", type: "text", label: "Cluster Name", layout: "half" },
-  { name: "inputs.region", type: "text", label: "Region", layout: "half" },
-  { name: "inputs.accessKeyId", type: "text", label: "Access Key ID", layout: "half" },
+  {
+    name: "inputs.clusterName",
+    type: "text",
+    label: "Cluster Name",
+    placeholder: "my-elasticache-cluster",
+    layout: "half"
+  },
+  {
+    name: "inputs.region",
+    type: "text",
+    label: "Region",
+    placeholder: "us-east-1",
+    layout: "half"
+  },
+  {
+    name: "inputs.accessKeyId",
+    type: "text",
+    label: "Access Key ID",
+    placeholder: "AKIA...",
+    layout: "half"
+  },
   {
     name: "inputs.secretAccessKey",
     type: "secret",
     label: "Secret Access Key",
+    placeholder: "Enter secret access key",
     autoComplete: "new-password",
     layout: "half"
   }
 ] as const;
 
 const memoryDbConnectionFields = [
-  { name: "inputs.clusterName", type: "text", label: "Cluster Name", layout: "half" },
-  { name: "inputs.region", type: "text", label: "Region", layout: "half" },
-  { name: "inputs.auth.accessKeyId", type: "text", label: "Access Key ID", layout: "half" },
+  {
+    name: "inputs.clusterName",
+    type: "text",
+    label: "Cluster Name",
+    placeholder: "my-memorydb-cluster",
+    layout: "half"
+  },
+  {
+    name: "inputs.region",
+    type: "text",
+    label: "Region",
+    placeholder: "us-east-1",
+    layout: "half"
+  },
+  {
+    name: "inputs.auth.accessKeyId",
+    type: "text",
+    label: "Access Key ID",
+    placeholder: "AKIA...",
+    layout: "half"
+  },
   {
     name: "inputs.auth.secretAccessKey",
     type: "secret",
     label: "Secret Access Key",
+    placeholder: "Enter secret access key",
     autoComplete: "new-password",
     layout: "half"
   }

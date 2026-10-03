@@ -19,7 +19,6 @@ import {
 import { useDebounce } from "@app/hooks";
 import { useDeletePkiAlertV2, useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
 
-import { CreatePkiAlertV2Modal } from "./components/CreatePkiAlertV2Modal";
 import { PkiAlertV2Row } from "./components/PkiAlertV2Row";
 import { ViewPkiAlertV2Modal } from "./components/ViewPkiAlertV2Modal";
 
@@ -33,9 +32,6 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
 
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; alertId?: string }>({
-    isOpen: false
-  });
   const [viewModal, setViewModal] = useState<{ isOpen: boolean; alertId?: string }>({
     isOpen: false
   });
@@ -107,7 +103,6 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
           key={alert.id}
           alert={alert}
           onView={() => setViewModal({ isOpen: true, alertId: alert.id })}
-          onEdit={() => setAlertModal({ isOpen: true, alertId: alert.id })}
           onDelete={() =>
             setDeleteModal({
               isOpen: true,
@@ -121,7 +116,7 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
 
     return (
       <Tr>
-        <Td colSpan={6} className="py-8 text-center text-gray-400">
+        <Td colSpan={6} className="py-8 text-center text-muted-cool">
           {search ? "No alerts found matching your search." : "No PKI alerts configured yet."}
         </Td>
       </Tr>
@@ -130,22 +125,25 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
 
   return (
     <div className={hideContainer ? "" : "container mx-auto p-6"}>
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
+      <div className="flex w-full flex-col gap-3 rounded-lg border border-border-control bg-surface-base px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border-emphasis pb-2">
           <div className="flex items-center gap-x-2">
-            <h3 className="text-lg font-medium text-mineshaft-100">Certificate Alerts</h3>
-            <span className="rounded bg-mineshaft-600 px-2 py-0.5 text-xs tracking-wide text-mineshaft-200 uppercase">
+            <h3 className="text-lg font-normal text-foreground">Certificate Alerts</h3>
+            <span className="rounded bg-surface-active px-2 py-0.5 text-xs tracking-wide text-foreground-secondary uppercase">
               Legacy
             </span>
           </div>
-          <p className="text-xs text-bunker-300">Create new alerts inside an Application.</p>
+          <p className="text-xs text-label-secondary">
+            Legacy alerts can only be viewed or deleted. Create new alerts from the Alerting section
+            of an application&apos;s Settings tab.
+          </p>
         </div>
 
         <div className="mb-4 flex items-center">
           <div className="relative w-full">
             <FontAwesomeIcon
               icon={faSearch}
-              className="absolute top-1/2 left-3 -translate-y-1/2 transform text-gray-400"
+              className="absolute top-1/2 left-3 -translate-y-1/2 transform text-muted-cool"
             />
             <Input
               placeholder="Search alerts..."
@@ -184,12 +182,6 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
           </div>
         )}
       </div>
-
-      <CreatePkiAlertV2Modal
-        isOpen={alertModal.isOpen}
-        onOpenChange={(isOpen) => setAlertModal({ isOpen, alertId: undefined })}
-        alertId={alertModal.alertId}
-      />
 
       <ViewPkiAlertV2Modal
         isOpen={viewModal.isOpen}

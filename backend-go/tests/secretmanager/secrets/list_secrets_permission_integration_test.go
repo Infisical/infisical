@@ -381,6 +381,7 @@ func TestIdentityAdditionalPrivilege_ExtendsRole(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "addl-priv-test")
+	stack.EnableLegacyAdditionalPrivileges(t, proj.ID)
 
 	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value", nil)
 	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
@@ -421,6 +422,7 @@ func TestIdentityMultipleAdditionalPrivileges_Merge(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "multi-addl-priv-test")
+	stack.EnableLegacyAdditionalPrivileges(t, proj.ID)
 
 	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value", nil)
 	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
@@ -573,6 +575,7 @@ func TestIdentityTemporaryAdditionalPrivilege_Active(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "temp-addl-active-test")
+	stack.EnableLegacyAdditionalPrivileges(t, proj.ID)
 	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "TEMP_ADDL_SECRET", "temp-addl-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "temp-addl-active-identity")
@@ -600,6 +603,7 @@ func TestIdentityTemporaryAdditionalPrivilege_Expired(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "temp-addl-expired-test")
+	stack.EnableLegacyAdditionalPrivileges(t, proj.ID)
 	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "EXPIRED_ADDL_SECRET", "expired-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "temp-addl-expired-identity")

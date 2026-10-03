@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { CertificateAuthoritiesSchema, TableName, TCertificateAuthorities } from "@app/db/schemas";
 import { DatabaseError, NotFoundError } from "@app/lib/errors";
-import { buildFindFilter, ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
+import { buildFindFilter, orgTreeIds, ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
 import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
@@ -58,7 +58,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         db
           .ref("disableManagedCrlDistributionPointUrl")
           .withSchema(TableName.InternalCertificateAuthority)
-          .as("internalDisableManagedCrlDistributionPointUrl")
+          .as("internalDisableManagedCrlDistributionPointUrl"),
+        db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
+        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -95,7 +97,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             notAfter: result.internalNotAfter?.toISOString(),
             activeCaCertId: result.internalActiveCaCertId,
             crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
-            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false
+            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false,
+            isOcspEnabled: result.internalIsOcspEnabled ?? false,
+            ocspGeneration: result.internalOcspGeneration ?? 0
           }
         : undefined,
       externalCa: result
@@ -152,7 +156,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         db
           .ref("disableManagedCrlDistributionPointUrl")
           .withSchema(TableName.InternalCertificateAuthority)
-          .as("internalDisableManagedCrlDistributionPointUrl")
+          .as("internalDisableManagedCrlDistributionPointUrl"),
+        db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
+        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -192,7 +198,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             notAfter: result.internalNotAfter?.toISOString(),
             activeCaCertId: result.internalActiveCaCertId,
             crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
-            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false
+            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false,
+            isOcspEnabled: result.internalIsOcspEnabled ?? false,
+            ocspGeneration: result.internalOcspGeneration ?? 0
           }
         : undefined,
       externalCa: result
@@ -290,7 +298,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           db
             .ref("disableManagedCrlDistributionPointUrl")
             .withSchema(TableName.InternalCertificateAuthority)
-            .as("internalDisableManagedCrlDistributionPointUrl")
+            .as("internalDisableManagedCrlDistributionPointUrl"),
+          db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
+          db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
         )
         .select(
           db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -346,7 +356,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
               notAfter: ca.internalNotAfter?.toISOString(),
               activeCaCertId: ca.internalActiveCaCertId,
               crlDistributionPointUrls: ca.internalCrlDistributionPointUrls ?? [],
-              disableManagedCrlDistributionPointUrl: ca.internalDisableManagedCrlDistributionPointUrl ?? false
+              disableManagedCrlDistributionPointUrl: ca.internalDisableManagedCrlDistributionPointUrl ?? false,
+              isOcspEnabled: ca.internalIsOcspEnabled ?? false,
+              ocspGeneration: ca.internalOcspGeneration ?? 0
             }
           : undefined,
         externalCa: ca
@@ -365,9 +377,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Internal CAs (those with an internal_certificate_authorities row) across all of the org's projects,
-  // excluding soft-deleted projects. Used to enforce the plan's maxInternalCas at creation time; external
-  // CAs are intentionally not counted.
+  // Internal CAs across the org tree, excluding soft-deleted projects. External and ACME CAs are
+  // intentionally not counted; maxCas covers those via countCasByOrgId below.
   const countInternalCasByOrgId = async (orgId: string, tx?: Knex) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.CertificateAuthority)
@@ -377,12 +388,28 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           `${TableName.InternalCertificateAuthority}.caId`
         )
         .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.orgId`, orgId)
+        .whereIn(`${TableName.Project}.orgId`, orgTreeIds(tx || db.replicaNode(), orgId))
         .whereNull(`${TableName.Project}.deleteAfter`)
         .count();
       return Number(doc?.[0]?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count Internal CAs By Org ID - Certificate Authority" });
+    }
+  };
+
+  // Every CA type across the org tree. Counting all types rather than INTERNAL + ACME behaves
+  // identically, since tiers that set maxCas cannot create the others (pkiEnterpriseCaIntegrations
+  // blocks them) and is simpler.
+  const countCasByOrgId = async (orgId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.CertificateAuthority)
+        .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
+        .whereIn(`${TableName.Project}.orgId`, orgTreeIds(tx || db.replicaNode(), orgId))
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .count();
+      return Number(doc?.[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count CAs By Org ID - Certificate Authority" });
     }
   };
 
@@ -392,6 +419,7 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     buildCertificateChain,
     findByIdWithAssociatedCa,
     findByNameAndProjectIdWithAssociatedCa,
-    countInternalCasByOrgId
+    countInternalCasByOrgId,
+    countCasByOrgId
   };
 };

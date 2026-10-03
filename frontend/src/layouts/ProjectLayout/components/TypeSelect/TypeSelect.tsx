@@ -2,13 +2,17 @@ import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Check } from "lucide-react";
 
+import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { Command, CommandGroup, CommandItem, CommandList } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { getCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import {
+  getOrgScopedProductFromPath,
+  getProjectHomePage,
   getProjectLucideIcon,
   getProjectTitle,
+  isOrgScopedProduct,
   projectTypeToUrlSlug,
   urlSlugToProjectType
 } from "@app/helpers/project";
@@ -21,12 +25,15 @@ import {
   NavbarSwitcherTrigger
 } from "@app/layouts/NavbarSwitcher";
 
+import { ProductPlanBadge } from "./ProductPlanBadge";
+
 const PRODUCT_TYPES: ProjectType[] = [
   ProjectType.SecretManager,
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.AgentVault
 ];
 
 const TypeSelectInner = ({
@@ -85,9 +92,9 @@ const TypeSelectInner = ({
       return;
     }
 
-    if (type === ProjectType.PAM) {
+    if (isOrgScopedProduct(type)) {
       navigate({
-        to: "/organizations/$orgId/pam/access",
+        to: getProjectHomePage(type, []),
         params: { orgId }
       });
       return;
@@ -105,7 +112,7 @@ const TypeSelectInner = ({
 
   return (
     <div
-      className={`flex h-full min-w-16 items-center gap-1 pr-2 pl-1 ${showDivider ? "mr-2 border-r border-border" : "mr-2"}`}
+      className={`flex h-full min-w-16 items-center gap-1 pr-2 pl-1 ${showDivider ? "mr-2 border-r border-border-soft" : "mr-2"}`}
     >
       <NavbarSwitcher open={open} onOpenChange={setOpen}>
         <button
@@ -113,9 +120,9 @@ const TypeSelectInner = ({
           onClick={() => {
             if (currentType === ProjectType.CertificateManager) {
               navigateToCertManager();
-            } else if (currentType === ProjectType.PAM) {
+            } else if (isOrgScopedProduct(currentType)) {
               navigate({
-                to: "/organizations/$orgId/pam/access",
+                to: getProjectHomePage(currentType, []),
                 params: { orgId: currentOrg?.id || "" }
               });
             } else {
@@ -125,11 +132,13 @@ const TypeSelectInner = ({
               });
             }
           }}
-          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
+          className="group grid min-w-min cursor-pointer grid-flow-col grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
         >
           <ProductIcon className="h-[14px] w-[14px] shrink-0" />
           <span className="truncate">{pillLabel}</span>
+          <ProductPlanBadge type={currentType} />
         </button>
+        <PreviewBadge type={currentType} />
         <NavbarSwitcherTrigger aria-label="switch-product-type" />
         <NavbarSwitcherContent className="w-80">
           <Command>
@@ -187,8 +196,9 @@ export const TypeSelect = () => {
     }
   }
 
-  if (!params.projectId && pathname.includes("/pam/")) {
-    return <TypeSelectInner currentType={ProjectType.PAM} />;
+  const orgScopedProduct = getOrgScopedProductFromPath(pathname);
+  if (!params.projectId && orgScopedProduct) {
+    return <TypeSelectInner currentType={orgScopedProduct} />;
   }
 
   if (params.projectId) {

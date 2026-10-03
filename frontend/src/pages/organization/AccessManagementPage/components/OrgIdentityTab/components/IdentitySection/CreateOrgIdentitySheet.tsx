@@ -136,7 +136,14 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
             <Field>
               <FieldLabel>Name</FieldLabel>
               <FieldContent>
-                <Input {...field} autoFocus placeholder="Machine 1" isError={Boolean(error)} />
+                <Input
+                  {...field}
+                  autoFocus
+                  placeholder="Machine 1"
+                  isError={Boolean(error)}
+                  autoComplete="off"
+                  name="machine-identity-name"
+                />
               </FieldContent>
               {error && <FieldError>{error.message}</FieldError>}
             </Field>
@@ -174,6 +181,7 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
         </Button>
       </SheetFooter>
       <UpgradePlanModal
+        paywallKey="organization.create-org-identity-sheet"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
         text="Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan."

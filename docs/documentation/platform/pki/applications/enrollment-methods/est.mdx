@@ -20,13 +20,13 @@ Use the EST enrollment method to issue and renew certificates for enterprise dev
   <Card title="Enterprise Devices" icon="laptop">
     Managed corporate laptops, workstations, and mobile devices.
   </Card>
-  <Card title="IoT Devices" icon="microchip">
+  <Card title="IoT Devices" icon="cpu">
     Industrial equipment, sensors, and embedded systems with factory certificates.
   </Card>
-  <Card title="Network Infrastructure" icon="network-wired">
+  <Card title="Network Infrastructure" icon="network">
     Switches, routers, and other network equipment with 802.1X authentication.
   </Card>
-  <Card title="Secure Environments" icon="shield-halved">
+  <Card title="Secure Environments" icon="shield-half">
     Environments requiring mutual TLS authentication for certificate requests.
   </Card>
 </CardGroup>
@@ -65,14 +65,14 @@ Infisical's EST service implements [RFC 7030](https://datatracker.ietf.org/doc/h
     Go to **Certificate Manager → Applications** and select your Application.
   </Step>
   <Step title="Configure enrollment on an attached profile">
-    Go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile you want to enable EST enrollment for.
+    Go to the **Settings** tab and find the **Certificate Profiles** section. Select **Configure** on the profile you want to enable EST enrollment for.
     
     <Note>
       Profiles are attached by Product Admins. If you don't see any profiles, ask your Product Admin to attach one.
     </Note>
   </Step>
   <Step title="Add EST enrollment">
-    In the modal, click **Add enrollment method** and select **EST**.
+    In the modal, select **Add enrollment method** and select **EST**.
   </Step>
   <Step title="Configure EST settings">
     | Setting | Description |
@@ -154,10 +154,10 @@ Configure your EST client with the profile ID and passphrase.
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="SCEP Enrollment" icon="mobile" href="/documentation/platform/pki/applications/enrollment-methods/scep">
+  <Card title="SCEP Enrollment" icon="smartphone" href="/documentation/platform/pki/applications/enrollment-methods/scep">
     Use SCEP for network devices and MDM systems.
   </Card>
-  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Certificate Syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     Push certificates to cloud destinations.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">

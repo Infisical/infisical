@@ -6,6 +6,7 @@ import { hasPostgresErrorCode, PostgresErrorCode } from "@app/lib/errors/postgre
 
 import {
   BadRequestError,
+  ClientClosedRequestError,
   CryptographyError,
   DatabaseError,
   ForbiddenRequestError,
@@ -32,6 +33,7 @@ export const ERROR_TYPES = [
   "db",
   "timeout",
   "network",
+  "client_closed",
   "cryptography",
   "policy",
   "scim",
@@ -77,6 +79,7 @@ export const classifyError = (err: unknown): ErrorType => {
   if (err instanceof ScimRequestError) return "scim";
   if (err instanceof OidcAuthError) return "oidc";
   if (err instanceof InternalServerError) return "internal";
+  if (err instanceof ClientClosedRequestError) return "client_closed";
 
   if (isAwsError(err, "ThrottlingException")) return "rate_limit";
 

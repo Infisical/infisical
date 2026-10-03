@@ -3,6 +3,7 @@ import z from "zod";
 import { RelaysSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
+import { resourceAuthMethodAuditMetadata } from "@app/ee/services/resource-auth-method/resource-auth-method-audit-fns";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { UnauthorizedError } from "@app/lib/errors";
@@ -32,7 +33,6 @@ const RelayWithAuthMethodSchema = SanitizedRelaySchema.extend({
 const AwsAuthMethodInputSchema = z
   .object({
     method: z.literal(ResourceAuthMethodType.Aws),
-    stsEndpoint: z.string().trim().min(1).max(255).default("https://sts.amazonaws.com/"),
     allowedPrincipalArns: validatePrincipalArns,
     allowedAccountIds: validateAccountIds.refine(
       (val) => val.length <= 2048,
@@ -75,7 +75,6 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
           ? {
               method: "aws" as const,
               config: {
-                stsEndpoint: authMethodInput.stsEndpoint,
                 allowedPrincipalArns: authMethodInput.allowedPrincipalArns,
                 allowedAccountIds: authMethodInput.allowedAccountIds
               }
@@ -102,6 +101,20 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.RELAY_CREATE,
           metadata: { relayId: relay.id, name: relay.name }
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.RESOURCE_AUTH_METHOD_CREATE,
+          metadata: resourceAuthMethodAuditMetadata({
+            resourceType: "relay",
+            resourceId: relay.id,
+            resourceName: relay.name,
+            view
+          })
         }
       });
 
@@ -214,7 +227,6 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
           authMethodInput.method === ResourceAuthMethodType.Aws
             ? {
                 method: "aws" as const,
-                stsEndpoint: authMethodInput.stsEndpoint,
                 allowedPrincipalArns: authMethodInput.allowedPrincipalArns,
                 allowedAccountIds: authMethodInput.allowedAccountIds
               }
@@ -231,12 +243,12 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
           orgId: req.permission.orgId,
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
-            metadata: {
+            metadata: resourceAuthMethodAuditMetadata({
               resourceType: "relay",
               resourceId: req.params.relayId,
-              method: view.method as "aws" | "token",
-              methodConfigId: "config" in view && "id" in view.config ? view.config.id : req.params.relayId
-            }
+              resourceName: relay.name,
+              view
+            })
           }
         });
 

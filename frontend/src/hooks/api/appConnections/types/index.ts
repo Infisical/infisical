@@ -22,6 +22,7 @@ import { TCloudflareConnection } from "./cloudflare-connection";
 import { TConvexConnection } from "./convex-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDatadogConnection } from "./datadog-connection";
+import { TDaytonaConnection } from "./daytona-connection";
 import { TDbtConnection } from "./dbt-connection";
 import { TDevinConnection } from "./devin-connection";
 import { TDigiCertConnection } from "./digicert-connection";
@@ -62,6 +63,7 @@ import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TOvhConnection } from "./ovh-connection";
 import { TPostgresConnection } from "./postgres-connection";
+import { TPowerDnsConnection } from "./powerdns-connection";
 import { TQoveryConnection } from "./qovery-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
@@ -72,6 +74,7 @@ import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
 import { TSpaceliftConnection } from "./spacelift-connection";
 import { TSshConnection } from "./ssh-connection";
+import { TStripeConnection } from "./stripe-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
@@ -105,6 +108,7 @@ export * from "./cloudflare-connection";
 export * from "./convex-connection";
 export * from "./databricks-connection";
 export * from "./datadog-connection";
+export * from "./daytona-connection";
 export * from "./dbt-connection";
 export * from "./devin-connection";
 export * from "./digicert-connection";
@@ -143,6 +147,7 @@ export * from "./open-router-connection";
 export * from "./oracledb-connection";
 export * from "./ovh-connection";
 export * from "./postgres-connection";
+export * from "./powerdns-connection";
 export * from "./qovery-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
@@ -153,6 +158,7 @@ export * from "./smb-connection";
 export * from "./snowflake-connection";
 export * from "./spacelift-connection";
 export * from "./ssh-connection";
+export * from "./stripe-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
@@ -248,7 +254,10 @@ export type TAppConnection =
   | TLiteLLMConnection
   | TFireworksConnection
   | TNutanixPrismCentralConnection
-  | TSpaceliftConnection;
+  | TPowerDnsConnection
+  | TSpaceliftConnection
+  | TDaytonaConnection
+  | TStripeConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

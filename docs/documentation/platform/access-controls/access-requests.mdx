@@ -3,12 +3,12 @@ title: "Access requests"
 description: "Learn how to request and manage access to sensitive resources in Infisical."
 ---
 
-In certain situations, developers need to expand their access to a certain new project or a sensitive environment. For those use cases, it is helpful to utilize Infisical's **Access Requests** functionality.
+In certain situations, developers need to expand their access to a certain new project or a sensitive environment. For those use cases, it's helpful to utilize Infisical's **Access Requests** functionality.
 
 <Info>
   Access Requests is a paid feature.
 
-  If you're using Infisical Cloud, then it is available under the **Enterprise Tier**.
+  If you're using Infisical Cloud, then it's available under the **Enterprise Tier**.
   If you're self-hosting Infisical, then you should contact sales@infisical.com to purchase an enterprise license to use it.
 </Info>
 
@@ -23,7 +23,7 @@ Before users can submit access requests, a project administrator must create an 
 ### Setting up an access policy
 
 1. In a Secrets Management project, navigate to the **Approvals** tab and then the **Policies** menu in the sidebar.
-2. Click **Create Policy** and select **Access Policy** as the policy type.
+2. Select **Create Policy** and select **Access Policy** as the policy type.
 
 ![Policies Tab](/images/platform/access-controls/access-request/policies-tab.png)
 ![Access Policy Modal](/images/platform/access-controls/access-request/access-policy-modal.png)
@@ -34,7 +34,7 @@ Before users can submit access requests, a project administrator must create an 
 |--------|-------------|
 | **Policy Name** | A descriptive name for the policy (e.g., "Production Access Policy"). |
 | **Max Time Period** | The maximum duration a user can request access for (e.g., `1h`, `3d`, `1w`). Leave empty or set to "permanent" to allow permanent access requests. |
-| **Request Expiration** | Time before unapproved requests automatically expire (e.g., `24h`, `3d`, `72h`). Expired requests are moved to the Closed tab and cannot be approved. Leave empty or set to "never" for requests that never expire. |
+| **Request Expiration** | Time before unapproved requests automatically expire (e.g., `24h`, `3d`, `72h`). Expired requests are moved to the Closed tab and can't be approved. Leave empty or set to "never" for requests that never expire. |
 | **Secret Path** | The folder path this policy governs. Supports glob patterns (e.g., `/**` for all paths, `/api/*` for specific folders). |
 | **Environments** | One or more environments this policy applies to (e.g., Production, Staging). |
 
@@ -48,13 +48,13 @@ Each step can have:
 - **Approvers**: Individual users and/or user groups who can approve at this step
 - **Min. Approvals Required**: The minimum number of approvals needed before moving to the next step
 
-Approvals must be completed in order — Step 2 approvers cannot review until Step 1 requirements are met.
+Approvals must be completed in order — Step 2 approvers can't review until Step 1 requirements are met.
 
 ### Self-approval settings
 
 The **Self Approvals** toggle controls whether designated approvers can approve their own access requests. Disable it to require a different approver.
 
-When disabled, approvers can only grant themselves access through the **Bypass Approvals** break-glass flow, and only if they are explicitly listed as bypass users or groups.
+When disabled, approvers can only grant themselves access through the **Bypass Approvals** break-glass flow, and only if they're explicitly listed as bypass users or groups.
 
 ### Break-glass (bypass) settings
 
@@ -70,7 +70,7 @@ The **Bypass Approvals** option enables emergency access in break-glass situatio
   When Bypass Approvals is enabled with no users or groups selected, any project member can bypass the policy on their own requests. This ensures the permission remains available without being applied automatically; it's only used when explicitly requested and bypassed. 
   Admins are notified whenever access is bypassed.
 
-  When **Self Approvals** is disabled, approvers cannot approve their own requests through the normal workflow. They can only grant themselves access via break-glass bypass if **Bypass Approvals** is enabled and they are explicitly listed as a bypass user or group member. If no bypass users or groups are configured, self-approval is blocked entirely.
+  When **Self Approvals** is disabled, approvers can't approve their own requests through the normal workflow. They can only grant themselves access via break-glass bypass if **Bypass Approvals** is enabled and they're explicitly listed as a bypass user or group member. If no bypass users or groups are configured, self-approval is blocked entirely.
 </Warning>
 
 ## Submitting access requests
@@ -80,7 +80,7 @@ Once access policies are configured, users can request access to resources cover
 ### Creating a request
 
 1. Navigate to the **Access Requests** menu in the sidebar.
-2. Click **Request Access**.
+2. Select **Request Access**.
 3. Fill in the request details:
    - **Environment**: Select the target environment
    - **Secret Path**: Choose the folder path
@@ -92,7 +92,7 @@ Once access policies are configured, users can request access to resources cover
 ![Access Request Modal](/images/platform/access-controls/access-request/access-requests-modal.png)
 
 <Note>
-  If a policy has a **Max Time Period** configured, the requested duration cannot exceed this limit.
+  If a policy has a **Max Time Period** configured, the requested duration can't exceed this limit.
 </Note>
 
 
@@ -112,13 +112,13 @@ The access requests dashboard shows two tabs:
 
 ### Reviewing a request
 
-Click on any request to open the review modal with full details:
+Select any request to open the review modal with full details:
 
 ![Review Request Modal](/images/platform/access-controls/access-request/review-request-modal.png)
 
 ### Editing access duration
 
-Approvers can modify the access duration before approving a request by clicking the **Edit** icon next to the duration field. This allows shortening the requested timeframe when appropriate.
+Approvers can modify the access duration before approving a request by selecting the **Edit** icon next to the duration field. This allows shortening the requested timeframe when appropriate.
 
 ![Edit Access Duration Modal](/images/platform/access-controls/access-request/edit-access-duration-modal.png)
 
@@ -129,12 +129,12 @@ Approvers can revoke a previously approved access request at any time. Revoking 
 ### How to revoke
 
 1. Navigate to the **Access Requests** menu in the sidebar and open the **Closed** tab.
-2. Click on an approved request to open the review modal.
-3. Click the **Revoke Access** button visible to policy approvers.
+2. Select an approved request to open the review modal.
+3. Select the **Revoke Access** button visible to policy approvers.
 4. Confirm the revocation.
 
 <Note>
-  Only users who are designated approvers for the access policy can revoke approved requests. Once revoked, the request moves to the **Revoked** status and cannot be re-approved.
+  Only users who are designated approvers for the access policy can revoke approved requests. Once revoked, the request moves to the **Revoked** status and can't be re-approved.
 </Note>
 
 ![Revoke Access Modal](/images/platform/access-controls/access-request/revoke-access-modal.png)

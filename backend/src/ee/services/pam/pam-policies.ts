@@ -5,6 +5,7 @@ import { PamAccountType } from "./pam-enums";
 
 export enum PamPolicyType {
   RequiresApproval = "requires-approval",
+  AllowBreakGlass = "allow-break-glass",
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
@@ -66,7 +67,14 @@ type TPamPolicyDefinition = {
 export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition> = {
   [PamPolicyType.RequiresApproval]: {
     label: "Require Approval",
-    description: "Users must request and receive approval before launching sessions.",
+    description: "Users must request and receive approval before launching sessions and viewing credentials.",
+    appliesTo: "all",
+    schema: z.boolean()
+  },
+  [PamPolicyType.AllowBreakGlass]: {
+    label: "Allow Break-Glass",
+    description:
+      "Designated break-glass users can grant themselves access in an emergency, without an approver. Has no effect until a folder admin names them under the folder's Approvals tab.",
     appliesTo: "all",
     schema: z.boolean()
   },
@@ -97,8 +105,16 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   [PamPolicyType.CommandBlocking]: {
     label: "Command Blocking",
     description: "Matching commands will be rejected (one regex per line).",
-    appliesTo: [PamAccountType.SSH],
-    schema: patternsStringSchema()
+    appliesTo: [PamAccountType.SSH, PamAccountType.Snowflake, PamAccountType.ClickHouse],
+    schema: patternsStringSchema(),
+    typeOverrides: {
+      [PamAccountType.Snowflake]: {
+        description: "Matching SQL statements will be rejected (one regex per line)."
+      },
+      [PamAccountType.ClickHouse]: {
+        description: "Matching SQL statements will be rejected (one regex per line)."
+      }
+    }
   }
 };
 
@@ -171,6 +187,7 @@ export const resolvePolicy = (policyMap: unknown, policy: PamPolicyType): unknow
 
 export type TPamAccessControls = {
   requiresApproval: boolean;
+  allowBreakGlass: boolean;
   requireReason: boolean;
   requireMfa: boolean;
   maxSessionDurationSeconds: number | null;
@@ -178,18 +195,57 @@ export type TPamAccessControls = {
 
 const PamPolicyRulePatternSchema = z.object({ patterns: z.array(z.string()) });
 
+const PamSessionLogMaskingRuleSchema = PamPolicyRulePatternSchema.extend({
+  builtInDetection: z.boolean()
+});
+
 export const PamPolicyRulesSchema = z
   .object({
     [PamPolicyType.CommandBlocking]: PamPolicyRulePatternSchema.optional(),
-    [PamSettingType.SessionLogMasking]: PamPolicyRulePatternSchema.optional()
+    [PamSettingType.SessionLogMasking]: PamSessionLogMaskingRuleSchema.optional()
   })
   .nullable()
   .optional();
 
+export type TPamPolicyRules = z.infer<typeof PamPolicyRulesSchema>;
+
+/**
+ * Assembles the rules the gateway enforces during a session.
+ *
+ * The masking arm is emitted whenever built-in detection is on, even with no custom patterns —
+ * an empty pattern list is no longer the same thing as "no masking".
+ */
+export const buildPamPolicyRules = ({
+  commandBlockingPatterns,
+  maskingPatterns,
+  maskingBuiltInDetection
+}: {
+  commandBlockingPatterns: string[];
+  maskingPatterns: string[];
+  maskingBuiltInDetection: boolean;
+}): TPamPolicyRules => {
+  const rules: Record<string, unknown> = {};
+
+  if (commandBlockingPatterns.length > 0) {
+    rules[PamPolicyType.CommandBlocking] = { patterns: commandBlockingPatterns };
+  }
+
+  if (maskingBuiltInDetection || maskingPatterns.length > 0) {
+    rules[PamSettingType.SessionLogMasking] = {
+      patterns: maskingPatterns,
+      builtInDetection: maskingBuiltInDetection
+    };
+  }
+
+  return Object.keys(rules).length > 0 ? (rules as TPamPolicyRules) : null;
+};
+
 export const resolveAccessControls = (policyMap: unknown): TPamAccessControls => {
   const duration = resolvePolicy(policyMap, PamPolicyType.MaxSessionDuration);
+  const requiresApproval = resolvePolicy(policyMap, PamPolicyType.RequiresApproval) === true;
   return {
-    requiresApproval: resolvePolicy(policyMap, PamPolicyType.RequiresApproval) === true,
+    requiresApproval,
+    allowBreakGlass: requiresApproval && resolvePolicy(policyMap, PamPolicyType.AllowBreakGlass) === true,
     requireReason: resolvePolicy(policyMap, PamPolicyType.RequireReason) === true,
     requireMfa: resolvePolicy(policyMap, PamPolicyType.RequireMfa) === true,
     maxSessionDurationSeconds: typeof duration === "number" ? duration : null

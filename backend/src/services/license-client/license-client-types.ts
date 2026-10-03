@@ -15,6 +15,7 @@ const entitlementProductSchema = z
     product_key: z.string(),
     plan_key: z.string().nullish(),
     status: z.string().nullish(), // active | trialing | grace | churned
+    trial_plan_key: z.string().nullish(),
     trial_ends_at: z.string().nullish(),
     current_period_end: z.string().nullish()
   })
@@ -56,8 +57,11 @@ const catalogPlanSchema = z
     name: z.string(),
     selfServe: z.boolean(),
     salesLed: z.boolean(),
-    // Offers a self-serve trial; a plan is trialable only when selfServe && trialable.
+    // Org-aware: whether THIS org may trial / upgrade to this plan, not a static property of the plan.
     trialable: z.boolean().default(false),
+    upgradeable: z.boolean().default(false),
+    // Server-configured trial length for this plan; 0 when the plan offers no trial.
+    trialDays: z.number().nullish(),
     // true = kept for existing customers, closed to new ones. reason/nextSteps/date shown when true.
     deprecated: z.boolean().default(false),
     deprecationReason: z.string().nullish(),
@@ -163,6 +167,11 @@ const subscriptionItemSchema = z
     status: z.string().optional(),
     isTrialing: z.boolean().default(false),
     trialEndsAt: z.number().nullish(),
+    trialPlan: z.string().nullish(),
+    trialPlanEndsAt: z.number().nullish(),
+    trialPaymentDueAt: z.number().nullish(),
+    // An upgrade trial held for the customer's payment approval: trialPlan stays live until then.
+    trialPlanPaymentDueAt: z.number().nullish(),
     // Present only when this item's product OR plan is deprecated (product supersedes plan). The item
     // keeps working; this carries the contract-specific message (the sunset date comes from the catalog).
     deprecation: z.object({ reason: z.string().nullish(), nextSteps: z.string().nullish() }).nullish(),
@@ -218,6 +227,7 @@ export const subscriptionResponseSchema = z
     currentPeriodEnd: z.number().nullish(),
     recurringTotal: z.number().nullish(),
     billing: subscriptionBillingSchema.nullish(),
+    payment: z.object({ state: z.string().nullish(), actionUrl: z.string().nullish() }).passthrough().nullish(),
     tier: z.string().optional(),
     items: z.array(subscriptionItemSchema)
   })
@@ -232,11 +242,14 @@ export const sessionResponseSchema = z
 // Result of a checkout / add / remove / commitment change. Checkout either needs the customer to
 // complete a Stripe Checkout (checkout_created) or is applied directly to an existing subscription
 // (subscription_updated). Removing the last product cancels the whole subscription
-// (subscription_canceled).
+// (subscription_canceled). payment_action_required: the card's bank wants the customer to approve the
+// charge on the Stripe invoice at paymentUrl. paymentUrl stays a plain string so a bad value can't fail
+// the parse; the service validates it.
 export const checkoutResultSchema = z
   .object({
-    outcome: z.enum(["checkout_created", "subscription_updated", "subscription_canceled"]),
+    outcome: z.enum(["checkout_created", "subscription_updated", "subscription_canceled", "payment_action_required"]),
     checkoutUrl: z.string().optional(),
+    paymentUrl: z.string().optional(),
     subscriptionId: z.string().optional()
   })
   .passthrough();
@@ -261,7 +274,21 @@ export const subscriptionPreviewResponseSchema = z
     nextInvoiceTotal: z.number(),
     nextRecurringTotal: z.number(),
     prorationDate: z.number().nullish(),
+    // Upgrade previews only. Echoed back on apply so a price published between the two calls fails as
+    // version_moved instead of silently charging a different number.
+    toPlanVersionId: z.string().nullish(),
     lines: z.array(subscriptionPreviewLineSchema).default([])
+  })
+  .passthrough();
+
+export const upgradeResultSchema = z
+  .object({
+    outcome: z.enum(["upgraded", "payment_action_required"]),
+    paymentUrl: z.string().optional(),
+    subscriptionId: z.string().optional(),
+    fromPlanKey: z.string().optional(),
+    toPlanKey: z.string().optional(),
+    toPlanVersionId: z.string().optional()
   })
   .passthrough();
 
@@ -366,11 +393,26 @@ export type TCommitmentChange = {
   quantity: number;
 };
 
+// An upgrade carries no quantities or declaredUsage: the server moves the lines the org already has,
+// each keeping its live quantity and cadence. Mutually exclusive with add/remove of the same product.
+export type TUpgradeItem = {
+  productId: string;
+  plan: string;
+};
+
 export type TSubscriptionPreviewPayload = {
   add?: TProductLineItem[];
   remove?: string[];
   commitmentChanges?: TCommitmentChange[];
+  upgrade?: TUpgradeItem;
 };
+
+export type TUpgradePayload = TUpgradeItem & {
+  expectedPlanVersionId: string;
+  prorationDate?: number;
+};
+
+export type TUpgradeResult = z.infer<typeof upgradeResultSchema>;
 
 export type TBuyProductPayload = {
   productId: string;
@@ -395,7 +437,8 @@ export type TCreatePortalPayload = {
 // The license server prices at its current time; the app never forwards a client-supplied instant.
 // productId is required: it names the product so the server can resolve the trialing plan and
 // create/attach the subscription when there isn't one yet (a trialing org) instead of having to infer
-// it. Not trialing the named product → product_not_trialing.
+// it. Not trialing the named product → product_not_trialing. Returns checkout_created when the org
+// has no subscription yet or when the card needs the customer to approve the charge.
 export type TChangeCommitmentsPayload = {
   productId: string;
   dimensions: TCommitmentChange[];
@@ -435,6 +478,28 @@ export type TCancelTrialPayload = {
   productKey: string;
 };
 
+export type TConfirmTrialPaymentPayload = {
+  returnUrl: string;
+};
+
+const httpUrlSchema = z
+  .string()
+  .url()
+  .refine((val) => val.startsWith("http://") || val.startsWith("https://"), {
+    message: "URL must start with http:// or https://"
+  });
+
+// Where the customer approves a trial conversion charge their bank held: a Stripe Checkout for a
+// free-tier trial, or the invoice of a change Stripe holds for an upgrade trial. 409
+// no_trial_awaiting_payment when nothing is waiting.
+const confirmTrialPaymentResultSchema = z.discriminatedUnion("outcome", [
+  z.object({ outcome: z.literal("checkout_created"), checkoutUrl: httpUrlSchema }).passthrough(),
+  z.object({ outcome: z.literal("payment_action_required"), paymentUrl: httpUrlSchema }).passthrough(),
+  z.object({ outcome: z.literal("upgraded") }).passthrough()
+]);
+export type TConfirmTrialPaymentResult = z.infer<typeof confirmTrialPaymentResultSchema>;
+export { confirmTrialPaymentResultSchema };
+
 // Revokes the trialing entitlement immediately (product → free) and marks the trial completed so it
 // never converts. Idempotent-ish: the server 404s when there's no active trial to cancel.
 const trialCancelResultSchema = z.object({ outcome: z.literal("trial_completed") }).passthrough();
@@ -447,10 +512,16 @@ const trialHistoryItemSchema = z
   .object({
     product_key: z.string(),
     plan_key: z.string().nullish(),
-    // trialing | converted | expired | canceled | completed
+    base_plan_key: z.string().nullish(),
+    // trialing | converted | expired | canceled | completed | reverted
     outcome: z.string(),
+    // Why the trial ended (e.g. payment_not_completed). ended_detail is a machine code only on
+    // `reverted`; on `canceled` it is free text.
+    ended_reason: z.string().nullish(),
+    ended_detail: z.string().nullish(),
     started_at: z.number().nullish(),
-    trial_ends_at: z.number().nullish()
+    trial_ends_at: z.number().nullish(),
+    ended_at: z.number().nullish()
   })
   .passthrough();
 const trialsResponseSchema = z.object({ trials: z.array(trialHistoryItemSchema).default([]) }).passthrough();
@@ -471,12 +542,15 @@ export type TLicenseClientBackend = {
   buyProduct: (orgId: string, payload: TBuyProductPayload) => Promise<TCheckoutResult>;
   // Remove one product; removing the last product cancels the subscription.
   removeProduct: (orgId: string, productId: string) => Promise<TCheckoutResult>;
+  // Move a held product onto a higher plan in place, invoicing only the prorated difference.
+  upgradeProduct: (orgId: string, payload: TUpgradePayload) => Promise<TUpgradeResult>;
   // Start / change annual commitments across dimensions (all-or-nothing).
   changeCommitments: (orgId: string, payload: TChangeCommitmentsPayload) => Promise<TCheckoutResult>;
   // Start a plan-scoped self-serve trial.
   startTrial: (orgId: string, payload: TStartTrialPayload) => Promise<TTrialResult>;
   // Cancel an in-progress trial for a product (product → free; the trial never converts).
   cancelTrial: (orgId: string, payload: TCancelTrialPayload) => Promise<TTrialCancelResult>;
+  confirmTrialPayment: (orgId: string, payload: TConfirmTrialPaymentPayload) => Promise<TConfirmTrialPaymentResult>;
   // The org's trial history, used to tell which products have already used their one-time trial.
   fetchTrials: (orgId: string) => Promise<TTrialsResponse>;
   cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;

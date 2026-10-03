@@ -8,13 +8,13 @@ description: "Learn how to automatically rotate HP iLO local account passwords."
 
   This rotation updates a single credential set in place. Old credentials become invalid immediately upon rotation. This means that clients using the previous credentials will fail to authenticate until they retrieve the new credentials.
 
-  This is a limitation of the iLO provider and cannot be rectified by Infisical.
+  This is a limitation of the iLO provider and can't be rectified by Infisical.
 </Note>
 
 <Warning>
   **iLO Password Constraints**
 
-  HP iLO has a maximum password length of **39 characters**. Infisical uses iLO-specific defaults (39 characters, no symbols) to ensure compatibility. If you customize password requirements, ensure the total length does not exceed 39 characters.
+  HP iLO has a maximum password length of **39 characters**. Infisical uses iLO-specific defaults (39 characters, no symbols) to ensure compatibility. If you customize password requirements, ensure the total length doesn't exceed 39 characters.
 </Warning>
 
 ## Prerequisites

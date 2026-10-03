@@ -62,7 +62,7 @@ type TPamMembershipServiceFactoryDep = {
     | "transaction"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteStepApproversBySubject">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteStepApproversBySubject" | "deleteBypassersBySubject">;
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "find">;
@@ -696,6 +696,15 @@ export const pamMembershipServiceFactory = ({
           },
           tx
         );
+        await approvalPolicyDAL.deleteBypassersBySubject(
+          {
+            projectId,
+            scopeType: ApprovalPolicyScope.PamFolder,
+            userId: kind === PamMemberKind.User ? id : undefined,
+            groupId: kind === PamMemberKind.Group ? id : undefined
+          },
+          tx
+        );
       }
 
       await membershipDAL.deleteById(membership.id, tx);
@@ -984,6 +993,16 @@ export const pamMembershipServiceFactory = ({
 
       if (kind !== PamMemberKind.Identity) {
         await approvalPolicyDAL.deleteStepApproversBySubject(
+          {
+            projectId,
+            scopeType: ApprovalPolicyScope.PamFolder,
+            scopeId: folderId,
+            userId: kind === PamMemberKind.User ? id : undefined,
+            groupId: kind === PamMemberKind.Group ? id : undefined
+          },
+          tx
+        );
+        await approvalPolicyDAL.deleteBypassersBySubject(
           {
             projectId,
             scopeType: ApprovalPolicyScope.PamFolder,

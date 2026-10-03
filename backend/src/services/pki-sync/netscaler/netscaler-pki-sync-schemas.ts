@@ -7,7 +7,9 @@ import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import {
   BasePkiSyncOptionsSchema,
   buildDestinationCertificateNameSchema,
-  PkiSyncSchema
+  PkiSyncFiltersField,
+  PkiSyncSchema,
+  UpdatePkiSyncFiltersField
 } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { NETSCALER_NAMING } from "./netscaler-pki-sync-constants";
@@ -40,7 +42,8 @@ export const CreateNetScalerPkiSyncSchema = z.object({
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
   applicationId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).optional()
+  certificateIds: z.array(z.string().uuid()).optional(),
+  filters: PkiSyncFiltersField
 });
 
 export const UpdateNetScalerPkiSyncSchema = z.object({
@@ -50,7 +53,8 @@ export const UpdateNetScalerPkiSyncSchema = z.object({
   destinationConfig: NetScalerPkiSyncConfigSchema.optional(),
   syncOptions: NetScalerPkiSyncOptionsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const NetScalerPkiSyncListItemSchema = z.object({

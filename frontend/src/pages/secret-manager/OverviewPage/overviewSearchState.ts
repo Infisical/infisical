@@ -2,6 +2,7 @@ export type OverviewSearchState = {
   secretPath?: string;
   environments?: string[];
   search?: string;
+  clearSearch?: boolean;
   tags?: string;
   filterBy?: string;
 };
@@ -21,6 +22,22 @@ export const stripSensitiveOverviewSearchState = <T extends OverviewSearchState>
   search: undefined,
   tags: undefined
 });
+
+export const hasOneShotOverviewSearchState = (search: OverviewSearchState) =>
+  hasSensitiveOverviewSearchState(search) || Boolean(search.clearSearch);
+
+export const stripOneShotOverviewSearchState = <T extends OverviewSearchState>(search: T): T => ({
+  ...stripSensitiveOverviewSearchState(search),
+  clearSearch: undefined
+});
+
+export const resolveOverviewSearchFilter = (
+  currentSearch: string,
+  search: Pick<OverviewSearchState, "search" | "clearSearch">
+) => {
+  if (search.clearSearch) return "";
+  return search.search || currentSearch;
+};
 
 export const serializeOverviewResourceFilter = (
   filter: Record<string, boolean>,

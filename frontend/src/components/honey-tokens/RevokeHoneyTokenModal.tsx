@@ -1,21 +1,16 @@
-import { useEffect, useState } from "react";
-import { BanIcon } from "lucide-react";
-
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-  Field,
-  FieldContent,
-  FieldLabel,
-  Input
+  AlertDialogTitle
 } from "@app/components/v3";
 import { useRevokeHoneyToken } from "@app/hooks/api/honeyTokens";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
@@ -28,11 +23,6 @@ type Props = {
 
 export const RevokeHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Props) => {
   const revokeHoneyToken = useRevokeHoneyToken();
-  const [inputData, setInputData] = useState("");
-
-  useEffect(() => {
-    setInputData("");
-  }, [isOpen]);
 
   if (!honeyToken) return null;
 
@@ -51,44 +41,34 @@ export const RevokeHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Prop
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+    <AlertDialog open={isOpen} confirmationValue={honeyToken.name} onOpenChange={onOpenChange}>
       <AlertDialogContent className="sm:max-w-xl!">
         <AlertDialogHeader>
-          <AlertDialogMedia>
-            <BanIcon />
-          </AlertDialogMedia>
           <AlertDialogTitle>Are you sure you want to revoke {honeyToken.name}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will revoke the AWS IAM credentials and remove the associated decoy secrets from
-            this environment. The honey token record and its events will be preserved for audit
-            purposes.
+          <AlertDialogDescription asChild>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>
+                This will revoke the AWS IAM credentials and remove the associated decoy secrets
+                from this environment. The honey token record and its events will be preserved for
+                audit purposes.
+              </AlertDescription>
+            </Alert>
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (inputData === honeyToken.name) handleRevoke();
+        <AlertDialogConfirmationField
+          onConfirm={() => {
+            if (!revokeHoneyToken.isPending) handleRevoke().catch(() => undefined);
           }}
-        >
-          <Field>
-            <FieldLabel>
-              Type <span className="font-bold">{honeyToken.name}</span> to confirm
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                value={inputData}
-                onChange={(e) => setInputData(e.target.value)}
-                placeholder={`Type ${honeyToken.name} here`}
-              />
-            </FieldContent>
-          </Field>
-        </form>
+        />
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel isDisabled={revokeHoneyToken.isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="danger"
-            onClick={handleRevoke}
-            disabled={inputData !== honeyToken.name}
+            isPending={revokeHoneyToken.isPending}
+            onClick={(event) => {
+              event.preventDefault();
+              if (!revokeHoneyToken.isPending) handleRevoke().catch(() => undefined);
+            }}
           >
             Revoke
           </AlertDialogAction>

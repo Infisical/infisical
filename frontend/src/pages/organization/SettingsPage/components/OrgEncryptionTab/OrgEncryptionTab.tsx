@@ -179,6 +179,7 @@ export const OrgEncryptionTab = withPermission(
           )}
         </CardContent>
         <UpgradePlanModal
+          paywallKey="organization.org-encryption"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="Your current plan does not include access to external KMS. To unlock this feature, please upgrade to Infisical Enterprise plan."

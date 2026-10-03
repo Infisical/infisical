@@ -1,3 +1,4 @@
+import { OrderByDirection } from "../generic/types";
 import { TSecretApprovalPolicy } from "../secretApproval/types";
 import { SecretV3Raw } from "../secrets/types";
 import { WsTag } from "../tags/types";
@@ -14,6 +15,13 @@ export enum CommitType {
   UPDATE = "update",
   CREATE = "create",
   ADD = "add"
+}
+
+export enum SecretApprovalRequestOrderBy {
+  Environment = "environment",
+  SecretPath = "secretPath",
+  Author = "author",
+  CreatedAt = "createdAt"
 }
 
 export type TSecretApprovalSecChangeData = {
@@ -129,6 +137,8 @@ export type TGetSecretApprovalRequestList = {
   limit?: number;
   offset?: number;
   search?: string;
+  orderBy?: SecretApprovalRequestOrderBy;
+  orderDirection?: OrderByDirection;
 };
 
 export type TGetSecretApprovalRequestCount = {
