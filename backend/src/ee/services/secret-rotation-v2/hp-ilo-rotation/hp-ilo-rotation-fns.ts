@@ -1,4 +1,4 @@
-import { AxiosRequestConfig, AxiosResponse, isAxiosError } from "axios";
+import { AxiosError, AxiosRequestConfig, AxiosResponse, isAxiosError } from "axios";
 import https from "https";
 import net from "net";
 import RE2 from "re2";
@@ -53,6 +53,10 @@ export type THpIloClient = {
   changePasswordAsTarget: (username: string, currentPassword: string, newPassword: string) => Promise<void>;
   verifyPassword: (username: string, password: string) => Promise<void>;
 };
+
+// Signals that an operation failed without modifying the iLO account, which is what makes it safe for the fallback
+// client to retry it; any other error may hide a password change that was applied
+export class HpIloAccountUnchangedError extends Error {}
 
 export type THpIloClientFactory = (
   config: TSshConnectionConfig,
@@ -200,7 +204,7 @@ export const hpIloSshClientFactory: THpIloClientFactory = (config, gatewayV2Serv
 };
 
 const HP_ILO_REDFISH_PORT = 443;
-const HP_ILO_REDFISH_ACCOUNT_SERVICE_PATH = "/redfish/v1/AccountService/";
+const HP_ILO_REDFISH_SERVICE_ROOT_PATH = "/redfish/v1/";
 const HP_ILO_REDFISH_ACCOUNTS_PATH = "/redfish/v1/AccountService/Accounts/";
 const HP_ILO_REDFISH_MAX_ACCOUNT_LOOKUPS = 50;
 const HP_ILO_REDFISH_MAX_COLLECTION_PAGES = 10;
@@ -249,21 +253,33 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
         throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
       }
 
-      return withGatewayV2Proxy(
-        (proxyPort) =>
-          request.request<T>({
-            ...requestConfig,
-            timeout: HP_ILO_REDFISH_REQUEST_TIMEOUT_MS,
-            url: `https://localhost:${proxyPort}${path}`,
-            headers: { ...requestConfig.headers, Host: urlHost },
-            httpsAgent: new https.Agent(tlsOptions),
-            maxRedirects: 0
-          }),
+      // withGatewayV2Proxy rethrows callback errors as its own types, which drops the HTTP status callers branch on,
+      // so an error carrying an iLO response is passed out as a value and rethrown after the proxy closes
+      const outcome = await withGatewayV2Proxy(
+        async (proxyPort): Promise<{ response: AxiosResponse<T> } | { responseError: AxiosError }> => {
+          try {
+            const response = await request.request<T>({
+              ...requestConfig,
+              timeout: HP_ILO_REDFISH_REQUEST_TIMEOUT_MS,
+              url: `https://localhost:${proxyPort}${path}`,
+              headers: { ...requestConfig.headers, Host: urlHost },
+              httpsAgent: new https.Agent(tlsOptions),
+              maxRedirects: 0
+            });
+            return { response };
+          } catch (error) {
+            if (isAxiosError(error) && error.response) return { responseError: error };
+            throw error;
+          }
+        },
         {
           protocol: GatewayProxyProtocol.Tcp,
           ...platformConnectionDetails
         }
       );
+
+      if ("responseError" in outcome) throw outcome.responseError;
+      return outcome.response;
     }
 
     return safeRequest.request<T>({
@@ -390,8 +406,10 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
   };
 
   const changePassword = async (authorization: string, targetUsername: string, newPassword: string) => {
+    let isPatchSent = false;
     try {
       const accountPath = await resolveAccountPath(authorization, targetUsername);
+      isPatchSent = true;
       await sendRequest(accountPath, {
         method: "PATCH",
         data: { Password: newPassword },
@@ -400,16 +418,23 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
         "axios-retry": { retries: 0 }
       });
     } catch (error) {
-      // The PATCH may have been applied even though its response was lost; the rotation only stores the new
-      // password on success, so failing here would leave Infisical holding a password the iLO no longer accepts
-      if (isAxiosError(error) && !error.response && (await isPasswordAccepted(targetUsername, newPassword))) return;
-      throw new Error(`HP iLO password change failed: ${describeRedfishError(error)}`);
+      // Only a 4xx from the iLO proves the PATCH was not applied. Without a response (gateway transport failures arrive
+      // as non-Axios errors) or on a 5xx it may still have been, and the rotation only stores the new password on
+      // success, so a password the iLO already accepts is treated as a successful change
+      const status = isAxiosError(error) ? error.response?.status : undefined;
+      const isAccountUnchanged = !isPatchSent || (status !== undefined && status < 500);
+      if (!isAccountUnchanged && (await isPasswordAccepted(targetUsername, newPassword))) return;
+
+      const message = `HP iLO password change failed: ${describeRedfishError(error)}`;
+      throw isAccountUnchanged ? new HpIloAccountUnchangedError(message) : new Error(message);
     }
   };
 
   const changePasswordAsAdmin = async (targetUsername: string, newPassword: string) => {
     if (config.method !== SshConnectionMethod.Password) {
-      throw new Error("HP iLO password change failed: the Redfish API requires a password-based connection");
+      throw new HpIloAccountUnchangedError(
+        "HP iLO password change failed: the Redfish API requires a password-based connection"
+      );
     }
 
     await changePassword(
@@ -429,20 +454,17 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
       const accountPath = await resolveAccountPath(authorization, username);
       await sendRequest(accountPath, { method: "GET", headers: { Authorization: authorization } });
     } catch (error) {
-      throw new Error(`HP iLO password verification failed: ${describeRedfishError(error)}`);
+      throw new HpIloAccountUnchangedError(`HP iLO password verification failed: ${describeRedfishError(error)}`);
     }
   };
 
+  // The service root needs no credentials, so this only checks that Redfish is reachable over a verified TLS
+  // connection; whether a given account's credentials work is left to the operation, whose 401 falls back safely.
+  // A certificate that fails verification (the iLO default is self-signed) disables this client, so no credentials
+  // are sent to an endpoint that cannot be authenticated
   const isEnabled = async () => {
-    if (config.method !== SshConnectionMethod.Password) return false;
-
-    // A certificate that fails verification (the iLO default is self-signed) disables this client, so the
-    // rotation falls back to SSH rather than sending credentials to an endpoint that cannot be authenticated
     try {
-      await sendRequest(HP_ILO_REDFISH_ACCOUNT_SERVICE_PATH, {
-        method: "GET",
-        headers: { Authorization: basicAuth(config.credentials.username, config.credentials.password) }
-      });
+      await sendRequest(HP_ILO_REDFISH_SERVICE_ROOT_PATH, { method: "GET" });
       return true;
     } catch {
       return false;
@@ -457,48 +479,65 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
   };
 };
 
-// The client is chosen up front rather than by retrying a failed operation on the next one, because a password
-// change that failed may still have been applied, and retrying it would authenticate with a replaced password
+// Tries each enabled client in order, moving on only when the failed one reports the account as unchanged. Retrying
+// after a change that may have been applied would authenticate with a replaced password and leave Infisical out of
+// sync with the iLO.
 export const hpIloFallbackClientFactory =
   (...clientFactories: THpIloClientFactory[]): THpIloClientFactory =>
   (config, gatewayV2Service) => {
     const clients = clientFactories.map((clientFactory) => clientFactory(config, gatewayV2Service));
 
-    const selectClient = async () => {
-      for (const [index, client] of clients.entries()) {
-        // eslint-disable-next-line no-await-in-loop
-        if (await client.isEnabled()) {
-          if (index > 0) {
-            logger.warn(
-              `HP iLO preferred client unavailable, falling back [host=${config.credentials.host}] [clientIndex=${index}]`
-            );
-          }
-          return client;
-        }
-      }
-      throw new Error(`No HP iLO client is available for host '${config.credentials.host}'`);
+    const enabledChecks: Promise<boolean>[] = [];
+    const isClientEnabled = (index: number) => {
+      enabledChecks[index] ??= clients[index].isEnabled().catch(() => false);
+      return enabledChecks[index];
     };
 
-    let selectedClient: Promise<THpIloClient> | undefined;
-    const getClient = () => {
-      selectedClient ??= selectClient();
-      return selectedClient;
+    const runWithFallback = async (operation: string, run: (client: THpIloClient) => Promise<void>) => {
+      const failures: string[] = [];
+
+      for (const [index, client] of clients.entries()) {
+        // eslint-disable-next-line no-await-in-loop
+        if (await isClientEnabled(index)) {
+          if (index > 0) {
+            logger.warn(
+              `HP iLO ${operation} falling back to client ${index} [host=${config.credentials.host}]${failures.length ? `: ${failures[failures.length - 1]}` : ""}`
+            );
+          }
+
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            await run(client);
+            return;
+          } catch (error) {
+            failures.push((error as Error).message);
+            if (!(error instanceof HpIloAccountUnchangedError)) break;
+          }
+        }
+      }
+
+      if (!failures.length) {
+        throw new Error(`No HP iLO client is available for host '${config.credentials.host}'`);
+      }
+      throw new Error(failures.join("; "));
     };
 
     return {
       isEnabled: async () => {
-        try {
-          await getClient();
-          return true;
-        } catch {
-          return false;
+        for (let index = 0; index < clients.length; index += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          if (await isClientEnabled(index)) return true;
         }
+        return false;
       },
-      changePasswordAsAdmin: async (targetUsername, newPassword) =>
-        (await getClient()).changePasswordAsAdmin(targetUsername, newPassword),
-      changePasswordAsTarget: async (username, currentPassword, newPassword) =>
-        (await getClient()).changePasswordAsTarget(username, currentPassword, newPassword),
-      verifyPassword: async (username, password) => (await getClient()).verifyPassword(username, password)
+      changePasswordAsAdmin: (targetUsername, newPassword) =>
+        runWithFallback("password change", (client) => client.changePasswordAsAdmin(targetUsername, newPassword)),
+      changePasswordAsTarget: (username, currentPassword, newPassword) =>
+        runWithFallback("password change", (client) =>
+          client.changePasswordAsTarget(username, currentPassword, newPassword)
+        ),
+      verifyPassword: (username, password) =>
+        runWithFallback("password verification", (client) => client.verifyPassword(username, password))
     };
   };
 

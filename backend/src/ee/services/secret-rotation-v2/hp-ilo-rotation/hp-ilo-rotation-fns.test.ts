@@ -8,7 +8,13 @@ vi.mock("@app/lib/logger", () => ({
 import { TSshConnectionConfig } from "@app/services/app-connection/ssh";
 
 // eslint-disable-next-line import/first
-import { hpIloFallbackClientFactory, isIloPrompt, THpIloClient, THpIloClientFactory } from "./hp-ilo-rotation-fns";
+import {
+  HpIloAccountUnchangedError,
+  hpIloFallbackClientFactory,
+  isIloPrompt,
+  THpIloClient,
+  THpIloClientFactory
+} from "./hp-ilo-rotation-fns";
 
 describe("isIloPrompt", () => {
   test("matches the iLO 5/6 prompt", () => {
@@ -76,7 +82,7 @@ describe("hpIloFallbackClientFactory", () => {
   });
 
   describe.each(operations)("$method", ({ method, run, args }) => {
-    test("uses the first client when it is enabled, without checking the others", async () => {
+    test("uses only the first client when it succeeds", async () => {
       const primary = createMockClient();
       const fallback = createMockClient();
 
@@ -87,7 +93,7 @@ describe("hpIloFallbackClientFactory", () => {
       expect(fallback[method]).not.toHaveBeenCalled();
     });
 
-    test("uses the next client when the first is not enabled", async () => {
+    test("skips a client that is not enabled", async () => {
       const primary = createMockClient(false);
       const fallback = createMockClient();
 
@@ -97,13 +103,44 @@ describe("hpIloFallbackClientFactory", () => {
       expect(fallback[method]).toHaveBeenCalledWith(...args);
     });
 
-    test("does not retry on another client when the selected client fails", async () => {
+    test("treats a failing enabled check as not enabled", async () => {
       const primary = createMockClient();
       const fallback = createMockClient();
-      primary[method].mockRejectedValueOnce(new Error("api failed"));
+      primary.isEnabled.mockRejectedValueOnce(new Error("probe failed"));
 
-      await expect(run(buildClient(primary, fallback))).rejects.toThrow("api failed");
+      await run(buildClient(primary, fallback));
+
+      expect(primary[method]).not.toHaveBeenCalled();
+      expect(fallback[method]).toHaveBeenCalledWith(...args);
+    });
+
+    test("falls back when the first client reports the account unchanged", async () => {
+      const primary = createMockClient();
+      const fallback = createMockClient();
+      primary[method].mockRejectedValueOnce(new HpIloAccountUnchangedError("rejected by iLO"));
+
+      await run(buildClient(primary, fallback));
+
+      expect(primary[method]).toHaveBeenCalledWith(...args);
+      expect(fallback[method]).toHaveBeenCalledWith(...args);
+    });
+
+    test("does not fall back when the first client's outcome is unknown", async () => {
+      const primary = createMockClient();
+      const fallback = createMockClient();
+      primary[method].mockRejectedValueOnce(new Error("response lost"));
+
+      await expect(run(buildClient(primary, fallback))).rejects.toThrow("response lost");
       expect(fallback[method]).not.toHaveBeenCalled();
+    });
+
+    test("fails with every client's error when all of them fail", async () => {
+      const primary = createMockClient();
+      const fallback = createMockClient();
+      primary[method].mockRejectedValueOnce(new HpIloAccountUnchangedError("api rejected"));
+      fallback[method].mockRejectedValueOnce(new Error("ssh refused"));
+
+      await expect(run(buildClient(primary, fallback))).rejects.toThrow("api rejected; ssh refused");
     });
 
     test("fails when no client is enabled", async () => {
@@ -118,7 +155,7 @@ describe("hpIloFallbackClientFactory", () => {
     });
   });
 
-  test("selects a client once and reuses it for later calls", async () => {
+  test("checks whether each client is enabled only once across calls", async () => {
     const primary = createMockClient(false);
     const fallback = createMockClient();
     const client = buildClient(primary, fallback);
@@ -128,8 +165,6 @@ describe("hpIloFallbackClientFactory", () => {
 
     expect(primary.isEnabled).toHaveBeenCalledTimes(1);
     expect(fallback.isEnabled).toHaveBeenCalledTimes(1);
-    expect(fallback.changePasswordAsAdmin).toHaveBeenCalledTimes(1);
-    expect(fallback.verifyPassword).toHaveBeenCalledTimes(1);
   });
 
   test("reports enabled when any client is enabled", async () => {
