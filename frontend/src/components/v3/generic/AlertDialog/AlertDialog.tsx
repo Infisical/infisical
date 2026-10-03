@@ -6,6 +6,7 @@ import { Button } from "../Button";
 import { DIALOG_CONTENT_WIDTH_CLASSNAME } from "../Dialog";
 import { Field, FieldLabel } from "../Field";
 import { Input } from "../Input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 
 type AlertDialogConfirmationContextValue = {
   actionRef: React.MutableRefObject<HTMLButtonElement | null>;
@@ -174,7 +175,7 @@ function AlertDialogTitle({
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
       className={cn(
-        "font-alliance text-lg font-normal sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
+        "line-clamp-2 min-w-0 font-alliance text-lg font-normal [overflow-wrap:anywhere] sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
         className
       )}
       {...props}
@@ -205,18 +206,68 @@ function AlertDialogConfirmationLabel({
 }: Omit<React.ComponentProps<typeof FieldLabel>, "children"> & {
   confirmationValue: React.ReactNode;
 }) {
+  const [copyStatus, setCopyStatus] = React.useState("");
+  const copyPending = React.useRef(false);
+  const copyGeneration = React.useRef(0);
+
+  React.useEffect(() => {
+    setCopyStatus("");
+    copyGeneration.current += 1;
+    return () => {
+      copyGeneration.current += 1;
+    };
+  }, [confirmationValue]);
+
   return (
-    <FieldLabel
-      data-slot="alert-dialog-confirmation-label"
-      size="sm"
-      className={cn("gap-0", className)}
-      {...props}
-    >
-      <span>
-        Type &quot;<span className="font-medium text-foreground">{confirmationValue}</span>&quot; to
-        confirm.
+    <div className="min-w-0 space-y-1">
+      <FieldLabel
+        data-slot="alert-dialog-confirmation-label"
+        size="sm"
+        className={cn("gap-0", className)}
+        {...props}
+      >
+        Type the following value<span className="sr-only">: {confirmationValue}</span> to confirm.
+      </FieldLabel>
+      {typeof confirmationValue === "string" ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="text"
+              className="max-w-full min-w-0 justify-start text-left whitespace-normal"
+              aria-label={`Copy confirmation value: ${confirmationValue}`}
+              onClick={async () => {
+                if (copyPending.current) return;
+                copyPending.current = true;
+                setCopyStatus("");
+                const generation = copyGeneration.current;
+                try {
+                  await navigator.clipboard.writeText(confirmationValue);
+                  if (generation === copyGeneration.current) setCopyStatus("Copied");
+                } catch {
+                  if (generation === copyGeneration.current)
+                    setCopyStatus("Unable to copy. Select and copy the value manually.");
+                } finally {
+                  copyPending.current = false;
+                }
+              }}
+            >
+              <span className="line-clamp-2 font-mono font-medium [overflow-wrap:anywhere] select-text">
+                {confirmationValue}
+              </span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[min(24rem,calc(100vw-2rem))] [overflow-wrap:anywhere]">
+            <div className="font-mono">{confirmationValue}</div>
+            <div className="mt-1 text-label">{copyStatus || "Click to copy"}</div>
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        <div className="line-clamp-2 font-medium [overflow-wrap:anywhere]">{confirmationValue}</div>
+      )}
+      <span role="status" className="sr-only">
+        {copyStatus}
       </span>
-    </FieldLabel>
+    </div>
   );
 }
 
