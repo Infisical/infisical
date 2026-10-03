@@ -6,8 +6,15 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import {
+  TApprovalPolicyDALFactory,
+  TApprovalPolicySecretEnvironmentDALFactory
+} from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { secretAccessApprovalPolicyExists } from "@app/services/secret-access-approval-policy-bridge/secret-access-approval-policy-bridge-fns";
+import { TSecretAccessApprovalPolicyBridgeServiceFactory } from "@app/services/secret-access-approval-policy-bridge/secret-access-approval-policy-bridge-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
@@ -44,6 +51,19 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update" | "delete">;
   accessApprovalPolicyEnvironmentDAL: TAccessApprovalPolicyEnvironmentDALFactory;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findOne">;
+  approvalPolicySecretEnvironmentDAL: Pick<
+    TApprovalPolicySecretEnvironmentDALFactory,
+    "findPolicyByEnvIdsAndSecretPath"
+  >;
+  secretAccessApprovalPolicyBridge: Pick<
+    TSecretAccessApprovalPolicyBridgeServiceFactory,
+    | "updateAccessApprovalPolicy"
+    | "deleteAccessApprovalPolicy"
+    | "getAccessApprovalPolicyById"
+    | "listAccessApprovalPolicies"
+    | "countAccessApprovalPolicies"
+  >;
 };
 
 export const accessApprovalPolicyServiceFactory = ({
@@ -58,8 +78,22 @@ export const accessApprovalPolicyServiceFactory = ({
   userDAL,
   accessApprovalRequestDAL,
   additionalPrivilegeDAL,
-  accessApprovalRequestReviewerDAL
+  accessApprovalRequestReviewerDAL,
+  approvalPolicyDAL,
+  approvalPolicySecretEnvironmentDAL,
+  secretAccessApprovalPolicyBridge
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
+  const $usesGlobalApprovalBridge = async (policyId: string) => {
+    const globalPolicy = await approvalPolicyDAL.findOne({ id: policyId, type: ApprovalPolicyType.SecretAccess });
+    return Boolean(globalPolicy);
+  };
+
+  const $listGlobalApprovalPolicies = (projectId: string) =>
+    secretAccessApprovalPolicyBridge.listAccessApprovalPolicies({ projectId });
+
+  const $countGlobalApprovalPolicies = (projectId: string, envId: string) =>
+    secretAccessApprovalPolicyBridge.countAccessApprovalPolicies({ projectId, envId });
+
   const $policyExists = async ({
     envId,
     envIds,
@@ -71,14 +105,23 @@ export const accessApprovalPolicyServiceFactory = ({
     secretPath: string;
     policyId?: string;
   }) => {
-    if (!envId && !envIds) {
+    const resolvedEnvIds = envId ? [envId] : envIds;
+    if (!resolvedEnvIds?.length) {
       throw new BadRequestError({ message: "Must provide either envId or envIds" });
     }
-    const policy = await accessApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({
-      secretPath,
-      envIds: envId ? [envId] : (envIds as string[])
-    });
-    return policyId ? policy && policy.id !== policyId : Boolean(policy);
+
+    for (const id of resolvedEnvIds) {
+      if (
+        // eslint-disable-next-line no-await-in-loop
+        await secretAccessApprovalPolicyExists(
+          { envId: id, secretPath, excludePolicyId: policyId },
+          { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }
+        )
+      ) {
+        return true;
+      }
+    }
+    return false;
   };
 
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
@@ -316,11 +359,16 @@ export const accessApprovalPolicyServiceFactory = ({
         actionProjectType: ActionProjectType.SecretManager
       });
 
-      const accessApprovalPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id, deletedAt: null });
-      return accessApprovalPolicies.map((policy) => ({
-        ...policy,
-        environment: policy.environments[0]
-      }));
+      const legacyPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id, deletedAt: null });
+      const globalPolicies = await $listGlobalApprovalPolicies(project.id);
+
+      return [
+        ...legacyPolicies.map((policy) => ({
+          ...policy,
+          environment: policy.environments[0]
+        })),
+        ...globalPolicies
+      ];
     };
 
   const updateAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["updateAccessApprovalPolicy"] = async ({
@@ -341,6 +389,27 @@ export const accessApprovalPolicyServiceFactory = ({
     maxTimePeriod,
     requestExpirationTime
   }: TUpdateAccessApprovalPolicy) => {
+    if (await $usesGlobalApprovalBridge(policyId)) {
+      return secretAccessApprovalPolicyBridge.updateAccessApprovalPolicy({
+        policyId,
+        approvers,
+        bypassers,
+        secretPath,
+        name,
+        actorId,
+        actor,
+        actorOrgId,
+        actorAuthMethod,
+        approvals,
+        enforcementLevel,
+        allowedSelfApprovals,
+        approvalsRequired,
+        environments,
+        maxTimePeriod,
+        requestExpirationTime
+      });
+    }
+
     const groupApprovers = approvers.filter((approver) => approver.type === ApproverType.Group);
 
     const userApprovers = approvers.filter((approver) => approver.type === ApproverType.User && approver.id) as {
@@ -596,6 +665,16 @@ export const accessApprovalPolicyServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TDeleteAccessApprovalPolicy) => {
+    if (await $usesGlobalApprovalBridge(policyId)) {
+      return secretAccessApprovalPolicyBridge.deleteAccessApprovalPolicy({
+        policyId,
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      });
+    }
+
     const policy = await accessApprovalPolicyDAL.findById(policyId);
     if (!policy) throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
 
@@ -665,16 +744,19 @@ export const accessApprovalPolicyServiceFactory = ({
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
-    const policies = await accessApprovalPolicyDAL.find(
+    const legacyPolicies = await accessApprovalPolicyDAL.find(
       {
         projectId: project.id,
         deletedAt: null
       },
       { envId: environment.id }
     );
-    if (!policies) throw new NotFoundError({ message: `No policies found in environment with slug '${envSlug}'` });
+    if (!legacyPolicies) {
+      throw new NotFoundError({ message: `No policies found in environment with slug '${envSlug}'` });
+    }
+    const globalPolicyCount = await $countGlobalApprovalPolicies(project.id, environment.id);
 
-    return { count: policies.length };
+    return { count: legacyPolicies.length + globalPolicyCount };
   };
 
   const getAccessApprovalPolicyById: TAccessApprovalPolicyServiceFactory["getAccessApprovalPolicyById"] = async ({
@@ -684,6 +766,16 @@ export const accessApprovalPolicyServiceFactory = ({
     actorAuthMethod,
     policyId
   }) => {
+    if (await $usesGlobalApprovalBridge(policyId)) {
+      return secretAccessApprovalPolicyBridge.getAccessApprovalPolicyById({
+        policyId,
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      });
+    }
+
     const [policy] = await accessApprovalPolicyDAL.find({}, { policyId });
 
     if (!policy) {

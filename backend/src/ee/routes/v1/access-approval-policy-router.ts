@@ -148,7 +148,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const approval = await server.services.accessApprovalPolicy.createAccessApprovalPolicy({
+      const approval = await server.services.secretAccessApprovalPolicyBridge.createAccessApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -329,7 +329,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
+      const approval = await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
         policyId: req.params.policyId,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -346,6 +346,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           properties: { policyId: req.params.policyId }
         })
         .catch(() => {});
+
+      return { approval };
     }
   });
 

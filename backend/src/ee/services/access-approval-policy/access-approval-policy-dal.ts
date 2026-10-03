@@ -433,6 +433,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
       )
       .select(tx.ref("username").withSchema(TableName.Users).as("approverUsername"))
       .select(tx.ref("username").withSchema("bypasserUsers").as("bypasserUsername"))
+      .select(tx.ref("id").withSchema(TableName.AccessApprovalPolicyApprover).as("approverRowId"))
       .select(tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
       .select(tx.ref("approverGroupId").withSchema(TableName.AccessApprovalPolicyApprover))
       .select(tx.ref("sequence").withSchema(TableName.AccessApprovalPolicyApprover).as("approverSequence"))
@@ -467,24 +468,12 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
         }),
         childrenMapper: [
           {
-            key: "approverUserId",
+            key: "approverRowId",
             label: "approvers" as const,
-            mapper: ({ approverUserId: id, approverSequence, approvalsRequired }) => ({
-              id,
-              type: "user",
-              sequence: approverSequence,
-              approvalsRequired
-            })
-          },
-          {
-            key: "approverGroupId",
-            label: "approvers" as const,
-            mapper: ({ approverGroupId: id, approverSequence, approvalsRequired }) => ({
-              id,
-              type: "group",
-              sequence: approverSequence,
-              approvalsRequired
-            })
+            mapper: ({ approverUserId, approverGroupId, approverSequence, approvalsRequired }) =>
+              approverUserId
+                ? { id: approverUserId, type: "user", sequence: approverSequence, approvalsRequired }
+                : { id: approverGroupId, type: "group", sequence: approverSequence, approvalsRequired }
           },
           {
             key: "environmentId",
@@ -522,25 +511,23 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
         }),
         childrenMapper: [
           {
-            key: "approverUserId",
+            key: "approverRowId",
             label: "approvers" as const,
-            mapper: ({ approverUserId: id, approverUsername, approverSequence, approvalsRequired }) => ({
-              id,
-              type: ApproverType.User as const,
-              name: approverUsername,
-              sequence: approverSequence,
-              approvalsRequired
-            })
-          },
-          {
-            key: "approverGroupId",
-            label: "approvers" as const,
-            mapper: ({ approverGroupId: id, approverSequence, approvalsRequired }) => ({
-              id,
-              type: ApproverType.Group as const,
-              sequence: approverSequence,
-              approvalsRequired
-            })
+            mapper: ({ approverUserId, approverGroupId, approverUsername, approverSequence, approvalsRequired }) =>
+              approverUserId
+                ? {
+                    id: approverUserId,
+                    type: ApproverType.User as const,
+                    name: approverUsername,
+                    sequence: approverSequence,
+                    approvalsRequired
+                  }
+                : {
+                    id: approverGroupId,
+                    type: ApproverType.Group as const,
+                    sequence: approverSequence,
+                    approvalsRequired
+                  }
           },
           {
             key: "bypasserUserId",

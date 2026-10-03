@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 import { ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
 import { ApprovalPolicyStep, PolicyBypasser } from "./approval-policy-types";
@@ -208,23 +208,62 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findSecretAccessPolicyByEnvIdAndSecretPath = async ({
+    projectId,
+    envId,
+    secretPath
+  }: {
+    projectId: string;
+    envId: string;
+    secretPath: string;
+  }) => {
+    try {
+      const policy = await db
+        .replicaNode()(TableName.ApprovalPolicies)
+        .join(
+          TableName.ApprovalPolicySecretEnvironment,
+          `${TableName.ApprovalPolicySecretEnvironment}.policyId`,
+          `${TableName.ApprovalPolicies}.id`
+        )
+        .where(`${TableName.ApprovalPolicies}.type`, ApprovalPolicyType.SecretAccess)
+        .where(`${TableName.ApprovalPolicies}.projectId`, projectId)
+        .where(`${TableName.ApprovalPolicySecretEnvironment}.envId`, envId)
+        .where(`${TableName.ApprovalPolicySecretEnvironment}.secretPath`, secretPath)
+        .select(selectAllTableCols(TableName.ApprovalPolicies))
+        .first();
+
+      if (!policy) return null;
+
+      const [steps, bypassers] = await Promise.all([
+        findStepsByPolicyId(policy.id),
+        findBypassersByPolicyId(policy.id)
+      ]);
+
+      return { ...policy, steps, bypassers };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find secret access approval policy by environment and secret path" });
+    }
+  };
+
   /**
    * Return the list of policies (with name + id) that include the given subject as an approver
    * on any step. The subject is identified by `userId` OR `groupId` (not both). Used to block
    * removing a member from an application while they're still wired up as a reviewer.
    */
-  const findPoliciesWhereSubjectIsApprover = async (args: {
-    projectId: string;
-    scopeType?: string;
-    scopeId?: string;
-    userId?: string;
-    groupId?: string;
-  }) => {
+  const findPoliciesWhereSubjectIsApprover = async (
+    args: {
+      type?: ApprovalPolicyType;
+      scopeType?: string;
+      scopeId?: string;
+      userId?: string;
+      userIds?: string[];
+      groupId?: string;
+    } & ({ projectId: string; organizationId?: undefined } | { projectId?: undefined; organizationId: string })
+  ) => {
     try {
       const dbInstance = db.replicaNode();
 
       const baseQuery = dbInstance(TableName.ApprovalPolicies)
-        .where({ projectId: args.projectId })
         .innerJoin(
           TableName.ApprovalPolicySteps,
           `${TableName.ApprovalPolicySteps}.policyId`,
@@ -236,6 +275,18 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
           `${TableName.ApprovalPolicySteps}.id`
         );
 
+      if (args.projectId) {
+        void baseQuery.where(`${TableName.ApprovalPolicies}.projectId`, args.projectId);
+      } else if (args.organizationId) {
+        void baseQuery.where(`${TableName.ApprovalPolicies}.organizationId`, args.organizationId);
+      } else {
+        return [];
+      }
+
+      if (args.type) {
+        void baseQuery.where(`${TableName.ApprovalPolicies}.type`, args.type);
+      }
+
       if (typeof args.scopeType === "string") {
         void baseQuery.where(`${TableName.ApprovalPolicies}.scopeType`, args.scopeType);
         if (typeof args.scopeId === "string") {
@@ -245,6 +296,8 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
 
       if (args.userId) {
         void baseQuery.where(`${TableName.ApprovalPolicyStepApprovers}.userId`, args.userId);
+      } else if (args.userIds?.length) {
+        void baseQuery.whereIn(`${TableName.ApprovalPolicyStepApprovers}.userId`, args.userIds);
       } else if (args.groupId) {
         void baseQuery.where(`${TableName.ApprovalPolicyStepApprovers}.groupId`, args.groupId);
       } else {
@@ -490,6 +543,7 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     findBypassersByPolicyId,
     findBypassersByPolicyIds,
     findByProjectId,
+    findSecretAccessPolicyByEnvIdAndSecretPath,
     findPoliciesWhereSubjectIsApprover,
     isProjectApprover,
     findScopeIdsWithApprovers,
@@ -518,4 +572,50 @@ export type TApprovalPolicyBypassersDALFactory = ReturnType<typeof approvalPolic
 export const approvalPolicyBypassersDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ApprovalPolicyBypassers);
   return orm;
+};
+
+// Approval Policy Secret Environments
+export type TApprovalPolicySecretEnvironmentDALFactory = ReturnType<typeof approvalPolicySecretEnvironmentDALFactory>;
+export const approvalPolicySecretEnvironmentDALFactory = (db: TDbClient) => {
+  const orm = ormify(db, TableName.ApprovalPolicySecretEnvironment);
+
+  const findPolicyByEnvIdsAndSecretPath = async (
+    { envIds, secretPath, excludePolicyId }: { envIds: string[]; secretPath: string; excludePolicyId?: string },
+    tx?: Knex
+  ) => {
+    try {
+      const doc = (await (tx || db.replicaNode())(TableName.ApprovalPolicySecretEnvironment)
+        .join(
+          TableName.ApprovalPolicies,
+          `${TableName.ApprovalPolicies}.id`,
+          `${TableName.ApprovalPolicySecretEnvironment}.policyId`
+        )
+        .where(`${TableName.ApprovalPolicies}.type`, ApprovalPolicyType.SecretAccess)
+        .where((qb) => {
+          if (excludePolicyId) void qb.whereNot(`${TableName.ApprovalPolicies}.id`, excludePolicyId);
+        })
+        .whereIn(`${TableName.ApprovalPolicySecretEnvironment}.envId`, envIds)
+        .where(`${TableName.ApprovalPolicySecretEnvironment}.secretPath`, secretPath)
+        .select(
+          db.ref("id").withSchema(TableName.ApprovalPolicies).as("policyId"),
+          db.ref("name").withSchema(TableName.ApprovalPolicies).as("policyName"),
+          db.ref("envId").withSchema(TableName.ApprovalPolicySecretEnvironment)
+        )
+        .first()) as { policyId: string; policyName: string; envId: string } | undefined;
+
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find approval policy by env ids and secret path" });
+    }
+  };
+
+  const findByPolicyIdForUpdate = async (policyId: string, tx: Knex) => {
+    try {
+      return await tx(TableName.ApprovalPolicySecretEnvironment).forUpdate().where({ policyId }).orderBy("id", "asc");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find approval policy secret environments by policy id for update" });
+    }
+  };
+
+  return { ...orm, findPolicyByEnvIdsAndSecretPath, findByPolicyIdForUpdate };
 };
