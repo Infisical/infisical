@@ -17,7 +17,7 @@ i18n
   .init({
     lng: "en",
     fallbackLng: "en",
-    // supportedLngs: ["en", "ko", "fr", "pt-BR", "pt-PT", "es"],
+    supportedLngs: ["en", "ko", "fr", "es", "pt-BR", "tr", "zh-CN"],
     debug: process.env.NODE_ENV === "development",
     detection: {
       // lookupLocalStorage: "lang"

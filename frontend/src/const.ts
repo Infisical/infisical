@@ -33,7 +33,8 @@ export const publicPaths = [
 export const languageMap = {
   en: "English",
   ko: "한국어",
-  fr: "Français"
+  fr: "Français",
+  "zh-CN": "中文"
 };
 
 interface Mapping {
