@@ -264,7 +264,8 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
               url: `https://localhost:${proxyPort}${path}`,
               headers: { ...requestConfig.headers, Host: urlHost },
               httpsAgent: new https.Agent(tlsOptions),
-              maxRedirects: 0
+              maxRedirects: 0,
+              proxy: false
             });
             return { response };
           } catch (error) {
