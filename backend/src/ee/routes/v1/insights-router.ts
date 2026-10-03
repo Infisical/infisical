@@ -22,7 +22,7 @@ import {
   StaticSecretsUsageSchema
 } from "@app/ee/services/insights/insights-schemas";
 import { INSIGHTS } from "@app/lib/api-docs";
-import { readLimit, secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -561,7 +561,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/secrets/search-by-value",
-    config: { rateLimit: secretsLimit },
+    config: { rateLimit: readLimit },
     schema: {
       operationId: "searchOrgInsightsSecretsByValue",
       description:

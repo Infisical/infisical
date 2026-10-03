@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import {
+  OrgPermissionActions,
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
@@ -43,6 +44,8 @@ export const secretValueTrackingServiceFactory = ({
       OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
       OrgPermissionSubjects.SecretsManagementInsights
     );
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
     const org = await orgDAL.findById(actor.orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });
