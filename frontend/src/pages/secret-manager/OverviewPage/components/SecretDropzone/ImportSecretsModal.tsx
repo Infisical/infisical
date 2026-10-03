@@ -432,35 +432,54 @@ const ImportSecretsContent = ({
 
         let results: PromiseSettledResult<unknown>[];
         let failedPaths: string[] = [];
-        let pathCount = 1;
+        let successCount = 0;
         if (nestedImport) {
-          // Folders are created one at a time so parents always exist before their children
+          const failedFolders: string[] = [];
+          const isUnderFailedFolder = (path: string) =>
+            failedFolders.some((folder) => path === folder || path.startsWith(`${folder}/`));
+
+          // Folders are created one at a time so parents always exist before their children.
+          // A failed folder skips its descendants but not its siblings.
           // eslint-disable-next-line no-restricted-syntax
           for (const folderPath of nestedImport.folderPaths) {
-            // eslint-disable-next-line no-await-in-loop
-            await ensureFolder(env.slug, joinSecretPath(secretPath, folderPath));
+            if (!isUnderFailedFolder(folderPath)) {
+              try {
+                // eslint-disable-next-line no-await-in-loop
+                await ensureFolder(env.slug, joinSecretPath(secretPath, folderPath));
+                successCount += 1;
+              } catch {
+                failedFolders.push(folderPath);
+              }
+            }
           }
-          const pathEntries = Object.entries(nestedImport.secretsByPath).map(
-            ([path, secrets]) => [joinSecretPath(secretPath, path), secrets] as const
+          const pathEntries = Object.entries(nestedImport.secretsByPath).filter(
+            ([path]) => !isUnderFailedFolder(path)
           );
           const pathResults = await Promise.allSettled(
-            pathEntries.map(([path, secrets]) => importSecretsAtPath(env.slug, path, secrets))
+            pathEntries.map(([path, secrets]) =>
+              importSecretsAtPath(env.slug, joinSecretPath(secretPath, path), secrets)
+            )
           );
           results = pathResults.flatMap((r) => (r.status === "fulfilled" ? r.value : [r]));
-          failedPaths = pathEntries
+          const failedSecretPaths = pathEntries
             .filter((_, idx) => {
               const r = pathResults[idx];
               return r.status === "rejected" || r.value.some((v) => v.status === "rejected");
             })
             .map(([path]) => path);
-          pathCount = pathEntries.length;
+          successCount += pathEntries.length - failedSecretPaths.length;
+          failedPaths = [...failedFolders, ...failedSecretPaths].map((path) =>
+            joinSecretPath(secretPath, path)
+          );
         } else {
           results = await importSecretsAtPath(env.slug, secretPath, activeSecrets);
         }
         const hasApproval = results.some(
           (r) => r.status === "fulfilled" && "approval" in (r.value as object)
         );
-        const failCount = results.filter((r) => r.status === "rejected").length;
+        const failCount =
+          results.filter((r) => r.status === "rejected").length +
+          (failedPaths.length && !successCount ? 1 : 0);
 
         return {
           environment: env.name,
@@ -468,7 +487,7 @@ const ImportSecretsContent = ({
           hasApproval,
           failCount,
           failedPaths,
-          isPartial: failedPaths.length > 0 && failedPaths.length < pathCount
+          isPartial: failedPaths.length > 0 && successCount > 0
         };
       });
 
@@ -766,7 +785,18 @@ const ImportSecretsContent = ({
                           {joinSecretPath(secretPath, node.path)}
                         </TableCell>
                         <TableCell className="w-10 text-center">
-                          <Badge variant="neutral">{node.secretCount}</Badge>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              {/* Sits above the row's stretched toggle button so hover reaches it */}
+                              <Badge variant="neutral" className="relative z-10">
+                                {node.secretCount}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {node.secretCount} secret{node.secretCount !== 1 ? "s" : ""},
+                              including subfolders
+                            </TooltipContent>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     );
