@@ -55,7 +55,12 @@ import { cn } from "@app/components/v3/utils";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
-import { useCreateSecretBatch, useGetOrCreateFolder, useUpdateSecretBatch } from "@app/hooks/api";
+import {
+  useCreateFolder,
+  useCreateSecretBatch,
+  useGetOrCreateFolder,
+  useUpdateSecretBatch
+} from "@app/hooks/api";
 import { fetchProjectFolders } from "@app/hooks/api/secretFolders/queries";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
@@ -64,6 +69,7 @@ import { SecretType } from "@app/hooks/api/types";
 import { CsvColumnMapContent } from "./CsvColumnMapDialog";
 import {
   buildFolderTree,
+  createFolderResolver,
   flattenNestedJson,
   getNestedJsonObject,
   joinSecretPath,
@@ -147,6 +153,7 @@ const ImportSecretsContent = ({
   const { mutateAsync: createSecretBatch } = useCreateSecretBatch();
   const { mutateAsync: updateSecretBatch } = useUpdateSecretBatch();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
+  const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: createWsTag } = useCreateWsTag();
 
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
@@ -333,13 +340,8 @@ const ImportSecretsContent = ({
         return ids.length ? ids : undefined;
       };
 
-      // Resolves false when the folder was skipped for lack of create permission
-      const ensureFolder = async (environment: string, path: string) => {
-        if (path === "/") return true;
-        const pathSegment = path.split("/").filter(Boolean);
-        const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
-        const folderName = pathSegment.at(-1);
-        const canCreateFolder = permission.can(
+      const canCreateFolderIn = (environment: string, parentPath: string) =>
+        permission.can(
           ProjectPermissionActions.Create,
           subject(ProjectPermissionSub.SecretFolders, {
             environment,
@@ -347,14 +349,20 @@ const ImportSecretsContent = ({
           })
         );
 
-        if (!folderName || !parentPath || !canCreateFolder) return false;
-        await getOrCreateFolder({
-          projectId,
-          path: parentPath,
-          environment,
-          name: folderName
-        });
-        return true;
+      const ensureFolder = async (environment: string, path: string) => {
+        if (path === "/") return;
+        const pathSegment = path.split("/").filter(Boolean);
+        const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
+        const folderName = pathSegment.at(-1);
+
+        if (folderName && parentPath && canCreateFolderIn(environment, parentPath)) {
+          await getOrCreateFolder({
+            projectId,
+            path: parentPath,
+            environment,
+            name: folderName
+          });
+        }
       };
 
       const importSecretsAtPath = async (
@@ -442,14 +450,6 @@ const ImportSecretsContent = ({
         };
       };
 
-      // Checked before creating, so a user without folder create permission can still write
-      // into existing folders and reused folders are not reported as new work
-      const folderExists = async (environment: string, path: string) => {
-        const parentPath = path.slice(0, path.lastIndexOf("/")) || "/";
-        const folders = await fetchProjectFolders(projectId, environment, parentPath);
-        return folders.some((folder) => folder.name === path.slice(path.lastIndexOf("/") + 1));
-      };
-
       const envPromises = selectedEnvs.map(async (env) => {
         await ensureFolder(env.slug, secretPath);
 
@@ -468,12 +468,17 @@ const ImportSecretsContent = ({
           };
         }
 
+        // Existing folders are looked up first, so a user without folder create permission
+        // can still write into them and reused folders are not reported as new work
+        const resolveFolder = createFolderResolver({
+          listFolderNames: async (parentPath) =>
+            (await fetchProjectFolders(projectId, env.slug, parentPath)).map(({ name }) => name),
+          canCreateFolder: (parentPath) => canCreateFolderIn(env.slug, parentPath),
+          createFolder: (parentPath, name) =>
+            createFolder({ projectId, environment: env.slug, path: parentPath, name })
+        });
         const { state, hasApproval, problems } = await runNestedImport(nestedImport, {
-          resolveFolder: async (path) => {
-            const fullPath = joinSecretPath(secretPath, path);
-            if (await folderExists(env.slug, fullPath)) return "found";
-            return (await ensureFolder(env.slug, fullPath)) && "created";
-          },
+          resolveFolder: (path) => resolveFolder(joinSecretPath(secretPath, path)),
           writeSecrets: (path, secrets) =>
             writeSecrets(env.slug, joinSecretPath(secretPath, path), secrets)
         });
