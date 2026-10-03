@@ -92,6 +92,8 @@ type TReviewRow =
 // Lines a child's icon up under its parent's folder icon (chevron 14px + 6px gap)
 const TREE_INDENT_PX = 20;
 const CELL_PADDING_PX = 12;
+const FOCUSABLE_BADGE_CLASS =
+  "relative z-10 inline-flex rounded-sm outline-0 focus-visible:ring-2 focus-visible:ring-ring";
 
 const TreeIndentGuides = ({ depth }: { depth: number }) =>
   Array.from({ length: depth }, (_, level) => (
@@ -329,8 +331,9 @@ const ImportSecretsContent = ({
         return ids.length ? ids : undefined;
       };
 
+      // Resolves false when the folder was skipped for lack of create permission
       const ensureFolder = async (environment: string, path: string) => {
-        if (path === "/") return;
+        if (path === "/") return true;
         const pathSegment = path.split("/").filter(Boolean);
         const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
         const folderName = pathSegment.at(-1);
@@ -342,14 +345,14 @@ const ImportSecretsContent = ({
           })
         );
 
-        if (folderName && parentPath && canCreateFolder) {
-          await getOrCreateFolder({
-            projectId,
-            path: parentPath,
-            environment,
-            name: folderName
-          });
-        }
+        if (!folderName || !parentPath || !canCreateFolder) return false;
+        await getOrCreateFolder({
+          projectId,
+          path: parentPath,
+          environment,
+          name: folderName
+        });
+        return true;
       };
 
       const importSecretsAtPath = async (
@@ -432,6 +435,7 @@ const ImportSecretsContent = ({
 
         let results: PromiseSettledResult<unknown>[];
         let failedPaths: string[] = [];
+        let failedFolderCount = 0;
         let successCount = 0;
         if (nestedImport) {
           const failedFolders: string[] = [];
@@ -440,16 +444,17 @@ const ImportSecretsContent = ({
 
           // Folders are created one at a time so parents always exist before their children.
           // A failed folder skips its descendants but not its siblings.
+          let createdFolderCount = 0;
           // eslint-disable-next-line no-restricted-syntax
           for (const folderPath of nestedImport.folderPaths) {
             if (!isUnderFailedFolder(folderPath)) {
-              try {
-                // eslint-disable-next-line no-await-in-loop
-                await ensureFolder(env.slug, joinSecretPath(secretPath, folderPath));
-                successCount += 1;
-              } catch {
-                failedFolders.push(folderPath);
-              }
+              // eslint-disable-next-line no-await-in-loop
+              const isCreated = await ensureFolder(
+                env.slug,
+                joinSecretPath(secretPath, folderPath)
+              ).catch(() => false);
+              if (isCreated) createdFolderCount += 1;
+              else failedFolders.push(folderPath);
             }
           }
           const pathEntries = Object.entries(nestedImport.secretsByPath).filter(
@@ -467,7 +472,12 @@ const ImportSecretsContent = ({
               return r.status === "rejected" || r.value.some((v) => v.status === "rejected");
             })
             .map(([path]) => path);
-          successCount += pathEntries.length - failedSecretPaths.length;
+          // Folders only count as written for folder-only imports; otherwise an environment
+          // where every secret write failed would look like a partial success
+          successCount = Object.keys(nestedImport.secretsByPath).length
+            ? pathEntries.length - failedSecretPaths.length
+            : createdFolderCount;
+          failedFolderCount = failedFolders.length;
           failedPaths = [...failedFolders, ...failedSecretPaths].map((path) =>
             joinSecretPath(secretPath, path)
           );
@@ -477,9 +487,7 @@ const ImportSecretsContent = ({
         const hasApproval = results.some(
           (r) => r.status === "fulfilled" && "approval" in (r.value as object)
         );
-        const failCount =
-          results.filter((r) => r.status === "rejected").length +
-          (failedPaths.length && !successCount ? 1 : 0);
+        const failCount = results.filter((r) => r.status === "rejected").length + failedFolderCount;
 
         return {
           environment: env.name,
@@ -787,10 +795,10 @@ const ImportSecretsContent = ({
                         <TableCell className="w-10 text-center">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              {/* Sits above the row's stretched toggle button so hover reaches it */}
-                              <Badge variant="neutral" className="relative z-10">
-                                {node.secretCount}
-                              </Badge>
+                              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can open the tooltip; z-10 lifts it above the row's stretched toggle button */}
+                              <span tabIndex={0} className={FOCUSABLE_BADGE_CLASS}>
+                                <Badge variant="neutral">{node.secretCount}</Badge>
+                              </span>
                             </TooltipTrigger>
                             <TooltipContent>
                               {node.secretCount} secret{node.secretCount !== 1 ? "s" : ""},
