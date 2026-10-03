@@ -243,15 +243,8 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
 
   const sendRequest = async <T = unknown>(
     path: string,
-    baseRequestConfig: Omit<AxiosRequestConfig, "url">
+    requestConfig: Omit<AxiosRequestConfig, "url">
   ): Promise<AxiosResponse<T>> => {
-    // iLO drops idle keep-alive connections almost immediately, while safeRequest's cached agents keep sockets open
-    // for reuse; a reused socket then fails with "socket hang up", so every request asks for its connection to close
-    const requestConfig = {
-      ...baseRequestConfig,
-      headers: { ...baseRequestConfig.headers, Connection: "close" }
-    };
-
     if (config.gatewayId) {
       await blockLocalAndPrivateIpAddresses(baseUrl, true);
 
@@ -426,15 +419,15 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
       await sendRequest(accountPath, {
         method: "PATCH",
         data: { Password: newPassword },
-        headers: { Authorization: authorization, "Content-Type": "application/json" },
-        // A retried PATCH would authenticate with a password the first attempt may already have replaced
-        "axios-retry": { retries: 0 }
+        headers: { Authorization: authorization, "Content-Type": "application/json" }
       });
     } catch (error) {
       // A failed PATCH may still have been applied: its response can be lost (gateway transport failures arrive as
-      // non-Axios errors), and firmware can apply the change and still answer with an error. The rotation only stores
-      // the new password on success, so the iLO is asked whether it now accepts it before the failure is classified.
-      // Only a 4xx paired with the iLO rejecting the new password proves the account was left unchanged
+      // non-Axios errors), firmware can apply the change and still answer with an error, and the shared client retries
+      // resets and 5xx responses, so a retry authenticating with a replaced password can fail after the first attempt
+      // succeeded. The rotation only stores the new password on success, so the iLO is asked whether it now accepts it
+      // before the failure is classified. Only a 4xx paired with the iLO rejecting the new password proves the account
+      // was left unchanged
       let isAccountUnchanged = !isPatchSent;
       if (isPatchSent) {
         const newPasswordCheck = await checkPassword(targetUsername, newPassword);
@@ -587,7 +580,7 @@ export const hpIloRotationFactory: TRotationFactory<
       gatewayId: effectiveGatewayId,
       credentials: connection.credentials
     } as TSshConnectionConfig;
-    return clientFactory(sshConfig, gatewayV2Service);
+    return clientFactory(sshConfig, gatewayV2Service, { sslRejectUnauthorized });
   };
 
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
