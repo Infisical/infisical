@@ -205,3 +205,36 @@ export const runNestedImport = async (
       .map(([path, o]) => ({ path, reason: o.reason! }))
   };
 };
+
+type TFolderResolverHandlers = {
+  listFolderNames: (parentPath: string) => Promise<string[]>;
+  canCreateFolder: (parentPath: string) => boolean;
+  createFolder: (parentPath: string, name: string) => Promise<unknown>;
+};
+
+// Folder-list requests are rate limited, so each parent is listed at most once per run, and
+// never under a folder created in this run, since a new folder cannot have children yet
+export const createFolderResolver = ({
+  listFolderNames,
+  canCreateFolder,
+  createFolder
+}: TFolderResolverHandlers) => {
+  const namesByParent = new Map<string, Set<string>>();
+
+  return async (path: string): Promise<"created" | "found" | false> => {
+    const parentPath = getParentPath(path);
+    const name = path.slice(path.lastIndexOf("/") + 1);
+    let names = namesByParent.get(parentPath);
+    if (!names) {
+      names = new Set(await listFolderNames(parentPath));
+      namesByParent.set(parentPath, names);
+    }
+    if (names.has(name)) return "found";
+    if (!canCreateFolder(parentPath)) return false;
+
+    await createFolder(parentPath, name);
+    names.add(name);
+    namesByParent.set(path, new Set());
+    return "created";
+  };
+};
