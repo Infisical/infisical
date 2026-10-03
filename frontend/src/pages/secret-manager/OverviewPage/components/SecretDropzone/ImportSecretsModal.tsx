@@ -56,6 +56,7 @@ import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } 
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
 import { useCreateSecretBatch, useGetOrCreateFolder, useUpdateSecretBatch } from "@app/hooks/api";
+import { fetchProjectFolders } from "@app/hooks/api/secretFolders/queries";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { SecretType } from "@app/hooks/api/types";
@@ -66,6 +67,7 @@ import {
   flattenNestedJson,
   getNestedJsonObject,
   joinSecretPath,
+  runNestedImport,
   TFolderNode
 } from "./parseNestedJson";
 import { CsvData, parseSecretFile } from "./parseSecretFile";
@@ -462,72 +464,57 @@ const ImportSecretsContent = ({
         ]);
       };
 
+      const writeSecrets = async (environment: string, path: string, secrets: TParsedEnv) => {
+        const results = await importSecretsAtPath(environment, path, secrets);
+        return {
+          isWritten: results.every((r) => r.status === "fulfilled"),
+          hasApproval: results.some(
+            (r) => r.status === "fulfilled" && "approval" in (r.value as object)
+          )
+        };
+      };
+
+      // A user without folder create permission can still write into folders that exist
+      const folderExists = async (environment: string, path: string) => {
+        const parentPath = path.slice(0, path.lastIndexOf("/")) || "/";
+        const folders = await fetchProjectFolders(projectId, environment, parentPath);
+        return folders.some((folder) => folder.name === path.slice(path.lastIndexOf("/") + 1));
+      };
+
       const envPromises = selectedEnvs.map(async (env) => {
         await ensureFolder(env.slug, secretPath);
 
-        let results: PromiseSettledResult<unknown>[];
-        let failedPaths: string[] = [];
-        let failedFolderCount = 0;
-        let successCount = 0;
-        if (nestedImport) {
-          const failedFolders: string[] = [];
-          const isUnderFailedFolder = (path: string) =>
-            failedFolders.some((folder) => path === folder || path.startsWith(`${folder}/`));
-
-          // Folders are created one at a time so parents always exist before their children.
-          // A failed folder skips its descendants but not its siblings.
-          let createdFolderCount = 0;
-          // eslint-disable-next-line no-restricted-syntax
-          for (const folderPath of nestedImport.folderPaths) {
-            if (!isUnderFailedFolder(folderPath)) {
-              // eslint-disable-next-line no-await-in-loop
-              const isCreated = await ensureFolder(
-                env.slug,
-                joinSecretPath(secretPath, folderPath)
-              ).catch(() => false);
-              if (isCreated) createdFolderCount += 1;
-              else failedFolders.push(folderPath);
-            }
-          }
-          const pathEntries = Object.entries(nestedImport.secretsByPath).filter(
-            ([path]) => !isUnderFailedFolder(path)
+        if (!nestedImport) {
+          const { isWritten, hasApproval } = await writeSecrets(
+            env.slug,
+            secretPath,
+            activeSecrets
           );
-          const pathResults = await Promise.allSettled(
-            pathEntries.map(([path, secrets]) =>
-              importSecretsAtPath(env.slug, joinSecretPath(secretPath, path), secrets)
-            )
-          );
-          results = pathResults.flatMap((r) => (r.status === "fulfilled" ? r.value : [r]));
-          const failedSecretPaths = pathEntries
-            .filter((_, idx) => {
-              const r = pathResults[idx];
-              return r.status === "rejected" || r.value.some((v) => v.status === "rejected");
-            })
-            .map(([path]) => path);
-          // Folders only count as written for folder-only imports; otherwise an environment
-          // where every secret write failed would look like a partial success
-          successCount = Object.keys(nestedImport.secretsByPath).length
-            ? pathEntries.length - failedSecretPaths.length
-            : createdFolderCount;
-          failedFolderCount = failedFolders.length;
-          failedPaths = [...failedFolders, ...failedSecretPaths].map((path) =>
-            joinSecretPath(secretPath, path)
-          );
-        } else {
-          results = await importSecretsAtPath(env.slug, secretPath, activeSecrets);
+          return {
+            environment: env.name,
+            slug: env.slug,
+            state: isWritten ? "success" : "failed",
+            hasApproval,
+            problems: [] as string[]
+          };
         }
-        const hasApproval = results.some(
-          (r) => r.status === "fulfilled" && "approval" in (r.value as object)
-        );
-        const failCount = results.filter((r) => r.status === "rejected").length + failedFolderCount;
 
+        const { state, hasApproval, problems } = await runNestedImport(nestedImport, {
+          resolveFolder: async (path) => {
+            const fullPath = joinSecretPath(secretPath, path);
+            return (await ensureFolder(env.slug, fullPath)) || folderExists(env.slug, fullPath);
+          },
+          writeSecrets: (path, secrets) =>
+            writeSecrets(env.slug, joinSecretPath(secretPath, path), secrets)
+        });
         return {
           environment: env.name,
           slug: env.slug,
+          state,
           hasApproval,
-          failCount,
-          failedPaths,
-          isPartial: failedPaths.length > 0 && successCount > 0
+          problems: problems.map(
+            ({ path, reason }) => `${joinSecretPath(secretPath, path)}: ${reason}`
+          )
         };
       });
 
@@ -543,14 +530,16 @@ const ImportSecretsContent = ({
 
       envResults.forEach((result, idx) => {
         if (result.status === "fulfilled" && result.value) {
-          if (result.value.isPartial) {
-            partialEnvs.push(
-              `${result.value.environment} (${result.value.failedPaths.join(", ")})`
-            );
+          const { environment, problems } = result.value;
+          const envLabel = problems.length
+            ? `${environment} (${problems.join(", ")})`
+            : environment;
+          if (result.value.state === "partial") {
+            partialEnvs.push(envLabel);
             partialEnvSlugs.push(result.value.slug);
-            if (result.value.hasApproval) approvalEnvs.push(result.value.environment);
-          } else if (result.value.failCount > 0) {
-            failedEnvs.push(result.value.environment);
+            if (result.value.hasApproval) approvalEnvs.push(environment);
+          } else if (result.value.state === "failed") {
+            failedEnvs.push(envLabel);
           } else if (result.value.hasApproval) {
             approvalEnvs.push(result.value.environment);
             approvalEnvSlugs.push(result.value.slug);
