@@ -713,7 +713,7 @@ const ImportSecretsContent = ({
                           <Button
                             variant="ghost"
                             size="xs"
-                            className="-mr-2 text-accent hover:text-foreground"
+                            className="-mr-2"
                             onClick={toggleAllFolders}
                           >
                             {areAllFoldersCollapsed ? "Expand All" : "Collapse All"}
