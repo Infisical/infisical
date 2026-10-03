@@ -1,5 +1,9 @@
+import { AxiosRequestConfig, AxiosResponse, isAxiosError } from "axios";
+import https from "https";
+import net from "net";
 import RE2 from "re2";
 import { Client, ClientChannel } from "ssh2";
+import tls from "tls";
 
 import {
   TRotationFactory,
@@ -9,8 +13,12 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-// import { BadRequestError } from "@app/lib/errors";
+import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 import {
   executeWithPotentialGateway,
   getSshConnectionClient,
@@ -189,11 +197,193 @@ export const hpIloSshClientFactory: THpIloClientFactory = (config, gatewayV2Serv
   };
 };
 
-export const hpIloApiClientFactory: THpIloClientFactory = () => ({
-  changePasswordAsAdmin: async () => {},
-  changePasswordAsTarget: async () => {},
-  verifyPassword: async () => {}
-});
+const HP_ILO_REDFISH_PORT = 443;
+const HP_ILO_REDFISH_ACCOUNTS_PATH = "/redfish/v1/AccountService/Accounts/";
+const HP_ILO_REDFISH_MAX_ACCOUNT_LOOKUPS = 50;
+
+type TRedfishCollection = {
+  Members?: { "@odata.id": string }[];
+};
+
+type TRedfishAccount = {
+  UserName?: string;
+};
+
+type TRedfishErrorResponse = {
+  error?: { "@Message.ExtendedInfo"?: { MessageId?: string }[] };
+};
+
+export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Service) => {
+  const { host } = config.credentials;
+  const baseUrl = `https://${host}:${HP_ILO_REDFISH_PORT}`;
+
+  // Through the gateway the socket points at localhost, so the certificate has to be checked against the iLO host
+  // explicitly; SNI is left unset for IP hosts since TLS does not allow an IP address as the server name.
+  // iLO ships with certificates that do not chain to a public CA, and there is no CA setting to trust one yet
+  const tlsOptions = {
+    rejectUnauthorized: false,
+    servername: net.isIP(host) ? undefined : host,
+    checkServerIdentity: (_: string, cert: tls.PeerCertificate) => tls.checkServerIdentity(host, cert)
+  };
+
+  const sendRequest = async <T = unknown>(
+    path: string,
+    requestConfig: Omit<AxiosRequestConfig, "url">
+  ): Promise<AxiosResponse<T>> => {
+    if (config.gatewayId) {
+      await blockLocalAndPrivateIpAddresses(baseUrl, true);
+
+      const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+        gatewayId: config.gatewayId,
+        targetHost: host,
+        targetPort: HP_ILO_REDFISH_PORT
+      });
+
+      if (!platformConnectionDetails) {
+        throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
+      }
+
+      return withGatewayV2Proxy(
+        (proxyPort) =>
+          request.request<T>({
+            ...requestConfig,
+            url: `https://localhost:${proxyPort}${path}`,
+            headers: { ...requestConfig.headers, Host: host },
+            httpsAgent: new https.Agent(tlsOptions),
+            maxRedirects: 0
+          }),
+        {
+          protocol: GatewayProxyProtocol.Tcp,
+          ...platformConnectionDetails
+        }
+      );
+    }
+
+    const httpsAgent = await buildSsrfSafeAgent(baseUrl, tlsOptions);
+    return request.request<T>({
+      ...requestConfig,
+      url: `${baseUrl}${path}`,
+      httpsAgent,
+      maxRedirects: 0
+    });
+  };
+
+  const basicAuth = (username: string, password: string) =>
+    `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
+
+  const describeRedfishError = (error: unknown) => {
+    if (!isAxiosError(error)) return (error as Error).message;
+    if (error.response?.status === 401) return "invalid username or password";
+
+    const messageIds = (error.response?.data as TRedfishErrorResponse | undefined)?.error?.["@Message.ExtendedInfo"]
+      ?.map((info) => info.MessageId)
+      .filter(Boolean);
+    return messageIds?.length ? `${error.message} (${messageIds.join(", ")})` : error.message;
+  };
+
+  // Paths come back from the iLO; only their path is kept so requests always go to the configured host
+  const toRedfishPath = (odataId: string) => new URL(odataId, baseUrl).pathname;
+
+  const accountPathCache = new Map<string, string>();
+
+  const resolveAccountPath = async (authorization: string, username: string) => {
+    const cachedPath = accountPathCache.get(username);
+    if (cachedPath) return cachedPath;
+
+    const checkedPaths = new Set<string>();
+
+    const findInMembers = async (members: TRedfishCollection["Members"]) => {
+      for (const member of members ?? []) {
+        const memberPath = toRedfishPath(member["@odata.id"]);
+        if (!checkedPaths.has(memberPath)) {
+          if (checkedPaths.size >= HP_ILO_REDFISH_MAX_ACCOUNT_LOOKUPS) return undefined;
+          checkedPaths.add(memberPath);
+
+          // eslint-disable-next-line no-await-in-loop
+          const { data: account } = await sendRequest<TRedfishAccount>(memberPath, {
+            method: "GET",
+            headers: { Authorization: authorization }
+          });
+          if (account.UserName === username) return memberPath;
+        }
+      }
+      return undefined;
+    };
+
+    const filter = encodeURIComponent(`UserName eq '${username.replaceAll("'", "''")}'`);
+    let accountPath: string | undefined;
+
+    try {
+      const { data } = await sendRequest<TRedfishCollection>(`${HP_ILO_REDFISH_ACCOUNTS_PATH}?$filter=${filter}`, {
+        method: "GET",
+        headers: { Authorization: authorization }
+      });
+      accountPath = await findInMembers(data.Members);
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 401) throw error;
+    }
+
+    if (!accountPath) {
+      const { data } = await sendRequest<TRedfishCollection>(HP_ILO_REDFISH_ACCOUNTS_PATH, {
+        method: "GET",
+        headers: { Authorization: authorization }
+      });
+      accountPath = await findInMembers(data.Members);
+    }
+
+    if (!accountPath) {
+      throw new Error(`HP iLO account '${username}' not found`);
+    }
+
+    accountPathCache.set(username, accountPath);
+    return accountPath;
+  };
+
+  const changePassword = async (authorization: string, targetUsername: string, newPassword: string) => {
+    try {
+      const accountPath = await resolveAccountPath(authorization, targetUsername);
+      await sendRequest(accountPath, {
+        method: "PATCH",
+        data: { Password: newPassword },
+        headers: { Authorization: authorization, "Content-Type": "application/json" }
+      });
+    } catch (error) {
+      throw new Error(`HP iLO password change failed: ${describeRedfishError(error)}`);
+    }
+  };
+
+  const changePasswordAsAdmin = async (targetUsername: string, newPassword: string) => {
+    if (config.method !== SshConnectionMethod.Password) {
+      throw new Error("HP iLO password change failed: the Redfish API requires a password-based connection");
+    }
+
+    await changePassword(
+      basicAuth(config.credentials.username, config.credentials.password),
+      targetUsername,
+      newPassword
+    );
+  };
+
+  const changePasswordAsTarget = async (username: string, currentPassword: string, newPassword: string) => {
+    await changePassword(basicAuth(username, currentPassword), username, newPassword);
+  };
+
+  const verifyPassword = async (username: string, password: string) => {
+    const authorization = basicAuth(username, password);
+    try {
+      const accountPath = await resolveAccountPath(authorization, username);
+      await sendRequest(accountPath, { method: "GET", headers: { Authorization: authorization } });
+    } catch (error) {
+      throw new Error(`HP iLO password verification failed: ${describeRedfishError(error)}`);
+    }
+  };
+
+  return {
+    changePasswordAsAdmin,
+    changePasswordAsTarget,
+    verifyPassword
+  };
+};
 
 export const hpIloFallbackClientFactory =
   (primaryFactory: THpIloClientFactory, fallbackFactory: THpIloClientFactory): THpIloClientFactory =>
@@ -238,7 +428,9 @@ export const hpIloRotationFactory: TRotationFactory<
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = HpIloRotationMethod.LoginAsRoot } = parameters;
 
-  const getIloClient = async (clientFactory: THpIloClientFactory = hpIloSshClientFactory): Promise<THpIloClient> => {
+  const getIloClient = async (
+    clientFactory: THpIloClientFactory = hpIloFallbackClientFactory(hpIloApiClientFactory, hpIloSshClientFactory)
+  ): Promise<THpIloClient> => {
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: connection.gatewayId,
       gatewayPoolId: connection.gatewayPoolId
