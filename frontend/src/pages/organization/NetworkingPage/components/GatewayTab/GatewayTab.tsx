@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   CopyIcon,
   DoorClosedIcon,
@@ -64,6 +64,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import {
   OrgGatewayPermissionActions,
@@ -83,6 +84,7 @@ import { RenameGatewayModal } from "../RenameGatewayModal";
 import { CreateGatewayPoolModal } from "./components/CreateGatewayPoolModal";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
 import { GatewayHealthStatus } from "./components/GatewayHealthStatus";
+import { GatewayPoliciesSection } from "./components/GatewayPoliciesSection";
 import { GatewayPoolsContent } from "./components/GatewayPoolsContent";
 import { PoolDetailSheet } from "./components/PoolDetailSheet";
 
@@ -91,9 +93,18 @@ export const GatewayTab = withPermission(
     const navigate = useNavigate();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
-    const [activeSubTab, setActiveSubTab] = useState<"all-gateways" | "gateway-pools">(
-      "all-gateways"
-    );
+    const activeSubTab =
+      useSearch({
+        from: ROUTE_PATHS.Organization.NetworkingPage.id,
+        select: (el) => el.gatewayView
+      }) ?? "all-gateways";
+    const setActiveSubTab = (view: "all-gateways" | "gateway-pools") =>
+      navigate({
+        to: "/organizations/$orgId/networking",
+        params: { orgId },
+        search: (prev) => ({ ...prev, gatewayView: view }),
+        replace: true
+      });
     const { subscription } = useSubscription();
     const showPoolsTab = subscription?.gatewayPool;
     const [search, setSearch] = useState("");
@@ -157,355 +168,370 @@ export const GatewayTab = withPermission(
     );
 
     return (
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>
-            Gateways
-            <DocumentationLinkBadge
-              href={
-                activeSubTab === "gateway-pools"
-                  ? "https://infisical.com/docs/documentation/platform/gateways/gateway-pools"
-                  : "https://infisical.com/docs/documentation/platform/gateways/overview"
-              }
-            />
-          </CardTitle>
-          <CardDescription>
-            {activeSubTab === "gateway-pools"
-              ? "Pool gateways for high availability and automatic failover"
-              : "Create and manage gateways that securely proxy Infisical traffic into your infrastructure"}
-          </CardDescription>
-          <CardAction>
-            {activeSubTab === "all-gateways" ? (
-              <OrgPermissionCan
-                I={OrgGatewayPermissionActions.CreateGateways}
-                a={OrgPermissionSubjects.Gateway}
-              >
-                {(isAllowed: boolean) => (
-                  <Button
-                    variant="org"
-                    onClick={() => handlePopUpOpen("deployGateway")}
-                    isDisabled={!isAllowed}
-                  >
-                    <PlusIcon />
-                    Create Gateway
-                  </Button>
-                )}
-              </OrgPermissionCan>
-            ) : (
-              <OrgPermissionCan
-                I={OrgGatewayPoolPermissionActions.CreateGatewayPools}
-                a={OrgPermissionSubjects.GatewayPool}
-              >
-                {(isAllowed: boolean) => (
-                  <Button
-                    variant="org"
-                    onClick={() => {
-                      if (!subscription?.gatewayPool) {
-                        handlePopUpOpen("upgradePlan");
-                        return;
-                      }
-                      handlePopUpOpen("createPool");
-                    }}
-                    isDisabled={!isAllowed}
-                  >
-                    <PlusIcon />
-                    Create Pool
-                  </Button>
-                )}
-              </OrgPermissionCan>
-            )}
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <Tabs
-              value={activeSubTab}
-              onValueChange={(value) => setActiveSubTab(value as "all-gateways" | "gateway-pools")}
-            >
-              <TabsList variant="filled">
-                <TabsTrigger value="all-gateways">All Gateways</TabsTrigger>
-                <TabsTrigger value="gateway-pools">Gateway Pools</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            {activeSubTab === "all-gateways" ? (
-              <InputGroup className="w-1/2 min-w-64">
-                <InputGroupAddon align="inline-start">
-                  <SearchIcon />
-                </InputGroupAddon>
-                <InputGroupInput
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search gateway..."
-                />
-              </InputGroup>
-            ) : (
-              <InputGroup className="w-1/2 min-w-64">
-                <InputGroupAddon align="inline-start">
-                  <SearchIcon />
-                </InputGroupAddon>
-                <InputGroupInput
-                  value={poolSearch}
-                  onChange={(e) => setPoolSearch(e.target.value)}
-                  placeholder="Search pool..."
-                />
-              </InputGroup>
-            )}
-          </div>
-          {activeSubTab === "gateway-pools" ? (
-            <GatewayPoolsContent search={poolSearch} />
-          ) : (
-            <>
-              {!isGatewaysLoading && !filteredGateway?.length ? (
-                <Empty className="border">
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      {gateways?.length ? <SearchIcon /> : <DoorClosedIcon />}
-                    </EmptyMedia>
-                    <EmptyTitle>
-                      {gateways?.length
-                        ? "No gateways match your search"
-                        : "No gateways configured"}
-                    </EmptyTitle>
-                  </EmptyHeader>
-                </Empty>
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="min-w-0 lg:col-span-2">
+          <CardHeader>
+            <CardTitle>
+              Gateways
+              <DocumentationLinkBadge
+                href={
+                  activeSubTab === "gateway-pools"
+                    ? "https://infisical.com/docs/documentation/platform/gateways/gateway-pools"
+                    : "https://infisical.com/docs/documentation/platform/gateways/overview"
+                }
+              />
+            </CardTitle>
+            <CardDescription>
+              {activeSubTab === "gateway-pools"
+                ? "Pool gateways for high availability and automatic failover"
+                : "Create and manage gateways that securely proxy Infisical traffic into your infrastructure"}
+            </CardDescription>
+            <CardAction>
+              {activeSubTab === "all-gateways" ? (
+                <OrgPermissionCan
+                  I={OrgGatewayPermissionActions.CreateGateways}
+                  a={OrgPermissionSubjects.Gateway}
+                >
+                  {(isAllowed: boolean) => (
+                    <Button
+                      variant="org"
+                      onClick={() => handlePopUpOpen("deployGateway")}
+                      isDisabled={!isAllowed}
+                    >
+                      <PlusIcon />
+                      Create Gateway
+                    </Button>
+                  )}
+                </OrgPermissionCan>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>
-                        <TableHeadLabel>Name</TableHeadLabel>
-                      </TableHead>
-                      {showPoolsTab && (
+                <OrgPermissionCan
+                  I={OrgGatewayPoolPermissionActions.CreateGatewayPools}
+                  a={OrgPermissionSubjects.GatewayPool}
+                >
+                  {(isAllowed: boolean) => (
+                    <Button
+                      variant="org"
+                      onClick={() => {
+                        if (!subscription?.gatewayPool) {
+                          handlePopUpOpen("upgradePlan");
+                          return;
+                        }
+                        handlePopUpOpen("createPool");
+                      }}
+                      isDisabled={!isAllowed}
+                    >
+                      <PlusIcon />
+                      Create Pool
+                    </Button>
+                  )}
+                </OrgPermissionCan>
+              )}
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <Tabs
+                value={activeSubTab}
+                onValueChange={(value) =>
+                  setActiveSubTab(value as "all-gateways" | "gateway-pools")
+                }
+              >
+                <TabsList variant="filled">
+                  <TabsTrigger value="all-gateways">All Gateways</TabsTrigger>
+                  <TabsTrigger value="gateway-pools">Gateway Pools</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              {activeSubTab === "all-gateways" ? (
+                <InputGroup className="w-1/2 min-w-64">
+                  <InputGroupAddon align="inline-start">
+                    <SearchIcon />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search gateway..."
+                  />
+                </InputGroup>
+              ) : (
+                <InputGroup className="w-1/2 min-w-64">
+                  <InputGroupAddon align="inline-start">
+                    <SearchIcon />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    value={poolSearch}
+                    onChange={(e) => setPoolSearch(e.target.value)}
+                    placeholder="Search pool..."
+                  />
+                </InputGroup>
+              )}
+            </div>
+            {activeSubTab === "gateway-pools" ? (
+              <GatewayPoolsContent search={poolSearch} />
+            ) : (
+              <>
+                {!isGatewaysLoading && !filteredGateway?.length ? (
+                  <Empty className="border">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        {gateways?.length ? <SearchIcon /> : <DoorClosedIcon />}
+                      </EmptyMedia>
+                      <EmptyTitle>
+                        {gateways?.length
+                          ? "No gateways match your search"
+                          : "No gateways configured"}
+                      </EmptyTitle>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
                         <TableHead>
-                          <TableHeadLabel>Pools</TableHeadLabel>
+                          <TableHeadLabel>Name</TableHeadLabel>
                         </TableHead>
-                      )}
-                      <TableHead>
-                        <TableHeadLabel>Connected</TableHeadLabel>
-                      </TableHead>
-                      <TableHead>
-                        <TableHeadLabel
-                          trailing={
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <InfoIcon className="size-3" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                The last known health check. Triggers every 3 minutes.
-                              </TooltipContent>
-                            </Tooltip>
-                          }
-                        >
-                          Health Check
-                        </TableHeadLabel>
-                      </TableHead>
-                      <TableHead variant="action" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isGatewaysLoading &&
-                      ["first", "second", "third"].map((row) => (
-                        <TableRow key={`gateway-skeleton-${row}`}>
-                          {["name", "pools", "connected", "health", "actions"]
-                            .slice(0, showPoolsTab ? 5 : 4)
-                            .map((cell) => (
-                              <TableCell key={`gateway-skeleton-${row}-${cell}`}>
-                                <Skeleton className="h-4 w-full" />
-                              </TableCell>
-                            ))}
-                        </TableRow>
-                      ))}
-                    {filteredGateway?.map((el) => {
-                      return (
-                        <TableRow
-                          key={el.id}
-                          className="cursor-pointer"
-                          onClick={() =>
-                            navigate({
-                              to: "/organizations/$orgId/networking/gateways/$gatewayId",
-                              params: { orgId, gatewayId: el.id }
-                            })
-                          }
-                        >
-                          <TableCell>
-                            <div className="flex min-w-0 items-center gap-2">
+                        {showPoolsTab && (
+                          <TableHead>
+                            <TableHeadLabel>Pools</TableHeadLabel>
+                          </TableHead>
+                        )}
+                        <TableHead>
+                          <TableHeadLabel>Connected</TableHeadLabel>
+                        </TableHead>
+                        <TableHead>
+                          <TableHeadLabel
+                            trailing={
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="min-w-0 flex-1 truncate">{el.name}</span>
+                                  <InfoIcon className="size-3" />
                                 </TooltipTrigger>
-                                <TooltipContent>{el.name}</TooltipContent>
+                                <TooltipContent>
+                                  The last known health check. Triggers every 3 minutes.
+                                </TooltipContent>
                               </Tooltip>
-                            </div>
-                          </TableCell>
-                          {showPoolsTab && (
+                            }
+                          >
+                            Health Check
+                          </TableHeadLabel>
+                        </TableHead>
+                        <TableHead variant="action" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isGatewaysLoading &&
+                        ["first", "second", "third"].map((row) => (
+                          <TableRow key={`gateway-skeleton-${row}`}>
+                            {["name", "pools", "connected", "health", "actions"]
+                              .slice(0, showPoolsTab ? 5 : 4)
+                              .map((cell) => (
+                                <TableCell key={`gateway-skeleton-${row}-${cell}`}>
+                                  <Skeleton className="h-4 w-full" />
+                                </TableCell>
+                              ))}
+                          </TableRow>
+                        ))}
+                      {filteredGateway?.map((el) => {
+                        return (
+                          <TableRow
+                            key={el.id}
+                            className="cursor-pointer"
+                            onClick={() =>
+                              navigate({
+                                to: "/organizations/$orgId/networking/gateways/$gatewayId",
+                                params: { orgId, gatewayId: el.id }
+                              })
+                            }
+                          >
                             <TableCell>
-                              {(gatewayPoolMap.get(el.id) ?? []).length > 0 ? (
-                                <OverflowBadgeList
-                                  items={gatewayPoolMap.get(el.id) ?? []}
-                                  getKey={(pool) => pool.id}
-                                  getLabel={(pool) => pool.name}
-                                  appearance="text"
-                                  onItemClick={(pool) => setSelectedPoolId(pool.id)}
-                                  maxBadgeWidth={144}
-                                />
+                              <div className="flex min-w-0 items-center gap-2">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="min-w-0 flex-1 truncate">{el.name}</span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{el.name}</TooltipContent>
+                                </Tooltip>
+                              </div>
+                            </TableCell>
+                            {showPoolsTab && (
+                              <TableCell>
+                                {(gatewayPoolMap.get(el.id) ?? []).length > 0 ? (
+                                  <OverflowBadgeList
+                                    items={gatewayPoolMap.get(el.id) ?? []}
+                                    getKey={(pool) => pool.id}
+                                    getLabel={(pool) => pool.name}
+                                    appearance="text"
+                                    onItemClick={(pool) => setSelectedPoolId(pool.id)}
+                                    maxBadgeWidth={144}
+                                  />
+                                ) : (
+                                  <span className="text-muted">&mdash;</span>
+                                )}
+                              </TableCell>
+                            )}
+                            <TableCell className="whitespace-nowrap">
+                              {el.connectedResourcesCount > 0 ? (
+                                <span>
+                                  {el.connectedResourcesCount} resource
+                                  {el.connectedResourcesCount !== 1 ? "s" : ""}
+                                </span>
                               ) : (
-                                <span className="text-muted">&mdash;</span>
+                                <span className="text-muted">—</span>
                               )}
                             </TableCell>
-                          )}
-                          <TableCell className="whitespace-nowrap">
-                            {el.connectedResourcesCount > 0 ? (
-                              <span>
-                                {el.connectedResourcesCount} resource
-                                {el.connectedResourcesCount !== 1 ? "s" : ""}
-                              </span>
-                            ) : (
-                              <span className="text-muted">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap">
-                            <GatewayHealthStatus
-                              heartbeat={"heartbeat" in el ? el.heartbeat : null}
-                              relayId={"relayId" in el ? el.relayId : null}
-                              directAddress={"directAddress" in el ? el.directAddress : null}
-                              directHeartbeat={"directHeartbeat" in el ? el.directHeartbeat : null}
-                              heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
-                            />
-                          </TableCell>
-                          <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <IconButton aria-label="Gateway options" variant="ghost" size="sm">
-                                  <MoreHorizontalIcon />
-                                </IconButton>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => navigator.clipboard.writeText(el.id)}
-                                >
-                                  <CopyIcon />
-                                  Copy ID
-                                </DropdownMenuItem>
-                                {(!!el.directAddress ||
-                                  !!el.relayId ||
-                                  !!el.heartbeat ||
-                                  el.heartbeatTTL !== null) && (
-                                  <DropdownMenuItem onClick={() => handleTriggerHealthCheck(el.id)}>
-                                    <HeartPulseIcon />
-                                    Trigger Health Check
+                            <TableCell className="whitespace-nowrap">
+                              <GatewayHealthStatus
+                                heartbeat={"heartbeat" in el ? el.heartbeat : null}
+                                relayId={"relayId" in el ? el.relayId : null}
+                                directAddress={"directAddress" in el ? el.directAddress : null}
+                                directHeartbeat={
+                                  "directHeartbeat" in el ? el.directHeartbeat : null
+                                }
+                                heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
+                              />
+                            </TableCell>
+                            <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <IconButton
+                                    aria-label="Gateway options"
+                                    variant="ghost"
+                                    size="sm"
+                                  >
+                                    <MoreHorizontalIcon />
+                                  </IconButton>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => navigator.clipboard.writeText(el.id)}
+                                  >
+                                    <CopyIcon />
+                                    Copy ID
                                   </DropdownMenuItem>
-                                )}
-                                <OrgPermissionCan
-                                  I={OrgGatewayPermissionActions.EditGateways}
-                                  a={OrgPermissionSubjects.Gateway}
-                                >
-                                  {(isAllowed: boolean) => (
+                                  {(!!el.directAddress ||
+                                    !!el.relayId ||
+                                    !!el.heartbeat ||
+                                    el.heartbeatTTL !== null) && (
                                     <DropdownMenuItem
-                                      isDisabled={!isAllowed}
-                                      onClick={() => handlePopUpOpen("renameGateway", el)}
+                                      onClick={() => handleTriggerHealthCheck(el.id)}
                                     >
-                                      <PencilIcon />
-                                      Rename Gateway
+                                      <HeartPulseIcon />
+                                      Trigger Health Check
                                     </DropdownMenuItem>
                                   )}
-                                </OrgPermissionCan>
-                                <OrgPermissionCan
-                                  I={OrgGatewayPermissionActions.DeleteGateways}
-                                  a={OrgPermissionSubjects.Gateway}
-                                >
-                                  {(isAllowed: boolean) => (
-                                    <DropdownMenuItem
-                                      isDisabled={!isAllowed}
-                                      variant="danger"
-                                      onClick={() => handlePopUpOpen("deleteGateway", el)}
-                                    >
-                                      <TrashIcon />
-                                      Delete Gateway
-                                    </DropdownMenuItem>
-                                  )}
-                                </OrgPermissionCan>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-              {Boolean(popUp.renameGateway.data) && (
-                <RenameGatewayModal
-                  isOpen={popUp.renameGateway.isOpen}
-                  onToggle={(isOpen) => handlePopUpToggle("renameGateway", isOpen)}
-                  gateway={popUp.renameGateway.data as TGatewayV2}
-                />
-              )}
-              <AlertDialog
-                open={popUp.deleteGateway.isOpen}
-                confirmationValue={
-                  (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
-                }
-                onOpenChange={(open) => handlePopUpToggle("deleteGateway", open)}
-              >
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Gateway?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This permanently removes the gateway from your organization.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogConfirmationField
-                    inputProps={{
-                      placeholder:
-                        (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
-                    }}
+                                  <OrgPermissionCan
+                                    I={OrgGatewayPermissionActions.EditGateways}
+                                    a={OrgPermissionSubjects.Gateway}
+                                  >
+                                    {(isAllowed: boolean) => (
+                                      <DropdownMenuItem
+                                        isDisabled={!isAllowed}
+                                        onClick={() => handlePopUpOpen("renameGateway", el)}
+                                      >
+                                        <PencilIcon />
+                                        Rename Gateway
+                                      </DropdownMenuItem>
+                                    )}
+                                  </OrgPermissionCan>
+                                  <OrgPermissionCan
+                                    I={OrgGatewayPermissionActions.DeleteGateways}
+                                    a={OrgPermissionSubjects.Gateway}
+                                  >
+                                    {(isAllowed: boolean) => (
+                                      <DropdownMenuItem
+                                        isDisabled={!isAllowed}
+                                        variant="danger"
+                                        onClick={() => handlePopUpOpen("deleteGateway", el)}
+                                      >
+                                        <TrashIcon />
+                                        Delete Gateway
+                                      </DropdownMenuItem>
+                                    )}
+                                  </OrgPermissionCan>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+                {Boolean(popUp.renameGateway.data) && (
+                  <RenameGatewayModal
+                    isOpen={popUp.renameGateway.isOpen}
+                    onToggle={(isOpen) => handlePopUpToggle("renameGateway", isOpen)}
+                    gateway={popUp.renameGateway.data as TGatewayV2}
                   />
-                  <Alert variant="danger" appearance="borderless">
-                    <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
-                  </Alert>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel isDisabled={deleteGatewayV2ById.isPending}>
-                      Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="danger"
-                      isPending={deleteGatewayV2ById.isPending}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        handleDeleteGateway();
+                )}
+                <AlertDialog
+                  open={popUp.deleteGateway.isOpen}
+                  confirmationValue={
+                    (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
+                  }
+                  onOpenChange={(open) => handlePopUpToggle("deleteGateway", open)}
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Gateway?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This permanently removes the gateway from your organization.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogConfirmationField
+                      inputProps={{
+                        placeholder:
+                          (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
                       }}
-                    >
-                      Delete Gateway
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <GatewayDeployModal
-                isOpen={popUp.deployGateway.isOpen}
-                onOpenChange={(isOpen) => handlePopUpToggle("deployGateway", isOpen)}
-              />
-            </>
-          )}
-        </CardContent>
-        <PoolDetailSheet
-          isOpen={Boolean(selectedPoolId)}
-          onOpenChange={(open) => {
-            if (!open) setSelectedPoolId(null);
-          }}
-          pool={selectedPool}
-        />
-        <CreateGatewayPoolModal
-          isOpen={popUp.createPool.isOpen}
-          onToggle={(isOpen) => handlePopUpToggle("createPool", isOpen)}
-        />
-        <UpgradePlanModal
-          paywallKey="organization.gateway"
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text="Your current plan does not include access to gateway pools. To unlock this feature, please upgrade to Infisical Enterprise plan."
-          isEnterpriseFeature
-        />
-      </Card>
+                    />
+                    <Alert variant="danger" appearance="borderless">
+                      <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
+                    </Alert>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel isDisabled={deleteGatewayV2ById.isPending}>
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="danger"
+                        isPending={deleteGatewayV2ById.isPending}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          handleDeleteGateway();
+                        }}
+                      >
+                        Delete Gateway
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <GatewayDeployModal
+                  isOpen={popUp.deployGateway.isOpen}
+                  onOpenChange={(isOpen) => handlePopUpToggle("deployGateway", isOpen)}
+                />
+              </>
+            )}
+          </CardContent>
+          <PoolDetailSheet
+            isOpen={Boolean(selectedPoolId)}
+            onOpenChange={(open) => {
+              if (!open) setSelectedPoolId(null);
+            }}
+            pool={selectedPool}
+          />
+          <CreateGatewayPoolModal
+            isOpen={popUp.createPool.isOpen}
+            onToggle={(isOpen) => handlePopUpToggle("createPool", isOpen)}
+          />
+          <UpgradePlanModal
+            paywallKey="organization.gateway"
+            isOpen={popUp.upgradePlan.isOpen}
+            onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+            text="Your current plan does not include access to gateway pools. To unlock this feature, please upgrade to Infisical Enterprise plan."
+            isEnterpriseFeature
+          />
+        </Card>
+        <div className="flex flex-col gap-4">
+          <GatewayPoliciesSection />
+        </div>
+      </div>
     );
   },
   {

@@ -112,7 +112,7 @@ type TPamAccountServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
@@ -727,7 +727,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       deps,
       effectiveGatewayId,
       effectiveGatewayId ? null : (gatewayPoolId ?? template.gatewayPoolId),
-      ctx
+      ctx,
+      { inheritedFrom: gatewayId ? undefined : `Account template '${template.name}'` }
     );
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
@@ -916,7 +917,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         deps,
         effectiveGatewayId,
         effectiveGatewayId ? null : (nextGatewayPoolId ?? nextTemplateGatewayPoolId),
-        ctx
+        ctx,
+        {
+          previousGatewayId: existing.gatewayId ?? existing.templateGatewayId,
+          inheritedFrom: nextGatewayId ? undefined : `Account template '${template?.name ?? existing.templateName}'`
+        }
       );
     }
     await validateRecordingConnection(deps, recordingConnectionId, ctx);

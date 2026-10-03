@@ -995,6 +995,14 @@ directly, so falling through turns a dangling gateway reference into a silent by
 boundary the gateway exists to enforce. And `app_connections.gatewayId` is **not** a v1 column — unlike the
 three above it never grew a `gatewayV2Id`, so that one column carries v2 ids and must stay.
 
+**Any new path that attaches an individual gateway must call `assertIndividualGatewayAllowed`**
+(`ee/services/gateway-pool/gateway-pool-policy-fns.ts`) next to its `AttachGateways` check. It enforces the
+org-level `requireGatewayPools` setting. Pass the gateway the resource already had as `previousGatewayId`,
+because clients re-send unchanged values on every save and resources created before the setting was turned
+on must stay editable. The check reads the setting, not the plan, so it keeps applying after a downgrade.
+Only exempt a mode that refuses pools outright, the way gateway Kubernetes auth in Gateway review mode does
+(`$assertCanAttachProxy` in `resource-auth-method-service.ts`), or the policy removes that mode entirely.
+
 ### Server Plugins
 
 Key plugins in `src/server/plugins/`:

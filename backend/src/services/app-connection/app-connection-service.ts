@@ -7,6 +7,7 @@ import { chefConnectionService } from "@app/ee/services/app-connections/chef/che
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -43,6 +44,7 @@ import {
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { ValidateOnePassConnectionCredentialsSchema } from "./1password";
@@ -217,6 +219,7 @@ export type TAppConnectionServiceFactoryDep = {
     "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId" | "runWithPoolFailover"
   >;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
@@ -326,6 +329,7 @@ export const appConnectionServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   gatewayV2DAL,
+  orgDAL,
   projectDAL,
   appConnectionCredentialRotationService,
   identityUaDAL,
@@ -595,6 +599,8 @@ export const appConnectionServiceFactory = ({
       if (!gatewayV2) {
         throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
+
+      await assertIndividualGatewayAllowed({ orgDAL, orgId: actor.orgId, gatewayId });
     }
 
     if (gatewayPoolId) {
@@ -823,6 +829,8 @@ export const appConnectionServiceFactory = ({
         if (!gatewayV2) {
           throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
         }
+
+        await assertIndividualGatewayAllowed({ orgDAL, orgId: actor.orgId, gatewayId });
       }
     }
 
