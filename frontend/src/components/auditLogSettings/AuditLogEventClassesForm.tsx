@@ -160,6 +160,7 @@ export const AuditLogEventClassesForm = ({
                               <Link
                                 to="/organizations/$orgId/access-management"
                                 params={{ orgId: currentOrg.id }}
+                                className="underline underline-offset-2 hover:text-foreground"
                               >
                                 Upgrade the privilege system
                               </Link>{" "}
