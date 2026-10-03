@@ -91,7 +91,8 @@ type TReviewRow =
   | { type: "folder"; id: string; depth: number; node: TFolderNode }
   | { type: "secret"; id: string; depth: number; key: string; secretData: TParsedEnv[string] };
 
-const TREE_INDENT_PX = 16;
+// Lines a child's icon up under its parent's folder icon (chevron 14px + 6px gap)
+const TREE_INDENT_PX = 20;
 const CELL_PADDING_PX = 12;
 
 const TreeIndentGuides = ({ depth }: { depth: number }) =>
