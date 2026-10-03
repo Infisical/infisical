@@ -957,15 +957,17 @@ const AllProjectsForType = ({
                     const joinedBadge = (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="info"
-                            size="xs"
-                            aria-label={`Membership options for ${workspace.name}`}
-                          >
-                            <CheckIcon />
-                            Joined
-                            <ChevronDownIcon />
-                          </Button>
+                          <Badge variant="info" asChild>
+                            <button
+                              type="button"
+                              aria-label={`Membership options for ${workspace.name}`}
+                              className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            >
+                              <CheckIcon />
+                              Joined
+                              <ChevronDownIcon />
+                            </button>
+                          </Badge>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {workspace.isDirectMember && workspace.version !== ProjectVersion.V1 ? (
