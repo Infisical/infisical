@@ -232,7 +232,15 @@ export const createFolderResolver = ({
     if (names.has(name)) return "found";
     if (!canCreateFolder(parentPath)) return false;
 
-    await createFolder(parentPath, name);
+    try {
+      await createFolder(parentPath, name);
+    } catch (error) {
+      // Someone else may have created it after our list; reuse it if it is there now
+      const latestNames = new Set(await listFolderNames(parentPath));
+      namesByParent.set(parentPath, latestNames);
+      if (latestNames.has(name)) return "found";
+      throw error;
+    }
     names.add(name);
     namesByParent.set(path, new Set());
     return "created";

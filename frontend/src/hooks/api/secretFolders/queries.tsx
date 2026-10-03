@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import {
+  MutationMeta,
   useMutation,
   useQueries,
   useQuery,
@@ -189,10 +190,11 @@ export const useGetOrCreateFolder = () => {
   });
 };
 
-export const useCreateFolder = () => {
+export const useCreateFolder = ({ meta }: { meta?: MutationMeta } = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TCreateFolderDTO>({
+    meta,
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post("/api/v2/folders", {
         ...dto,

@@ -64,7 +64,7 @@ import {
 import { fetchProjectFolders } from "@app/hooks/api/secretFolders/queries";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
-import { SecretType } from "@app/hooks/api/types";
+import { ApiErrorTypes, SecretType } from "@app/hooks/api/types";
 
 import { CsvColumnMapContent } from "./CsvColumnMapDialog";
 import {
@@ -153,7 +153,11 @@ const ImportSecretsContent = ({
   const { mutateAsync: createSecretBatch } = useCreateSecretBatch();
   const { mutateAsync: updateSecretBatch } = useUpdateSecretBatch();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
-  const { mutateAsync: createFolder } = useCreateFolder();
+  // A create that loses a race with another writer is recovered as a reused folder, and any
+  // other folder failure is listed in the import's own warning, so no toast per folder
+  const { mutateAsync: createFolder } = useCreateFolder({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] }
+  });
   const { mutateAsync: createWsTag } = useCreateWsTag();
 
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
@@ -768,7 +772,7 @@ const ImportSecretsContent = ({
                     const isExpanded = !collapsedFolders.has(node.path);
                     return (
                       <TableRow key={row.id} className="relative">
-                        <TableCell isTruncatable className="w-1/2 text-xs" style={treeCellStyle}>
+                        <TableCell isTruncatable className="w-1/2" style={treeCellStyle}>
                           <TreeIndentGuides depth={row.depth} />
                           <button
                             type="button"
@@ -785,7 +789,7 @@ const ImportSecretsContent = ({
                             <span className="truncate">{node.name}</span>
                           </button>
                         </TableCell>
-                        <TableCell isTruncatable className="w-1/2 font-mono text-xs text-muted">
+                        <TableCell isTruncatable className="w-1/2 font-mono text-muted">
                           {joinSecretPath(secretPath, node.path)}
                         </TableCell>
                         <TableCell className="w-10 text-center">
