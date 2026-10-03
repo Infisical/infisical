@@ -395,14 +395,14 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
     return accountPath;
   };
 
-  const isPasswordAccepted = async (username: string, password: string) => {
+  const checkPassword = async (username: string, password: string): Promise<"accepted" | "rejected" | "unknown"> => {
     try {
       const authorization = basicAuth(username, password);
       const accountPath = await resolveAccountPath(authorization, username);
       await sendRequest(accountPath, { method: "GET", headers: { Authorization: authorization } });
-      return true;
-    } catch {
-      return false;
+      return "accepted";
+    } catch (error) {
+      return isAxiosError(error) && error.response?.status === 401 ? "rejected" : "unknown";
     }
   };
 
@@ -419,12 +419,18 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
         "axios-retry": { retries: 0 }
       });
     } catch (error) {
-      // Only a 4xx from the iLO proves the PATCH was not applied. Without a response (gateway transport failures arrive
-      // as non-Axios errors) or on a 5xx it may still have been, and the rotation only stores the new password on
-      // success, so a password the iLO already accepts is treated as a successful change
-      const status = isAxiosError(error) ? error.response?.status : undefined;
-      const isAccountUnchanged = !isPatchSent || (status !== undefined && status < 500);
-      if (!isAccountUnchanged && (await isPasswordAccepted(targetUsername, newPassword))) return;
+      // A failed PATCH may still have been applied: its response can be lost (gateway transport failures arrive as
+      // non-Axios errors), and firmware can apply the change and still answer with an error. The rotation only stores
+      // the new password on success, so the iLO is asked whether it now accepts it before the failure is classified.
+      // Only a 4xx paired with the iLO rejecting the new password proves the account was left unchanged
+      let isAccountUnchanged = !isPatchSent;
+      if (isPatchSent) {
+        const newPasswordCheck = await checkPassword(targetUsername, newPassword);
+        if (newPasswordCheck === "accepted") return;
+
+        const status = isAxiosError(error) ? error.response?.status : undefined;
+        isAccountUnchanged = status !== undefined && status < 500 && newPasswordCheck === "rejected";
+      }
 
       const message = `HP iLO password change failed: ${describeRedfishError(error)}`;
       throw isAccountUnchanged ? new HpIloAccountUnchangedError(message) : new Error(message);
