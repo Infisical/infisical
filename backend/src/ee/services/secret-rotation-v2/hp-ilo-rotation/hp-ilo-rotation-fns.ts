@@ -18,7 +18,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import {
   executeWithPotentialGateway,
   getSshConnectionClient,
@@ -200,9 +200,12 @@ export const hpIloSshClientFactory: THpIloClientFactory = (config, gatewayV2Serv
 const HP_ILO_REDFISH_PORT = 443;
 const HP_ILO_REDFISH_ACCOUNTS_PATH = "/redfish/v1/AccountService/Accounts/";
 const HP_ILO_REDFISH_MAX_ACCOUNT_LOOKUPS = 50;
+const HP_ILO_REDFISH_MAX_COLLECTION_PAGES = 10;
+const HP_ILO_REDFISH_REQUEST_TIMEOUT_MS = 30_000;
 
 type TRedfishCollection = {
   Members?: { "@odata.id": string }[];
+  "Members@odata.nextLink"?: string;
 };
 
 type TRedfishAccount = {
@@ -215,7 +218,8 @@ type TRedfishErrorResponse = {
 
 export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Service) => {
   const { host } = config.credentials;
-  const baseUrl = `https://${host}:${HP_ILO_REDFISH_PORT}`;
+  const urlHost = net.isIPv6(host) ? `[${host}]` : host;
+  const baseUrl = `https://${urlHost}:${HP_ILO_REDFISH_PORT}`;
 
   // Through the gateway the socket points at localhost, so the certificate has to be checked against the iLO host
   // explicitly; SNI is left unset for IP hosts since TLS does not allow an IP address as the server name.
@@ -247,8 +251,9 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
         (proxyPort) =>
           request.request<T>({
             ...requestConfig,
+            timeout: HP_ILO_REDFISH_REQUEST_TIMEOUT_MS,
             url: `https://localhost:${proxyPort}${path}`,
-            headers: { ...requestConfig.headers, Host: host },
+            headers: { ...requestConfig.headers, Host: urlHost },
             httpsAgent: new https.Agent(tlsOptions),
             maxRedirects: 0
           }),
@@ -259,12 +264,12 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
       );
     }
 
-    const httpsAgent = await buildSsrfSafeAgent(baseUrl, tlsOptions);
-    return request.request<T>({
+    return safeRequest.request<T>({
       ...requestConfig,
+      timeout: HP_ILO_REDFISH_REQUEST_TIMEOUT_MS,
       url: `${baseUrl}${path}`,
-      httpsAgent,
-      maxRedirects: 0
+      rejectUnauthorized: tlsOptions.rejectUnauthorized,
+      servername: tlsOptions.servername
     });
   };
 
@@ -281,8 +286,11 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
     return messageIds?.length ? `${error.message} (${messageIds.join(", ")})` : error.message;
   };
 
-  // Paths come back from the iLO; only their path is kept so requests always go to the configured host
-  const toRedfishPath = (odataId: string) => new URL(odataId, baseUrl).pathname;
+  // Links come back from the iLO; only their path and query are kept so requests always go to the configured host
+  const toRedfishPath = (odataId: string) => {
+    const url = new URL(odataId, baseUrl);
+    return `${url.pathname}${url.search}`;
+  };
 
   const accountPathCache = new Map<string, string>();
 
@@ -291,12 +299,16 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
     if (cachedPath) return cachedPath;
 
     const checkedPaths = new Set<string>();
+    let isSearchTruncated = false;
 
     const findInMembers = async (members: TRedfishCollection["Members"]) => {
       for (const member of members ?? []) {
         const memberPath = toRedfishPath(member["@odata.id"]);
         if (!checkedPaths.has(memberPath)) {
-          if (checkedPaths.size >= HP_ILO_REDFISH_MAX_ACCOUNT_LOOKUPS) return undefined;
+          if (checkedPaths.size >= HP_ILO_REDFISH_MAX_ACCOUNT_LOOKUPS) {
+            isSearchTruncated = true;
+            return undefined;
+          }
           checkedPaths.add(memberPath);
 
           // eslint-disable-next-line no-await-in-loop
@@ -310,29 +322,54 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
       return undefined;
     };
 
+    const fetchCollectionPage = async (pagePath: string): Promise<TRedfishCollection> => {
+      const { data } = await sendRequest<TRedfishCollection>(pagePath, {
+        method: "GET",
+        headers: { Authorization: authorization }
+      });
+      return data;
+    };
+
+    const searchCollection = async (collectionPath: string) => {
+      let pagePath: string | undefined = collectionPath;
+      for (let page = 0; pagePath; page += 1) {
+        if (page >= HP_ILO_REDFISH_MAX_COLLECTION_PAGES) {
+          isSearchTruncated = true;
+          return undefined;
+        }
+
+        // eslint-disable-next-line no-await-in-loop
+        const collection = await fetchCollectionPage(pagePath);
+
+        // eslint-disable-next-line no-await-in-loop
+        const match = await findInMembers(collection.Members);
+        if (match || isSearchTruncated) return match;
+
+        const nextLink = collection["Members@odata.nextLink"];
+        pagePath = nextLink ? toRedfishPath(nextLink) : undefined;
+      }
+      return undefined;
+    };
+
     const filter = encodeURIComponent(`UserName eq '${username.replaceAll("'", "''")}'`);
     let accountPath: string | undefined;
 
     try {
-      const { data } = await sendRequest<TRedfishCollection>(`${HP_ILO_REDFISH_ACCOUNTS_PATH}?$filter=${filter}`, {
-        method: "GET",
-        headers: { Authorization: authorization }
-      });
-      accountPath = await findInMembers(data.Members);
+      accountPath = await searchCollection(`${HP_ILO_REDFISH_ACCOUNTS_PATH}?$filter=${filter}`);
     } catch (error) {
       if (isAxiosError(error) && error.response?.status === 401) throw error;
     }
 
-    if (!accountPath) {
-      const { data } = await sendRequest<TRedfishCollection>(HP_ILO_REDFISH_ACCOUNTS_PATH, {
-        method: "GET",
-        headers: { Authorization: authorization }
-      });
-      accountPath = await findInMembers(data.Members);
+    if (!accountPath && !isSearchTruncated) {
+      accountPath = await searchCollection(HP_ILO_REDFISH_ACCOUNTS_PATH);
     }
 
     if (!accountPath) {
-      throw new Error(`HP iLO account '${username}' not found`);
+      throw new Error(
+        isSearchTruncated
+          ? `HP iLO account '${username}' not found within the first ${checkedPaths.size} accounts checked; the search stopped before reaching the end of the account list`
+          : `HP iLO account '${username}' not found`
+      );
     }
 
     accountPathCache.set(username, accountPath);
