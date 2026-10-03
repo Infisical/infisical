@@ -11,7 +11,7 @@ import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
 import { fastifyRequestContext } from "@fastify/request-context";
 import websocket from "@fastify/websocket";
-import fastify from "fastify";
+import fastify, { errorCodes } from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 
@@ -121,6 +121,38 @@ export const main = async ({
       const error = err as Error;
       done(error, undefined);
     }
+  });
+  // Some proxies (cloudflared, for one) forward a bodyless POST as an empty chunked body with no
+  // Content-Type. Fastify only skips parsing when there is no Transfer-Encoding, so such requests
+  // land on this catch-all parser. It also receives every media type nothing else parses, which
+  // must keep failing with 415, except on unknown routes where Fastify answers 404 instead.
+  // It reads the stream rather than buffering it, so a body it is going to reject is never held in
+  // memory: rate limits run after parsing, and would not stop that.
+  server.addContentTypeParser("*", (req, payload, done) => {
+    if (req.is404) {
+      done(null, undefined);
+      return;
+    }
+    if (req.headers["content-type"] !== undefined) {
+      done(new errorCodes.FST_ERR_CTP_INVALID_MEDIA_TYPE(), undefined);
+      return;
+    }
+
+    let settled = false;
+    const finish = (err: Error | null) => {
+      if (settled) return;
+      settled = true;
+      // Leaving the rest of a rejected body unread is safe: Fastify answers a parser error with
+      // `connection: close`, so the socket is not reused for another request.
+      payload.pause();
+      done(err, undefined);
+    };
+
+    payload.on("data", (chunk: Buffer) => {
+      if (chunk.length > 0) finish(new errorCodes.FST_ERR_CTP_INVALID_MEDIA_TYPE());
+    });
+    payload.once("end", () => finish(null));
+    payload.once("error", finish);
   });
 
   try {

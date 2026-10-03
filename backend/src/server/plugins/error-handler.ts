@@ -405,7 +405,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         details: error.details
       });
     } else if (
-      error instanceof SyntaxError &&
+      (error instanceof SyntaxError || error instanceof errorCodes.FST_ERR_CTP_INVALID_JSON_BODY) &&
       req.method === "POST" &&
       (req.url === "/api/v1/cert-manager/certificates" || req.url === "/api/v1/cert-manager/certificates/")
     ) {
@@ -418,10 +418,18 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         error: "BadRequestError"
       });
     } else if (isBodyParserError(error)) {
+      let { message } = error;
+      if (error instanceof errorCodes.FST_ERR_CTP_INVALID_MEDIA_TYPE) {
+        const contentType = req.headers["content-type"];
+        message = contentType
+          ? `Content-Type '${contentType}' is not supported for this request`
+          : "The request has a body but no Content-Type header. Set a Content-Type, such as 'application/json'.";
+      }
+
       void res.status(error.statusCode ?? HttpStatusCodes.BadRequest).send({
         reqId: req.id,
         statusCode: error.statusCode ?? HttpStatusCodes.BadRequest,
-        message: error.message,
+        message,
         error: "BodyParserError"
       });
     } else {
