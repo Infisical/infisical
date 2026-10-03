@@ -226,7 +226,9 @@ function AlertDialogConfirmationLabel({
         className={cn("gap-0", className)}
         {...props}
       >
-        Type the following value<span className="sr-only">: {confirmationValue}</span> to confirm.
+        <span>
+          Type the following value<span className="sr-only">: {confirmationValue}</span> to confirm.
+        </span>
       </FieldLabel>
       {typeof confirmationValue === "string" ? (
         <Tooltip>
@@ -264,9 +266,14 @@ function AlertDialogConfirmationLabel({
       ) : (
         <div className="line-clamp-2 font-medium [overflow-wrap:anywhere]">{confirmationValue}</div>
       )}
-      <span role="status" className="sr-only">
+      <div role="status" className={cn("text-xs text-label", !copyStatus && "sr-only")}>
         {copyStatus}
-      </span>
+      </div>
+      {copyStatus.startsWith("Unable to copy") && typeof confirmationValue === "string" && (
+        <div className="max-h-32 overflow-y-auto rounded-md border border-border bg-container p-2 font-mono text-sm [overflow-wrap:anywhere] select-text">
+          {confirmationValue}
+        </div>
+      )}
     </div>
   );
 }
