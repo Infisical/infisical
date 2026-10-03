@@ -27,6 +27,7 @@ export type TDynamicSecretLeaseCapabilities = {
   supportsRenewal: boolean;
   autoGenerate?: boolean;
   fixedTtl?: string;
+  ttlDescription?: string;
 };
 
 export type TDynamicSecretProviderRuntimeMetadata = {
@@ -244,6 +245,21 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
         { key: "AUDIENCE", label: "Audience", isOptional: true }
       ]),
       supportsRenewal: false
+    }
+  },
+  [DynamicSecretProviders.OAuth]: {
+    presentation: { providerFamily: "OAuth" },
+    leaseCapabilities: {
+      provisioner: "default",
+      output: oneTimeFields([
+        { key: "ACCESS_TOKEN", label: "Access Token" },
+        { key: "TOKEN_TYPE", label: "Token Type", isOptional: true },
+        { key: "EXPIRES_AT", label: "Expires At", isOptional: true },
+        { key: "SCOPE", label: "Scope", isOptional: true }
+      ]),
+      supportsRenewal: false,
+      ttlDescription:
+        "Must fit within the token lifetime the authorization server sets. Not checked if the server doesn't report a lifetime."
     }
   }
 } as const satisfies Record<DynamicSecretProviders, TDynamicSecretProviderRuntimeMetadata>;

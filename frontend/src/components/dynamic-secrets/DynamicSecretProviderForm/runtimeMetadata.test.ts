@@ -49,7 +49,8 @@ describe("dynamic-secret provider runtime metadata", () => {
     [
       DynamicSecretProviders.Github,
       DynamicSecretProviders.Ssh,
-      DynamicSecretProviders.Tailscale
+      DynamicSecretProviders.Tailscale,
+      DynamicSecretProviders.OAuth
     ].forEach((provider) => {
       assert.equal(
         getDynamicSecretProviderRuntimeMetadata(provider).leaseCapabilities.supportsRenewal,

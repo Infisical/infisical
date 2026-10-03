@@ -29,6 +29,7 @@ import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
 import { toSafeUsername } from "../dynamic-secret/providers/templateUtils";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
+import { decryptLeaseData, pickPersistedLeaseData } from "./dynamic-secret-lease-fns";
 import { TDynamicSecretLeaseQueueServiceFactory } from "./dynamic-secret-lease-queue";
 import {
   DynamicSecretLeaseStatus,
@@ -131,10 +132,11 @@ export const dynamicSecretLeaseServiceFactory = ({
 
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
 
     const decryptedStoredInput = JSON.parse(
       secretManagerDecryptor({ cipherTextBlob: Buffer.from(dynamicSecretCfg.encryptedInput) }).toString()
@@ -199,13 +201,34 @@ export const dynamicSecretLeaseServiceFactory = ({
     }
     const { entityId, data } = result;
 
-    const dynamicSecretLease = await dynamicSecretLeaseDAL.create({
-      expireAt,
-      version: 1,
-      dynamicSecretId: dynamicSecretCfg.id,
-      externalEntityId: entityId,
-      config
-    });
+    const leaseData = selectedProvider.persistedLeaseFields?.length
+      ? pickPersistedLeaseData(data, selectedProvider.persistedLeaseFields)
+      : undefined;
+
+    let dynamicSecretLease;
+    try {
+      dynamicSecretLease = await dynamicSecretLeaseDAL.create({
+        expireAt,
+        version: 1,
+        dynamicSecretId: dynamicSecretCfg.id,
+        externalEntityId: entityId,
+        config,
+        encryptedLeaseData: leaseData
+          ? secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(leaseData)) }).cipherTextBlob
+          : undefined
+      });
+    } catch (error) {
+      // the credential already exists upstream; without a lease row nothing would ever revoke it
+      await selectedProvider
+        .revoke(decryptedStoredInput, entityId, { projectId, leaseData }, config)
+        .catch((revokeError: Error) =>
+          logger.error(
+            revokeError,
+            `Failed to revoke credential after lease insert failed [dynamicSecretId=${dynamicSecretCfg.id}] [provider=${dynamicSecretCfg.type}]`
+          )
+        );
+      throw error;
+    }
 
     await dynamicSecretQueueService.setLeaseRevocation(dynamicSecretLease.id, dynamicSecretCfg.id, expireAt);
     return {
@@ -389,7 +412,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       .revoke(
         decryptedStoredInput,
         dynamicSecretLease.externalEntityId,
-        { projectId },
+        { projectId, leaseData: decryptLeaseData(secretManagerDecryptor, dynamicSecretLease.encryptedLeaseData) },
         dynamicSecretLease.config as TDynamicSecretLeaseConfig
       )
       .catch(async (err) => {

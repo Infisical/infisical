@@ -53,7 +53,8 @@ export const DYNAMIC_SECRET_PROVIDER_PICKER_ORDER = [
   DynamicSecretProviders.Clickhouse,
   DynamicSecretProviders.Ssh,
   DynamicSecretProviders.IbmApiConnect,
-  DynamicSecretProviders.Tailscale
+  DynamicSecretProviders.Tailscale,
+  DynamicSecretProviders.OAuth
 ] as const satisfies readonly DynamicSecretProviders[];
 
 const DYNAMIC_SECRET_PROVIDER_DOCS_SLUG: Partial<Record<DynamicSecretProviders, string>> = {

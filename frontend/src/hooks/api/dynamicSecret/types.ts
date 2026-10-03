@@ -45,7 +45,17 @@ export enum DynamicSecretProviders {
   Milvus = "milvus",
   Ssh = "ssh",
   IbmApiConnect = "ibm-api-connect",
-  Tailscale = "tailscale"
+  Tailscale = "tailscale",
+  OAuth = "oauth"
+}
+
+export enum OAuthGrantType {
+  ClientCredentials = "client-credentials"
+}
+
+export enum OAuthClientAuthMethod {
+  ClientSecretBasic = "client_secret_basic",
+  ClientSecretPost = "client_secret_post"
 }
 
 export enum TailscaleKeyAuthType {
@@ -576,6 +586,21 @@ export type TDynamicSecretProvider =
             subject: string;
             audience?: string;
           };
+    }
+  | {
+      type: DynamicSecretProviders.OAuth;
+      inputs: {
+        grantType: OAuthGrantType.ClientCredentials;
+        tokenUrl: string;
+        revocationUrl: string;
+        clientId: string;
+        clientAuth: {
+          method: OAuthClientAuthMethod;
+          clientSecret?: string;
+        };
+        scope?: string;
+        extraParams: { key: string; value: string }[];
+      };
     };
 
 export type TCreateDynamicSecretDTO = {
