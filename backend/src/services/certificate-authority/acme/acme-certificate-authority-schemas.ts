@@ -13,10 +13,27 @@ import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
 export const AcmeCertificateAuthorityConfigurationSchema = z.object({
   dnsAppConnectionId: z.string().uuid().trim().describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsAppConnectionId),
   // soon, differentiate via the provider property
-  dnsProviderConfig: z.object({
-    provider: z.nativeEnum(AcmeDnsProvider).describe(CertificateAuthorities.CONFIGURATIONS.ACME.provider),
-    hostedZoneId: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.hostedZoneId)
-  }),
+  dnsProviderConfig: z
+    .object({
+      provider: z.nativeEnum(AcmeDnsProvider).describe(CertificateAuthorities.CONFIGURATIONS.ACME.provider),
+      hostedZoneId: z
+        .string()
+        .trim()
+        .min(1)
+        .max(512)
+        .optional()
+        .describe(CertificateAuthorities.CONFIGURATIONS.ACME.hostedZoneId),
+      hostedZoneIds: z
+        .array(z.string().trim().min(1).max(512))
+        .min(1)
+        .max(100)
+        .optional()
+        .describe(CertificateAuthorities.CONFIGURATIONS.ACME.hostedZoneIds)
+    })
+    .refine((data) => Boolean(data.hostedZoneId) || Boolean(data.hostedZoneIds?.length), {
+      message: "At least one hosted zone must be configured",
+      path: ["hostedZoneIds"]
+    }),
   directoryUrl: z.string().url().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.directoryUrl),
   accountEmail: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.accountEmail),
   eabKid: z.string().trim().max(64).optional().describe(CertificateAuthorities.CONFIGURATIONS.ACME.eabKid),
