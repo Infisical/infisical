@@ -285,7 +285,7 @@ By default, Infisical records every class except `authorization`. The `managemen
   </Tab>
 </Tabs>
 
-A change applies to new events within a minute. Events that were already recorded stay in the log until their retention period ends.
+A change usually applies to new events right away, and always within 10 minutes. Events that were already recorded stay in the log until their retention period ends.
 
 Every change to these settings is itself recorded as an `update-audit-log-settings` event in the `management` class, with the classes that changed in `event.metadata`.
 
