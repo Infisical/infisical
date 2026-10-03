@@ -162,7 +162,7 @@ export const ProfileOverviewSection = ({ profile, onEdit, onDelete, backContext 
         </DetailGroup>
 
         <div className="mt-6 border-t border-border pt-6">
-          <h3 className="mb-4 text-base font-semibold text-foreground">Issuer</h3>
+          <h3 className="mb-4 text-base font-normal text-foreground">Issuer</h3>
           <DetailGroup>
             {isSelfSigned ? (
               <Detail>
@@ -235,7 +235,7 @@ export const ProfileOverviewSection = ({ profile, onEdit, onDelete, backContext 
         </div>
 
         <div className="mt-6 border-t border-border pt-6">
-          <h3 className="mb-4 text-base font-semibold text-foreground">Certificate Policy</h3>
+          <h3 className="mb-4 text-base font-normal text-foreground">Certificate Policy</h3>
           <DetailGroup>
             <Detail className="min-w-0">
               <DetailLabel>Policy</DetailLabel>

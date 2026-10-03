@@ -256,7 +256,7 @@ export const ViewSharedSecretByIDPage = () => {
               color: brandingTheme?.textColor
             }}
           >
-            <h1 className="mb-5 text-lg font-semibold" style={{ color: brandingTheme?.textColor }}>
+            <h1 className="mb-5 text-lg font-normal" style={{ color: brandingTheme?.textColor }}>
               View Shared Secret
             </h1>
             {secretContent}

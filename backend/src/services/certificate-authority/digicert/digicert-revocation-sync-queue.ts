@@ -6,6 +6,10 @@ import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorType } from "@app/services/auth/auth-type";
+import {
+  CertificateAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { revocationReasonToCrlCode } from "@app/services/certificate/certificate-fns";
 import { CertStatus, CrlReason } from "@app/services/certificate/certificate-types";
@@ -35,6 +39,7 @@ type TDigiCertRevocationSyncQueueFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TDigiCertRevocationSyncQueueFactory = ReturnType<typeof digicertRevocationSyncQueueFactory>;
@@ -46,7 +51,8 @@ export const digicertRevocationSyncQueueFactory = ({
   appConnectionDAL,
   kmsService,
   auditLogService,
-  pkiAlertV2Queue
+  pkiAlertV2Queue,
+  certificateAlertEventEmitter
 }: TDigiCertRevocationSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -61,6 +67,13 @@ export const digicertRevocationSyncQueueFactory = ({
       status: CertStatus.REVOKED,
       revokedAt: new Date(),
       revocationReason: revocationReasonToCrlCode(CrlReason.UNSPECIFIED)
+    });
+
+    await certificateAlertEventEmitter.notify({
+      certificateId: cert.id,
+      projectId: cert.projectId,
+      eventType: CertificateAlertEvent.Revocation,
+      applicationId: cert.applicationId ?? null
     });
 
     await auditLogService.createAuditLog({

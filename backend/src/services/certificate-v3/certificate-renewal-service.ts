@@ -14,6 +14,10 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import {
+  CertificateAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory, TOriginatingCertificateRequest } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -162,6 +166,7 @@ type TCertificateRenewalServiceFactoryDep = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "attachCertificate" | "transitionFromPending">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   pkiApplicationProfileDAL: Pick<
     TPkiApplicationProfileDALFactory,
@@ -230,6 +235,7 @@ export const certificateRenewalServiceFactory = ({
   certificateRequestDAL,
   resourceMetadataDAL,
   pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationDAL,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
@@ -257,7 +263,7 @@ export const certificateRenewalServiceFactory = ({
       certificateRequestCreatedAt: Date;
       orgId: string;
     },
-    tx: Parameters<TCertificateDALFactory["updateById"]>[2]
+    tx: Knex
   ) => {
     const renewalUpdate: {
       profileId?: string | null;
@@ -288,6 +294,17 @@ export const certificateRenewalServiceFactory = ({
       orgId,
       tx
     });
+
+    await certificateAlertEventEmitter.emit(
+      {
+        certificateId: newCert.id,
+        projectId: originalCert.projectId,
+        orgId,
+        eventType: CertificateAlertEvent.Renewal,
+        applicationId: originalCert.applicationId ?? null
+      },
+      tx
+    );
   };
 
   const $finalizeRenewal = async ({

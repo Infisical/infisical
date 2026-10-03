@@ -23,7 +23,7 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 | `pam-session-recording/`           | Recording chunk storage/retrieval + storage providers                                                                  |
 | `pam-membership/`                  | Product + resource membership management                                                                               |
 | `pam-project/`                     | PAM project bootstrap + resolver                                                                                       |
-| `pam-access-request/`              | Folder approval config, access-request lifecycle, chat notifications                                                   |
+| `pam-access-request/`              | PAM's face on the shared approvals system: folder config, notifications, read models, approval resource               |
 | `pam-discovery/`                   | Discovery sources → staged accounts for import                                                                         |
 
 Routes: `backend/src/ee/routes/v1/pam-routers/`. DI wiring: `backend/src/server/routes/index.ts` (narrow
@@ -144,6 +144,24 @@ Only the first megabyte of a request body is inspected, so an account carrying a
 refuses a body longer than that rather than forward the remainder unread. Databases stand in for schemas, and the explorer grid is read-only for every table
 (`supportsRowEditing`): `is_in_primary_key` is a sorting key, not a unique constraint.
 
+## Approvals
+
+**PAM approvals run on the shared approval system** (`backend/src/services/approval-policy/`), which
+owns the whole lifecycle. PAM's contribution is one `TApprovalResource`
+(`pam-access-request/pam-access-approval-resource.ts`), with its schemas under `approval-policy/pam-access/`.
+
+`pam-access-request-service.ts` is the product-facing entry point, not a second implementation: it
+resolves the account a CLI path names, delegates to `approvalPolicyService`, sends PAM's notifications,
+and owns the access read models (`checkGrant`, `getAccessStatusBatch`, …). **A new PAM approval rule
+belongs in the resource, never in that service**, or the CLI, the dashboard and the shared API stop
+agreeing about what is allowed.
+
+PAM is registered on the generic `/v1/approval-policies/pam-access/...` endpoints, which the dashboard
+uses for approve, reject and grant revocation; the resource's `buildAuditEvent` is what keeps those
+routes emitting PAM's own audit events, so folder and account auditors still see them. `/v1/pam/access-requests`
+keeps only what the generic API cannot express: the CLI's `folderName/accountName` create, the paginated
+folder list, the approver queue and count, the approver roster, and the folder notification configs.
+
 ## Policies & Settings
 
 **Policies** are governance controls on a template (MFA, reason, session duration, command-blocking),
@@ -155,11 +173,14 @@ template's `settings` column, not `policies`. Both are edited on the template de
 **Break-glass** lets a requester self-approve their own pending request, and needs **both** gates open:
 the account's template carries `allow-break-glass`, *and* the folder's approval policy names the actor in
 `approval_policy_bypassers`. Neither alone is sufficient, and an empty bypasser list means **nobody** —
-the shared `approval-policy-service` treats an empty list as everybody, which is the opposite rule, so do
-not reuse its predicate. `allow-break-glass` resolves to false without `requires-approval`, since there is
-then no approval to skip. Saving the folder config keeps the policy's `enforcementLevel` in step with the
-list (`soft` when non-empty), and omitting `breakGlassUsers` entirely leaves the stored list alone so a
-steps-only client can't switch break-glass off by accident. The grant records `isBreakGlass` +
+the shared service's default reads an empty list as everybody, which is the opposite rule, so PAM
+overrides it from the resource (`isBreakGlassEligible`) rather than anyone re-deriving the predicate. The
+resource settles it once and exposes it two ways: a predicate for the `canBreakGlass` affordance, and an
+assertion that names the failing gate. `allow-break-glass` resolves to false without `requires-approval`, since there is
+then no approval to skip. `enforcementLevel` is **not** part of this: the shared default treats `soft` as
+the opt-in to bypass, but PAM's two gates are the whole rule, so the folder config never writes that
+column and the resource never reads it (a PAM policy stays `hard`). Omitting `breakGlassUsers` entirely
+leaves the stored list alone so a steps-only client can't switch break-glass off by accident. The grant records `isBreakGlass` +
 `bypassReason`, and `PAM_ACCESS_POLICY_BYPASSED` must carry `accountId`/`folderId` or the event is hidden
 from folder and account auditors (see the audit-log gotcha under Permissions).
 

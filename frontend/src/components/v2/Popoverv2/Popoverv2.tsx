@@ -27,7 +27,7 @@ export const PopoverContent = ({
     <PopoverPrimitive.Content
       className={twMerge(
         [
-          "relative z-100 w-64 rounded-md bg-surface-active fill-surface-active p-4 pt-6 font-inter text-foreground-cool shadow-md",
+          "relative z-100 w-64 rounded-md bg-surface-active fill-surface-active p-4 pt-6 font-sans text-foreground-cool shadow-md",
           // animation
           "data-[state=open]:data-[side=bottom]:animate-slide-up-and-fade",
           "data-[state=open]:data-[side=top]:animate-slide-down-and-fade",

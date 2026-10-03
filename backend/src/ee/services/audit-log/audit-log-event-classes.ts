@@ -78,6 +78,20 @@ const AUTHENTICATION_EVENT_TYPES: readonly EventType[] = [
 
 const AUTHORIZATION_EVENT_TYPES: readonly EventType[] = [EventType.PERMISSION_DENIED];
 
+const EXPLICIT_MANAGEMENT_EVENT_TYPES: readonly EventType[] = [
+  EventType.CREATE_PKI_ALERT,
+  EventType.UPDATE_PKI_ALERT,
+  EventType.DELETE_PKI_ALERT,
+  EventType.CREATE_ALERT,
+  EventType.UPDATE_ALERT,
+  EventType.DELETE_ALERT,
+  EventType.TEST_ALERT_CHANNEL,
+  EventType.CREATE_PKI_APPLICATION_ALERT,
+  EventType.UPDATE_PKI_APPLICATION_ALERT,
+  EventType.DELETE_PKI_APPLICATION_ALERT,
+  EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL
+];
+
 const DATA_ACCESS_EVENT_TYPES: readonly EventType[] = [
   EventType.GET_SECRETS,
   EventType.GET_SECRET,
@@ -254,13 +268,14 @@ const DATA_ACCESS_EVENT_TYPES: readonly EventType[] = [
 ];
 
 const EVENT_TYPE_TO_CLASS = new Map<EventType, AuditLogEventClass>([
+  ...EXPLICIT_MANAGEMENT_EVENT_TYPES.map((type) => [type, AuditLogEventClass.Management] as const),
   ...AUTHENTICATION_EVENT_TYPES.map((type) => [type, AuditLogEventClass.Authentication] as const),
   ...AUTHORIZATION_EVENT_TYPES.map((type) => [type, AuditLogEventClass.Authorization] as const),
   ...DATA_ACCESS_EVENT_TYPES.map((type) => [type, AuditLogEventClass.DataAccess] as const)
 ]);
 
 const MANAGEMENT_EVENT_TYPES: readonly EventType[] = Object.values(EventType).filter(
-  (type) => !EVENT_TYPE_TO_CLASS.has(type)
+  (type) => (EVENT_TYPE_TO_CLASS.get(type) ?? AuditLogEventClass.Management) === AuditLogEventClass.Management
 );
 
 export const AUDIT_LOG_EVENT_CLASS_MEMBERS: Record<AuditLogEventClass, readonly EventType[]> = {

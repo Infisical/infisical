@@ -22,7 +22,6 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import {
   TCertRequestPolicy,
@@ -188,7 +187,7 @@ type TPkiAcmeServiceFactoryDep = {
   pkiAcmeQueueService: Pick<TPkiAcmeQueueServiceFactory, "queueChallengeValidation">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findStepsByPolicyId">;
-  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
+  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy" | "matchPolicy">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "create" | "updateById" | "transitionFromPending">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "findById">;
@@ -1278,11 +1277,8 @@ export const pkiAcmeServiceFactory = ({
         ? await acmeAccountDAL.findApplicationIdByJunctionId(accountApplicationProfileId)
         : null;
 
-      const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
-        ApprovalPolicyType.CertRequest
-      );
-      const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
-        approvalPolicyDAL as TApprovalPolicyDALFactory,
+      const matchedApprovalPolicy = (await approvalPolicyService.matchPolicy(
+        ApprovalPolicyType.CertRequest,
         profile.projectId,
         {
           profileName: profile.slug,
