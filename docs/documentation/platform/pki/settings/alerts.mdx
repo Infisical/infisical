@@ -80,7 +80,7 @@ Only each signer's current certificate counts. When you reissue a signer's certi
     | `data.items[].fields` | Includes an entry labelled `Application` when the certificate belongs to an application |
     | `data.items[].resource.applicationId` | `null` for a certificate outside an application |
 
-    A **Signer Certificate Expiration** alert sends `cert-manager.signer-certificate.expiry` as its `subject` (`type` is `com.infisical.cert-manager.signer-certificate.expiry`), opens **Code Signing** from `data.metadata.viewUrl`, and adds a `Signer` field plus `signerId` and `signerName` to each item.
+    A **Signer Certificate Expiration** alert sends `cert-manager.signer-certificate.expiry` as its `subject` (`type` is `com.infisical.cert-manager.signer-certificate.expiry`), opens **Code Signing** from `data.metadata.viewUrl`, and adds a `Signer` field (`Signers` when several signers share the certificate) plus `signerIds` and `signerNames` to each item.
   </Accordion>
 </AccordionGroup>
 

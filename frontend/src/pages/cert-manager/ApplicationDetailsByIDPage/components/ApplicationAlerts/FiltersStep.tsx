@@ -104,7 +104,13 @@ export const FiltersStep = ({ form, projectId }: Props) => {
       title: "Certificates couldn't be loaded",
       description: "Select Retry to try again."
     };
+  } else if (hasUnfinishedFilter) {
+    previewEmptyState = {
+      title: "Finish the filter",
+      description: "Select at least one value in each filter, or remove it."
+    };
   }
+  const showPreviewRows = !isPreviewError && !hasUnfinishedFilter;
 
   return (
     <div className="flex flex-col">
@@ -223,12 +229,12 @@ export const FiltersStep = ({ form, projectId }: Props) => {
 
       <div className="mt-3">
         <PkiSyncMatchedCertificatesTable
-          rows={preview?.certificates ?? []}
-          isLoading={!preview && !isPreviewError}
+          rows={showPreviewRows ? (preview?.certificates ?? []) : []}
+          isLoading={showPreviewRows && !preview}
           emptyTitle={previewEmptyState.title}
           emptyDescription={previewEmptyState.description}
         />
-        {matchedCount > MATCHED_PAGE_SIZE && (
+        {showPreviewRows && matchedCount > MATCHED_PAGE_SIZE && (
           <Pagination
             className="mt-2"
             count={matchedCount}

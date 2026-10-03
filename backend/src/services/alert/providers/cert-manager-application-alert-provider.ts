@@ -183,9 +183,12 @@ const buildSummary = (
   return `${targets.length} certificates ${EVENT_VERBS[eventType]}${inApplication(applicationName)}`;
 };
 
+const formatSigners = (signerNames: string[] = []) =>
+  `${signerNames.length === 1 ? "signer" : "signers"} ${signerNames.map((name) => `'${name}'`).join(", ")}`;
+
 const buildItemSummary = (eventType: TCertManagerAlertEvent, certificate: TApplicationAlertCertificate): string => {
   if (eventType === CodeSigningAlertEvent.SignerCertificateExpiry) {
-    return `Certificate '${certificateDisplayName(certificate)}' of signer '${certificate.signerName}' expires on ${formatUtcDate(certificate.notAfter)}`;
+    return `Certificate '${certificateDisplayName(certificate)}' of ${formatSigners(certificate.signerNames)} expires on ${formatUtcDate(certificate.notAfter)}`;
   }
   if (eventType === CertificateAlertEvent.Expiry) {
     return `Certificate '${certificateDisplayName(certificate)}'${inApplication(certificate.applicationName)} expires on ${formatUtcDate(certificate.notAfter)}`;
@@ -330,7 +333,14 @@ export const certManagerApplicationAlertProviderFactory = ({
           summary: buildItemSummary(eventType, certificate),
           severity: eventSeverity(eventType, [certificate]),
           fields: [
-            ...(isSignerAlert && certificate.signerName ? [{ label: "Signer", value: certificate.signerName }] : []),
+            ...(isSignerAlert && certificate.signerNames?.length
+              ? [
+                  {
+                    label: certificate.signerNames.length === 1 ? "Signer" : "Signers",
+                    value: certificate.signerNames.join(", ")
+                  }
+                ]
+              : []),
             { label: "Serial Number", value: certificate.serialNumber },
             ...(altNames.length ? [{ label: "SANs", value: altNames.join(", ") }] : []),
             ...(certificate.profileName ? [{ label: "Profile", value: certificate.profileName }] : []),
@@ -354,7 +364,7 @@ export const certManagerApplicationAlertProviderFactory = ({
             profileName: certificate.profileName,
             applicationId: certificate.applicationId,
             applicationName: certificate.applicationName,
-            ...(isSignerAlert ? { signerId: certificate.signerId, signerName: certificate.signerName } : {})
+            ...(isSignerAlert ? { signerIds: certificate.signerIds, signerNames: certificate.signerNames } : {})
           }
         };
       })

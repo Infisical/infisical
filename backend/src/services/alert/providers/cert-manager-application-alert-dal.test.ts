@@ -21,6 +21,7 @@ const buildDAL = (firstQueryRows: unknown[] = []) => {
       }
     });
   }) as unknown as Knex;
+  Object.assign(reader, { raw: builder.raw.bind(builder) });
 
   const db = Object.assign(reader, { replicaNode: () => reader }) as unknown as TDbClient;
   return { dal: certManagerApplicationAlertDALFactory(db), queries };
@@ -66,12 +67,12 @@ describe("cert manager certificate alert DAL", () => {
     });
 
     expect(queries).toHaveLength(2);
-    const [neverNotified, leastRecentlyNotified] = queries;
-    expect(neverNotified.sql).toContain('count(distinct "tgt"."channelId")');
-    expect(neverNotified.sql).toContain('"tgt"."targetId" = "certificates".id::text');
-    expect(neverNotified.sql).toContain('not exists (select "notifiedTgt"."id"');
-    expect(neverNotified.sql).toMatch(/order by "certificates"\."notAfter" asc limit \?$/);
-    expect(neverNotified.bindings).toEqual(
+    const [notFullyNotified, leastRecentlyNotified] = queries;
+    expect(notFullyNotified.sql).toContain('count(distinct "tgt"."channelId")');
+    expect(notFullyNotified.sql).toContain('"tgt"."targetId" = "certificates".id::text');
+    expect(notFullyNotified.sql).toContain('count(distinct "everTgt"."channelId")');
+    expect(notFullyNotified.sql).toMatch(/order by "certificates"\."notAfter" asc limit \?$/);
+    expect(notFullyNotified.bindings).toEqual(
       expect.arrayContaining(["alert-1", since, "success", "channel-1", "channel-2", 2, 1000])
     );
     expect(leastRecentlyNotified.sql).toContain('max("lastHist"."triggeredAt") as "lastDeliveredAt"');
@@ -79,7 +80,7 @@ describe("cert manager certificate alert DAL", () => {
     expect(leastRecentlyNotified.sql).toContain(
       'order by "lastDelivered"."lastDeliveredAt" asc, "certificates"."notAfter" asc limit ?'
     );
-    expect(leastRecentlyNotified.sql).not.toContain("not exists");
+    expect(leastRecentlyNotified.sql).toContain('having count(distinct "lastTgt"."channelId") >= ?');
   });
 
   test("findExpiringCertificates stops after the never-notified query when it fills the cap", async () => {
@@ -109,17 +110,15 @@ describe("cert manager certificate alert DAL", () => {
     });
 
     const [{ sql, bindings }] = queries;
-    expect(sql).toContain('inner join "certificates" on "pki_signers"."certificateId" = "certificates"."id"');
+    expect(sql).toContain('group by "pki_signers"."certificateId"');
+    expect(sql).toContain('array_agg("pki_signers".name order by "pki_signers".name) as "signerNames"');
+    expect(sql).toContain('as "signers" on "signers"."certificateId" = "certificates"."id"');
     expect(sql).toContain('"pki_signers"."projectId" = ?');
     expect(sql).toContain('"pki_signers"."status" = ?');
-    expect(sql).toContain('"pki_signers"."name" as "signerName"');
     expect(sql).toContain('not "certificates"."status" = ?');
-    expect(sql).toContain('count(distinct "tgt"."channelId")');
-    expect(sql).toContain("not exists");
+    expect(sql).toContain('count(distinct "everTgt"."channelId")');
     expect(bindings).toEqual(expect.arrayContaining([PROJECT_ID, "active", "alert-1"]));
-    expect(queries[1].sql).toContain(
-      'inner join "certificates" on "pki_signers"."certificateId" = "certificates"."id"'
-    );
+    expect(queries[1].sql).toContain('as "signers" on "signers"."certificateId" = "certificates"."id"');
     expect(queries[1].sql).toContain('"lastDelivered"."lastDeliveredAt" asc');
   });
 

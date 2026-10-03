@@ -23,8 +23,8 @@ export type TApplicationAlertCertificate = {
   revocationReason: number | null;
   applicationId: string | null;
   applicationName: string | null;
-  signerId?: string | null;
-  signerName?: string | null;
+  signerIds?: string[];
+  signerNames?: string[];
 };
 
 type TExpiryWindow = {
@@ -112,24 +112,27 @@ const selectExpiring = async (
       .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN)) as TApplicationAlertCertificate[];
   }
 
-  const neverNotified = (await dueQuery()
-    .whereNotExists(
-      reader(`${TableName.AlertHistory} as notifiedHist`)
-        .join(`${TableName.AlertHistoryTarget} as notifiedTgt`, "notifiedHist.id", "notifiedTgt.alertHistoryId")
-        .where("notifiedHist.alertId", alreadyAlerted.alertId)
-        .where("notifiedTgt.status", AlertRunStatus.SUCCESS)
-        .whereRaw(`"notifiedTgt"."targetId" = "${TableName.Certificate}".id::text`)
-        .select("notifiedTgt.id")
-    )
+  const channelCount = alreadyAlerted.channelIds.length;
+  const everDeliveredChannelCount = reader(`${TableName.AlertHistory} as everHist`)
+    .join(`${TableName.AlertHistoryTarget} as everTgt`, "everHist.id", "everTgt.alertHistoryId")
+    .where("everHist.alertId", alreadyAlerted.alertId)
+    .where("everTgt.status", AlertRunStatus.SUCCESS)
+    .whereIn("everTgt.channelId", alreadyAlerted.channelIds)
+    .whereRaw(`"everTgt"."targetId" = "${TableName.Certificate}".id::text`)
+    .countDistinct("everTgt.channelId");
+  const notFullyNotified = (await dueQuery()
+    .whereRaw("(?) < ?", [everDeliveredChannelCount, channelCount])
     .orderBy(`${TableName.Certificate}.notAfter`, "asc")
     .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN)) as TApplicationAlertCertificate[];
-  if (neverNotified.length >= MAX_EXPIRING_CERTIFICATES_PER_RUN) return neverNotified;
+  if (notFullyNotified.length >= MAX_EXPIRING_CERTIFICATES_PER_RUN) return notFullyNotified;
 
   const lastDelivered = reader(`${TableName.AlertHistory} as lastHist`)
     .join(`${TableName.AlertHistoryTarget} as lastTgt`, "lastHist.id", "lastTgt.alertHistoryId")
     .where("lastHist.alertId", alreadyAlerted.alertId)
     .where("lastTgt.status", AlertRunStatus.SUCCESS)
+    .whereIn("lastTgt.channelId", alreadyAlerted.channelIds)
     .groupBy("lastTgt.targetId")
+    .havingRaw(`count(distinct "lastTgt"."channelId") >= ?`, [channelCount])
     .select("lastTgt.targetId")
     .max("lastHist.triggeredAt as lastDeliveredAt");
   const leastRecentlyNotified = (await dueQuery()
@@ -138,9 +141,9 @@ const selectExpiring = async (
     ])
     .orderBy("lastDelivered.lastDeliveredAt", "asc")
     .orderBy(`${TableName.Certificate}.notAfter`, "asc")
-    .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN - neverNotified.length)) as TApplicationAlertCertificate[];
+    .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN - notFullyNotified.length)) as TApplicationAlertCertificate[];
 
-  return [...neverNotified, ...leastRecentlyNotified];
+  return [...notFullyNotified, ...leastRecentlyNotified];
 };
 
 export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
@@ -177,22 +180,28 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
   ): Promise<TApplicationAlertCertificate[]> => {
     try {
       const reader = tx || db.replicaNode();
+      const activeSigners = reader(TableName.PkiSigners)
+        .where(`${TableName.PkiSigners}.projectId`, scope.projectId)
+        .where(`${TableName.PkiSigners}.status`, SignerStatus.Active)
+        .whereNotNull(`${TableName.PkiSigners}.certificateId`)
+        .groupBy(`${TableName.PkiSigners}.certificateId`)
+        .select(`${TableName.PkiSigners}.certificateId`)
+        .select(
+          reader.raw(`array_agg("${TableName.PkiSigners}".id order by "${TableName.PkiSigners}".name) as "signerIds"`),
+          reader.raw(
+            `array_agg("${TableName.PkiSigners}".name order by "${TableName.PkiSigners}".name) as "signerNames"`
+          )
+        );
       const buildQuery = () =>
-        reader(TableName.PkiSigners)
-          .join(TableName.Certificate, `${TableName.PkiSigners}.certificateId`, `${TableName.Certificate}.id`)
+        reader(TableName.Certificate)
+          .join(activeSigners.clone().as("signers"), "signers.certificateId", `${TableName.Certificate}.id`)
           .leftJoin(`${TableName.PkiCertificateProfile} as profile`, `${TableName.Certificate}.profileId`, "profile.id")
           .leftJoin(
             TableName.PkiApplication,
             `${TableName.Certificate}.applicationId`,
             `${TableName.PkiApplication}.id`
           )
-          .where(`${TableName.PkiSigners}.projectId`, scope.projectId)
-          .where(`${TableName.PkiSigners}.status`, SignerStatus.Active)
-          .select([
-            ...CERTIFICATE_TARGET_COLUMNS,
-            `${TableName.PkiSigners}.id as signerId`,
-            `${TableName.PkiSigners}.name as signerName`
-          ]);
+          .select([...CERTIFICATE_TARGET_COLUMNS, "signers.signerIds", "signers.signerNames"]);
       return await selectExpiring(reader, buildQuery, scope);
     } catch (error) {
       throw new DatabaseError({ error, name: "FindExpiringSignerCertificates" });

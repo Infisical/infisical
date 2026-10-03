@@ -779,8 +779,8 @@ describe("cert manager application alert provider", () => {
       altNames: null,
       applicationId: null,
       applicationName: null,
-      signerId: "signer-1",
-      signerName: "release-signer"
+      signerIds: ["signer-1"],
+      signerNames: ["release-signer"]
     });
     const signerAlert = alertContext({
       resourceId: null,
@@ -892,8 +892,24 @@ describe("cert manager application alert provider", () => {
       expect(payload.summary).toBe("1 signer certificate expiring within 30 days");
       expect(payload.items[0].summary).toMatch(/^Certificate 'release signing' of signer 'release-signer' expires on /);
       expect(payload.items[0].fields?.[0]).toEqual({ label: "Signer", value: "release-signer" });
-      expect(payload.items[0].resource).toMatchObject({ signerId: "signer-1", signerName: "release-signer" });
+      expect(payload.items[0].resource).toMatchObject({ signerIds: ["signer-1"], signerNames: ["release-signer"] });
       expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(44);
+    });
+
+    test("a certificate shared by several signers is one item naming every signer", async () => {
+      const { provider } = buildProvider();
+      const sharedCertificate = {
+        ...signerCertificate,
+        signerIds: ["signer-1", "signer-2"],
+        signerNames: ["build-signer", "release-signer"]
+      };
+      const payload = provider.buildPayload(signerAlert, [sharedCertificate], await provider.buildViewUrl(signerAlert));
+
+      expect(payload.items).toHaveLength(1);
+      expect(payload.items[0].summary).toMatch(
+        /^Certificate 'release signing' of signers 'build-signer', 'release-signer' expires on /
+      );
+      expect(payload.items[0].fields?.[0]).toEqual({ label: "Signers", value: "build-signer, release-signer" });
     });
   });
 });
