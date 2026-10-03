@@ -414,7 +414,7 @@ docker logs <container_name> --since 1h
     sudo cp /etc/letsencrypt/live/secrets.example.com/privkey.pem ./nginx/certs/
     ```
 
-    **3. Add NGINX service to `docker-compose.prod.yml`:**
+    **3. Add NGINX service to `docker-compose.prod.yml`. It should be on the same network as the other services:**
     ```yaml
     nginx:
       image: nginx:alpine
@@ -426,6 +426,8 @@ docker logs <container_name> --since 1h
         - ./nginx/certs:/etc/nginx/certs:ro
       depends_on:
         - backend
+      networks:
+        - infisical
     ```
 
     **4. Create `./nginx/nginx.conf`:**
