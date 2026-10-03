@@ -115,7 +115,7 @@ export const auditLogQueueServiceFactory = async ({
       if (!isAuditLogEventEnabled(settings, data.event.type, projectId)) return null;
     }
 
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
     if (!plan?.auditLogsRetentionDays) return null;
 
     const ttlInDays =

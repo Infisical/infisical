@@ -7,7 +7,9 @@ import { getConfig } from "@app/lib/config/env";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -301,14 +303,16 @@ export const auditLogServiceFactory = ({
     if (appCfg.DISABLE_AUDIT_LOG_GENERATION) return;
 
     try {
-      const settings = await auditLogSettingsService.getEffectiveSettings(orgId);
+      const settings = await requestMemoize(requestMemoKeys.auditLogSettings(orgId), () =>
+        auditLogSettingsService.getEffectiveSettings(orgId)
+      );
       // Skip on a failed lookup (null) instead of recording everything: authorization is opt-in, and
       // we can't tell if the org is on the new privilege system.
       if (!settings?.shouldUseNewPrivilegeSystem) return;
 
       if (!isAuditLogEventEnabled(settings, EventType.PERMISSION_DENIED, projectId)) return;
 
-      const plan = await licenseService.getPlan(orgId);
+      const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
       if (!plan?.auditLogsRetentionDays) return;
 
       const actorIdKey = ACTOR_TYPE_TO_METADATA_ID_KEY[auditLogInfo.actor.type];

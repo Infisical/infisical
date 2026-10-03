@@ -2,6 +2,8 @@ import fp from "fastify-plugin";
 
 import { getRateLimiterConfig } from "@app/ee/services/rate-limit/rate-limit-service";
 import { getConfig } from "@app/lib/config/env";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 export const injectRateLimits = fp(async (server) => {
   server.decorateRequest("rateLimits");
@@ -15,7 +17,10 @@ export const injectRateLimits = fp(async (server) => {
       return;
     }
 
-    const { rateLimits, customRateLimits } = await server.services.license.getPlan(req.auth.orgId);
+    const { orgId } = req.auth;
+    const { rateLimits, customRateLimits } = await requestMemoize(requestMemoKeys.licensePlan(orgId), () =>
+      server.services.license.getPlan(orgId)
+    );
 
     if (customRateLimits && !appCfg.isCloud) {
       // we do this because for self-hosted/dedicated instances, we want custom rate limits to be based on admin configuration

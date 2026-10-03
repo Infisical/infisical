@@ -60,6 +60,8 @@ export const requestMemoKeys = {
 
   auditLogSettings: (orgId: string) => `audit-log-settings:${orgId}`,
 
+  licensePlan: (orgId: string) => `license:plan:${orgId}`,
+
   userFindById: (userId: string) => `user:findById:${userId}`,
 
   identityFindById: (identityId: string) => `identity:findById:${identityId}`,
