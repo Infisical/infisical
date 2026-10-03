@@ -104,7 +104,23 @@ export const auditLogQueueServiceFactory = async ({
     if (!orgId) return null;
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan?.auditLogsRetentionDays) return null;
+    if (!plan?.auditLogsRetentionDays) {
+      // auditLogs granted with no retention window is a plan misconfiguration that loses every event
+      // for the org; only that case carries the org label so free-tier drops don't inflate cardinality.
+      const isEntitledButUnretained = Boolean(plan?.auditLogs);
+      if (isEntitledButUnretained) {
+        logger.warn(
+          `audit-log-queue: Dropping audit log — plan grants auditLogs but auditLogsRetentionDays is unset [orgId=${orgId}] [event=${data.event?.type}]`
+        );
+      }
+      auditLogDroppedCounter.add(1, {
+        "audit_log.event_type": data.event?.type ?? "unknown",
+        "audit_log.actor_type": data.actor?.type ?? "unknown",
+        "audit_log.drop_reason": isEntitledButUnretained ? "retention_unset_for_entitled_org" : "retention_disabled",
+        ...(isEntitledButUnretained ? { "infisical.organization.id": orgId } : {})
+      });
+      return null;
+    }
 
     const ttlInDays =
       project?.auditLogsRetentionDays && project.auditLogsRetentionDays < plan.auditLogsRetentionDays
