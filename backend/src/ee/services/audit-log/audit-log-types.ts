@@ -963,10 +963,10 @@ export enum EventType {
   UPDATE_PKI_APPLICATION_ALERT = "update-pki-application-alert",
   DELETE_PKI_APPLICATION_ALERT = "delete-pki-application-alert",
   TEST_PKI_APPLICATION_ALERT_CHANNEL = "test-pki-application-alert-channel",
-  CREATE_PKI_CERTIFICATE_ALERT = "create-pki-certificate-alert",
-  UPDATE_PKI_CERTIFICATE_ALERT = "update-pki-certificate-alert",
-  DELETE_PKI_CERTIFICATE_ALERT = "delete-pki-certificate-alert",
-  TEST_PKI_CERTIFICATE_ALERT_CHANNEL = "test-pki-certificate-alert-channel"
+  CREATE_CERTIFICATE_MANAGER_ALERT = "create-certificate-manager-alert",
+  UPDATE_CERTIFICATE_MANAGER_ALERT = "update-certificate-manager-alert",
+  DELETE_CERTIFICATE_MANAGER_ALERT = "delete-certificate-manager-alert",
+  TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL = "test-certificate-manager-alert-channel"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -7935,7 +7935,7 @@ interface TestPkiApplicationAlertEvent {
   };
 }
 
-type TPkiCertificateAlertEventMetadata = {
+type TCertificateManagerAlertEventMetadata = {
   alertId: string;
   name: string;
   eventType: string;
@@ -7943,23 +7943,23 @@ type TPkiCertificateAlertEventMetadata = {
   profiles: { id: string; name: string | null }[];
 };
 
-interface CreatePkiCertificateAlertEvent {
-  type: EventType.CREATE_PKI_CERTIFICATE_ALERT;
-  metadata: TPkiCertificateAlertEventMetadata;
+interface CreateCertificateManagerAlertEvent {
+  type: EventType.CREATE_CERTIFICATE_MANAGER_ALERT;
+  metadata: TCertificateManagerAlertEventMetadata;
 }
 
-interface UpdatePkiCertificateAlertEvent {
-  type: EventType.UPDATE_PKI_CERTIFICATE_ALERT;
-  metadata: TPkiCertificateAlertEventMetadata;
+interface UpdateCertificateManagerAlertEvent {
+  type: EventType.UPDATE_CERTIFICATE_MANAGER_ALERT;
+  metadata: TCertificateManagerAlertEventMetadata;
 }
 
-interface DeletePkiCertificateAlertEvent {
-  type: EventType.DELETE_PKI_CERTIFICATE_ALERT;
-  metadata: TPkiCertificateAlertEventMetadata;
+interface DeleteCertificateManagerAlertEvent {
+  type: EventType.DELETE_CERTIFICATE_MANAGER_ALERT;
+  metadata: TCertificateManagerAlertEventMetadata;
 }
 
-interface TestPkiCertificateAlertEvent {
-  type: EventType.TEST_PKI_CERTIFICATE_ALERT_CHANNEL;
+interface TestCertificateManagerAlertEvent {
+  type: EventType.TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL;
   metadata: {
     alertId?: string;
     alertName?: string | null;
@@ -7981,10 +7981,10 @@ export type Event =
   | UpdatePkiApplicationAlertEvent
   | DeletePkiApplicationAlertEvent
   | TestPkiApplicationAlertEvent
-  | CreatePkiCertificateAlertEvent
-  | UpdatePkiCertificateAlertEvent
-  | DeletePkiCertificateAlertEvent
-  | TestPkiCertificateAlertEvent
+  | CreateCertificateManagerAlertEvent
+  | UpdateCertificateManagerAlertEvent
+  | DeleteCertificateManagerAlertEvent
+  | TestCertificateManagerAlertEvent
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent

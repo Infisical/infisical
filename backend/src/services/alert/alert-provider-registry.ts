@@ -1,4 +1,6 @@
-import { AlertTriggerType, IResourceAlertProvider } from "./alert-types";
+import { BadRequestError } from "@app/lib/errors";
+
+import { AlertTriggerType, IResourceAlertProvider, TAlertEventDefinition } from "./alert-types";
 
 export const resolveAlertProjectId = async (
   provider: IResourceAlertProvider,
@@ -15,6 +17,16 @@ export const getAlertResourceName = async (
 ): Promise<string | null> => {
   if (!resourceId || !provider.getResourceNames) return null;
   return (await provider.getResourceNames({ orgId, resourceIds: [resourceId] })).get(resourceId) ?? null;
+};
+
+export const getAlertEvent = (provider: IResourceAlertProvider, eventType: string): TAlertEventDefinition => {
+  const event = provider.events.find((candidate) => candidate.key === eventType);
+  if (!event) {
+    throw new BadRequestError({
+      message: `Event type '${eventType}' is not supported by resource type '${provider.resourceType}'`
+    });
+  }
+  return event;
 };
 
 export type TAlertProviderRegistry = ReturnType<typeof alertProviderRegistryFactory>;

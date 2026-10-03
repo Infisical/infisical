@@ -6,7 +6,7 @@ import { MAX_CERTIFICATE_ALERT_FILTER_IDS } from "@app/hooks/api/alerts";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 
-import { getFilterName, TCertificateFilterKind } from "./types";
+import { CertificateFilterKind, getFilterName } from "./types";
 
 type TFilterOption = { id: string; name: string };
 
@@ -26,7 +26,7 @@ const FilterCombobox = ({
   onSearchChange,
   placeholder
 }: Props & {
-  kind: TCertificateFilterKind;
+  kind: CertificateFilterKind;
   options: TFilterOption[];
   isLoading: boolean;
   onSearchChange: (search: string) => void;
@@ -71,7 +71,7 @@ export const ApplicationFilterSelect = (props: Props) => {
   return (
     <FilterCombobox
       {...props}
-      kind="applicationIds"
+      kind={CertificateFilterKind.Applications}
       options={options}
       isLoading={isPending}
       onSearchChange={setSearch}
@@ -95,7 +95,7 @@ export const ProfileFilterSelect = (props: Props) => {
   return (
     <FilterCombobox
       {...props}
-      kind="profileIds"
+      kind={CertificateFilterKind.Profiles}
       options={options}
       isLoading={isPending}
       onSearchChange={setSearch}

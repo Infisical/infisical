@@ -41,6 +41,7 @@ export type TAlertPermissionInput = {
   orgId: string;
   projectId?: string | null;
   resourceId?: string | null;
+  eventType?: string;
   actor: TGenericPermission;
 };
 

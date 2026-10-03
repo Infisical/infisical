@@ -6,12 +6,13 @@ description: "Get notified about certificate events anywhere in Certificate Mana
 
 An alert under **Settings** > **Alerts** covers certificates across Certificate Manager for one event, whether or not they belong to an [Application](/documentation/platform/pki/applications/overview). Without filters, it covers every certificate. Use a Certificate Manager alert when a team needs to hear about certificates across several applications. To alert on a single application, create an [application alert](/documentation/platform/pki/applications/alerting/overview) instead.
 
-Certificate Manager alerts use the same events and [notification channels](/documentation/platform/pki/applications/alerting/overview#notification-channels) as application alerts.
+Certificate Manager alerts use the same events and [notification channels](/documentation/platform/pki/applications/alerting/overview#notification-channels) as application alerts. They can also alert on [signer certificate expiration](#signer-certificate-expiration) for **Code Signing**.
 
 ## Prerequisites
 
 - The **Create** action on **PKI Alerts**, which only the Certificate Manager **Admin** role has by default
 - The **Read** action on **Certificates** with no conditions, because the alert sends details of certificates from every application. Editing an alert needs it too.
+- For a **Signer Certificate Expiration** alert, the **Admin** role instead, because the alert sends details of every signer's certificate, including signers you aren't a member of
 - For Slack, PagerDuty, and webhook channels, the Enterprise plan. Email channels are available on every plan.
 - For email alerts, recipients who are organization members, or addresses on one of your organization's [verified email domains](/documentation/platform/email-domain)
 
@@ -25,10 +26,10 @@ Certificate Manager alerts use the same events and [notification channels](/docu
     Select **Create Alert**.
   </Step>
   <Step>
-    Select the **Alert Type**, then enter an **Alert Name** and an optional **Description**. For an expiration alert, enter **Alert Before** as a number and a unit, for example `30d` or `2w`, up to 365 days. Turn on **Repeat daily until expiry** to get a reminder every day. See [how often expiration alerts repeat](/documentation/platform/pki/applications/alerting/overview#faq). Select **Continue**.
+    Select the **Alert Type** from the **Certificate Lifecycle** or **Code Signing** group, then enter an **Alert Name** and an optional **Description**. For an expiration alert, enter **Alert Before** as a number and a unit, for example `30d` or `2w`, up to 365 days. Turn on **Repeat daily until expiry** to get a reminder every day. See [how often expiration alerts repeat](/documentation/platform/pki/applications/alerting/overview#faq). Select **Continue**.
   </Step>
   <Step>
-    On the **Filters** step, optionally select **Add Filter** to narrow the alert by **Applications** or **Certificate Profiles**. See [which certificates an alert covers](#which-certificates-an-alert-covers). **Matched Certificates** lists the active certificates the alert covers. After you change a filter, select **Reload Preview** to update the list. Select **Continue**.
+    On the **Filters** step, optionally select **Add Filter** to narrow the alert by **Applications** or **Certificate Profiles**. See [which certificates an alert covers](#which-certificates-an-alert-covers). **Matched Certificates** lists the active certificates the alert covers. The list updates as you change filters. Select **Continue**.
   </Step>
   <Step>
     Select **Add Channel** and choose where to send notifications. You can add up to 10 channels. Select **Continue**.
@@ -51,6 +52,12 @@ If you don't add a filter, the alert covers every certificate in Certificate Man
 
 You can select up to 100 applications and 100 profiles.
 
+## Signer certificate expiration
+
+A **Signer Certificate Expiration** alert, in the **Code Signing** group, warns you before the certificate a signer currently signs with expires. It covers every active signer under **Code Signing** > **Signers**, has no filters, and skips the **Filters** step. It works like a certificate expiration alert: set **Alert Before** and optionally **Repeat daily until expiry**.
+
+Only each signer's current certificate counts. When you reissue a signer's certificate, the alert follows the new one and stops alerting on the one it replaced. Signers that are disabled, failed, or still pending aren't covered.
+
 ## FAQ
 
 <AccordionGroup>
@@ -65,11 +72,15 @@ You can select up to 100 applications and 100 profiles.
 
     | Field | Certificate Manager alert |
     |-------|---------------------------|
+    | `type` | `com.infisical.cert-manager.certificate.<event>`, for example `com.infisical.cert-manager.certificate.issuance` |
+    | `subject` | `cert-manager.certificate.<event>`, for example `cert-manager.certificate.issuance` |
     | `source` | `/alerts/<alert-id>` |
     | `data.alert.resourceType` | `cert-manager.application`, with no `resourceId` |
     | `data.metadata.viewUrl` | Opens the certificate inventory |
     | `data.items[].fields` | Includes an entry labelled `Application` when the certificate belongs to an application |
     | `data.items[].resource.applicationId` | `null` for a certificate outside an application |
+
+    A **Signer Certificate Expiration** alert sends `cert-manager.signer-certificate.expiry` as its `subject` (`type` is `com.infisical.cert-manager.signer-certificate.expiry`), opens **Code Signing** from `data.metadata.viewUrl`, and adds a `Signer` field plus `signerId` and `signerName` to each item.
   </Accordion>
 </AccordionGroup>
 

@@ -27,15 +27,67 @@ export const CERTIFICATE_ALERT_EVENT_LABELS: Record<CertificateAlertEventType, s
   [CertificateAlertEventType.Expiry]: "Certificate Expiration",
   [CertificateAlertEventType.Issuance]: "Certificate Issuance",
   [CertificateAlertEventType.Renewal]: "Certificate Renewal",
-  [CertificateAlertEventType.Revocation]: "Certificate Revocation"
+  [CertificateAlertEventType.Revocation]: "Certificate Revocation",
+  [CertificateAlertEventType.SignerCertificateExpiry]: "Signer Certificate Expiration"
 };
+
+export enum CertificateAlertAccess {
+  ReadAllCertificates = "read-all-certificates",
+  Admin = "admin"
+}
+
+export const CERTIFICATE_ALERT_EVENT_GROUPS: {
+  label: string;
+  events: CertificateAlertEventType[];
+  scopes: CertificateAlertScopeKind[];
+  requiredAccess: CertificateAlertAccess;
+}[] = [
+  {
+    label: "Certificate Lifecycle",
+    events: [
+      CertificateAlertEventType.Expiry,
+      CertificateAlertEventType.Issuance,
+      CertificateAlertEventType.Renewal,
+      CertificateAlertEventType.Revocation
+    ],
+    scopes: [CertificateAlertScopeKind.Application, CertificateAlertScopeKind.CertificateManager],
+    requiredAccess: CertificateAlertAccess.ReadAllCertificates
+  },
+  {
+    label: "Code Signing",
+    events: [CertificateAlertEventType.SignerCertificateExpiry],
+    scopes: [CertificateAlertScopeKind.CertificateManager],
+    requiredAccess: CertificateAlertAccess.Admin
+  }
+];
+
+export const getEventTypesForAccess = (access: CertificateAlertAccess[]) =>
+  CERTIFICATE_ALERT_EVENT_GROUPS.filter((group) => access.includes(group.requiredAccess)).flatMap(
+    (group) => group.events
+  );
+
+export const getScopeEventGroups = (scope: TCertificateAlertScope) =>
+  CERTIFICATE_ALERT_EVENT_GROUPS.filter((group) => group.scopes.includes(scope.kind));
+
+export const getScopeEventTypes = (scope: TCertificateAlertScope) =>
+  getScopeEventGroups(scope).flatMap((group) => group.events);
+
+export const isExpiryEventType = (eventType: CertificateAlertEventType) =>
+  eventType === CertificateAlertEventType.Expiry ||
+  eventType === CertificateAlertEventType.SignerCertificateExpiry;
+
+export const isFilterableEventType = (eventType: CertificateAlertEventType) =>
+  eventType !== CertificateAlertEventType.SignerCertificateExpiry;
 
 const ALERT_EVENT_DESCRIPTIONS: Record<CertificateAlertEventType, (where: string) => string> = {
   [CertificateAlertEventType.Expiry]: () => "Fires ahead of a certificate's expiry date.",
   [CertificateAlertEventType.Issuance]: (where) =>
     `Fires when Infisical issues a certificate ${where}.`,
   [CertificateAlertEventType.Renewal]: (where) => `Fires when a certificate ${where} is renewed.`,
-  [CertificateAlertEventType.Revocation]: (where) => `Fires when a certificate ${where} is revoked.`
+  [CertificateAlertEventType.Revocation]: (where) =>
+    `Fires when a certificate ${where} is revoked.`,
+  [CertificateAlertEventType.SignerCertificateExpiry]: () =>
+    "Fires ahead of the expiry date of the certificate each signer currently signs with."
 };
 
 export const getAlertEventDescription = (
@@ -96,19 +148,22 @@ export const toRecipientEmails = (
     return recipient.principalType === AlertPrincipalType.Email ? [recipient.principalId] : [];
   });
 
-export type TCertificateFilterKind = "applicationIds" | "profileIds";
+export enum CertificateFilterKind {
+  Applications = "applicationIds",
+  Profiles = "profileIds"
+}
 
 export const CERTIFICATE_FILTER_DEFINITIONS: Record<
-  TCertificateFilterKind,
+  CertificateFilterKind,
   { label: string; hint: string; allLabel: string; unknownLabel: string }
 > = {
-  applicationIds: {
+  [CertificateFilterKind.Applications]: {
     label: "Applications",
     hint: "Certificates in one of these applications",
     allLabel: "All applications",
     unknownLabel: "Unknown application"
   },
-  profileIds: {
+  [CertificateFilterKind.Profiles]: {
     label: "Certificate Profiles",
     hint: "Issued from one of these profiles",
     allLabel: "All certificate profiles",
@@ -116,11 +171,10 @@ export const CERTIFICATE_FILTER_DEFINITIONS: Record<
   }
 };
 
-export const NO_FILTERS_DESCRIPTION =
-  "No filters. This alert covers every certificate in Certificate Manager.";
+export const NO_FILTERS_DESCRIPTION = "No filters. This alert covers every certificate.";
 
 export const getFilterName = (
-  kind: TCertificateFilterKind,
+  kind: CertificateFilterKind,
   id: string,
   conditionNames: Record<string, string>
 ) => conditionNames[id] ?? CERTIFICATE_FILTER_DEFINITIONS[kind].unknownLabel;
@@ -132,14 +186,11 @@ export const toConditionNames = (alert: TAlert): Record<string, string> =>
       .flatMap(({ id, name }) => (name ? [[id, name]] : []))
   );
 
-export const isUnfinishedFilter = (ids?: string[]) => ids?.length === 0;
+const isUnfinishedFilter = (ids?: string[]) => ids?.length === 0;
 
-export const hasUnfinishedFilter = (filters: Partial<Record<TCertificateFilterKind, string[]>>) =>
-  isUnfinishedFilter(filters.applicationIds) || isUnfinishedFilter(filters.profileIds);
-
-const UNFINISHED_FILTER_MESSAGES: Record<TCertificateFilterKind, string> = {
-  applicationIds: "Select at least one application, or remove this filter",
-  profileIds: "Select at least one profile, or remove this filter"
+const UNFINISHED_FILTER_MESSAGES: Record<CertificateFilterKind, string> = {
+  [CertificateFilterKind.Applications]: "Select at least one application, or remove this filter",
+  [CertificateFilterKind.Profiles]: "Select at least one profile, or remove this filter"
 };
 
 export enum CertificateAlertStep {
@@ -176,8 +227,8 @@ const STEP_DEFINITIONS = {
   }
 };
 
-export const getSteps = (scope: TCertificateAlertScope) =>
-  (scope.kind === CertificateAlertScopeKind.CertificateManager
+export const getSteps = (scope: TCertificateAlertScope, eventType: CertificateAlertEventType) =>
+  (scope.kind === CertificateAlertScopeKind.CertificateManager && isFilterableEventType(eventType)
     ? [
         CertificateAlertStep.Details,
         CertificateAlertStep.Filters,
@@ -213,12 +264,12 @@ export const certificateAlertFormSchema = z
     channels: z.array(channelFormSchema).min(1, "Add at least one channel").max(MAX_CHANNELS)
   })
   .superRefine((form, ctx) => {
-    (Object.keys(UNFINISHED_FILTER_MESSAGES) as TCertificateFilterKind[]).forEach((kind) => {
+    Object.values(CertificateFilterKind).forEach((kind) => {
       if (isUnfinishedFilter(form[kind])) {
         ctx.addIssue({ code: "custom", path: [kind], message: UNFINISHED_FILTER_MESSAGES[kind] });
       }
     });
-    if (form.eventType !== CertificateAlertEventType.Expiry) return;
+    if (!isExpiryEventType(form.eventType)) return;
     const days = alertBeforeToDays(form.alertBefore);
     if (days === null) {
       ctx.addIssue({
@@ -245,7 +296,7 @@ export const STEP_FIELDS: Partial<Record<CertificateAlertStep, (keyof TCertifica
     "alertBefore",
     "dailyReminder"
   ],
-  [CertificateAlertStep.Filters]: ["applicationIds", "profileIds"],
+  [CertificateAlertStep.Filters]: Object.values(CertificateFilterKind),
   [CertificateAlertStep.Channels]: ["channels"]
 };
 
@@ -300,14 +351,15 @@ export const toCertificateAlertForm = (
 
 export const toCondition = (scope: TCertificateAlertScope, form: TCertificateAlertForm) => {
   const filters =
-    scope.kind === CertificateAlertScopeKind.CertificateManager
+    scope.kind === CertificateAlertScopeKind.CertificateManager &&
+    isFilterableEventType(form.eventType)
       ? {
           ...(form.applicationIds?.length ? { applicationIds: form.applicationIds } : {}),
           ...(form.profileIds?.length ? { profileIds: form.profileIds } : {})
         }
       : {};
 
-  if (form.eventType === CertificateAlertEventType.Expiry) {
+  if (isExpiryEventType(form.eventType)) {
     return {
       alertBefore: form.alertBefore.trim(),
       dailyReminder: form.dailyReminder,

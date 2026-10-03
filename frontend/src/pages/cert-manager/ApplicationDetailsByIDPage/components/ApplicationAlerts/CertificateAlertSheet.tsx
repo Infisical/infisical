@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FormProvider, useFieldArray, useForm } from "react-hook-form";
+import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BellIcon } from "lucide-react";
 
@@ -63,6 +63,7 @@ type Props = {
   alert?: TAlert;
   isReadOnly?: boolean;
   usedEventTypes: CertificateAlertEventType[];
+  allowedEventTypes: CertificateAlertEventType[];
 };
 
 type WizardProps = Omit<Props, "isOpen"> & {
@@ -77,12 +78,11 @@ const CertificateAlertWizard = ({
   alert,
   isReadOnly = false,
   usedEventTypes,
+  allowedEventTypes,
   members,
   onDirtyChange
 }: WizardProps) => {
   const isEditing = Boolean(alert);
-  const steps = getSteps(scope);
-  const [step, setStep] = useState(isReadOnly ? steps.length - 1 : 0);
   const createAlert = useCreateAlert();
   const updateAlert = useUpdateAlert();
 
@@ -92,9 +92,12 @@ const CertificateAlertWizard = ({
     defaultValues: alert
       ? toCertificateAlertForm(alert, members)
       : emptyCertificateAlertForm(
-          Object.values(CertificateAlertEventType).find((event) => !usedEventTypes.includes(event))
+          allowedEventTypes.find((event) => !usedEventTypes.includes(event))
         )
   });
+  const eventType = useWatch({ control: form.control, name: "eventType" });
+  const steps = getSteps(scope, eventType);
+  const [step, setStep] = useState(isReadOnly ? steps.length - 1 : 0);
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "channels" });
   const { isDirty } = form.formState;
 
@@ -219,6 +222,7 @@ const CertificateAlertWizard = ({
               scope={scope}
               isEditing={isEditing}
               usedEventTypes={usedEventTypes}
+              allowedEventTypes={allowedEventTypes}
             />
           )}
           {currentStep.key === CertificateAlertStep.Filters && (

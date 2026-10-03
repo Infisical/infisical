@@ -43,6 +43,7 @@ export type TTestAlertChannelDTO = TGenericPermission & {
   resourceId?: string | null;
   projectId?: string | null;
   alertId?: string;
+  eventType?: string;
   channelId?: string;
   channelType: AlertChannelType;
   config?: Record<string, unknown>;

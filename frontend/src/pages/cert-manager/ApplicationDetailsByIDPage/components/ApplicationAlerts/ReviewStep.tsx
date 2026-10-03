@@ -7,7 +7,6 @@ import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
   AlertPrincipalType,
-  CertificateAlertEventType,
   TChannelForm
 } from "@app/hooks/api/alerts";
 
@@ -15,8 +14,11 @@ import {
   CERTIFICATE_ALERT_EVENT_LABELS,
   CERTIFICATE_FILTER_DEFINITIONS,
   CertificateAlertScopeKind,
+  CertificateFilterKind,
   formatAlertBefore,
   getFilterName,
+  isExpiryEventType,
+  isFilterableEventType,
   NO_FILTERS_DESCRIPTION,
   TCertificateAlertForm,
   TCertificateAlertScope,
@@ -79,23 +81,25 @@ const FilterDetails = ({
   profileIds: string[];
   conditionNames: Record<string, string>;
 }) => {
-  const getApplicationName = (id: string) => getFilterName("applicationIds", id, conditionNames);
-  const getProfileName = (id: string) => getFilterName("profileIds", id, conditionNames);
+  const getApplicationName = (id: string) =>
+    getFilterName(CertificateFilterKind.Applications, id, conditionNames);
+  const getProfileName = (id: string) =>
+    getFilterName(CertificateFilterKind.Profiles, id, conditionNames);
 
   return (
     <>
-      <Detail label={CERTIFICATE_FILTER_DEFINITIONS.applicationIds.label}>
+      <Detail label={CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Applications].label}>
         {applicationIds.length ? (
           <PkiSyncFilterValueBadges values={applicationIds.map(getApplicationName)} />
         ) : (
-          CERTIFICATE_FILTER_DEFINITIONS.applicationIds.allLabel
+          CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Applications].allLabel
         )}
       </Detail>
-      <Detail label={CERTIFICATE_FILTER_DEFINITIONS.profileIds.label}>
+      <Detail label={CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Profiles].label}>
         {profileIds.length ? (
           <PkiSyncFilterValueBadges values={profileIds.map(getProfileName)} />
         ) : (
-          CERTIFICATE_FILTER_DEFINITIONS.profileIds.allLabel
+          CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Profiles].allLabel
         )}
       </Detail>
     </>
@@ -104,7 +108,7 @@ const FilterDetails = ({
 
 export const ReviewStep = ({ form, scope, members }: Props) => {
   const values = useWatch({ control: form.control }) as TCertificateAlertForm;
-  const isExpiry = values.eventType === CertificateAlertEventType.Expiry;
+  const isExpiry = isExpiryEventType(values.eventType);
 
   return (
     <div className="flex flex-col gap-8">
@@ -127,21 +131,22 @@ export const ReviewStep = ({ form, scope, members }: Props) => {
         </div>
       </Section>
 
-      {scope.kind === CertificateAlertScopeKind.CertificateManager && (
-        <Section title="Certificate Filters">
-          {values.applicationIds?.length || values.profileIds?.length ? (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-              <FilterDetails
-                applicationIds={values.applicationIds ?? []}
-                profileIds={values.profileIds ?? []}
-                conditionNames={values.conditionNames}
-              />
-            </div>
-          ) : (
-            <span className="text-sm text-muted">{NO_FILTERS_DESCRIPTION}</span>
-          )}
-        </Section>
-      )}
+      {scope.kind === CertificateAlertScopeKind.CertificateManager &&
+        isFilterableEventType(values.eventType) && (
+          <Section title="Certificate Filters">
+            {values.applicationIds?.length || values.profileIds?.length ? (
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <FilterDetails
+                  applicationIds={values.applicationIds ?? []}
+                  profileIds={values.profileIds ?? []}
+                  conditionNames={values.conditionNames}
+                />
+              </div>
+            ) : (
+              <span className="text-sm text-muted">{NO_FILTERS_DESCRIPTION}</span>
+            )}
+          </Section>
+        )}
 
       <Section title="Notification Channels">
         <div className="flex flex-col gap-3">

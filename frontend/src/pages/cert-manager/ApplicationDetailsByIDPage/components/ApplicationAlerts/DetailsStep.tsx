@@ -10,7 +10,10 @@ import {
   Input,
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
   TextArea,
@@ -20,7 +23,11 @@ import { CertificateAlertEventType } from "@app/hooks/api/alerts";
 
 import {
   CERTIFICATE_ALERT_EVENT_LABELS,
+  CertificateFilterKind,
   getAlertEventDescription,
+  getScopeEventGroups,
+  isExpiryEventType,
+  isFilterableEventType,
   TCertificateAlertForm,
   TCertificateAlertScope
 } from "./types";
@@ -30,10 +37,29 @@ type Props = {
   scope: TCertificateAlertScope;
   isEditing: boolean;
   usedEventTypes: CertificateAlertEventType[];
+  allowedEventTypes: CertificateAlertEventType[];
 };
 
-export const DetailsStep = ({ form, scope, isEditing, usedEventTypes }: Props) => {
+export const DetailsStep = ({
+  form,
+  scope,
+  isEditing,
+  usedEventTypes,
+  allowedEventTypes
+}: Props) => {
   const eventType = useWatch({ control: form.control, name: "eventType" });
+  const eventGroups = getScopeEventGroups(scope);
+
+  const onEventTypeChange = (
+    next: CertificateAlertEventType,
+    onChange: (value: string) => void
+  ) => {
+    onChange(next);
+    if (!isFilterableEventType(next)) {
+      form.setValue(CertificateFilterKind.Applications, undefined, { shouldDirty: true });
+      form.setValue(CertificateFilterKind.Profiles, undefined, { shouldDirty: true });
+    }
+  };
 
   return (
     <FieldGroup>
@@ -44,19 +70,34 @@ export const DetailsStep = ({ form, scope, isEditing, usedEventTypes }: Props) =
           <Field>
             <FieldLabel>Alert Type</FieldLabel>
             <FieldContent>
-              <Select value={field.value} onValueChange={field.onChange} disabled={isEditing}>
+              <Select
+                value={field.value}
+                onValueChange={(next) =>
+                  onEventTypeChange(next as CertificateAlertEventType, field.onChange)
+                }
+                disabled={isEditing}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {Object.values(CertificateAlertEventType).map((event) => (
-                    <SelectItem
-                      key={event}
-                      value={event}
-                      disabled={!isEditing && usedEventTypes.includes(event)}
-                    >
-                      {CERTIFICATE_ALERT_EVENT_LABELS[event]}
-                    </SelectItem>
+                  {eventGroups.map((group, index) => (
+                    <SelectGroup key={group.label}>
+                      {index > 0 && <SelectSeparator />}
+                      <SelectLabel>{group.label}</SelectLabel>
+                      {group.events.map((event) => (
+                        <SelectItem
+                          key={event}
+                          value={event}
+                          disabled={
+                            !isEditing &&
+                            (usedEventTypes.includes(event) || !allowedEventTypes.includes(event))
+                          }
+                        >
+                          {CERTIFICATE_ALERT_EVENT_LABELS[event]}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>
@@ -101,7 +142,7 @@ export const DetailsStep = ({ form, scope, isEditing, usedEventTypes }: Props) =
           </Field>
         )}
       />
-      {eventType === CertificateAlertEventType.Expiry && (
+      {isExpiryEventType(eventType) && (
         <>
           <Controller
             name="alertBefore"

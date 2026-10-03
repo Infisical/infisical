@@ -2398,32 +2398,50 @@ export const CA_CRLS = {
 };
 
 export const ALERTING = {
-  ROUTES: {
-    create: "Create an alert that notifies its channels when an event happens to a resource.",
-    testChannel: "Send a test notification through a channel, either a saved one or one described in the request.",
-    list: "List the alerts on a resource type, optionally narrowed to one resource.",
-    get: "Get an alert by ID.",
-    update: "Update an alert's name, description, condition, status, or channels.",
-    delete: "Delete an alert and its channels."
+  CREATE: {
+    name: "The name of the alert.",
+    description: "The description of the alert.",
+    resourceType: "The type of resource the alert watches, for example `cert-manager.application`.",
+    resourceId:
+      "The ID of the resource the alert watches. Set to null to watch every resource of this type, where the resource type supports it.",
+    eventType: "The event that triggers the alert, for example `cert-manager.application.certificate.expiry`.",
+    condition:
+      "The settings of the alert's event, for example `alertBefore` on an expiry event. The accepted fields depend on `eventType`.",
+    enabled: "Whether the alert is enabled. Defaults to true.",
+    projectId: "The ID of the project to create the alert in. Optional when the resource belongs to a project.",
+    channels: "The channels the alert notifies. Each is email, Slack, webhook, or PagerDuty."
   },
-  name: "The name of the alert.",
-  description: "An optional description of the alert.",
-  resourceType:
-    "The kind of resource the alert watches, such as `identity.authentication` or `cert-manager.application`.",
-  resourceId:
-    "The ID of the resource the alert watches. For `cert-manager.application`, set it to an application ID to watch that application, or null to watch every certificate in Certificate Manager.",
-  listResourceId:
-    "Only return alerts on this resource. For `cert-manager.application`, leave it out to list the alerts that cover all of Certificate Manager.",
-  eventType: "The event that triggers the alert, such as `cert-manager.application.certificate.expiry`.",
-  condition:
-    "When the alert fires. Expiry alerts take `alertBefore` (for example `30d`) and an optional `dailyReminder`. Certificate Manager alerts with no `resourceId` also accept `applicationIds` and `profileIds`, which narrow the alert to certificates in those applications and profiles.",
-  enabled: "Whether the alert sends notifications.",
-  projectId: "The ID of the project the alert belongs to. Optional when the resource already belongs to one.",
-  channels: "Where the alert is delivered. Each channel is email, Slack, webhook, or PagerDuty.",
-  alertId: "The ID of the alert.",
-  channelId: "The ID of a saved channel to test.",
-  filters:
-    "Read-only. The resources named in the alert's condition, as `{ id, name }` lists keyed by kind (for example `applications` and `profiles`). `name` is null when the resource no longer exists."
+  TEST_CHANNEL: {
+    resourceType: "The type of resource the alert watches.",
+    resourceId: "The ID of the resource the alert watches.",
+    projectId: "The ID of the project the alert belongs to.",
+    alertId: "The ID of the saved alert the channel belongs to.",
+    eventType: "The event of the alert being created. Ignored when `alertId` is set.",
+    channelId: "The ID of the saved channel to test."
+  },
+  LIST: {
+    resourceType: "The type of resource to list alerts for.",
+    resourceId:
+      "The ID of the resource to list alerts for. If omitted, lists every alert on the resource type. For resource types that support alerts covering all of their resources, such as `cert-manager.application`, lists only those alerts.",
+    projectId: "The ID of the project to list alerts in.",
+    enabled: "Whether to list only enabled or only disabled alerts."
+  },
+  GET: {
+    alertId: "The ID of the alert to get.",
+    filters:
+      "The resources named in the alert's condition, such as applications and certificate profiles, each as `{ id, name }`. `name` is null for a deleted resource."
+  },
+  UPDATE: {
+    alertId: "The ID of the alert to update.",
+    name: "The new name of the alert.",
+    description: "The new description of the alert. Set to null to remove it.",
+    condition: "The new settings of the alert's event. The accepted fields depend on the alert's `eventType`.",
+    enabled: "Whether the alert is enabled.",
+    channels: "The alert's channels. Replaces the current channels, so channels left out are deleted."
+  },
+  DELETE: {
+    alertId: "The ID of the alert to delete."
+  }
 };
 
 export const ALERTS = {

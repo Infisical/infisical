@@ -58,12 +58,14 @@ import {
   CERTIFICATE_ALERT_EVENT_LABELS,
   CERTIFICATE_FILTER_DEFINITIONS,
   CertificateAlertScopeKind,
+  CertificateFilterKind,
   formatAlertBefore,
   getAlertResourceId,
   getFilterName,
+  getScopeEventTypes,
+  isFilterableEventType,
   pluralize,
   TCertificateAlertScope,
-  TCertificateFilterKind,
   toConditionNames
 } from "./types";
 
@@ -79,8 +81,7 @@ const SCOPE_CARD_CONFIG: Record<
     hasFiltersColumn: false
   },
   [CertificateAlertScopeKind.CertificateManager]: {
-    description:
-      "Get notified about certificate events anywhere in Certificate Manager, inside or outside an application.",
+    description: "Get notified about certificate events.",
     emptyDescription:
       "No alerts configured. Create one to get notified about certificate events across Certificate Manager.",
     docsUrl: PkiDocsUrls.settings.alerts,
@@ -92,8 +93,12 @@ const AlertFiltersSummary = ({ alert }: { alert: TAlert }) => {
   const applicationIds = alert.condition?.applicationIds ?? [];
   const profileIds = alert.condition?.profileIds ?? [];
   const conditionNames = toConditionNames(alert);
-  const namesOf = (kind: TCertificateFilterKind, ids: string[]) =>
+  const namesOf = (kind: CertificateFilterKind, ids: string[]) =>
     ids.map((id) => getFilterName(kind, id, conditionNames)).join(", ");
+
+  if (!isFilterableEventType(alert.eventType as CertificateAlertEventType)) {
+    return <span className="text-muted">All signers</span>;
+  }
 
   if (!applicationIds.length && !profileIds.length) {
     return <span className="text-muted">All certificates</span>;
@@ -115,15 +120,17 @@ const AlertFiltersSummary = ({ alert }: { alert: TAlert }) => {
         {applicationIds.length > 0 && (
           <span>
             <span className="text-muted">
-              {CERTIFICATE_FILTER_DEFINITIONS.applicationIds.label}:{" "}
+              {CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Applications].label}:{" "}
             </span>
-            {namesOf("applicationIds", applicationIds)}
+            {namesOf(CertificateFilterKind.Applications, applicationIds)}
           </span>
         )}
         {profileIds.length > 0 && (
           <span>
-            <span className="text-muted">{CERTIFICATE_FILTER_DEFINITIONS.profileIds.label}: </span>
-            {namesOf("profileIds", profileIds)}
+            <span className="text-muted">
+              {CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Profiles].label}:{" "}
+            </span>
+            {namesOf(CertificateFilterKind.Profiles, profileIds)}
           </span>
         )}
       </TooltipContent>
@@ -268,6 +275,7 @@ const AlertRow = ({
 type Props = {
   projectId: string;
   scope: TCertificateAlertScope;
+  allowedEventTypes?: CertificateAlertEventType[];
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -276,6 +284,7 @@ type Props = {
 export const ApplicationAlertsCard = ({
   projectId,
   scope,
+  allowedEventTypes,
   canCreate,
   canEdit,
   canDelete
@@ -300,7 +309,11 @@ export const ApplicationAlertsCard = ({
     scope.kind === CertificateAlertScopeKind.Application
       ? alerts.map((alert) => alert.eventType as CertificateAlertEventType)
       : [];
-  const hasAllEventTypes = Object.values(CertificateAlertEventType).every((eventType) =>
+  const isEventTypeAllowed = (eventType: string) =>
+    !allowedEventTypes || allowedEventTypes.includes(eventType as CertificateAlertEventType);
+  const creatableEventTypes = getScopeEventTypes(scope).filter(isEventTypeAllowed);
+  const canCreateAny = canCreate && creatableEventTypes.length > 0;
+  const hasAllEventTypes = creatableEventTypes.every((eventType) =>
     usedEventTypes.includes(eventType)
   );
   const [alertModal, setAlertModal] = useState<{
@@ -341,7 +354,7 @@ export const ApplicationAlertsCard = ({
                   <Button
                     variant="outline"
                     onClick={() => setAlertModal({ isOpen: true })}
-                    isDisabled={!canCreate || hasAllEventTypes}
+                    isDisabled={!canCreateAny || hasAllEventTypes}
                   >
                     <PlusIcon />
                     Create Alert
@@ -353,7 +366,13 @@ export const ApplicationAlertsCard = ({
                   You don&apos;t have permission to create alerts
                 </TooltipContent>
               )}
-              {canCreate && hasAllEventTypes && (
+              {canCreate && !canCreateAny && (
+                <TooltipContent side="left">
+                  Creating an alert requires permission to read all certificates, or the Admin role
+                  for signer alerts
+                </TooltipContent>
+              )}
+              {canCreateAny && hasAllEventTypes && (
                 <TooltipContent side="left">
                   This application already has an alert for every alert type
                 </TooltipContent>
@@ -403,7 +422,7 @@ export const ApplicationAlertsCard = ({
                       onDelete={() =>
                         setDeleteAlertModal({ isOpen: true, alertId: a.id, name: a.name })
                       }
-                      canEdit={canEdit}
+                      canEdit={canEdit && isEventTypeAllowed(a.eventType)}
                       canDelete={canDelete}
                       scope={scope}
                     />
@@ -421,6 +440,7 @@ export const ApplicationAlertsCard = ({
         alert={alerts.find((a) => a.id === alertModal.alertId)}
         isReadOnly={alertModal.isReadOnly}
         usedEventTypes={usedEventTypes}
+        allowedEventTypes={creatableEventTypes}
       />
       <DeleteConfirmDialog
         isOpen={deleteAlertModal.isOpen}

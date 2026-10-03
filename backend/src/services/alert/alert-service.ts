@@ -15,7 +15,12 @@ import { TAlertChannelEmbedded, TAlertChannelInput } from "./alert-channel-servi
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertHistoryDALFactory } from "./alert-history-dal";
 import { getRecipientScope } from "./alert-principal-scope-fns";
-import { getAlertResourceName, resolveAlertProjectId, TAlertProviderRegistry } from "./alert-provider-registry";
+import {
+  getAlertEvent,
+  getAlertResourceName,
+  resolveAlertProjectId,
+  TAlertProviderRegistry
+} from "./alert-provider-registry";
 import {
   TAlertLastRun,
   TAlertResponse,
@@ -103,7 +108,7 @@ export const alertServiceFactory = ({
   const $assertAlertPermission = (
     provider: IResourceAlertProvider,
     action: AlertPermissionAction,
-    scope: { orgId: string; projectId?: string | null; resourceId?: string | null },
+    scope: { orgId: string; projectId?: string | null; resourceId?: string | null; eventType?: string },
     dto: TGenericPermission
   ) =>
     provider.assertPermission({
@@ -111,18 +116,9 @@ export const alertServiceFactory = ({
       orgId: scope.orgId,
       projectId: scope.projectId,
       resourceId: scope.resourceId,
+      eventType: scope.eventType,
       actor: toAlertActor(dto)
     });
-
-  const $getEvent = (provider: IResourceAlertProvider, eventType: string): TAlertEventDefinition => {
-    const event = provider.events.find((candidate) => candidate.key === eventType);
-    if (!event) {
-      throw new BadRequestError({
-        message: `Event type '${eventType}' is not supported by resource type '${provider.resourceType}'`
-      });
-    }
-    return event;
-  };
 
   const $parseCondition = (event: TAlertEventDefinition, condition: unknown): unknown => {
     try {
@@ -210,13 +206,13 @@ export const alertServiceFactory = ({
       resourceId: dto.resourceId
     });
 
-    const event = $getEvent(provider, dto.eventType);
+    const event = getAlertEvent(provider, dto.eventType);
     const condition = $parseCondition(event, dto.condition);
 
     await $assertAlertPermission(
       provider,
       AlertPermissionAction.Create,
-      { orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId },
+      { orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId, eventType: dto.eventType },
       dto
     );
 
@@ -465,13 +461,13 @@ export const alertServiceFactory = ({
     await $assertAlertPermission(
       provider,
       AlertPermissionAction.Edit,
-      { orgId: alert.orgId, projectId: alert.projectId, resourceId: alert.resourceId },
+      { orgId: alert.orgId, projectId: alert.projectId, resourceId: alert.resourceId, eventType: alert.eventType },
       dto
     );
 
     let condition: unknown;
     if (dto.condition !== undefined) {
-      condition = $parseCondition($getEvent(provider, alert.eventType), dto.condition);
+      condition = $parseCondition(getAlertEvent(provider, alert.eventType), dto.condition);
       await provider.assertConditionInScope?.({
         projectId: alert.projectId,
         resourceId: alert.resourceId,

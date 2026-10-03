@@ -36,7 +36,8 @@ export enum CertificateAlertEventType {
   Expiry = "cert-manager.application.certificate.expiry",
   Issuance = "cert-manager.application.certificate.issuance",
   Renewal = "cert-manager.application.certificate.renewal",
-  Revocation = "cert-manager.application.certificate.revocation"
+  Revocation = "cert-manager.application.certificate.revocation",
+  SignerCertificateExpiry = "cert-manager.signer-certificate.expiry"
 }
 
 export const MIN_ALERT_BEFORE_DAYS = 1;
@@ -139,6 +140,7 @@ export type TTestAlertChannelDTO = {
   resourceId?: string | null;
   projectId?: string | null;
   alertId?: string;
+  eventType?: string;
   channelId?: string;
   channelType: AlertChannelType;
   config?: Record<string, unknown>;
