@@ -3562,7 +3562,9 @@ export const SecretRotations = {
       rotationMethod:
         'Whether the rotation should be performed using "login-as-target" (the target user\'s own credentials) or "login-as-root" (the SSH connection\'s admin credentials). Defaults to "login-as-root".',
       password:
-        'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".'
+        'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".',
+      sslRejectUnauthorized:
+        "Whether to verify the iLO's SSL certificate on Redfish API calls. When enabled, an iLO whose certificate cannot be verified is rotated over SSH instead. Disable only for iLOs with self-signed certificates on a trusted network, since credentials are then sent to the endpoint without authenticating it. Does not affect SSH. Defaults to true."
     },
     GENERAL: {
       PASSWORD_REQUIREMENTS: {

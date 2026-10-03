@@ -40,7 +40,8 @@ const HpIloRotationParametersSchema = z.object({
   rotationMethod: z
     .nativeEnum(HpIloRotationMethod)
     .optional()
-    .describe(SecretRotations.PARAMETERS.HP_ILO.rotationMethod)
+    .describe(SecretRotations.PARAMETERS.HP_ILO.rotationMethod),
+  sslRejectUnauthorized: z.boolean().optional().describe(SecretRotations.PARAMETERS.HP_ILO.sslRejectUnauthorized)
 });
 
 const HpIloRotationSecretsMappingSchema = z.object({
