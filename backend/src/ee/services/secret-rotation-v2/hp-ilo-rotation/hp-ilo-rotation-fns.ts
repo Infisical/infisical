@@ -10,6 +10,7 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 // import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import {
   executeWithPotentialGateway,
   getSshConnectionClient,
@@ -193,6 +194,41 @@ export const hpIloApiClientFactory: THpIloClientFactory = () => ({
   changePasswordAsTarget: async () => {},
   verifyPassword: async () => {}
 });
+
+export const hpIloFallbackClientFactory =
+  (primaryFactory: THpIloClientFactory, fallbackFactory: THpIloClientFactory): THpIloClientFactory =>
+  (config, gatewayV2Service) => {
+    const primary = primaryFactory(config, gatewayV2Service);
+    const fallback = fallbackFactory(config, gatewayV2Service);
+
+    const withFallback = async (operation: string, run: (client: THpIloClient) => Promise<void>) => {
+      try {
+        await run(primary);
+      } catch (primaryError) {
+        logger.warn(
+          `HP iLO ${operation} failed on primary client, retrying with fallback [host=${config.credentials.host}]: ${(primaryError as Error).message}`
+        );
+        try {
+          await run(fallback);
+        } catch (fallbackError) {
+          throw new Error(
+            `HP iLO ${operation} failed: ${(primaryError as Error).message}; fallback also failed: ${(fallbackError as Error).message}`
+          );
+        }
+      }
+    };
+
+    return {
+      changePasswordAsAdmin: (targetUsername, newPassword) =>
+        withFallback("password change", (client) => client.changePasswordAsAdmin(targetUsername, newPassword)),
+      changePasswordAsTarget: (username, currentPassword, newPassword) =>
+        withFallback("password change", (client) =>
+          client.changePasswordAsTarget(username, currentPassword, newPassword)
+        ),
+      verifyPassword: (username, password) =>
+        withFallback("password verification", (client) => client.verifyPassword(username, password))
+    };
+  };
 
 export const hpIloRotationFactory: TRotationFactory<
   THpIloRotationWithConnection,
