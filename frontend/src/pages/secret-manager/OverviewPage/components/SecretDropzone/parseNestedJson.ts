@@ -59,16 +59,25 @@ export const flattenNestedJson = (data: Record<string, unknown>): TNestedJsonImp
         return;
       }
 
-      // Mirrors the backend secret name rule, so no folder is written before a bad key fails
-      if (!key.trim() || key.includes(":") || key.includes("/")) {
+      // Trimmed and validated like the backend secret name rule, so no folder is written
+      // before a bad or duplicate key fails
+      const secretKey = key.trim();
+      const secretPath = joinSecretPath(path, `/${secretKey}`);
+      if (!secretKey || secretKey.includes(":") || secretKey.includes("/")) {
         result.errors.push(
-          `"${joinSecretPath(path, `/${key}`)}": secret keys cannot be empty or contain a colon or forward slash.`
+          `"${secretPath}": secret keys cannot be empty or contain a colon or forward slash.`
         );
         return;
       }
 
       result.secretsByPath[path] ??= Object.create(null);
-      result.secretsByPath[path][key] = { value: toSecretValue(value), comments: [] };
+      if (secretKey in result.secretsByPath[path]) {
+        result.errors.push(
+          `"${secretPath}": more than one key becomes "${secretKey}" once surrounding spaces are removed.`
+        );
+        return;
+      }
+      result.secretsByPath[path][secretKey] = { value: toSecretValue(value), comments: [] };
     });
   };
 
