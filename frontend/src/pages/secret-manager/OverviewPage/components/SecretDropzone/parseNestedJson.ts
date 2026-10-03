@@ -116,3 +116,90 @@ export const buildFolderTree = ({ folderPaths, secretsByPath }: TNestedJsonImpor
 
   return buildNode("/");
 };
+
+// "folder-ok" is a folder that exists (created or found) and holds no secrets of its own;
+// "skipped" is a folder that could not be used, or sits under one that could not
+type TPathOutcome = {
+  status: "written" | "folder-ok" | "skipped" | "failed";
+  reason?: string;
+  hasApproval?: boolean;
+};
+
+type TNestedImportHandlers = {
+  // Resolves false when the folder is missing and cannot be created
+  resolveFolder: (path: string) => Promise<boolean>;
+  writeSecrets: (
+    path: string,
+    secrets: TParsedEnv
+  ) => Promise<{ isWritten: boolean; hasApproval: boolean }>;
+};
+
+const getParentPath = (path: string) => path.slice(0, path.lastIndexOf("/")) || "/";
+
+export const runNestedImport = async (
+  { folderPaths, secretsByPath }: TNestedJsonImport,
+  { resolveFolder, writeSecrets }: TNestedImportHandlers
+) => {
+  const outcomes = new Map<string, TPathOutcome>();
+  const isFolderReady = (path: string) =>
+    path === "/" || outcomes.get(path)?.status === "folder-ok";
+
+  // One at a time so parents always exist before their children
+  // eslint-disable-next-line no-restricted-syntax
+  for (const path of folderPaths) {
+    if (!isFolderReady(getParentPath(path))) {
+      outcomes.set(path, { status: "skipped" });
+    } else {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const isReady = await resolveFolder(path);
+        outcomes.set(
+          path,
+          isReady
+            ? { status: "folder-ok" }
+            : { status: "skipped", reason: "no permission to create this folder" }
+        );
+      } catch {
+        outcomes.set(path, { status: "failed", reason: "folder could not be created" });
+      }
+    }
+  }
+
+  const writablePaths = Object.entries(secretsByPath).filter(([path]) => isFolderReady(path));
+  await Promise.all(
+    writablePaths.map(async ([path, secrets]) => {
+      try {
+        const { isWritten, hasApproval } = await writeSecrets(path, secrets);
+        outcomes.set(
+          path,
+          isWritten
+            ? { status: "written", hasApproval }
+            : { status: "failed", reason: "secrets could not be saved", hasApproval }
+        );
+      } catch {
+        outcomes.set(path, { status: "failed", reason: "secrets could not be saved" });
+      }
+    })
+  );
+
+  // The result counts what the user asked to write: every path with secrets, plus folders
+  // that are empty in the JSON. Folders that only hold subfolders are left out, otherwise
+  // an import where every secret failed would still look like a partial success.
+  const parentPaths = new Set(folderPaths.map(getParentPath));
+  const results = [...outcomes]
+    .filter(([path]) => path in secretsByPath || !parentPaths.has(path))
+    .map(([, outcome]) => outcome);
+  const okCount = results.filter((o) => o.status === "written" || o.status === "folder-ok").length;
+  let state: "success" | "partial" | "failed" = "failed";
+  if (okCount === results.length) state = "success";
+  else if (okCount > 0) state = "partial";
+
+  return {
+    state,
+    hasApproval: [...outcomes.values()].some((o) => o.hasApproval),
+    // Only root causes carry a reason; descendants they blocked are left out
+    problems: [...outcomes]
+      .filter(([, o]) => o.reason)
+      .map(([path, o]) => ({ path, reason: o.reason! }))
+  };
+};
