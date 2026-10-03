@@ -111,6 +111,7 @@ import {
   Project,
   ProjectEnv,
   ProjectType,
+  ProjectVersion,
   SearchProjectSortBy
 } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
@@ -956,20 +957,18 @@ const AllProjectsForType = ({
                     const joinedBadge = (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Badge variant="info" asChild>
-                            <button
-                              type="button"
-                              aria-label={`Membership options for ${workspace.name}`}
-                              className="min-h-8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                            >
-                              <CheckIcon />
-                              Joined
-                              <ChevronDownIcon />
-                            </button>
-                          </Badge>
+                          <Button
+                            variant="info"
+                            size="xs"
+                            aria-label={`Membership options for ${workspace.name}`}
+                          >
+                            <CheckIcon />
+                            Joined
+                            <ChevronDownIcon />
+                          </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {workspace.isDirectMember ? (
+                          {workspace.isDirectMember && workspace.version !== ProjectVersion.V1 ? (
                             <DropdownMenuItem
                               onSelect={() =>
                                 handlePopUpOpen("leaveProjectConfirmation", workspace)
@@ -979,8 +978,9 @@ const AllProjectsForType = ({
                             </DropdownMenuItem>
                           ) : (
                             <div className="max-w-60 px-2 py-2 text-sm text-muted">
-                              You have access through a group. Ask a group admin to remove your
-                              access.
+                              {workspace.isDirectMember
+                                ? "Ask a project admin to upgrade this project before you can leave."
+                                : "You have access through a group. Ask a group admin to remove your access."}
                             </div>
                           )}
                         </DropdownMenuContent>
@@ -1138,7 +1138,11 @@ const AllProjectsForType = ({
           if (!leaveProject.isPending) handlePopUpToggle("leaveProjectConfirmation", isOpen);
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          onEscapeKeyDown={(event) => {
+            if (leaveProject.isPending) event.preventDefault();
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Leave {projectToLeave?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -1151,9 +1155,11 @@ const AllProjectsForType = ({
             onConfirm={handleLeaveProject}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={leaveProject.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="outline" isDisabled={leaveProject.isPending}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
-              variant="warning"
+              variant="danger"
               isPending={leaveProject.isPending}
               onClick={(event) => {
                 event.preventDefault();
