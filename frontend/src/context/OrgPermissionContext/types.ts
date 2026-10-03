@@ -145,7 +145,8 @@ export enum OrgPermissionAppConnectionActions {
 }
 
 export enum OrgPermissionAuditLogsActions {
-  Read = "read"
+  Read = "read",
+  Edit = "edit"
 }
 
 // TODO: remove once KMIP clients are fully migrated to KMIP servers (OrgKmipServerPermissionActions).

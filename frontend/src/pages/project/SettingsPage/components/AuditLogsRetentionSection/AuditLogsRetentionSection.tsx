@@ -17,10 +17,15 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
-import { useProject, useProjectPermission, useSubscription } from "@app/context";
+import {
+  ProjectPermissionAuditLogsActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission,
+  useSubscription
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const formSchema = z.object({
   auditLogsRetentionDays: z.coerce.number().min(0)
@@ -32,7 +37,7 @@ export const AuditLogsRetentionSection = () => {
   const { mutateAsync: updateAuditLogsRetention } = useUpdateWorkspaceAuditLogsRetention();
 
   const { currentProject } = useProject();
-  const { hasProjectRole } = useProjectPermission();
+  const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
@@ -86,7 +91,10 @@ export const AuditLogsRetentionSection = () => {
     return null;
   }
 
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const canEdit = permission.can(
+    ProjectPermissionAuditLogsActions.Edit,
+    ProjectPermissionSub.AuditLogs
+  );
   return (
     <>
       <form
@@ -115,7 +123,7 @@ export const AuditLogsRetentionSection = () => {
                     type="number"
                     min={1}
                     step={1}
-                    disabled={!isAdmin}
+                    disabled={!canEdit}
                     isError={Boolean(error)}
                   />
                   <FieldError>{error?.message}</FieldError>
@@ -129,7 +137,7 @@ export const AuditLogsRetentionSection = () => {
               size="sm"
               type="submit"
               isPending={isSubmitting}
-              isDisabled={!isAdmin || !isDirty}
+              isDisabled={!canEdit || !isDirty}
             >
               Save changes
             </Button>

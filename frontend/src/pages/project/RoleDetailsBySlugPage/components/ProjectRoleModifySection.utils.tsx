@@ -70,7 +70,8 @@ const GeneralPolicyActionSchema = z.object({
 });
 
 const AuditLogsPolicyActionSchema = z.object({
-  [ProjectPermissionAuditLogsActions.Read]: z.boolean().optional()
+  [ProjectPermissionAuditLogsActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAuditLogsActions.Edit]: z.boolean().optional()
 });
 
 const InsightsPolicyActionSchema = z.object({
@@ -2678,12 +2679,18 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.AuditLogs]: {
     title: "Audit Logs",
-    description: "View project activity and audit trail",
+    description: "View project activity and audit trail, and choose which events are recorded",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionAuditLogsActions.Read,
         description: "View audit logs and security events"
+      },
+      {
+        label: "Edit Settings",
+        value: ProjectPermissionAuditLogsActions.Edit,
+        description:
+          "Choose which audit log event classes the project records and how long logs are kept"
       }
     ]
   },
@@ -3588,7 +3595,7 @@ const projectManagerTemplate = (
   permissions: [
     {
       subject: ProjectPermissionSub.AuditLogs,
-      actions: Object.values(ProjectPermissionAuditLogsActions)
+      actions: [ProjectPermissionAuditLogsActions.Read]
     },
     {
       subject: ProjectPermissionSub.Groups,

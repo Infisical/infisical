@@ -39,7 +39,12 @@ const generalPermissionSchema = z
   .optional();
 
 const auditLogsPermissionSchema = z
-  .array(z.object({ [OrgPermissionAuditLogsActions.Read]: z.boolean().optional() }))
+  .array(
+    z.object({
+      [OrgPermissionAuditLogsActions.Read]: z.boolean().optional(),
+      [OrgPermissionAuditLogsActions.Edit]: z.boolean().optional()
+    })
+  )
   .optional();
 
 const billingPermissionSchema = z
@@ -617,12 +622,17 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
   },
   [OrgPermissionSubjects.AuditLogs]: {
     title: "Audit Logs",
-    description: "View organization activity and audit trail",
+    description: "View organization activity and audit trail, and choose which events are recorded",
     actions: [
       {
         value: OrgPermissionAuditLogsActions.Read,
         label: "Read",
         description: "View organization activity and audit events"
+      },
+      {
+        value: OrgPermissionAuditLogsActions.Edit,
+        label: "Edit Settings",
+        description: "Choose which audit log event classes the organization records"
       }
     ]
   },

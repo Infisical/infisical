@@ -1,10 +1,27 @@
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import {
+  agentVaultProjectAdminPermissions,
+  agentVaultProjectMemberPermissions,
+  projectAdminPermissions,
+  projectMemberPermissions,
+  projectViewerPermission
+} from "../permission/default-roles";
+import {
+  orgAdminPermissions,
+  orgMemberPermissions,
+  OrgPermissionActions,
+  OrgPermissionAuditLogsActions,
+  OrgPermissionSubjects
+} from "../permission/org-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
+  ProjectPermissionSub
+} from "../permission/project-permission";
 import { AuditLogEventClass } from "./audit-log-event-classes";
 import { auditLogSettingsServiceFactory, isAuditLogEventEnabled } from "./audit-log-settings-service";
 import { TEffectiveAuditLogSettings } from "./audit-log-settings-types";
@@ -69,7 +86,7 @@ const orgActor = {
   parentOrgId: "org-1"
 } as never;
 
-const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true, isAdmin = true } = {}) => {
+const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true, canEditAuditLogs = true } = {}) => {
   const tx = { raw: vi.fn(async () => undefined) };
   const orgDAL = {
     findById: vi.fn(async (id: string) => ({ id, shouldUseNewPrivilegeSystem }))
@@ -93,18 +110,22 @@ const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true
   const permissionService = {
     getOrgPermission: vi.fn(async () => ({
       permission: createMongoAbility([
-        { action: [OrgPermissionActions.Read, OrgPermissionActions.Edit], subject: OrgPermissionSubjects.Settings }
-      ]),
-      hasRole: (role: string) => isAdmin && role === "admin"
+        { action: [OrgPermissionActions.Read, OrgPermissionActions.Edit], subject: OrgPermissionSubjects.Settings },
+        ...(canEditAuditLogs
+          ? [{ action: OrgPermissionAuditLogsActions.Edit, subject: OrgPermissionSubjects.AuditLogs }]
+          : [])
+      ])
     })),
     getProjectPermission: vi.fn(async () => ({
       permission: createMongoAbility([
         {
           action: [ProjectPermissionActions.Read, ProjectPermissionActions.Edit],
           subject: ProjectPermissionSub.Settings
-        }
-      ]),
-      hasRole: (role: string) => isAdmin && role === "admin"
+        },
+        ...(canEditAuditLogs
+          ? [{ action: ProjectPermissionAuditLogsActions.Edit, subject: ProjectPermissionSub.AuditLogs }]
+          : [])
+      ])
     }))
   };
 
@@ -166,17 +187,17 @@ describe("updateOrgSettings", () => {
     vi.clearAllMocks();
   });
 
-  test("refuses a non-admin even with edit on settings", async () => {
-    const { service, auditLogSettingsDAL } = createHarness({ isAdmin: false });
+  test("refuses an actor without edit on audit logs, even with edit on settings", async () => {
+    const { service, auditLogSettingsDAL } = createHarness({ canEditAuditLogs: false });
 
     await expect(service.updateOrgSettings({ actor: orgActor, eventClasses: fullEventClasses })).rejects.toThrow(
-      "Only organization admins can change which audit log event classes are recorded"
+      ForbiddenError
     );
     expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
   });
 
-  test("still lets a non-admin with read on settings read them", async () => {
-    const { service } = createHarness({ isAdmin: false });
+  test("still lets an actor without edit on audit logs read them", async () => {
+    const { service } = createHarness({ canEditAuditLogs: false });
 
     const result = await service.getOrgSettings({ actor: orgActor });
 
@@ -328,20 +349,41 @@ describe("updateProjectSettings", () => {
     projectId: "p1"
   };
 
-  test("refuses a non-admin even with edit on settings", async () => {
-    const { service, auditLogSettingsDAL } = createHarness({ isAdmin: false });
+  test("refuses an actor without edit on audit logs, even with edit on settings", async () => {
+    const { service, auditLogSettingsDAL } = createHarness({ canEditAuditLogs: false });
 
     await expect(service.updateProjectSettings({ ...projectActor, eventClasses: fullEventClasses })).rejects.toThrow(
-      "Only project admins can change which audit log event classes are recorded"
+      ForbiddenError
     );
     expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
   });
 
-  test("lets a project admin save", async () => {
+  test("lets an actor with edit on audit logs save", async () => {
     const { service, auditLogSettingsDAL } = createHarness();
 
     await service.updateProjectSettings({ ...projectActor, eventClasses: fullEventClasses });
 
     expect(auditLogSettingsDAL.delete).toHaveBeenCalledWith({ orgId: "org-1", projectId: "p1" }, expect.anything());
+  });
+});
+
+describe("built-in roles", () => {
+  test.each([
+    ["org admin", orgAdminPermissions, true],
+    ["org member", orgMemberPermissions, false]
+  ])("%s can edit org audit log settings: %s", (_, rules, expected) => {
+    const ability = createMongoAbility(rules as never);
+    expect(ability.can(OrgPermissionAuditLogsActions.Edit, OrgPermissionSubjects.AuditLogs)).toBe(expected);
+  });
+
+  test.each([
+    ["project admin", projectAdminPermissions, true],
+    ["Agent Vault admin", agentVaultProjectAdminPermissions, true],
+    ["project member", projectMemberPermissions, false],
+    ["project viewer", projectViewerPermission, false],
+    ["Agent Vault member", agentVaultProjectMemberPermissions, false]
+  ])("%s can edit project audit log settings: %s", (_, rules, expected) => {
+    const ability = createMongoAbility(rules as never);
+    expect(ability.can(ProjectPermissionAuditLogsActions.Edit, ProjectPermissionSub.AuditLogs)).toBe(expected);
   });
 });

@@ -41,7 +41,8 @@ export enum OrgPermissionAppConnectionActions {
 }
 
 export enum OrgPermissionAuditLogsActions {
-  Read = "read"
+  Read = "read",
+  Edit = "edit"
 }
 
 // TODO: remove once KMIP clients are fully migrated to KMIP servers (OrgPermissionKmipServerActions).
@@ -541,7 +542,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
-  can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
+  can([OrgPermissionAuditLogsActions.Read, OrgPermissionAuditLogsActions.Edit], OrgPermissionSubjects.AuditLogs);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);

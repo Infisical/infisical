@@ -1,17 +1,20 @@
 import { AuditLogEventClassesForm } from "@app/components/auditLogSettings";
 import {
   ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
   ProjectPermissionSub,
   useProject,
   useProjectPermission
 } from "@app/context";
 import { useGetProjectAuditLogSettings, useUpdateProjectAuditLogSettings } from "@app/hooks/api";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const AuditLogEventClassesSectionContent = () => {
   const { currentProject } = useProject();
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
+  const canEdit = permission.can(
+    ProjectPermissionAuditLogsActions.Edit,
+    ProjectPermissionSub.AuditLogs
+  );
 
   const { data: settings, isPending, isError } = useGetProjectAuditLogSettings(currentProject.id);
   const { mutateAsync: updateSettings, isPending: isSaving } = useUpdateProjectAuditLogSettings();
@@ -26,8 +29,8 @@ const AuditLogEventClassesSectionContent = () => {
       isPending={isPending}
       isError={isError}
       isSaving={isSaving}
-      canEdit={isAdmin}
-      readOnlyMessage="Only project admins can change these settings."
+      canEdit={canEdit}
+      readOnlyMessage="You need the Edit Settings permission on Audit Logs to change these settings."
       variant="project"
       onSave={(eventClasses) => updateSettings({ projectId: currentProject.id, eventClasses })}
     />

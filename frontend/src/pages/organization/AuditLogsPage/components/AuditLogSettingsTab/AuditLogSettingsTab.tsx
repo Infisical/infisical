@@ -1,11 +1,11 @@
 import { AuditLogEventClassesForm } from "@app/components/auditLogSettings";
 import {
   OrgPermissionActions,
+  OrgPermissionAuditLogsActions,
   OrgPermissionSubjects,
   useOrganization,
   useOrgPermission
 } from "@app/context";
-import { OrgMembershipRole } from "@app/helpers/roles";
 import { withPermission } from "@app/hoc";
 import { useScopeVariant } from "@app/hooks";
 import { useGetOrgAuditLogSettings, useUpdateOrgAuditLogSettings } from "@app/hooks/api";
@@ -13,9 +13,12 @@ import { useGetOrgAuditLogSettings, useUpdateOrgAuditLogSettings } from "@app/ho
 export const AuditLogSettingsTab = withPermission(
   () => {
     const { currentOrg } = useOrganization();
-    const { hasOrgRole } = useOrgPermission();
+    const { permission } = useOrgPermission();
     const scopeVariant = useScopeVariant();
-    const canEdit = hasOrgRole(OrgMembershipRole.Admin);
+    const canEdit = permission.can(
+      OrgPermissionAuditLogsActions.Edit,
+      OrgPermissionSubjects.AuditLogs
+    );
 
     const { data: settings, isPending, isError } = useGetOrgAuditLogSettings(currentOrg.id);
     const { mutateAsync: updateSettings, isPending: isSaving } = useUpdateOrgAuditLogSettings(
@@ -31,7 +34,7 @@ export const AuditLogSettingsTab = withPermission(
         isError={isError}
         isSaving={isSaving}
         canEdit={canEdit}
-        readOnlyMessage={`Only ${scopeVariant === "sub-org" ? "sub-organization" : "organization"} admins can change these settings.`}
+        readOnlyMessage="You need the Edit Settings permission on Audit Logs to change these settings."
         variant={scopeVariant}
         onSave={(eventClasses) => updateSettings({ eventClasses })}
       />
