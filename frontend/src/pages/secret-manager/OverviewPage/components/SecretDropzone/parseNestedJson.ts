@@ -119,9 +119,12 @@ export const buildFolderTree = ({ folderPaths, secretsByPath }: TNestedJsonImpor
 
 // "created" and "found" are folders that are ready to hold secrets; a found folder changes
 // nothing, so it is neutral in the result. "skipped" is a folder that could not be used,
-// or sits under one that could not.
+// or sits under one that could not. "partial" is a folder where some secret batches were
+// saved and others were not.
+type TWriteStatus = "written" | "partial" | "failed";
+
 type TPathOutcome = {
-  status: "written" | "created" | "found" | "skipped" | "failed";
+  status: TWriteStatus | "created" | "found" | "skipped";
   reason?: string;
   hasApproval?: boolean;
 };
@@ -132,7 +135,7 @@ type TNestedImportHandlers = {
   writeSecrets: (
     path: string,
     secrets: TParsedEnv
-  ) => Promise<{ isWritten: boolean; hasApproval: boolean }>;
+  ) => Promise<{ status: TWriteStatus; hasApproval: boolean }>;
 };
 
 const getParentPath = (path: string) => path.slice(0, path.lastIndexOf("/")) || "/";
@@ -170,13 +173,13 @@ export const runNestedImport = async (
   await Promise.all(
     writablePaths.map(async ([path, secrets]) => {
       try {
-        const { isWritten, hasApproval } = await writeSecrets(path, secrets);
-        outcomes.set(
-          path,
-          isWritten
-            ? { status: "written", hasApproval }
-            : { status: "failed", reason: "secrets could not be saved", hasApproval }
-        );
+        const { status, hasApproval } = await writeSecrets(path, secrets);
+        const reasons = {
+          written: undefined,
+          partial: "some secrets could not be saved",
+          failed: "secrets could not be saved"
+        };
+        outcomes.set(path, { status, reason: reasons[status], hasApproval });
       } catch {
         outcomes.set(path, { status: "failed", reason: "secrets could not be saved" });
       }
@@ -192,9 +195,10 @@ export const runNestedImport = async (
     .map(([, outcome]) => outcome)
     .filter((o) => o.status !== "found");
   const okCount = results.filter((o) => o.status === "written" || o.status === "created").length;
+  const partialCount = results.filter((o) => o.status === "partial").length;
   let state: "success" | "partial" | "failed" = "failed";
   if (okCount === results.length) state = "success";
-  else if (okCount > 0) state = "partial";
+  else if (okCount > 0 || partialCount > 0) state = "partial";
 
   return {
     state,
