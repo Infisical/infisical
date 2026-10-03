@@ -18,10 +18,9 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
-import { re2Validator } from "@app/lib/zod";
 import { JobState } from "@app/queue/queue-service";
 import { projectCreationLimit, readLimit, requestAccessLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { projectSlugSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -405,7 +404,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        slug: slugSchema({ max: 64 }).describe("The slug of the project to get.")
+        slug: projectSlugSchema.describe("The slug of the project to get.")
       }),
       response: {
         200: projectWithEnv
@@ -525,16 +524,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .boolean()
           .optional()
           .describe(PROJECTS.UPDATE.enforceEncryptedSecretManagerSecretMetadata),
-        slug: z
-          .string()
-          .trim()
-          .max(64, { message: "Slug must be 64 characters or fewer" })
-          .refine(re2Validator(/^[a-z0-9]+(?:[_-][a-z0-9]+)*$/), {
-            message:
-              "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
-          })
-          .optional()
-          .describe(PROJECTS.UPDATE.slug),
+        slug: projectSlugSchema.optional().describe(PROJECTS.UPDATE.slug),
         secretSharing: z.boolean().optional().describe(PROJECTS.UPDATE.secretSharing),
         showSnapshotsLegacy: z.boolean().optional().describe(PROJECTS.UPDATE.showSnapshotsLegacy),
         secretDetectionIgnoreValues: z
