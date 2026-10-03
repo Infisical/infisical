@@ -97,7 +97,7 @@ export const AuditLogEventClassesForm = ({
       await onSave(eventClasses);
       createNotification({ text: "Audit log settings saved", type: "success" });
     } catch {
-      createNotification({ text: "Failed to save audit log settings", type: "error" });
+      // MutationCache reports request errors globally.
     }
   };
 
