@@ -58,9 +58,14 @@ export type THpIloClient = {
 // client to retry it; any other error may hide a password change that was applied
 export class HpIloAccountUnchangedError extends Error {}
 
+export type THpIloClientOptions = {
+  sslRejectUnauthorized: boolean;
+};
+
 export type THpIloClientFactory = (
   config: TSshConnectionConfig,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  options: THpIloClientOptions
 ) => THpIloClient;
 
 // iLO 5/6 present the prompt as "hpiLO->", iLO 7 as "hpeiLO->"; match the common suffix
@@ -223,7 +228,7 @@ type TRedfishErrorResponse = {
   error?: { "@Message.ExtendedInfo"?: { MessageId?: string }[] };
 };
 
-export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Service) => {
+export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Service, options) => {
   const { host } = config.credentials;
   const urlHost = net.isIPv6(host) ? `[${host}]` : host;
   const baseUrl = `https://${urlHost}:${HP_ILO_REDFISH_PORT}`;
@@ -231,15 +236,22 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
   // Through the gateway the socket points at localhost, so the certificate has to be checked against the iLO host
   // explicitly; SNI is left unset for IP hosts since TLS does not allow an IP address as the server name
   const tlsOptions = {
-    rejectUnauthorized: true,
+    rejectUnauthorized: options.sslRejectUnauthorized,
     servername: net.isIP(host) ? undefined : host,
     checkServerIdentity: (_: string, cert: tls.PeerCertificate) => tls.checkServerIdentity(host, cert)
   };
 
   const sendRequest = async <T = unknown>(
     path: string,
-    requestConfig: Omit<AxiosRequestConfig, "url">
+    baseRequestConfig: Omit<AxiosRequestConfig, "url">
   ): Promise<AxiosResponse<T>> => {
+    // iLO drops idle keep-alive connections almost immediately, while safeRequest's cached agents keep sockets open
+    // for reuse; a reused socket then fails with "socket hang up", so every request asks for its connection to close
+    const requestConfig = {
+      ...baseRequestConfig,
+      headers: { ...baseRequestConfig.headers, Connection: "close" }
+    };
+
     if (config.gatewayId) {
       await blockLocalAndPrivateIpAddresses(baseUrl, true);
 
@@ -491,8 +503,8 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
 // sync with the iLO.
 export const hpIloFallbackClientFactory =
   (...clientFactories: THpIloClientFactory[]): THpIloClientFactory =>
-  (config, gatewayV2Service) => {
-    const clients = clientFactories.map((clientFactory) => clientFactory(config, gatewayV2Service));
+  (config, gatewayV2Service, options) => {
+    const clients = clientFactories.map((clientFactory) => clientFactory(config, gatewayV2Service, options));
 
     const enabledChecks: Promise<boolean>[] = [];
     const isClientEnabled = (index: number) => {
@@ -554,7 +566,12 @@ export const hpIloRotationFactory: TRotationFactory<
   THpIloRotationInput["temporaryParameters"]
 > = (secretRotation, appConnectionDAL, kmsService, gatewayV2Service, gatewayPoolService) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
-  const { username, passwordRequirements, rotationMethod = HpIloRotationMethod.LoginAsRoot } = parameters;
+  const {
+    username,
+    passwordRequirements,
+    rotationMethod = HpIloRotationMethod.LoginAsRoot,
+    sslRejectUnauthorized = true
+  } = parameters;
 
   const getIloClient = async (
     clientFactory: THpIloClientFactory = hpIloFallbackClientFactory(hpIloApiClientFactory, hpIloSshClientFactory)

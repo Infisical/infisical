@@ -3,7 +3,9 @@ import { Controller, useFormContext } from "react-hook-form";
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
+  Checkbox,
   Field,
+  FieldContent,
   FieldError,
   FieldFeedback,
   Input,
@@ -173,6 +175,30 @@ export const HpIloRotationParametersFields = () => {
           />
         )}
       </div>
+      <Controller
+        name="parameters.sslRejectUnauthorized"
+        control={control}
+        defaultValue
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <Field orientation="horizontal" data-invalid={Boolean(error)}>
+            <Checkbox
+              id="hp-ilo-ssl-reject-unauthorized"
+              isChecked={value ?? true}
+              onCheckedChange={(checked) => onChange(checked === true)}
+            />
+            <FieldContent>
+              <FieldLabelWithTooltip
+                htmlFor="hp-ilo-ssl-reject-unauthorized"
+                tooltip="Applies to Redfish API calls only; SSH is not affected. When enabled, an iLO whose SSL certificate can't be verified is rotated over SSH instead. Disable it only for iLOs with self-signed certificates on a network you trust, since credentials are then sent without verifying the iLO's identity."
+                tooltipClassName="max-w-sm"
+              >
+                Verify SSL certificate for Redfish API calls
+              </FieldLabelWithTooltip>
+            </FieldContent>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
+        )}
+      />
       <PasswordRequirementsFields defaultRequirements={HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS} />
     </>
   );

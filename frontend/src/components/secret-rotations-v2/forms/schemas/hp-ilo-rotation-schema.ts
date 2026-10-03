@@ -12,6 +12,7 @@ export const HpIloRotationSchema = z
     parameters: z.object({
       username: z.string().trim().min(1, "Username is required"),
       rotationMethod: z.nativeEnum(HpIloRotationMethod).optional(),
+      sslRejectUnauthorized: z.boolean().optional(),
       passwordRequirements: PasswordRequirementsSchema.optional()
     }),
     secretsMapping: z.object({

@@ -34,6 +34,7 @@ describe("isIloPrompt", () => {
 describe("hpIloFallbackClientFactory", () => {
   const config = { credentials: { host: "ilo.example.com", port: 22 } } as TSshConnectionConfig;
   const gatewayV2Service = { getPlatformConnectionDetailsByGatewayId: vi.fn() };
+  const options = { sslRejectUnauthorized: true };
 
   const createMockClient = (enabled = true) => ({
     isEnabled: vi.fn<THpIloClient["isEnabled"]>(async () => enabled),
@@ -51,7 +52,7 @@ describe("hpIloFallbackClientFactory", () => {
           () =>
             client
       )
-    )(config, gatewayV2Service);
+    )(config, gatewayV2Service, options);
 
   const operations = [
     {
@@ -71,14 +72,14 @@ describe("hpIloFallbackClientFactory", () => {
     }
   ];
 
-  test("passes the connection config and gateway service to every factory", () => {
+  test("passes the connection config, gateway service and options to every factory", () => {
     const primaryFactory = vi.fn<THpIloClientFactory>(() => createMockClient());
     const fallbackFactory = vi.fn<THpIloClientFactory>(() => createMockClient());
 
-    hpIloFallbackClientFactory(primaryFactory, fallbackFactory)(config, gatewayV2Service);
+    hpIloFallbackClientFactory(primaryFactory, fallbackFactory)(config, gatewayV2Service, options);
 
-    expect(primaryFactory).toHaveBeenCalledWith(config, gatewayV2Service);
-    expect(fallbackFactory).toHaveBeenCalledWith(config, gatewayV2Service);
+    expect(primaryFactory).toHaveBeenCalledWith(config, gatewayV2Service, options);
+    expect(fallbackFactory).toHaveBeenCalledWith(config, gatewayV2Service, options);
   });
 
   describe.each(operations)("$method", ({ method, run, args }) => {
