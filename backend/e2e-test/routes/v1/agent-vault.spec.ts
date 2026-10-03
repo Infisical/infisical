@@ -305,13 +305,13 @@ describe("Agent Vault V1 Router", async () => {
 
       const res = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`);
       const { members, totalCount } = JSON.parse(res.payload) as {
-        members: { actor: { type: string; id: string } }[];
+        members: { type: string; id: string }[];
         totalCount: number;
       };
 
       expect(totalCount).toBe(1);
       expect(members).toHaveLength(1);
-      expect(members[0].actor).toMatchObject({ type: "user", id: seedData1.id });
+      expect(members[0]).toMatchObject({ type: "user", id: seedData1.id });
 
       // The detail response no longer carries a members array, so there is one source for the list.
       const detail = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
@@ -1532,13 +1532,15 @@ describe("Agent Vault V1 Router", async () => {
   describe("product membership", async () => {
     const membersUrl = "/api/v1/agent-vault/members";
 
-    type TListedMember = {
+    type TListedMember = Record<string, unknown> & {
+      type: string;
       id: string;
       role: string;
       isActive: boolean;
-      createdAt: string;
-      actor: Record<string, unknown> & { type: string; id: string };
+      addedAt: string;
     };
+
+    const keyOf = (member: TListedMember) => `${member.type}:${member.id}`;
 
     const listMembers = async (query = "") => {
       const res = await inject("GET", `${membersUrl}${query ? `?${query}` : ""}`);
@@ -1561,22 +1563,26 @@ describe("Agent Vault V1 Router", async () => {
         const { members, totalCount } = await listMembers();
         expect(totalCount).toBe(members.length);
 
-        const byType = Object.fromEntries(members.map((member) => [member.actor.type, member]));
+        const byType = Object.fromEntries(members.map((member) => [member.type, member]));
         expect(Object.keys(byType).sort()).toEqual(["group", "machineIdentity", "user"]);
 
-        expect(byType.user.actor).toMatchObject({ id: seedData1.id, username: expect.any(String) });
-        expect(byType.user.actor.isOrgMembershipPending).toBe(false);
+        expect(byType.user).toMatchObject({ id: seedData1.id, username: expect.any(String) });
+        expect(byType.user.isOrgMembershipPending).toBe(false);
         expect(byType.user.role).toBe("admin");
         expect(byType.user.isActive).toBe(true);
 
-        expect(byType.group.actor).toMatchObject({ id: group.id, name: "av-merged-list-group" });
+        expect(byType.group).toMatchObject({ id: group.id, name: "av-merged-list-group" });
 
         // An organization-owned identity can be detached; one Agent Vault created can only be deleted,
         // and the table needs to know which before it offers a button.
-        expect(byType.machineIdentity.actor).toMatchObject({ id: identity.id, isManagedByAgentVault: false });
-        expect(byType.machineIdentity.actor.orgId).toBe(seedData1.organization.id);
+        expect(byType.machineIdentity).toMatchObject({ id: identity.id, isManagedByAgentVault: false });
+        expect(byType.machineIdentity.orgId).toBe(seedData1.organization.id);
 
+        // The actor's id is the only id on a member, since it is the one every write takes.
         members.forEach((member) => {
+          expect(member.addedAt).toEqual(expect.any(String));
+          expect(member).not.toHaveProperty("actor");
+          expect(member).not.toHaveProperty("createdAt");
           expect(member).not.toHaveProperty("membershipId");
           expect(member).not.toHaveProperty("userId");
           expect(member).not.toHaveProperty("identityId");
@@ -1604,7 +1610,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(all.totalCount).toBeGreaterThanOrEqual(3);
 
         const identities = await listMembers("actorType=machineIdentity");
-        expect(identities.members.every((member) => member.actor.type === "machineIdentity")).toBe(true);
+        expect(identities.members.every((member) => member.type === "machineIdentity")).toBe(true);
         expect(identities.totalCount).toBe(identities.members.length);
         expect(identities.totalCount).toBeLessThan(all.totalCount);
 
@@ -1612,11 +1618,11 @@ describe("Agent Vault V1 Router", async () => {
         // not serve.
         const searched = await listMembers("search=av-paging-group");
         expect(searched.totalCount).toBe(1);
-        expect(searched.members[0].actor.id).toBe(group.id);
+        expect(searched.members[0].id).toBe(group.id);
 
         // A user matches on their full name even though no column holds it.
         const byFullName = await listMembers(`search=${encodeURIComponent(seedData1.email)}`);
-        expect(byFullName.members.some((member) => member.actor.id === seedData1.id)).toBe(true);
+        expect(byFullName.members.some((member) => member.id === seedData1.id)).toBe(true);
 
         // Walking the pages one row at a time reaches every member exactly once, which is what the
         // membership-id tiebreak buys on rows that share a name or a createdAt.
@@ -1626,10 +1632,10 @@ describe("Agent Vault V1 Router", async () => {
           const page = await listMembers(`limit=1&offset=${offset}`);
           expect(page.members).toHaveLength(1);
           expect(page.totalCount).toBe(all.totalCount);
-          walked.push(page.members[0].id);
+          walked.push(keyOf(page.members[0]));
         }
         expect(new Set(walked).size).toBe(all.totalCount);
-        expect(walked.sort()).toEqual(all.members.map((member) => member.id).sort());
+        expect(walked.sort()).toEqual(all.members.map(keyOf).sort());
 
         expect((await inject("GET", `${membersUrl}?limit=0`)).statusCode).toBe(422);
         expect((await inject("GET", `${membersUrl}?limit=101`)).statusCode).toBe(422);
@@ -1646,24 +1652,30 @@ describe("Agent Vault V1 Router", async () => {
 
       const added = await inject("POST", membersUrl, { machineIdentityIds: [identity.id], role: "member" });
       expect(added.statusCode).toBe(200);
-      expect(JSON.parse(added.payload).members[0].actor).toMatchObject({
+      expect(JSON.parse(added.payload).members[0]).toMatchObject({
         type: "machineIdentity",
-        id: identity.id
+        id: identity.id,
+        role: "member",
+        addedAt: expect.any(String)
       });
 
       const listed = await listMembers("actorType=machineIdentity");
-      const row = listed.members.find((member) => member.actor.id === identity.id);
+      const row = listed.members.find((member) => member.id === identity.id);
       expect(row?.role).toBe("member");
-      expect(row?.actor.name).toBeTruthy();
+      expect(row?.name).toBeTruthy();
 
       const promoted = await inject("PATCH", `${membersUrl}/machine-identities/${identity.id}`, { role: "admin" });
       expect(promoted.statusCode).toBe(200);
-      expect(JSON.parse(promoted.payload).member.role).toBe("admin");
+      expect(JSON.parse(promoted.payload).member).toMatchObject({
+        type: "machineIdentity",
+        id: identity.id,
+        role: "admin"
+      });
 
       const removed = await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
       expect(removed.statusCode).toBe(200);
       expect(JSON.parse(removed.payload)).toMatchObject({
-        members: [{ actor: { type: "machineIdentity", id: identity.id } }],
+        members: [{ type: "machineIdentity", id: identity.id }],
         skipped: []
       });
 
@@ -1677,7 +1689,7 @@ describe("Agent Vault V1 Router", async () => {
       });
 
       const after = await listMembers("actorType=machineIdentity");
-      expect(after.members.some((member) => member.actor.id === identity.id)).toBe(false);
+      expect(after.members.some((member) => member.id === identity.id)).toBe(false);
 
       await deleteOrgIdentity(identity.id);
     });
@@ -1883,7 +1895,7 @@ describe("Agent Vault V1 Router", async () => {
 
         // The other actor named in the same call still has access.
         const listed = await listMembers("actorType=machineIdentity");
-        expect(listed.members.some((member) => member.actor.id === identity.id)).toBe(true);
+        expect(listed.members.some((member) => member.id === identity.id)).toBe(true);
       } finally {
         await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
         await deleteOrgIdentity(identity.id);
@@ -1973,12 +1985,12 @@ describe("Agent Vault V1 Router", async () => {
         expect(added.statusCode).toBe(200);
 
         const { members, skipped } = JSON.parse(added.payload) as {
-          members: { actor: { type: string; id: string } }[];
+          members: { type: string; id: string }[];
           skipped: { type: string; id: string }[];
         };
 
         expect(members).toHaveLength(1);
-        expect(members[0].actor).toMatchObject({ type: "machineIdentity", id: identity.id });
+        expect(members[0]).toMatchObject({ type: "machineIdentity", id: identity.id });
         expect(skipped.map((el) => el.id).sort()).toEqual([group.id, seedData1.id].sort());
       } finally {
         await group.cleanup();
@@ -3329,22 +3341,22 @@ describe("Agent Vault V1 Router", async () => {
         const res = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`);
         expect(res.statusCode).toBe(200);
         const { members } = JSON.parse(res.payload) as {
-          members: {
-            id: string;
-            actor: { type: string; id: string; name?: string; username?: string };
-          }[];
+          members: { type: string; id: string; name?: string; username?: string; grantedAt: string }[];
         };
 
         // The creator's own grant is already there, so all three arms are on one response.
-        const byType = Object.fromEntries(members.map((member) => [member.actor.type, member]));
+        const byType = Object.fromEntries(members.map((member) => [member.type, member]));
         expect(Object.keys(byType).sort()).toEqual(["group", "machineIdentity", "user"]);
 
-        expect(byType.group.actor).toMatchObject({ type: "group", id: group.id });
-        expect(byType.machineIdentity.actor).toMatchObject({ type: "machineIdentity", id: identity.id });
-        expect(byType.user.actor).toMatchObject({ type: "user", id: seedData1.id });
-        expect(byType.user.actor.username).toBeTruthy();
+        expect(byType.group).toMatchObject({ type: "group", id: group.id, name: "av-arms-group" });
+        expect(byType.machineIdentity).toMatchObject({ type: "machineIdentity", id: identity.id });
+        expect(byType.user).toMatchObject({ type: "user", id: seedData1.id });
+        expect(byType.user.username).toBeTruthy();
 
         members.forEach((member) => {
+          expect(member.grantedAt).toEqual(expect.any(String));
+          expect(member).not.toHaveProperty("actor");
+          expect(member).not.toHaveProperty("createdAt");
           expect(member).not.toHaveProperty("accessBundleId");
           expect(member).not.toHaveProperty("userId");
           expect(member).not.toHaveProperty("identityId");
@@ -3714,13 +3726,13 @@ describe("Agent Vault V1 Router", async () => {
         const res = await inject("GET", `${availableUrl}${query ? `?${query}` : ""}`);
         expect(res.statusCode).toBe(200);
         return JSON.parse(res.payload) as {
-          members: { actor: { type: string; id: string } }[];
+          members: { type: string; id: string }[];
           totalCount: number;
         };
       };
 
       try {
-        const idsOf = (members: { actor: { id: string } }[]) => members.map((member) => member.actor.id);
+        const idsOf = (members: { id: string }[]) => members.map((member) => member.id);
 
         // Candidates are the product's own members, and the bundle is new, so nobody holds it yet.
         const before = await listAvailable("limit=100");
@@ -3741,11 +3753,7 @@ describe("Agent Vault V1 Router", async () => {
           `/api/v1/agent-vault/access-bundles/${other.id}/members/available?limit=100`
         );
         expect(otherRes.statusCode).toBe(200);
-        expect(
-          (JSON.parse(otherRes.payload) as { members: { actor: { id: string } }[] }).members.map(
-            (member) => member.actor.id
-          )
-        ).toContain(group.id);
+        expect(idsOf((JSON.parse(otherRes.payload) as { members: { id: string }[] }).members)).toContain(group.id);
 
         expect(
           (
@@ -3830,7 +3838,7 @@ describe("Agent Vault V1 Router", async () => {
         const correct = await revoke(held.id, { groupIds: [group.id] });
         expect(correct.statusCode).toBe(200);
         expect(JSON.parse(correct.payload)).toMatchObject({
-          members: [{ actor: { type: "group", id: group.id } }],
+          members: [{ type: "group", id: group.id, accessBundleId: held.id, grantedAt: expect.any(String) }],
           skipped: []
         });
         expect(await stillGranted()).toBe(0);

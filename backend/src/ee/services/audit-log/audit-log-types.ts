@@ -6494,7 +6494,6 @@ interface AgentVaultAccessBundleMemberAddEvent {
   metadata: {
     accessBundleId: string;
     accessBundleName: string;
-    memberId: string;
     userId?: string;
     machineIdentityId?: string;
     groupId?: string;
@@ -6506,7 +6505,6 @@ interface AgentVaultAccessBundleMemberRemoveEvent {
   metadata: {
     accessBundleId: string;
     accessBundleName: string;
-    memberId: string;
     userId?: string;
     machineIdentityId?: string;
     groupId?: string;

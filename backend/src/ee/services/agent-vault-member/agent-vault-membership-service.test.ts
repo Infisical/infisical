@@ -131,7 +131,7 @@ describe("agentVaultMembership guards", () => {
       ctx
     });
 
-    expect(members[0].id).toBe("mem-new");
+    expect(members[0]).toMatchObject({ type: AgentVaultMemberType.MachineIdentity, id: IDENTITY_ID });
   });
 
   test("accepts an identity created inside Agent Vault itself", async () => {
@@ -144,7 +144,7 @@ describe("agentVaultMembership guards", () => {
       ctx
     });
 
-    expect(members[0].id).toBe("mem-new");
+    expect(members[0]).toMatchObject({ type: AgentVaultMemberType.MachineIdentity, id: IDENTITY_ID });
   });
 
   // Removing only the membership would leave the identity live but off every screen: this product's tab
@@ -186,7 +186,7 @@ describe("agentVaultMembership guards", () => {
       ctx
     });
 
-    expect(members[0].id).toBe("mem-new");
+    expect(members[0]).toMatchObject({ type: AgentVaultMemberType.Group, id: GROUP_ID });
     expect(deps.membershipDAL.find).toHaveBeenCalledWith(
       expect.objectContaining({ scope: AccessScope.Organization, $in: { actorGroupId: [GROUP_ID] } })
     );

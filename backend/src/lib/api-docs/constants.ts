@@ -4332,8 +4332,7 @@ export const AGENT_VAULT = {
     updatedAt: "When the variable was last changed."
   },
   MEMBER: {
-    memberId: "The ID of the access bundle membership.",
-    createdAt: "When the access bundle was granted.",
+    grantedAt: "When the access bundle was granted.",
     userId: "The ID of the user whose Agent Vault membership this is.",
     identityId: "The ID of the machine identity whose Agent Vault membership this is.",
     groupId: "The ID of the group whose Agent Vault membership this is.",
@@ -4364,6 +4363,7 @@ export const AGENT_VAULT = {
   MEMBERSHIP: {
     role: "The Agent Vault role: admin or member.",
     isActive: "Whether the member can currently reach Agent Vault.",
+    addedAt: "When the member was added to Agent Vault.",
     userIds: "The IDs of the users to act on.",
     machineIdentityIds: "The IDs of the machine identities to act on.",
     groupIds: "The IDs of the groups to act on.",

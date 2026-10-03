@@ -188,9 +188,10 @@ export const useRevokeAgentVaultAccessBundleMembers = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMembersDTO) => {
-      const { data } = await apiRequest.post<
-        TAgentVaultMemberWriteResult<{ id: string; actor: TAgentVaultActorRef }>
-      >(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members/revoke`, params);
+      const { data } = await apiRequest.post<TAgentVaultMemberWriteResult<TAgentVaultActorRef>>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/members/revoke`,
+        params
+      );
       return data;
     },
     onSuccess: (_, { accessBundleId }) => {

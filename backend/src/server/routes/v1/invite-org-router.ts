@@ -229,7 +229,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
               projectId: agentVaultProjectId,
               event: {
                 type: EventType.AGENT_VAULT_MEMBER_ADD,
-                metadata: { userId: member.actor.id, userName: member.actorName, role: member.role }
+                metadata: { userId: member.id, userName: member.actorName, role: member.role }
               }
             });
             emitAgentVaultTelemetry(server.services.telemetry, req, {
