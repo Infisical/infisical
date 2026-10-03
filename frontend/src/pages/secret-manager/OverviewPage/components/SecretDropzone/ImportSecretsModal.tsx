@@ -97,21 +97,21 @@ type TReviewRow =
   | { type: "folder"; id: string; depth: number; node: TFolderNode }
   | { type: "secret"; id: string; depth: number; key: string; secretData: TParsedEnv[string] };
 
-// Lines a child's icon up under its parent's folder icon (chevron 14px + 6px gap)
-const TREE_INDENT_PX = 20;
-const CELL_PADDING_PX = 12;
 const FOCUSABLE_BADGE_CLASS =
   "relative z-10 inline-flex rounded-sm outline-0 focus-visible:ring-2 focus-visible:ring-ring";
 
+// One chevron-wide slot per ancestor, so with the row's gap each level lines a child's icon up
+// under its parent's folder icon and the guide line sits under the parent's chevron. The
+// negative margin lets the line run the full row height; the truncating cell clips it.
 const TreeIndentGuides = ({ depth }: { depth: number }) =>
   Array.from({ length: depth }, (_, level) => (
     <span
       key={level}
       aria-hidden
-      className="pointer-events-none absolute inset-y-0 w-px bg-border"
-      // Centered under the parent folder's chevron
-      style={{ left: CELL_PADDING_PX + level * TREE_INDENT_PX + 7 }}
-    />
+      className="pointer-events-none -my-5 flex w-3.5 shrink-0 justify-center self-stretch"
+    >
+      <span className="w-px bg-border" />
+    </span>
   ));
 
 type ContentProps = {
@@ -446,8 +446,12 @@ const ImportSecretsContent = ({
 
       const writeSecrets = async (environment: string, path: string, secrets: TParsedEnv) => {
         const results = await importSecretsAtPath(environment, path, secrets);
+        const writtenCount = results.filter((r) => r.status === "fulfilled").length;
+        let status: "written" | "partial" | "failed" = "partial";
+        if (writtenCount === results.length) status = "written";
+        else if (!writtenCount) status = "failed";
         return {
-          isWritten: results.every((r) => r.status === "fulfilled"),
+          status,
           hasApproval: results.some(
             (r) => r.status === "fulfilled" && "approval" in (r.value as object)
           )
@@ -458,16 +462,14 @@ const ImportSecretsContent = ({
         await ensureFolder(env.slug, secretPath);
 
         if (!nestedImport) {
-          const { isWritten, hasApproval } = await writeSecrets(
-            env.slug,
-            secretPath,
-            activeSecrets
-          );
+          const { status, hasApproval } = await writeSecrets(env.slug, secretPath, activeSecrets);
+          const isWritten = status === "written";
           return {
             environment: env.name,
             slug: env.slug,
             state: isWritten ? "success" : "failed",
-            hasApproval,
+            // The flat import has always reported approvals only when every batch succeeded
+            hasApproval: isWritten && hasApproval,
             problems: [] as string[]
           };
         }
@@ -519,6 +521,7 @@ const ImportSecretsContent = ({
             if (result.value.hasApproval) approvalEnvs.push(environment);
           } else if (result.value.state === "failed") {
             failedEnvs.push(envLabel);
+            if (result.value.hasApproval) approvalEnvs.push(environment);
           } else if (result.value.hasApproval) {
             approvalEnvs.push(result.value.environment);
             approvalEnvSlugs.push(result.value.slug);
@@ -764,30 +767,29 @@ const ImportSecretsContent = ({
               </TableHeader>
               <TableBody>
                 {reviewRows.map((row) => {
-                  const treeCellStyle = folderTree
-                    ? { paddingLeft: CELL_PADDING_PX + row.depth * TREE_INDENT_PX }
-                    : undefined;
                   if (row.type === "folder") {
                     const { node } = row;
                     const isExpanded = !collapsedFolders.has(node.path);
                     return (
                       <TableRow key={row.id} className="relative">
-                        <TableCell isTruncatable className="w-1/2" style={treeCellStyle}>
-                          <TreeIndentGuides depth={row.depth} />
-                          <button
-                            type="button"
-                            aria-expanded={isExpanded}
-                            onClick={() => toggleFolder(node.path)}
-                            className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 text-left outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
-                          >
-                            {isExpanded ? (
-                              <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
-                            ) : (
-                              <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
-                            )}
-                            <FolderIcon className="size-3.5 shrink-0 text-folder" />
-                            <span className="truncate">{node.name}</span>
-                          </button>
+                        <TableCell isTruncatable className="w-1/2">
+                          <div className="flex items-center gap-1.5">
+                            <TreeIndentGuides depth={row.depth} />
+                            <button
+                              type="button"
+                              aria-expanded={isExpanded}
+                              onClick={() => toggleFolder(node.path)}
+                              className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 text-left outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+                            >
+                              {isExpanded ? (
+                                <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
+                              ) : (
+                                <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
+                              )}
+                              <FolderIcon className="size-3.5 shrink-0 text-folder" />
+                              <span className="truncate">{node.name}</span>
+                            </button>
+                          </div>
                         </TableCell>
                         <TableCell isTruncatable className="w-1/2 font-mono text-muted">
                           {joinSecretPath(secretPath, node.path)}
@@ -818,14 +820,10 @@ const ImportSecretsContent = ({
                   const editableKey = secretData.isFileSecret === true;
                   const editedKey = keyOverrides[key] ?? key;
                   return (
-                    <TableRow key={id} className={folderTree ? "relative" : undefined}>
-                      <TableCell
-                        isTruncatable
-                        className="w-1/2 overflow-hidden font-mono text-xs"
-                        style={treeCellStyle}
-                      >
-                        {folderTree && <TreeIndentGuides depth={row.depth} />}
+                    <TableRow key={id}>
+                      <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
                         <div className="flex w-full items-center gap-1.5">
+                          <TreeIndentGuides depth={row.depth} />
                           {folderTree && <KeyRoundIcon className="size-3.5 shrink-0 text-secret" />}
                           {editableKey ? (
                             <Input
