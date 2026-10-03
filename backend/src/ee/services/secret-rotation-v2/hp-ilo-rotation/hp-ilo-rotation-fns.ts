@@ -225,10 +225,9 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
   const baseUrl = `https://${urlHost}:${HP_ILO_REDFISH_PORT}`;
 
   // Through the gateway the socket points at localhost, so the certificate has to be checked against the iLO host
-  // explicitly; SNI is left unset for IP hosts since TLS does not allow an IP address as the server name.
-  // iLO ships with certificates that do not chain to a public CA, and there is no CA setting to trust one yet
+  // explicitly; SNI is left unset for IP hosts since TLS does not allow an IP address as the server name
   const tlsOptions = {
-    rejectUnauthorized: false,
+    rejectUnauthorized: true,
     servername: net.isIP(host) ? undefined : host,
     checkServerIdentity: (_: string, cert: tls.PeerCertificate) => tls.checkServerIdentity(host, cert)
   };
@@ -437,6 +436,8 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
   const isEnabled = async () => {
     if (config.method !== SshConnectionMethod.Password) return false;
 
+    // A certificate that fails verification (the iLO default is self-signed) disables this client, so the
+    // rotation falls back to SSH rather than sending credentials to an endpoint that cannot be authenticated
     try {
       await sendRequest(HP_ILO_REDFISH_ACCOUNT_SERVICE_PATH, {
         method: "GET",
