@@ -442,7 +442,8 @@ const ImportSecretsContent = ({
         };
       };
 
-      // A user without folder create permission can still write into folders that exist
+      // Checked before creating, so a user without folder create permission can still write
+      // into existing folders and reused folders are not reported as new work
       const folderExists = async (environment: string, path: string) => {
         const parentPath = path.slice(0, path.lastIndexOf("/")) || "/";
         const folders = await fetchProjectFolders(projectId, environment, parentPath);
@@ -470,7 +471,8 @@ const ImportSecretsContent = ({
         const { state, hasApproval, problems } = await runNestedImport(nestedImport, {
           resolveFolder: async (path) => {
             const fullPath = joinSecretPath(secretPath, path);
-            return (await ensureFolder(env.slug, fullPath)) || folderExists(env.slug, fullPath);
+            if (await folderExists(env.slug, fullPath)) return "found";
+            return (await ensureFolder(env.slug, fullPath)) && "created";
           },
           writeSecrets: (path, secrets) =>
             writeSecrets(env.slug, joinSecretPath(secretPath, path), secrets)
