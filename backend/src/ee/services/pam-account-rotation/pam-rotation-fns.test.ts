@@ -17,6 +17,7 @@ describe("isRotatableAccountType", () => {
   test("accepts the SQL types", () => {
     expect(isRotatableAccountType(PamAccountType.Postgres)).toBe(true);
     expect(isRotatableAccountType(PamAccountType.MySQL)).toBe(true);
+    expect(isRotatableAccountType(PamAccountType.MariaDB)).toBe(true);
     expect(isRotatableAccountType(PamAccountType.MsSQL)).toBe(true);
     expect(isRotatableAccountType(PamAccountType.OracleDB)).toBe(true);
   });

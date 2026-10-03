@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { extractCommand, splitMysqlStatements } from "./pam-mysql-data-explorer-fns";
+import { extractCommand, getStatementTimeoutSetting, splitMysqlStatements } from "./pam-mysql-data-explorer-fns";
 
 describe("splitMysqlStatements", () => {
   test("single statement without semicolon", () => {
@@ -187,5 +187,15 @@ describe("extractCommand", () => {
 
   test("only comments", () => {
     expect(extractCommand("-- just a comment\n")).toBe("");
+  });
+});
+
+describe("getStatementTimeoutSetting", () => {
+  test("uses max_execution_time in milliseconds for MySQL", () => {
+    expect(getStatementTimeoutSetting("8.0.36")).toBe("max_execution_time = 30000");
+  });
+
+  test("uses max_statement_time in seconds for MariaDB", () => {
+    expect(getStatementTimeoutSetting("10.11.6-MariaDB-1:10.11.6+maria~ubu2204")).toBe("max_statement_time = 30");
   });
 });

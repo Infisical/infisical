@@ -397,6 +397,7 @@ const windowsRotationHandler: TPamRotationHandler = {
 export const PAM_ROTATION_FACTORY_MAP: Record<TRotatableType, TPamRotationHandler> = {
   [PamAccountType.Postgres]: sqlRotationHandler,
   [PamAccountType.MySQL]: sqlRotationHandler,
+  [PamAccountType.MariaDB]: sqlRotationHandler,
   [PamAccountType.MsSQL]: sqlRotationHandler,
   [PamAccountType.OracleDB]: sqlRotationHandler,
   [PamAccountType.Windows]: windowsRotationHandler,

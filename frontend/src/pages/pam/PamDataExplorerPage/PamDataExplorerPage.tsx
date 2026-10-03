@@ -28,6 +28,7 @@ import { useQueryTabs } from "./use-query-tabs";
 
 const DIALECT_BY_ACCOUNT_TYPE: Partial<Record<PamAccountType, SqlDialect>> = {
   [PamAccountType.MySQL]: "mysql",
+  [PamAccountType.MariaDB]: "mysql",
   [PamAccountType.Snowflake]: "snowflake",
   [PamAccountType.ClickHouse]: "clickhouse"
 };

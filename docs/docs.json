@@ -715,6 +715,7 @@
                       "documentation/platform/pam/accounts/overview",
                       "documentation/platform/pam/accounts/postgresql",
                       "documentation/platform/pam/accounts/mysql",
+                      "documentation/platform/pam/accounts/mariadb",
                       "documentation/platform/pam/accounts/mssql",
                       "documentation/platform/pam/accounts/oracledb",
                       "documentation/platform/pam/accounts/mongodb",

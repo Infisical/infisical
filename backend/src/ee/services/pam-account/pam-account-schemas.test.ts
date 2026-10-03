@@ -24,6 +24,7 @@ describe("buildPamAccountTypeMetadata", () => {
     new Set([
       PamAccountType.Postgres,
       PamAccountType.MySQL,
+      PamAccountType.MariaDB,
       PamAccountType.SSH,
       PamAccountType.Redis,
       PamAccountType.ClickHouse
@@ -35,6 +36,7 @@ describe("buildPamAccountTypeMetadata", () => {
     expect(byType.get(PamAccountType.Postgres)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.SSH)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.MySQL)?.supportsWebAccess).toBe(true);
+    expect(byType.get(PamAccountType.MariaDB)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.Kubernetes)?.supportsWebAccess).toBe(false);
   });
 
@@ -561,5 +563,10 @@ describe("gatewaySupportsAccountType", () => {
 
   test("Windows AD is proxied over the Windows protocol, so that is what a gateway reports", () => {
     expect(gatewaySupportsAccountType(PamAccountType.WindowsAd, ["windows"])).toBe(true);
+  });
+
+  test("MariaDB needs a gateway that supports mysql", () => {
+    expect(gatewaySupportsAccountType(PamAccountType.MariaDB, ["mysql"])).toBe(true);
+    expect(gatewaySupportsAccountType(PamAccountType.MariaDB, ["postgres"])).toBe(false);
   });
 });

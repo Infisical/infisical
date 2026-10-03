@@ -118,6 +118,7 @@ export type TestConnectionRequest =
 const SQL_DIALECTS = {
   [PamAccountType.Postgres]: "postgres",
   [PamAccountType.MySQL]: "mysql",
+  [PamAccountType.MariaDB]: "mysql",
   [PamAccountType.MsSQL]: "mssql",
   [PamAccountType.OracleDB]: "oracle"
 } as const;
@@ -156,6 +157,7 @@ export const buildGatewayConnectionTest = async (
   switch (accountType) {
     case PamAccountType.Postgres:
     case PamAccountType.MySQL:
+    case PamAccountType.MariaDB:
     case PamAccountType.MsSQL:
     case PamAccountType.OracleDB: {
       const cd = connectionDetails as {

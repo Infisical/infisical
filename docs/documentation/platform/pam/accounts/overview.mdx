@@ -16,6 +16,7 @@ PAM supports the following account types:
 |------|---------------------|------------|
 | [**PostgreSQL**](/documentation/platform/pam/accounts/postgresql) | PostgreSQL databases | ✓ |
 | [**MySQL**](/documentation/platform/pam/accounts/mysql) | MySQL databases | ✓ |
+| [**MariaDB**](/documentation/platform/pam/accounts/mariadb) | MariaDB databases | ✓ |
 | [**MS SQL**](/documentation/platform/pam/accounts/mssql) | Microsoft SQL Server | |
 | [**Oracle**](/documentation/platform/pam/accounts/oracledb) | Oracle databases | |
 | [**MongoDB**](/documentation/platform/pam/accounts/mongodb) | MongoDB databases | |
@@ -62,7 +63,7 @@ Once an account exists, anyone with access can connect: people in the browser or
 ### Web access
 
 Go to **Privileged Access Management → Accounts**, find the account, and select the rocket icon (or select **Launch Session** from the menu), then select **Connect in Browser**. This opens:
-- **PostgreSQL / MySQL** — a Data Explorer for browsing tables and a SQL Editor for running queries
+- **PostgreSQL / MySQL / MariaDB** — a Data Explorer for browsing tables and a SQL Editor for running queries
 - **SSH** — an interactive terminal
 - **AWS IAM** — opens the AWS Console with federated credentials
 - **Windows / Windows AD** — an RDP connection to the server
