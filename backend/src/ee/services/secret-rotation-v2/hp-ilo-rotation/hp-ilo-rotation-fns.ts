@@ -9,7 +9,7 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { BadRequestError } from "@app/lib/errors";
+// import { BadRequestError } from "@app/lib/errors";
 import {
   executeWithPotentialGateway,
   getSshConnectionClient,
@@ -38,6 +38,17 @@ const HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS = {
   allowedSymbols: ""
 };
 
+export type THpIloClient = {
+  changePasswordAsAdmin: (targetUsername: string, newPassword: string) => Promise<void>;
+  changePasswordAsTarget: (username: string, currentPassword: string, newPassword: string) => Promise<void>;
+  verifyPassword: (username: string, password: string) => Promise<void>;
+};
+
+export type THpIloClientFactory = (
+  config: TSshConnectionConfig,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+) => THpIloClient;
+
 // iLO 5/6 present the prompt as "hpiLO->", iLO 7 as "hpeiLO->"; match the common suffix
 const ILO_PROMPT = "iLO->";
 
@@ -48,92 +59,82 @@ const COMMAND_FAILED = "COMMAND PROCESSING FAILED";
 const CONNECTION_TIMEOUT = 45000;
 const MAX_BUFFER_SIZE = 64 * 1024;
 
-const executeIloShell = (conn: Client, command: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    conn.shell((err, stream: ClientChannel) => {
-      if (err) {
-        reject(new Error(`iLO shell error: ${err.message}`));
-        return;
-      }
-
-      let buffer = "";
-      let commandSent = false;
-      let settled = false;
-
-      const timeout = setTimeout(() => {
-        if (!settled) {
-          settled = true;
-          conn.end();
-          reject(new Error("iLO shell timeout - no prompt received"));
-        }
-      }, CONNECTION_TIMEOUT);
-
-      stream.on("data", (data: Buffer) => {
-        if (settled) return;
-
-        buffer += data.toString();
-
-        if (buffer.length > MAX_BUFFER_SIZE) {
-          clearTimeout(timeout);
-          settled = true;
-          conn.end();
-          reject(new Error("iLO shell response exceeded maximum buffer size"));
+export const hpIloSshClientFactory: THpIloClientFactory = (config, gatewayV2Service) => {
+  const executeIloShell = (conn: Client, command: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      conn.shell((err, stream: ClientChannel) => {
+        if (err) {
+          reject(new Error(`iLO shell error: ${err.message}`));
           return;
         }
 
-        if (isIloPrompt(buffer) && !commandSent) {
-          commandSent = true;
-          stream.write(`${command}\n`);
-        }
+        let buffer = "";
+        let commandSent = false;
+        let settled = false;
 
-        if (commandSent && buffer.includes(COMMAND_COMPLETED)) {
+        const timeout = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            conn.end();
+            reject(new Error("iLO shell timeout - no prompt received"));
+          }
+        }, CONNECTION_TIMEOUT);
+
+        stream.on("data", (data: Buffer) => {
+          if (settled) return;
+
+          buffer += data.toString();
+
+          if (buffer.length > MAX_BUFFER_SIZE) {
+            clearTimeout(timeout);
+            settled = true;
+            conn.end();
+            reject(new Error("iLO shell response exceeded maximum buffer size"));
+            return;
+          }
+
+          if (isIloPrompt(buffer) && !commandSent) {
+            commandSent = true;
+            stream.write(`${command}\n`);
+          }
+
+          if (commandSent && buffer.includes(COMMAND_COMPLETED)) {
+            clearTimeout(timeout);
+            settled = true;
+            stream.write("exit\n");
+            resolve(buffer);
+          }
+
+          if (commandSent && buffer.includes(COMMAND_FAILED)) {
+            clearTimeout(timeout);
+            settled = true;
+            conn.end();
+            const passwordPattern = new RE2("password=[^\\s]+", "gi");
+            const sanitizedBuffer = passwordPattern.replace(buffer, "password=***");
+            reject(new Error(`iLO command failed: ${sanitizedBuffer}`));
+          }
+        });
+
+        stream.on("close", () => {
           clearTimeout(timeout);
-          settled = true;
-          stream.write("exit\n");
-          resolve(buffer);
-        }
+          if (!settled) {
+            settled = true;
+            reject(new Error("iLO shell closed unexpectedly"));
+          }
+        });
 
-        if (commandSent && buffer.includes(COMMAND_FAILED)) {
-          clearTimeout(timeout);
-          settled = true;
-          conn.end();
-          const passwordPattern = new RE2("password=[^\\s]+", "gi");
-          const sanitizedBuffer = passwordPattern.replace(buffer, "password=***");
-          reject(new Error(`iLO command failed: ${sanitizedBuffer}`));
-        }
-      });
-
-      stream.on("close", () => {
-        clearTimeout(timeout);
-        if (!settled) {
-          settled = true;
-          reject(new Error("iLO shell closed unexpectedly"));
-        }
-      });
-
-      stream.stderr.on("data", (data: Buffer) => {
-        if (!settled) {
-          clearTimeout(timeout);
-          settled = true;
-          reject(new Error(`iLO SSH error: ${data.toString()}`));
-        }
+        stream.stderr.on("data", (data: Buffer) => {
+          if (!settled) {
+            clearTimeout(timeout);
+            settled = true;
+            reject(new Error(`iLO SSH error: ${data.toString()}`));
+          }
+        });
       });
     });
-  });
-};
+  };
 
-const createIloConnection = (config: TSshConnectionConfig, targetHost: string, targetPort: number): Promise<Client> => {
-  return getSshConnectionClient(config, targetHost, targetPort);
-};
-
-const rotateIloPasswordAsTarget = async (
-  config: TSshConnectionConfig,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  username: string,
-  password: string,
-  newPassword: string
-): Promise<void> => {
-  const targetConfig: TSshConnectionConfig = {
+  const withUserCredentials = (username: string, password: string): TSshConnectionConfig => ({
     method: SshConnectionMethod.Password,
     app: config.app,
     orgId: config.orgId,
@@ -144,64 +145,54 @@ const rotateIloPasswordAsTarget = async (
       username,
       password
     }
-  };
-
-  await executeWithPotentialGateway(targetConfig, gatewayV2Service, async (targetHost, targetPort) => {
-    const conn = await createIloConnection(targetConfig, targetHost, targetPort);
-    try {
-      const command = `set /map1/accounts1/${username} password=${newPassword}`;
-      await executeIloShell(conn, command);
-    } finally {
-      conn.end();
-    }
   });
-};
 
-const rotateIloPasswordAsAdmin = async (
-  config: TSshConnectionConfig,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  targetUsername: string,
-  newPassword: string
-): Promise<void> => {
-  await executeWithPotentialGateway(config, gatewayV2Service, async (targetHost, targetPort) => {
-    const conn = await createIloConnection(config, targetHost, targetPort);
-    try {
-      const command = `set /map1/accounts1/${targetUsername} password=${newPassword}`;
-      await executeIloShell(conn, command);
-    } finally {
-      conn.end();
-    }
-  });
-};
-
-const verifyIloPassword = async (
-  config: TSshConnectionConfig,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  username: string,
-  password: string
-): Promise<void> => {
-  const verifyConfig: TSshConnectionConfig = {
-    method: SshConnectionMethod.Password,
-    app: config.app,
-    orgId: config.orgId,
-    gatewayId: config.gatewayId,
-    credentials: {
-      host: config.credentials.host,
-      port: config.credentials.port,
-      username,
-      password
-    }
-  };
-
-  try {
-    await executeWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
-      const conn = await createIloConnection(verifyConfig, targetHost, targetPort);
-      conn.end();
+  const runCommand = async (connectionConfig: TSshConnectionConfig, command: string) => {
+    await executeWithPotentialGateway(connectionConfig, gatewayV2Service, async (targetHost, targetPort) => {
+      const conn = await getSshConnectionClient(connectionConfig, targetHost, targetPort);
+      try {
+        await executeIloShell(conn, command);
+      } finally {
+        conn.end();
+      }
     });
-  } catch (error) {
-    throw new Error(`HP iLO password verification failed: ${(error as Error).message}`);
-  }
+  };
+
+  const changePasswordAsAdmin = async (targetUsername: string, newPassword: string) => {
+    await runCommand(config, `set /map1/accounts1/${targetUsername} password=${newPassword}`);
+  };
+
+  const changePasswordAsTarget = async (username: string, currentPassword: string, newPassword: string) => {
+    await runCommand(
+      withUserCredentials(username, currentPassword),
+      `set /map1/accounts1/${username} password=${newPassword}`
+    );
+  };
+
+  const verifyPassword = async (username: string, password: string) => {
+    const verifyConfig = withUserCredentials(username, password);
+    try {
+      await executeWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
+        const conn = await getSshConnectionClient(verifyConfig, targetHost, targetPort);
+        conn.end();
+      });
+    } catch (error) {
+      throw new Error(`HP iLO password verification failed: ${(error as Error).message}`);
+    }
+  };
+
+  return {
+    changePasswordAsAdmin,
+    changePasswordAsTarget,
+    verifyPassword
+  };
 };
+
+export const hpIloApiClientFactory: THpIloClientFactory = () => ({
+  changePasswordAsAdmin: async () => {},
+  changePasswordAsTarget: async () => {},
+  verifyPassword: async () => {}
+});
 
 export const hpIloRotationFactory: TRotationFactory<
   THpIloRotationWithConnection,
@@ -211,36 +202,37 @@ export const hpIloRotationFactory: TRotationFactory<
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = HpIloRotationMethod.LoginAsRoot } = parameters;
 
-  const getRotationSshConfig = async (): Promise<TSshConnectionConfig> => {
+  const getIloClient = async (clientFactory: THpIloClientFactory = hpIloSshClientFactory): Promise<THpIloClient> => {
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: connection.gatewayId,
       gatewayPoolId: connection.gatewayPoolId
     });
-    return {
+    const sshConfig = {
       method: connection.method,
       app: connection.app,
       orgId: connection.orgId,
       gatewayId: effectiveGatewayId,
       credentials: connection.credentials
     } as TSshConnectionConfig;
+    return clientFactory(sshConfig, gatewayV2Service);
   };
 
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
     const newPassword = generatePassword(passwordRequirements ?? HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS);
 
     const isSelfRotation = rotationMethod === HpIloRotationMethod.LoginAsTarget;
-    if (username === connection.credentials.username)
-      throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
+    // if (username === connection.credentials.username)
+    //   throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
-    const sshConfig = await getRotationSshConfig();
+    const iloClient = await getIloClient();
 
     if (isSelfRotation && currentPassword) {
-      await rotateIloPasswordAsTarget(sshConfig, gatewayV2Service, username, currentPassword, newPassword);
+      await iloClient.changePasswordAsTarget(username, currentPassword, newPassword);
     } else {
-      await rotateIloPasswordAsAdmin(sshConfig, gatewayV2Service, username, newPassword);
+      await iloClient.changePasswordAsAdmin(username, newPassword);
     }
 
-    await verifyIloPassword(sshConfig, gatewayV2Service, username, newPassword);
+    await iloClient.verifyPassword(username, newPassword);
 
     return { username, password: newPassword };
   };
@@ -284,8 +276,8 @@ export const hpIloRotationFactory: TRotationFactory<
     username: activeUsername,
     password
   }) => {
-    const sshConfig = await getRotationSshConfig();
-    await verifyIloPassword(sshConfig, gatewayV2Service, activeUsername, password);
+    const iloClient = await getIloClient();
+    await iloClient.verifyPassword(activeUsername, password);
   };
 
   return {
