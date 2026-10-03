@@ -64,5 +64,26 @@ export const pamAccountTemplateDALFactory = (db: TDbClient) => {
     };
   };
 
-  return { ...orm, findByProjectId, countAccountsByTemplateId, getTemplateRotationStats };
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.PamAccountTemplate)
+      .where(`${TableName.PamAccountTemplate}.gatewayId`, gatewayId)
+      .select("id", "name", "type");
+
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.PamAccountTemplate)
+      .where(`${TableName.PamAccountTemplate}.gatewayId`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
+  return {
+    ...orm,
+    findByProjectId,
+    countAccountsByTemplateId,
+    getTemplateRotationStats,
+    findByGatewayId,
+    countByGatewayId
+  };
 };

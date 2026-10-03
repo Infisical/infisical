@@ -501,8 +501,34 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
+      .where(`${TableName.PamAccount}.gatewayId`, gatewayId)
+      .select(
+        `${TableName.PamAccount}.id`,
+        `${TableName.PamAccount}.name`,
+        `${TableName.PamAccountTemplate}.type as accountType`,
+        `${TableName.PamFolder}.name as folderName`
+      );
+
+    return docs as { id: string; name: string; accountType: string; folderName: string | null }[];
+  };
+
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.PamAccount)
+      .where(`${TableName.PamAccount}.gatewayId`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
   return {
     ...orm,
+    findByGatewayId,
+    countByGatewayId,
     findAccessible,
     findByIdWithDetails,
     findByIdsWithDetails,
