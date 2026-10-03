@@ -117,17 +117,18 @@ export const buildFolderTree = ({ folderPaths, secretsByPath }: TNestedJsonImpor
   return buildNode("/");
 };
 
-// "folder-ok" is a folder that exists (created or found) and holds no secrets of its own;
-// "skipped" is a folder that could not be used, or sits under one that could not
+// "created" and "found" are folders that are ready to hold secrets; a found folder changes
+// nothing, so it is neutral in the result. "skipped" is a folder that could not be used,
+// or sits under one that could not.
 type TPathOutcome = {
-  status: "written" | "folder-ok" | "skipped" | "failed";
+  status: "written" | "created" | "found" | "skipped" | "failed";
   reason?: string;
   hasApproval?: boolean;
 };
 
 type TNestedImportHandlers = {
   // Resolves false when the folder is missing and cannot be created
-  resolveFolder: (path: string) => Promise<boolean>;
+  resolveFolder: (path: string) => Promise<"created" | "found" | false>;
   writeSecrets: (
     path: string,
     secrets: TParsedEnv
@@ -142,7 +143,7 @@ export const runNestedImport = async (
 ) => {
   const outcomes = new Map<string, TPathOutcome>();
   const isFolderReady = (path: string) =>
-    path === "/" || outcomes.get(path)?.status === "folder-ok";
+    path === "/" || ["created", "found"].includes(outcomes.get(path)?.status ?? "");
 
   // One at a time so parents always exist before their children
   // eslint-disable-next-line no-restricted-syntax
@@ -152,11 +153,11 @@ export const runNestedImport = async (
     } else {
       try {
         // eslint-disable-next-line no-await-in-loop
-        const isReady = await resolveFolder(path);
+        const folderState = await resolveFolder(path);
         outcomes.set(
           path,
-          isReady
-            ? { status: "folder-ok" }
+          folderState
+            ? { status: folderState }
             : { status: "skipped", reason: "no permission to create this folder" }
         );
       } catch {
@@ -188,8 +189,9 @@ export const runNestedImport = async (
   const parentPaths = new Set(folderPaths.map(getParentPath));
   const results = [...outcomes]
     .filter(([path]) => path in secretsByPath || !parentPaths.has(path))
-    .map(([, outcome]) => outcome);
-  const okCount = results.filter((o) => o.status === "written" || o.status === "folder-ok").length;
+    .map(([, outcome]) => outcome)
+    .filter((o) => o.status !== "found");
+  const okCount = results.filter((o) => o.status === "written" || o.status === "created").length;
   let state: "success" | "partial" | "failed" = "failed";
   if (okCount === results.length) state = "success";
   else if (okCount > 0) state = "partial";
