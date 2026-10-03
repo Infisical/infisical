@@ -48,6 +48,7 @@ const HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS = {
 };
 
 export type THpIloClient = {
+  isEnabled: () => Promise<boolean>;
   changePasswordAsAdmin: (targetUsername: string, newPassword: string) => Promise<void>;
   changePasswordAsTarget: (username: string, currentPassword: string, newPassword: string) => Promise<void>;
   verifyPassword: (username: string, password: string) => Promise<void>;
@@ -191,6 +192,7 @@ export const hpIloSshClientFactory: THpIloClientFactory = (config, gatewayV2Serv
   };
 
   return {
+    isEnabled: async () => true,
     changePasswordAsAdmin,
     changePasswordAsTarget,
     verifyPassword
@@ -198,6 +200,7 @@ export const hpIloSshClientFactory: THpIloClientFactory = (config, gatewayV2Serv
 };
 
 const HP_ILO_REDFISH_PORT = 443;
+const HP_ILO_REDFISH_ACCOUNT_SERVICE_PATH = "/redfish/v1/AccountService/";
 const HP_ILO_REDFISH_ACCOUNTS_PATH = "/redfish/v1/AccountService/Accounts/";
 const HP_ILO_REDFISH_MAX_ACCOUNT_LOOKUPS = 50;
 const HP_ILO_REDFISH_MAX_COLLECTION_PAGES = 10;
@@ -376,15 +379,31 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
     return accountPath;
   };
 
+  const isPasswordAccepted = async (username: string, password: string) => {
+    try {
+      const authorization = basicAuth(username, password);
+      const accountPath = await resolveAccountPath(authorization, username);
+      await sendRequest(accountPath, { method: "GET", headers: { Authorization: authorization } });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const changePassword = async (authorization: string, targetUsername: string, newPassword: string) => {
     try {
       const accountPath = await resolveAccountPath(authorization, targetUsername);
       await sendRequest(accountPath, {
         method: "PATCH",
         data: { Password: newPassword },
-        headers: { Authorization: authorization, "Content-Type": "application/json" }
+        headers: { Authorization: authorization, "Content-Type": "application/json" },
+        // A retried PATCH would authenticate with a password the first attempt may already have replaced
+        "axios-retry": { retries: 0 }
       });
     } catch (error) {
+      // The PATCH may have been applied even though its response was lost; the rotation only stores the new
+      // password on success, so failing here would leave Infisical holding a password the iLO no longer accepts
+      if (isAxiosError(error) && !error.response && (await isPasswordAccepted(targetUsername, newPassword))) return;
       throw new Error(`HP iLO password change failed: ${describeRedfishError(error)}`);
     }
   };
@@ -415,45 +434,70 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
     }
   };
 
+  const isEnabled = async () => {
+    if (config.method !== SshConnectionMethod.Password) return false;
+
+    try {
+      await sendRequest(HP_ILO_REDFISH_ACCOUNT_SERVICE_PATH, {
+        method: "GET",
+        headers: { Authorization: basicAuth(config.credentials.username, config.credentials.password) }
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   return {
+    isEnabled,
     changePasswordAsAdmin,
     changePasswordAsTarget,
     verifyPassword
   };
 };
 
+// The client is chosen up front rather than by retrying a failed operation on the next one, because a password
+// change that failed may still have been applied, and retrying it would authenticate with a replaced password
 export const hpIloFallbackClientFactory =
-  (primaryFactory: THpIloClientFactory, fallbackFactory: THpIloClientFactory): THpIloClientFactory =>
+  (...clientFactories: THpIloClientFactory[]): THpIloClientFactory =>
   (config, gatewayV2Service) => {
-    const primary = primaryFactory(config, gatewayV2Service);
-    const fallback = fallbackFactory(config, gatewayV2Service);
+    const clients = clientFactories.map((clientFactory) => clientFactory(config, gatewayV2Service));
 
-    const withFallback = async (operation: string, run: (client: THpIloClient) => Promise<void>) => {
-      try {
-        await run(primary);
-      } catch (primaryError) {
-        logger.warn(
-          `HP iLO ${operation} failed on primary client, retrying with fallback [host=${config.credentials.host}]: ${(primaryError as Error).message}`
-        );
-        try {
-          await run(fallback);
-        } catch (fallbackError) {
-          throw new Error(
-            `HP iLO ${operation} failed: ${(primaryError as Error).message}; fallback also failed: ${(fallbackError as Error).message}`
-          );
+    const selectClient = async () => {
+      for (const [index, client] of clients.entries()) {
+        // eslint-disable-next-line no-await-in-loop
+        if (await client.isEnabled()) {
+          if (index > 0) {
+            logger.warn(
+              `HP iLO preferred client unavailable, falling back [host=${config.credentials.host}] [clientIndex=${index}]`
+            );
+          }
+          return client;
         }
       }
+      throw new Error(`No HP iLO client is available for host '${config.credentials.host}'`);
+    };
+
+    let selectedClient: Promise<THpIloClient> | undefined;
+    const getClient = () => {
+      selectedClient ??= selectClient();
+      return selectedClient;
     };
 
     return {
-      changePasswordAsAdmin: (targetUsername, newPassword) =>
-        withFallback("password change", (client) => client.changePasswordAsAdmin(targetUsername, newPassword)),
-      changePasswordAsTarget: (username, currentPassword, newPassword) =>
-        withFallback("password change", (client) =>
-          client.changePasswordAsTarget(username, currentPassword, newPassword)
-        ),
-      verifyPassword: (username, password) =>
-        withFallback("password verification", (client) => client.verifyPassword(username, password))
+      isEnabled: async () => {
+        try {
+          await getClient();
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      changePasswordAsAdmin: async (targetUsername, newPassword) =>
+        (await getClient()).changePasswordAsAdmin(targetUsername, newPassword),
+      changePasswordAsTarget: async (username, currentPassword, newPassword) =>
+        (await getClient()).changePasswordAsTarget(username, currentPassword, newPassword),
+      verifyPassword: async (username, password) => (await getClient()).verifyPassword(username, password)
     };
   };
 
