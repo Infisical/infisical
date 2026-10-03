@@ -11,7 +11,7 @@ export const auditLogEventClassToDescriptionMap: Record<AuditLogEventClass, stri
   [AuditLogEventClass.Management]:
     "Creates, updates, deletes, membership, roles, policies, background jobs, privileged session start and end.",
   [AuditLogEventClass.Authentication]:
-    "Logins, failed logins, org selection, machine identity auth, gateway and relay connects.",
+    "Logins, failed logins, org selection, machine identity auth, gateway enrollment and connections.",
   [AuditLogEventClass.DataAccess]:
     "Reads and lists, plus crypto use operations that hand back or operate on secret material.",
   [AuditLogEventClass.Authorization]:
