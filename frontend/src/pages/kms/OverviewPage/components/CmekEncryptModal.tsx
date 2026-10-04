@@ -80,7 +80,7 @@ const EncryptForm = ({ cmek }: FormProps) => {
           <FieldLabel htmlFor={`${fieldId}-ciphertext`}>Encrypted Data (Ciphertext)</FieldLabel>
           <TextArea
             id={`${fieldId}-ciphertext`}
-            className="max-h-80 min-h-40 max-w-full min-w-full resize"
+            className="resize"
             disabled
             value={cmekEncrypt.data?.ciphertext}
           />
@@ -94,7 +94,7 @@ const EncryptForm = ({ cmek }: FormProps) => {
               id={`${fieldId}-plaintext`}
               isError={Boolean(errors.plaintext)}
               aria-describedby={errors.plaintext ? `${fieldId}-plaintext-error` : undefined}
-              className="max-h-80 min-h-40 max-w-full min-w-full resize"
+              className="resize"
             />
             <FieldError id={`${fieldId}-plaintext-error`} errors={[errors.plaintext]} />
           </Field>
