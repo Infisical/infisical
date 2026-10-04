@@ -31,11 +31,7 @@ export const getProductPlanSummaries = (plans: SubscriptionPlan["productPlans"])
   (plans ?? []).forEach((plan) => {
     if (!["active", "trialing", "grace"].includes(plan.status ?? "")) return;
 
-    const isTrialing =
-      Boolean(plan.trialPlanKey || plan.status === "trialing") &&
-      (!plan.trialEndsAt || new Date(plan.trialEndsAt).getTime() > Date.now());
-    if (plan.status === "trialing" && !isTrialing) return;
-
+    const isTrialing = Boolean(plan.trialPlanKey || plan.status === "trialing");
     const planKey = isTrialing ? (plan.trialPlanKey ?? plan.planKey) : plan.planKey;
     if (!planKey) return;
 
