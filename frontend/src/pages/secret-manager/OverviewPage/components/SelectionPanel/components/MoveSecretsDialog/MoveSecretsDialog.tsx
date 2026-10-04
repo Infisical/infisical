@@ -18,6 +18,10 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  SecretSyncMoveWarning,
+  useSecretSyncMoveWarning
+} from "@app/components/secret-syncs/SecretSyncMoveWarning";
+import {
   Alert,
   AlertDescription,
   AlertTitle,
@@ -52,6 +56,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
+import { TMoveWarningsCheck } from "@app/helpers/secretSyncCoverage";
 import { removeTrailingSlash } from "@app/helpers/string";
 import { useMoveSecrets } from "@app/hooks/api";
 import {
@@ -540,6 +545,37 @@ const buildDestinationTargets = ({
   return { checks: isSelfMove ? [] : checks, isSelfMove };
 };
 
+// one check per path the items land at. a moved folder always lands at a new path (the backend rejects a
+// name clash), so only recursive syncs above it can cover it or anything inside it.
+const buildMoveWarningChecks = ({
+  sourceSecretPath,
+  destinationPath,
+  secretEnvironments,
+  movedFolders
+}: {
+  sourceSecretPath: string;
+  destinationPath?: string;
+  secretEnvironments: { sourceEnv: string; destinationEnvironment: string }[];
+  movedFolders: MovedFolder[];
+}): TMoveWarningsCheck[] => {
+  if (!destinationPath) return [];
+
+  const secretChecks = secretEnvironments.map(({ sourceEnv, destinationEnvironment }) => ({
+    sourceEnvironment: sourceEnv,
+    sourceSecretPath: removeTrailingSlash(sourceSecretPath),
+    destinationEnvironment,
+    destinationSecretPath: removeTrailingSlash(destinationPath)
+  }));
+  const folderChecks = movedFolders.map(({ folderName, sourceEnv, destinationEnvironment }) => ({
+    sourceEnvironment: sourceEnv,
+    sourceSecretPath: `${removeTrailingSlash(sourceSecretPath)}/${folderName}`,
+    destinationEnvironment,
+    destinationSecretPath: `${removeTrailingSlash(destinationPath)}/${folderName}`
+  }));
+
+  return [...secretChecks, ...folderChecks];
+};
+
 // memoizes the destination checks for the moved folders and runs the destination approval-policy eligibility
 // query, returning what the move form needs to gate submit. shared by the single- and multi-environment content
 // so the wiring lives in one place.
@@ -878,6 +914,33 @@ const SingleEnvContent = ({
       destinationPath: destinationSelected ? selectedPath?.secretPath : undefined
     });
 
+  const hasSecretsToMove =
+    Object.values(secrets).some((secretRecord) => Boolean(secretRecord[sourceEnv.slug])) ||
+    Object.values(rotations).some((rotationRecord) => Boolean(rotationRecord[sourceEnv.slug]));
+
+  const moveWarningChecks = useMemo(
+    () =>
+      buildMoveWarningChecks({
+        sourceSecretPath,
+        destinationPath: destinationSelected && !isSelfMove ? selectedPath?.secretPath : undefined,
+        secretEnvironments: hasSecretsToMove
+          ? [{ sourceEnv: sourceEnv.slug, destinationEnvironment: selectedEnvironment }]
+          : [],
+        movedFolders
+      }),
+    [
+      sourceSecretPath,
+      destinationSelected,
+      isSelfMove,
+      selectedPath?.secretPath,
+      hasSecretsToMove,
+      sourceEnv.slug,
+      selectedEnvironment,
+      movedFolders
+    ]
+  );
+  const secretSyncWarning = useSecretSyncMoveWarning(projectId, moveWarningChecks);
+
   const handleFormSubmit = async (data: TSingleEnvFormSchema) => {
     if (!selectedPath) {
       createNotification({
@@ -1121,6 +1184,12 @@ const SingleEnvContent = ({
         environments={environments}
       />
       <FolderRbacPoliciesWarning folderNames={foldersWithRbacPolicies} />
+      <SecretSyncMoveWarning
+        warning={secretSyncWarning}
+        projectId={projectId}
+        noun={moveCopy.noun}
+        verb="moved"
+      />
       <DialogFooter className="items-center">
         {showOverwriteOption && (
           <Controller
@@ -1150,7 +1219,8 @@ const SingleEnvContent = ({
             isCreatingFolder ||
             isSelfMove ||
             isCheckingDestination ||
-            isDestinationBlocked
+            isDestinationBlocked ||
+            secretSyncWarning.isBlockingSubmit
           }
           isPending={isSubmitting}
         >
@@ -1275,6 +1345,36 @@ const MultiEnvContent = ({
       sourceSecretPath,
       destinationPath: destinationSelected ? selectedPath?.secretPath : undefined
     });
+
+  const moveWarningChecks = useMemo(
+    () =>
+      buildMoveWarningChecks({
+        sourceSecretPath,
+        destinationPath: destinationSelected && !isSelfMove ? selectedPath?.secretPath : undefined,
+        secretEnvironments: environments
+          .filter(
+            ({ slug }) =>
+              (Object.values(secrets).some((secretRecord) => Boolean(secretRecord[slug])) &&
+                !moveEligibility[slug].cannotMoveSecrets) ||
+              (Object.values(rotations).some((rotationRecord) => Boolean(rotationRecord[slug])) &&
+                !moveEligibility[slug].cannotMoveRotations)
+          )
+          .map(({ slug }) => ({ sourceEnv: slug, destinationEnvironment: slug })),
+        movedFolders
+      }),
+    [
+      sourceSecretPath,
+      destinationSelected,
+      isSelfMove,
+      selectedPath?.secretPath,
+      environments,
+      secrets,
+      rotations,
+      moveEligibility,
+      movedFolders
+    ]
+  );
+  const secretSyncWarning = useSecretSyncMoveWarning(projectId, moveWarningChecks);
 
   const environmentsToBeSkipped = useMemo(() => {
     if (!destinationSelected) return [];
@@ -1590,6 +1690,12 @@ const MultiEnvContent = ({
         environments={environments}
       />
       <FolderRbacPoliciesWarning folderNames={foldersWithRbacPolicies} />
+      <SecretSyncMoveWarning
+        warning={secretSyncWarning}
+        projectId={projectId}
+        noun={moveCopy.noun}
+        verb="moved"
+      />
       <DialogFooter className="items-center">
         {showOverwriteOption && (
           <Controller
@@ -1619,7 +1725,8 @@ const MultiEnvContent = ({
             isCreatingFolder ||
             isSelfMove ||
             isCheckingDestination ||
-            isDestinationBlocked
+            isDestinationBlocked ||
+            secretSyncWarning.isBlockingSubmit
           }
           isPending={isSubmitting}
         >
