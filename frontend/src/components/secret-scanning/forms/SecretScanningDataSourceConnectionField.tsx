@@ -3,12 +3,12 @@ import { InfoIcon } from "lucide-react";
 
 import { AppConnectionOptionContent } from "@app/components/app-connections";
 import {
-  Button,
   Combobox,
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
+  IconButton,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -65,14 +65,14 @@ export const SecretScanningDataSourceConnectionField = ({
               </FieldLabel>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
+                  <IconButton
                     type="button"
-                    variant="ghost"
-                    size="xs"
+                    variant="ghost-muted"
+                    size="2xs"
                     aria-label="About app connections"
                   >
                     <InfoIcon />
-                  </Button>
+                  </IconButton>
                 </TooltipTrigger>
                 <TooltipContent>
                   App Connections can be created from the Organization Settings page.
@@ -84,6 +84,7 @@ export const SecretScanningDataSourceConnectionField = ({
               name={name}
               onBlur={onBlur}
               value={value}
+              modal
               isClearable={false}
               onValueChange={(newValue) => {
                 if (newValue.id === "_create") {
