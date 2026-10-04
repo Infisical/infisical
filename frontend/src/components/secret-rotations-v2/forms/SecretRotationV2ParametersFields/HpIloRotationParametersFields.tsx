@@ -18,11 +18,11 @@ import {
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { HpIloRotationMethod } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
 
+import { HP_ILO_MAX_PASSWORD_LENGTH } from "../schemas/hp-ilo-rotation-schema";
 import { PasswordRequirementsFields } from "./shared";
 
-// iLO 5 has a maximum password length of 39 characters
 const HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS = {
-  length: 39,
+  length: HP_ILO_MAX_PASSWORD_LENGTH,
   required: {
     lowercase: 1,
     uppercase: 1,

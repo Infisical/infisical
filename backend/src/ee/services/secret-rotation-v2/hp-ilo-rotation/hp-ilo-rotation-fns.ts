@@ -14,11 +14,13 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn/array";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 import {
   executeWithPotentialGateway,
   getSshConnectionClient,
@@ -28,16 +30,15 @@ import {
 
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { generatePassword } from "../shared/utils";
-import { HpIloRotationMethod } from "./hp-ilo-rotation-schemas";
+import { HP_ILO_MAX_PASSWORD_LENGTH, HpIloRotationMethod } from "./hp-ilo-rotation-schemas";
 import {
   THpIloRotationGeneratedCredentials,
   THpIloRotationInput,
   THpIloRotationWithConnection
 } from "./hp-ilo-rotation-types";
 
-// iLO 5 has a maximum password length of 39 characters
 const HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS = {
-  length: 39,
+  length: HP_ILO_MAX_PASSWORD_LENGTH,
   required: {
     lowercase: 1,
     uppercase: 1,
@@ -212,16 +213,19 @@ const HP_ILO_REDFISH_PORT = 443;
 const HP_ILO_REDFISH_SERVICE_ROOT_PATH = "/redfish/v1/";
 const HP_ILO_REDFISH_ACCOUNTS_PATH = "/redfish/v1/AccountService/Accounts/";
 const HP_ILO_REDFISH_MAX_ACCOUNT_LOOKUPS = 50;
+const HP_ILO_REDFISH_ACCOUNT_LOOKUP_CONCURRENCY = 5;
 const HP_ILO_REDFISH_MAX_COLLECTION_PAGES = 10;
 const HP_ILO_REDFISH_REQUEST_TIMEOUT_MS = 30_000;
-
-type TRedfishCollection = {
-  Members?: { "@odata.id": string }[];
-  "Members@odata.nextLink"?: string;
-};
+const HP_ILO_REDFISH_PROBE_TIMEOUT_MS = 5_000;
+const HP_ILO_GATEWAY_CONNECTION_DETAILS_MAX_AGE_MS = 2 * 60 * 1000;
 
 type TRedfishAccount = {
   UserName?: string;
+};
+
+type TRedfishCollection = {
+  Members?: ({ "@odata.id": string } & TRedfishAccount)[];
+  "Members@odata.nextLink"?: string;
 };
 
 type TRedfishErrorResponse = {
@@ -241,22 +245,44 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
     checkServerIdentity: (_: string, cert: tls.PeerCertificate) => tls.checkServerIdentity(host, cert)
   };
 
+  const fetchConnectionDetails = async (gatewayId: string) => {
+    const details = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId,
+      targetHost: host,
+      targetPort: HP_ILO_REDFISH_PORT
+    });
+    if (!details) {
+      throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
+    }
+    return details;
+  };
+
+  // Every set of connection details carries a freshly generated key and a client certificate valid for 5 minutes, so
+  // the requests of one rotation share a set, and it is replaced well before the certificate could expire mid-tunnel
+  let cachedConnectionDetails: { details: ReturnType<typeof fetchConnectionDetails>; fetchedAt: number } | undefined;
+
+  const getConnectionDetails = (gatewayId: string) => {
+    if (
+      cachedConnectionDetails &&
+      Date.now() - cachedConnectionDetails.fetchedAt <= HP_ILO_GATEWAY_CONNECTION_DETAILS_MAX_AGE_MS
+    ) {
+      return cachedConnectionDetails.details;
+    }
+
+    const entry = { details: fetchConnectionDetails(gatewayId), fetchedAt: Date.now() };
+    cachedConnectionDetails = entry;
+    entry.details.catch(() => {
+      if (cachedConnectionDetails === entry) cachedConnectionDetails = undefined;
+    });
+    return entry.details;
+  };
+
   const sendRequest = async <T = unknown>(
     path: string,
     requestConfig: Omit<AxiosRequestConfig, "url">
   ): Promise<AxiosResponse<T>> => {
     if (config.gatewayId) {
-      await blockLocalAndPrivateIpAddresses(baseUrl, true);
-
-      const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-        gatewayId: config.gatewayId,
-        targetHost: host,
-        targetPort: HP_ILO_REDFISH_PORT
-      });
-
-      if (!platformConnectionDetails) {
-        throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
-      }
+      const platformConnectionDetails = await getConnectionDetails(config.gatewayId);
 
       // withGatewayV2Proxy rethrows callback errors as its own types, which drops the HTTP status callers branch on,
       // so an error carrying an iLO response is passed out as a value and rethrown after the proxy closes
@@ -265,7 +291,7 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
           try {
             const response = await request.request<T>({
               ...requestConfig,
-              timeout: HP_ILO_REDFISH_REQUEST_TIMEOUT_MS,
+              timeout: requestConfig.timeout ?? HP_ILO_REDFISH_REQUEST_TIMEOUT_MS,
               url: `https://localhost:${proxyPort}${path}`,
               headers: { ...requestConfig.headers, Host: urlHost },
               httpsAgent: new https.Agent(tlsOptions),
@@ -290,7 +316,7 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
 
     return safeRequest.request<T>({
       ...requestConfig,
-      timeout: HP_ILO_REDFISH_REQUEST_TIMEOUT_MS,
+      timeout: requestConfig.timeout ?? HP_ILO_REDFISH_REQUEST_TIMEOUT_MS,
       url: `${baseUrl}${path}`,
       rejectUnauthorized: tlsOptions.rejectUnauthorized,
       servername: tlsOptions.servername
@@ -310,9 +336,20 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
     return messageIds?.length ? `${error.message} (${messageIds.join(", ")})` : error.message;
   };
 
-  // Links come back from the iLO; only their path and query are kept so requests always go to the configured host
+  // Links come back from the iLO; only their path and query are kept so requests always go to the configured host.
+  // The path is appended straight after the host, so one that does not start with "/" (a link with a non-HTTP
+  // scheme such as "x:@127.0.0.1:8443/") would rewrite the authority and send the request, credentials included,
+  // somewhere else
   const toRedfishPath = (odataId: string) => {
     const url = new URL(odataId, baseUrl);
+    if (
+      (url.protocol !== "https:" && url.protocol !== "http:") ||
+      !url.pathname.startsWith(HP_ILO_REDFISH_SERVICE_ROOT_PATH)
+    ) {
+      throw new BadRequestError({
+        message: `HP iLO returned a link outside the Redfish API ('${odataId.slice(0, 200)}'), so it was not followed`
+      });
+    }
     return `${url.pathname}${url.search}`;
   };
 
@@ -323,27 +360,53 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
     if (cachedPath) return cachedPath;
 
     const checkedPaths = new Set<string>();
+    let memberLookups = 0;
     let isSearchTruncated = false;
 
+    const readMemberUsername = async (memberPath: string) => {
+      const { data: account } = await sendRequest<TRedfishAccount>(memberPath, {
+        method: "GET",
+        headers: { Authorization: authorization }
+      });
+      return account.UserName;
+    };
+
+    const findByReadingMembers = async (memberPaths: string[]) => {
+      const remainingLookups = Math.max(HP_ILO_REDFISH_MAX_ACCOUNT_LOOKUPS - memberLookups, 0);
+      const pathsToRead = memberPaths.slice(0, remainingLookups);
+
+      for (const batch of chunkArray(pathsToRead, HP_ILO_REDFISH_ACCOUNT_LOOKUP_CONCURRENCY)) {
+        memberLookups += batch.length;
+
+        // eslint-disable-next-line no-await-in-loop
+        const usernames = await Promise.all(batch.map(readMemberUsername));
+        batch.forEach((memberPath) => checkedPaths.add(memberPath));
+
+        const matchIndex = usernames.indexOf(username);
+        if (matchIndex !== -1) return batch[matchIndex];
+      }
+
+      if (pathsToRead.length < memberPaths.length) isSearchTruncated = true;
+      return undefined;
+    };
+
     const findInMembers = async (members: TRedfishCollection["Members"]) => {
+      // A page that was not expanded (firmware ignoring $expand, or a nextLink that drops it) only lists links,
+      // so those accounts have to be read on their own
+      const unexpandedPaths = new Set<string>();
       for (const member of members ?? []) {
         const memberPath = toRedfishPath(member["@odata.id"]);
         if (!checkedPaths.has(memberPath)) {
-          if (checkedPaths.size >= HP_ILO_REDFISH_MAX_ACCOUNT_LOOKUPS) {
-            isSearchTruncated = true;
-            return undefined;
+          if (member.UserName === undefined) {
+            unexpandedPaths.add(memberPath);
+          } else {
+            checkedPaths.add(memberPath);
+            if (member.UserName === username) return memberPath;
           }
-          checkedPaths.add(memberPath);
-
-          // eslint-disable-next-line no-await-in-loop
-          const { data: account } = await sendRequest<TRedfishAccount>(memberPath, {
-            method: "GET",
-            headers: { Authorization: authorization }
-          });
-          if (account.UserName === username) return memberPath;
         }
       }
-      return undefined;
+
+      return findByReadingMembers([...unexpandedPaths]);
     };
 
     const fetchCollectionPage = async (pagePath: string): Promise<TRedfishCollection> => {
@@ -375,16 +438,14 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
       return undefined;
     };
 
-    const filter = encodeURIComponent(`UserName eq '${username.replaceAll("'", "''")}'`);
+    // HPE documents $expand=. on Accounts for iLO 5, 6 and 7, which inlines UserName on every member and saves a
+    // request (and a gateway tunnel) per account. $expand=* is avoided because firmware before iLO 7 1.22 rejects it
     let accountPath: string | undefined;
-
     try {
-      accountPath = await searchCollection(`${HP_ILO_REDFISH_ACCOUNTS_PATH}?$filter=${filter}`);
+      accountPath = await searchCollection(`${HP_ILO_REDFISH_ACCOUNTS_PATH}?$expand=.`);
     } catch (error) {
-      if (isAxiosError(error) && error.response?.status === 401) throw error;
-    }
-
-    if (!accountPath && !isSearchTruncated) {
+      const status = isAxiosError(error) ? error.response?.status : undefined;
+      if (status === undefined || status === 401 || status >= 500) throw error;
       accountPath = await searchCollection(HP_ILO_REDFISH_ACCOUNTS_PATH);
     }
 
@@ -400,11 +461,15 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
     return accountPath;
   };
 
+  const readAccountAs = async (username: string, password: string) => {
+    const authorization = basicAuth(username, password);
+    const accountPath = await resolveAccountPath(authorization, username);
+    await sendRequest(accountPath, { method: "GET", headers: { Authorization: authorization } });
+  };
+
   const checkPassword = async (username: string, password: string): Promise<"accepted" | "rejected" | "unknown"> => {
     try {
-      const authorization = basicAuth(username, password);
-      const accountPath = await resolveAccountPath(authorization, username);
-      await sendRequest(accountPath, { method: "GET", headers: { Authorization: authorization } });
+      await readAccountAs(username, password);
       return "accepted";
     } catch (error) {
       return isAxiosError(error) && error.response?.status === 401 ? "rejected" : "unknown";
@@ -419,7 +484,10 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
       await sendRequest(accountPath, {
         method: "PATCH",
         data: { Password: newPassword },
-        headers: { Authorization: authorization, "Content-Type": "application/json" }
+        headers: { Authorization: authorization, "Content-Type": "application/json" },
+        // A retried PATCH would authenticate with a password the first attempt may already have replaced, and the
+        // resulting 401s count toward the iLO's login lockout
+        "axios-retry": { retries: 0 }
       });
     } catch (error) {
       // A failed PATCH may still have been applied: its response can be lost (gateway transport failures arrive as
@@ -461,10 +529,8 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
   };
 
   const verifyPassword = async (username: string, password: string) => {
-    const authorization = basicAuth(username, password);
     try {
-      const accountPath = await resolveAccountPath(authorization, username);
-      await sendRequest(accountPath, { method: "GET", headers: { Authorization: authorization } });
+      await readAccountAs(username, password);
     } catch (error) {
       throw new HpIloAccountUnchangedError(`HP iLO password verification failed: ${describeRedfishError(error)}`);
     }
@@ -473,10 +539,15 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
   // The service root needs no credentials, so this only checks that Redfish is reachable over a verified TLS
   // connection; whether a given account's credentials work is left to the operation, whose 401 falls back safely.
   // A certificate that fails verification (the iLO default is self-signed) disables this client, so no credentials
-  // are sent to an endpoint that cannot be authenticated
+  // are sent to an endpoint that cannot be authenticated. The probe gives up quickly and is not retried, so a blocked
+  // 443 falls back to SSH without waiting out the full request timeout and its retries
   const isEnabled = async () => {
     try {
-      await sendRequest(HP_ILO_REDFISH_SERVICE_ROOT_PATH, { method: "GET" });
+      await sendRequest(HP_ILO_REDFISH_SERVICE_ROOT_PATH, {
+        method: "GET",
+        timeout: HP_ILO_REDFISH_PROBE_TIMEOUT_MS,
+        "axios-retry": { retries: 0 }
+      });
       return true;
     } catch {
       return false;

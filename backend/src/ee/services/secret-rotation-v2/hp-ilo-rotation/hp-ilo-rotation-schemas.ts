@@ -12,6 +12,9 @@ import { CharacterType, characterValidator } from "@app/lib/validator/validate-s
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
+// iLO rejects longer passwords with iLO.2.43.InvalidPasswordLength, over both Redfish and SSH
+export const HP_ILO_MAX_PASSWORD_LENGTH = 39;
+
 export enum HpIloRotationMethod {
   LoginAsTarget = "login-as-target",
   LoginAsRoot = "login-as-root"
@@ -44,6 +47,19 @@ const HpIloRotationParametersSchema = z.object({
   sslRejectUnauthorized: z.boolean().optional().describe(SecretRotations.PARAMETERS.HP_ILO.sslRejectUnauthorized)
 });
 
+// Only input is narrowed: rotations saved before the limit existed may hold a longer length and must still read back
+const HpIloRotationParametersInputSchema = HpIloRotationParametersSchema.extend({
+  passwordRequirements: PasswordRequirementsSchema.refine(
+    (requirements) => requirements.length <= HP_ILO_MAX_PASSWORD_LENGTH,
+    {
+      message: `Password length cannot exceed ${HP_ILO_MAX_PASSWORD_LENGTH} characters, the maximum HP iLO accepts`,
+      path: ["length"]
+    }
+  )
+    .describe(SecretRotations.PARAMETERS.GENERAL.PASSWORD_REQUIREMENTS.base)
+    .optional()
+});
+
 const HpIloRotationSecretsMappingSchema = z.object({
   username: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.HP_ILO.username),
   password: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.HP_ILO.password)
@@ -64,7 +80,7 @@ export const HpIloRotationSchema = BaseSecretRotationSchema(SecretRotation.HpIlo
 
 export const CreateHpIloRotationSchema = BaseCreateSecretRotationSchema(SecretRotation.HpIloLocalAccount)
   .extend({
-    parameters: HpIloRotationParametersSchema,
+    parameters: HpIloRotationParametersInputSchema,
     secretsMapping: HpIloRotationSecretsMappingSchema,
     temporaryParameters: z
       .object({
@@ -83,7 +99,7 @@ export const CreateHpIloRotationSchema = BaseCreateSecretRotationSchema(SecretRo
   });
 
 export const UpdateHpIloRotationSchema = BaseUpdateSecretRotationSchema(SecretRotation.HpIloLocalAccount).extend({
-  parameters: HpIloRotationParametersSchema.optional(),
+  parameters: HpIloRotationParametersInputSchema.optional(),
   secretsMapping: HpIloRotationSecretsMappingSchema.optional()
 });
 
