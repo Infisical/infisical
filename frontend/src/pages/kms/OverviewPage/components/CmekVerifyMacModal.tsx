@@ -119,7 +119,6 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
               id={`${fieldId}-data`}
               isError={Boolean(errors.data)}
               aria-describedby={errors.data ? `${fieldId}-data-error` : undefined}
-              className="max-w-full resize"
             />
             <FieldError id={`${fieldId}-data-error`} errors={[errors.data]} />
           </Field>
@@ -143,7 +142,6 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
               id={`${fieldId}-mac`}
               isError={Boolean(errors.mac)}
               aria-describedby={errors.mac ? `${fieldId}-mac-error` : undefined}
-              className="max-w-full resize"
             />
             <FieldError id={`${fieldId}-mac-error`} errors={[errors.mac]} />
           </Field>
@@ -177,10 +175,10 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
           />
         </>
       )}
-      <div className="flex items-center">
+      <div className="flex flex-wrap items-center gap-4">
         {macValid === undefined && (
           <Button
-            className="mr-4 w-44"
+            className="w-44"
             size="sm"
             variant="project"
             type="submit"

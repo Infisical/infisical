@@ -78,7 +78,7 @@ const GenerateMacForm = ({ cmek }: FormProps) => {
       {mac ? (
         <Field className="mb-4">
           <FieldLabel htmlFor={`${fieldId}-mac`}>Message Authentication Code</FieldLabel>
-          <TextArea id={`${fieldId}-mac`} className="max-w-full resize" disabled value={mac} />
+          <TextArea id={`${fieldId}-mac`} rows={4} readOnly value={mac} />
         </Field>
       ) : (
         <>
@@ -89,7 +89,6 @@ const GenerateMacForm = ({ cmek }: FormProps) => {
               id={`${fieldId}-data`}
               isError={Boolean(errors.data)}
               aria-describedby={errors.data ? `${fieldId}-data-error` : undefined}
-              className="max-w-full resize"
             />
             <FieldError id={`${fieldId}-data-error`} errors={[errors.data]} />
           </Field>
@@ -123,9 +122,9 @@ const GenerateMacForm = ({ cmek }: FormProps) => {
           />
         </>
       )}
-      <div className="flex items-center">
+      <div className="flex flex-wrap items-center gap-4">
         <Button
-          className={`mr-4 ${mac ? "w-44" : ""}`}
+          className={mac ? "w-44" : undefined}
           size="sm"
           variant="project"
           onClick={mac ? handleCopyToClipboard : undefined}
