@@ -109,8 +109,8 @@ export const auditLogQueueServiceFactory = async ({
     if (!orgId) return null;
 
     if (!isAlwaysRecordedEventClass(getAuditLogEventClass(data.event.type))) {
-      const settings = await requestMemoize(requestMemoKeys.auditLogSettings(orgId), () =>
-        auditLogSettingsService.getEffectiveSettings(orgId)
+      const settings = await requestMemoize(requestMemoKeys.auditLogSettings(orgId, projectId), () =>
+        auditLogSettingsService.getEffectiveSettings(orgId, projectId)
       );
       if (!isAuditLogEventEnabled(settings, data.event.type, projectId)) return null;
     }

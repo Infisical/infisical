@@ -1010,8 +1010,11 @@ Every class but management can be turned off per scope, and scopes do not inheri
 rows for org-level events, each project has its own rows for its events, and a scope without a row uses
 the default in `AUDIT_LOG_EVENT_CLASS_DEFAULTS` (data access on, authorization off). The rows live in
 `audit_log_settings` (one per scope and class, `projectId` null for the org scope) behind
-`audit-log-settings-service.ts`, which caches the org's rows and all of its projects' rows in the
-keystore for 1 minute (`getEffectiveSettings`, never throws: a lookup failure records everything).
+`audit-log-settings-service.ts`. `getEffectiveSettings(orgId, projectId?)` caches per scope, not per
+org: one key for the org's rows plus `shouldUseNewPrivilegeSystem`, one key per org and project
+(`{}` when it has no rows), read together in one `MGET` for 10 minutes. Never build a value that
+holds every project in an org, since every event would fetch and parse it. Each write clears only its own scope's key, and
+the lookup never throws: a failure records everything.
 Enforcement is `isAuditLogEventEnabled` in the settings service, called from `buildStreamEntry` in
 `audit-log-queue.ts` with the settings memoized per request so a batch of events costs one read.
 Suppressed events are dropped silently and do not count on the dropped counter. Management is

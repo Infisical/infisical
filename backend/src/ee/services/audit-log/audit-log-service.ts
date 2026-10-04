@@ -303,11 +303,9 @@ export const auditLogServiceFactory = ({
     if (appCfg.DISABLE_AUDIT_LOG_GENERATION) return;
 
     try {
-      const settings = await requestMemoize(requestMemoKeys.auditLogSettings(orgId), () =>
-        auditLogSettingsService.getEffectiveSettings(orgId)
+      const settings = await requestMemoize(requestMemoKeys.auditLogSettings(orgId, projectId), () =>
+        auditLogSettingsService.getEffectiveSettings(orgId, projectId)
       );
-      // Skip on a failed lookup (null) instead of recording everything: authorization is opt-in, and
-      // we can't tell if the org is on the new privilege system.
       if (!settings?.shouldUseNewPrivilegeSystem) return;
 
       if (!isAuditLogEventEnabled(settings, EventType.PERMISSION_DENIED, projectId)) return;

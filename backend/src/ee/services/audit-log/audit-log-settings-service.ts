@@ -32,6 +32,7 @@ import { TAuditLogSettingsDALFactory } from "./audit-log-settings-dal";
 import {
   TAuditLogEventClassOverrides,
   TAuditLogEventClassSetting,
+  TCachedOrgAuditLogSettings,
   TEffectiveAuditLogSettings,
   TGetOrgAuditLogSettingsDTO,
   TGetProjectAuditLogSettingsDTO,
@@ -44,7 +45,7 @@ type TAuditLogSettingsServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "getItems" | "setItemWithExpiry" | "deleteItem">;
 };
 
 export type TAuditLogSettingsServiceFactory = ReturnType<typeof auditLogSettingsServiceFactory>;
@@ -62,7 +63,7 @@ export const isAuditLogEventEnabled = (
   const eventClass = getAuditLogEventClass(eventType);
   if (isAlwaysRecordedEventClass(eventClass)) return true;
   if (!settings) return true;
-  const scope = projectId ? settings.projects[projectId] : settings.org;
+  const scope = projectId ? settings.project : settings.org;
   return scope?.[eventClass] ?? AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass];
 };
 
@@ -156,51 +157,91 @@ export const auditLogSettingsServiceFactory = ({
     shouldUseNewPrivilegeSystem: Boolean(org.shouldUseNewPrivilegeSystem)
   });
 
-  const invalidateCache = async (orgId: string) => {
+  const deleteCachedItem = async (key: string, scopeLog: string) => {
     try {
-      await keyStore.deleteItem(KeyStorePrefixes.AuditLogOrgSettings(orgId));
+      await keyStore.deleteItem(key);
     } catch (error) {
-      logger.warn(error, `audit-log-settings: failed to invalidate cached settings [orgId=${orgId}]`);
+      logger.warn(error, `audit-log-settings: failed to invalidate cached settings [${scopeLog}]`);
     }
   };
 
-  const loadSettings = async (orgId: string): Promise<TEffectiveAuditLogSettings | null> => {
+  const invalidateCache = (orgId: string) =>
+    deleteCachedItem(KeyStorePrefixes.AuditLogOrgSettings(orgId), `orgId=${orgId}`);
+
+  const invalidateScopeCache = (scope: TScope) =>
+    scope.projectId
+      ? deleteCachedItem(
+          KeyStorePrefixes.AuditLogProjectSettings(scope.orgId, scope.projectId),
+          `orgId=${scope.orgId}] [projectId=${scope.projectId}`
+        )
+      : invalidateCache(scope.orgId);
+
+  const loadOrgSettings = async (orgId: string): Promise<TCachedOrgAuditLogSettings | null> => {
     const org = await orgDAL.findById(orgId);
     if (!org) return null;
-
-    const rows = await auditLogSettingsDAL.find({ orgId });
-    const projectRows = new Map<string, TScopeRow[]>();
-    rows.forEach((row) => {
-      if (!row.projectId) return;
-      projectRows.set(row.projectId, [...(projectRows.get(row.projectId) ?? []), row]);
-    });
+    const rows = await auditLogSettingsDAL.find({ orgId, projectId: null });
     return {
-      org: toOverrides(rows.filter((row) => !row.projectId)),
-      projects: Object.fromEntries(
-        [...projectRows].map(([projectId, scopeRows]) => [projectId, toOverrides(scopeRows)])
-      ),
+      overrides: toOverrides(rows),
       shouldUseNewPrivilegeSystem: Boolean(org.shouldUseNewPrivilegeSystem)
     };
   };
 
-  // Hot path: cached and never throws. If the lookup fails we just record everything.
-  const getEffectiveSettings = async (orgId: string): Promise<TEffectiveAuditLogSettings | null> => {
-    const cacheKey = KeyStorePrefixes.AuditLogOrgSettings(orgId);
+  const loadProjectSettings = async (orgId: string, projectId: string): Promise<TAuditLogEventClassOverrides> =>
+    toOverrides(await auditLogSettingsDAL.find({ orgId, projectId }));
+
+  const readCachedItems = async (keys: string[]) => {
     try {
-      const cached = await keyStore.getItem(cacheKey);
-      if (cached) return JSON.parse(cached) as TEffectiveAuditLogSettings;
+      return await keyStore.getItems(keys);
     } catch (error) {
-      logger.warn(error, `audit-log-settings: failed to read cached settings [orgId=${orgId}]`);
+      logger.warn(error, `audit-log-settings: failed to read cached settings [keys=${keys.join(",")}]`);
+      return keys.map(() => null);
     }
+  };
+
+  const cacheItem = async (key: string, value: unknown) => {
+    try {
+      await keyStore.setItemWithExpiry(key, KeyStoreTtls.AuditLogSettingsInSeconds, JSON.stringify(value));
+    } catch (error) {
+      logger.warn(error, `audit-log-settings: failed to cache settings [key=${key}]`);
+    }
+  };
+
+  const getEffectiveSettings = async (
+    orgId: string,
+    projectId?: string | null
+  ): Promise<TEffectiveAuditLogSettings | null> => {
+    const orgKey = KeyStorePrefixes.AuditLogOrgSettings(orgId);
+    const projectKey = projectId ? KeyStorePrefixes.AuditLogProjectSettings(orgId, projectId) : undefined;
 
     try {
-      const settings = await loadSettings(orgId);
-      if (settings) {
-        await keyStore.setItemWithExpiry(cacheKey, KeyStoreTtls.AuditLogOrgSettingsInSeconds, JSON.stringify(settings));
+      const [cachedOrg, cachedProject] = await readCachedItems(projectKey ? [orgKey, projectKey] : [orgKey]);
+
+      let orgSettings = cachedOrg ? (JSON.parse(cachedOrg) as TCachedOrgAuditLogSettings) : null;
+      if (!orgSettings) {
+        orgSettings = await loadOrgSettings(orgId);
+        if (!orgSettings) return null;
+        await cacheItem(orgKey, orgSettings);
       }
-      return settings;
+
+      let project: TAuditLogEventClassOverrides | undefined;
+      if (projectId && projectKey) {
+        project = cachedProject ? (JSON.parse(cachedProject) as TAuditLogEventClassOverrides) : undefined;
+        if (!project) {
+          project = await loadProjectSettings(orgId, projectId);
+          await cacheItem(projectKey, project);
+        }
+      }
+
+      return {
+        org: orgSettings.overrides,
+        project,
+        shouldUseNewPrivilegeSystem: orgSettings.shouldUseNewPrivilegeSystem
+      };
     } catch (error) {
-      logger.warn(error, `audit-log-settings: failed to load settings, recording all events [orgId=${orgId}]`);
+      logger.warn(
+        error,
+        `audit-log-settings: failed to load settings, recording all events [orgId=${orgId}] [projectId=${projectId}]`
+      );
       return null;
     }
   };
@@ -220,7 +261,7 @@ export const auditLogSettingsServiceFactory = ({
         tx
       );
     });
-    await invalidateCache(scope.orgId);
+    await invalidateScopeCache(scope);
   };
 
   const getOrgSettings = async ({ actor }: TGetOrgAuditLogSettingsDTO) => {

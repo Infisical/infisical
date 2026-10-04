@@ -99,7 +99,9 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
     enqueueForLogs: vi.fn<(logs: unknown[]) => Promise<void>>(async () => undefined)
   };
   const auditLogSettingsService = {
-    getEffectiveSettings: vi.fn<(orgId: string) => Promise<Record<string, unknown> | null>>(async () => null)
+    getEffectiveSettings: vi.fn<(orgId: string, projectId?: string | null) => Promise<Record<string, unknown> | null>>(
+      async () => null
+    )
   };
   const clickhouseClient = clickhouse
     ? {
@@ -254,7 +256,6 @@ describe("audit-log-queue pushToLog", () => {
 describe("audit-log-queue event class settings", () => {
   const settings = (overrides: Record<string, unknown> = {}) => ({
     org: {},
-    projects: {},
     shouldUseNewPrivilegeSystem: true,
     ...overrides
   });
@@ -290,8 +291,8 @@ describe("audit-log-queue event class settings", () => {
 
   test("a project event uses the project's own setting, never the org's", async () => {
     const { service, keyStore, auditLogSettingsService } = await createHarness();
-    auditLogSettingsService.getEffectiveSettings.mockResolvedValue(
-      settings({ org: { authentication: false }, projects: { "p-off": { authentication: false } } })
+    auditLogSettingsService.getEffectiveSettings.mockImplementation(async (_orgId, projectId) =>
+      settings({ org: { authentication: false }, project: projectId === "p-off" ? { authentication: false } : {} })
     );
 
     await service.pushToLog(dto({ projectId: "p-none", event: { type: "user-login", metadata: {} } }) as never);
@@ -299,12 +300,13 @@ describe("audit-log-queue event class settings", () => {
 
     await service.pushToLog(dto({ projectId: "p-off", event: { type: "user-login", metadata: {} } }) as never);
     expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+    expect(auditLogSettingsService.getEffectiveSettings).toHaveBeenLastCalledWith(expect.any(String), "p-off");
   });
 
   test("an org-scoped event ignores project settings", async () => {
     const { service, keyStore, auditLogSettingsService } = await createHarness();
     auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(
-      settings({ org: {}, projects: { p1: { authentication: false } } })
+      settings({ org: {}, project: { authentication: false } })
     );
 
     await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);

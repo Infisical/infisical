@@ -58,7 +58,7 @@ export const requestMemoKeys = {
 
   projectFindById: (projectId: string) => `project:findById:${projectId}`,
 
-  auditLogSettings: (orgId: string) => `audit-log-settings:${orgId}`,
+  auditLogSettings: (orgId: string, projectId?: string | null) => `audit-log-settings:${orgId}:${projectId ?? ""}`,
 
   licensePlan: (orgId: string) => `license:plan:${orgId}`,
 

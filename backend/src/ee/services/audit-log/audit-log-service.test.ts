@@ -61,11 +61,13 @@ const createHarness = ({ windowAcquired = true, storedCount = "0", retentionDays
   };
   const licenseService = { getPlan: vi.fn(async () => ({ auditLogsRetentionDays: retentionDays })) };
   const auditLogSettingsService = {
-    getEffectiveSettings: vi.fn<(orgId: string) => Promise<TEffectiveAuditLogSettings>>(async () => ({
-      org: {},
-      projects: { "project-1": { [AuditLogEventClass.Authorization]: true } },
-      shouldUseNewPrivilegeSystem: true
-    }))
+    getEffectiveSettings: vi.fn<(orgId: string, projectId?: string | null) => Promise<TEffectiveAuditLogSettings>>(
+      async () => ({
+        org: {},
+        project: { [AuditLogEventClass.Authorization]: true },
+        shouldUseNewPrivilegeSystem: true
+      })
+    )
   };
 
   const service = auditLogServiceFactory({
@@ -172,7 +174,7 @@ describe("recordPermissionDenied", () => {
     const { service, keyStore, auditLogQueue, auditLogSettingsService } = createHarness();
     auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce({
       org: {},
-      projects: { "project-1": { [AuditLogEventClass.Authorization]: false } },
+      project: { [AuditLogEventClass.Authorization]: false },
       shouldUseNewPrivilegeSystem: true
     });
 

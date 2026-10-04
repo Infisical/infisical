@@ -1,6 +1,7 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import {
@@ -33,7 +34,6 @@ vi.mock("@app/lib/logger", () => ({
 
 const settings = (overrides: Partial<TEffectiveAuditLogSettings> = {}): TEffectiveAuditLogSettings => ({
   org: {},
-  projects: {},
   shouldUseNewPrivilegeSystem: true,
   ...overrides
 });
@@ -44,9 +44,7 @@ describe("isAuditLogEventEnabled", () => {
 
   test("a project uses its own row or the default, never the org's row", () => {
     expect(isAuditLogEventEnabled(settings({ org: { [eventClass]: false } }), eventType, "p1")).toBe(true);
-    expect(isAuditLogEventEnabled(settings({ projects: { p1: { [eventClass]: false } } }), eventType, "p1")).toBe(
-      false
-    );
+    expect(isAuditLogEventEnabled(settings({ project: { [eventClass]: false } }), eventType, "p1")).toBe(false);
   });
 
   test("an org-scoped event uses the org's row or the default", () => {
@@ -64,7 +62,7 @@ describe("isAuditLogEventEnabled", () => {
   test("data access is always recorded, even with a row that says otherwise", () => {
     const off = settings({
       org: { [AuditLogEventClass.DataAccess]: false },
-      projects: { p1: { [AuditLogEventClass.DataAccess]: false } }
+      project: { [AuditLogEventClass.DataAccess]: false }
     });
     expect(isAuditLogEventEnabled(off, EventType.GET_SECRETS)).toBe(true);
     expect(isAuditLogEventEnabled(off, EventType.GET_SECRETS, "p1")).toBe(true);
@@ -102,7 +100,7 @@ const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true
     insertMany: vi.fn(async (data: TRow[]) => data)
   };
   const keyStore = {
-    getItem: vi.fn(async () => null),
+    getItems: vi.fn(async (keys: string[]): Promise<(string | null)[]> => keys.map(() => null)),
     setItemWithExpiry: vi.fn(async () => "OK"),
     deleteItem: vi.fn(async () => 1)
   };
@@ -149,31 +147,74 @@ describe("getEffectiveSettings", () => {
     vi.clearAllMocks();
   });
 
-  test("loads only the org's own rows, split by scope", async () => {
-    const { service, auditLogSettingsDAL } = createHarness({
-      rows: [
-        { orgId: "org-1", projectId: null, eventClass: "data-access", isEnabled: false },
-        { orgId: "org-1", projectId: "p1", eventClass: "authentication", isEnabled: false },
-        { orgId: "org-2", projectId: null, eventClass: "management", isEnabled: false }
-      ]
-    });
+  const scopedRows: TRow[] = [
+    { orgId: "org-1", projectId: null, eventClass: "data-access", isEnabled: false },
+    { orgId: "org-1", projectId: "p1", eventClass: "authentication", isEnabled: false },
+    { orgId: "org-1", projectId: "p2", eventClass: "authentication", isEnabled: true },
+    { orgId: "org-2", projectId: null, eventClass: "management", isEnabled: false }
+  ];
+
+  test("without a project, loads and caches only the org's own rows", async () => {
+    const { service, auditLogSettingsDAL, keyStore } = createHarness({ rows: scopedRows });
 
     const result = await service.getEffectiveSettings("org-1");
 
-    expect(auditLogSettingsDAL.find).toHaveBeenCalledWith({ orgId: "org-1" });
+    expect(auditLogSettingsDAL.find).toHaveBeenCalledTimes(1);
+    expect(auditLogSettingsDAL.find).toHaveBeenCalledWith({ orgId: "org-1", projectId: null });
+    expect(result).toEqual({ org: { "data-access": false }, shouldUseNewPrivilegeSystem: true });
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledTimes(1);
+  });
+
+  test("with a project, loads only that project's rows besides the org's", async () => {
+    const { service, auditLogSettingsDAL, keyStore } = createHarness({ rows: scopedRows });
+
+    const result = await service.getEffectiveSettings("org-1", "p1");
+
+    expect(auditLogSettingsDAL.find).toHaveBeenCalledWith({ orgId: "org-1", projectId: "p1" });
     expect(result).toEqual({
       org: { "data-access": false },
-      projects: { p1: { authentication: false } },
+      project: { authentication: false },
       shouldUseNewPrivilegeSystem: true
+    });
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledTimes(2);
+  });
+
+  test("caches a project with no rows as empty so it isn't reloaded", async () => {
+    const { service, keyStore } = createHarness();
+
+    await service.getEffectiveSettings("org-1", "p-none");
+
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      KeyStorePrefixes.AuditLogProjectSettings("org-1", "p-none"),
+      expect.any(Number),
+      "{}"
+    );
+  });
+
+  test("serves both scopes from one cache read without touching the database", async () => {
+    const { service, auditLogSettingsDAL, orgDAL, keyStore } = createHarness();
+    keyStore.getItems.mockResolvedValueOnce([
+      JSON.stringify({ overrides: { authentication: false }, shouldUseNewPrivilegeSystem: false }),
+      JSON.stringify({ authorization: true })
+    ]);
+
+    const result = await service.getEffectiveSettings("org-1", "p1");
+
+    expect(keyStore.getItems).toHaveBeenCalledTimes(1);
+    expect(orgDAL.findById).not.toHaveBeenCalled();
+    expect(auditLogSettingsDAL.find).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      org: { authentication: false },
+      project: { authorization: true },
+      shouldUseNewPrivilegeSystem: false
     });
   });
 
-  test("caches the loaded settings", async () => {
-    const { service, keyStore } = createHarness();
+  test("returns null so everything is recorded when the database lookup fails", async () => {
+    const { service, auditLogSettingsDAL } = createHarness();
+    auditLogSettingsDAL.find.mockRejectedValueOnce(new Error("db down"));
 
-    await service.getEffectiveSettings("org-1");
-
-    expect(keyStore.setItemWithExpiry).toHaveBeenCalledTimes(1);
+    await expect(service.getEffectiveSettings("org-1", "p1")).resolves.toBeNull();
   });
 });
 
@@ -302,6 +343,7 @@ describe("updateOrgSettings", () => {
       expect.anything()
     );
     expect(keyStore.deleteItem).toHaveBeenCalledTimes(1);
+    expect(keyStore.deleteItem).toHaveBeenCalledWith(KeyStorePrefixes.AuditLogOrgSettings("org-1"));
     expect(result).toEqual({
       shouldUseNewPrivilegeSystem: true,
       eventClasses: [
@@ -364,6 +406,15 @@ describe("updateProjectSettings", () => {
     await service.updateProjectSettings({ ...projectActor, eventClasses: fullEventClasses });
 
     expect(auditLogSettingsDAL.delete).toHaveBeenCalledWith({ orgId: "org-1", projectId: "p1" }, expect.anything());
+  });
+
+  test("invalidates only the project's cached settings", async () => {
+    const { service, keyStore } = createHarness();
+
+    await service.updateProjectSettings({ ...projectActor, eventClasses: fullEventClasses });
+
+    expect(keyStore.deleteItem).toHaveBeenCalledTimes(1);
+    expect(keyStore.deleteItem).toHaveBeenCalledWith(KeyStorePrefixes.AuditLogProjectSettings("org-1", "p1"));
   });
 });
 

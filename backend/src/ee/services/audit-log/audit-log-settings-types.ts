@@ -25,8 +25,13 @@ export type TUpdateProjectAuditLogSettingsDTO = TProjectPermission & {
 // Missing key = not set at this scope.
 export type TAuditLogEventClassOverrides = Partial<Record<AuditLogEventClass, boolean>>;
 
+export type TCachedOrgAuditLogSettings = {
+  overrides: TAuditLogEventClassOverrides;
+  shouldUseNewPrivilegeSystem: boolean;
+};
+
 export type TEffectiveAuditLogSettings = {
   org: TAuditLogEventClassOverrides;
-  projects: Record<string, TAuditLogEventClassOverrides>;
+  project?: TAuditLogEventClassOverrides;
   shouldUseNewPrivilegeSystem: boolean;
 };
