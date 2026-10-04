@@ -24,6 +24,7 @@ import {
   useProjectPermission,
   useSubscription
 } from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { usePopUp } from "@app/hooks";
 import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
 
@@ -83,13 +84,8 @@ export const AuditLogsRetentionSection = () => {
     });
   };
 
-  // render only for dedicated/self-hosted instances of Infisical
-  if (
-    window.location.origin.includes("https://app.infisical.com") ||
-    window.location.origin.includes("https://gamma.infisical.com")
-  ) {
-    return null;
-  }
+  // Retention is only configurable on dedicated and self-hosted instances.
+  if (isInfisicalCloud()) return null;
 
   const canEdit = permission.can(
     ProjectPermissionAuditLogsActions.Edit,
@@ -97,19 +93,15 @@ export const AuditLogsRetentionSection = () => {
   );
   return (
     <>
-      <form
-        onSubmit={handleSubmit(handleAuditLogsRetentionSubmit)}
-        autoComplete="off"
-        className="mb-6"
-      >
+      <form onSubmit={handleSubmit(handleAuditLogsRetentionSubmit)} autoComplete="off">
         <Card className="gap-0 overflow-hidden p-0">
-          <CardHeader className="p-6">
-            <CardTitle className="font-alliance">Audit Logs Retention</CardTitle>
+          <CardHeader className="border-b p-6">
+            <CardTitle>Audit Logs Retention</CardTitle>
             <CardDescription>
               Set the number of days to keep your project audit logs.
             </CardDescription>
           </CardHeader>
-          <CardContent className="max-w-xs px-6 pb-6">
+          <CardContent className="max-w-xs p-6">
             <Controller
               control={control}
               defaultValue={0}
@@ -131,7 +123,7 @@ export const AuditLogsRetentionSection = () => {
               )}
             />
           </CardContent>
-          <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+          <CardFooter className="min-h-8 justify-end border-t p-4">
             <Button
               variant="project"
               size="sm"
@@ -139,7 +131,7 @@ export const AuditLogsRetentionSection = () => {
               isPending={isSubmitting}
               isDisabled={!canEdit || !isDirty}
             >
-              Save changes
+              Save Changes
             </Button>
           </CardFooter>
         </Card>

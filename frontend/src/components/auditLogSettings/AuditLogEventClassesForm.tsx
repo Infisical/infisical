@@ -47,8 +47,6 @@ type Props = {
   readOnlyMessage: string;
   variant: ScopeVariant;
   onSave: (eventClasses: TAuditLogEventClassSetting[]) => Promise<unknown>;
-  className?: string;
-  titleClassName?: string;
 };
 
 export const AuditLogEventClassesForm = ({
@@ -61,9 +59,7 @@ export const AuditLogEventClassesForm = ({
   canEdit,
   readOnlyMessage,
   variant,
-  onSave,
-  className,
-  titleClassName
+  onSave
 }: Props) => {
   const { currentOrg } = useOrganization();
   const shouldUseNewPrivilegeSystem =
@@ -102,7 +98,7 @@ export const AuditLogEventClassesForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className={className}>
+    <form onSubmit={handleSubmit(onSubmit)}>
       {!canEdit && !isError && !isPending && (
         <Alert variant="info" className="mb-4">
           <Info />
@@ -111,7 +107,7 @@ export const AuditLogEventClassesForm = ({
       )}
       <Card className="gap-0 overflow-hidden p-0">
         <CardHeader className="border-b p-6">
-          <CardTitle className={titleClassName}>
+          <CardTitle>
             {title}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
           </CardTitle>

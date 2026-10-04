@@ -1,16 +1,17 @@
 import { AuditLogEventClassesForm } from "@app/components/auditLogSettings";
 import {
-  ProjectPermissionActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionSub,
   useProject,
   useProjectPermission
 } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useGetProjectAuditLogSettings, useUpdateProjectAuditLogSettings } from "@app/hooks/api";
 
-const AuditLogEventClassesSectionContent = () => {
+export const AuditLogEventClassesSection = () => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const scopeVariant = useScopeVariant();
   const canEdit = permission.can(
     ProjectPermissionAuditLogsActions.Edit,
     ProjectPermissionSub.AuditLogs
@@ -21,9 +22,7 @@ const AuditLogEventClassesSectionContent = () => {
 
   return (
     <AuditLogEventClassesForm
-      className="mb-6"
-      titleClassName="font-alliance"
-      title="Audit Log Event Classes"
+      title="Event Classes"
       description="Choose which classes of events this project records."
       settings={settings}
       isPending={isPending}
@@ -31,14 +30,8 @@ const AuditLogEventClassesSectionContent = () => {
       isSaving={isSaving}
       canEdit={canEdit}
       readOnlyMessage="You need the Edit Settings permission on Audit Logs to change these settings."
-      variant="project"
+      variant={scopeVariant}
       onSave={(eventClasses) => updateSettings({ projectId: currentProject.id, eventClasses })}
     />
   );
-};
-
-export const AuditLogEventClassesSection = () => {
-  const { permission } = useProjectPermission();
-  if (!permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings)) return null;
-  return <AuditLogEventClassesSectionContent />;
 };
