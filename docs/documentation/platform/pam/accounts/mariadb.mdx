@@ -6,16 +6,24 @@ description: "Add and connect to MariaDB databases."
 
 MariaDB accounts let you manage access to your MariaDB databases. Users connect through Web Access (a browser-based interface) or CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) is recorded.
 
+## Prerequisites
+
+- Permission to create accounts in the PAM project
+- A [gateway](/documentation/platform/gateways/overview) that can reach your MariaDB server, assigned to the template or account
+- A MariaDB user for Infisical to connect as
+
 ## Creating an account
 
 <Steps>
-  <Step title="Start adding an account">
+  <Step>
     Go to **Privileged Access Management → Accounts** and select **Add Account**.
   </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a MariaDB [template](/documentation/platform/pam/templates/overview).
+  <Step>
+    Choose the [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a MariaDB [template](/documentation/platform/pam/templates/overview).
   </Step>
-  <Step title="Enter connection details">
+  <Step>
+    Enter the connection details:
+
     | Field | Description |
     |-------|-------------|
     | **Name** | A descriptive name (e.g., `orders-db-readonly`) |
@@ -26,13 +34,15 @@ MariaDB accounts let you manage access to your MariaDB databases. Users connect 
     | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
     | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
   </Step>
-  <Step title="Enter credentials">
+  <Step>
+    Enter the credentials:
+
     | Field | Description |
     |-------|-------------|
     | **Username** | MariaDB username |
     | **Password** | MariaDB password |
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Create**.
   </Step>
 </Steps>
@@ -48,8 +58,8 @@ MariaDB accounts let you manage access to your MariaDB databases. Users connect 
 
     To connect:
     1. Go to **Privileged Access Management → Accounts**
-    2. Find the account and click the rocket icon (or select **Launch Session** from the menu)
-    3. Click **Connect in Browser**
+    2. Find the account and select the rocket icon (or select **Launch Session** from the menu)
+    3. Select **Connect in Browser**
 
   </Tab>
   <Tab title="CLI">
