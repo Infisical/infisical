@@ -52,6 +52,7 @@ import { ProjectEnv } from "@app/hooks/api/types";
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
@@ -191,6 +192,11 @@ export const SecretTableRow = ({
   const [expandedTableSort, setExpandedTableSort] = useState<ExpandedTableSort | null>(null);
 
   const isSingleEnvView = environments.length === 1;
+  // The single-environment row renders the secret's name and value inputs, which mount the bar on
+  // focus; only the multi-environment row, which is labels and status cells, needs a tab stop.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: !isSingleEnvView
+  });
   const isRowActive = isSingleEnvView
     ? isSingleEnvBaseActive || isSingleEnvOverrideActive
     : isExpanded;
@@ -397,11 +403,13 @@ export const SecretTableRow = ({
         data-index={virtualIndex}
         onClick={isSingleEnvView ? undefined : () => onToggleExpand(secretKey)}
         className={twMerge(
-          "group hover:z-10",
+          groupClassName,
+          "hover:z-10",
           (isSingleEnvView ? isSingleEnvBaseActive || isSelected : isRowActive || isSelected) &&
             TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
           pendingActionRowClass(singleEnvPendingAction)
         )}
+        {...rowHoverProps}
       >
         {(isSingleEnvView || !isExpanded) && (
           <TableCell
@@ -461,6 +469,7 @@ export const SecretTableRow = ({
         {isSingleEnvView ? (
           <SecretEditTableRow
             isSingleEnvView
+            shouldRenderHoverActions={shouldRenderActions}
             unsavedChangeId={editorUnsavedChangeId("base", singleEnvSlug)}
             onUnsavedChange={handleEditorUnsavedChange}
             isBatchMode={isBatchMode}
@@ -594,50 +603,52 @@ export const SecretTableRow = ({
                       </Badge>
                     )}
                 </div>
-                <div
-                  className={twMerge(
-                    "absolute z-20",
-                    "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-                    TABLE_ROW_ACTION_BAR_CLASS_NAME,
-                    "top-1/2 right-[3px] -translate-y-1/2"
-                  )}
-                >
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <IconButton
-                        aria-label="Copy secret name"
-                        variant="ghost"
-                        size="xs"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          copyTokenToClipboard();
-                        }}
-                        className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                      >
-                        {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
-                      </IconButton>
-                    </TooltipTrigger>
-                    <TooltipContent>Copy Secret Name</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <IconButton
-                        aria-label="Edit secret name"
-                        variant="ghost"
-                        size="xs"
-                        onClick={(e) => {
-                          setIsEditSecretNameOpen(true);
-                          e.stopPropagation();
-                        }}
-                        className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </TooltipTrigger>
-                    <TooltipContent>Edit Secret Name</TooltipContent>
-                  </Tooltip>
-                </div>
+                {shouldRenderActions && (
+                  <div
+                    className={twMerge(
+                      "absolute z-20",
+                      "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+                      TABLE_ROW_ACTION_BAR_CLASS_NAME,
+                      "top-1/2 right-[3px] -translate-y-1/2"
+                    )}
+                  >
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <IconButton
+                          aria-label="Copy secret name"
+                          variant="ghost"
+                          size="xs"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            copyTokenToClipboard();
+                          }}
+                          className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                        >
+                          {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
+                        </IconButton>
+                      </TooltipTrigger>
+                      <TooltipContent>Copy Secret Name</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <IconButton
+                          aria-label="Edit secret name"
+                          variant="ghost"
+                          size="xs"
+                          onClick={(e) => {
+                            setIsEditSecretNameOpen(true);
+                            e.stopPropagation();
+                          }}
+                          className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit Secret Name</TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
               </div>
             </div>
           </TableCell>
