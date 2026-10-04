@@ -1,10 +1,7 @@
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistance } from "date-fns";
 import { CheckIcon, RotateCwIcon, XIcon } from "lucide-react";
 
-import { Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { SecretScanningScanStatus } from "@app/hooks/api/secretScanningV2";
 
 type Props = {
@@ -31,14 +28,23 @@ export const SecretScanningScanStatusBadge = ({
     }
 
     return (
-      <Tooltip
-        position="left"
-        className="max-w-sm select-text"
-        content={
+      <Tooltip selectable>
+        <TooltipTrigger
+          type="button"
+          aria-label="Scan error: failure reason"
+          onClick={(event) => event.stopPropagation()}
+          className="w-fit rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Badge variant="danger">
+            <XIcon />
+            Scan Error
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-sm">
           <div className="flex flex-col gap-2 py-1 whitespace-normal">
             <div>
               <div className="mb-2 flex self-start text-danger">
-                <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
+                <XIcon aria-hidden className="mr-1.5 ml-1 size-3.5" />
                 <div className="text-xs">Failure Reason</div>
               </div>
               <div className="rounded-sm bg-surface-active p-2 text-xs break-words">
@@ -51,14 +57,7 @@ export const SecretScanningScanStatusBadge = ({
               )}
             </div>
           </div>
-        }
-      >
-        <div>
-          <Badge variant="danger">
-            <XIcon />
-            Scan Error
-          </Badge>
-        </div>
+        </TooltipContent>
       </Tooltip>
     );
   }
