@@ -24,10 +24,10 @@ Infisical syncs secrets to the environment variables of a Portainer stack.
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click the **Add Sync** button, then choose **Portainer** as the destination.
+        1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Select **Add Sync**, then select **Portainer** as the destination.
         ![Choose Portainer Destination](/images/secret-syncs/portainer/step-1.png)
 
-        2. Configure the **Source** to specify where secrets should be retrieved from, then click **Continue**.
+        2. Configure the **Source** to specify where secrets should be retrieved from, then select **Continue**.
         ![Configure Source](/images/secret-syncs/portainer/step-2.png)
 
             - **Environment**: The project environment to retrieve secrets from.
@@ -37,21 +37,21 @@ Infisical syncs secrets to the environment variables of a Portainer stack.
             If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
         </Tip>
 
-        3. Configure the **Destination** to specify where secrets should be deployed, then click **Continue**.
+        3. Configure the **Destination** to specify where secrets should be deployed, then select **Continue**.
         ![Configure Destination](/images/secret-syncs/portainer/step-3.png)
 
             - **Portainer Connection**: The Portainer Connection to authenticate with.
             - **Environment**: The Portainer environment (endpoint) that hosts the stack.
             - **Stack**: The stack whose environment variables should be updated.
 
-        4. Configure the **Initial Sync Behavior** to determine how Infisical should resolve the first sync, then click **Continue**.
+        4. Configure the **Initial Sync Behavior** to determine how Infisical should resolve the first sync, then select **Continue**.
         ![Configure Initial Sync](/images/secret-syncs/portainer/step-4.png)
 
             - **Overwrite Destination Secrets**: Infisical writes its secrets to the stack. No variables are imported back.
             - **Import Destination Secrets - Prioritize Infisical Values**: Existing stack variables are imported into Infisical first; where a key exists on both sides, the Infisical value wins.
             - **Import Destination Secrets - Prioritize Portainer Values**: Same as above, but the stack's value wins on conflicts.
 
-        5. Configure the **Sync Options** to control how secrets are written, then click **Continue**.
+        5. Configure the **Sync Options** to control how secrets are written, then select **Continue**.
         ![Configure Sync Options](/images/secret-syncs/portainer/step-5.png)
 
             - **Disable Secret Deletion**: If enabled, Infisical will not remove variables from the stack during a sync. Enable this if you intend to manage some variables manually outside of Infisical.
@@ -65,13 +65,13 @@ Infisical syncs secrets to the environment variables of a Portainer stack.
             Deletion** to preserve variables set outside of Infisical.
         </Warning>
 
-        6. Configure the **Details** of your Portainer Sync, then click **Continue**.
+        6. Configure the **Details** of your Portainer Sync, then select **Continue**.
         ![Configure Details](/images/secret-syncs/portainer/step-6.png)
 
             - **Name**: The name of your sync. Must be slug-friendly.
             - **Description**: An optional description for your sync.
 
-        7. Review your Portainer Sync configuration, then click **Create Sync**.
+        7. Review your Portainer Sync configuration, then select **Create Sync**.
         ![Review Configuration](/images/secret-syncs/portainer/step-7.png)
 
         8. Your Portainer Sync is created and will begin syncing your secrets to the destination.
