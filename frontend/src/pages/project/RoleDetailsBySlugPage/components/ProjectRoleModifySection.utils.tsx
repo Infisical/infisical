@@ -2687,10 +2687,9 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         description: "View audit logs and security events"
       },
       {
-        label: "Edit Settings",
+        label: "Edit",
         value: ProjectPermissionAuditLogsActions.Edit,
-        description:
-          "Choose which audit log event classes the project records and how long logs are kept"
+        description: "Choose which audit log event classes the project records"
       }
     ]
   },

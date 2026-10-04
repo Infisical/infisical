@@ -6025,7 +6025,8 @@ interface UpdateAuditLogSettingsEvent {
   type: EventType.UPDATE_AUDIT_LOG_SETTINGS;
   metadata: {
     scope: "organization" | "project";
-    eventClasses: { eventClass: string; isEnabled: boolean }[];
+    eventClasses?: { eventClass: string; isEnabled: boolean }[];
+    auditLogsRetentionDays?: number;
   };
 }
 

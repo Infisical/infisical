@@ -29,7 +29,7 @@ export const AuditLogEventClassesSection = () => {
       isError={isError}
       isSaving={isSaving}
       canEdit={canEdit}
-      readOnlyMessage="You need the Edit Settings permission on Audit Logs to change these settings."
+      readOnlyMessage="You need the Edit permission on Audit Logs to change these settings."
       variant={scopeVariant}
       paywallKey="project.audit-log-settings"
       onSave={(eventClasses) => updateSettings({ projectId: currentProject.id, eventClasses })}

@@ -253,7 +253,7 @@ By default, Infisical records every class except `authorization`. The `managemen
       </Step>
     </Steps>
 
-    Changing these toggles requires the **Edit Settings** permission on **Audit Logs**, which the built-in admin role has. Anyone with the **Read** permission on **Audit Logs** can view them.
+    Changing these toggles requires the **Edit** permission on **Audit Logs**, which the built-in admin role has. Anyone with the **Read** permission on **Audit Logs** can view them.
   </Tab>
   <Tab title="For a project">
     <Steps>
@@ -265,7 +265,7 @@ By default, Infisical records every class except `authorization`. The `managemen
       </Step>
     </Steps>
 
-    Changing these toggles requires the **Edit Settings** permission on **Audit Logs**, which the built-in admin role has. Anyone with the **Read** permission on **Audit Logs** can view them. A project that has never saved a setting uses the defaults.
+    Changing these toggles requires the **Edit** permission on **Audit Logs**, which the built-in admin role has. Anyone with the **Read** permission on **Audit Logs** can view them. A project that has never saved a setting uses the defaults.
   </Tab>
   <Tab title="API">
     Update the organization's classes with [the organization audit log settings endpoint](/api-reference/endpoints/audit-logs/update-organization-audit-log-settings), or one project's classes with [the project audit log settings endpoint](/api-reference/endpoints/audit-logs/update-project-audit-log-settings). The request replaces the current settings, so include every class except `management` and `data-access`.
@@ -287,7 +287,7 @@ By default, Infisical records every class except `authorization`. The `managemen
 
 A change usually applies to new events right away, and always within 10 minutes. Events that were already recorded stay in the log until their retention period ends.
 
-Every change to these settings is itself recorded as an `update-audit-log-settings` event in the `management` class, with the classes that changed in `event.metadata`.
+Every change to these settings is itself recorded as an `update-audit-log-settings` event in the `management` class, with the new values in `event.metadata`. If you self-host Infisical, changing how long a project keeps its audit logs records the same event.
 
 ### Permission denials
 
@@ -978,7 +978,7 @@ Infisical emits hundreds of event types. Here are some of the most common ones y
     | Event                                                                   | When it fires                                                        |
     | ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
     | `view-audit-logs`                                                       | A user opened the audit log viewer.                                  |
-    | `update-audit-log-settings`                                             | An admin changed which event classes an organization or project records. |
+    | `update-audit-log-settings`                                             | An admin changed which event classes an organization or project records, or how long a project keeps its audit logs. |
     | `create-audit-report`, `get-audit-report`, `get-audit-reports`, `delete-audit-report` | A user managed a project-level audit report.           |
     | `create-org-audit-report`, `get-org-audit-reports`, `delete-org-audit-report` | A user managed an organization-level audit report.             |
   </Accordion>

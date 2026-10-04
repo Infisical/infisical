@@ -631,7 +631,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       },
       {
         value: OrgPermissionAuditLogsActions.Edit,
-        label: "Edit Settings",
+        label: "Edit",
         description: "Choose which audit log event classes the organization records"
       }
     ]
