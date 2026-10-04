@@ -54,6 +54,7 @@ export const QuickSearchSecretRotationItem = ({
           <TooltipContent className="max-w-lg">{secretRotation.folder.path}</TooltipContent>
         </Tooltip>
       </TableCell>
+      <TableCell className="text-muted">—</TableCell>
       <TableCell className="text-right">
         <ChevronRightIcon className="ml-auto size-4 text-muted" />
       </TableCell>

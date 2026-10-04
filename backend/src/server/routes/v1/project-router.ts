@@ -16,7 +16,7 @@ import {
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
-import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, FOLDERS, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { JobState } from "@app/queue/queue-service";
@@ -1049,6 +1049,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         projectId: z.string().trim()
       }),
+      querystring: z.object({
+        environment: slugSchema({ field: "Environment slug" }).optional().describe(FOLDERS.LIST.environment)
+      }),
       response: {
         200: z.record(
           ProjectEnvironmentsSchema.extend({ folders: SecretFoldersSchema.extend({ path: z.string() }).array() })
@@ -1059,7 +1062,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const environmentsFolders = await server.services.folder.getProjectEnvironmentsFolders(
         req.params.projectId,
-        req.permission
+        req.permission,
+        req.query.environment
       );
 
       return environmentsFolders;
