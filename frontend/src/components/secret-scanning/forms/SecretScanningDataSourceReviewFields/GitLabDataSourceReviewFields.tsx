@@ -28,7 +28,7 @@ export const GitLabDataSourceReviewFields = () => {
         )}
         <Detail>
           <DetailLabel>Scope</DetailLabel>
-          <DetailValue className="capitalize">{config.scope}</DetailValue>
+          <DetailValue>Project</DetailValue>
         </Detail>
         <Detail>
           <DetailLabel>Project</DetailLabel>
@@ -53,7 +53,7 @@ export const GitLabDataSourceReviewFields = () => {
       )}
       <Detail>
         <DetailLabel>Scope</DetailLabel>
-        <DetailValue className="capitalize">{config.scope}</DetailValue>
+        <DetailValue>Group</DetailValue>
       </Detail>
       <Detail>
         <DetailLabel>Group</DetailLabel>
