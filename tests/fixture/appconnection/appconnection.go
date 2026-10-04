@@ -73,6 +73,10 @@ func Try(tt *testing.T, tn *harness.Tenant, p provider.Provider, opts ...Option)
 		tn:       tn,
 	}
 
+	// Before the credential reaches Infisical, so no event published under it can
+	// arrive before its buffer exists.
+	fakenet.Track(tt, conn.FakenetAdmin(tt), p.Host, conn.nonce)
+
 	// The fake answers the credential check by existing, so nothing has to be
 	// registered for a connection to be created. Refusing one is the exception, and
 	// it goes in before the create: the scope is the credential, which the fixture

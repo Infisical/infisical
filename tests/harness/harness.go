@@ -22,6 +22,7 @@ import (
 	"github.com/Infisical/infisical/tests/harness/infisical"
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
+	"github.com/Infisical/infisical/tests/internal/id"
 )
 
 // current is the stack Main built, read by From. One per test binary, which is what
@@ -91,6 +92,14 @@ func run(m *testing.M, profile Profile, cfg *config, mainFile string) (int, erro
 		return 0, err
 	}
 	defer stopAll(ctx, owned)
+
+	// Opened before any test runs, so nothing a test triggers can happen before it is
+	// listening.
+	if fn, ok := stack.modules[fakenet.Key].(*fakenet.Handle); ok {
+		if err := fakenet.Listen(ctx, fn.AdminURL(), id.Binary()); err != nil {
+			return 0, err
+		}
+	}
 
 	stack.mainFile = mainFile
 	current = stack

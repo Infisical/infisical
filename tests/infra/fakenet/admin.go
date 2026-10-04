@@ -30,6 +30,15 @@ func (s *Server) Admin(ca *CA) http.Handler {
 		_ = json.NewEncoder(w).Encode(out)
 	})
 
+	mux.HandleFunc("GET "+AdminPrefix+"/events", s.serveEvents)
+
+	// The latest sequence number, read from the server rather than from what a client
+	// has received, so a mark taken while events are still in flight is not behind.
+	mux.HandleFunc("GET "+AdminPrefix+"/events/seq", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]uint64{"seq": s.events.current()})
+	})
+
 	mux.HandleFunc("GET "+AdminPrefix+"/ca", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/x-pem-file")
 		_, _ = w.Write(ca.CertPEM())

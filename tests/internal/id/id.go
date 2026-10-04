@@ -14,11 +14,18 @@ import (
 // not collide.
 func Short() string { return random(4) }
 
-// Nonce is a credential a stub can be keyed on.
+// binary is shared by every nonce this test binary mints.
+var binary = random(4)
+
+// Binary is the prefix of every nonce from this process, so fakenet can send this
+// binary only its own events while other packages run beside it.
+func Binary() string { return binary }
+
+// Nonce is a credential a fake can be keyed on.
 //
 // Unguessable is not the point; unique is. It is what tells one tenant's outbound
-// requests from another's in a shared request journal.
-func Nonce() string { return random(16) }
+// requests from another's on a shared fakenet.
+func Nonce() string { return binary + random(16) }
 
 func random(n int) string {
 	b := make([]byte, n)

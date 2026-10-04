@@ -32,8 +32,9 @@ type Service interface {
 	// authenticate with, so no organization id is threaded anywhere.
 	Scope(*http.Request) (key string, ok bool)
 
-	// New builds an empty world for one scope.
-	New() Fake
+	// New builds an empty world for one scope. Events published through the emitter
+	// are attributed to that scope.
+	New(events Emitter) Fake
 }
 
 // Fake is one scope's state.
@@ -85,6 +86,8 @@ type Server struct {
 	// scope because a refusal happens before a scope can be resolved, and it is
 	// exactly what a test needs printed when a create failed for want of a fake.
 	denied []Denied
+
+	events *eventLog
 }
 
 // Denied is one outbound call that reached no fake.
@@ -96,7 +99,7 @@ type Denied struct {
 }
 
 func New(services ...Service) *Server {
-	s := &Server{services: map[string]Service{}, scopes: map[scopeID]*scope{}}
+	s := &Server{services: map[string]Service{}, scopes: map[scopeID]*scope{}, events: newEventLog()}
 	for _, svc := range services {
 		s.services[svc.Host()] = svc
 	}
@@ -176,7 +179,7 @@ func (s *Server) scope(host string, svc Service, key string) *scope {
 	id := scopeID{host, key}
 	sc, ok := s.scopes[id]
 	if !ok {
-		sc = &scope{fake: svc.New()}
+		sc = &scope{fake: svc.New(Emitter{log: s.events, host: host, key: key})}
 		s.scopes[id] = sc
 	}
 	return sc

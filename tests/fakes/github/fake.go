@@ -31,8 +31,8 @@ func (service) Scope(r *http.Request) (string, bool) {
 	return strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 }
 
-func (service) New() fakenet.Fake {
-	a := &Account{Login: "harness", Stores: map[string]*Store{}}
+func (service) New(events fakenet.Emitter) fakenet.Fake {
+	a := &Account{Login: "harness", Stores: map[string]*Store{}, events: events}
 	a.mux = a.routes()
 	return a
 }
@@ -154,10 +154,13 @@ func (a *Account) put(w http.ResponseWriter, r *http.Request) {
 
 	_, existed := st.Secrets[name]
 	st.Secrets[name] = Secret{Value: string(plain), UpdatedAt: time.Now().UTC()}
+	detail := SecretDetail{Scope: storeKey(r), SecretName: name}
 	if existed {
+		a.events.Publish(SecretUpdated{detail})
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+	a.events.Publish(SecretCreated{detail})
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -171,6 +174,7 @@ func (a *Account) remove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	delete(st.Secrets, name)
+	a.events.Publish(SecretDeleted{SecretDetail{Scope: storeKey(r), SecretName: name}})
 	w.WriteHeader(http.StatusNoContent)
 }
 

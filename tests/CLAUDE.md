@@ -295,6 +295,45 @@ invented.
 sends it on every outbound call, so parallel tenants never see each other and no org id
 is threaded anywhere.
 
+### Waiting on what a fake did
+
+Fakes publish events when their state changes, and a test waits on the event rather
+than polling state:
+
+```go
+mark := gh.Mark(t)
+secret.Delete(t, proj, "dev", "DROP")
+s.trigger(t)
+
+gh.ExpectEvent[github.SecretDeleted](t, func(e github.SecretDeleted) bool {
+	return e.SecretName == "DROP"
+}, fakenet.Since(mark))
+
+gh.ExpectNoEvent[github.SecretCreated](t, nil)   // waits 3s by default
+```
+
+- **Events that already happened count**, so it works after a call that blocks.
+- **Each event satisfies one `ExpectEvent`.** Expecting the same thing twice needs
+  two occurrences; `ExpectNoEvent` ignores events already claimed.
+- **Order only when you ask** with `Mark` and `Since`.
+- **Absence needs `ExpectNoEvent`, never an immediate state read.** A read straight
+  after an async action passes before the action lands; the auto-sync-off test did
+  exactly that and could not fail.
+
+Waiting on Infisical itself, such as a sync's status, still polls its API, since that
+is where the product reports its own errors.
+
+An event is a type that names itself, `<service>.<resource>-<past-tense verb>`:
+
+```go
+type SecretDeleted struct{ SecretDetail }
+func (SecretDeleted) EventName() string { return "github.secret-deleted" }
+```
+
+Publish it from the fake with `a.events.Publish(...)` wherever state changes. Whatever
+mints a credential calls `fakenet.Track` before handing it to Infisical, which
+`appconnection` already does.
+
 ### Adding a fake
 
 One package under `fakes/<service>/`:

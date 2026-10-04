@@ -41,7 +41,7 @@ func (service) Scope(r *http.Request) (string, bool) {
 // empty, so a single unanswered call poisons that organization for about fifteen
 // minutes. With the default in the fake there is nothing to install and no window in
 // which an organization can be asked about before the answer exists.
-func (service) New() fakenet.Fake { return &Org{plan: Enterprise()} }
+func (service) New(fakenet.Emitter) fakenet.Fake { return &Org{plan: Enterprise()} }
 
 // Org is one organization's entitlements.
 type Org struct {

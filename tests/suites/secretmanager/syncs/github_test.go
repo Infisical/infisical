@@ -10,6 +10,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/project"
 	"github.com/Infisical/infisical/tests/fixture/secret"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/Infisical/infisical/tests/provider"
 )
@@ -53,8 +54,13 @@ func TestGitHubSync_SyncSecrets(t *testing.T) {
 		secret.Create(t, proj, "dev", "DROP", "2")
 		s.trigger(t)
 
+		mark := gh.Mark(t)
 		secret.Delete(t, proj, "dev", "DROP")
 		s.trigger(t)
+
+		gh.ExpectEvent[github.SecretDeleted](t, func(e github.SecretDeleted) bool {
+			return e.SecretName == "DROP"
+		}, fakenet.Since(mark))
 
 		got := gh.Repo(t, "acme/app").Secrets
 		if got["KEEP"].Value != "1" {
@@ -199,9 +205,7 @@ func TestGitHubSync_Create(t *testing.T) {
 
 		newSync(t, proj, conn, repoScope("acme", "app"), autoSync(false))
 
-		if store := gh.Repo(t, "acme/app"); store != nil && len(store.Secrets) > 0 {
-			t.Errorf("a sync created with auto-sync off wrote to the destination: %v", keys(store.Secrets))
-		}
+		gh.ExpectNoEvent[github.SecretCreated](t, nil)
 	})
 }
 

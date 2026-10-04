@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
 // Account is one GitHub account, addressed by the token a test invented.
@@ -16,8 +18,9 @@ type Account struct {
 	Login  string            `json:"login"`
 	Stores map[string]*Store `json:"stores"`
 
-	mu  sync.Mutex
-	mux *http.ServeMux
+	mu     sync.Mutex
+	mux    *http.ServeMux
+	events fakenet.Emitter
 }
 
 // Store is a bag of Actions secrets.
