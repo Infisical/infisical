@@ -64,7 +64,7 @@ const meta = {
       }
     }
   },
-  args: { delayDuration: 0, defaultOpen: false }
+  args: { delayDuration: 0, defaultOpen: false, selectable: false }
 } satisfies Meta<typeof Tooltip>;
 
 export default meta;
@@ -80,8 +80,8 @@ export const Default: Story = {
       }
     }
   },
-  render: () => (
-    <Tooltip>
+  render: (args) => (
+    <Tooltip {...args}>
       <TooltipTrigger asChild>
         <Button variant="outline">Hover me</Button>
       </TooltipTrigger>
@@ -114,6 +114,7 @@ export const IconTrigger: Story = {
 
 export const SelectableContent: Story = {
   name: "Example: Selectable Informational Text",
+  args: { selectable: true },
   parameters: {
     docs: {
       description: {
@@ -122,10 +123,10 @@ export const SelectableContent: Story = {
       }
     }
   },
-  render: () => (
-    <Tooltip selectable>
+  render: (args) => (
+    <Tooltip {...args}>
       <TooltipTrigger asChild>
-        <Button variant="outline">Failure reason</Button>
+        <Button variant="outline">Failure Reason</Button>
       </TooltipTrigger>
       <TooltipContent className="max-w-64">
         Scan stopped: example repository is unavailable.
