@@ -36,7 +36,8 @@ export const ProductUpgradeSuccessDialog = ({
       height="auto"
       showCloseButton={false}
       onOpenAutoFocus={focusUpgradeContinuation}
-      className="max-w-sm gap-5"
+      overlayClassName="z-[70]"
+      className="z-[70] max-w-sm gap-5"
     >
       <DialogBody role="status" className="flex flex-col items-center gap-4 text-center">
         <div aria-hidden="true" className="relative shrink-0">

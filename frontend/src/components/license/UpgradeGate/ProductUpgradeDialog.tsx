@@ -80,7 +80,7 @@ export const ProductUpgradeDialog = ({
     <Tabs value={selectedTier} onValueChange={onTierChange} className="gap-6">
       <TabsList className="w-full" aria-label={`${product.name} plans`}>
         {plans.map((candidate) => (
-          <TabsTrigger key={candidate.tier} value={candidate.tier}>
+          <TabsTrigger key={candidate.tier} value={candidate.tier} className="items-center">
             {candidate.name}
             {candidate.tier === currentPlanTier && (
               <span className="text-xs text-muted">· Current</span>

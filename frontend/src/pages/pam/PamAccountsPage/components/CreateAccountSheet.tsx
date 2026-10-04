@@ -322,9 +322,13 @@ export const CreateAccountSheet = ({
           onCreated?.(account.id);
         },
         onError: (error) => {
-          const serverMessage = (error as { response?: { data?: { message?: string } } }).response
-            ?.data?.message;
-          if (serverMessage?.includes("plan limit reached")) {
+          const serverError = (
+            error as { response?: { data?: { message?: string; error?: string } } }
+          ).response?.data;
+          if (
+            serverError?.error === "PAM_ACCOUNT_LIMIT_REACHED" ||
+            serverError?.message?.includes("plan limit reached")
+          ) {
             openUpgradeGate({
               intent: PamAccountLimitUpgradeIntent,
               paywallKey: "pam.account-limit"

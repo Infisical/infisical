@@ -392,12 +392,7 @@ const ProjectTypeContent = ({
         paywallKey="organization.project-type"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        intent={{
-          ...ProjectLimitUpgradeIntent,
-          description:
-            "You have reached the maximum number of projects allowed on your current plan. Upgrade to Infisical Pro plan to add more projects.",
-          isEnterpriseFeature: false
-        }}
+        intent={ProjectLimitUpgradeIntent}
       />
     </div>
   );

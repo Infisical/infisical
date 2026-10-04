@@ -71,10 +71,7 @@ export const EncryptionPageForm = () => {
     if (!subscription) return;
 
     if (!subscription.hsm) {
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Your current plan does not include access to Hardware Security Module (HSM). To unlock this feature, please upgrade to Infisical Enterprise plan."
-      });
+      handlePopUpOpen("upgradePlan");
       return;
     }
 

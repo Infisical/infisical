@@ -2904,7 +2904,11 @@ const OverviewPageContent = () => {
 
       if (data.used >= data.limit) {
         openUpgradeGate({
-          intent: HoneyTokensUpgradeIntent
+          intent: {
+            ...HoneyTokensUpgradeIntent,
+            upgradeLabel: "Increase Honey Token Limit",
+            quotaNotice: `You have used ${data.used} out of the ${data.limit} honey token limit.`
+          }
         });
         return;
       }

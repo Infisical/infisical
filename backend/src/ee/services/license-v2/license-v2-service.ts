@@ -1472,8 +1472,14 @@ export const licenseV2ServiceFactory = ({
       await licenseClient.markEntitlementsStale(orgId);
       return { outcome: result.outcome };
     }
+    const checkoutUrl = toHttpsUrl(result.checkoutUrl);
+    if (!checkoutUrl) {
+      throw new BadRequestError({
+        message: "We couldn't get a secure checkout link. Please try again or contact support."
+      });
+    }
     await licenseClient.markEntitlementsStale(orgId, { checkout: true });
-    return { outcome: result.outcome, redirectUrl: result.checkoutUrl };
+    return { outcome: result.outcome, redirectUrl: checkoutUrl };
   };
 
   // Remove a single product from a multi-product subscription, the operation the Stripe Customer

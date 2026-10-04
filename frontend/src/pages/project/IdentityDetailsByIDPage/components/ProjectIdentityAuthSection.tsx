@@ -1,7 +1,6 @@
 import { subject } from "@casl/ability";
 import { PlusIcon } from "lucide-react";
 
-import { IdentityAuthUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -137,18 +136,6 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handleAuthMethodPopUpToggle}
-      />
-      <UpgradeGate
-        paywallKey="project.project-identity-auth"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        intent={{
-          ...IdentityAuthUpgradeIntent,
-          description:
-            (popUp.upgradePlan?.data as { description: string })?.description ??
-            IdentityAuthUpgradeIntent.description,
-          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
-        }}
       />
     </>
   );

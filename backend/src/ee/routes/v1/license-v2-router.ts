@@ -29,6 +29,13 @@ const ReturnPathSchema = z
       }),
     { message: "must not contain control characters or backslashes" }
   )
+  .transform((path) => {
+    const url = new URL(path, "https://infisical.invalid");
+    return `${url.pathname}${url.search}${url.hash}`;
+  })
+  .refine((path) => !path.split(/[?#]/)[0].includes("//"), {
+    message: "must not contain repeated path separators"
+  })
   .optional();
 
 const BillingV2DimSchema = z.object({

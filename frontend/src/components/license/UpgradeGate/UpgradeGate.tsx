@@ -374,9 +374,10 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
+          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="sm:max-w-xl"
+          className="z-[70] sm:max-w-xl"
         >
           <ProductUpgradeHeader
             product={product}
@@ -407,9 +408,10 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
+          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="sm:max-w-xl"
+          className="z-[70] sm:max-w-xl"
         >
           <ProductUpgradeHeader
             product={product}
@@ -462,9 +464,10 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
+          overlayClassName="z-[70]"
           key="loading"
           showCloseButton={false}
-          className="w-auto gap-0 border-0 bg-transparent p-0 shadow-none"
+          className="z-[70] w-auto gap-0 border-0 bg-transparent p-0 shadow-none"
           aria-describedby={undefined}
         >
           <DialogTitle className="sr-only">Loading {productName} plans</DialogTitle>
@@ -478,9 +481,10 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
+          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="sm:max-w-xl"
+          className="z-[70] sm:max-w-xl"
         >
           <ProductUpgradeHeader
             product={product}
@@ -525,9 +529,10 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={dismissBillingReturn}>
         <DialogContent
+          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="sm:max-w-xl"
+          className="z-[70] sm:max-w-xl"
         >
           <DialogHeader>
             <DialogTitle>Check Billing Status</DialogTitle>
@@ -573,9 +578,10 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
+          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="sm:max-w-xl"
+          className="z-[70] sm:max-w-xl"
         >
           <ProductUpgradeHeader
             product={product}
@@ -610,6 +616,8 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     selfServe &&
     plan.selfServe &&
     !plan.salesLed &&
+    !overview.data.trialedProductKeys.includes(product.id) &&
+    (!currentEntitlement?.entitled || plan.tier !== currentPlanTier) &&
     plan.trialable;
   const supportsAnnualCadence = plans.some((candidate) => planSupportsCadence(candidate, "annual"));
   const supportsMonthlyCadence = plans.some((candidate) =>
@@ -624,6 +632,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
   }
   const effectiveCadence = trialAvailable ? "monthly" : getEffectiveCadence(plan, visibleCadence);
   const comparePrice = getPlanPrice(plan, effectiveCadence);
+  const priceFractionDigits = comparePrice.amount > 0 && comparePrice.amount < 0.01 ? 6 : 2;
   const features = getPlanFeatures(product, plan);
   const savingsPercent = Math.max(...plans.map(annualSavingsPercent));
   const isUpgradeTrial =
@@ -810,7 +819,17 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
       onTierChange={setSelectedTier}
       onOpenChange={onOpenChange}
       features={features}
-      notice={notice}
+      notice={
+        <>
+          {intent.quotaNotice && (
+            <Alert variant="info" appearance="borderless">
+              <CircleAlert />
+              <AlertDescription>{intent.quotaNotice}</AlertDescription>
+            </Alert>
+          )}
+          {notice}
+        </>
+      }
       footer={
         <>
           {plan.tier === product.baselinePlan?.tier && (
@@ -830,7 +849,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
                   >
                     <span className="text-muted line-through">
                       {comparePrice.amount > 0
-                        ? `${fmtMoney(comparePrice.amount, 6)}${comparePrice.compactUnit}`
+                        ? `${fmtMoney(comparePrice.amount, priceFractionDigits)}${comparePrice.compactUnit}`
                         : "Usage-based"}
                     </span>
                     <span className="font-medium text-foreground">{trialPriceLabel}*</span>
@@ -871,7 +890,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
                 >
                   {comparePrice.amount > 0 ? (
                     <span className="font-medium text-foreground">
-                      {fmtMoney(comparePrice.amount, 6)}
+                      {fmtMoney(comparePrice.amount, priceFractionDigits)}
                       {comparePrice.compactUnit}
                     </span>
                   ) : (

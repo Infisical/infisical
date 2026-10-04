@@ -50,6 +50,7 @@ export type UpgradeIntent = {
   upgradeLabel?: string;
   title: string;
   description: string;
+  quotaNotice?: string;
 };
 
 export const DynamicSecretsUpgradeIntent = {
@@ -374,7 +375,9 @@ export const getSafeUpgradeReturnPath = (returnPath: string | null, origin: stri
   }
 
   try {
-    return new URL(returnPath, origin).origin === new URL(origin).origin ? returnPath : null;
+    const url = new URL(returnPath, origin);
+    if (url.origin !== new URL(origin).origin || url.pathname.includes("//")) return null;
+    return `${url.pathname}${url.search}${url.hash}`;
   } catch {
     return null;
   }
