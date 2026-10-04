@@ -84,7 +84,12 @@ const orgActor = {
   parentOrgId: "org-1"
 } as never;
 
-const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true, canEditAuditLogs = true } = {}) => {
+const createHarness = ({
+  rows = [] as TRow[],
+  shouldUseNewPrivilegeSystem = true,
+  canEditAuditLogs = true,
+  planHasAuditLogs = true
+} = {}) => {
   const tx = { raw: vi.fn(async () => undefined) };
   const orgDAL = {
     findById: vi.fn(async (id: string) => ({ id, shouldUseNewPrivilegeSystem }))
@@ -130,16 +135,20 @@ const createHarness = ({ rows = [] as TRow[], shouldUseNewPrivilegeSystem = true
   const projectDAL = {
     findById: vi.fn(async (id: string) => ({ id, orgId: "org-1" }))
   };
+  const licenseService = {
+    getPlan: vi.fn(async () => ({ auditLogs: planHasAuditLogs }))
+  };
 
   const service = auditLogSettingsServiceFactory({
     auditLogSettingsDAL: auditLogSettingsDAL as never,
     orgDAL: orgDAL as never,
     projectDAL: projectDAL as never,
     permissionService: permissionService as never,
+    licenseService: licenseService as never,
     keyStore: keyStore as never
   });
 
-  return { service, orgDAL, auditLogSettingsDAL, keyStore, tx };
+  return { service, orgDAL, auditLogSettingsDAL, keyStore, licenseService, tx };
 };
 
 describe("getEffectiveSettings", () => {
@@ -239,6 +248,23 @@ describe("updateOrgSettings", () => {
 
   test("still lets an actor without edit on audit logs read them", async () => {
     const { service } = createHarness({ canEditAuditLogs: false });
+
+    const result = await service.getOrgSettings({ actor: orgActor });
+
+    expect(result.eventClasses).toHaveLength(4);
+  });
+
+  test("refuses to save on a plan without audit logs", async () => {
+    const { service, auditLogSettingsDAL } = createHarness({ planHasAuditLogs: false });
+
+    await expect(service.updateOrgSettings({ actor: orgActor, eventClasses: fullEventClasses })).rejects.toThrow(
+      "Audit log settings can only be changed on a plan that includes audit logs"
+    );
+    expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("still lets a plan without audit logs read the settings", async () => {
+    const { service } = createHarness({ planHasAuditLogs: false });
 
     const result = await service.getOrgSettings({ actor: orgActor });
 
@@ -406,6 +432,16 @@ describe("updateProjectSettings", () => {
     await service.updateProjectSettings({ ...projectActor, eventClasses: fullEventClasses });
 
     expect(auditLogSettingsDAL.delete).toHaveBeenCalledWith({ orgId: "org-1", projectId: "p1" }, expect.anything());
+  });
+
+  test("refuses to save on a plan without audit logs, checked against the project's org", async () => {
+    const { service, auditLogSettingsDAL, licenseService } = createHarness({ planHasAuditLogs: false });
+
+    await expect(service.updateProjectSettings({ ...projectActor, eventClasses: fullEventClasses })).rejects.toThrow(
+      "Audit log settings can only be changed on a plan that includes audit logs"
+    );
+    expect(licenseService.getPlan).toHaveBeenCalledWith("org-1");
+    expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
   });
 
   test("invalidates only the project's cached settings", async () => {

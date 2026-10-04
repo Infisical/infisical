@@ -2,6 +2,7 @@ import { Controller, useForm } from "react-hook-form";
 import { Link } from "@tanstack/react-router";
 import { Info } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
@@ -15,7 +16,8 @@ import {
   DocumentationLinkBadge,
   Skeleton
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
+import { usePopUp } from "@app/hooks";
 import {
   ALWAYS_RECORDED_AUDIT_LOG_EVENT_CLASSES,
   AUDIT_LOG_EVENT_CLASS_DEFAULTS,
@@ -46,6 +48,7 @@ type Props = {
   canEdit: boolean;
   readOnlyMessage: string;
   variant: ScopeVariant;
+  paywallKey: string;
   onSave: (eventClasses: TAuditLogEventClassSetting[]) => Promise<unknown>;
 };
 
@@ -59,9 +62,12 @@ export const AuditLogEventClassesForm = ({
   canEdit,
   readOnlyMessage,
   variant,
+  paywallKey,
   onSave
 }: Props) => {
   const { currentOrg } = useOrganization();
+  const { subscription } = useSubscription();
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const shouldUseNewPrivilegeSystem =
     settings?.shouldUseNewPrivilegeSystem ?? currentOrg.shouldUseNewPrivilegeSystem;
 
@@ -81,6 +87,10 @@ export const AuditLogEventClassesForm = ({
   });
 
   const onSubmit = async (form: TForm) => {
+    if (subscription && !subscription.auditLogs) {
+      handlePopUpOpen("upgradePlan");
+      return;
+    }
     const eventClasses = CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({
       eventClass,
       isEnabled:
@@ -194,6 +204,12 @@ export const AuditLogEventClassesForm = ({
           </CardFooter>
         )}
       </Card>
+      <UpgradePlanModal
+        paywallKey={paywallKey}
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="Your current plan does not include access to audit logs. To change which events are recorded, please upgrade to Infisical Pro plan."
+      />
     </form>
   );
 };

@@ -4,10 +4,13 @@ import { ActionProjectType, OrganizationActionScope, TAuditLogSettings } from "@
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import {
   OrgPermissionActions,
   OrgPermissionAuditLogsActions,
@@ -45,6 +48,7 @@ type TAuditLogSettingsServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   keyStore: Pick<TKeyStoreFactory, "getItems" | "setItemWithExpiry" | "deleteItem">;
 };
 
@@ -125,8 +129,19 @@ export const auditLogSettingsServiceFactory = ({
   orgDAL,
   projectDAL,
   permissionService,
+  licenseService,
   keyStore
 }: TAuditLogSettingsServiceFactoryDep) => {
+  const assertPlanAllowsAuditLogs = async (orgId: string) => {
+    const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
+    if (!plan.auditLogs) {
+      throw new BadRequestError({
+        message:
+          "Audit log settings can only be changed on a plan that includes audit logs. Upgrade your plan to continue."
+      });
+    }
+  };
+
   const findOrgOrThrow = async (orgId: string) => {
     const org = await orgDAL.findById(orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
@@ -275,6 +290,7 @@ export const auditLogSettingsServiceFactory = ({
   const updateOrgSettings = async ({ actor, eventClasses }: TUpdateOrgAuditLogSettingsDTO) => {
     const { permission } = await getOrgPermission(actor);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionAuditLogsActions.Edit, OrgPermissionSubjects.AuditLogs);
+    await assertPlanAllowsAuditLogs(actor.orgId);
     const org = await findOrgOrThrow(actor.orgId);
     const overrides = toFullOverrides(eventClasses);
     assertAuthorizationClassAllowed(org, overrides);
@@ -321,6 +337,7 @@ export const auditLogSettingsServiceFactory = ({
 
     const project = await findProjectOrThrow(dto.projectId);
     const org = await findOrgOrThrow(project.orgId);
+    await assertPlanAllowsAuditLogs(org.id);
     const overrides = toFullOverrides(eventClasses);
     assertAuthorizationClassAllowed(org, overrides);
     await writeScopeSettings({ orgId: org.id, projectId: project.id }, overrides);

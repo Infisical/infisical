@@ -1216,6 +1216,7 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     permissionService,
+    licenseService,
     keyStore
   });
 

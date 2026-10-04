@@ -36,6 +36,7 @@ export const AuditLogSettingsTab = withPermission(
         canEdit={canEdit}
         readOnlyMessage="You need the Edit Settings permission on Audit Logs to change these settings."
         variant={scopeVariant}
+        paywallKey="organization.audit-log-settings"
         onSave={(eventClasses) => updateSettings({ eventClasses })}
       />
     );
