@@ -14,7 +14,7 @@ export async function up(knex: Knex): Promise<void> {
   const template = DEFAULT_ACCOUNT_TEMPLATES.find(({ type }) => type === PamAccountType.MariaDB);
   if (!template) return;
 
-  const projects = await knex(TableName.Project)
+  const missingProjects = knex(TableName.Project)
     .where({ type: ProjectType.PAM })
     .whereNotExists(
       knex(TableName.PamAccountTemplate)
@@ -23,13 +23,25 @@ export async function up(knex: Knex): Promise<void> {
         .where({ type: PamAccountType.MariaDB })
     )
     .select("id");
+  const projects = await missingProjects.clone();
 
-  const rows = projects.map(({ id }) => ({
-    projectId: id,
-    name: template.name,
-    type: template.type,
-    settings: template.settings
-  }));
+  const takenNames = await knex(TableName.PamAccountTemplate)
+    .whereIn("projectId", missingProjects)
+    .where("name", "like", `${template.name}%`)
+    .select("projectId", "name");
+  const takenByProject = new Map<string, Set<string>>();
+  takenNames.forEach(({ projectId, name }) => {
+    if (!takenByProject.has(projectId)) takenByProject.set(projectId, new Set());
+    takenByProject.get(projectId)?.add(name);
+  });
+
+  // A project may already use the default name for another type, so take the next free suffix.
+  const rows = projects.map(({ id }) => {
+    const taken = takenByProject.get(id);
+    let { name } = template;
+    for (let n = 1; taken?.has(name); n += 1) name = `${template.name}-${n}`;
+    return { projectId: id, name, type: template.type, settings: template.settings };
+  });
 
   for (let i = 0; i < rows.length; i += TEMPLATE_INSERT_CHUNK) {
     // eslint-disable-next-line no-await-in-loop
