@@ -29,6 +29,14 @@ if (parsed.errors.length) {
       .join("\n")
   );
 }
+const resolveSourcePath = (specifier, sourceFile) => {
+  const appPath = parsed.options.paths?.["@app/*"]?.[0];
+  if (specifier.startsWith("@app/") && appPath)
+    return path.resolve(frontend, appPath.replace("*", specifier.slice(5)));
+  if (specifier.startsWith("/")) return path.resolve(frontend, `.${specifier}`);
+  if (specifier.startsWith(".")) return path.resolve(path.dirname(sourceFile), specifier);
+  return null;
+};
 const program = ts.createProgram(
   sourcePaths.map((file) => path.join(root, file)),
   {
@@ -74,8 +82,12 @@ for (const sourcePath of sourcePaths) {
       ts.sys
     ).resolvedModule;
     const target = resolved ? relative(resolved.resolvedFileName) : null;
+    const candidate = resolveSourcePath(specifier, source.fileName);
+    const candidatePath = candidate ? relative(candidate) : null;
     if (
       target?.startsWith(legacyPrefix) ||
+      candidatePath === legacyPrefix.slice(0, -1) ||
+      candidatePath?.startsWith(legacyPrefix) ||
       bindings.some((binding) => binding.origins.some((file) => file.startsWith(legacyPrefix))) ||
       specifier.includes("components/v2")
     ) {
@@ -164,15 +176,7 @@ for (const sourcePath of sourcePaths) {
         const patterns = literals?.map((literal) => {
           const negative = literal.text.startsWith("!");
           const pattern = negative ? literal.text.slice(1) : literal.text;
-          const appPath = parsed.options.paths?.["@app/*"]?.[0];
-          const resolved =
-            pattern.startsWith("@app/") && appPath
-              ? path.resolve(frontend, appPath.replace("*", pattern.slice(5)))
-              : pattern.startsWith("/")
-                ? path.resolve(frontend, `.${pattern}`)
-                : pattern.startsWith(".")
-                  ? path.resolve(path.dirname(source.fileName), pattern)
-                  : null;
+          const resolved = resolveSourcePath(pattern, source.fileName);
           return resolved ? { negative, pattern: relative(resolved) } : null;
         });
         if (!patterns || patterns.some((pattern) => !pattern) || baseOption) {
