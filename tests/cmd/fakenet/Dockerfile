@@ -3,5 +3,5 @@
 # second where an in-Docker build would download the whole module graph.
 FROM scratch
 COPY fakenet /fakenet
-EXPOSE 53/udp 443 8080
+EXPOSE 25 53/udp 443 8080
 ENTRYPOINT ["/fakenet"]

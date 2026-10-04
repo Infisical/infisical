@@ -10,9 +10,9 @@ import (
 	"fmt"
 
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
-	"github.com/Infisical/infisical/tests/infra/mailpit"
 	"github.com/Infisical/infisical/tests/infra/postgres"
 	"github.com/Infisical/infisical/tests/infra/redis"
 )
@@ -70,10 +70,10 @@ func (m *module) Key() infra.Key { return Key }
 // fail at connect time rather than parse time if absent.
 func (m *module) Requires() []infra.Key { return []infra.Key{postgres.Key, redis.Key} }
 
-// Optional is consumed if declared. SMTP is what makes user creation possible at
-// all; fakenet is what makes outbound calls and entitlements controllable.
+// Optional is consumed if declared. fakenet is what makes outbound calls, mail and
+// entitlements controllable, and mail is what makes user creation possible at all.
 func (m *module) Optional() []infra.Key {
-	return []infra.Key{mailpit.Key, fakenet.Key}
+	return []infra.Key{fakenet.Key}
 }
 
 func (m *module) Name() infra.NameParts {
@@ -104,18 +104,7 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		env["INFISICAL_RUN_MODES"] = m.runModes
 	}
 
-	_, wantSMTP := mailpit.From(d)
-	if mp, ok := mailpit.From(d); ok {
-		e := mp.Endpoint(infra.Internal)
-		env["SMTP_HOST"] = e.Host
-		env["SMTP_PORT"] = fmt.Sprint(e.Port)
-		env["SMTP_FROM_ADDRESS"] = "harness@infisical.test"
-		env["SMTP_FROM_NAME"] = "Infisical Harness"
-		// SMTP_REQUIRE_TLS defaults to true in env.ts. Against Mailpit that is the
-		// usual reason a first attempt silently sends nothing.
-		env["SMTP_REQUIRE_TLS"] = "false"
-	}
-
+	_, wantSMTP := fakenet.From(d)
 	var files []infra.File
 	var dns []string
 
@@ -143,6 +132,14 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		for k, v := range license.Env() {
 			env[k] = v
 		}
+
+		env["SMTP_HOST"] = fakenet.IP
+		env["SMTP_PORT"] = fmt.Sprint(smtp.Port)
+		env["SMTP_FROM_ADDRESS"] = "harness@infisical.test"
+		env["SMTP_FROM_NAME"] = "Infisical Harness"
+		// Defaults to true in env.ts, and the fake offers no STARTTLS, so leaving it
+		// on makes every send fail.
+		env["SMTP_REQUIRE_TLS"] = "false"
 	}
 
 	for k, v := range m.env {

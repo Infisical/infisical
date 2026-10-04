@@ -18,6 +18,12 @@ import (
 // failure injection and the call log without writing any of it. A fake package adds
 // only names: a typed accessor or two and its seed fragments.
 type Scope[S any] struct {
+	Events
+}
+
+// Events is a test's view of what one scope published, for waiting on it with
+// ExpectEvent. A fake with no state to seed or read uses it on its own.
+type Events struct {
 	base string
 	host string
 	key  string
@@ -30,14 +36,20 @@ type Scope[S any] struct {
 // two parallel tenants share one fakenet without seeing each other.
 func Open[S any](tt *testing.T, adminURL, host, key string) *Scope[S] {
 	tt.Helper()
-	sc := &Scope[S]{
+	sc := &Scope[S]{Events: *OpenEvents(adminURL, host, key)}
+	tt.Cleanup(func() { sc.remove() })
+	return sc
+}
+
+// OpenEvents returns the events of one scope. The scope still has to be tracked
+// before the product uses the key; see Track.
+func OpenEvents(adminURL, host, key string) *Events {
+	return &Events{
 		base: strings.TrimSuffix(adminURL, "/"),
 		host: host,
 		key:  key,
 		http: &http.Client{Timeout: 10 * time.Second},
 	}
-	tt.Cleanup(func() { sc.remove() })
-	return sc
 }
 
 // State is the fake's own state, as it stands now.

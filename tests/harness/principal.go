@@ -7,9 +7,10 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/harness/infisical"
 	"github.com/Infisical/infisical/tests/infra"
-	"github.com/Infisical/infisical/tests/infra/mailpit"
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
 	"github.com/Infisical/infisical/tests/internal/mail"
@@ -33,7 +34,7 @@ type principalConfig struct {
 }
 
 // WithName names the principal. For a user it also picks the mailbox, so
-// WithName("alice") means alice@<orgslug>.test.
+// WithName("alice") means alice@<tenant-nonce>.test.
 func WithName(name string) PrincipalOption {
 	return func(c *principalConfig) { c.name = name }
 }
@@ -53,14 +54,15 @@ func newPrincipalConfig(prefix string, opts []PrincipalOption) principalConfig {
 	return cfg
 }
 
-// Mail returns a view of Mailpit scoped to this tenant's domain.
+// Mail returns this tenant's inbox. Wait on it with Expect, or ExpectEvent for
+// anything Expect does not cover.
 //
 // A method rather than a field: it fails with the option to add when the suite has no
-// Mailpit, where a field would be a nil dereference three frames inside the client.
-func (t *Tenant) Mail(tt *testing.T) *mail.Inbox {
+// fakenet, where a field would be a nil dereference three frames inside the client.
+func (t *Tenant) Mail(tt *testing.T) *smtp.Inbox {
 	tt.Helper()
-	h := t.stack.Require(tt, mailpit.Key, "harness.Shared").(*mailpit.Handle)
-	return mail.NewInbox(h.API(infra.External).URL("http"), t.OrgSlug+".test")
+	h := t.stack.Require(tt, fakenet.Key, "harness.Shared").(*fakenet.Handle)
+	return smtp.Open(h.AdminURL(), t.mailDomain)
 }
 
 // NewUser creates a real user in this tenant's organization.
@@ -68,7 +70,7 @@ func (t *Tenant) Mail(tt *testing.T) *mail.Inbox {
 // The whole invite flow, because there is no shortcut. The invite response carries
 // the signup link only when SMTP is unconfigured (org-membership-user-factory.ts),
 // and the harness configures SMTP on purpose, so the link has to come out of the
-// mailbox. That is what makes Mailpit load-bearing rather than decorative.
+// mailbox. That is what makes the mail fake load-bearing rather than decorative.
 //
 // Five calls: invite, verify, complete-account, select-organization, and the mail
 // read in between. The last one is not just fetching a scoped token --
@@ -105,10 +107,7 @@ func (t *Tenant) newUser(tt *testing.T, cfg principalConfig, inviterToken string
 		tt.Fatalf("harness: inviting %s returned %d: %s", addr, invited.StatusCode(), apierr.Body(invited.Body))
 	}
 
-	msg, err := t.Mail(tt).Await(ctx, addr, mail.Subject("invitation"))
-	if err != nil {
-		tt.Fatalf("harness: %v", err)
-	}
+	msg := t.Mail(tt).Expect(tt, addr, smtp.Subject("invitation"))
 	inviteToken, err := mail.Param(msg, "token")
 	if err != nil {
 		tt.Fatalf("harness: %v", err)

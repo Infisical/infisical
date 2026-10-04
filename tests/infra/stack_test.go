@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/infra"
-	"github.com/Infisical/infisical/tests/infra/mailpit"
 	"github.com/Infisical/infisical/tests/infra/postgres"
 	"github.com/Infisical/infisical/tests/infra/redis"
 	"github.com/Infisical/infisical/tests/internal/spec"
@@ -54,7 +53,6 @@ func TestStack_AllModulesComeUpTogether(t *testing.T) {
 	handles := startAll(t, []infra.Module{
 		postgres.Module(),
 		redis.Module(),
-		mailpit.Module(),
 	}, infra.Shared)
 
 	t.Run("should report a usable external address for every module", func(t *testing.T) {
@@ -71,11 +69,4 @@ func TestStack_AllModulesComeUpTogether(t *testing.T) {
 				"%s internal host is a host address", key)
 		}
 	})
-
-	t.Run("should expose mailpit SMTP and API on different ports", func(t *testing.T) {
-		mp := handles[mailpit.Key].(*mailpit.Handle)
-		require.NotEqual(t, mp.Endpoint(infra.Internal).Port, mp.API(infra.Internal).Port,
-			"the application dials one and the harness reads the other")
-	})
-
 }

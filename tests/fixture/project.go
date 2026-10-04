@@ -77,7 +77,7 @@ type principalConfig struct {
 	roles []string
 }
 
-// WithPrincipalName also picks a user's mailbox: alice means alice@<orgslug>.test.
+// WithPrincipalName also picks a user's mailbox: alice means alice@<tenant-nonce>.test.
 func WithPrincipalName(n string) PrincipalOption {
 	return func(c *principalConfig) { c.name = n }
 }

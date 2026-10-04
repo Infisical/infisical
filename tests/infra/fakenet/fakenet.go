@@ -179,10 +179,16 @@ func (s *Server) scope(host string, svc Service, key string) *scope {
 	id := scopeID{host, key}
 	sc, ok := s.scopes[id]
 	if !ok {
-		sc = &scope{fake: svc.New(Emitter{log: s.events, host: host, key: key})}
+		sc = &scope{fake: svc.New(s.Emitter(host, key))}
 		s.scopes[id] = sc
 	}
 	return sc
+}
+
+// Emitter publishes under host and key for a fake that is not an HTTP Service and so
+// is never handed one per scope.
+func (s *Server) Emitter(host, key string) Emitter {
+	return Emitter{log: s.events, host: host, key: key}
 }
 
 func (s *Server) takeRule(sc *scope, r *http.Request) *Rule {

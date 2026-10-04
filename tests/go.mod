@@ -5,6 +5,7 @@ go 1.27.0
 require (
 	github.com/google/uuid v1.6.0
 	github.com/moby/moby/api v1.55.0
+	github.com/mocktools/go-smtp-mock/v2 v2.5.4
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.44.0

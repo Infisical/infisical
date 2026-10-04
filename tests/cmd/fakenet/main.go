@@ -1,7 +1,8 @@
 // Command fakenet serves the harness's fakes.
 //
-// Three listeners, and each exists for a different reason:
+// Four listeners, and each exists for a different reason:
 //
+//	25   SMTP, where Infisical delivers mail
 //	53   DNS, so every hostname resolves here and nothing reaches the real internet
 //	443  the fakes, with a certificate minted per name asked for
 //	8080 the control API, on its own port so the application can never reach it
@@ -14,6 +15,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/fakes/github"
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
@@ -32,6 +34,11 @@ func main() {
 		github.Service,
 		license.Service,
 	)
+
+	mail := smtp.New(func(domain string) fakenet.Emitter { return srv.Emitter(smtp.Host, domain) })
+	if err := mail.Start(); err != nil {
+		log.Fatalf("fakenet: smtp listener: %v", err)
+	}
 
 	go func() { log.Fatalf("fakenet: %v", fakenet.ServeDNS(":53", selfIP)) }()
 

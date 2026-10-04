@@ -10,10 +10,12 @@ import (
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/harness/infisical"
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/id"
 	"github.com/google/uuid"
 )
 
@@ -37,8 +39,9 @@ type Tenant struct {
 	// ip is this tenant's rate-limit bucket. See infisical.ForwardedFor.
 	ip string
 
-	stack *Stack
-	plan  *license.Plan
+	mailDomain string
+	stack      *Stack
+	plan       *license.Plan
 }
 
 // Kind is what sort of actor a Principal is. Authorization differs by actor type in
@@ -77,7 +80,7 @@ type Principal struct {
 // Address returns a mailbox inside this tenant's own domain, so two parallel tests
 // inviting "alice" never collide.
 func (t *Tenant) Address(local string) string {
-	return local + "@" + t.OrgSlug + ".test"
+	return local + "@" + t.mailDomain
 }
 
 // TenantOption adjusts a new tenant.
@@ -126,11 +129,15 @@ func (s *Stack) NewTenant(t *testing.T, opts ...TenantOption) *Tenant {
 	}
 
 	org := created.JSON200.Organization
-	tenant := &Tenant{OrgID: org.Id, OrgSlug: org.Slug, ip: ip, stack: s, plan: cfg.plan}
+	// A nonce rather than the org slug: the event stream only carries scopes that
+	// start with this binary's prefix, and the server picks the slug.
+	mailDomain := id.Nonce() + ".test"
+	smtp.Track(t, s.Require(t, fakenet.Key, "harness.Shared").(*fakenet.Handle).AdminURL(), mailDomain)
+	tenant := &Tenant{OrgID: org.Id, OrgSlug: org.Slug, mailDomain: mailDomain, ip: ip, stack: s, plan: cfg.plan}
 
 	// The root binds itself to the new organization only to invite its administrator,
 	// and its token goes no further than this function. What a test receives is an
-	// ordinary user at admin@<orgslug>.test, unique to this tenant.
+	// ordinary user at admin@<tenant-nonce>.test, unique to this tenant.
 	rootScoped := s.scopeToOrg(t, rootUnscoped, org.Id, ip)
 	tenant.Admin = tenant.newUser(t, principalConfig{name: "admin", orgRole: "admin"}, rootScoped)
 

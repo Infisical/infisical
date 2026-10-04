@@ -101,10 +101,10 @@ func TestResolve(t *testing.T) {
 		// Action
 		_, err := Resolve(
 			mods(
-				fakeModule{key: "infisical", optional: []Key{"mailpit"}},
-				fakeModule{key: "mailpit"},
+				fakeModule{key: "infisical", optional: []Key{"fakenet"}},
+				fakeModule{key: "fakenet"},
 			),
-			map[Key]Scope{"infisical": Package, "mailpit": Shared},
+			map[Key]Scope{"infisical": Package, "fakenet": Shared},
 		)
 
 		// Assert

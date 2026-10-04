@@ -107,7 +107,7 @@ func (r *dockerRunner) Network(ctx context.Context, name string) error {
 //
 // Needed because a Shared container is created once, on the shared network, and an
 // Isolated stack lives on its own: without this its Infisical could not reach the
-// shared Mailpit. Adopting a container does not re-apply network options, so this
+// shared fakenet. Adopting a container does not re-apply network options, so this
 // has to be an explicit step rather than something Run can do.
 func (r *dockerRunner) Connect(ctx context.Context, container, net string, aliases ...string) error {
 	args := []string{"network", "connect"}

@@ -4,7 +4,6 @@ import (
 	"github.com/Infisical/infisical/tests/harness/infisical"
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
-	"github.com/Infisical/infisical/tests/infra/mailpit"
 	"github.com/Infisical/infisical/tests/infra/postgres"
 	"github.com/Infisical/infisical/tests/infra/redis"
 )
@@ -39,9 +38,6 @@ func (p Profile) String() string {
 // shared container is adopted by name and takes its environment at creation, so if
 // one package declared WireMock and another did not, whichever started the instance
 // first would silently decide whether it runs in cloud mode for everyone.
-//
-// Mailpit stays shared even under Isolated: it holds no instance state, isolation
-// between tenants is by address, and a second one buys nothing.
 func (p Profile) modules(img infisical.Image, fnImg fakenet.Image, caFile string, extra ...infra.Module) ([]infra.Module, map[infra.Key]infra.Scope) {
 	own := infra.Shared
 	if p == Isolated {
@@ -51,16 +47,15 @@ func (p Profile) modules(img infisical.Image, fnImg fakenet.Image, caFile string
 	mods := []infra.Module{
 		postgres.Module(),
 		redis.Module(),
-		mailpit.Module(),
 		fakenet.Module(fakenet.WithImage(fnImg), fakenet.WithCAFile(caFile)),
 		infisical.Module(infisical.WithImage(img)),
 	}
 	scopes := map[infra.Key]infra.Scope{
 		postgres.Key: own,
 		redis.Key:    own,
-		mailpit.Key:  infra.Shared,
 		// Shared even under Isolated: it holds a fixed address on the network, and
-		// isolation between tenants is by credential rather than by server.
+		// isolation between tenants is by credential or mail address rather than by
+		// server.
 		fakenet.Key:   infra.Shared,
 		infisical.Key: own,
 	}

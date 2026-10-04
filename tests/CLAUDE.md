@@ -270,11 +270,11 @@ has one, they have stopped meaning anything.
 h  := harness.From(t)              // the stack this package's TestMain built
 tn := h.NewTenant(t)               // fresh organization with its own admin
 tn.Admin                           // *Principal: .API, .Token, .Email, .Kind, .ID
-tn.Address("alice")                // alice@<orgslug>.test
+tn.Address("alice")                // alice@<tenant-nonce>.test
 
-tn.NewUser(t, harness.WithName("alice"))        // real user, invited through Mailpit
+tn.NewUser(t, harness.WithName("alice"))        // real user, invited through mail
 tn.NewIdentity(t, harness.OrgRole("admin"))     // machine identity
-tn.Mail(t)                                      // Mailpit scoped to this tenant
+tn.Mail(t).Expect(t, addr, smtp.Subject("x"))  // waits on this tenant's mail
 tn.SetPlan(t, license.Enterprise().Without(license.RBAC))
 tn.Client(t, token)                             // a client on this tenant's bucket
 
@@ -361,6 +361,10 @@ gh.ExpectNoEvent[github.SecretCreated](t, nil)   // waits 3s by default
 - **Absence needs `ExpectNoEvent`, never an immediate state read.** A read straight
   after an async action passes before the action lands; the auto-sync-off test did
   exactly that and could not fail.
+
+Mail works the same way: the SMTP fake publishes `smtp.message-received` once per
+recipient, scoped to the tenant's mail domain. `tn.Mail(t).Expect` covers the usual
+case; `tn.Mail(t).ExpectNoEvent[smtp.MessageReceived]` asserts nothing was sent.
 
 Waiting on Infisical itself, such as a sync's status, still polls its API, since that
 is where the product reports its own errors.
@@ -485,7 +489,7 @@ branch, rather than letting an approval request read as success.
    `GET api.github.com/user -> 200 scope=7116dd6caf34...`. It answers "did the call happen
    at all, and under which credential" before anything else.
 3. **`GET /__fake/denied`** on fakenet's admin port lists calls that reached no fake.
-4. **Mailpit UI** on its mapped port, for anything email.
+4. **`GET /__fake/events`** on fakenet's admin port streams every event, mail included.
 5. **`make status`** lists harness containers.
 
 If an outbound call is refused, the host has no fake: register its `Service` in

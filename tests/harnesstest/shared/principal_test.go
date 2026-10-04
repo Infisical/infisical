@@ -54,7 +54,7 @@ func TestUser_IsInvitedThroughMail(t *testing.T) {
 
 	t.Run("should keep users apart when two tenants invite the same local part", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `One Mailpit serves the run, so mail isolation is by address. Equal
+		spec.Why(t, `One SMTP server serves the run, so mail isolation is by address. Equal
 			domains would let parallel tests read each other's invitations.`)
 
 		// Setup

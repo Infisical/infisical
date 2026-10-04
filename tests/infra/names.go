@@ -10,7 +10,7 @@ import (
 const Prefix = "inf"
 
 // NetworkName is the shared network. Package-scoped containers join it too, so an
-// Isolated suite can still reach the shared Mailpit. It holds no state.
+// Isolated suite can still reach the shared fakenet. It holds no state.
 const NetworkName = Prefix + "-net"
 
 // NetworkSubnet is fixed so fakenet can take a fixed address on it.

@@ -38,7 +38,7 @@ func Since(m Mark) WaitOption { return func(c *waitConfig) { c.since = m.seq } }
 //
 // Read from the server rather than from what this process has received, so a mark
 // taken while events are still in flight is not behind them.
-func (s *Scope[S]) Mark(tt *testing.T) Mark {
+func (s *Events) Mark(tt *testing.T) Mark {
 	tt.Helper()
 	res, err := s.http.Get(s.base + AdminPrefix + "/events/seq")
 	if err != nil {
@@ -63,7 +63,7 @@ func (s *Scope[S]) Mark(tt *testing.T) Mark {
 // Each event satisfies at most one expectation, so expecting the same thing twice
 // needs two occurrences. Events that already happened count, which is what lets this
 // follow a call that blocks until the product is done.
-func (s *Scope[S]) ExpectEvent[E Event](tt *testing.T, match func(E) bool, opts ...WaitOption) E {
+func (s *Events) ExpectEvent[E Event](tt *testing.T, match func(E) bool, opts ...WaitOption) E {
 	tt.Helper()
 	st, b := s.buffer(tt)
 	e, err := expectEvent(st, b, s.key, newWaitConfig(defaultExpectWithin, opts), match)
@@ -77,7 +77,7 @@ func (s *Scope[S]) ExpectEvent[E Event](tt *testing.T, match func(E) bool, opts 
 // arrives within the window. A nil match accepts any.
 //
 // Events already claimed by an ExpectEvent are accounted for and do not fail it.
-func (s *Scope[S]) ExpectNoEvent[E Event](tt *testing.T, match func(E) bool, opts ...WaitOption) {
+func (s *Events) ExpectNoEvent[E Event](tt *testing.T, match func(E) bool, opts ...WaitOption) {
 	tt.Helper()
 	st, b := s.buffer(tt)
 	if err := expectNoEvent(st, b, s.key, newWaitConfig(defaultExpectNoWithin, opts), match); err != nil {
@@ -93,7 +93,7 @@ func newWaitConfig(within time.Duration, opts []WaitOption) waitConfig {
 	return cfg
 }
 
-func (s *Scope[S]) buffer(tt *testing.T) (*stream, *buffer) {
+func (s *Events) buffer(tt *testing.T) (*stream, *buffer) {
 	tt.Helper()
 	st := streamFor(tt, s.base)
 	st.mu.Lock()

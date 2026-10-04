@@ -8,7 +8,6 @@ import (
 
 	"github.com/Infisical/infisical/tests/harness/infisical"
 	"github.com/Infisical/infisical/tests/infra"
-	"github.com/Infisical/infisical/tests/infra/mailpit"
 	"github.com/Infisical/infisical/tests/infra/postgres"
 	"github.com/Infisical/infisical/tests/infra/redis"
 	"github.com/Infisical/infisical/tests/internal/spec"
@@ -33,7 +32,7 @@ func bootStack(t *testing.T, opts ...infisical.Option) *infisical.Handle {
 	img, err := infisical.ResolveImage(ctx, root, log)
 	require.NoError(t, err)
 
-	mods := []infra.Module{postgres.Module(), redis.Module(), mailpit.Module(),
+	mods := []infra.Module{postgres.Module(), redis.Module(),
 		infisical.Module(append([]infisical.Option{infisical.WithImage(img)}, opts...)...)}
 	scopes := map[infra.Key]infra.Scope{}
 	for _, m := range mods {
