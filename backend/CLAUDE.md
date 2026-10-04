@@ -12,11 +12,32 @@ The backend code quality guide is imported below, so it is always in context for
 
 All commands run from the `backend/` directory:
 
-- `npm run dev` — start dev server with tsx watch + pino-pretty logging
-- `npm run build` — production build via tsup with sourcemaps
+- `npm run dev` — start dev server with tsx watch + pino-pretty logging (`dev:docker` is the same with the debugger on 9229)
+- `npm run build` — production build via tsdown (`tsdown.config.ts`) with sourcemaps
 - `npm run lint:fix` — ESLint autofix
 - `npm run type:check` — TypeScript check (uses 8GB heap)
 - `make reviewable-api` (from repo root) — runs `lint:fix` + `type:check` (run before PRs)
+
+The backend runs on Node 26. TypeScript files run directly through tsx (dev server, scripts, the
+`*-dev` knex commands, and the e2e environment's migration loading); there is no ts-node.
+
+### Build (tsdown)
+
+`tsdown` compiles every module to its own `dist/**/*.mjs` (unbundled ESM) and rewrites `@app/*` to
+relative paths itself. Invariants that a config change can silently break:
+
+- **The output extension stays `.mjs`.** knex records each migration's file name, extension included, in
+  `infisical_migrations`, so production rows are `*.mjs`. A different extension makes every applied
+  migration look unknown and the boot check refuses to start.
+- **`main` stays the first entry, and entry paths stay absolute.** Rolldown orders each file's imports by
+  execution order, walking entries in order; a glob that sorts another entry ahead of `main` hoists its
+  imports above the telemetry instrumentation. Object entries ignore `root`, so relative paths nest every
+  other module under `dist/src/`.
+- **Rolldown reorders imports, even within one file.** Never rely on import order for a global side effect
+  that another package needs; import it explicitly where it is needed (see `reflect-metadata` in
+  `lib/crypto/pqc/pqc-algorithm.ts`).
+- **`deps.onlyBundle: []` fails the build if a `node_modules` package would be inlined.** That means
+  `src/` imports a package that `package.json` does not declare; declare it instead of loosening the guard.
 
 ### Testing
 
