@@ -3,7 +3,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
 import { cn } from "../../utils";
 
-const TooltipSelectableContext = React.createContext(false);
+const TooltipInteractionContext = React.createContext({ hoverable: false, selectable: false });
 
 function TooltipProvider({
   delayDuration = 0,
@@ -21,21 +21,29 @@ function TooltipProvider({
 
 function Tooltip({
   skipDelayDuration,
+  hoverable = false,
   selectable = false,
   ...props
 }: Omit<React.ComponentProps<typeof TooltipPrimitive.Root>, "disableHoverableContent"> &
   Pick<React.ComponentProps<typeof TooltipPrimitive.Provider>, "skipDelayDuration"> & {
+    hoverable?: boolean;
     selectable?: boolean;
   }) {
+  const isHoverable = hoverable || selectable;
+  const interaction = React.useMemo(
+    () => ({ hoverable: isHoverable, selectable }),
+    [isHoverable, selectable]
+  );
+
   return (
     <TooltipProvider skipDelayDuration={skipDelayDuration}>
-      <TooltipSelectableContext.Provider value={selectable}>
+      <TooltipInteractionContext.Provider value={interaction}>
         <TooltipPrimitive.Root
           data-slot="tooltip"
           {...props}
-          disableHoverableContent={!selectable}
+          disableHoverableContent={!isHoverable}
         />
-      </TooltipSelectableContext.Provider>
+      </TooltipInteractionContext.Provider>
     </TooltipProvider>
   );
 }
@@ -51,7 +59,7 @@ function TooltipContent({
   children,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
-  const selectable = React.useContext(TooltipSelectableContext);
+  const { hoverable, selectable } = React.useContext(TooltipInteractionContext);
 
   return (
     <TooltipPrimitive.Portal>
@@ -61,7 +69,8 @@ function TooltipContent({
         collisionPadding={collisionPadding}
         className={cn(
           "!pointer-events-none z-[var(--z-index-tooltip)] w-fit origin-(--radix-tooltip-content-transform-origin) animate-in rounded-md border border-border bg-popover px-3 py-1.5 text-xs text-pretty text-foreground shadow-md fade-in-0 select-none zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
-          selectable && "!pointer-events-auto select-text",
+          hoverable && "!pointer-events-auto",
+          selectable && "select-text",
           className
         )}
         {...props}
