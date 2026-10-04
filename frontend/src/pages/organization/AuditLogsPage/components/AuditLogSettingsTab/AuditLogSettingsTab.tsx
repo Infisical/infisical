@@ -1,6 +1,5 @@
 import { AuditLogEventClassesForm } from "@app/components/auditLogSettings";
 import {
-  OrgPermissionActions,
   OrgPermissionAuditLogsActions,
   OrgPermissionSubjects,
   useOrganization,
@@ -42,8 +41,8 @@ export const AuditLogSettingsTab = withPermission(
     );
   },
   {
-    action: OrgPermissionActions.Read,
-    subject: OrgPermissionSubjects.Settings,
+    action: OrgPermissionAuditLogsActions.Read,
+    subject: OrgPermissionSubjects.AuditLogs,
     accessRestrictedMode: "dialog"
   }
 );

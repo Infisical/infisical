@@ -1,4 +1,4 @@
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 
 import { AuditLogEventClassesSection } from "../AuditLogEventClassesSection";
@@ -12,8 +12,8 @@ export const AuditLogSettingsTab = withProjectPermission(
     </div>
   ),
   {
-    action: ProjectPermissionActions.Read,
-    subject: ProjectPermissionSub.Settings,
+    action: ProjectPermissionAuditLogsActions.Read,
+    subject: ProjectPermissionSub.AuditLogs,
     accessRestrictedMode: "dialog"
   }
 );

@@ -11,17 +11,9 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import {
-  OrgPermissionActions,
-  OrgPermissionAuditLogsActions,
-  OrgPermissionSubjects
-} from "../permission/org-permission";
+import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionAuditLogsActions,
-  ProjectPermissionSub
-} from "../permission/project-permission";
+import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../permission/project-permission";
 import {
   AUDIT_LOG_EVENT_CLASS_DEFAULTS,
   AUDIT_LOG_EVENT_CLASSES,
@@ -281,7 +273,7 @@ export const auditLogSettingsServiceFactory = ({
 
   const getOrgSettings = async ({ actor }: TGetOrgAuditLogSettingsDTO) => {
     const { permission } = await getOrgPermission(actor);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
     const org = await findOrgOrThrow(actor.orgId);
     const rows = await auditLogSettingsDAL.find({ orgId: org.id, projectId: null });
     return toResponse(toOverrides(rows), org);
@@ -313,7 +305,10 @@ export const auditLogSettingsServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAuditLogsActions.Read,
+      ProjectPermissionSub.AuditLogs
+    );
 
     const project = await findProjectOrThrow(projectId);
     const org = await findOrgOrThrow(project.orgId);

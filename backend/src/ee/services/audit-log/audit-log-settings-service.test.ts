@@ -88,6 +88,7 @@ const createHarness = ({
   rows = [] as TRow[],
   shouldUseNewPrivilegeSystem = true,
   canEditAuditLogs = true,
+  canReadAuditLogs = true,
   planHasAuditLogs = true
 } = {}) => {
   const tx = { raw: vi.fn(async () => undefined) };
@@ -114,6 +115,9 @@ const createHarness = ({
     getOrgPermission: vi.fn(async () => ({
       permission: createMongoAbility([
         { action: [OrgPermissionActions.Read, OrgPermissionActions.Edit], subject: OrgPermissionSubjects.Settings },
+        ...(canReadAuditLogs
+          ? [{ action: OrgPermissionAuditLogsActions.Read, subject: OrgPermissionSubjects.AuditLogs }]
+          : []),
         ...(canEditAuditLogs
           ? [{ action: OrgPermissionAuditLogsActions.Edit, subject: OrgPermissionSubjects.AuditLogs }]
           : [])
@@ -125,6 +129,9 @@ const createHarness = ({
           action: [ProjectPermissionActions.Read, ProjectPermissionActions.Edit],
           subject: ProjectPermissionSub.Settings
         },
+        ...(canReadAuditLogs
+          ? [{ action: ProjectPermissionAuditLogsActions.Read, subject: ProjectPermissionSub.AuditLogs }]
+          : []),
         ...(canEditAuditLogs
           ? [{ action: ProjectPermissionAuditLogsActions.Edit, subject: ProjectPermissionSub.AuditLogs }]
           : [])
@@ -252,6 +259,12 @@ describe("updateOrgSettings", () => {
     const result = await service.getOrgSettings({ actor: orgActor });
 
     expect(result.eventClasses).toHaveLength(4);
+  });
+
+  test("refuses to read without read on audit logs, even with read on settings", async () => {
+    const { service } = createHarness({ canReadAuditLogs: false });
+
+    await expect(service.getOrgSettings({ actor: orgActor })).rejects.toThrow(ForbiddenError);
   });
 
   test("refuses to save on a plan without audit logs", async () => {
@@ -432,6 +445,12 @@ describe("updateProjectSettings", () => {
     await service.updateProjectSettings({ ...projectActor, eventClasses: fullEventClasses });
 
     expect(auditLogSettingsDAL.delete).toHaveBeenCalledWith({ orgId: "org-1", projectId: "p1" }, expect.anything());
+  });
+
+  test("refuses to read without read on audit logs, even with read on settings", async () => {
+    const { service } = createHarness({ canReadAuditLogs: false });
+
+    await expect(service.getProjectSettings(projectActor)).rejects.toThrow(ForbiddenError);
   });
 
   test("refuses to save on a plan without audit logs, checked against the project's org", async () => {

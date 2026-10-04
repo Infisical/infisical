@@ -253,19 +253,19 @@ By default, Infisical records every class except `authorization`. The `managemen
       </Step>
     </Steps>
 
-    Changing these toggles requires the **Edit Settings** permission on **Audit Logs**, which the built-in admin role has. Anyone with the **Read** permission on **Settings** can view them.
+    Changing these toggles requires the **Edit Settings** permission on **Audit Logs**, which the built-in admin role has. Anyone with the **Read** permission on **Audit Logs** can view them.
   </Tab>
   <Tab title="For a project">
     <Steps>
       <Step>
-        Open the project and go to **Settings**.
+        Open the project, go to **Audit Logs**, and select the **Settings** tab.
       </Step>
       <Step>
-        Under **Audit Log Event Classes**, turn a class on or off, then select **Save Changes**.
+        Under **Event Classes**, turn a class on or off, then select **Save Changes**.
       </Step>
     </Steps>
 
-    Changing these toggles requires the **Edit Settings** permission on **Audit Logs**, which the built-in admin role has. A project that has never saved a setting uses the defaults. The section appears in the settings of Secret Manager, KMS, and Secret Scanning projects. For other project types, use the API.
+    Changing these toggles requires the **Edit Settings** permission on **Audit Logs**, which the built-in admin role has. Anyone with the **Read** permission on **Audit Logs** can view them. A project that has never saved a setting uses the defaults.
   </Tab>
   <Tab title="API">
     Update the organization's classes with [the organization audit log settings endpoint](/api-reference/endpoints/audit-logs/update-organization-audit-log-settings), or one project's classes with [the project audit log settings endpoint](/api-reference/endpoints/audit-logs/update-project-audit-log-settings). The request replaces the current settings, so include every class except `management` and `data-access`.
