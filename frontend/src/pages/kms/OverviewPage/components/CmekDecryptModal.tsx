@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { faCheckCircle, faCopy, faInfoCircle, faLockOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,16 +7,19 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { decodeBase64 } from "@app/components/utilities/cryptography/crypto";
+import { Modal, ModalClose, ModalContent } from "@app/components/v2";
 import {
   Button,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Switch,
+  Field,
+  FieldError,
+  FieldLabel,
+  IconButton,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 import { TCmek, useCmekDecrypt } from "@app/hooks/api/cmeks";
 
@@ -36,6 +39,7 @@ type FormProps = Pick<Props, "cmek">;
 
 const DecryptForm = ({ cmek }: FormProps) => {
   const cmekDecrypt = useCmekDecrypt();
+  const fieldId = useId();
   const [shouldDecode, setShouldDecode] = useState(false);
   const [plaintext, setPlaintext] = useState("");
 
@@ -79,41 +83,57 @@ const DecryptForm = ({ cmek }: FormProps) => {
   return (
     <form onSubmit={handleSubmit(handleDecryptData)}>
       {plaintext ? (
-        <FormControl label="Decrypted Data (plaintext)">
+        <Field className="mb-4">
+          <FieldLabel htmlFor={`${fieldId}-plaintext`}>Decrypted Data (plaintext)</FieldLabel>
           <TextArea
-            className="max-h-80 min-h-40 max-w-full min-w-full"
-            isDisabled
+            id={`${fieldId}-plaintext`}
+            className="max-h-80 min-h-40 max-w-full min-w-full resize"
+            disabled
             value={plaintext}
           />
-        </FormControl>
+        </Field>
       ) : (
-        <FormControl
-          label="Encrypted Data (ciphertext)"
-          errorText={errors.ciphertext?.message}
-          isError={Boolean(errors.ciphertext)}
-        >
+        <Field className="mb-4" data-invalid={Boolean(errors.ciphertext)}>
+          <FieldLabel htmlFor={`${fieldId}-ciphertext`}>Encrypted Data (ciphertext)</FieldLabel>
           <TextArea
             {...register("ciphertext")}
-            className="max-h-80 min-h-40 max-w-full min-w-full"
+            id={`${fieldId}-ciphertext`}
+            isError={Boolean(errors.ciphertext)}
+            aria-describedby={errors.ciphertext ? `${fieldId}-ciphertext-error` : undefined}
+            className="max-h-80 min-h-40 max-w-full min-w-full resize"
           />
-        </FormControl>
+          <FieldError id={`${fieldId}-ciphertext-error`} errors={[errors.ciphertext]} />
+        </Field>
       )}
-      <Switch
-        id="decode-base-64"
-        isChecked={shouldDecode}
-        onCheckedChange={setShouldDecode}
-        containerClassName="mb-6 ml-0.5 -mt-2.5"
-      >
-        Decode Base64{" "}
-        <Tooltip content="Toggle this switch on if your data was originally plain text.">
-          <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+      <Field orientation="horizontal" className="mb-6">
+        <Toggle
+          id={`${fieldId}-decode-base-64`}
+          checked={shouldDecode}
+          onCheckedChange={setShouldDecode}
+        />
+        <FieldLabel htmlFor={`${fieldId}-decode-base-64`}>Decode Base64</FieldLabel>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <IconButton variant="ghost" size="xs" aria-label="About Base64 decoding">
+              <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            Toggle this switch on if your data was originally plain text.
+          </TooltipContent>
         </Tooltip>
-      </Switch>
+      </Field>
       <div className="flex items-center">
         <Button
           className={`mr-4 ${plaintext ? "w-44" : ""}`}
           size="sm"
-          leftIcon={
+          variant="project"
+          onClick={plaintext ? handleCopyToClipboard : undefined}
+          type={plaintext ? "button" : "submit"}
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
+          {
             // eslint-disable-next-line no-nested-ternary
             plaintext ? (
               isCopyingCiphertext ? (
@@ -125,17 +145,10 @@ const DecryptForm = ({ cmek }: FormProps) => {
               <FontAwesomeIcon icon={faLockOpen} />
             )
           }
-          onClick={plaintext ? handleCopyToClipboard : undefined}
-          type={plaintext ? "button" : "submit"}
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
           {plaintext ? copyCiphertext : "Decrypt"}
         </Button>
         <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            {plaintext ? "Close" : "Cancel"}
-          </Button>
+          <Button variant="ghost">{plaintext ? "Close" : "Cancel"}</Button>
         </ModalClose>
       </div>
     </form>
