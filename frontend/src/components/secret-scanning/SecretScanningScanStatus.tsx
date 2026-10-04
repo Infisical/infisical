@@ -29,15 +29,17 @@ export const SecretScanningScanStatusBadge = ({
 
     return (
       <Tooltip selectable>
-        <TooltipTrigger
-          type="button"
-          aria-label="Scan error: failure reason"
-          onClick={(event) => event.stopPropagation()}
-          className="w-fit rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Badge variant="danger">
-            <XIcon />
-            Scan Error
+        <TooltipTrigger asChild>
+          <Badge asChild variant="danger">
+            <button
+              type="button"
+              aria-label="Scan error: failure reason"
+              onClick={(event) => event.stopPropagation()}
+              className="outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <XIcon />
+              Scan Error
+            </button>
           </Badge>
         </TooltipTrigger>
         <TooltipContent side="left" className="max-w-sm">
