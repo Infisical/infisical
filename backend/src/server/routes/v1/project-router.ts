@@ -590,6 +590,21 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      if (req.body.auditLogsRetentionDays !== undefined) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId,
+          event: {
+            type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+            metadata: {
+              scope: "project",
+              auditLogsRetentionDays: req.body.auditLogsRetentionDays
+            }
+          }
+        });
+      }
+
       return {
         project
       };
