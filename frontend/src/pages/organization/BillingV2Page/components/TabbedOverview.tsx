@@ -279,8 +279,9 @@ const ProductOverviewCard = ({
           <ProductIcon product={prod} size={32} />
           <CardTitle>
             {prod.name}
-            {ent.isTrialing && <Badge variant="info">Trial</Badge>}
-            {!ent.isTrialing && <Badge variant="success">Active</Badge>}
+            {ent.status === "grace" && <Badge variant="warning">Grace</Badge>}
+            {ent.status !== "grace" && ent.isTrialing && <Badge variant="info">Trial</Badge>}
+            {ent.status !== "grace" && !ent.isTrialing && <Badge variant="success">Active</Badge>}
             {prod.addon && <Badge variant="neutral">Add-on</Badge>}
           </CardTitle>
         </div>
@@ -321,7 +322,7 @@ const ProductOverviewCard = ({
             )}
             {nudge && (
               <span className="text-xs text-muted">
-                Annual option:{" "}
+                Annual option for {nudge.qty.toLocaleString()} {nudge.label}:{" "}
                 <span className="text-foreground">{fmtMoney(nudge.annualCommitted)} / yr</span>
                 {` · save ~${nudge.savingsPct}%`}
               </span>
