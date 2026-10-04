@@ -436,13 +436,26 @@ export const SharedSecretUpdateForm = ({
                 )}
               />
             )}
-            <Input
-              id="shared-update-key"
-              {...register("key")}
-              className="font-mono"
-              aria-label="Secret Key"
-              readOnly={!allowRename || values.keyAction === "keep"}
-              disabled={isBusy}
+            <Controller
+              control={control}
+              name="key"
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  id="shared-update-key"
+                  className="font-mono"
+                  aria-label="Secret Key"
+                  onChange={(event) =>
+                    field.onChange(
+                      currentProject?.autoCapitalization
+                        ? event.target.value.toUpperCase()
+                        : event.target.value
+                    )
+                  }
+                  readOnly={!allowRename || values.keyAction === "keep"}
+                  disabled={isBusy}
+                />
+              )}
             />
             <FieldDescription>
               {allowRename

@@ -386,23 +386,26 @@ export const MultiEnvironmentSecretEditSheet = ({
                       status =
                         canDescribe(environment.slug) && secret ? "Read-Only" : "Unavailable";
                     return (
-                      <Button
+                      <div
                         key={environment.slug}
-                        variant="ghost"
-                        isDisabled={isSaving}
-                        aria-pressed={activeEnvironment === environment.slug}
-                        onClick={() => setActiveEnvironment(environment.slug)}
-                        className={`h-auto w-full justify-between rounded-none border-b border-border px-3 py-2.5 last:border-b-0 ${activeEnvironment === environment.slug ? "bg-container" : ""}`}
+                        className="border-b border-border p-1 last:border-b-0"
                       >
-                        <span className="min-w-0 text-left">
-                          <span className="block truncate">{environment.name}</span>
-                          <span className="block truncate text-xs text-muted">{detail}</span>
-                        </span>
-                        <Badge variant={changed ? "project" : "outline"}>
-                          {error && <LockKeyholeIcon />}
-                          {changed ? "Unsaved Changes" : status}
-                        </Badge>
-                      </Button>
+                        <Button
+                          variant={activeEnvironment === environment.slug ? "outline" : "ghost"}
+                          isFullWidth
+                          isDisabled={isSaving}
+                          aria-pressed={activeEnvironment === environment.slug}
+                          onClick={() => setActiveEnvironment(environment.slug)}
+                          className="justify-between"
+                        >
+                          <span className="truncate">{environment.name}</span>
+                          <Badge variant={changed ? "project" : "outline"}>
+                            {error && <LockKeyholeIcon />}
+                            {changed ? "Unsaved Changes" : status}
+                          </Badge>
+                        </Button>
+                        <p className="truncate px-3 text-xs text-muted">{detail}</p>
+                      </div>
                     );
                   })}
                 </div>
