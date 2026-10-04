@@ -28,7 +28,7 @@ export const SecretScanningScanStatusBadge = ({
     }
 
     return (
-      <Tooltip selectable>
+      <Tooltip selectable delayDuration={50}>
         <TooltipTrigger asChild>
           <Badge asChild variant="danger">
             <button
@@ -42,7 +42,7 @@ export const SecretScanningScanStatusBadge = ({
             </button>
           </Badge>
         </TooltipTrigger>
-        <TooltipContent side="left" className="max-w-sm">
+        <TooltipContent side="left" sideOffset={5} className="max-w-sm">
           <div className="flex flex-col gap-2 py-1 whitespace-normal">
             <div>
               <div className="mb-2 flex self-start text-danger">
