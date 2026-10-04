@@ -22,10 +22,6 @@ import {
   Badge,
   Button,
   Checkbox,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
   IconButton,
   Table,
   TableBody,
@@ -60,11 +56,11 @@ import {
   TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
+import { MultiEnvironmentSecretEditSheet } from "./MultiEnvironmentSecretEditSheet";
 import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
-import SecretRenameForm from "./SecretRenameForm";
 
-type Props = {
+export type SecretTableRowProps = {
   secretKey: string;
   secretPath: string;
   tableWidth: number;
@@ -148,7 +144,7 @@ export const SecretTableRow = ({
   onCopySecret,
   activityId,
   onActivityChange
-}: Props) => {
+}: SecretTableRowProps) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 2; // secret key row + icon
   const [isSecretVisible, setIsSecretVisible] = useToggle();
@@ -519,9 +515,9 @@ export const SecretTableRow = ({
                     <TooltipContent>Copy Secret Name</TooltipContent>
                   </Tooltip>
                   <Tooltip>
-                    <TooltipTrigger>
+                    <TooltipTrigger asChild>
                       <IconButton
-                        aria-label="Edit secret name"
+                        aria-label="Edit secret"
                         variant="ghost"
                         size="xs"
                         onClick={(e) => {
@@ -533,7 +529,7 @@ export const SecretTableRow = ({
                         <EditIcon />
                       </IconButton>
                     </TooltipTrigger>
-                    <TooltipContent>Edit Secret Name</TooltipContent>
+                    <TooltipContent>Edit Secret</TooltipContent>
                   </Tooltip>
                 </div>
               </div>
@@ -619,20 +615,22 @@ export const SecretTableRow = ({
           </TableCell>
         </TableRow>
       )}
-      {!isSingleEnvView && (
-        <Dialog open={isEditSecretNameOpen} onOpenChange={setIsEditSecretNameOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Edit Secret Name</DialogTitle>
-            </DialogHeader>
-            <SecretRenameForm
-              secretKey={secretKey}
-              environments={environments}
-              secretPath={secretPath}
-              getSecretByKey={getSecretByKey}
-            />
-          </DialogContent>
-        </Dialog>
+      {!isSingleEnvView && isEditSecretNameOpen && (
+        <MultiEnvironmentSecretEditSheet
+          key={JSON.stringify([
+            projectId,
+            secretPath,
+            secretKey,
+            environments.map((env) => env.slug)
+          ])}
+          secretKey={secretKey}
+          environments={environments}
+          secretPath={secretPath}
+          getSecretByKey={getSecretByKey}
+          onSecretUpdate={onSecretUpdate}
+          importedBy={importedBy}
+          onClose={() => setIsEditSecretNameOpen(false)}
+        />
       )}
       {!isSingleEnvView && isFormExpanded && (
         <TableRow
