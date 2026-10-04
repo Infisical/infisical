@@ -1,7 +1,7 @@
 import { CSSProperties, ReactNode, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, ExternalLink } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -28,6 +28,7 @@ import {
   useOrganization,
   useOrgPermission
 } from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   BillingV2Cadence,
   BillingV2CatalogProduct,
@@ -478,6 +479,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
   }
 
   if (overview.isError || catalog.isError || !overview.data || !product) {
+    const isSelfHosted = overview.data ? !overview.data.isCloud : !isInfisicalCloud();
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
@@ -496,12 +498,30 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
             <AlertDescription>
               Plan details could not be loaded. Try again, or contact Infisical if the problem
               continues.
+              {isSelfHosted && (
+                <p className="mt-2">
+                  For a self-hosted or offline license, contact our team to discuss your deployment.
+                </p>
+              )}
             </AlertDescription>
           </Alert>
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
+            {isSelfHosted && (
+              <Button variant="outline" asChild>
+                <a
+                  href={CONTACT_SALES_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={trackUpgradeClick}
+                >
+                  Contact Sales
+                  <ExternalLink />
+                </a>
+              </Button>
+            )}
             <Button
               data-upgrade-cta
               variant="org"
