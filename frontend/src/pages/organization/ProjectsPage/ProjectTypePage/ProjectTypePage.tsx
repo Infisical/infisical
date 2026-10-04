@@ -18,11 +18,21 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   ButtonGroup,
@@ -31,6 +41,10 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -87,6 +101,7 @@ import {
 import {
   useGetMyPendingProjectAccessRequests,
   useGetUserProjects,
+  useLeaveProject,
   useOrgAdminAccessProject,
   useSearchProjects
 } from "@app/hooks/api";
@@ -96,6 +111,7 @@ import {
   Project,
   ProjectEnv,
   ProjectType,
+  ProjectVersion,
   SearchProjectSortBy
 } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
@@ -792,6 +808,7 @@ const AllProjectsForType = ({
   };
 
   const orgAdminAccessProject = useOrgAdminAccessProject();
+  const leaveProject = useLeaveProject();
   const { permission } = useOrgPermission();
   const canAccessAllProjects = permission.can(
     OrgPermissionAdminConsoleAction.AccessAllProjects,
@@ -804,7 +821,8 @@ const AllProjectsForType = ({
   };
 
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
-    "requestAccessConfirmation"
+    "requestAccessConfirmation",
+    "leaveProjectConfirmation"
   ] as const);
 
   const { data: searchedProjects, isPending: isProjectLoading } = useSearchProjects({
@@ -840,6 +858,20 @@ const AllProjectsForType = ({
   });
 
   const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Project;
+  const projectToLeave = popUp.leaveProjectConfirmation.data as Project | undefined;
+  const handleLeaveProject = () => {
+    if (!projectToLeave || leaveProject.isPending) return;
+
+    leaveProject.mutate(
+      { projectId: projectToLeave.id },
+      {
+        onSuccess: () => {
+          handlePopUpToggle("leaveProjectConfirmation", false);
+          createNotification({ text: "Removed your direct project membership", type: "success" });
+        }
+      }
+    );
+  };
   const ProductIcon = getProjectLucideIcon(projectType);
 
   const hasProjects = !isProjectLoading && Boolean(searchedProjects?.totalCount);
@@ -928,10 +960,38 @@ const AllProjectsForType = ({
                 <TableCell className="relative z-10 w-0 pr-3 text-right">
                   {(() => {
                     const joinedBadge = (
-                      <Badge variant="info">
-                        <CheckIcon />
-                        Joined
-                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Badge variant="info" asChild>
+                            <button
+                              type="button"
+                              aria-label={`Membership options for ${workspace.name}`}
+                              className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            >
+                              <CheckIcon />
+                              Joined
+                              <ChevronDownIcon />
+                            </button>
+                          </Badge>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {workspace.isDirectMember && workspace.version !== ProjectVersion.V1 ? (
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                handlePopUpOpen("leaveProjectConfirmation", workspace)
+                              }
+                            >
+                              Leave Project
+                            </DropdownMenuItem>
+                          ) : (
+                            <div className="max-w-60 px-2 py-2 text-sm text-muted">
+                              {workspace.isDirectMember
+                                ? "Ask a project admin to upgrade this project before you can leave."
+                                : "You have access through a group. Ask a group admin to remove your access."}
+                            </div>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     );
                     const adminAccessButton = (label: string) => (
                       <Button
@@ -1078,6 +1138,46 @@ const AllProjectsForType = ({
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccessConfirmation", isOpen)}
         project={requestedWorkspaceDetails}
       />
+      <AlertDialog
+        open={popUp.leaveProjectConfirmation.isOpen}
+        confirmationValue="confirm"
+        onOpenChange={(isOpen) => {
+          if (!leaveProject.isPending) handlePopUpToggle("leaveProjectConfirmation", isOpen);
+        }}
+      >
+        <AlertDialogContent
+          onEscapeKeyDown={(event) => {
+            if (leaveProject.isPending) event.preventDefault();
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave {projectToLeave?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Leaving removes your direct membership in this project. Any access you have through a
+              group will remain.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            inputProps={{ placeholder: "Type confirm here", disabled: leaveProject.isPending }}
+            onConfirm={handleLeaveProject}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel variant="outline" isDisabled={leaveProject.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={leaveProject.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                handleLeaveProject();
+              }}
+            >
+              Leave Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

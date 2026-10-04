@@ -582,11 +582,11 @@ export const SecretTableRow = ({
           )}
         >
           <TableCell>
-            <GitBranchIcon className="text-override" />
+            <GitBranchIcon className="text-override-foreground" />
           </TableCell>
           <TableCell
             className={twMerge(
-              "border-r text-override",
+              "border-r text-override-foreground",
               singleEnvHasOverride && "border-l border-l-override"
             )}
           >
