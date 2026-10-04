@@ -16,6 +16,13 @@ import {
   Badge,
   Button,
   DiscardChangesAlertDialog,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldTitle,
+  RadioGroup,
+  RadioGroupItem,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -358,56 +365,62 @@ export const MultiEnvironmentSecretEditSheet = ({
           {values && mode === "individual" && (
             <>
               <div className="px-4 pb-4">
-                <div className="max-h-48 overflow-y-auto rounded-md border border-border">
-                  {environments.map((environment) => {
-                    const secret = initialSecrets.find((item) => item.env === environment.slug);
-                    const error = getEnvironmentError(environment.slug);
-                    const changed = updates.some(
-                      (plan) => plan.environment.slug === environment.slug
-                    );
-                    const annotations = [
-                      secret?.comment ? "Comment" : undefined,
-                      secret?.tags?.length
-                        ? `${secret.tags.length} tag${secret.tags.length === 1 ? "" : "s"}`
-                        : undefined,
-                      secret?.secretMetadata?.length
-                        ? `${secret.secretMetadata.length} metadata entr${secret.secretMetadata.length === 1 ? "y" : "ies"}`
-                        : undefined
-                    ]
-                      .filter(Boolean)
-                      .join(" · ");
-                    let detail = "Unavailable";
-                    if (canDescribe(environment.slug))
-                      detail = secret ? annotations || "No annotations" : "Secret not present";
-                    let status = readable.has(environment.slug)
-                      ? "Can Read and Modify"
-                      : "Can Modify · Value Hidden";
-                    if (error)
-                      status =
-                        canDescribe(environment.slug) && secret ? "Read-Only" : "Unavailable";
-                    return (
-                      <div
-                        key={environment.slug}
-                        className="border-b border-border p-1 last:border-b-0"
-                      >
-                        <Button
-                          variant={activeEnvironment === environment.slug ? "outline" : "ghost"}
-                          isFullWidth
-                          isDisabled={isSaving}
-                          aria-pressed={activeEnvironment === environment.slug}
-                          onClick={() => setActiveEnvironment(environment.slug)}
-                          className="justify-between"
+                <div className="max-h-64 overflow-y-auto">
+                  <RadioGroup
+                    value={activeEnvironment}
+                    onValueChange={setActiveEnvironment}
+                    disabled={isSaving}
+                    aria-label="Environment to Edit"
+                  >
+                    {environments.map((environment) => {
+                      const secret = initialSecrets.find((item) => item.env === environment.slug);
+                      const error = getEnvironmentError(environment.slug);
+                      const changed = updates.some(
+                        (plan) => plan.environment.slug === environment.slug
+                      );
+                      const annotations = [
+                        secret?.comment ? "Comment" : undefined,
+                        secret?.tags?.length
+                          ? `${secret.tags.length} tag${secret.tags.length === 1 ? "" : "s"}`
+                          : undefined,
+                        secret?.secretMetadata?.length
+                          ? `${secret.secretMetadata.length} metadata entr${secret.secretMetadata.length === 1 ? "y" : "ies"}`
+                          : undefined
+                      ]
+                        .filter(Boolean)
+                        .join(" · ");
+                      let detail = "Unavailable";
+                      if (canDescribe(environment.slug))
+                        detail = secret ? annotations || "No annotations" : "Secret not present";
+                      let status = readable.has(environment.slug)
+                        ? "Can Read and Modify"
+                        : "Can Modify · Value Hidden";
+                      if (error)
+                        status =
+                          canDescribe(environment.slug) && secret ? "Read-Only" : "Unavailable";
+                      return (
+                        <FieldLabel
+                          key={environment.slug}
+                          htmlFor={`edit-environment-${environment.slug}`}
                         >
-                          <span className="truncate">{environment.name}</span>
-                          <Badge variant={changed ? "project" : "outline"}>
-                            {error && <LockKeyholeIcon />}
-                            {changed ? "Unsaved Changes" : status}
-                          </Badge>
-                        </Button>
-                        <p className="truncate px-3 text-xs text-muted">{detail}</p>
-                      </div>
-                    );
-                  })}
+                          <Field orientation="horizontal">
+                            <FieldContent>
+                              <FieldTitle>{environment.name}</FieldTitle>
+                              <FieldDescription>{detail}</FieldDescription>
+                            </FieldContent>
+                            <Badge variant={changed ? "project" : "outline"}>
+                              {error && <LockKeyholeIcon />}
+                              {changed ? "Unsaved Changes" : status}
+                            </Badge>
+                            <RadioGroupItem
+                              id={`edit-environment-${environment.slug}`}
+                              value={environment.slug}
+                            />
+                          </Field>
+                        </FieldLabel>
+                      );
+                    })}
+                  </RadioGroup>
                 </div>
                 {valuesDiffer && (
                   <p className="mt-2 text-xs text-muted">
