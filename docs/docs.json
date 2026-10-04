@@ -1113,6 +1113,7 @@
                   "integrations/app-connections/terraform-cloud",
                   "integrations/app-connections/travis-ci",
                   "integrations/app-connections/trigger-dev",
+                  "integrations/app-connections/ultradns",
                   "integrations/app-connections/venafi",
                   "integrations/app-connections/venafi-tpp",
                   "integrations/app-connections/vercel",
@@ -2463,6 +2464,18 @@
                         "group": "Travis CI",
                         "pages": [
                           "api-reference/endpoints/app-connections/travis-ci/create"
+                        ]
+                      },
+                      {
+                        "group": "UltraDNS",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/ultradns/list",
+                          "api-reference/endpoints/app-connections/ultradns/available",
+                          "api-reference/endpoints/app-connections/ultradns/get-by-id",
+                          "api-reference/endpoints/app-connections/ultradns/get-by-name",
+                          "api-reference/endpoints/app-connections/ultradns/create",
+                          "api-reference/endpoints/app-connections/ultradns/update",
+                          "api-reference/endpoints/app-connections/ultradns/delete"
                         ]
                       },
                       {
