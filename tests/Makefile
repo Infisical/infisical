@@ -41,7 +41,11 @@ test-docker:
 # `up` would silently adopt it. The trap fires on Ctrl-C too, so an interrupted run
 # still cleans up.
 #
-# The recipe's exit status is still `go test`'s, so a failure stays a failure.
+# `up` runs inside the recipe rather than as a prerequisite, so the trap is already
+# installed when it starts and a stack that fails halfway through booting is torn
+# down too.
+#
+# The recipe's exit status is still that of whichever command failed.
 # Separate targets so a red line says which thing broke. `test-suites` failing means
 # Infisical is broken; `test-harness` failing means the harness is. One target running
 # both would report them the same way.
@@ -49,8 +53,9 @@ test-suites:  PKGS = ./suites/...
 test-harness: PKGS = ./harnesstest/...
 test-all:     PKGS = ./suites/... ./harnesstest/...
 
-test-suites test-harness test-all: up
-	@trap '$(MAKE) --no-print-directory down' EXIT; go test $(PKGS) -count=1
+test-suites test-harness test-all:
+	@trap '$(MAKE) --no-print-directory down' EXIT; \
+	go run ./cmd/inf up && go test $(PKGS) -count=1
 
 up:
 	go run ./cmd/inf up

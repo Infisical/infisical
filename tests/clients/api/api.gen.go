@@ -18,90 +18,90 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// Defines values for GetServerStatus400JSONResponseBodyStatusCode.
+// Defines values for GetInstanceStatus400JSONResponseBodyStatusCode.
 const (
-	GetServerStatus400JSONResponseBodyStatusCodeN400 GetServerStatus400JSONResponseBodyStatusCode = 400
+	GetInstanceStatus400JSONResponseBodyStatusCodeN400 GetInstanceStatus400JSONResponseBodyStatusCode = 400
 )
 
-// Valid indicates whether the value is a known member of the GetServerStatus400JSONResponseBodyStatusCode enum.
-func (e GetServerStatus400JSONResponseBodyStatusCode) Valid() bool {
+// Valid indicates whether the value is a known member of the GetInstanceStatus400JSONResponseBodyStatusCode enum.
+func (e GetInstanceStatus400JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
-	case GetServerStatus400JSONResponseBodyStatusCodeN400:
+	case GetInstanceStatus400JSONResponseBodyStatusCodeN400:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for GetServerStatus401JSONResponseBodyStatusCode.
+// Defines values for GetInstanceStatus401JSONResponseBodyStatusCode.
 const (
-	GetServerStatus401JSONResponseBodyStatusCodeN401 GetServerStatus401JSONResponseBodyStatusCode = 401
+	GetInstanceStatus401JSONResponseBodyStatusCodeN401 GetInstanceStatus401JSONResponseBodyStatusCode = 401
 )
 
-// Valid indicates whether the value is a known member of the GetServerStatus401JSONResponseBodyStatusCode enum.
-func (e GetServerStatus401JSONResponseBodyStatusCode) Valid() bool {
+// Valid indicates whether the value is a known member of the GetInstanceStatus401JSONResponseBodyStatusCode enum.
+func (e GetInstanceStatus401JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
-	case GetServerStatus401JSONResponseBodyStatusCodeN401:
+	case GetInstanceStatus401JSONResponseBodyStatusCodeN401:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for GetServerStatus403JSONResponseBodyStatusCode.
+// Defines values for GetInstanceStatus403JSONResponseBodyStatusCode.
 const (
-	GetServerStatus403JSONResponseBodyStatusCodeN403 GetServerStatus403JSONResponseBodyStatusCode = 403
+	GetInstanceStatus403JSONResponseBodyStatusCodeN403 GetInstanceStatus403JSONResponseBodyStatusCode = 403
 )
 
-// Valid indicates whether the value is a known member of the GetServerStatus403JSONResponseBodyStatusCode enum.
-func (e GetServerStatus403JSONResponseBodyStatusCode) Valid() bool {
+// Valid indicates whether the value is a known member of the GetInstanceStatus403JSONResponseBodyStatusCode enum.
+func (e GetInstanceStatus403JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
-	case GetServerStatus403JSONResponseBodyStatusCodeN403:
+	case GetInstanceStatus403JSONResponseBodyStatusCodeN403:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for GetServerStatus404JSONResponseBodyStatusCode.
+// Defines values for GetInstanceStatus404JSONResponseBodyStatusCode.
 const (
-	GetServerStatus404JSONResponseBodyStatusCodeN404 GetServerStatus404JSONResponseBodyStatusCode = 404
+	GetInstanceStatus404JSONResponseBodyStatusCodeN404 GetInstanceStatus404JSONResponseBodyStatusCode = 404
 )
 
-// Valid indicates whether the value is a known member of the GetServerStatus404JSONResponseBodyStatusCode enum.
-func (e GetServerStatus404JSONResponseBodyStatusCode) Valid() bool {
+// Valid indicates whether the value is a known member of the GetInstanceStatus404JSONResponseBodyStatusCode enum.
+func (e GetInstanceStatus404JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
-	case GetServerStatus404JSONResponseBodyStatusCodeN404:
+	case GetInstanceStatus404JSONResponseBodyStatusCodeN404:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for GetServerStatus422JSONResponseBodyStatusCode.
+// Defines values for GetInstanceStatus422JSONResponseBodyStatusCode.
 const (
-	GetServerStatus422JSONResponseBodyStatusCodeN422 GetServerStatus422JSONResponseBodyStatusCode = 422
+	GetInstanceStatus422JSONResponseBodyStatusCodeN422 GetInstanceStatus422JSONResponseBodyStatusCode = 422
 )
 
-// Valid indicates whether the value is a known member of the GetServerStatus422JSONResponseBodyStatusCode enum.
-func (e GetServerStatus422JSONResponseBodyStatusCode) Valid() bool {
+// Valid indicates whether the value is a known member of the GetInstanceStatus422JSONResponseBodyStatusCode enum.
+func (e GetInstanceStatus422JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
-	case GetServerStatus422JSONResponseBodyStatusCodeN422:
+	case GetInstanceStatus422JSONResponseBodyStatusCodeN422:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for GetServerStatus500JSONResponseBodyStatusCode.
+// Defines values for GetInstanceStatus500JSONResponseBodyStatusCode.
 const (
-	GetServerStatus500JSONResponseBodyStatusCodeN500 GetServerStatus500JSONResponseBodyStatusCode = 500
+	GetInstanceStatus500JSONResponseBodyStatusCodeN500 GetInstanceStatus500JSONResponseBodyStatusCode = 500
 )
 
-// Valid indicates whether the value is a known member of the GetServerStatus500JSONResponseBodyStatusCode enum.
-func (e GetServerStatus500JSONResponseBodyStatusCode) Valid() bool {
+// Valid indicates whether the value is a known member of the GetInstanceStatus500JSONResponseBodyStatusCode enum.
+func (e GetInstanceStatus500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
-	case GetServerStatus500JSONResponseBodyStatusCodeN500:
+	case GetInstanceStatus500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -4824,23 +4824,23 @@ func (e CreateSecretV4500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
-// GetServerStatus400JSONResponseBodyStatusCode defines parameters for GetServerStatus.
-type GetServerStatus400JSONResponseBodyStatusCode float32
+// GetInstanceStatus400JSONResponseBodyStatusCode defines parameters for GetInstanceStatus.
+type GetInstanceStatus400JSONResponseBodyStatusCode float32
 
-// GetServerStatus401JSONResponseBodyStatusCode defines parameters for GetServerStatus.
-type GetServerStatus401JSONResponseBodyStatusCode float32
+// GetInstanceStatus401JSONResponseBodyStatusCode defines parameters for GetInstanceStatus.
+type GetInstanceStatus401JSONResponseBodyStatusCode float32
 
-// GetServerStatus403JSONResponseBodyStatusCode defines parameters for GetServerStatus.
-type GetServerStatus403JSONResponseBodyStatusCode float32
+// GetInstanceStatus403JSONResponseBodyStatusCode defines parameters for GetInstanceStatus.
+type GetInstanceStatus403JSONResponseBodyStatusCode float32
 
-// GetServerStatus404JSONResponseBodyStatusCode defines parameters for GetServerStatus.
-type GetServerStatus404JSONResponseBodyStatusCode float32
+// GetInstanceStatus404JSONResponseBodyStatusCode defines parameters for GetInstanceStatus.
+type GetInstanceStatus404JSONResponseBodyStatusCode float32
 
-// GetServerStatus422JSONResponseBodyStatusCode defines parameters for GetServerStatus.
-type GetServerStatus422JSONResponseBodyStatusCode float32
+// GetInstanceStatus422JSONResponseBodyStatusCode defines parameters for GetInstanceStatus.
+type GetInstanceStatus422JSONResponseBodyStatusCode float32
 
-// GetServerStatus500JSONResponseBodyStatusCode defines parameters for GetServerStatus.
-type GetServerStatus500JSONResponseBodyStatusCode float32
+// GetInstanceStatus500JSONResponseBodyStatusCode defines parameters for GetInstanceStatus.
+type GetInstanceStatus500JSONResponseBodyStatusCode float32
 
 // AdminBootstrapJSONBody defines parameters for AdminBootstrap.
 type AdminBootstrapJSONBody struct {
@@ -9200,8 +9200,10 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 
-	// GetServerStatus performs a GET /api/status (the `GetServerStatus` operationId) request.
-	GetServerStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetInstanceStatus performs a GET /api/status (the `GetInstanceStatus` operationId) request.
+	//
+	// Get the status of the Infisical instance and the features configured on it. Public and unauthenticated; used by liveness and readiness probes and exempt from the API-wide rate limit.
+	GetInstanceStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AdminBootstrapWithBody performs a POST /api/v1/admin/bootstrap (the `AdminBootstrap` operationId) request,
 	// with any type of body and a specified content type.
@@ -9477,9 +9479,11 @@ type ClientInterface interface {
 	CreateSecretV4(ctx context.Context, secretName string, body CreateSecretV4JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-// GetServerStatus performs a GET /api/status (the `GetServerStatus` operationId) request.
-func (c *Client) GetServerStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetServerStatusRequest(c.Server)
+// GetInstanceStatus performs a GET /api/status (the `GetInstanceStatus` operationId) request.
+//
+// Get the status of the Infisical instance and the features configured on it. Public and unauthenticated; used by liveness and readiness probes and exempt from the API-wide rate limit.
+func (c *Client) GetInstanceStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInstanceStatusRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -10313,8 +10317,8 @@ func (c *Client) CreateSecretV4(ctx context.Context, secretName string, body Cre
 	return c.Client.Do(req)
 }
 
-// NewGetServerStatusRequest constructs an http.Request for the GetServerStatus method
-func NewGetServerStatusRequest(server string) (*http.Request, error) {
+// NewGetInstanceStatusRequest constructs an http.Request for the GetInstanceStatus method
+func NewGetInstanceStatusRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -12027,10 +12031,12 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 
-	// GetServerStatusWithResponse performs a GET /api/status (the `GetServerStatus` operationId) request.
+	// GetInstanceStatusWithResponse performs a GET /api/status (the `GetInstanceStatus` operationId) request.
+	//
+	// Get the status of the Infisical instance and the features configured on it. Public and unauthenticated; used by liveness and readiness probes and exempt from the API-wide rate limit.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetServerStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetServerStatusResponse, error)
+	GetInstanceStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetInstanceStatusResponse, error)
 
 	// AdminBootstrapWithBodyWithResponse performs a POST /api/v1/admin/bootstrap (the `AdminBootstrap` operationId) request,
 	// with any type of body and a specified content type.
@@ -12372,7 +12378,7 @@ type ClientWithResponsesInterface interface {
 	CreateSecretV4WithResponse(ctx context.Context, secretName string, body CreateSecretV4JSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSecretV4Response, error)
 }
 
-type GetServerStatusResponse struct {
+type GetInstanceStatusResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
@@ -12389,52 +12395,52 @@ type GetServerStatusResponse struct {
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
-		Details    interface{}                                  `json:"details,omitempty"`
-		Error      string                                       `json:"error"`
-		Message    string                                       `json:"message"`
-		ReqId      string                                       `json:"reqId"`
-		StatusCode GetServerStatus400JSONResponseBodyStatusCode `json:"statusCode"`
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetInstanceStatus400JSONResponseBodyStatusCode `json:"statusCode"`
 	}
 	// JSON401 the response for an HTTP 401 `application/json` response
 	JSON401 *struct {
-		Error      string                                       `json:"error"`
-		Message    string                                       `json:"message"`
-		ReqId      string                                       `json:"reqId"`
-		StatusCode GetServerStatus401JSONResponseBodyStatusCode `json:"statusCode"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetInstanceStatus401JSONResponseBodyStatusCode `json:"statusCode"`
 	}
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *struct {
-		Details    interface{}                                  `json:"details,omitempty"`
-		Error      string                                       `json:"error"`
-		Message    string                                       `json:"message"`
-		ReqId      string                                       `json:"reqId"`
-		StatusCode GetServerStatus403JSONResponseBodyStatusCode `json:"statusCode"`
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetInstanceStatus403JSONResponseBodyStatusCode `json:"statusCode"`
 	}
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *struct {
-		Error      string                                       `json:"error"`
-		Message    string                                       `json:"message"`
-		ReqId      string                                       `json:"reqId"`
-		StatusCode GetServerStatus404JSONResponseBodyStatusCode `json:"statusCode"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetInstanceStatus404JSONResponseBodyStatusCode `json:"statusCode"`
 	}
 	// JSON422 the response for an HTTP 422 `application/json` response
 	JSON422 *struct {
-		Error      string                                       `json:"error"`
-		Message    interface{}                                  `json:"message,omitempty"`
-		ReqId      string                                       `json:"reqId"`
-		StatusCode GetServerStatus422JSONResponseBodyStatusCode `json:"statusCode"`
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetInstanceStatus422JSONResponseBodyStatusCode `json:"statusCode"`
 	}
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *struct {
-		Error      string                                       `json:"error"`
-		Message    string                                       `json:"message"`
-		ReqId      string                                       `json:"reqId"`
-		StatusCode GetServerStatus500JSONResponseBodyStatusCode `json:"statusCode"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetInstanceStatus500JSONResponseBodyStatusCode `json:"statusCode"`
 	}
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetServerStatusResponse) GetJSON200() *struct {
+func (r GetInstanceStatusResponse) GetJSON200() *struct {
 	AuditLogStorageDisabled   *bool     `json:"auditLogStorageDisabled,omitempty"`
 	Date                      time.Time `json:"date"`
 	EmailConfigured           *bool     `json:"emailConfigured,omitempty"`
@@ -12449,74 +12455,74 @@ func (r GetServerStatusResponse) GetJSON200() *struct {
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r GetServerStatusResponse) GetJSON400() *struct {
-	Details    interface{}                                  `json:"details,omitempty"`
-	Error      string                                       `json:"error"`
-	Message    string                                       `json:"message"`
-	ReqId      string                                       `json:"reqId"`
-	StatusCode GetServerStatus400JSONResponseBodyStatusCode `json:"statusCode"`
+func (r GetInstanceStatusResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetInstanceStatus400JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r GetServerStatusResponse) GetJSON401() *struct {
-	Error      string                                       `json:"error"`
-	Message    string                                       `json:"message"`
-	ReqId      string                                       `json:"reqId"`
-	StatusCode GetServerStatus401JSONResponseBodyStatusCode `json:"statusCode"`
+func (r GetInstanceStatusResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetInstanceStatus401JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON401
 }
 
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r GetServerStatusResponse) GetJSON403() *struct {
-	Details    interface{}                                  `json:"details,omitempty"`
-	Error      string                                       `json:"error"`
-	Message    string                                       `json:"message"`
-	ReqId      string                                       `json:"reqId"`
-	StatusCode GetServerStatus403JSONResponseBodyStatusCode `json:"statusCode"`
+func (r GetInstanceStatusResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetInstanceStatus403JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON403
 }
 
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r GetServerStatusResponse) GetJSON404() *struct {
-	Error      string                                       `json:"error"`
-	Message    string                                       `json:"message"`
-	ReqId      string                                       `json:"reqId"`
-	StatusCode GetServerStatus404JSONResponseBodyStatusCode `json:"statusCode"`
+func (r GetInstanceStatusResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetInstanceStatus404JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON404
 }
 
 // GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r GetServerStatusResponse) GetJSON422() *struct {
-	Error      string                                       `json:"error"`
-	Message    interface{}                                  `json:"message,omitempty"`
-	ReqId      string                                       `json:"reqId"`
-	StatusCode GetServerStatus422JSONResponseBodyStatusCode `json:"statusCode"`
+func (r GetInstanceStatusResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetInstanceStatus422JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON422
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r GetServerStatusResponse) GetJSON500() *struct {
-	Error      string                                       `json:"error"`
-	Message    string                                       `json:"message"`
-	ReqId      string                                       `json:"reqId"`
-	StatusCode GetServerStatus500JSONResponseBodyStatusCode `json:"statusCode"`
+func (r GetInstanceStatusResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetInstanceStatus500JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
-func (r GetServerStatusResponse) GetBody() []byte {
+func (r GetInstanceStatusResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r GetServerStatusResponse) Status() string {
+func (r GetInstanceStatusResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -12524,7 +12530,7 @@ func (r GetServerStatusResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetServerStatusResponse) StatusCode() int {
+func (r GetInstanceStatusResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -12532,7 +12538,7 @@ func (r GetServerStatusResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetServerStatusResponse) ContentType() string {
+func (r GetInstanceStatusResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -18861,15 +18867,17 @@ func (r CreateSecretV4Response) ContentType() string {
 	return ""
 }
 
-// GetServerStatusWithResponse performs a GET /api/status (the `GetServerStatus` operationId) request.
+// GetInstanceStatusWithResponse performs a GET /api/status (the `GetInstanceStatus` operationId) request.
+//
+// Get the status of the Infisical instance and the features configured on it. Public and unauthenticated; used by liveness and readiness probes and exempt from the API-wide rate limit.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetServerStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetServerStatusResponse, error) {
-	rsp, err := c.GetServerStatus(ctx, reqEditors...)
+func (c *ClientWithResponses) GetInstanceStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetInstanceStatusResponse, error) {
+	rsp, err := c.GetInstanceStatus(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetServerStatusResponse(rsp)
+	return ParseGetInstanceStatusResponse(rsp)
 }
 
 // AdminBootstrapWithBodyWithResponse performs a POST /api/v1/admin/bootstrap (the `AdminBootstrap` operationId) request,
@@ -19541,15 +19549,15 @@ func (c *ClientWithResponses) CreateSecretV4WithResponse(ctx context.Context, se
 	return ParseCreateSecretV4Response(rsp)
 }
 
-// ParseGetServerStatusResponse parses an HTTP response from a GetServerStatusWithResponse call
-func ParseGetServerStatusResponse(rsp *http.Response) (*GetServerStatusResponse, error) {
+// ParseGetInstanceStatusResponse parses an HTTP response from a GetInstanceStatusWithResponse call
+func ParseGetInstanceStatusResponse(rsp *http.Response) (*GetInstanceStatusResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetServerStatusResponse{
+	response := &GetInstanceStatusResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -19574,11 +19582,11 @@ func ParseGetServerStatusResponse(rsp *http.Response) (*GetServerStatusResponse,
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest struct {
-			Details    interface{}                                  `json:"details,omitempty"`
-			Error      string                                       `json:"error"`
-			Message    string                                       `json:"message"`
-			ReqId      string                                       `json:"reqId"`
-			StatusCode GetServerStatus400JSONResponseBodyStatusCode `json:"statusCode"`
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetInstanceStatus400JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -19587,10 +19595,10 @@ func ParseGetServerStatusResponse(rsp *http.Response) (*GetServerStatusResponse,
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest struct {
-			Error      string                                       `json:"error"`
-			Message    string                                       `json:"message"`
-			ReqId      string                                       `json:"reqId"`
-			StatusCode GetServerStatus401JSONResponseBodyStatusCode `json:"statusCode"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetInstanceStatus401JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -19599,11 +19607,11 @@ func ParseGetServerStatusResponse(rsp *http.Response) (*GetServerStatusResponse,
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest struct {
-			Details    interface{}                                  `json:"details,omitempty"`
-			Error      string                                       `json:"error"`
-			Message    string                                       `json:"message"`
-			ReqId      string                                       `json:"reqId"`
-			StatusCode GetServerStatus403JSONResponseBodyStatusCode `json:"statusCode"`
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetInstanceStatus403JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -19612,10 +19620,10 @@ func ParseGetServerStatusResponse(rsp *http.Response) (*GetServerStatusResponse,
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest struct {
-			Error      string                                       `json:"error"`
-			Message    string                                       `json:"message"`
-			ReqId      string                                       `json:"reqId"`
-			StatusCode GetServerStatus404JSONResponseBodyStatusCode `json:"statusCode"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetInstanceStatus404JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -19624,10 +19632,10 @@ func ParseGetServerStatusResponse(rsp *http.Response) (*GetServerStatusResponse,
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest struct {
-			Error      string                                       `json:"error"`
-			Message    interface{}                                  `json:"message,omitempty"`
-			ReqId      string                                       `json:"reqId"`
-			StatusCode GetServerStatus422JSONResponseBodyStatusCode `json:"statusCode"`
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetInstanceStatus422JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -19636,10 +19644,10 @@ func ParseGetServerStatusResponse(rsp *http.Response) (*GetServerStatusResponse,
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest struct {
-			Error      string                                       `json:"error"`
-			Message    string                                       `json:"message"`
-			ReqId      string                                       `json:"reqId"`
-			StatusCode GetServerStatus500JSONResponseBodyStatusCode `json:"statusCode"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetInstanceStatus500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

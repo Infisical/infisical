@@ -40,8 +40,9 @@ type Stack struct {
 	app  *infisical.Handle
 	root infisical.Root
 
-	// defaultPlan is what a tenant gets unless it asks for something narrower.
-	defaultPlan license.Plan
+	// defaultPlan is what a tenant gets unless it asks for something narrower. Nil
+	// leaves the license fake's own default, Enterprise.
+	defaultPlan *license.Plan
 
 	adminOnce     sync.Once
 	instanceAdmin *Principal
@@ -52,7 +53,7 @@ type Option func(*config)
 
 type config struct {
 	extra []infra.Module
-	plan  license.Plan
+	plan  *license.Plan
 }
 
 // WithInfra adds a container the harness does not know about, for a suite that needs
@@ -63,14 +64,14 @@ func WithInfra(mods ...infra.Module) Option {
 
 // WithDefaultPlan sets the entitlements a tenant gets unless it asks for others.
 func WithDefaultPlan(p license.Plan) Option {
-	return func(c *config) { c.plan = p }
+	return func(c *config) { c.plan = &p }
 }
 
 // Main brings the stack up, runs the package's tests, and tears down what it owns.
 //
 // It calls os.Exit, so it never returns.
 func Main(m *testing.M, profile Profile, opts ...Option) {
-	cfg := &config{plan: license.Enterprise()}
+	cfg := &config{}
 	for _, o := range opts {
 		o(cfg)
 	}
@@ -112,7 +113,7 @@ func run(m *testing.M, profile Profile, cfg *config, mainFile string) (int, erro
 // instead of racing to create it. Everything it starts is shared, so nothing here
 // owns a container: only `inf down` stops them.
 func Up(ctx context.Context) error {
-	_, owned, err := bringUp(ctx, Shared, &config{plan: license.Enterprise()}, "")
+	_, owned, err := bringUp(ctx, Shared, &config{}, "")
 	if err != nil {
 		return err
 	}
@@ -147,7 +148,15 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 	// fakenet; a CA minted per boot would leave the running Infisical trusting an
 	// authority that no longer exists.
 	caFile := filepath.Join(root, "tests", fakenet.CAFile)
-	if _, err = fakenet.LoadOrCreateCA(caFile); err != nil {
+	// Serialized because every package binary starts here at once, and two that each
+	// found no file would write different CAs.
+	releaseCA, err := infra.Lock("fakenet-ca")
+	if err != nil {
+		return nil, nil, err
+	}
+	_, err = fakenet.LoadOrCreateCA(caFile)
+	releaseCA()
+	if err != nil {
 		return nil, nil, err
 	}
 

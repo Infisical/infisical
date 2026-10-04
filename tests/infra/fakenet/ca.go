@@ -53,13 +53,35 @@ func LoadOrCreateCA(path string) (*CA, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return nil, err
-	}
-	if err := os.WriteFile(path, append(append([]byte{}, ca.pem...), keyPEM...), 0o600); err != nil {
+	if err := writeAtomically(path, append(append([]byte{}, ca.pem...), keyPEM...)); err != nil {
 		return nil, fmt.Errorf("fakenet: writing CA to %s: %w", path, err)
 	}
 	return ca, nil
+}
+
+// writeAtomically renames a finished file into place, so a reader never sees a
+// partly written CA and mistakes it for a corrupt one.
+func writeAtomically(path string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(tmp.Name()) }()
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
 }
 
 func newCA() (*CA, []byte, error) {

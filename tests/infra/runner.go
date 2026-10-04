@@ -276,7 +276,9 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 
 	if spec.Check != nil {
 		if err := spec.Check(ctx, c); err != nil {
-			return c, fmt.Errorf("infra: %s came up but is not usable: %w", spec.Name, err)
+			// Left running, the next run would adopt it by name and fail the same way.
+			_ = c.Stop(context.WithoutCancel(ctx))
+			return Container{}, fmt.Errorf("infra: %s came up but is not usable: %w", spec.Name, err)
 		}
 	}
 

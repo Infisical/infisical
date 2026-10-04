@@ -109,7 +109,7 @@ func WithPlan(p license.Plan) TenantOption { return func(c *tenantConfig) { c.pl
 func (s *Stack) NewTenant(t *testing.T, opts ...TenantOption) *Tenant {
 	t.Helper()
 
-	cfg := tenantConfig{name: "t-" + strings.ToLower(uuid.NewString()[:8])}
+	cfg := tenantConfig{name: "t-" + strings.ToLower(uuid.NewString()[:8]), plan: s.defaultPlan}
 	for _, o := range opts {
 		o(&cfg)
 	}

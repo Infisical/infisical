@@ -198,7 +198,7 @@ func (h *Handle) Status(ctx context.Context) (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
-	res, err := c.GetServerStatusWithResponse(ctx)
+	res, err := c.GetInstanceStatusWithResponse(ctx)
 	if err != nil {
 		return Status{}, fmt.Errorf("infisical: reading status: %w", err)
 	}

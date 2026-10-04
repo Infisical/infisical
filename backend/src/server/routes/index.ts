@@ -4625,7 +4625,11 @@ export const registerRoutes = async (
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getServerStatus",
+      hide: false,
+      operationId: "getInstanceStatus",
+      tags: [ApiDocsTags.Instance],
+      description:
+        "Get the status of the Infisical instance and the features configured on it. Public and unauthenticated; used by liveness and readiness probes and exempt from the API-wide rate limit.",
       response: {
         200: z.object({
           date: z.date(),

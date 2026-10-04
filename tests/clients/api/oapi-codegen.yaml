@@ -18,7 +18,7 @@ output-options:
   include-operation-ids:
     - adminBootstrap
     - updateAdminConfig
-    - getServerStatus
+    - getInstanceStatus
     - loginV3
     - selectOrganizationV3
     - refreshAuthToken
