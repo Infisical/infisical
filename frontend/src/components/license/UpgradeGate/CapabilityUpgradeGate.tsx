@@ -7,7 +7,7 @@ import {
   ProductPlanSummary
 } from "@app/components/license/product-plan-summary";
 import { ProductPlanSummaryList } from "@app/components/license/ProductPlanSummaryList";
-import { Alert, AlertDescription, Badge, Button, Separator } from "@app/components/v3";
+import { Alert, AlertDescription, AlertTitle, Badge, Button, Separator } from "@app/components/v3";
 import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects,
@@ -96,21 +96,27 @@ const CapabilityUpgradeDialog = ({
   if (isInstance) actionLabel = "Contact Sales";
   else if (!canReadBilling) actionLabel = "Close";
 
+  let billingTitle = "Organization Subscription Required";
   let billingDescription =
     "This capability is shared across products. Review your billing options to find a subscription that includes it.";
   if (isInstance) {
+    billingTitle = "Instance License Required";
     billingDescription =
       "This capability is licensed for the entire instance, not an individual product. Contact our team to discuss your deployment.";
   } else if (!canReadBilling) {
+    billingTitle = "Billing Access Required";
     billingDescription =
       "Ask an organization member with billing access to review subscription options for this capability.";
   } else if (isSubOrganization) {
+    billingTitle = "Root Organization Billing";
     billingDescription =
       "Sub-organizations share the root organization's subscription. Review available options in root billing.";
   } else if (!canManageBilling) {
+    billingTitle = "Billing Management Required";
     billingDescription =
       "Ask an organization member with billing management permission to update the subscription.";
   } else if (isProduct) {
+    billingTitle = "Product Subscription Required";
     billingDescription =
       "Review your billing options to find a subscription that includes this capability.";
   }
@@ -191,6 +197,7 @@ const CapabilityUpgradeDialog = ({
       )}
       <Alert variant="info">
         <CircleAlert />
+        <AlertTitle>{billingTitle}</AlertTitle>
         <AlertDescription>{billingDescription}</AlertDescription>
       </Alert>
     </UpgradeDialogLayout>

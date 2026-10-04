@@ -7,6 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   Checkbox,
@@ -387,6 +388,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
           />
           <Alert variant="info">
             <CircleAlert />
+            <AlertTitle>Root Organization Billing</AlertTitle>
             <AlertDescription>
               Sub-organizations share the root organization&apos;s subscription. Continue to root
               billing to start the trial or update the subscription.
@@ -421,6 +423,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
           />
           <Alert variant="info">
             <CircleAlert />
+            <AlertTitle>Billing Access Required</AlertTitle>
             <AlertDescription>
               Ask an organization member with billing access to review plans or update the
               subscription.
@@ -495,6 +498,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
           />
           <Alert variant="danger">
             <CircleAlert />
+            <AlertTitle>Plan Details Unavailable</AlertTitle>
             <AlertDescription>
               Plan details could not be loaded. Try again, or contact Infisical if the problem
               continues.
@@ -610,6 +614,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
           />
           <Alert variant="danger">
             <CircleAlert />
+            <AlertTitle>Plan Unavailable</AlertTitle>
             <AlertDescription>This plan is not available for your organization.</AlertDescription>
           </Alert>
           <DialogFooter>
@@ -785,6 +790,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     notice = (
       <Alert variant="info" appearance="borderless">
         <CircleAlert />
+        <AlertTitle>Required Plan Unavailable</AlertTitle>
         <AlertDescription>
           This feature&apos;s required plan is unavailable. Review available options in billing.
         </AlertDescription>
@@ -794,6 +800,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     notice = (
       <Alert variant="info" appearance="borderless">
         <CircleAlert />
+        <AlertTitle>Billing Management Required</AlertTitle>
         <AlertDescription>
           You can compare plans. Ask a member with billing management permission to start a trial or
           update the subscription.
@@ -804,6 +811,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     notice = (
       <Alert variant="warning" appearance="borderless">
         <CircleAlert />
+        <AlertTitle>Plan Changes Temporarily Unavailable</AlertTitle>
         <AlertDescription>
           Purchases and plan changes are unavailable right now. Your current subscription is
           unaffected; please check back shortly.
@@ -814,6 +822,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     notice = (
       <Alert variant="info" appearance="borderless">
         <CircleAlert />
+        <AlertTitle>Managed Subscription</AlertTitle>
         <AlertDescription>
           Contact your Infisical account manager to update this subscription.
         </AlertDescription>
@@ -823,6 +832,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     notice = (
       <Alert variant="info" appearance="borderless">
         <CircleAlert />
+        <AlertTitle>Trial Already Used</AlertTitle>
         <AlertDescription>Free trial for {product.name} has already been used.</AlertDescription>
       </Alert>
     );
@@ -844,6 +854,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
           {intent.quotaNotice && (
             <Alert variant="info" appearance="borderless">
               <CircleAlert />
+              <AlertTitle>Plan Limit Reached</AlertTitle>
               <AlertDescription>{intent.quotaNotice}</AlertDescription>
             </Alert>
           )}
