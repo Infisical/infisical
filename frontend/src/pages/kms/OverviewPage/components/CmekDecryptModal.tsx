@@ -85,12 +85,7 @@ const DecryptForm = ({ cmek }: FormProps) => {
       {plaintext ? (
         <Field className="mb-4">
           <FieldLabel htmlFor={`${fieldId}-plaintext`}>Decrypted Data (plaintext)</FieldLabel>
-          <TextArea
-            id={`${fieldId}-plaintext`}
-            className="max-w-full resize"
-            disabled
-            value={plaintext}
-          />
+          <TextArea id={`${fieldId}-plaintext`} rows={4} readOnly value={plaintext} />
         </Field>
       ) : (
         <Field className="mb-4" data-invalid={Boolean(errors.ciphertext)}>
@@ -100,7 +95,6 @@ const DecryptForm = ({ cmek }: FormProps) => {
             id={`${fieldId}-ciphertext`}
             isError={Boolean(errors.ciphertext)}
             aria-describedby={errors.ciphertext ? `${fieldId}-ciphertext-error` : undefined}
-            className="max-w-full resize"
           />
           <FieldError id={`${fieldId}-ciphertext-error`} errors={[errors.ciphertext]} />
         </Field>
@@ -123,9 +117,9 @@ const DecryptForm = ({ cmek }: FormProps) => {
           </TooltipContent>
         </Tooltip>
       </Field>
-      <div className="flex items-center">
+      <div className="flex flex-wrap items-center gap-4">
         <Button
-          className={`mr-4 ${plaintext ? "w-44" : ""}`}
+          className={plaintext ? "w-44" : undefined}
           size="sm"
           variant="project"
           onClick={plaintext ? handleCopyToClipboard : undefined}
