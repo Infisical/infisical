@@ -85,7 +85,12 @@ const DecryptForm = ({ cmek }: FormProps) => {
       {plaintext ? (
         <Field className="mb-4">
           <FieldLabel htmlFor={`${fieldId}-plaintext`}>Decrypted Data (plaintext)</FieldLabel>
-          <TextArea id={`${fieldId}-plaintext`} className="resize" disabled value={plaintext} />
+          <TextArea
+            id={`${fieldId}-plaintext`}
+            className="max-w-full resize"
+            disabled
+            value={plaintext}
+          />
         </Field>
       ) : (
         <Field className="mb-4" data-invalid={Boolean(errors.ciphertext)}>
@@ -95,7 +100,7 @@ const DecryptForm = ({ cmek }: FormProps) => {
             id={`${fieldId}-ciphertext`}
             isError={Boolean(errors.ciphertext)}
             aria-describedby={errors.ciphertext ? `${fieldId}-ciphertext-error` : undefined}
-            className="resize"
+            className="max-w-full resize"
           />
           <FieldError id={`${fieldId}-ciphertext-error`} errors={[errors.ciphertext]} />
         </Field>
