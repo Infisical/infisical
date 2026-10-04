@@ -14,7 +14,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateEnrollmentUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -73,6 +76,7 @@ export const PkiTemplateListPage = () => {
     "certificateFromTemplate",
     "creationBlocked"
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
@@ -222,8 +226,9 @@ export const PkiTemplateListPage = () => {
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           if (!subscription.pkiEst) {
-                                            handlePopUpOpen("estUpgradePlan", {
-                                              isEnterpriseFeature: true
+                                            openUpgradeGate({
+                                              intent: CertificateEnrollmentUpgradeIntent,
+                                              paywallKey: "cert-manager.pki-template-list"
                                             });
                                             return;
                                           }
@@ -331,13 +336,7 @@ export const PkiTemplateListPage = () => {
           preselectedTemplate={popUp.certificateFromTemplate.data}
         />
       </div>
-      <UpgradePlanModal
-        paywallKey="cert-manager.pki-template-list"
-        isOpen={popUp.estUpgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("estUpgradePlan", isOpen)}
-        text="Your current plan does not include access to configuring template enrollment methods. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature={popUp.estUpgradePlan.data?.isEnterpriseFeature}
-      />
+      {upgradeGate}
     </>
   );
 };

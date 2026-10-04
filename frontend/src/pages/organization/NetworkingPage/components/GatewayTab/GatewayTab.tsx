@@ -13,7 +13,7 @@ import {
   TrashIcon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { GatewayPoolsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -498,12 +498,16 @@ export const GatewayTab = withPermission(
           isOpen={popUp.createPool.isOpen}
           onToggle={(isOpen) => handlePopUpToggle("createPool", isOpen)}
         />
-        <UpgradePlanModal
+        <UpgradeGate
           paywallKey="organization.gateway"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text="Your current plan does not include access to gateway pools. To unlock this feature, please upgrade to Infisical Enterprise plan."
-          isEnterpriseFeature
+          intent={{
+            ...GatewayPoolsUpgradeIntent,
+            description:
+              "Your current plan does not include access to gateway pools. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+            isEnterpriseFeature: true
+          }}
         />
       </Card>
     );

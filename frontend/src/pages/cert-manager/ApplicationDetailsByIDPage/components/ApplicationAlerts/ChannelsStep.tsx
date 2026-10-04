@@ -1,8 +1,10 @@
-import { useState } from "react";
 import { FieldArrayWithId, UseFormReturn } from "react-hook-form";
 import { BellIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateEnterpriseAlertingUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import {
   Combobox,
   Empty,
@@ -44,7 +46,7 @@ export const CertificateAlertAddChannelMenu = ({
   onAdd: (channelType: AlertChannelType) => void;
 }) => {
   const { subscription } = useSubscription();
-  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const isEnterpriseAllowed = Boolean(subscription?.pkiEnterpriseAlerting);
 
   return (
@@ -53,17 +55,16 @@ export const CertificateAlertAddChannelMenu = ({
         onAdd={onAdd}
         isDisabled={channelCount >= MAX_CHANNELS}
         lockedChannelTypes={isEnterpriseAllowed ? [] : ENTERPRISE_CHANNEL_TYPES}
-        onLockedSelect={() => setIsUpgradeOpen(true)}
+        onLockedSelect={() =>
+          openUpgradeGate({
+            intent: CertificateEnterpriseAlertingUpgradeIntent,
+            paywallKey: "cert-manager.application-alert-channels"
+          })
+        }
         label="Add Channel"
         contentClassName="min-w-56"
       />
-      <UpgradePlanModal
-        isOpen={isUpgradeOpen}
-        onOpenChange={setIsUpgradeOpen}
-        paywallKey="cert-manager.application-alert-channels"
-        text="Webhook, Slack, and PagerDuty alert channels are available on the Enterprise plan."
-        isEnterpriseFeature
-      />
+      {upgradeGate}
     </>
   );
 };

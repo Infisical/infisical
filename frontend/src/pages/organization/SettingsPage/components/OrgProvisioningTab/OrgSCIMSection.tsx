@@ -1,6 +1,6 @@
 import { UserCog } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { ScimUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -122,12 +122,16 @@ export const OrgScimSection = () => {
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.org-scim"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to SCIM Provisioning. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...ScimUpgradeIntent,
+          description:
+            "Your current plan does not include access to SCIM Provisioning. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );

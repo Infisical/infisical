@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AlertTriangle, Info, ShieldCheck } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { SsoEnforcementUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -386,11 +386,15 @@ export const OrgGeneralAuthSection = ({
         </CardContent>
       </Card>
 
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.org-general-auth"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName ?? "enforce SAML SSO"}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.planName ?? "Pro"} plan.`}
+        intent={{
+          ...SsoEnforcementUpgradeIntent,
+          description: `Your current plan does not include access to ${popUp.upgradePlan.data?.featureName ?? "enforce SAML SSO"}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.planName ?? "Pro"} plan.`,
+          isEnterpriseFeature: false
+        }}
       />
 
       <Dialog

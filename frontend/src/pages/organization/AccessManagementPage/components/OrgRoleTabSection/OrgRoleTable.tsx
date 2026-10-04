@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
@@ -110,7 +110,7 @@ export const OrgRoleTable = () => {
 
     if (isCustomRole && subscription && !subscription?.rbac) {
       handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not include access to set a custom default organization role. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+        text: "Set a custom role as the default for new organization members.",
         isEnterpriseFeature: true
       });
       return;
@@ -513,12 +513,14 @@ export const OrgRoleTable = () => {
         onClose={() => handlePopUpClose("deleteRole")}
         onDeleteApproved={handleRoleDelete}
       />
-      <UpgradePlanModal
+      <UpgradeGate
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          description: popUp.upgradePlan.data?.text ?? CustomRolesUpgradeIntent.description
+        }}
         paywallKey="organization.org-role"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan?.data?.text}
-        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />
       <DuplicateOrgRoleModal
         isOpen={popUp.duplicateRole.isOpen}

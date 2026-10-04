@@ -5,7 +5,10 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateEnrollmentUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton } from "@app/components/v2";
@@ -29,9 +32,9 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "certificateTemplate",
     "deleteCertificateTemplate",
-    "enrollmentOptions",
-    "upgradePlan"
+    "enrollmentOptions"
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const { currentProject } = useProject();
   const { mutateAsync: deleteCertTemplate } = useDeleteCertTemplate();
@@ -76,7 +79,16 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
         </ProjectPermissionCan>
       </div>
       <div className="py-4">
-        <CertificateTemplatesTable handlePopUpOpen={handlePopUpOpen} caId={caId} />
+        <CertificateTemplatesTable
+          handlePopUpOpen={handlePopUpOpen}
+          caId={caId}
+          onEnrollmentUpgrade={() =>
+            openUpgradeGate({
+              intent: CertificateEnrollmentUpgradeIntent,
+              paywallKey: "cert-manager.certificate-templates"
+            })
+          }
+        />
       </div>
       <CertificateTemplateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} caId={caId} />
       <CertificateTemplateEnrollmentModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
@@ -93,13 +105,7 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
           )
         }
       />
-      <UpgradePlanModal
-        paywallKey="cert-manager.certificate-templates"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-        text="Your current plan does not include access to managing template enrollment options for EST. To unlock this feature, please upgrade to Infisical Enterprise plan."
-      />
+      {upgradeGate}
     </div>
   );
 };

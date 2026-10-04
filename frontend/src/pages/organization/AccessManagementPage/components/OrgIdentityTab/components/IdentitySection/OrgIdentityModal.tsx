@@ -5,7 +5,7 @@ import { PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
 import {
@@ -303,12 +303,16 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
           Update
         </Button>
       </div>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.org-identity"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
-        text="Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          description:
+            "Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan.",
+          isEnterpriseFeature: true
+        }}
       />
     </form>
   );

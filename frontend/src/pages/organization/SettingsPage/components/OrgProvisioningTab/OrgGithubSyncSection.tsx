@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { GitBranch } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { GithubSyncUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -189,12 +189,16 @@ export const OrgGithubSyncSection = () => {
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.org-github-sync"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to GitHub Organization Sync. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...GithubSyncUpgradeIntent,
+          description:
+            "Your current plan does not include access to GitHub Organization Sync. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );

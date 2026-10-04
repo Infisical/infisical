@@ -13,7 +13,7 @@ import {
   Trash2Icon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { HsmConnectorsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -116,11 +116,15 @@ export const HsmConnectorsTab = () => {
           </p>
           <Button onClick={() => setUpgradeOpen(true)}>Upgrade to Enterprise</Button>
         </div>
-        <UpgradePlanModal
+        <UpgradeGate
           paywallKey="cert-manager.hsm-connectors"
           isOpen={upgradeOpen}
           onOpenChange={setUpgradeOpen}
-          text="To use HSM Connectors, upgrade to Infisical's Enterprise plan."
+          intent={{
+            ...HsmConnectorsUpgradeIntent,
+            description: "To use HSM Connectors, upgrade to Infisical's Enterprise plan.",
+            isEnterpriseFeature: false
+          }}
         />
       </div>
     );

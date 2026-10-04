@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
@@ -253,12 +253,15 @@ const Page = withPermission(
           buttonText="Deactivate"
         />
 
-        <UpgradePlanModal
+        <UpgradeGate
           paywallKey="organization.user-details-by-id"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={popUp.upgradePlan?.data?.text}
-          isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
+          intent={{
+            ...CustomRolesUpgradeIntent,
+            description: popUp.upgradePlan?.data?.text ?? CustomRolesUpgradeIntent.description,
+            isEnterpriseFeature: Boolean(popUp.upgradePlan?.data?.isEnterpriseFeature)
+          }}
         />
         <UserOrgMembershipModal
           popUp={popUp}

@@ -39,7 +39,21 @@ import {
   HoneyTokenDetailsDrawer,
   RevokeHoneyTokenModal
 } from "@app/components/honey-tokens";
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  DynamicSecretsUpgradeIntent,
+  EnterpriseSecretSyncsUpgradeIntent,
+  EnvironmentLimitUpgradeIntent,
+  FolderAccessControlsUpgradeIntent,
+  hasEnvironmentCapacity,
+  HoneyTokensUpgradeIntent,
+  PointInTimeRecoveryUpgradeIntent,
+  SecretAccessInsightsUpgradeIntent,
+  SecretImportReplicationUpgradeIntent,
+  SecretRotationsUpgradeIntent,
+  SecretsBrokeringUpgradeIntent,
+  UpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -346,6 +360,10 @@ const SECRET_SORT_OPTIONS = [
   }
 ] as const;
 
+type UpgradeRequest = {
+  intent: UpgradeIntent;
+};
+
 const OverviewPageContent = () => {
   const { t } = useTranslation();
 
@@ -507,9 +525,10 @@ const OverviewPageContent = () => {
   }, []);
 
   const userAvailableEnvs = currentProject?.environments || [];
-  const isMoreEnvironmentsAllowed = subscription?.environmentLimit
-    ? userAvailableEnvs.length < subscription.environmentLimit
-    : true;
+  const isMoreEnvironmentsAllowed = hasEnvironmentCapacity(
+    subscription?.environmentLimit,
+    userAvailableEnvs.length
+  );
   const [storedEnvIds, setStoredEnvIds] = useLocalStorageState<string[]>(
     `overview-selected-envs-${projectId}`,
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
@@ -1032,6 +1051,7 @@ const OverviewPageContent = () => {
 
   const [folderAccessTarget, setFolderAccessTarget] = useState<{
     folderPath: string;
+    environmentSlug: string;
   } | null>(null);
   const [isCurrentFolderAccessOpen, setIsCurrentFolderAccessOpen] = useState(false);
 
@@ -1212,7 +1232,6 @@ const OverviewPageContent = () => {
     "rotateSecretRotation",
     "viewSecretRotationGeneratedCredentials",
     "deleteSecretRotation",
-    "upgradePlan",
     "reconcileSecretRotation",
     "importSecrets",
     "editDynamicSecret",
@@ -1232,12 +1251,23 @@ const OverviewPageContent = () => {
     "revokeHoneyToken",
     "createEnvironment"
   ] as const);
-
-  const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
+  const { openUpgradeGate: openSharedUpgradeGate, upgradeGate } = useUpgradeGate();
   const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
     null
   );
 
+  const openUpgradeGate = useCallback(
+    (request: UpgradeRequest) => {
+      openSharedUpgradeGate({ ...request, paywallKey: "secret-manager.overview" });
+    },
+    [openSharedUpgradeGate]
+  );
+
+  const getEnvironmentUpgradeRequest = (): UpgradeRequest => ({
+    intent: EnvironmentLimitUpgradeIntent
+  });
+
+  const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
   // Auto-open honey token drawer when linked via notification/email
   useEffect(() => {
     if (routerSearch.honeyTokenId) {
@@ -1257,51 +1287,83 @@ const OverviewPageContent = () => {
   }, [routerSearch.dynamicSecretId, dynamicSecrets?.map((ds) => ds.id).join(",")]);
 
   const handleViewCommitHistory = (envSlug: string) => {
+    if (!canReadCommits) return;
+
+    const openCommitHistory = () => {
+      const env = userAvailableEnvs.find((el) => el.slug === envSlug);
+      setCommitHistoryEnv({ slug: envSlug, name: env?.name ?? envSlug });
+    };
+
     if (!subscription?.pitRecovery) {
-      handlePopUpOpen("upgradePlan", {
-        text: "You can use point-in-time recovery if you upgrade your Infisical plan."
+      openUpgradeGate({
+        intent: PointInTimeRecoveryUpgradeIntent
       });
       return;
     }
 
-    if (!canReadCommits) return;
-
-    const env = userAvailableEnvs.find((el) => el.slug === envSlug);
-    setCommitHistoryEnv({ slug: envSlug, name: env?.name ?? envSlug });
+    openCommitHistory();
   };
-
-  const ensureFolderRbacPlan = useCallback(() => {
-    if (subscription?.secretsFolderRbac) return true;
-    handlePopUpOpen("upgradePlan", {
-      text: "Folder-level access controls can be unlocked if you upgrade to Infisical Pro plan."
-    });
-    return false;
-  }, [subscription?.secretsFolderRbac, handlePopUpOpen]);
 
   const handleFolderAccessOpen = useCallback(
     (folderName: string) => {
-      if (!ensureFolderRbacPlan()) return;
-      const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
-      if (!folder) return;
-      setFolderAccessTarget({
-        folderPath: childFolderPath(folderName)
-      });
-      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-        source: "folder_row",
-        projectId
-      });
+      const openFolderAccess = () => {
+        const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
+        if (!folder) return;
+        setFolderAccessTarget({
+          folderPath: childFolderPath(folderName),
+          environmentSlug: singleEnvSlug
+        });
+        analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+          source: "folder_row",
+          projectId
+        });
+      };
+
+      if (!subscription?.secretsFolderRbac) {
+        openUpgradeGate({
+          intent: FolderAccessControlsUpgradeIntent
+        });
+        return;
+      }
+
+      openFolderAccess();
     },
-    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath, orgId, projectId]
+    [
+      getFolderByNameAndEnv,
+      singleEnvSlug,
+      childFolderPath,
+      orgId,
+      projectId,
+      subscription?.secretsFolderRbac,
+      openUpgradeGate
+    ]
   );
 
   const handleCurrentFolderAccessOpen = useCallback(() => {
-    if (!ensureFolderRbacPlan()) return;
-    setIsCurrentFolderAccessOpen(true);
-    analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-      source: "breadcrumb",
-      projectId
-    });
-  }, [ensureFolderRbacPlan, orgId, projectId]);
+    const openCurrentFolderAccess = () => {
+      setIsCurrentFolderAccessOpen(true);
+      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+        source: "breadcrumb",
+        projectId
+      });
+    };
+
+    if (!subscription?.secretsFolderRbac) {
+      openUpgradeGate({
+        intent: FolderAccessControlsUpgradeIntent
+      });
+      return;
+    }
+
+    openCurrentFolderAccess();
+  }, [
+    openUpgradeGate,
+    orgId,
+    projectId,
+    secretPath,
+    singleEnvSlug,
+    subscription?.secretsFolderRbac
+  ]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
@@ -2824,6 +2886,39 @@ const OverviewPageContent = () => {
     | (TDynamicSecret & { environment: string; isForced?: boolean })
     | undefined;
 
+  async function handleAddHoneyToken(): Promise<void> {
+    if (!subscription?.honeyTokens) {
+      openUpgradeGate({
+        intent: HoneyTokensUpgradeIntent
+      });
+      return;
+    }
+
+    try {
+      const { data } = await apiRequest.get<{ used: number; limit: number }>(
+        "/api/v1/honey-tokens/limits",
+        {
+          params: { projectId }
+        }
+      );
+
+      if (data.used >= data.limit) {
+        openUpgradeGate({
+          intent: HoneyTokensUpgradeIntent
+        });
+        return;
+      }
+    } catch {
+      createNotification({
+        text: "Failed to check honey token limits. Please try again.",
+        type: "error"
+      });
+      return;
+    }
+
+    handlePopUpOpen("addHoneyToken");
+  }
+
   const addResourceButtonsProps: AddResourceButtonsProps = {
     onMenuOpen: (source, menuLevel) =>
       analytics.captureForOrganization(AnalyticsEvent.SecretsAddResourceMenuOpened, orgId, {
@@ -2847,9 +2942,8 @@ const OverviewPageContent = () => {
         handlePopUpOpen("addDynamicSecret");
         return;
       }
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Upgrade to the Infisical Secret Management advanced plan to unlock dynamic secrets."
+      openUpgradeGate({
+        intent: DynamicSecretsUpgradeIntent
       });
     },
     onAddSecretRotation: () => {
@@ -2857,49 +2951,18 @@ const OverviewPageContent = () => {
         handlePopUpOpen("addSecretRotation");
         return;
       }
-      handlePopUpOpen("upgradePlan", {
-        text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
+      openUpgradeGate({
+        intent: SecretRotationsUpgradeIntent
       });
     },
-    onAddHoneyToken: async () => {
-      if (subscription?.honeyTokens) {
-        try {
-          const { data } = await apiRequest.get<{ used: number; limit: number }>(
-            "/api/v1/honey-tokens/limits",
-            {
-              params: { projectId }
-            }
-          );
-
-          if (data.used >= data.limit) {
-            handlePopUpOpen("upgradePlan", {
-              text: `You have used ${data.used} out of the ${data.limit} honey token limit.`
-            });
-            return;
-          }
-        } catch {
-          createNotification({
-            text: "Failed to check honey token limits. Please try again.",
-            type: "error"
-          });
-          return;
-        }
-
-        handlePopUpOpen("addHoneyToken");
-        return;
-      }
-      handlePopUpOpen("upgradePlan", {
-        text: "Adding honey tokens can be unlocked if you upgrade to Infisical Pro plan."
-      });
-    },
+    onAddHoneyToken: handleAddHoneyToken,
     onAddProxiedService: () => {
       if (subscription?.secretsBrokering) {
         handlePopUpOpen("addProxiedService");
         return;
       }
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Secrets brokering can be unlocked if you upgrade to Infisical Enterprise plan."
+      openUpgradeGate({
+        intent: SecretsBrokeringUpgradeIntent
       });
     },
     onCopySecrets: () =>
@@ -2958,6 +3021,7 @@ const OverviewPageContent = () => {
               <EnvironmentSelect
                 selectedEnvs={filteredEnvs}
                 setSelectedEnvs={setFilteredEnvs}
+                onUpgradePlan={() => openUpgradeGate(getEnvironmentUpgradeRequest())}
                 isDisabled={
                   isBatchModeActive &&
                   (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
@@ -3109,9 +3173,7 @@ const OverviewPageContent = () => {
                 if (isMoreEnvironmentsAllowed) {
                   handlePopUpOpen("createEnvironment");
                 } else {
-                  handlePopUpOpen("upgradePlan", {
-                    text: "Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
-                  });
+                  openUpgradeGate(getEnvironmentUpgradeRequest());
                 }
               }}
             />
@@ -3737,6 +3799,11 @@ const OverviewPageContent = () => {
                             onBatchRevert={handleBatchRevert}
                             isSelectionDisabled={hasPendingBatchChanges}
                             onCopySecret={handleCopySecret}
+                            onAccessInsightsUpgrade={() =>
+                              openUpgradeGate({
+                                intent: SecretAccessInsightsUpgradeIntent
+                              })
+                            }
                             activityId={getTableRowActivityId("secret", key)}
                             onActivityChange={handleTableRowActivityChange}
                           />
@@ -4092,8 +4159,8 @@ const OverviewPageContent = () => {
           }
         }}
         onUpgradePlan={() =>
-          handlePopUpOpen("upgradePlan", {
-            text: "Secret import replication requires an upgraded plan."
+          openUpgradeGate({
+            intent: SecretImportReplicationUpgradeIntent
           })
         }
       />
@@ -4107,16 +4174,13 @@ const OverviewPageContent = () => {
         initialFormDataIsDirty={false}
         startOnDestination={false}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretSync", isOpen)}
+        onEnterpriseUpgrade={() =>
+          openUpgradeGate({
+            intent: EnterpriseSecretSyncsUpgradeIntent
+          })
+        }
       />
-      {subscription && (
-        <UpgradePlanModal
-          paywallKey="secret-manager.overview"
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-          text={popUp.upgradePlan.data?.text}
-        />
-      )}
+      {upgradeGate}
       <AddEnvironmentModal
         isOpen={popUp.createEnvironment.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("createEnvironment", isOpen)}
@@ -4330,9 +4394,12 @@ const OverviewPageContent = () => {
             if (!isOpen) setFolderAccessTarget(null);
           }}
           projectId={projectId}
-          environmentSlug={singleEnvSlug}
+          environmentSlug={folderAccessTarget.environmentSlug}
           folderPath={folderAccessTarget.folderPath}
-          environmentName={singleEnvName}
+          environmentName={
+            userAvailableEnvs.find((env) => env.slug === folderAccessTarget.environmentSlug)
+              ?.name ?? folderAccessTarget.environmentSlug
+          }
         />
       )}
       {isCurrentFolderAccessOpen && (
