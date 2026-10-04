@@ -8,6 +8,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/infra/postgres"
+	"github.com/stretchr/testify/require"
 )
 
 // These need Docker. Skipped when INFRA_DOCKER_TESTS is unset so `make test-unit`
@@ -24,9 +25,7 @@ func start(t *testing.T, opts ...postgres.Option) *postgres.Handle {
 	ctx := t.Context()
 	log := infra.NewLogger()
 	runner := infra.NewRunner(infra.Workspace(), log)
-	if err := runner.Network(ctx, infra.NetworkName); err != nil {
-		t.Fatalf("network: %v", err)
-	}
+	require.NoError(t, runner.Network(ctx, infra.NetworkName))
 
 	m := postgres.Module(opts...)
 	name := m.Name()
@@ -35,9 +34,7 @@ func start(t *testing.T, opts ...postgres.Option) *postgres.Handle {
 
 	began := time.Now()
 	h, err := m.Start(ctx, infra.NewDeps(nil, infra.NetworkName, infra.Workspace(), name, runner, log))
-	if err != nil {
-		t.Fatalf("start: %v", err)
-	}
+	require.NoError(t, err)
 	pg := h.(*postgres.Handle)
 	log.Decision("create", infra.ContainerName(name), pg.Endpoint(infra.External), time.Since(began), "")
 	t.Cleanup(func() { _ = pg.Stop(context.WithoutCancel(ctx)) })
@@ -48,42 +45,41 @@ func TestPostgres_Start(t *testing.T) {
 	requireDocker(t)
 	t.Parallel()
 
-	t.Run("ok/accepts connections by the time Start returns, not merely running", func(t *testing.T) {
+	t.Run("should accept connections on an ephemeral port once Start returns", func(t *testing.T) {
 		requireDocker(t)
 		t.Parallel()
+
+		// Action
 		pg := start(t)
-		if got := pg.Endpoint(infra.External).Port; got == 0 || got == 5432 {
-			t.Fatalf("external port should be an ephemeral mapping, got %d", got)
-		}
+
+		// Assert
+		require.NotContains(t, []int{0, 5432}, pg.Endpoint(infra.External).Port)
 	})
 
-	t.Run("ok/internal and external addresses differ", func(t *testing.T) {
+	t.Run("should give different internal and external addresses", func(t *testing.T) {
 		requireDocker(t)
 		t.Parallel()
+
+		// Action
 		pg := start(t)
+
+		// Assert
 		in, ex := pg.Endpoint(infra.Internal), pg.Endpoint(infra.External)
-		if in.Port != 5432 {
-			t.Errorf("internal port = %d, want the container port 5432", in.Port)
-		}
-		if in.HostPort() == ex.HostPort() {
-			t.Errorf("internal and external addresses are identical: %s", in.HostPort())
-		}
-		if in.Host == "127.0.0.1" || in.Host == "localhost" {
-			t.Errorf("internal host should be the network alias, got %q", in.Host)
-		}
+		require.Equal(t, 5432, in.Port)
+		require.NotEqual(t, ex.HostPort(), in.HostPort())
+		require.NotContains(t, []string{"127.0.0.1", "localhost"}, in.Host)
 	})
 
-	t.Run("ok/a Named instance is a separate container", func(t *testing.T) {
+	t.Run("should start a separate container when the instance is named", func(t *testing.T) {
 		requireDocker(t)
 		t.Parallel()
+
+		// Action
 		app := start(t)
 		target := start(t, postgres.Named("rotation"), postgres.WithDatabase("rotation_target"))
 
-		if app.Endpoint(infra.External).Port == target.Endpoint(infra.External).Port {
-			t.Fatal("Named() instance shares a container with the default")
-		}
-		if target.Database() != "rotation_target" {
-			t.Fatalf("database = %q, want rotation_target", target.Database())
-		}
+		// Assert
+		require.NotEqual(t, app.Endpoint(infra.External).Port, target.Endpoint(infra.External).Port)
+		require.Equal(t, "rotation_target", target.Database())
 	})
 }

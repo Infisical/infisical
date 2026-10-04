@@ -4,17 +4,24 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/fakes/github"
-	"github.com/Infisical/infisical/tests/fixture/appconnection"
+	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/Infisical/infisical/tests/provider"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsolated_ReachesTheSharedFakenet(t *testing.T) {
+	spec.Why(t, `An Isolated package owns its Infisical but shares fakenet, which it must
+		still reach through the shared resolver address.`)
 
-	conn := appconnection.New(t, harness.From(t).NewTenant(t), provider.GitHub)
+	// Setup
+	tn := harness.From(t).NewTenant(t)
+
+	// Action
+	conn := fixture.NewAppConnection(t, tn, provider.GitHub)
+
+	// Assert
 	gh := github.Open(t, conn.FakenetAdmin(t), conn.Nonce())
-
-	if n := gh.Received(t, "GET", "/user"); n != 1 {
-		t.Fatalf("the credential check reached fakenet %d times, want 1", n)
-	}
+	require.Equal(t, 1, gh.Received(t, "GET", "/user"))
 }

@@ -2,12 +2,12 @@ package infra_test
 
 import (
 	"os"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRunner_FailedStartupCarriesContainerOutput(t *testing.T) {
@@ -18,12 +18,13 @@ func TestRunner_FailedStartupCarriesContainerOutput(t *testing.T) {
 		no evidence. Only a deliberately failing container exercises this, so a passing suite
 		never covers it.`)
 
+	// Setup
 	ctx := t.Context()
 	runner := infra.NewRunner(infra.Workspace(), infra.NewLogger())
-	if err := runner.Network(ctx, infra.NetworkName); err != nil {
-		t.Fatalf("network: %v", err)
-	}
+	require.NoError(t, runner.Network(ctx, infra.NetworkName))
+	t.Cleanup(func() { _ = os.RemoveAll(infra.LogDir) })
 
+	// Action
 	const marker = "harness-log-capture-marker"
 	_, err := runner.Run(ctx, infra.ContainerSpec{
 		Name:    infra.ContainerName(infra.NameParts{Scope: infra.Test, ScopeID: "logcap", Module: "alpine"}),
@@ -34,16 +35,9 @@ func TestRunner_FailedStartupCarriesContainerOutput(t *testing.T) {
 		Ready:          infra.ForListeningPort("9999/tcp"),
 		StartupTimeout: 8 * time.Second,
 	})
-	if err == nil {
-		t.Fatal("expected the container to fail its wait strategy")
-	}
 
-	if !strings.Contains(err.Error(), marker) {
-		t.Errorf("error does not carry the container's output, so a real failure would be undiagnosable.\ngot: %v", err)
-	}
-	if !strings.Contains(err.Error(), "full output:") {
-		t.Errorf("error does not point at the captured log file.\ngot: %v", err)
-	}
-
-	t.Cleanup(func() { _ = os.RemoveAll(infra.LogDir) })
+	// Assert
+	require.Error(t, err, "the container should fail its wait strategy")
+	require.Contains(t, err.Error(), marker, "the error does not carry the container's output")
+	require.Contains(t, err.Error(), "full output:", "the error does not point at the captured log")
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/infra/postgres"
 	"github.com/Infisical/infisical/tests/infra/redis"
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/stretchr/testify/require"
 )
 
 // startAll resolves and starts a module set the way the harness will, so this
@@ -23,15 +24,11 @@ func startAll(t *testing.T, mods []infra.Module, scope infra.Scope) map[infra.Ke
 		scopes[m.Key()] = scope
 	}
 	plan, err := infra.Resolve(mods, scopes)
-	if err != nil {
-		t.Fatalf("resolve: %v", err)
-	}
+	require.NoError(t, err)
 
 	log := infra.NewLogger()
 	runner := infra.NewRunner(infra.Workspace(), log)
-	if err := runner.Network(ctx, infra.NetworkName); err != nil {
-		t.Fatalf("network: %v", err)
-	}
+	require.NoError(t, runner.Network(ctx, infra.NetworkName))
 
 	handles := map[infra.Key]infra.Handle{}
 	for _, m := range plan.Modules() {
@@ -40,9 +37,7 @@ func startAll(t *testing.T, mods []infra.Module, scope infra.Scope) map[infra.Ke
 		name.ScopeID = "m1smoke"
 
 		h, err := m.Start(ctx, infra.NewDeps(handles, infra.NetworkName, infra.Workspace(), name, runner, log))
-		if err != nil {
-			t.Fatalf("start %s: %v", m.Key(), err)
-		}
+		require.NoErrorf(t, err, "starting %s", m.Key())
 		handles[m.Key()] = h
 		t.Cleanup(func() { _ = h.Stop(context.WithoutCancel(ctx)) })
 		log.Decision("ready", infra.ContainerName(name), h.Endpoint(infra.External), 0, "")
@@ -62,28 +57,25 @@ func TestStack_AllModulesComeUpTogether(t *testing.T) {
 		mailpit.Module(),
 	}, infra.Shared)
 
-	t.Run("ok/every module reports a usable external address", func(t *testing.T) {
+	t.Run("should report a usable external address for every module", func(t *testing.T) {
 		for key, h := range handles {
-			if e := h.Endpoint(infra.External); e.Host == "" || e.Port == 0 {
-				t.Errorf("%s external endpoint is unusable: %+v", key, e)
-			}
+			e := h.Endpoint(infra.External)
+			require.NotEmptyf(t, e.Host, "%s has no external host", key)
+			require.NotZerof(t, e.Port, "%s has no external port", key)
 		}
 	})
 
-	t.Run("ok/internal addresses are container aliases, not host addresses", func(t *testing.T) {
+	t.Run("should use container aliases rather than host addresses internally", func(t *testing.T) {
 		for key, h := range handles {
-			in := h.Endpoint(infra.Internal)
-			if in.Host == "localhost" || in.Host == "127.0.0.1" {
-				t.Errorf("%s internal host is a host address: %s", key, in.Host)
-			}
+			require.NotContainsf(t, []string{"localhost", "127.0.0.1"}, h.Endpoint(infra.Internal).Host,
+				"%s internal host is a host address", key)
 		}
 	})
 
-	t.Run("ok/mailpit exposes SMTP and its API on different ports", func(t *testing.T) {
+	t.Run("should expose mailpit SMTP and API on different ports", func(t *testing.T) {
 		mp := handles[mailpit.Key].(*mailpit.Handle)
-		if smtp, api := mp.Endpoint(infra.Internal).Port, mp.API(infra.Internal).Port; smtp == api {
-			t.Fatalf("SMTP and API share port %d; the application dials one and the harness reads the other", smtp)
-		}
+		require.NotEqual(t, mp.Endpoint(infra.Internal).Port, mp.API(infra.Internal).Port,
+			"the application dials one and the harness reads the other")
 	})
 
 }

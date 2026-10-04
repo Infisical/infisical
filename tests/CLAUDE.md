@@ -64,7 +64,8 @@ stale one is adopted and your change does not take effect.
 suites/          product behaviour: does Infisical do the right thing
 harnesstest/     harness behaviour: does our tooling do the right thing
 harness/         Stack, Profile, Tenant, Principal
-fixture/         resource builders shared by more than one suite
+fixture/         platform resources: projects, app connections (one package, a file each)
+fixture/<product>/  one package per product: secretmanager, pki, pam (a file per resource)
 fakes/           one package per faked third party
 provider/        what creating an app connection needs, per service
 internal/        wait, mail, id, apierr, spec
@@ -82,9 +83,16 @@ Within `suites/`, group by product boundary, not URL version:
 and v2; `secrets` owns v4 and the v3 deprecations. That is what makes the grouping
 survive a version bump.
 
-**Helpers start local and move on the second caller.** An unexported function at the
-bottom of the test file is the right home until a second package needs it; then it
-becomes a `fixture/`. Do not create a package for one caller.
+**Fixtures are one package, split by file; products get their own package.**
+Platform resources live in `fixture` (`fixture.NewProject`, `fixture.NewAppConnection`).
+A product's resources live in `fixture/<product>` (`secretmanager.CreateSecret`). Add a
+file to the right package rather than a new package per resource. Since many resources
+share one package, names carry the resource: `NewProject`, `WithProjectType`,
+`AppConnectionOption`.
+
+**Helpers start local and move on the second caller.** An unexported function in the
+test package is the right home until a second package needs it; then it moves into the
+matching fixture package.
 
 **Import direction is one-way.** `fixture/*` may import `harness`; `harness` must never
 import a fixture. `fakes/*` import neither.
@@ -103,24 +111,55 @@ func TestSecret_Create(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("ok/a created secret reads back with its value", func(t *testing.T) {
+	t.Run("should read back a created secret with its value", func(t *testing.T) {
 		t.Parallel()
 
-		tn := h.NewTenant(t)
-		proj := project.New(t, tn, project.WithType("secret-manager"))
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
 
-		secret.Create(t, proj, "dev", "DB_URL", "postgres://localhost/app")
+		// Action
+		secretmanager.CreateSecret(t, proj, "dev", "DB_URL", "postgres://localhost/app")
 
-		if got := secret.Get(t, proj, "dev", "DB_URL"); got.Value != "postgres://localhost/app" {
-			t.Errorf("secret read back as %q, want postgres://localhost/app", got.Value)
-		}
+		// Assert
+		got := secretmanager.GetSecret(t, proj, "dev", "DB_URL")
+		require.Equal(t, "postgres://localhost/app", got.Value)
 	})
 }
 ```
 
-> Arrange in under about eight lines. Act in one call. Assert one to three claims.
+### Setup, Action, Assert
 
-If arrange is longer, the missing helper belongs beside the test or in a fixture.
+Every test body is three blocks marked with exactly these comments:
+
+```go
+// Setup
+// Action
+// Assert
+```
+
+Setup in under about eight lines, the Action as one call, Assert one to three claims.
+If Setup is longer, the missing helper belongs beside the test or in a fixture. Where
+the action and the assertion are one call (`ExpectEvent`), write `// Action + Assert`.
+
+These are the one place section-marker comments are allowed. The repository rule
+against them applies to production code; in tests they are the convention.
+
+### Assertions use `require`
+
+All assertions go through `github.com/stretchr/testify/require`, never `t.Error`,
+`t.Fatal` or hand-written comparisons. `require` stops the test at the first failure,
+which is what you want when later lines depend on earlier ones, and it prints both
+values without a format string.
+
+Add a message only when the values alone don't explain the failure:
+
+```go
+require.Equal(t, "first", got.Value, "the refused create still changed the value")
+```
+
+Never call `require` from a goroutine other than the test's own: it calls
+`t.FailNow`, which only works on the test goroutine. Collect results on a channel and
+assert after.
 
 ### Profiles
 
@@ -153,29 +192,28 @@ Choosing the org as the boundary is what makes `t.Parallel()` the default.
 
 Test function: `Test<Resource>_<Behaviour>`.
 
-Subtest: `<outcome>/<what happened, in words>`. The prefix is not decoration; it is what
-makes a run readable and what a lint can check.
+Subtest: `should <outcome> [when <condition>]`, lowercase prose, no prefix.
 
-| prefix | meaning |
-|---|---|
-| `ok/` | the happy path |
-| `invalid/` | the request was malformed or referenced something that does not exist |
-| `unauth/` | no credential, or an auth mode the route does not accept |
-| `forbidden/` | authenticated but not allowed |
-| `cross-tenant/` | another tenant's data was not reachable |
-| `notfound/` | the target does not exist |
-| `conflict/` | the request collided with existing state |
-| `unlicensed/` | the plan does not include the feature |
-| `idempotent/` | doing it twice is the same as doing it once |
+```go
+t.Run("should prune the destination when a synced secret is deleted", ...)
+t.Run("should refuse a write when the project belongs to another tenant", ...)
+t.Run("should read back a created secret with its value", ...)
+```
+
+The outcome comes first so a failure list reads as the broken claims. Add `when` only
+when there is a condition; the default case needs none.
 
 **A subtest name is a claim, not a label.**
 
 ```
-ok/the same key in a different environment is a different secret     yes
-ok/create secret in prod env                                          no
-conflict/the same key twice at the same path                          yes
-conflict/duplicate                                                    no
+should hold a separate value per environment when one name is created in two     yes
+should create secret in prod env                                                  no
+should refuse and keep the original when the same name is created twice           yes
+should handle duplicates                                                          no
 ```
+
+Cover the failure outcomes, not only the happy path: refused, forbidden, another
+tenant's resource, not found, conflicting, unlicensed, repeated.
 
 **The subject is the operation whose behaviour is being claimed.** Operations used to
 set up or observe are not subjects, so "the same key in two environments" is a subtest
@@ -242,22 +280,22 @@ h.InstanceAdmin(t)                 // super admin; refused outside Isolated
 Fixtures take the resource they belong to:
 
 ```go
-proj := project.New(t, tn, project.WithType("secret-manager"))
-proj.NewUser(t, project.Name("bob"), project.Role("admin"))
+proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+proj.NewUser(t, fixture.WithPrincipalName("bob"), fixture.WithRoles("admin"))
 proj.Grant(t, principal, "developer")
 
-secret.Create(t, proj, "dev", "DB_URL", "value", secret.Path("/svc"), secret.As(member))
-secret.Get(t, proj, "dev", "DB_URL")
-secret.Delete(t, proj, "dev", "DB_URL")
+secretmanager.CreateSecret(t, proj, "dev", "DB_URL", "value",
+	secretmanager.WithPath("/svc"), secretmanager.As(member))
+secretmanager.GetSecret(t, proj, "dev", "DB_URL")
+secretmanager.DeleteSecret(t, proj, "dev", "DB_URL")
 
-conn := appconnection.New(t, tn, provider.GitHub)
+conn := fixture.NewAppConnection(t, tn, provider.GitHub)
 ```
 
 **Fixtures take required arguments positionally and everything else as options.** What
-the API refuses without is positional; what the schema marks optional is an `Option`.
+the API refuses without is positional; what the schema marks optional is an option.
 That is what lets someone add metadata or a different actor without touching every call
-site. Do not add an option nothing uses yet: `staticcheck` will tell you, and adding one
-later is a single line.
+site. Do not add an option nothing uses yet; adding one later is a single line.
 
 **Never build your own API client.** Use `tn.Admin.API`, a principal's `.API`, or
 `tn.Client(t, token)`. A hand-built client loses the tenant's `X-Forwarded-For` address
@@ -265,7 +303,7 @@ and starts drawing down a rate-limit bucket shared with every other test, so the
 is a 429 in an unrelated package.
 
 Organization roles and project roles are separate types on purpose:
-`harness.OrgRole("admin")` and `project.Role("viewer")`. Passing one where the other
+`harness.OrgRole("admin")` and `fixture.WithRoles("viewer")`. Passing one where the other
 belongs does not compile.
 
 ## 8. Third parties are faked, not stubbed
@@ -277,7 +315,7 @@ A fake is a working implementation holding real state, so you assert on what the
 destination ended up holding rather than on which requests were sent:
 
 ```go
-conn := appconnection.New(t, tn, provider.GitHub)
+conn := fixture.NewAppConnection(t, tn, provider.GitHub)
 gh := github.Open(t, conn.FakenetAdmin(t), conn.Nonce())
 
 gh.Seed(t, github.RepoSecret("acme/app", "UNMANAGED", "keep"))
@@ -302,7 +340,7 @@ than polling state:
 
 ```go
 mark := gh.Mark(t)
-secret.Delete(t, proj, "dev", "DROP")
+secretmanager.DeleteSecret(t, proj, "dev", "DROP")
 s.trigger(t)
 
 gh.ExpectEvent[github.SecretDeleted](t, func(e github.SecretDeleted) bool {
@@ -332,7 +370,7 @@ func (SecretDeleted) EventName() string { return "github.secret-deleted" }
 
 Publish it from the fake with `a.events.Publish(...)` wherever state changes. Whatever
 mints a credential calls `fakenet.Track` before handing it to Infisical, which
-`appconnection` already does.
+`fixture.NewAppConnection` already does.
 
 ### Adding a fake
 
@@ -377,7 +415,7 @@ tn := h.NewTenant(t, harness.WithPlan(license.Enterprise().Without(license.RBAC)
 tn.SetPlan(t, license.Enterprise())   // also verifies it took effect
 ```
 
-Use `unlicensed/` subtests to pin downgrade behaviour. `CODE_QUALITY.md` requires that a
+Write `should ... when the plan does not include it` subtests to pin downgrade behaviour. `CODE_QUALITY.md` requires that a
 license check never changes a read path, and flipping entitlements is the only way to
 test that.
 

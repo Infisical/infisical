@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/stretchr/testify/require"
 )
 
 func TestContainerName(t *testing.T) {
@@ -15,41 +16,39 @@ func TestContainerName(t *testing.T) {
 		want string
 	}{
 		{
-			name: "ok/shared module has no scope id",
+			name: "should omit the scope id when shared",
 			in:   NameParts{Scope: Shared, Module: "postgres"},
 			want: "inf-shared-postgres",
 		},
 		{
-			name: "ok/a Named instance is distinct from the default",
+			name: "should differ from the default when the instance is named",
 			in:   NameParts{Scope: Shared, Module: "postgres", Instance: "rotation"},
 			want: "inf-shared-postgres-rotation",
 		},
 		{
-			name: "ok/infisical carries its image id",
+			name: "should carry the image id when one is fingerprinted",
 			in:   NameParts{Scope: Shared, Module: "infisical", Fingerprint: "9f8e7d6c"},
 			want: "inf-shared-infisical-9f8e7d6c",
 		},
 		{
-			name: "ok/package scope is qualified by package path",
+			name: "should qualify by package path when package scoped",
 			in:   NameParts{Scope: Package, ScopeID: "suites/instance", Module: "postgres"},
 			want: "inf-pkg-suites-instance-postgres",
 		},
 		{
-			name: "ok/test scope carries a unique id",
+			name: "should carry a unique id when test scoped",
 			in:   NameParts{Scope: Test, ScopeID: "a1b2", Module: "infisical"},
 			want: "inf-test-a1b2-infisical",
 		},
 		{
-			name: "ok/unsafe characters fold to hyphens",
+			name: "should fold unsafe characters to hyphens",
 			in:   NameParts{Scope: Package, ScopeID: "Suites/PKI v2", Module: "postgres"},
 			want: "inf-pkg-suites-pki-v2-postgres",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if got := ContainerName(tc.in); got != tc.want {
-				t.Fatalf("ContainerName() = %q, want %q", got, tc.want)
-			}
+			require.Equal(t, tc.want, ContainerName(tc.in))
 		})
 	}
 }
@@ -69,8 +68,6 @@ func TestContainerName_ScopesDoNotCollide(t *testing.T) {
 	pkgB := postgres(Package, "suites/sso")
 
 	for _, pair := range [][2]string{{shared, pkgA}, {shared, pkgB}, {pkgA, pkgB}} {
-		if pair[0] == pair[1] {
-			t.Errorf("names collide: %q", pair[0])
-		}
+		require.NotEqual(t, pair[0], pair[1])
 	}
 }

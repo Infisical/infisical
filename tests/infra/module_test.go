@@ -2,10 +2,10 @@ package infra
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeModule struct {
@@ -29,8 +29,10 @@ func mods(m ...Module) []Module { return m }
 func TestResolve(t *testing.T) {
 	t.Parallel()
 
-	t.Run("ok/orders dependencies before dependents", func(t *testing.T) {
+	t.Run("should order dependencies before dependents", func(t *testing.T) {
 		t.Parallel()
+
+		// Action
 		plan, err := Resolve(
 			mods(
 				fakeModule{key: "infisical", requires: []Key{"postgres", "redis"}},
@@ -39,65 +41,64 @@ func TestResolve(t *testing.T) {
 			),
 			map[Key]Scope{"infisical": Shared, "postgres": Shared, "redis": Shared},
 		)
-		if err != nil {
-			t.Fatalf("Resolve() = %v", err)
-		}
+
+		// Assert
+		require.NoError(t, err)
 		got := keysOf(plan.Modules())
-		if got[len(got)-1] != "infisical" {
-			t.Fatalf("infisical must start last, got order %v", got)
-		}
+		require.Equal(t, Key("infisical"), got[len(got)-1], "infisical must start last")
 	})
 
-	t.Run("ok/an optional dependency that is absent is not an error", func(t *testing.T) {
+	t.Run("should accept an optional dependency that is absent", func(t *testing.T) {
 		t.Parallel()
+
+		// Action
 		_, err := Resolve(
-			mods(fakeModule{key: "infisical", optional: []Key{"wiremock"}}),
+			mods(fakeModule{key: "infisical", optional: []Key{"fakenet"}}),
 			map[Key]Scope{"infisical": Shared},
 		)
-		if err != nil {
-			t.Fatalf("Resolve() = %v", err)
-		}
+
+		// Assert
+		require.NoError(t, err)
 	})
 
-	t.Run("invalid/a missing required dependency fails before any container starts", func(t *testing.T) {
+	t.Run("should fail before any container starts when a required dependency is missing", func(t *testing.T) {
 		t.Parallel()
+
+		// Action
 		_, err := Resolve(
 			mods(fakeModule{key: "infisical", requires: []Key{"postgres"}}),
 			map[Key]Scope{"infisical": Shared},
 		)
-		if err == nil {
-			t.Fatal("expected an error")
-		}
-		if !strings.Contains(err.Error(), "requires postgres") {
-			t.Fatalf("error should name the missing module, got: %v", err)
-		}
+
+		// Assert
+		require.ErrorContains(t, err, "requires postgres")
 	})
 
-	t.Run("invalid/a module may not depend on something shorter lived", func(t *testing.T) {
+	t.Run("should refuse a module that depends on something shorter lived", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `A Shared Infisical takes HTTP_PROXY at container start. Pointing it at a
-			Package-scoped WireMock breaks every other package the moment that one finishes.
-			This is the shape the first draft of the design had, which is why it is checked.`)
+		spec.Why(t, `A shared container reads its configuration once at start, so it cannot
+			point at a package-scoped one that dies when that package finishes.`)
 
+		// Action
 		_, err := Resolve(
 			mods(
-				fakeModule{key: "infisical", optional: []Key{"wiremock"}},
-				fakeModule{key: "wiremock"},
+				fakeModule{key: "infisical", optional: []Key{"fakenet"}},
+				fakeModule{key: "fakenet"},
 			),
-			map[Key]Scope{"infisical": Shared, "wiremock": Package},
+			map[Key]Scope{"infisical": Shared, "fakenet": Package},
 		)
-		if err == nil {
-			t.Fatal("expected an error")
-		}
-		for _, want := range []string{"infisical is shared-scoped", "wiremock which is pkg-scoped", "Either widen"} {
-			if !strings.Contains(err.Error(), want) {
-				t.Fatalf("error should contain %q, got: %v", want, err)
-			}
+
+		// Assert
+		require.Error(t, err)
+		for _, want := range []string{"infisical is shared-scoped", "fakenet which is pkg-scoped", "Either widen"} {
+			require.ErrorContains(t, err, want)
 		}
 	})
 
-	t.Run("ok/a package scoped module may depend on a shared one", func(t *testing.T) {
+	t.Run("should allow a package-scoped module to depend on a shared one", func(t *testing.T) {
 		t.Parallel()
+
+		// Action
 		_, err := Resolve(
 			mods(
 				fakeModule{key: "infisical", optional: []Key{"mailpit"}},
@@ -105,24 +106,28 @@ func TestResolve(t *testing.T) {
 			),
 			map[Key]Scope{"infisical": Package, "mailpit": Shared},
 		)
-		if err != nil {
-			t.Fatalf("Resolve() = %v", err)
-		}
+
+		// Assert
+		require.NoError(t, err)
 	})
 
-	t.Run("invalid/the same module declared twice points at Named", func(t *testing.T) {
+	t.Run("should point at Named when the same module is declared twice", func(t *testing.T) {
 		t.Parallel()
+
+		// Action
 		_, err := Resolve(
 			mods(fakeModule{key: "postgres"}, fakeModule{key: "postgres"}),
 			map[Key]Scope{"postgres": Shared},
 		)
-		if err == nil || !strings.Contains(err.Error(), "Named()") {
-			t.Fatalf("error should point at Named(), got: %v", err)
-		}
+
+		// Assert
+		require.ErrorContains(t, err, "Named()")
 	})
 
-	t.Run("invalid/a dependency cycle is reported with its path", func(t *testing.T) {
+	t.Run("should report a dependency cycle", func(t *testing.T) {
 		t.Parallel()
+
+		// Action
 		_, err := Resolve(
 			mods(
 				fakeModule{key: "a", requires: []Key{"b"}},
@@ -130,9 +135,9 @@ func TestResolve(t *testing.T) {
 			),
 			map[Key]Scope{"a": Shared, "b": Shared},
 		)
-		if err == nil || !strings.Contains(err.Error(), "cycle") {
-			t.Fatalf("expected a cycle error, got: %v", err)
-		}
+
+		// Assert
+		require.ErrorContains(t, err, "cycle")
 	})
 }
 
@@ -142,18 +147,16 @@ func TestDepsGet(t *testing.T) {
 	type pgHandle struct{ Handle }
 	deps := Deps{handles: map[Key]Handle{"postgres": pgHandle{}}}
 
-	t.Run("ok/a declared module comes back typed", func(t *testing.T) {
+	t.Run("should return a declared module typed", func(t *testing.T) {
 		t.Parallel()
-		if _, ok := deps.Get[pgHandle]("postgres"); !ok {
-			t.Fatal("declared module was not found")
-		}
+		_, ok := deps.Get[pgHandle]("postgres")
+		require.True(t, ok)
 	})
 
-	t.Run("notfound/an absent optional module reports false rather than panicking", func(t *testing.T) {
+	t.Run("should report false rather than panic when a module is absent", func(t *testing.T) {
 		t.Parallel()
-		if _, ok := deps.Get[pgHandle]("redis"); ok {
-			t.Fatal("absent module reported as present")
-		}
+		_, ok := deps.Get[pgHandle]("redis")
+		require.False(t, ok)
 	})
 }
 

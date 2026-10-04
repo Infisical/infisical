@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 const testHost = "items.test"
@@ -57,9 +59,7 @@ func newRig(t *testing.T, prefix string) *rig {
 	t.Helper()
 	srv := New(itemService{})
 	ca, err := LoadOrCreateCA(filepath.Join(t.TempDir(), "ca.pem"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	fakes := httptest.NewServer(srv)
 	admin := httptest.NewServer(srv.Admin(ca))
 	t.Cleanup(fakes.Close)
@@ -67,24 +67,18 @@ func newRig(t *testing.T, prefix string) *rig {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	if err := Listen(ctx, admin.URL, prefix); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, Listen(ctx, admin.URL, prefix))
 	return &rig{fakes: fakes, admin: admin.URL}
 }
 
 func (r *rig) call(t *testing.T, method, key, name string) {
 	t.Helper()
 	req, err := http.NewRequestWithContext(t.Context(), method, r.fakes.URL+"/items/"+name, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.Host = testHost
 	req.Header.Set("Authorization", "Bearer "+key)
 	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	_ = res.Body.Close()
 }
 
@@ -114,18 +108,21 @@ func expectErr[E Event](t *testing.T, sc *Scope[struct{}], match func(E) bool, o
 }
 
 func TestEvents_Expect(t *testing.T) {
-	t.Run("ok/an event that already happened is found", func(t *testing.T) {
+	t.Run("should find an event that already happened", func(t *testing.T) {
+		// Setup
 		r := newRig(t, "p1")
 		sc := r.scope(t, "p1-a")
 		r.call(t, http.MethodPost, "p1-a", "DB_URL")
 
+		// Action
 		got := sc.ExpectEvent[ItemCreated](t, nameIs[ItemCreated]("DB_URL"))
-		if got.Name != "DB_URL" {
-			t.Errorf("got %q", got.Name)
-		}
+
+		// Assert
+		require.Equal(t, "DB_URL", got.Name)
 	})
 
-	t.Run("ok/an event that arrives while waiting is found", func(t *testing.T) {
+	t.Run("should find an event that arrives while waiting", func(t *testing.T) {
+		// Setup
 		r := newRig(t, "p2")
 		sc := r.scope(t, "p2-a")
 		go func() {
@@ -137,63 +134,76 @@ func TestEvents_Expect(t *testing.T) {
 				_ = res.Body.Close()
 			}
 		}()
+
+		// Action + Assert: ExpectEvent fails the test if the event never arrives.
 		sc.ExpectEvent[ItemCreated](t, nameIs[ItemCreated]("LATE"))
 	})
 
-	t.Run("invalid/each event satisfies one expectation", func(t *testing.T) {
+	t.Run("should need a second occurrence when the same event is expected twice", func(t *testing.T) {
+		// Setup
 		r := newRig(t, "p3")
 		sc := r.scope(t, "p3-a")
 		r.call(t, http.MethodPost, "p3-a", "ONCE")
-
 		sc.ExpectEvent[ItemCreated](t, nameIs[ItemCreated]("ONCE"))
+
+		// Action
 		err := expectErr(t, sc, nameIs[ItemCreated]("ONCE"), Within(300*time.Millisecond))
-		if err == nil || !strings.Contains(err.Error(), "already claimed") {
-			t.Fatalf("a second expectation reused the event or misreported it: %v", err)
-		}
+
+		// Assert
+		require.ErrorContains(t, err, "already claimed")
 	})
 
-	t.Run("ok/different types do not depend on order", func(t *testing.T) {
+	t.Run("should not depend on order when the events differ in type", func(t *testing.T) {
+		// Setup
 		r := newRig(t, "p4")
 		sc := r.scope(t, "p4-a")
 		r.call(t, http.MethodPost, "p4-a", "X")
 		r.call(t, http.MethodDelete, "p4-a", "X")
 
+		// Action + Assert
 		sc.ExpectEvent[ItemDeleted](t, nil)
 		sc.ExpectEvent[ItemCreated](t, nil)
 	})
 
-	t.Run("invalid/since ignores what happened before the mark", func(t *testing.T) {
+	t.Run("should ignore events before the mark when Since is given", func(t *testing.T) {
+		// Setup
 		r := newRig(t, "p5")
 		sc := r.scope(t, "p5-a")
 		r.call(t, http.MethodPost, "p5-a", "X")
 		mark := sc.Mark(t)
 
-		if err := expectErr[ItemCreated](t, sc, nil, Since(mark), Within(300*time.Millisecond)); err == nil {
-			t.Fatal("an event before the mark satisfied an expectation since it")
-		}
+		// Action
+		before := expectErr[ItemCreated](t, sc, nil, Since(mark), Within(300*time.Millisecond))
 		r.call(t, http.MethodPost, "p5-a", "X")
+
+		// Assert
+		require.Error(t, before, "an event before the mark satisfied an expectation since it")
 		sc.ExpectEvent[ItemCreated](t, nil, Since(mark))
 	})
 
-	t.Run("cross-tenant/one credential never sees another's events", func(t *testing.T) {
+	t.Run("should not deliver an event when it belongs to another credential", func(t *testing.T) {
+		// Setup
 		r := newRig(t, "p6")
 		mine, theirs := r.scope(t, "p6-a"), r.scope(t, "p6-b")
+
+		// Action
 		r.call(t, http.MethodPost, "p6-b", "THEIRS")
 
+		// Assert
 		theirs.ExpectEvent[ItemCreated](t, nil)
-		if err := expectErr[ItemCreated](t, mine, nil, Within(300*time.Millisecond)); err == nil {
-			t.Fatal("an event published under another credential was delivered to this one")
-		}
+		require.Error(t, expectErr[ItemCreated](t, mine, nil, Within(300*time.Millisecond)))
 	})
 
-	t.Run("ok/the stream only carries this binary's prefix", func(t *testing.T) {
+	t.Run("should not stream an event when it is outside this binary's prefix", func(t *testing.T) {
+		// Setup
 		r := newRig(t, "p7")
 		foreign := r.scope(t, "other-a")
+
+		// Action
 		r.call(t, http.MethodPost, "other-a", "X")
 
-		if err := expectErr[ItemCreated](t, foreign, nil, Within(300*time.Millisecond)); err == nil {
-			t.Fatal("an event outside this binary's prefix reached it")
-		}
+		// Assert
+		require.Error(t, expectErr[ItemCreated](t, foreign, nil, Within(300*time.Millisecond)))
 	})
 }
 
@@ -203,30 +213,37 @@ func TestEvents_ExpectNo(t *testing.T) {
 		return expectNoEvent[ItemCreated](st, b, sc.key, newWaitConfig(300*time.Millisecond, nil), nil)
 	}
 
-	t.Run("ok/nothing published passes", func(t *testing.T) {
+	t.Run("should pass when nothing is published", func(t *testing.T) {
+		// Setup
 		r := newRig(t, "n1")
-		if err := expectNoErr(t, r.scope(t, "n1-a")); err != nil {
-			t.Fatal(err)
-		}
+
+		// Action + Assert
+		require.NoError(t, expectNoErr(t, r.scope(t, "n1-a")))
 	})
 
-	t.Run("invalid/an unused matching event fails", func(t *testing.T) {
+	t.Run("should fail when an unused matching event exists", func(t *testing.T) {
+		// Setup
 		r := newRig(t, "n2")
 		sc := r.scope(t, "n2-a")
+
+		// Action
 		r.call(t, http.MethodPost, "n2-a", "X")
-		if err := expectNoErr(t, sc); err == nil {
-			t.Fatal("ExpectNoEvent passed with a matching event present")
-		}
+
+		// Assert
+		require.Error(t, expectNoErr(t, sc))
 	})
 
-	t.Run("ok/an event already claimed is accounted for", func(t *testing.T) {
+	t.Run("should pass when the matching event was already claimed", func(t *testing.T) {
+		// Setup
 		r := newRig(t, "n3")
 		sc := r.scope(t, "n3-a")
 		r.call(t, http.MethodPost, "n3-a", "X")
+
+		// Action
 		sc.ExpectEvent[ItemCreated](t, nil)
-		if err := expectNoErr(t, sc); err != nil {
-			t.Fatalf("a claimed event failed ExpectNoEvent: %v", err)
-		}
+
+		// Assert
+		require.NoError(t, expectNoErr(t, sc))
 	})
 }
 
@@ -236,48 +253,56 @@ func TestEvents_Failure(t *testing.T) {
 		do   func(r *rig, t *testing.T)
 		want string
 	}{
-		{"nothing arrived", func(*rig, *testing.T) {}, "no events arrived in this scope"},
-		{"something else arrived", func(r *rig, t *testing.T) { r.call(t, http.MethodDelete, "f-a", "X") }, "no items.item-created arrived"},
-		{"rejected by the predicate", func(r *rig, t *testing.T) { r.call(t, http.MethodPost, "f-a", "WRONG") }, "none matched"},
+		{"should say nothing arrived when the scope is empty", func(*rig, *testing.T) {}, "no events arrived in this scope"},
+		{"should list other events when only a different type arrived", func(r *rig, t *testing.T) { r.call(t, http.MethodDelete, "f-a", "X") }, "no items.item-created arrived"},
+		{"should list near misses when the predicate rejected them", func(r *rig, t *testing.T) { r.call(t, http.MethodPost, "f-a", "WRONG") }, "none matched"},
 	}
 	for _, tc := range cases {
-		t.Run("invalid/"+tc.name+" is reported as such", func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
 			r := newRig(t, "f")
 			sc := r.scope(t, "f-a")
 			tc.do(r, t)
 
+			// Action
 			err := expectErr(t, sc, nameIs[ItemCreated]("RIGHT"), Within(500*time.Millisecond))
-			if err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("message does not say %q:\n%v", tc.want, err)
-			}
+
+			// Assert
+			require.ErrorContains(t, err, tc.want)
 		})
 	}
 }
 
 func TestEvents_Loss(t *testing.T) {
-	t.Run("invalid/overflow fails rather than dropping silently", func(t *testing.T) {
+	t.Run("should fail rather than drop silently when a buffer overflows", func(t *testing.T) {
+		// Setup
 		st := &stream{buffers: map[scopeID]*buffer{}}
 		b := &buffer{changed: make(chan struct{})}
 		st.buffers[scopeID{testHost, "k"}] = b
+
+		// Action
 		for i := range bufferCap + 1 {
 			st.deliver(EventRecord{Seq: uint64(i + 1), Host: testHost, Scope: "k", Event: "items.item-created", Details: []byte(`{}`)})
 		}
+
+		// Assert
 		_, err := expectEvent[ItemDeleted](st, b, "k", waitConfig{within: time.Second}, nil)
-		if err == nil || !strings.Contains(err.Error(), "were not kept") {
-			t.Fatalf("overflow was not reported: %v", err)
-		}
+		require.ErrorContains(t, err, "were not kept")
 	})
 
-	t.Run("invalid/resuming past retained history is a gap", func(t *testing.T) {
+	t.Run("should report a gap when resuming past retained history", func(t *testing.T) {
+		// Setup
 		l := newEventLog()
+
+		// Action
 		for range historyCap + 10 {
 			l.append(EventRecord{Scope: "k"})
 		}
-		if _, gap, _ := l.since(1); !gap {
-			t.Fatal("resuming from before retained history did not report a gap")
-		}
-		if _, gap, _ := l.since(l.current()); gap {
-			t.Fatal("resuming from the latest event reported a gap")
-		}
+
+		// Assert
+		_, early, _ := l.since(1)
+		_, latest, _ := l.since(l.current())
+		require.True(t, early, "resuming from before retained history did not report a gap")
+		require.False(t, latest, "resuming from the latest event reported a gap")
 	})
 }

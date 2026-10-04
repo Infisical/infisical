@@ -7,43 +7,40 @@ import (
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAdminPrincipals_AreSeparate(t *testing.T) {
-	spec.Why(t, `The harness hands out two administrators and the whole Shared profile
-		rests on them being different things. If a tenant administrator could write
-		instance configuration, one test could disable signup or rotate the root key
-		under every other package in the run, and the damage would surface somewhere
-		else entirely.
-
-		This has been wrong once: while the tenant administrator was the bootstrap root
-		wearing an organization claim, the second case below failed.
-
-		Isolated because the first case really does write instance configuration.`)
+	spec.Why(t, `If a tenant administrator could write instance configuration, one test
+		could disable signup under every other package. This was wrong once, when the
+		tenant admin was the bootstrap root. Isolated because the first case writes
+		instance configuration.`)
 
 	h := harness.From(t)
 
-	t.Run("ok/the instance admin can write instance configuration", func(t *testing.T) {
-		res, err := h.InstanceAdmin(t).API.UpdateAdminConfigWithResponse(t.Context(),
+	t.Run("should let the instance admin write instance configuration", func(t *testing.T) {
+		// Setup
+		admin := h.InstanceAdmin(t)
+
+		// Action
+		res, err := admin.API.UpdateAdminConfigWithResponse(t.Context(),
 			api.UpdateAdminConfigJSONRequestBody{AllowSignUp: new(true)})
-		if err != nil {
-			t.Fatalf("writing instance config: %v", err)
-		}
-		if res.StatusCode() != http.StatusOK {
-			t.Fatalf("the instance admin was refused instance config: %d: %s", res.StatusCode(), res.Body)
-		}
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "refused: %s", res.Body)
 	})
 
-	t.Run("forbidden/a tenant admin cannot", func(t *testing.T) {
+	t.Run("should refuse instance configuration when the caller is a tenant admin", func(t *testing.T) {
+		// Setup
 		tn := h.NewTenant(t)
 
+		// Action
 		res, err := tn.Admin.API.UpdateAdminConfigWithResponse(t.Context(),
 			api.UpdateAdminConfigJSONRequestBody{AllowSignUp: new(true)})
-		if err != nil {
-			t.Fatalf("writing instance config as a tenant admin: %v", err)
-		}
-		if res.StatusCode() == http.StatusOK {
-			t.Fatal("a tenant administrator wrote instance configuration")
-		}
+
+		// Assert
+		require.NoError(t, err)
+		require.NotEqual(t, http.StatusOK, res.StatusCode(), "a tenant administrator wrote instance configuration")
 	})
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/Infisical/infisical/tests/infra/postgres"
 	"github.com/Infisical/infisical/tests/infra/redis"
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/stretchr/testify/require"
 )
 
 func requireDocker(t *testing.T) {
@@ -28,13 +29,9 @@ func bootStack(t *testing.T, opts ...infisical.Option) *infisical.Handle {
 	log := infra.NewLogger()
 
 	root, err := infra.RepoRoot()
-	if err != nil {
-		t.Fatalf("repo root: %v", err)
-	}
+	require.NoError(t, err)
 	img, err := infisical.ResolveImage(ctx, root, log)
-	if err != nil {
-		t.Fatalf("image: %v", err)
-	}
+	require.NoError(t, err)
 
 	mods := []infra.Module{postgres.Module(), redis.Module(), mailpit.Module(),
 		infisical.Module(append([]infisical.Option{infisical.WithImage(img)}, opts...)...)}
@@ -43,14 +40,10 @@ func bootStack(t *testing.T, opts ...infisical.Option) *infisical.Handle {
 		scopes[m.Key()] = infra.Shared
 	}
 	plan, err := infra.Resolve(mods, scopes)
-	if err != nil {
-		t.Fatalf("resolve: %v", err)
-	}
+	require.NoError(t, err)
 
 	runner := infra.NewRunner(infra.Workspace(), log)
-	if err := runner.Network(ctx, infra.NetworkName); err != nil {
-		t.Fatalf("network: %v", err)
-	}
+	require.NoError(t, runner.Network(ctx, infra.NetworkName))
 
 	handles := map[infra.Key]infra.Handle{}
 	for _, m := range plan.Modules() {
@@ -60,9 +53,7 @@ func bootStack(t *testing.T, opts ...infisical.Option) *infisical.Handle {
 
 		began := time.Now()
 		h, err := m.Start(ctx, infra.NewDeps(handles, infra.NetworkName, infra.Workspace(), name, runner, log))
-		if err != nil {
-			t.Fatalf("start %s: %v", m.Key(), err)
-		}
+		require.NoErrorf(t, err, "starting %s", m.Key())
 		handles[m.Key()] = h
 		t.Cleanup(func() { _ = h.Stop(context.WithoutCancel(ctx)) })
 		log.Decision("ready", infra.ContainerName(name), h.Endpoint(infra.External), time.Since(began), "")
@@ -78,15 +69,11 @@ func TestInfisical_Boot(t *testing.T) {
 
 	app := bootStack(t)
 
-	t.Run("ok/serves the API once Start returns", func(t *testing.T) {
-		if app.BaseURL(infra.External) == "" {
-			t.Fatal("no base URL")
-		}
+	t.Run("should serve the API once Start returns", func(t *testing.T) {
+		require.NotEmpty(t, app.BaseURL(infra.External))
 	})
 
-	t.Run("ok/the container name carries the image id", func(t *testing.T) {
-		if app.Image().ShortID() == "" {
-			t.Fatal("image has no id, so a code change would adopt a stale container")
-		}
+	t.Run("should carry the image id so a code change cannot adopt a stale container", func(t *testing.T) {
+		require.NotEmpty(t, app.Image().ShortID())
 	})
 }

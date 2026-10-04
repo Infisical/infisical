@@ -7,6 +7,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/stretchr/testify/require"
 )
 
 func requireDocker(t *testing.T) {
@@ -24,11 +25,10 @@ func TestRunner_AdoptOrCreate(t *testing.T) {
 		Nothing else in the suite exercises this, because a passing test looks identical
 		either way.`)
 
+	// Setup
 	ctx := t.Context()
 	runner := infra.NewRunner(infra.Workspace(), infra.NewLogger())
-	if err := runner.Network(ctx, infra.NetworkName); err != nil {
-		t.Fatalf("network: %v", err)
-	}
+	require.NoError(t, runner.Network(ctx, infra.NetworkName))
 
 	name := infra.ContainerName(infra.NameParts{
 		Scope:  infra.Shared,
@@ -45,29 +45,18 @@ func TestRunner_AdoptOrCreate(t *testing.T) {
 	}
 
 	first, err := runner.Run(ctx, spec)
-	if err != nil {
-		t.Fatalf("first run: %v", err)
-	}
+	require.NoError(t, err)
 	t.Cleanup(func() { _ = first.Stop(context.WithoutCancel(ctx)) })
+	require.False(t, first.Adopted, "a container of this name was left behind by an earlier run")
 
-	if first.Adopted {
-		t.Fatal("first run reported adopt; a container of this name was left behind by an earlier run")
-	}
-
+	// Action
 	second, err := runner.Run(ctx, spec)
-	if err != nil {
-		t.Fatalf("second run: %v", err)
-	}
 
-	if !second.Adopted {
-		t.Error("second run created a new container instead of adopting the first")
-	}
-	if second.ID != first.ID {
-		t.Errorf("adopted a different container: %s then %s", first.ID, second.ID)
-	}
-	if a, b := first.Endpoint(infra.External, 6379), second.Endpoint(infra.External, 6379); a != b {
-		t.Errorf("adopted container moved ports: %s then %s", a.HostPort(), b.HostPort())
-	}
+	// Assert
+	require.NoError(t, err)
+	require.True(t, second.Adopted, "the second run created instead of adopting")
+	require.Equal(t, first.ID, second.ID)
+	require.Equal(t, first.Endpoint(infra.External, 6379), second.Endpoint(infra.External, 6379))
 }
 
 func TestRunner_NameChangeCreatesNewContainer(t *testing.T) {
@@ -77,11 +66,10 @@ func TestRunner_NameChangeCreatesNewContainer(t *testing.T) {
 		container. A stale app container would run your previous code with every test still
 		passing, which is the worst outcome available.`)
 
+	// Setup
 	ctx := t.Context()
 	runner := infra.NewRunner(infra.Workspace(), infra.NewLogger())
-	if err := runner.Network(ctx, infra.NetworkName); err != nil {
-		t.Fatalf("network: %v", err)
-	}
+	require.NoError(t, runner.Network(ctx, infra.NetworkName))
 
 	base := infra.NameParts{Scope: infra.Shared, Module: "redis", Instance: "fptest"}
 	run := func(fingerprint string) infra.Container {
@@ -94,14 +82,14 @@ func TestRunner_NameChangeCreatesNewContainer(t *testing.T) {
 			Ports: []int{6379},
 			Ready: infra.ForExec([]string{"redis-cli", "ping"}),
 		})
-		if err != nil {
-			t.Fatalf("run %s: %v", fingerprint, err)
-		}
+		require.NoErrorf(t, err, "running %s", fingerprint)
 		t.Cleanup(func() { _ = c.Stop(context.WithoutCancel(ctx)) })
 		return c
 	}
 
-	if a, b := run("aaaa1111"), run("bbbb2222"); a.ID == b.ID {
-		t.Fatal("a different fingerprint adopted the same container")
-	}
+	// Action
+	a, b := run("aaaa1111"), run("bbbb2222")
+
+	// Assert
+	require.NotEqual(t, a.ID, b.ID, "a different fingerprint adopted the same container")
 }

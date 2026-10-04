@@ -1,67 +1,63 @@
 package mail
 
-import "testing"
+import (
+	"testing"
 
-func TestParam_FindsTheInviteToken(t *testing.T) {
-	// Shaped like the real OrgInvite mail: the same link appears in both the text and
-	// the HTML part, and the HTML one is quoted inside an attribute.
-	m := Message{Subject: "Infisical organization invitation", Body: `
+	"github.com/stretchr/testify/require"
+)
+
+func TestParam(t *testing.T) {
+	t.Run("should find the invite token when it appears in text and HTML parts", func(t *testing.T) {
+		// Setup: shaped like the real OrgInvite mail.
+		m := Message{Subject: "Infisical organization invitation", Body: `
 Join the organization:
 http://localhost:8080/signupinvite?token=abc123&to=alice%40acme.test&organization_id=org-1
 
 <a href="http://localhost:8080/signupinvite?token=abc123&to=alice%40acme.test&organization_id=org-1">Accept</a>
 `}
 
-	got, err := Param(m, "token")
-	if err != nil {
-		t.Fatalf("extracting the token: %v", err)
-	}
-	if got != "abc123" {
-		t.Errorf("token = %q, want abc123", got)
-	}
-}
+		// Action
+		got, err := Param(m, "token")
 
-func TestParam_SkipsLinksWithoutIt(t *testing.T) {
-	// Every Infisical mail carries unsubscribe and logo links, so the first URL in the
-	// body is routinely not the one that matters.
-	m := Message{Body: `
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, "abc123", got)
+	})
+
+	t.Run("should skip links that do not carry the parameter", func(t *testing.T) {
+		// Setup: real mails lead with logo and docs links.
+		m := Message{Body: `
 <img src="https://cdn.infisical.com/logo.png">
 https://infisical.com/docs
 http://localhost:8080/signupinvite?token=wanted&to=bob%40acme.test
 `}
 
-	got, err := Param(m, "token")
-	if err != nil {
-		t.Fatalf("extracting the token: %v", err)
-	}
-	if got != "wanted" {
-		t.Errorf("token = %q, want wanted", got)
-	}
+		// Action
+		got, err := Param(m, "token")
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, "wanted", got)
+	})
+
+	t.Run("should report the subject and body when no link carries the parameter", func(t *testing.T) {
+		// Setup
+		m := Message{Subject: "Welcome", Body: "https://infisical.com/docs\n"}
+
+		// Action
+		_, err := Param(m, "token")
+
+		// Assert
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Welcome")
+		require.Contains(t, err.Error(), "infisical.com/docs")
+	})
 }
 
-func TestParam_ReportsTheBodyWhenAbsent(t *testing.T) {
-	// The failure a wrong template produces. Without the body in the message there is
-	// nothing to debug from: the mail arrived, it just did not carry what was expected.
-	m := Message{Subject: "Welcome", Body: "https://infisical.com/docs\n"}
-
-	if _, err := Param(m, "token"); err == nil {
-		t.Fatal("expected an error when no link carries the parameter")
-	} else if got := err.Error(); !contains(got, "Welcome") || !contains(got, "infisical.com/docs") {
-		t.Errorf("error should name the subject and show the body, got: %s", got)
-	}
-}
-
-func contains(s, sub string) bool {
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
-}
-
-func TestCode_FindsTheSignupCode(t *testing.T) {
-	m := Message{Subject: "Your confirmation code", Body: `
+func TestCode(t *testing.T) {
+	t.Run("should find the signup code", func(t *testing.T) {
+		// Setup
+		m := Message{Subject: "Your confirmation code", Body: `
 Confirm your email address with this code:
 
   481920
@@ -69,25 +65,23 @@ Confirm your email address with this code:
 This code expires in 5 minutes. Sent 2026-09-17.
 `}
 
-	got, err := Code(m, 6)
-	if err != nil {
-		t.Fatalf("extracting the code: %v", err)
-	}
-	if got != "481920" {
-		t.Errorf("code = %q, want 481920", got)
-	}
-}
+		// Action
+		got, err := Code(m, 6)
 
-func TestCode_IgnoresLongerNumbers(t *testing.T) {
-	// A year, a port and a message id are all digits, and the footer of a real mail
-	// is full of them. Matching a bare run of digits would pick up the wrong one.
-	m := Message{Subject: "Your confirmation code", Body: "id=20260917120000 port=8080\ncode: 771234\n"}
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, "481920", got)
+	})
 
-	got, err := Code(m, 6)
-	if err != nil {
-		t.Fatalf("extracting the code: %v", err)
-	}
-	if got != "771234" {
-		t.Errorf("code = %q, want 771234", got)
-	}
+	t.Run("should ignore longer numbers in the footer", func(t *testing.T) {
+		// Setup
+		m := Message{Subject: "Your confirmation code", Body: "id=20260917120000 port=8080\ncode: 771234\n"}
+
+		// Action
+		got, err := Code(m, 6)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, "771234", got)
+	})
 }

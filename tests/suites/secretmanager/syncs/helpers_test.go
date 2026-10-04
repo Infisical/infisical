@@ -5,19 +5,19 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
-	"github.com/Infisical/infisical/tests/fixture/appconnection"
-	"github.com/Infisical/infisical/tests/fixture/project"
+	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 )
 
-// Suite-local rather than a fixture: only this package creates a sync. It moves under
-// fixture/ when a second one does.
+// Suite-local until a second package creates a sync; then it moves to
+// fixture/secretmanager.
 
 type sync struct {
 	ID   uuid.UUID
-	proj *project.Project
+	proj *fixture.Project
 }
 
 type syncConfig struct {
@@ -28,14 +28,10 @@ type syncConfig struct {
 	secretPath            string
 }
 
-// syncOption adjusts a new sync. The destination is positional because the API has no
-// default for it; everything else has one.
 type syncOption func(*syncConfig)
 
-// autoSync controls whether creating the sync immediately pushes.
-//
-// isAutoSyncEnabled defaults to true in the schema, so a test that wants to choose
-// when the first push happens has to turn it off.
+// autoSync defaults to true in the schema, so a test choosing when the first push
+// happens has to turn it off.
 func autoSync(on bool) syncOption { return func(c *syncConfig) { c.autoSync = on } }
 
 func keySchema(s string) syncOption { return func(c *syncConfig) { c.keySchema = s } }
@@ -44,40 +40,29 @@ func disableSecretDeletion() syncOption {
 	return func(c *syncConfig) { c.disableSecretDeletion = true }
 }
 
-// destination is where a sync writes. Required, because the API has no default, and
-// the scopes differ enough that each gets its own constructor.
 type destination func(*testing.T) api.CreateGitHubSecretSyncJSONBody_DestinationConfig
 
-// repoScope syncs to one repository. Capped at 100 secrets by GitHub.
+// repoScope is capped at 100 secrets by GitHub.
 func repoScope(owner, repo string) destination {
 	return func(tt *testing.T) api.CreateGitHubSecretSyncJSONBody_DestinationConfig {
 		var d api.CreateGitHubSecretSyncJSONBody_DestinationConfig
-		if err := d.FromCreateGitHubSecretSyncJSONBodyDestinationConfig1(
-			api.CreateGitHubSecretSyncJSONBodyDestinationConfig1{
-				Owner: owner, Repo: repo, Scope: "repository",
-			}); err != nil {
-			tt.Fatalf("syncs: building a repository destination: %v", err)
-		}
+		require.NoError(tt, d.FromCreateGitHubSecretSyncJSONBodyDestinationConfig1(
+			api.CreateGitHubSecretSyncJSONBodyDestinationConfig1{Owner: owner, Repo: repo, Scope: "repository"}))
 		return d
 	}
 }
 
-// orgScope syncs to an organization, where the cap is 1000 rather than 100.
+// orgScope is capped at 1000.
 func orgScope(org string) destination {
 	return func(tt *testing.T) api.CreateGitHubSecretSyncJSONBody_DestinationConfig {
 		var d api.CreateGitHubSecretSyncJSONBody_DestinationConfig
-		if err := d.FromCreateGitHubSecretSyncJSONBodyDestinationConfig0(
-			api.CreateGitHubSecretSyncJSONBodyDestinationConfig0{
-				Org: org, Scope: "organization", Visibility: "all",
-			}); err != nil {
-			tt.Fatalf("syncs: building an organization destination: %v", err)
-		}
+		require.NoError(tt, d.FromCreateGitHubSecretSyncJSONBodyDestinationConfig0(
+			api.CreateGitHubSecretSyncJSONBodyDestinationConfig0{Org: org, Scope: "organization", Visibility: "all"}))
 		return d
 	}
 }
 
-// newSync creates a GitHub sync.
-func newSync(tt *testing.T, p *project.Project, conn *appconnection.Connection,
+func newSync(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection,
 	dest destination, opts ...syncOption) *sync {
 	tt.Helper()
 
@@ -95,7 +80,7 @@ func newSync(tt *testing.T, p *project.Project, conn *appconnection.Connection,
 		DestinationConfig: dest(tt),
 		IsAutoSyncEnabled: &cfg.autoSync,
 	}
-	// GitHub cannot import, so the schema pins this to the one legal value.
+	// GitHub cannot import, so the schema allows only this.
 	body.SyncOptions.InitialSyncBehavior = "overwrite-destination"
 	if cfg.keySchema != "" {
 		body.SyncOptions.KeySchema = &cfg.keySchema
@@ -105,31 +90,31 @@ func newSync(tt *testing.T, p *project.Project, conn *appconnection.Connection,
 	}
 
 	res, err := p.Tenant().Admin.API.CreateGitHubSecretSyncWithResponse(tt.Context(), body)
-	if err != nil {
-		tt.Fatalf("syncs: creating a sync: %v", err)
-	}
-	if res.JSON200 == nil {
-		tt.Fatalf("syncs: creating a sync returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	}
+	require.NoError(tt, err, "creating a sync")
+	require.NotNilf(tt, res.JSON200, "creating a sync returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	return &sync{ID: res.JSON200.SecretSync.Id, proj: p}
 }
 
-// trigger runs the sync and waits for it to reach a terminal status.
-//
-// Waiting on the sync rather than on the destination is the difference between a
-// useful failure and a mystery. A sync that fails records why on the row, so a broken
-// one reports the product's own message instead of timing out with nothing arriving.
+// trigger runs the sync and waits on its status rather than the destination, so a
+// failed sync reports the product's own reason instead of a timeout.
 func (s *sync) trigger(tt *testing.T) {
 	tt.Helper()
-
-	res, err := s.proj.Tenant().Admin.API.SyncGitHubSecretSyncWithResponse(tt.Context(), s.ID)
-	if err != nil {
-		tt.Fatalf("syncs: triggering: %v", err)
-	}
-	if res.JSON200 == nil {
-		tt.Fatalf("syncs: triggering returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	}
+	s.start(tt)
 	s.awaitTerminal(tt)
+}
+
+// triggerExpectingFailure is trigger for when failing is the behaviour under test.
+func (s *sync) triggerExpectingFailure(tt *testing.T) outcome {
+	tt.Helper()
+	s.start(tt)
+	return s.awaitOutcome(tt)
+}
+
+func (s *sync) start(tt *testing.T) {
+	tt.Helper()
+	res, err := s.proj.Tenant().Admin.API.SyncGitHubSecretSyncWithResponse(tt.Context(), s.ID)
+	require.NoError(tt, err, "triggering a sync")
+	require.NotNilf(tt, res.JSON200, "triggering a sync returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 }
 
 type outcome struct {
@@ -137,29 +122,24 @@ type outcome struct {
 	message string
 }
 
-// awaitTerminal blocks until the sync has succeeded or failed, and fails the test on
-// failure with what the product reported.
 func (s *sync) awaitTerminal(tt *testing.T) {
 	tt.Helper()
-	if got := s.awaitOutcome(tt); got.status == "failed" {
-		tt.Fatalf("syncs: the sync failed: %s", got.message)
-	}
+	got := s.awaitOutcome(tt)
+	require.NotEqualf(tt, "failed", got.status, "the sync failed: %s", got.message)
 }
 
-// awaitOutcome blocks until the sync reaches a terminal status and reports it.
 func (s *sync) awaitOutcome(tt *testing.T) outcome {
 	tt.Helper()
 
 	got, err := wait.For(tt.Context(), func(ctx context.Context) (outcome, bool, error) {
-		res, rErr := s.proj.Tenant().Admin.API.GetGitHubSecretSyncWithResponse(ctx, s.ID)
-		if rErr != nil {
-			return outcome{}, false, rErr
+		res, err := s.proj.Tenant().Admin.API.GetGitHubSecretSyncWithResponse(ctx, s.ID)
+		if err != nil {
+			return outcome{}, false, err
 		}
 		if res.JSON200 == nil {
 			return outcome{}, false, nil
 		}
-
-		out := outcome{}
+		var out outcome
 		if v := res.JSON200.SecretSync.SyncStatus; v != nil {
 			out.status = *v
 		}
@@ -168,25 +148,6 @@ func (s *sync) awaitOutcome(tt *testing.T) outcome {
 		}
 		return out, out.status == "succeeded" || out.status == "failed", nil
 	})
-	if err != nil {
-		tt.Fatalf("syncs: %v", err)
-	}
+	require.NoError(tt, err, "waiting for the sync to finish")
 	return got
-}
-
-// triggerExpectingFailure runs the sync and returns how it ended, for the cases where
-// failing is the behaviour under test.
-func (s *sync) triggerExpectingFailure(tt *testing.T) (status, message string) {
-	tt.Helper()
-
-	res, err := s.proj.Tenant().Admin.API.SyncGitHubSecretSyncWithResponse(tt.Context(), s.ID)
-	if err != nil {
-		tt.Fatalf("syncs: triggering: %v", err)
-	}
-	if res.JSON200 == nil {
-		tt.Fatalf("syncs: triggering returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	}
-
-	got := s.awaitOutcome(tt)
-	return got.status, got.message
 }

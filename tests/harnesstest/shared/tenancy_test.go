@@ -5,21 +5,21 @@ import (
 
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTenant_IsIsolated(t *testing.T) {
 	t.Parallel()
-	spec.Why(t, `Slugs matter as much as ids here. A tenant's mail domain is derived from
-		its slug, so two tenants sharing one would read each other's invitations, and the
-		address-based isolation every email flow relies on would silently stop working.`)
+	spec.Why(t, `A tenant's mail domain derives from its slug, so a shared slug would
+		break address-based mail isolation silently.`)
 
+	// Setup
 	h := harness.From(t)
+
+	// Action
 	a, b := h.NewTenant(t), h.NewTenant(t)
 
-	if a.OrgID == b.OrgID {
-		t.Fatal("two tenants share an organization, so nothing is isolated")
-	}
-	if a.OrgSlug == b.OrgSlug {
-		t.Errorf("two tenants share a slug (%s), so their mail domains collide", a.OrgSlug)
-	}
+	// Assert
+	require.NotEqual(t, a.OrgID, b.OrgID)
+	require.NotEqual(t, a.OrgSlug, b.OrgSlug)
 }

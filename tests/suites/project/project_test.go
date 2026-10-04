@@ -1,47 +1,39 @@
 package project_test
 
 import (
-	"slices"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/stretchr/testify/require"
 )
 
 func TestProject_Create(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("ok/creates a project in the tenant's organization", func(t *testing.T) {
+	t.Run("should create the project in the caller's organization with default environments", func(t *testing.T) {
 		t.Parallel()
+
+		// Setup
 		tn := h.NewTenant(t)
 
+		// Action
 		res, err := tn.Admin.API.CreateProjectWithResponse(t.Context(), api.CreateProjectJSONRequestBody{
 			ProjectName: "app",
 		})
-		if err != nil {
-			t.Fatalf("creating a project: %v", err)
-		}
-		if res.JSON200 == nil {
-			t.Fatalf("creating a project returned %d: %s", res.StatusCode(), res.Body)
-		}
 
+		// Assert
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "creating a project returned %d: %s", res.StatusCode(), res.Body)
 		proj := res.JSON200.Project
-		if proj.OrgId != tn.OrgID {
-			t.Errorf("project landed in organization %s, want the caller's %s", proj.OrgId, tn.OrgID)
-		}
+		require.Equal(t, tn.OrgID, proj.OrgId)
 
-		// Creating a project provisions its environments. A project without them is
-		// not usable for anything, and the response is the only place a caller learns
-		// what the slugs are.
+		// The response is the only place a caller learns the environment slugs.
 		var envs []string
 		for _, e := range proj.Environments {
 			envs = append(envs, e.Slug)
 		}
-		for _, want := range []string{"dev", "staging", "prod"} {
-			if !slices.Contains(envs, want) {
-				t.Errorf("new project has environments %v, missing %q", envs, want)
-			}
-		}
+		require.Subset(t, envs, []string{"dev", "staging", "prod"})
 	})
 }

@@ -5,68 +5,57 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
-	"github.com/Infisical/infisical/tests/fixture/project"
-	"github.com/Infisical/infisical/tests/fixture/secret"
+	"github.com/Infisical/infisical/tests/fixture"
+	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
-	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSecret_Create(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("ok/a created secret reads back with its value", func(t *testing.T) {
+	t.Run("should read back a created secret with its value", func(t *testing.T) {
 		t.Parallel()
 
-		tn := h.NewTenant(t)
-		proj := project.New(t, tn, project.WithType("secret-manager"))
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
 
-		created := secret.Create(t, proj, "dev", "DB_URL", "postgres://localhost/app")
-		if created.Version != 1 {
-			t.Errorf("a new secret is at version %v, want 1", created.Version)
-		}
+		// Action
+		created := secretmanager.CreateSecret(t, proj, "dev", "DB_URL", "postgres://localhost/app")
 
-		got := secret.Get(t, proj, "dev", "DB_URL")
-		if got.Value != "postgres://localhost/app" {
-			t.Errorf("secret read back as %q, want postgres://localhost/app", got.Value)
-		}
-		if got.ValueHidden {
-			t.Error("the value came back hidden, so nothing downstream could use it")
-		}
-		if got.Path != "/" {
-			t.Errorf("secret is at path %q, want /", got.Path)
-		}
+		// Assert
+		require.EqualValues(t, 1, created.Version, "a new secret starts at version 1")
+		got := secretmanager.GetSecret(t, proj, "dev", "DB_URL")
+		require.Equal(t, "postgres://localhost/app", got.Value)
+		require.False(t, got.ValueHidden, "a hidden value is useless to anything downstream")
+		require.Equal(t, "/", got.Path)
 	})
 
-	t.Run("ok/the same name in two environments holds two values", func(t *testing.T) {
+	t.Run("should hold a separate value per environment when one name is created in two", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `Environments are the point of a secret manager: the same key carries a
-			different value per environment, and a create in one must not touch another.`)
 
-		tn := h.NewTenant(t)
-		proj := project.New(t, tn, project.WithType("secret-manager"))
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
 
-		secret.Create(t, proj, "dev", "API_KEY", "dev-value")
-		secret.Create(t, proj, "prod", "API_KEY", "prod-value")
+		// Action
+		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "dev-value")
+		secretmanager.CreateSecret(t, proj, "prod", "API_KEY", "prod-value")
 
-		if got := secret.Get(t, proj, "dev", "API_KEY"); got.Value != "dev-value" {
-			t.Errorf("dev holds %q, want dev-value", got.Value)
-		}
-		if got := secret.Get(t, proj, "prod", "API_KEY"); got.Value != "prod-value" {
-			t.Errorf("prod holds %q, want prod-value", got.Value)
-		}
+		// Assert
+		require.Equal(t, "dev-value", secretmanager.GetSecret(t, proj, "dev", "API_KEY").Value)
+		require.Equal(t, "prod-value", secretmanager.GetSecret(t, proj, "prod", "API_KEY").Value)
 	})
 
-	t.Run("conflict/creating the same name twice is refused", func(t *testing.T) {
+	t.Run("should refuse and keep the original when the same name is created twice", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `Create must not silently overwrite. If it did, a caller expecting to
-			add a secret could replace one already in use and never learn about it.`)
 
+		// Setup
 		tn := h.NewTenant(t)
-		proj := project.New(t, tn, project.WithType("secret-manager"))
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateSecret(t, proj, "dev", "TOKEN", "first")
 
-		secret.Create(t, proj, "dev", "TOKEN", "first")
-
+		// Action
 		res, err := tn.Admin.API.CreateSecretV4WithResponse(t.Context(), "TOKEN",
 			api.CreateSecretV4JSONRequestBody{
 				ProjectId:   proj.ID,
@@ -74,23 +63,22 @@ func TestSecret_Create(t *testing.T) {
 				SecretPath:  new("/"),
 				SecretValue: "second",
 			})
-		if err != nil {
-			t.Fatalf("creating a duplicate secret: %v", err)
-		}
-		if res.StatusCode() == http.StatusOK {
-			t.Fatal("creating a secret that already exists was allowed")
-		}
-		if got := secret.Get(t, proj, "dev", "TOKEN"); got.Value != "first" {
-			t.Errorf("the refused create still changed the value to %q", got.Value)
-		}
+
+		// Assert
+		require.NoError(t, err)
+		require.NotEqual(t, http.StatusOK, res.StatusCode(), "a duplicate create was allowed")
+		require.Equal(t, "first", secretmanager.GetSecret(t, proj, "dev", "TOKEN").Value,
+			"the refused create still changed the value")
 	})
 
-	t.Run("invalid/an unknown environment is refused", func(t *testing.T) {
+	t.Run("should refuse a secret when the environment does not exist", func(t *testing.T) {
 		t.Parallel()
 
+		// Setup
 		tn := h.NewTenant(t)
-		proj := project.New(t, tn, project.WithType("secret-manager"))
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 
+		// Action
 		res, err := tn.Admin.API.CreateSecretV4WithResponse(t.Context(), "STRAY",
 			api.CreateSecretV4JSONRequestBody{
 				ProjectId:   proj.ID,
@@ -98,20 +86,20 @@ func TestSecret_Create(t *testing.T) {
 				SecretPath:  new("/"),
 				SecretValue: "value",
 			})
-		if err != nil {
-			t.Fatalf("creating a secret in an unknown environment: %v", err)
-		}
-		if res.StatusCode() == http.StatusOK {
-			t.Fatal("a secret was created in an environment that does not exist")
-		}
+
+		// Assert
+		require.NoError(t, err)
+		require.NotEqual(t, http.StatusOK, res.StatusCode(), "a secret was created in an environment that does not exist")
 	})
 
-	t.Run("cross-tenant/another tenant's project is not writable", func(t *testing.T) {
+	t.Run("should refuse a write when the project belongs to another tenant", func(t *testing.T) {
 		t.Parallel()
 
+		// Setup
 		mine, theirs := h.NewTenant(t), h.NewTenant(t)
-		target := project.New(t, theirs, project.WithType("secret-manager"))
+		target := fixture.NewProject(t, theirs, fixture.WithProjectType("secret-manager"))
 
+		// Action
 		res, err := mine.Admin.API.CreateSecretV4WithResponse(t.Context(), "STOLEN",
 			api.CreateSecretV4JSONRequestBody{
 				ProjectId:   target.ID,
@@ -119,11 +107,10 @@ func TestSecret_Create(t *testing.T) {
 				SecretPath:  new("/"),
 				SecretValue: "value",
 			})
-		if err != nil {
-			t.Fatalf("writing into another tenant's project: %v", err)
-		}
-		if res.StatusCode() == http.StatusOK {
-			t.Fatalf("tenant %s wrote a secret into tenant %s's project", mine.OrgSlug, theirs.OrgSlug)
-		}
+
+		// Assert
+		require.NoError(t, err)
+		require.NotEqualf(t, http.StatusOK, res.StatusCode(),
+			"tenant %s wrote a secret into tenant %s's project", mine.OrgSlug, theirs.OrgSlug)
 	})
 }

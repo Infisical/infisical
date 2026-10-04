@@ -13,220 +13,186 @@ import (
 
 	"github.com/Infisical/infisical/tests/fakes/github"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/nacl/box"
 )
 
-// A fake is a plain http.Handler, so it is provable without Docker. That is the
-// intended development loop: write the fake here, then let the suite consume it
-// through the container.
-func newServer(t *testing.T) (*httptest.Server, *fakenet.Server) {
+const repo = "/repos/acme/app/actions/secrets"
+
+// A fake is a plain http.Handler, so it is provable without Docker.
+func newServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	srv := fakenet.New(github.Service)
-	ts := httptest.NewServer(srv)
+	ts := httptest.NewServer(fakenet.New(github.Service))
 	t.Cleanup(ts.Close)
-	return ts, srv
+	return ts
 }
 
-func do(t *testing.T, ts *httptest.Server, method, token, path string, body any) (int, []byte) {
+func send(t *testing.T, ts *httptest.Server, method, host, token, path string, body any) *http.Response {
 	t.Helper()
 	var r io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		r = bytes.NewReader(raw)
 	}
 	req, err := http.NewRequestWithContext(t.Context(), method, ts.URL+path, r)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Host = "api.github.com"
+	require.NoError(t, err)
+	req.Host = host
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	res, err := ts.Client().Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = res.Body.Close() }()
-	out, _ := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = res.Body.Close() })
+	return res
+}
+
+func do(t *testing.T, ts *httptest.Server, method, token, path string, body any) (int, []byte) {
+	t.Helper()
+	res := send(t, ts, method, "api.github.com", token, path, body)
+	out, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
 	return res.StatusCode, out
 }
 
-// seal encrypts the way the product does, so the test drives the fake through the
-// same wire format GitHub requires.
-func seal(t *testing.T, ts *httptest.Server, token, scope, value string) (string, string) {
+// seal encrypts the way the product does.
+func seal(t *testing.T, ts *httptest.Server, token, scope, value string) (encrypted, keyID string) {
 	t.Helper()
 	code, body := do(t, ts, http.MethodGet, token, scope+"/public-key", nil)
-	if code != http.StatusOK {
-		t.Fatalf("public-key returned %d: %s", code, body)
-	}
+	require.Equalf(t, http.StatusOK, code, "public-key: %s", body)
+
 	var pk struct {
 		KeyID string `json:"key_id"`
 		Key   string `json:"key"`
 	}
-	if err := json.Unmarshal(body, &pk); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, json.Unmarshal(body, &pk))
 	raw, err := base64.StdEncoding.DecodeString(pk.Key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	var pub [32]byte
 	copy(pub[:], raw)
 	sealed, err := box.SealAnonymous(nil, []byte(value), &pub, rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return base64.StdEncoding.EncodeToString(sealed), pk.KeyID
 }
 
-func TestGitHubFake_Secrets(t *testing.T) {
-	const repo = "/repos/acme/app/actions/secrets"
+func put(t *testing.T, ts *httptest.Server, token, name, encrypted, keyID string) (int, []byte) {
+	t.Helper()
+	return do(t, ts, http.MethodPut, token, repo+"/"+name,
+		map[string]string{"encrypted_value": encrypted, "key_id": keyID})
+}
 
-	t.Run("ok/a sealed value is stored as plaintext the test can read", func(t *testing.T) {
-		ts, _ := newServer(t)
+func TestGitHubFake_Secrets(t *testing.T) {
+	t.Run("should list a secret when a sealed value is stored", func(t *testing.T) {
+		// Setup
+		ts := newServer(t)
 		enc, keyID := seal(t, ts, "ghp_a", repo, "postgres://db/app")
 
-		code, body := do(t, ts, http.MethodPut, "ghp_a", repo+"/DB_URL",
-			map[string]string{"encrypted_value": enc, "key_id": keyID})
-		if code != http.StatusCreated {
-			t.Fatalf("PUT returned %d: %s", code, body)
-		}
+		// Action
+		code, body := put(t, ts, "ghp_a", "DB_URL", enc, keyID)
 
-		code, body = do(t, ts, http.MethodGet, "ghp_a", repo, nil)
-		if code != http.StatusOK {
-			t.Fatalf("list returned %d: %s", code, body)
-		}
-		if !bytes.Contains(body, []byte("DB_URL")) {
-			t.Errorf("list does not mention the secret: %s", body)
-		}
+		// Assert
+		require.Equalf(t, http.StatusCreated, code, "PUT: %s", body)
+		_, list := do(t, ts, http.MethodGet, "ghp_a", repo, nil)
+		require.Contains(t, string(list), "DB_URL")
 	})
 
-	t.Run("invalid/a value that is not a sealed box is refused", func(t *testing.T) {
-		ts, _ := newServer(t)
+	t.Run("should refuse a value when it is not a sealed box", func(t *testing.T) {
+		// Setup
+		ts := newServer(t)
 		_, keyID := seal(t, ts, "ghp_a", repo, "ignored")
+		plaintext := base64.StdEncoding.EncodeToString([]byte("postgres://db/app"))
 
-		// Plaintext, base64'd, which is what a sync that forgot to encrypt would send.
-		code, body := do(t, ts, http.MethodPut, "ghp_a", repo+"/DB_URL", map[string]string{
-			"encrypted_value": base64.StdEncoding.EncodeToString([]byte("postgres://db/app")),
-			"key_id":          keyID,
-		})
-		if code != http.StatusUnprocessableEntity {
-			t.Fatalf("PUT of plaintext returned %d, want 422: %s", code, body)
-		}
+		// Action
+		code, body := put(t, ts, "ghp_a", "DB_URL", plaintext, keyID)
+
+		// Assert
+		require.Equalf(t, http.StatusUnprocessableEntity, code, "PUT of plaintext: %s", body)
 	})
 
-	t.Run("ok/a deleted secret stops being listed", func(t *testing.T) {
-		ts, _ := newServer(t)
+	t.Run("should stop listing a secret when it is deleted", func(t *testing.T) {
+		// Setup
+		ts := newServer(t)
 		enc, keyID := seal(t, ts, "ghp_a", repo, "v")
-		do(t, ts, http.MethodPut, "ghp_a", repo+"/GONE", map[string]string{"encrypted_value": enc, "key_id": keyID})
+		put(t, ts, "ghp_a", "GONE", enc, keyID)
 
-		if code, body := do(t, ts, http.MethodDelete, "ghp_a", repo+"/GONE", nil); code != http.StatusNoContent {
-			t.Fatalf("DELETE returned %d: %s", code, body)
-		}
-		if _, body := do(t, ts, http.MethodGet, "ghp_a", repo, nil); bytes.Contains(body, []byte("GONE")) {
-			t.Errorf("a deleted secret is still listed: %s", body)
-		}
+		// Action
+		code, body := do(t, ts, http.MethodDelete, "ghp_a", repo+"/GONE", nil)
+
+		// Assert
+		require.Equalf(t, http.StatusNoContent, code, "DELETE: %s", body)
+		_, list := do(t, ts, http.MethodGet, "ghp_a", repo, nil)
+		require.NotContains(t, string(list), "GONE")
 	})
 
-	t.Run("cross-tenant/two credentials hold separate accounts", func(t *testing.T) {
-		ts, _ := newServer(t)
-		encA, keyA := seal(t, ts, "ghp_a", repo, "a-value")
-		do(t, ts, http.MethodPut, "ghp_a", repo+"/SHARED", map[string]string{"encrypted_value": encA, "key_id": keyA})
+	t.Run("should keep accounts apart when two credentials use one repository", func(t *testing.T) {
+		// Setup
+		ts := newServer(t)
+		enc, keyID := seal(t, ts, "ghp_a", repo, "a-value")
 
-		// Same repository path, different credential. This is the whole isolation
-		// story: one fakenet serves every parallel tenant.
-		if _, body := do(t, ts, http.MethodGet, "ghp_b", repo, nil); bytes.Contains(body, []byte("SHARED")) {
-			t.Errorf("credential b can see credential a's secret: %s", body)
-		}
+		// Action
+		put(t, ts, "ghp_a", "SHARED", enc, keyID)
+
+		// Assert
+		_, list := do(t, ts, http.MethodGet, "ghp_b", repo, nil)
+		require.NotContains(t, string(list), "SHARED", "credential b can see credential a's secret")
 	})
 
-	t.Run("ok/listing paginates and advertises the last page", func(t *testing.T) {
-		ts, _ := newServer(t)
+	t.Run("should reach every secret when the listing spans pages", func(t *testing.T) {
+		// Setup
+		ts := newServer(t)
 		enc, keyID := seal(t, ts, "ghp_a", repo, "v")
 		for i := range 150 {
-			do(t, ts, http.MethodPut, "ghp_a", fmt.Sprintf("%s/S%03d", repo, i),
-				map[string]string{"encrypted_value": enc, "key_id": keyID})
+			put(t, ts, "ghp_a", fmt.Sprintf("S%03d", i), enc, keyID)
 		}
 
-		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, ts.URL+repo+"?per_page=100", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		req.Host = "api.github.com"
-		req.Header.Set("Authorization", "Bearer ghp_a")
-		res, err := ts.Client().Do(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() { _ = res.Body.Close() }()
-
-		link := res.Header.Get("Link")
-		if link == "" {
-			t.Fatal("no Link header on a result that spans pages, so the client would never fetch page 2")
-		}
-		if !bytes.Contains([]byte(link), []byte(`rel="last"`)) {
-			t.Fatalf("Link header carries no rel=last, which is what the client parses for a page count: %s", link)
-		}
-
-		// Walk the pages the way makePaginatedGitHubRequest does, and check every
-		// secret is reachable. A fake that answered page 1 forever would pass a
-		// header check and fail this.
+		// Action: walk the pages the way makePaginatedGitHubRequest does.
+		first := send(t, ts, http.MethodGet, "api.github.com", "ghp_a", repo+"?per_page=100", nil)
 		seen := map[string]bool{}
 		for page := 1; page <= 2; page++ {
-			_, body := do(t, ts, http.MethodGet, "ghp_a",
-				fmt.Sprintf("%s?per_page=100&page=%d", repo, page), nil)
+			_, body := do(t, ts, http.MethodGet, "ghp_a", fmt.Sprintf("%s?per_page=100&page=%d", repo, page), nil)
 			var out struct {
 				TotalCount int `json:"total_count"`
 				Secrets    []struct {
 					Name string `json:"name"`
 				} `json:"secrets"`
 			}
-			if err := json.Unmarshal(body, &out); err != nil {
-				t.Fatal(err)
-			}
-			if out.TotalCount != 150 {
-				t.Errorf("page %d reports total_count %d, want 150", page, out.TotalCount)
-			}
+			require.NoError(t, json.Unmarshal(body, &out))
+			require.Equal(t, 150, out.TotalCount)
 			for _, s := range out.Secrets {
 				seen[s.Name] = true
 			}
 		}
-		if len(seen) != 150 {
-			t.Errorf("walking two pages found %d secrets, want 150", len(seen))
-		}
+
+		// Assert
+		require.Contains(t, first.Header.Get("Link"), `rel="last"`, "the client parses rel=last for a page count")
+		require.Len(t, seen, 150)
 	})
 }
 
 func TestFakenet_Dispatch(t *testing.T) {
-	t.Run("invalid/an unfaked host is refused by name", func(t *testing.T) {
-		ts, _ := newServer(t)
-		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, ts.URL+"/v1/accounts", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		req.Host = "api.checklyhq.com"
-		res, err := ts.Client().Do(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() { _ = res.Body.Close() }()
+	t.Run("should refuse by name when the host has no fake", func(t *testing.T) {
+		// Setup
+		ts := newServer(t)
 
-		if res.StatusCode != http.StatusNotImplemented {
-			t.Fatalf("an unfaked host returned %d, want 501", res.StatusCode)
-		}
-		body, _ := io.ReadAll(res.Body)
-		if !bytes.Contains(body, []byte("api.checklyhq.com")) {
-			t.Errorf("the refusal does not name the host, so a forgotten fake is hard to place: %s", body)
-		}
+		// Action
+		res := send(t, ts, http.MethodGet, "api.checklyhq.com", "", "/v1/accounts", nil)
+
+		// Assert
+		require.Equal(t, http.StatusNotImplemented, res.StatusCode)
+		body, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+		require.Contains(t, string(body), "api.checklyhq.com", "a refusal must name the host")
 	})
 
-	t.Run("invalid/a request with no credential is refused", func(t *testing.T) {
-		ts, _ := newServer(t)
-		if code, body := do(t, ts, http.MethodGet, "", "/user", nil); code != http.StatusNotImplemented {
-			t.Fatalf("returned %d, want 501: %s", code, body)
-		}
+	t.Run("should refuse when the request carries no credential", func(t *testing.T) {
+		// Setup
+		ts := newServer(t)
+
+		// Action
+		code, body := do(t, ts, http.MethodGet, "", "/user", nil)
+
+		// Assert
+		require.Equalf(t, http.StatusNotImplemented, code, "%s", body)
 	})
 }
