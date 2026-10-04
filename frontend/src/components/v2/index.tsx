@@ -20,7 +20,6 @@ export * from "./Lottie";
 export * from "./Menu";
 export * from "./Modal";
 export * from "./NoticeBannerV2";
-export * from "./PageHeader";
 export * from "./Pagination";
 export * from "./SecretInput";
 export * from "./Select";

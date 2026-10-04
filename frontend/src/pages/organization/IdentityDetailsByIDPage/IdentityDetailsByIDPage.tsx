@@ -6,7 +6,7 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
   OrgIcon
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
@@ -107,6 +108,7 @@ const Page = () => {
             {isSubOrganization ? "Sub-" : ""}Organization Machine Identities
           </Link>
           <PageHeader
+            className="mb-10"
             scope={isSubOrganization ? "namespace" : "org"}
             description={`Configure and manage${isScopeIdentity ? " machine identity and " : " "}${isSubOrganization ? "sub-" : ""}organization access control`}
             title={data.identity.name}

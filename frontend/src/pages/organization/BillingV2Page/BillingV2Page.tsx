@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects,
@@ -251,7 +251,12 @@ export const BillingV2Page = () => {
       </Helmet>
       <div className="mb-8 flex w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
-          <PageHeader scope="org" title={t("billing.title")} description={pageDescription} />
+          <PageHeader
+            className="mb-10"
+            scope="org"
+            title={t("billing.title")}
+            description={pageDescription}
+          />
           <OrgPermissionCan
             passThrough={false}
             I={OrgPermissionBillingActions.Read}

@@ -4,7 +4,6 @@ import { KeyRound } from "lucide-react";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
   Card,
   CardContent,
@@ -18,6 +17,7 @@ import {
   FieldTitle,
   Toggle
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -79,6 +79,7 @@ export const ProductSettingsPage = () => {
       <div className="h-full">
         <div className="mx-auto h-full w-full max-w-8xl bg-page text-foreground-inverse">
           <PageHeader
+            className="mb-10"
             scope={ProjectType.SecretManager}
             title="Product Settings"
             description="Configure organization-wide settings for secrets management projects."
