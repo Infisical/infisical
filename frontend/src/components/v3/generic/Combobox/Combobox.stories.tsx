@@ -3,6 +3,7 @@ import {
   createContext,
   type FormEvent,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -692,10 +693,18 @@ const InDialogRender = () => {
   );
   const [parentSubmitCount, setParentSubmitCount] = useState(0);
   const openPopups = useRef(new Set<string>());
-  const onPopupOpenChange = (field: string, open: boolean) => {
+  const onPopupOpenChange = useCallback((field: string, open: boolean) => {
     if (open) openPopups.current.add(field);
     else openPopups.current.delete(field);
-  };
+  }, []);
+  const onRolePopupOpenChange = useCallback(
+    (open: boolean) => onPopupOpenChange("role", open),
+    [onPopupOpenChange]
+  );
+  const onTagPopupOpenChange = useCallback(
+    (open: boolean) => onPopupOpenChange("tag", open),
+    [onPopupOpenChange]
+  );
 
   return (
     <Dialog>
@@ -732,7 +741,7 @@ const InDialogRender = () => {
               searchPlaceholder="Search roles..."
               searchAriaLabel="Search organization roles"
               modal
-              onPopupOpenChange={(open) => onPopupOpenChange("role", open)}
+              onPopupOpenChange={onRolePopupOpenChange}
               renderOption={(option) => (
                 <div className="min-w-0">
                   <p className="truncate">{option.name}</p>
@@ -743,7 +752,7 @@ const InDialogRender = () => {
               )}
             />
           </Field>
-          <NestedDialogCreationField onPopupOpenChange={(open) => onPopupOpenChange("tag", open)} />
+          <NestedDialogCreationField onPopupOpenChange={onTagPopupOpenChange} />
           <p role="status">Parent form submits: {parentSubmitCount}</p>
         </form>
       </DialogContent>
@@ -757,7 +766,7 @@ export const InDialog: Story = {
     docs: {
       description: {
         story:
-          "Set `modal` inside a modal Dialog to preserve focus containment and scroll access. Use `onPopupOpenChange` to track each child popup in a caller-owned registry, and prevent the parent's `onEscapeKeyDown` only while a popup is open. Base UI still owns popup dismissal; the next Escape reaches the parent. The callback reports logical open state and resets on unmount, not at the end of the popup's closing animation. A dialog creation form stops its submit event at the shared creation-dialog boundary, so React portal propagation cannot submit an ancestor form."
+          "Set `modal` inside a modal Dialog to preserve focus containment and scroll access. Use `onPopupOpenChange` to track each option popup in a caller-owned registry, and prevent the parent's `onEscapeKeyDown` only while an option popup is open. Base UI still owns option-popup dismissal; after the option popup closes, the next Escape reaches the parent. This composition does not coordinate creation-dialog admission or native exit lifetimes. The callback reports logical option-popup state and resets on unmount, not at the end of the popup's closing animation. A dialog creation form stops its submit event at the shared creation-dialog boundary, so React portal propagation cannot submit an ancestor form."
       }
     }
   },
