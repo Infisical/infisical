@@ -19,6 +19,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./Tooltip";
  * users need to select and copy informational text, such as a failure reason.
  * This opt-in keeps the tooltip open while the pointer moves into its content;
  * ordinary tooltips remain nonselectable and close on leaving the trigger.
+ * Use `<Tooltip hoverable>` to preserve pointer residence for informational
+ * hints without enabling text selection. `selectable` implies hoverability.
  *
  * **Prefer `HoverCard`** when the hint needs rich content — multi-paragraph
  * descriptions, links, structured metadata about a referenced entity. Tooltip
@@ -48,6 +50,12 @@ const meta = {
         "Allows hover transfer and text selection/copy for brief informational content only. Do not add links, buttons, or form controls.",
       table: { defaultValue: { summary: "false" } }
     },
+    hoverable: {
+      control: "boolean",
+      description:
+        "Allows pointer residence over informational content without enabling text selection. Selectable content is always hoverable. Do not add interactive controls.",
+      table: { defaultValue: { summary: "false" } }
+    },
     open: {
       table: {
         disable: true
@@ -64,7 +72,7 @@ const meta = {
       }
     }
   },
-  args: { delayDuration: 0, defaultOpen: false, selectable: false }
+  args: { delayDuration: 0, defaultOpen: false, selectable: false, hoverable: false }
 } satisfies Meta<typeof Tooltip>;
 
 export default meta;
@@ -130,6 +138,29 @@ export const SelectableContent: Story = {
       </TooltipTrigger>
       <TooltipContent className="max-w-64">
         Scan stopped: example repository is unavailable.
+      </TooltipContent>
+    </Tooltip>
+  )
+};
+
+export const HoverableContent: Story = {
+  name: "Example: Hoverable Informational Text",
+  args: { hoverable: true },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Set `hoverable` on `Tooltip` to let users move the pointer into a brief informational hint and keep it open without making its text selectable. Use this opt-in when preserving legacy tooltip hover residence. `selectable` also enables hoverability, even if `hoverable` is false. Ordinary tooltips keep their existing trigger-leave dismissal. Neither opt-in permits links, buttons, forms, or other interactive controls."
+      }
+    }
+  },
+  render: (args) => (
+    <Tooltip {...args}>
+      <TooltipTrigger asChild>
+        <Button variant="outline">Key Status</Button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64">
+        This example key is active and available for encryption.
       </TooltipContent>
     </Tooltip>
   )
