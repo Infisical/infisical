@@ -162,16 +162,24 @@ const clearSingleComboboxValue = <TOption,>(props: ComboboxSingleProps<TOption>)
 
 const useComboboxOpen = (onPopupOpenChange?: (open: boolean) => void) => {
   const [open, setOpen] = React.useState(false);
+  const observerRef = React.useRef(onPopupOpenChange);
+  const hasObserver = Boolean(onPopupOpenChange);
 
   React.useLayoutEffect(() => {
-    onPopupOpenChange?.(open);
-  }, [open, onPopupOpenChange]);
+    const previousObserver = observerRef.current;
+    observerRef.current = onPopupOpenChange;
+    if (previousObserver && !onPopupOpenChange) previousObserver(false);
+  }, [onPopupOpenChange]);
+
+  React.useLayoutEffect(() => {
+    observerRef.current?.(open);
+  }, [open, hasObserver]);
 
   React.useLayoutEffect(
     () => () => {
-      onPopupOpenChange?.(false);
+      observerRef.current?.(false);
     },
-    [onPopupOpenChange]
+    []
   );
 
   return [open, setOpen] as const;
