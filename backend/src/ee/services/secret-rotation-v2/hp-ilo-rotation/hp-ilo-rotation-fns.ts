@@ -279,8 +279,15 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
 
   const sendRequest = async <T = unknown>(
     path: string,
-    requestConfig: Omit<AxiosRequestConfig, "url">
+    baseRequestConfig: Omit<AxiosRequestConfig, "url">
   ): Promise<AxiosResponse<T>> => {
+    // iLO drops idle keep-alive connections almost immediately, while safeRequest's cached agents keep sockets open
+    // for reuse; a reused socket then fails with "socket hang up", so every request asks for its connection to close
+    const requestConfig = {
+      ...baseRequestConfig,
+      headers: { ...baseRequestConfig.headers, Connection: "close" }
+    };
+
     if (config.gatewayId) {
       const platformConnectionDetails = await getConnectionDetails(config.gatewayId);
 
