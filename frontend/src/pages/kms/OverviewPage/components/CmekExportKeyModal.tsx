@@ -2,7 +2,8 @@ import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import FileSaver from "file-saver";
 
-import { IconButton, Modal, ModalContent, Spinner, Tooltip } from "@app/components/v2";
+import { Modal, ModalContent } from "@app/components/v2";
+import { IconButton, Spinner, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import {
   ProjectPermissionCmekActions,
   ProjectPermissionSub,
@@ -74,7 +75,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Spinner size="lg" />
+        <Spinner size="lg" label="Loading key material" />
       </div>
     );
   }
@@ -85,39 +86,45 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
         <>
           <div className="mb-4 flex items-center justify-between">
             <h2>{isAsymmetricKey ? "Private Key (Base64)" : "Key Material (Base64)"}</h2>
-            <div className="flex">
-              <Tooltip content={copyPrivateKeyText}>
-                <IconButton
-                  ariaLabel="copy icon"
-                  colorSchema="secondary"
-                  className="group relative"
-                  onClick={() => {
-                    navigator.clipboard.writeText(privateKeyData?.privateKey ?? "");
-                    setCopyPrivateKeyText("Copied");
-                  }}
-                >
-                  <FontAwesomeIcon icon={isCopyingPrivateKey ? faCheck : faCopy} />
-                </IconButton>
+            <div className="flex gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    aria-label={isAsymmetricKey ? "Copy Private Key" : "Copy Key Material"}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(privateKeyData?.privateKey ?? "");
+                      setCopyPrivateKeyText("Copied");
+                    }}
+                  >
+                    <FontAwesomeIcon icon={isCopyingPrivateKey ? faCheck : faCopy} />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>{copyPrivateKeyText}</TooltipContent>
               </Tooltip>
-              <Tooltip content="Download">
-                <IconButton
-                  ariaLabel="download icon"
-                  colorSchema="secondary"
-                  className="group relative ml-2"
-                  onClick={() => {
-                    downloadTxtFile(
-                      `${cmek.name}_${isAsymmetricKey ? "private_key" : "key_material"}`,
-                      privateKeyData?.privateKey ?? ""
-                    );
-                  }}
-                >
-                  <FontAwesomeIcon icon={faDownload} />
-                </IconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    aria-label={isAsymmetricKey ? "Download Private Key" : "Download Key Material"}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      downloadTxtFile(
+                        `${cmek.name}_${isAsymmetricKey ? "private_key" : "key_material"}`,
+                        privateKeyData?.privateKey ?? ""
+                      );
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faDownload} />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Download</TooltipContent>
               </Tooltip>
             </div>
           </div>
-          <div className="mb-8 flex items-center justify-between rounded-md bg-foreground-inverse/[0.07] p-2 text-base text-muted-cool">
-            <p className="mr-4 break-all whitespace-pre-wrap">{privateKeyData?.privateKey}</p>
+          <div className="mb-8 rounded-md border border-border bg-container p-2 text-sm text-foreground">
+            <p className="font-mono break-all whitespace-pre-wrap">{privateKeyData?.privateKey}</p>
           </div>
         </>
       )}
@@ -126,36 +133,42 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
         <>
           <div className="mb-4 flex items-center justify-between">
             <h2>Public Key (Base64)</h2>
-            <div className="flex">
-              <Tooltip content={copyPublicKeyText}>
-                <IconButton
-                  ariaLabel="copy icon"
-                  colorSchema="secondary"
-                  className="group relative"
-                  onClick={() => {
-                    navigator.clipboard.writeText(publicKeyData?.publicKey ?? "");
-                    setCopyPublicKeyText("Copied");
-                  }}
-                >
-                  <FontAwesomeIcon icon={isCopyingPublicKey ? faCheck : faCopy} />
-                </IconButton>
+            <div className="flex gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    aria-label="Copy Public Key"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(publicKeyData?.publicKey ?? "");
+                      setCopyPublicKeyText("Copied");
+                    }}
+                  >
+                    <FontAwesomeIcon icon={isCopyingPublicKey ? faCheck : faCopy} />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>{copyPublicKeyText}</TooltipContent>
               </Tooltip>
-              <Tooltip content="Download">
-                <IconButton
-                  ariaLabel="download icon"
-                  colorSchema="secondary"
-                  className="group relative ml-2"
-                  onClick={() => {
-                    downloadTxtFile(`${cmek.name}_public_key`, publicKeyData?.publicKey ?? "");
-                  }}
-                >
-                  <FontAwesomeIcon icon={faDownload} />
-                </IconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    aria-label="Download Public Key"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      downloadTxtFile(`${cmek.name}_public_key`, publicKeyData?.publicKey ?? "");
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faDownload} />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Download</TooltipContent>
               </Tooltip>
             </div>
           </div>
-          <div className="mb-8 flex items-center justify-between rounded-md bg-foreground-inverse/[0.07] p-2 text-base text-muted-cool">
-            <p className="mr-4 break-all whitespace-pre-wrap">{publicKeyData?.publicKey}</p>
+          <div className="mb-8 rounded-md border border-border bg-container p-2 text-sm text-foreground">
+            <p className="font-mono break-all whitespace-pre-wrap">{publicKeyData?.publicKey}</p>
           </div>
         </>
       )}
