@@ -42,11 +42,13 @@ import {
 
 import {
   byDisplayOrder,
+  cadenceLabel,
   commitSavingsNudge,
   dimCommitted,
   dimMonthlyRate,
   dimOnDemandQuantity,
   fmtMoney,
+  nextChargeProductLabel,
   productAnnualCommitted,
   tierLabel
 } from "../billing-v2-format";
@@ -278,6 +280,7 @@ const ProductOverviewCard = ({
           <CardTitle>
             {prod.name}
             {ent.isTrialing && <Badge variant="info">Trial</Badge>}
+            {!ent.isTrialing && <Badge variant="success">Active</Badge>}
             {prod.addon && <Badge variant="neutral">Add-on</Badge>}
           </CardTitle>
         </div>
@@ -316,6 +319,13 @@ const ProductOverviewCard = ({
                 )}
               </div>
             )}
+            {nudge && (
+              <span className="text-xs text-muted">
+                Annual option:{" "}
+                <span className="text-foreground">{fmtMoney(nudge.annualCommitted)} / yr</span>
+                {` · save ~${nudge.savingsPct}%`}
+              </span>
+            )}
           </div>
           <ProductPlanMenu
             prod={prod}
@@ -327,19 +337,26 @@ const ProductOverviewCard = ({
           />
         </div>
         {trialPlanName && (
-          <p className="text-xs text-muted">
-            Trialing {trialPlanName}
-            {ent.trialPlanPaymentDueAt ? (
-              <span className="text-warning">
-                {` · access until ${ent.trialPlanPaymentDueAt}; confirm payment to upgrade.`}
-              </span>
-            ) : (
-              <>
-                {ent.trialPlanEndsAt ? ` until ${ent.trialPlanEndsAt}` : ""}; upgrades automatically
-                when the trial ends.
-              </>
-            )}
-          </p>
+          <div className="flex flex-col gap-1 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-accent">Trialing {trialPlanName}</span>
+              {ent.trialPlanPaymentDueAt && <span className="text-warning">Payment needed</span>}
+              {!ent.trialPlanPaymentDueAt &&
+                ent.trialPlanDaysLeft !== null &&
+                ent.trialPlanDaysLeft !== undefined && (
+                  <span className="text-warning">
+                    {ent.trialPlanDaysLeft === 0
+                      ? "Ends today"
+                      : `${ent.trialPlanDaysLeft} day${ent.trialPlanDaysLeft === 1 ? "" : "s"} left`}
+                  </span>
+                )}
+            </div>
+            <span className={ent.trialPlanPaymentDueAt ? "text-warning" : "text-muted"}>
+              {ent.trialPlanPaymentDueAt
+                ? `Access until ${ent.trialPlanPaymentDueAt} · confirm payment to upgrade.`
+                : `${ent.trialPlanEndsAt ? `Ends ${ent.trialPlanEndsAt} · ` : ""}Upgrades automatically when the trial ends.`}
+            </span>
+          </div>
         )}
         {prod.includes && prod.includes.length > 0 && (
           <ul className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm @lg:grid-cols-2">
@@ -559,6 +576,13 @@ export const TabbedOverview = ({
   const { billing, entitlements } = overview;
   const isManaged = overview.mode === "managed";
   const isSubscribed = overview.subState !== "no-subscription";
+  const accountStatus = {
+    active: { label: "Active", variant: "success" },
+    trialing: { label: "Trial", variant: "info" },
+    "past-due": { label: "Past Due", variant: "warning" },
+    suspended: { label: "Suspended", variant: "danger" },
+    "no-subscription": { label: "None", variant: "neutral" }
+  } as const;
   const hasBillingHistory =
     Boolean(overview.payment) || Boolean(overview.billingDetails) || overview.invoices.length > 0;
   const showPayment = overview.isCloud && !isManaged;
@@ -689,13 +713,34 @@ export const TabbedOverview = ({
                   )}
                   {!isManaged && isSubscribed && (
                     <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={accountStatus[overview.subState].variant}>
+                          {accountStatus[overview.subState].label}
+                        </Badge>
+                        <span className="text-xs text-muted">
+                          {billing.activeProductCount} active{" "}
+                          {billing.activeProductCount === 1 ? "product" : "products"}
+                        </span>
+                      </div>
                       <Metric
                         label="Next Charge"
                         value={billing.nextCharge ? fmtMoney(billing.nextCharge.amount) : "—"}
                         note={
-                          billing.nextCharge
-                            ? `${billing.nextCharge.at}${billing.nextCharge.hasUsage ? " · includes usage" : ""}`
-                            : "Nothing due"
+                          billing.nextCharge ? (
+                            <span className="flex flex-col gap-1">
+                              <span>{`${billing.nextCharge.at}${billing.nextCharge.hasUsage ? " · includes usage" : ""}`}</span>
+                              <span>
+                                {[
+                                  nextChargeProductLabel(catalog, billing.nextCharge.productKeys),
+                                  cadenceLabel(billing.nextCharge.cadence)
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </span>
+                            </span>
+                          ) : (
+                            "Nothing due"
+                          )
                         }
                       />
                       <Metric
