@@ -5,6 +5,12 @@ on:
         types: [opened, synchronize]
         paths:
             - "backend/**"
+            - ".npmrc"
+            - ".nvmrc"
+            - "build-versions.env"
+            - "scripts/check-node-toolchain.mjs"
+            - ".github/actions/setup-node-toolchain/**"
+            - ".github/workflows/validate-db-schemas.yml"
 
     workflow_call:
 
@@ -29,17 +35,16 @@ jobs:
               name: Install `docker compose` for local simulations
               with:
                   version: "2.14.2"
-            - name: 🔧 Setup Node 22
-              uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3 latest (consider upgrading to v4)
+            - name: 🔧 Setup Node toolchain
+              uses: ./.github/actions/setup-node-toolchain
               with:
-                  node-version: "22"
                   cache: "npm"
                   cache-dependency-path: backend/package-lock.json
 
             - name: Start PostgreSQL and Redis
               run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
             - name: Install dependencies
-              run: npm install
+              run: npm ci
               working-directory: backend
 
             - name: Apply migrations
