@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheckCircle, faFileSignature, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -6,17 +7,25 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Button,
   FormControl,
   Modal,
   ModalClose,
   ModalContent,
   Select,
-  SelectItem,
-  Switch,
-  TextArea,
-  Tooltip
+  SelectItem
 } from "@app/components/v2";
+import {
+  Button,
+  Field,
+  FieldError,
+  FieldLabel,
+  IconButton,
+  TextArea,
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { useTimedReset } from "@app/hooks";
 import { SigningAlgorithm, TCmek, useCmekSign } from "@app/hooks/api/cmeks";
@@ -39,6 +48,7 @@ type FormProps = Pick<Props, "cmek">;
 
 const SignForm = ({ cmek }: FormProps) => {
   const cmekSign = useCmekSign();
+  const fieldId = useId();
 
   const {
     handleSubmit,
@@ -82,24 +92,24 @@ const SignForm = ({ cmek }: FormProps) => {
   return (
     <form onSubmit={handleSubmit(handleSignData)}>
       {signature ? (
-        <FormControl label="Data Signature">
-          <TextArea
-            className="max-h-80 min-h-40 max-w-full min-w-full"
-            isDisabled
-            value={signature}
-          />
-        </FormControl>
+        <Field className="mb-4">
+          <FieldLabel htmlFor={`${fieldId}-signature`}>Data Signature</FieldLabel>
+          <TextArea id={`${fieldId}-signature`} rows={4} readOnly value={signature} />
+        </Field>
       ) : (
         <>
-          <FormControl
-            label="Data to Sign"
-            errorText={errors.data?.message}
-            isError={Boolean(errors.data)}
-          >
-            <TextArea {...register("data")} className="max-h-80 min-h-40 max-w-full min-w-full" />
-          </FormControl>
+          <Field className="mb-4" data-invalid={Boolean(errors.data)}>
+            <FieldLabel htmlFor={`${fieldId}-data`}>Data to Sign</FieldLabel>
+            <TextArea
+              {...register("data")}
+              id={`${fieldId}-data`}
+              isError={Boolean(errors.data)}
+              aria-describedby={errors.data ? `${fieldId}-data-error` : undefined}
+            />
+            <FieldError id={`${fieldId}-data-error`} errors={[errors.data]} />
+          </Field>
 
-          <div className="mb-6 flex w-full items-center justify-between gap-2">
+          <div className="mb-6 flex flex-col gap-2">
             <Controller
               control={control}
               name="signingAlgorithm"
@@ -120,22 +130,43 @@ const SignForm = ({ cmek }: FormProps) => {
               control={control}
               name="isBase64Encoded"
               render={({ field: { onChange, value } }) => (
-                <Switch id="encode-base-64" isChecked={value} onCheckedChange={onChange}>
-                  Data is Base64 encoded{" "}
-                  <Tooltip content="Toggle this switch on if your data is already Base64 encoded to avoid redundant encoding.">
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+                <Field orientation="horizontal">
+                  <Toggle
+                    id={`${fieldId}-encode-base-64`}
+                    checked={value}
+                    onCheckedChange={onChange}
+                  />
+                  <FieldLabel htmlFor={`${fieldId}-encode-base-64`}>
+                    Data is Base64 encoded
+                  </FieldLabel>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <IconButton variant="ghost" size="xs" aria-label="About Base64 encoding">
+                        <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      Toggle this switch on if your data is already Base64 encoded to avoid
+                      redundant encoding.
+                    </TooltipContent>
                   </Tooltip>
-                </Switch>
+                </Field>
               )}
             />
           </div>
         </>
       )}
-      <div className="flex items-center">
+      <div className="flex flex-wrap items-center gap-4">
         <Button
-          className={`mr-4 ${signature ? "w-44" : ""}`}
+          className={signature ? "w-44" : undefined}
           size="sm"
-          leftIcon={
+          variant="project"
+          onClick={signature ? handleCopyToClipboard : undefined}
+          type={signature ? "button" : "submit"}
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
+          {
             // eslint-disable-next-line no-nested-ternary
             signature ? (
               isCopyingSignature ? (
@@ -147,17 +178,10 @@ const SignForm = ({ cmek }: FormProps) => {
               <FontAwesomeIcon icon={faFileSignature} />
             )
           }
-          onClick={signature ? handleCopyToClipboard : undefined}
-          type={signature ? "button" : "submit"}
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
           {signature ? copySignature : "Sign"}
         </Button>
         <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            {signature ? "Close" : "Cancel"}
-          </Button>
+          <Button variant="ghost">{signature ? "Close" : "Cancel"}</Button>
         </ModalClose>
       </div>
     </form>
