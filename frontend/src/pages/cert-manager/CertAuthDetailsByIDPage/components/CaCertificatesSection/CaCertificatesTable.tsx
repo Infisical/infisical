@@ -30,9 +30,10 @@ import { useGetCaCerts } from "@app/hooks/api";
 type Props = {
   caId: string;
   caName: string;
+  isRootCa: boolean;
 };
 
-export const CaCertificatesTable = ({ caId, caName }: Props) => {
+export const CaCertificatesTable = ({ caId, caName, isRootCa }: Props) => {
   const { data: caCerts, isPending } = useGetCaCerts(caId);
 
   const downloadTxtFile = (filename: string, content: string) => {
@@ -109,24 +110,26 @@ export const CaCertificatesTable = ({ caId, caName }: Props) => {
                         </DropdownMenuItem>
                       )}
                     </ProjectPermissionCan>
-                    <ProjectPermissionCan
-                      I={ProjectPermissionCertificateAuthorityActions.Read}
-                      a={subject(ProjectPermissionSub.CertificateAuthorities, {
-                        name: caName
-                      })}
-                    >
-                      {(isAllowed) => (
-                        <DropdownMenuItem
-                          isDisabled={!isAllowed}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            downloadTxtFile("chain.pem", caCert.certificateChain);
-                          }}
-                        >
-                          Download CA Certificate Chain
-                        </DropdownMenuItem>
-                      )}
-                    </ProjectPermissionCan>
+                    {!isRootCa && (
+                      <ProjectPermissionCan
+                        I={ProjectPermissionCertificateAuthorityActions.Read}
+                        a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                          name: caName
+                        })}
+                      >
+                        {(isAllowed) => (
+                          <DropdownMenuItem
+                            isDisabled={!isAllowed}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              downloadTxtFile("chain.pem", caCert.certificateChain);
+                            }}
+                          >
+                            Download CA Certificate Chain
+                          </DropdownMenuItem>
+                        )}
+                      </ProjectPermissionCan>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
