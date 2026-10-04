@@ -86,6 +86,7 @@ type ComboboxSharedProps<TOption> = {
   isLoading?: boolean;
   isError?: boolean;
   modal?: boolean;
+  onPopupOpenChange?: (open: boolean) => void;
   portalContainer?: HTMLElement | React.RefObject<HTMLElement | null> | null;
   contentClassName?: string;
   onInputValueChange?: (inputValue: string) => void;
@@ -157,6 +158,23 @@ const clearSingleComboboxValue = <TOption,>(props: ComboboxSingleProps<TOption>)
   }
 
   if (props.isClearable !== false) props.onValueChange(null);
+};
+
+const useComboboxOpen = (onPopupOpenChange?: (open: boolean) => void) => {
+  const [open, setOpen] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    onPopupOpenChange?.(open);
+  }, [open, onPopupOpenChange]);
+
+  React.useLayoutEffect(
+    () => () => {
+      onPopupOpenChange?.(false);
+    },
+    [onPopupOpenChange]
+  );
+
+  return [open, setOpen] as const;
 };
 
 const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
@@ -815,6 +833,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     isLoading = false,
     isError = false,
     modal = false,
+    onPopupOpenChange,
     portalContainer: portalContainerProp,
     variant = "default",
     className,
@@ -832,7 +851,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
   const highlightedOptionValueRef = React.useRef<string | null>(null);
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useComboboxOpen(onPopupOpenChange);
   const selectedLabel = value == null ? "" : getOptionLabel(value);
   const [search, setSearch] = React.useState("");
   const searchRef = React.useRef(search);
@@ -1204,6 +1223,7 @@ const MultipleCombobox = <TOption,>({
   isLoading = false,
   isError = false,
   modal = false,
+  onPopupOpenChange,
   portalContainer: portalContainerProp,
   className,
   contentClassName,
@@ -1223,7 +1243,7 @@ const MultipleCombobox = <TOption,>({
   const { scrollEdges, setViewportRef } = useScrollEdges<HTMLDivElement>(
     singleLine ? "horizontal" : "vertical"
   );
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useComboboxOpen(onPopupOpenChange);
   const openRef = React.useRef(open);
   openRef.current = open;
   const [search, setSearch] = React.useState("");
