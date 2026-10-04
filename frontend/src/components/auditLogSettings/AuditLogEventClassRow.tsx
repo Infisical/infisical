@@ -50,7 +50,7 @@ export const AuditLogEventClassRow = ({
   );
 
   return (
-    <Field orientation="horizontal" className="gap-8 px-6 py-6">
+    <Field orientation="horizontal">
       <FieldContent>
         <FieldTitle>
           <label htmlFor={id}>{auditLogEventClassToNameMap[eventClass]}</label>

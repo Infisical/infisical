@@ -94,14 +94,14 @@ export const AuditLogsRetentionSection = () => {
   return (
     <>
       <form onSubmit={handleSubmit(handleAuditLogsRetentionSubmit)} autoComplete="off">
-        <Card className="gap-0 overflow-hidden p-0">
-          <CardHeader className="border-b p-6">
+        <Card>
+          <CardHeader>
             <CardTitle>Audit Logs Retention</CardTitle>
             <CardDescription>
               Set the number of days to keep your project audit logs.
             </CardDescription>
           </CardHeader>
-          <CardContent className="max-w-xs p-6">
+          <CardContent>
             <Controller
               control={control}
               defaultValue={0}
@@ -123,7 +123,7 @@ export const AuditLogsRetentionSection = () => {
               )}
             />
           </CardContent>
-          <CardFooter className="min-h-8 justify-end border-t p-4">
+          <CardFooter className="justify-end">
             <Button
               variant="project"
               size="sm"

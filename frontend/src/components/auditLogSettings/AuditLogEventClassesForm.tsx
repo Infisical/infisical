@@ -9,11 +9,13 @@ import {
   AlertDescription,
   Button,
   Card,
+  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
   DocumentationLinkBadge,
+  FieldGroup,
   Skeleton
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
@@ -115,74 +117,76 @@ export const AuditLogEventClassesForm = ({
           <AlertDescription>{readOnlyMessage}</AlertDescription>
         </Alert>
       )}
-      <Card className="gap-0 overflow-hidden p-0">
-        <CardHeader className="border-b p-6">
+      <Card>
+        <CardHeader>
           <CardTitle>
             {title}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
           </CardTitle>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
-        {isError && (
-          <p className="p-6 text-sm text-muted">
-            Couldn&apos;t load the audit log settings. Refresh the page to try again.
-          </p>
-        )}
-        {!isError &&
-          (isPending ? (
-            <div className="space-y-4 p-6">
-              {AUDIT_LOG_EVENT_CLASSES.map((eventClass) => (
-                <Skeleton key={eventClass} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {AUDIT_LOG_EVENT_CLASSES.map((eventClass) => {
-                const isAlwaysRecorded =
-                  ALWAYS_RECORDED_AUDIT_LOG_EVENT_CLASSES.includes(eventClass);
-                const isAuthorization = eventClass === AuditLogEventClass.Authorization;
-                const isLocked = isAuthorization && !shouldUseNewPrivilegeSystem;
-                let lockedReason: string | undefined;
-                if (isAlwaysRecorded)
-                  lockedReason = `${auditLogEventClassToNameMap[eventClass]} events are always recorded`;
-                else if (isLocked) lockedReason = REQUIRES_NEW_PRIVILEGE_SYSTEM;
-                return (
-                  <Controller
-                    key={eventClass}
-                    control={control}
-                    name={eventClass}
-                    render={({ field }) => (
-                      <AuditLogEventClassRow
-                        eventClass={eventClass}
-                        isEnabled={isAlwaysRecorded || (!isLocked && field.value)}
-                        variant={variant}
-                        isDisabled={!canEdit}
-                        lockedReason={lockedReason}
-                        onCheckedChange={field.onChange}
-                        descriptionExtra={
-                          isLocked ? (
-                            <>
-                              Denials are only recorded on the new privilege system.{" "}
-                              <Link
-                                to="/organizations/$orgId/access-management"
-                                params={{ orgId: currentOrg.id }}
-                                className="underline underline-offset-2 hover:text-foreground"
-                              >
-                                Upgrade the privilege system
-                              </Link>{" "}
-                              in Access Control to enable this class.
-                            </>
-                          ) : undefined
-                        }
-                      />
-                    )}
-                  />
-                );
-              })}
-            </div>
-          ))}
+        <CardContent>
+          {isError && (
+            <p className="text-sm text-muted">
+              Couldn&apos;t load the audit log settings. Refresh the page to try again.
+            </p>
+          )}
+          {!isError &&
+            (isPending ? (
+              <FieldGroup>
+                {AUDIT_LOG_EVENT_CLASSES.map((eventClass) => (
+                  <Skeleton key={eventClass} className="h-12 w-full" />
+                ))}
+              </FieldGroup>
+            ) : (
+              <FieldGroup>
+                {AUDIT_LOG_EVENT_CLASSES.map((eventClass) => {
+                  const isAlwaysRecorded =
+                    ALWAYS_RECORDED_AUDIT_LOG_EVENT_CLASSES.includes(eventClass);
+                  const isAuthorization = eventClass === AuditLogEventClass.Authorization;
+                  const isLocked = isAuthorization && !shouldUseNewPrivilegeSystem;
+                  let lockedReason: string | undefined;
+                  if (isAlwaysRecorded)
+                    lockedReason = `${auditLogEventClassToNameMap[eventClass]} events are always recorded`;
+                  else if (isLocked) lockedReason = REQUIRES_NEW_PRIVILEGE_SYSTEM;
+                  return (
+                    <Controller
+                      key={eventClass}
+                      control={control}
+                      name={eventClass}
+                      render={({ field }) => (
+                        <AuditLogEventClassRow
+                          eventClass={eventClass}
+                          isEnabled={isAlwaysRecorded || (!isLocked && field.value)}
+                          variant={variant}
+                          isDisabled={!canEdit}
+                          lockedReason={lockedReason}
+                          onCheckedChange={field.onChange}
+                          descriptionExtra={
+                            isLocked ? (
+                              <>
+                                Denials are only recorded on the new privilege system.{" "}
+                                <Link
+                                  to="/organizations/$orgId/access-management"
+                                  params={{ orgId: currentOrg.id }}
+                                  className="underline underline-offset-2 hover:text-foreground"
+                                >
+                                  Upgrade the privilege system
+                                </Link>{" "}
+                                in Access Control to enable this class.
+                              </>
+                            ) : undefined
+                          }
+                        />
+                      )}
+                    />
+                  );
+                })}
+              </FieldGroup>
+            ))}
+        </CardContent>
         {canEdit && !isError && (
-          <CardFooter className="min-h-8 justify-end gap-2 border-t p-4">
+          <CardFooter className="justify-end gap-2">
             <Button
               type="button"
               variant="ghost"
