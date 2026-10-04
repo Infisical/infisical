@@ -4914,6 +4914,9 @@ type UpdateAdminConfigJSONBody struct {
 		INFAPPCONNECTIONGITLABOAUTHCLIENTSECRET           string `json:"INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET"`
 		INFAPPCONNECTIONHEROKUOAUTHCLIENTID               string `json:"INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID"`
 		INFAPPCONNECTIONHEROKUOAUTHCLIENTSECRET           string `json:"INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET"`
+		INFAPPCONNECTIONSTRIPEOAUTHAUTHORIZEURL           string `json:"INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL"`
+		INFAPPCONNECTIONSTRIPEOAUTHCLIENTID               string `json:"INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID"`
+		INFAPPCONNECTIONSTRIPESECRETKEY                   string `json:"INF_APP_CONNECTION_STRIPE_SECRET_KEY"`
 	} `json:"envOverrides,omitempty"`
 	GitHubAppConnectionClientId     *string `json:"gitHubAppConnectionClientId,omitempty"`
 	GitHubAppConnectionClientSecret *string `json:"gitHubAppConnectionClientSecret,omitempty"`
@@ -6136,6 +6139,9 @@ type CreateGitHubSecretSyncJSONBody struct {
 	SyncOptions struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 		InitialSyncBehavior CreateGitHubSecretSyncJSONBodySyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
@@ -14615,9 +14621,11 @@ type CreateProjectResponse struct {
 			Id                                  string              `json:"id"`
 			IsLegacyAdditionalPrivilegesEnabled *bool               `json:"isLegacyAdditionalPrivilegesEnabled,omitempty"`
 			KmsCertificateKeyId                 *openapi_types.UUID `json:"kmsCertificateKeyId,omitempty"`
+			KmsSecretManagerKeyId               *openapi_types.UUID `json:"kmsSecretManagerKeyId,omitempty"`
 			Name                                string              `json:"name"`
 			OrgId                               openapi_types.UUID  `json:"orgId"`
 			PitVersionLimit                     *float32            `json:"pitVersionLimit,omitempty"`
+			SecretBlindIndexEnabled             *bool               `json:"secretBlindIndexEnabled,omitempty"`
 			SecretDetectionIgnoreValues         *[]string           `json:"secretDetectionIgnoreValues,omitempty"`
 			SecretSharing                       *bool               `json:"secretSharing,omitempty"`
 			ShowSnapshotsLegacy                 *bool               `json:"showSnapshotsLegacy,omitempty"`
@@ -14701,9 +14709,11 @@ func (r CreateProjectResponse) GetJSON200() *struct {
 		Id                                  string              `json:"id"`
 		IsLegacyAdditionalPrivilegesEnabled *bool               `json:"isLegacyAdditionalPrivilegesEnabled,omitempty"`
 		KmsCertificateKeyId                 *openapi_types.UUID `json:"kmsCertificateKeyId,omitempty"`
+		KmsSecretManagerKeyId               *openapi_types.UUID `json:"kmsSecretManagerKeyId,omitempty"`
 		Name                                string              `json:"name"`
 		OrgId                               openapi_types.UUID  `json:"orgId"`
 		PitVersionLimit                     *float32            `json:"pitVersionLimit,omitempty"`
+		SecretBlindIndexEnabled             *bool               `json:"secretBlindIndexEnabled,omitempty"`
 		SecretDetectionIgnoreValues         *[]string           `json:"secretDetectionIgnoreValues,omitempty"`
 		SecretSharing                       *bool               `json:"secretSharing,omitempty"`
 		ShowSnapshotsLegacy                 *bool               `json:"showSnapshotsLegacy,omitempty"`
@@ -15545,6 +15555,9 @@ type CreateGitHubSecretSyncResponse struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
+				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 				InitialSyncBehavior CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
 
@@ -15645,6 +15658,9 @@ func (r CreateGitHubSecretSyncResponse) GetJSON200() *struct {
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 			InitialSyncBehavior CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
@@ -15798,6 +15814,9 @@ type DeleteGitHubSecretSyncResponse struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
+				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 				InitialSyncBehavior DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
 
@@ -15898,6 +15917,9 @@ func (r DeleteGitHubSecretSyncResponse) GetJSON200() *struct {
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 			InitialSyncBehavior DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
@@ -16051,6 +16073,9 @@ type GetGitHubSecretSyncResponse struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
+				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 				InitialSyncBehavior GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
 
@@ -16151,6 +16176,9 @@ func (r GetGitHubSecretSyncResponse) GetJSON200() *struct {
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 			InitialSyncBehavior GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
@@ -16304,6 +16332,9 @@ type RemoveGitHubSecretSyncSecretsResponse struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
+				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 				InitialSyncBehavior RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
 
@@ -16404,6 +16435,9 @@ func (r RemoveGitHubSecretSyncSecretsResponse) GetJSON200() *struct {
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 			InitialSyncBehavior RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
@@ -16557,6 +16591,9 @@ type SyncGitHubSecretSyncResponse struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
+				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 				InitialSyncBehavior SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
 
@@ -16657,6 +16694,9 @@ func (r SyncGitHubSecretSyncResponse) GetJSON200() *struct {
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 			InitialSyncBehavior SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
@@ -20996,9 +21036,11 @@ func ParseCreateProjectResponse(rsp *http.Response) (*CreateProjectResponse, err
 				Id                                  string              `json:"id"`
 				IsLegacyAdditionalPrivilegesEnabled *bool               `json:"isLegacyAdditionalPrivilegesEnabled,omitempty"`
 				KmsCertificateKeyId                 *openapi_types.UUID `json:"kmsCertificateKeyId,omitempty"`
+				KmsSecretManagerKeyId               *openapi_types.UUID `json:"kmsSecretManagerKeyId,omitempty"`
 				Name                                string              `json:"name"`
 				OrgId                               openapi_types.UUID  `json:"orgId"`
 				PitVersionLimit                     *float32            `json:"pitVersionLimit,omitempty"`
+				SecretBlindIndexEnabled             *bool               `json:"secretBlindIndexEnabled,omitempty"`
 				SecretDetectionIgnoreValues         *[]string           `json:"secretDetectionIgnoreValues,omitempty"`
 				SecretSharing                       *bool               `json:"secretSharing,omitempty"`
 				ShowSnapshotsLegacy                 *bool               `json:"showSnapshotsLegacy,omitempty"`
@@ -21602,6 +21644,9 @@ func ParseCreateGitHubSecretSyncResponse(rsp *http.Response) (*CreateGitHubSecre
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
+					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 					InitialSyncBehavior CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
 
@@ -21754,6 +21799,9 @@ func ParseDeleteGitHubSecretSyncResponse(rsp *http.Response) (*DeleteGitHubSecre
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 					InitialSyncBehavior DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
@@ -21908,6 +21956,9 @@ func ParseGetGitHubSecretSyncResponse(rsp *http.Response) (*GetGitHubSecretSyncR
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
+					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 					InitialSyncBehavior GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
 
@@ -22061,6 +22112,9 @@ func ParseRemoveGitHubSecretSyncSecretsResponse(rsp *http.Response) (*RemoveGitH
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
+					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 					InitialSyncBehavior RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
 
@@ -22213,6 +22267,9 @@ func ParseSyncGitHubSecretSyncResponse(rsp *http.Response) (*SyncGitHubSecretSyn
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
 					InitialSyncBehavior SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`

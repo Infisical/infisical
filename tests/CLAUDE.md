@@ -190,7 +190,8 @@ test in the wrong package.
 deletion on `t.Cleanup`. Everything a test touches lives under that organization.
 Choosing the org as the boundary is what makes `t.Parallel()` the default.
 
-`tn.Admin` is a real invited user, not the instance root, and holds no super-admin flag.
+`tn.Admin` signed up and created the organization the way a customer does, so it is
+the org's creator, not the instance root, and holds no super-admin flag.
 
 ## 5. Naming
 

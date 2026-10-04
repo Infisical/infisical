@@ -16,7 +16,9 @@ import (
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
+	"github.com/Infisical/infisical/tests/internal/mail"
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Tenant is one organization and everything under it. It is the unit of isolation:
@@ -98,48 +100,27 @@ func WithTenantName(name string) TenantOption { return func(c *tenantConfig) { c
 // WithPlan gives the tenant entitlements other than the default.
 func WithPlan(p license.Plan) TenantOption { return func(c *tenantConfig) { c.plan = &p } }
 
-// NewTenant creates an organization with its own administrator.
+// NewTenant creates an organization the way a customer does: its administrator signs
+// up, then creates the organization.
 //
-// The instance root has to do the creating: POST /api/v2/organizations refuses any
-// actor that is not a USER, so the bootstrap identity token cannot mint tenants and
-// the root password is the only thing that can. That password stays inside the
-// harness; what a test gets back is an ordinary org admin.
-//
-// One login, not two. Every round trip here comes out of authRateLimit's 60 per
-// minute, which is not an entitlement and cannot be raised through the plan.
+// The instance root cannot do it for them. On cloud, which the License Server key
+// makes this instance, a user may create only one organization they still belong to,
+// so a root minting every tenant is refused from the second one on.
 func (s *Stack) NewTenant(t *testing.T, opts ...TenantOption) *Tenant {
 	t.Helper()
-	ctx := t.Context()
 
 	cfg := tenantConfig{name: "t-" + strings.ToLower(uuid.NewString()[:8])}
 	for _, o := range opts {
 		o(&cfg)
 	}
 
-	ip := newIP()
-	rootUnscoped := s.rootToken(t, ip)
-
-	created, err := s.client(t, rootUnscoped, ip).CreateOrganizationWithResponse(ctx,
-		api.CreateOrganizationJSONRequestBody{Name: cfg.name})
-	if err != nil {
-		t.Fatalf("harness: creating an organization: %v", err)
-	}
-	if created.JSON200 == nil {
-		t.Fatalf("harness: creating an organization returned %d: %s", created.StatusCode(), apierr.Body(created.Body))
-	}
-
-	org := created.JSON200.Organization
 	// A nonce rather than the org slug: the event stream only carries scopes that
 	// start with this binary's prefix, and the server picks the slug.
 	mailDomain := id.Nonce() + ".test"
 	smtp.Track(t, s.Require(t, fakenet.Key, "harness.Shared").(*fakenet.Handle).AdminURL(), mailDomain)
-	tenant := &Tenant{OrgID: org.Id, OrgSlug: org.Slug, mailDomain: mailDomain, ip: ip, stack: s, plan: cfg.plan}
 
-	// The root binds itself to the new organization only to invite its administrator,
-	// and its token goes no further than this function. What a test receives is an
-	// ordinary user at admin@<tenant-nonce>.test, unique to this tenant.
-	rootScoped := s.scopeToOrg(t, rootUnscoped, org.Id, ip)
-	tenant.Admin = tenant.newUser(t, principalConfig{name: "admin", orgRole: "admin"}, rootScoped)
+	tenant := &Tenant{mailDomain: mailDomain, ip: newIP(), stack: s, plan: cfg.plan}
+	tenant.Admin = tenant.signUpAdmin(t, cfg.name)
 
 	if cfg.plan != nil {
 		tenant.SetPlan(t, *cfg.plan)
@@ -147,6 +128,77 @@ func (s *Stack) NewTenant(t *testing.T, opts ...TenantOption) *Tenant {
 
 	t.Cleanup(tenant.remove)
 	return tenant
+}
+
+// signUpAdmin registers admin@<tenant-nonce>.test, has it create the organization,
+// and fills in the tenant's org id and slug.
+func (t *Tenant) signUpAdmin(tt *testing.T, orgName string) *Principal {
+	tt.Helper()
+	ctx := tt.Context()
+	addr := t.Address("admin")
+
+	// Its own bucket: the signup mail goes through smtpRateLimit.
+	ip := newIP()
+	anon, err := infisical.NewClient(t.stack.app.BaseURL(infra.External), infisical.ForwardedFor(ip))
+	if err != nil {
+		tt.Fatalf("harness: %v", err)
+	}
+
+	begun, err := anon.BeginEmailSignupV3WithResponse(ctx, api.BeginEmailSignupV3JSONRequestBody{Email: openapi_types.Email(addr)})
+	if err != nil {
+		tt.Fatalf("harness: signing up %s: %v", addr, err)
+	}
+	if begun.JSON200 == nil {
+		tt.Fatalf("harness: signing up %s returned %d: %s", addr, begun.StatusCode(), apierr.Body(begun.Body))
+	}
+
+	msg := t.Mail(tt).Expect(tt, addr, smtp.Subject("confirmation code"))
+	code, err := mail.Code(msg, 6)
+	if err != nil {
+		tt.Fatalf("harness: %v", err)
+	}
+
+	verified, err := anon.VerifyEmailSignupV3WithResponse(ctx, api.VerifyEmailSignupV3JSONRequestBody{Email: openapi_types.Email(addr), Code: code})
+	if err != nil {
+		tt.Fatalf("harness: verifying the signup for %s: %v", addr, err)
+	}
+	if verified.JSON200 == nil {
+		tt.Fatalf("harness: verifying the signup for %s returned %d: %s",
+			addr, verified.StatusCode(), apierr.Body(verified.Body))
+	}
+
+	userID, unscoped := t.stack.completeAccount(tt, verified.JSON200.Token, ip, api.CompleteAccountSignupV3JSONBody0{
+		Type:      api.CompleteAccountSignupV3JSONBody0TypeEmail,
+		Email:     addr,
+		FirstName: "admin",
+		Password:  UserPassword,
+	})
+
+	// A separate call rather than organizationName on complete-account, as the
+	// frontend does. That field creates the org inside the signup transaction, and
+	// the plan refresh that follows reads on a second pool connection, so parallel
+	// tenants exhaust the pool.
+	created, err := t.stack.client(tt, unscoped, ip).CreateOrganizationWithResponse(ctx,
+		api.CreateOrganizationJSONRequestBody{Name: orgName})
+	if err != nil {
+		tt.Fatalf("harness: creating an organization for %s: %v", addr, err)
+	}
+	if created.JSON200 == nil {
+		tt.Fatalf("harness: creating an organization for %s returned %d: %s",
+			addr, created.StatusCode(), apierr.Body(created.Body))
+	}
+	t.OrgID, t.OrgSlug = created.JSON200.Organization.Id, created.JSON200.Organization.Slug
+
+	scoped := t.stack.scopeToOrg(tt, unscoped, t.OrgID, ip)
+	return &Principal{
+		Kind:  User,
+		ID:    userID,
+		Name:  "admin",
+		Email: addr,
+		Token: scoped,
+		API:   t.stack.client(tt, scoped, ip),
+		ip:    ip,
+	}
 }
 
 // SetPlan changes this tenant's entitlements, and proves the change took effect.

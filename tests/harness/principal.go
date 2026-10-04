@@ -78,14 +78,6 @@ func (t *Tenant) Mail(tt *testing.T) *smtp.Inbox {
 func (t *Tenant) NewUser(tt *testing.T, opts ...PrincipalOption) *Principal {
 	tt.Helper()
 	cfg := newPrincipalConfig("u", opts)
-	return t.newUser(tt, cfg, t.Admin.Token)
-}
-
-// newUser runs the invitation flow. inviterToken is normally the tenant's own
-// administrator; creating that administrator is the one case where it is the root,
-// because there is nobody else in the organization yet.
-func (t *Tenant) newUser(tt *testing.T, cfg principalConfig, inviterToken string) *Principal {
-	tt.Helper()
 	ctx := tt.Context()
 	addr := t.Address(cfg.name)
 
@@ -93,7 +85,7 @@ func (t *Tenant) newUser(tt *testing.T, cfg principalConfig, inviterToken string
 	// smtpRateLimit, which is a hardcoded two per forty seconds keyed on the source
 	// address and is not raisable through the plan.
 	ip := newIP()
-	inviter := t.stack.client(tt, inviterToken, ip)
+	inviter := t.stack.client(tt, t.Admin.Token, ip)
 
 	invited, err := inviter.InviteUsersToOrganizationWithResponse(ctx, api.InviteUsersToOrganizationJSONRequestBody{
 		InviteeEmails:        []openapi_types.Email{openapi_types.Email(addr)},
@@ -130,13 +122,32 @@ func (t *Tenant) newUser(tt *testing.T, cfg principalConfig, inviterToken string
 			addr, verified.StatusCode(), apierr.Body(verified.Body))
 	}
 
-	var signupBody api.CompleteAccountSignupV3JSONBody
-	if err := signupBody.FromCompleteAccountSignupV3JSONBody0(api.CompleteAccountSignupV3JSONBody0{
+	userID, unscoped := t.stack.completeAccount(tt, *verified.JSON200.Token, ip, api.CompleteAccountSignupV3JSONBody0{
 		Type:      api.CompleteAccountSignupV3JSONBody0TypeEmail,
 		Email:     addr,
 		FirstName: cfg.name,
 		Password:  UserPassword,
-	}); err != nil {
+	})
+
+	scoped := t.stack.scopeToOrg(tt, unscoped, t.OrgID, ip)
+	return &Principal{
+		Kind:  User,
+		ID:    userID,
+		Name:  cfg.name,
+		Email: addr,
+		Token: scoped,
+		API:   t.stack.client(tt, scoped, ip),
+		ip:    ip,
+	}
+}
+
+// completeAccount finishes an email signup or an accepted invitation, returning the
+// user and a session token.
+func (s *Stack) completeAccount(tt *testing.T, verifiedToken, ip string, body api.CompleteAccountSignupV3JSONBody0) (uuid.UUID, string) {
+	tt.Helper()
+
+	var union api.CompleteAccountSignupV3JSONBody
+	if err := union.FromCompleteAccountSignupV3JSONBody0(body); err != nil {
 		tt.Fatalf("harness: %v", err)
 	}
 
@@ -145,30 +156,21 @@ func (t *Tenant) newUser(tt *testing.T, cfg principalConfig, inviterToken string
 	// and a defined type does not inherit methods -- so the generated MarshalJSON is
 	// lost and the discriminated union serialises as {}. Encoding the union itself and
 	// posting the bytes is the only shape that survives.
-	raw, err := json.Marshal(signupBody)
+	raw, err := json.Marshal(union)
 	if err != nil {
 		tt.Fatalf("harness: %v", err)
 	}
-	completed, err := t.stack.client(tt, *verified.JSON200.Token, ip).
-		CompleteAccountSignupV3WithBodyWithResponse(ctx, "application/json", bytes.NewReader(raw))
+	res, err := s.client(tt, verifiedToken, ip).
+		CompleteAccountSignupV3WithBodyWithResponse(tt.Context(), "application/json", bytes.NewReader(raw))
 	if err != nil {
-		tt.Fatalf("harness: completing the account for %s: %v", addr, err)
+		tt.Fatalf("harness: completing the account for %s: %v", body.Email, err)
 	}
-	if completed.JSON200 == nil {
+	if res.JSON200 == nil {
 		tt.Fatalf("harness: completing the account for %s returned %d: %s",
-			addr, completed.StatusCode(), apierr.Body(completed.Body))
+			body.Email, res.StatusCode(), apierr.Body(res.Body))
 	}
 
-	scoped := t.stack.scopeToOrg(tt, completed.JSON200.Token, t.OrgID, ip)
-	return &Principal{
-		Kind:  User,
-		ID:    completed.JSON200.User.Id,
-		Name:  cfg.name,
-		Email: addr,
-		Token: scoped,
-		API:   t.stack.client(tt, scoped, ip),
-		ip:    ip,
-	}
+	return res.JSON200.User.Id, res.JSON200.Token
 }
 
 // NewIdentity creates a machine identity with universal auth and logs it in.
