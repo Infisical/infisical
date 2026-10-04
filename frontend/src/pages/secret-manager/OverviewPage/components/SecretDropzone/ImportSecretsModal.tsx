@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CircleXIcon,
   CodeXmlIcon,
   EyeIcon,
   EyeOffIcon,
+  FolderIcon,
   InfoIcon,
+  KeyRoundIcon,
   MessageSquareIcon,
   TagsIcon,
   WrapTextIcon
@@ -13,6 +18,10 @@ import {
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
   Button,
   Combobox,
   Field,
@@ -42,15 +51,31 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
-import { useCreateSecretBatch, useGetOrCreateFolder, useUpdateSecretBatch } from "@app/hooks/api";
+import {
+  useCreateFolder,
+  useCreateSecretBatch,
+  useGetOrCreateFolder,
+  useUpdateSecretBatch
+} from "@app/hooks/api";
+import { fetchProjectFolders } from "@app/hooks/api/secretFolders/queries";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
-import { SecretType } from "@app/hooks/api/types";
+import { ApiErrorTypes, SecretType } from "@app/hooks/api/types";
 
 import { CsvColumnMapContent } from "./CsvColumnMapDialog";
+import {
+  buildFolderTree,
+  createFolderResolver,
+  flattenNestedJson,
+  getNestedJsonObject,
+  joinSecretPath,
+  runNestedImport,
+  TFolderNode
+} from "./parseNestedJson";
 import { CsvData, parseSecretFile } from "./parseSecretFile";
 import { PASTE_SECRETS_FORM_ID, PasteSecretsContent } from "./PasteSecretsDialog";
 import { TParsedEnv } from "./types";
@@ -67,6 +92,27 @@ type Props = {
   initialSelectedEnvironments?: { name: string; slug: string }[];
   onComplete?: (envSlugs: string[]) => void;
 };
+
+type TReviewRow =
+  | { type: "folder"; id: string; depth: number; node: TFolderNode }
+  | { type: "secret"; id: string; depth: number; key: string; secretData: TParsedEnv[string] };
+
+const FOCUSABLE_BADGE_CLASS =
+  "relative z-10 inline-flex rounded-sm outline-0 focus-visible:ring-2 focus-visible:ring-ring";
+
+// One chevron-wide slot per ancestor, so with the row's gap each level lines a child's icon up
+// under its parent's folder icon and the guide line sits under the parent's chevron. The
+// negative margin lets the line run the full row height; the truncating cell clips it.
+const TreeIndentGuides = ({ depth }: { depth: number }) =>
+  Array.from({ length: depth }, (_, level) => (
+    <span
+      key={level}
+      aria-hidden
+      className="pointer-events-none -my-5 flex w-3.5 shrink-0 justify-center self-stretch"
+    >
+      <span className="w-px bg-border" />
+    </span>
+  ));
 
 type ContentProps = {
   environments: { name: string; slug: string }[];
@@ -100,10 +146,18 @@ const ImportSecretsContent = ({
   const [visibleSecretKeys, setVisibleSecretKeys] = useState<Set<string>>(new Set());
   const [shouldOverwrite, setShouldOverwrite] = useState(false);
   const [keyOverrides, setKeyOverrides] = useState<Record<string, string>>({});
+  const [nestedJson, setNestedJson] = useState<Record<string, unknown> | null>(null);
+  const [shouldImportNested, setShouldImportNested] = useState(false);
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
 
   const { mutateAsync: createSecretBatch } = useCreateSecretBatch();
   const { mutateAsync: updateSecretBatch } = useUpdateSecretBatch();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
+  // A create that loses a race with another writer is recovered as a reused folder, and any
+  // other folder failure is listed in the import's own warning, so no toast per folder
+  const { mutateAsync: createFolder } = useCreateFolder({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] }
+  });
   const { mutateAsync: createWsTag } = useCreateWsTag();
 
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
@@ -129,7 +183,75 @@ const ImportSecretsContent = ({
   });
 
   const activeSecrets = initialParsedSecrets || parsedSecrets;
-  const secretCount = activeSecrets ? Object.keys(activeSecrets).length : 0;
+
+  const nestedImport = useMemo(
+    () => (nestedJson && shouldImportNested ? flattenNestedJson(nestedJson) : null),
+    [nestedJson, shouldImportNested]
+  );
+
+  const folderTree = useMemo(
+    () => (nestedImport ? buildFolderTree(nestedImport) : null),
+    [nestedImport]
+  );
+
+  // Nested row ids are "<path>:<key>", which cannot collide because folder names and
+  // nested secret keys never contain ":"
+  const reviewRows = useMemo<TReviewRow[]>(() => {
+    const toSecretRows = (secrets: TParsedEnv, depth: number, path?: string): TReviewRow[] =>
+      Object.entries(secrets).map(([key, secretData]) => ({
+        type: "secret",
+        id: path ? `${path}:${key}` : key,
+        depth,
+        key,
+        secretData
+      }));
+    if (!folderTree) return activeSecrets ? toSecretRows(activeSecrets, 0) : [];
+
+    const toFolderRows = (node: TFolderNode, depth: number): TReviewRow[] => [
+      { type: "folder", id: node.path, depth, node },
+      ...(collapsedFolders.has(node.path)
+        ? []
+        : [
+            ...toSecretRows(node.secrets, depth + 1, node.path),
+            ...node.children.flatMap((child) => toFolderRows(child, depth + 1))
+          ])
+    ];
+    return [
+      ...toSecretRows(folderTree.secrets, 0, "/"),
+      ...folderTree.children.flatMap((child) => toFolderRows(child, 0))
+    ];
+  }, [folderTree, activeSecrets, collapsedFolders]);
+
+  const allSecretKeys = nestedImport
+    ? Object.entries(nestedImport.secretsByPath).flatMap(([path, secrets]) =>
+        Object.keys(secrets).map((key) => `${path}:${key}`)
+      )
+    : Object.keys(activeSecrets ?? {});
+  const secretCount = allSecretKeys.length;
+  const folderCount = nestedImport?.folderPaths.length ?? 0;
+  const folderSummary = nestedImport
+    ? ` across ${folderCount} folder${folderCount !== 1 ? "s" : ""}`
+    : "";
+  const hasNestedErrors = Boolean(nestedImport?.errors.length);
+  const areAllFoldersCollapsed = Boolean(
+    nestedImport?.folderPaths.length &&
+      nestedImport.folderPaths.every((path) => collapsedFolders.has(path))
+  );
+
+  const toggleFolder = (path: string) => {
+    setCollapsedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+
+  const toggleAllFolders = () => {
+    setCollapsedFolders(
+      areAllFoldersCollapsed ? new Set() : new Set(nestedImport?.folderPaths ?? [])
+    );
+  };
   const hasTagsToResolve = activeSecrets
     ? Object.values(activeSecrets).some((s) => s.tagSlugs?.length)
     : false;
@@ -140,7 +262,7 @@ const ImportSecretsContent = ({
       )
     : false;
 
-  const handleParsedSecrets = useCallback((env: TParsedEnv) => {
+  const handleParsedSecrets = useCallback((env: TParsedEnv, jsonSource?: string) => {
     if (!Object.keys(env).length) {
       createNotification({
         type: "error",
@@ -149,6 +271,7 @@ const ImportSecretsContent = ({
       return;
     }
     setParsedSecrets(env);
+    setNestedJson(getNestedJsonObject(jsonSource));
   }, []);
 
   const parseFile = useCallback(
@@ -221,53 +344,56 @@ const ImportSecretsContent = ({
         return ids.length ? ids : undefined;
       };
 
-      const envPromises = selectedEnvs.map(async (env) => {
-        // Ensure folder exists if not root
-        if (secretPath !== "/") {
-          const pathSegment = secretPath.split("/").filter(Boolean);
-          const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
-          const folderName = pathSegment.at(-1);
-          const canCreateFolder = permission.can(
-            ProjectPermissionActions.Create,
-            subject(ProjectPermissionSub.SecretFolders, {
-              environment: env.slug,
-              secretPath: parentPath
-            })
-          );
+      const canCreateFolderIn = (environment: string, parentPath: string) =>
+        permission.can(
+          ProjectPermissionActions.Create,
+          subject(ProjectPermissionSub.SecretFolders, {
+            environment,
+            secretPath: parentPath
+          })
+        );
 
-          if (folderName && parentPath && canCreateFolder) {
-            await getOrCreateFolder({
-              projectId,
-              path: parentPath,
-              environment: env.slug,
-              name: folderName
-            });
-          }
+      const ensureFolder = async (environment: string, path: string) => {
+        if (path === "/") return;
+        const pathSegment = path.split("/").filter(Boolean);
+        const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
+        const folderName = pathSegment.at(-1);
+
+        if (folderName && parentPath && canCreateFolderIn(environment, parentPath)) {
+          await getOrCreateFolder({
+            projectId,
+            path: parentPath,
+            environment,
+            name: folderName
+          });
         }
+      };
 
+      const importSecretsAtPath = async (
+        environment: string,
+        path: string,
+        secrets: TParsedEnv
+      ) => {
         // Fetch existing secrets to detect conflicts
         const { secrets: rawExisting } = await fetchProjectSecrets({
           projectId,
-          environment: env.slug,
-          secretPath,
+          environment,
+          secretPath: path,
           viewSecretValue: false
         });
 
         const existingSecrets = mergePersonalSecrets(rawExisting);
-        const existingMap = existingSecrets.reduce<Record<string, boolean>>(
-          (acc, s) => ({ ...acc, [s.key]: true }),
-          {}
-        );
+        const existingKeys = new Set(existingSecrets.map((s) => s.key));
 
         // Resolve edited keys (file-based secrets can be renamed in the review table)
-        const resolvedEntries = Object.entries(activeSecrets).map(([origKey, secretData]) => ({
-          finalKey: (keyOverrides[origKey] ?? origKey).trim(),
+        const resolvedEntries = Object.entries(secrets).map(([origKey, secretData]) => ({
+          finalKey: (secretData.isFileSecret ? (keyOverrides[origKey] ?? origKey) : origKey).trim(),
           secretData
         }));
 
         // Split secrets into creates vs updates
         const secretsToCreate = resolvedEntries
-          .filter(({ finalKey }) => !existingMap[finalKey])
+          .filter(({ finalKey }) => !existingKeys.has(finalKey))
           .map(({ finalKey, secretData }) => ({
             secretKey: finalKey,
             secretValue: secretData.value,
@@ -281,7 +407,7 @@ const ImportSecretsContent = ({
           }));
 
         const secretsToUpdate = resolvedEntries
-          .filter(({ finalKey }) => existingMap[finalKey])
+          .filter(({ finalKey }) => existingKeys.has(finalKey))
           .map(({ finalKey, secretData }) => ({
             secretKey: finalKey,
             secretValue: secretData.value,
@@ -294,13 +420,13 @@ const ImportSecretsContent = ({
             skipMultilineEncoding: secretData.skipMultilineEncoding
           }));
 
-        const results = await Promise.allSettled([
+        return Promise.allSettled([
           ...(secretsToCreate.length
             ? [
                 createSecretBatch({
                   projectId,
-                  environment: env.slug,
-                  secretPath,
+                  environment,
+                  secretPath: path,
                   secrets: secretsToCreate
                 })
               ]
@@ -309,19 +435,68 @@ const ImportSecretsContent = ({
             ? [
                 updateSecretBatch({
                   projectId,
-                  environment: env.slug,
-                  secretPath,
+                  environment,
+                  secretPath: path,
                   secrets: secretsToUpdate
                 })
               ]
             : [])
         ]);
-        const hasApproval = results.some(
-          (r) => r.status === "fulfilled" && "approval" in (r.value as object)
-        );
-        const failCount = results.filter((r) => r.status === "rejected").length;
+      };
 
-        return { environment: env.name, slug: env.slug, hasApproval, failCount };
+      const writeSecrets = async (environment: string, path: string, secrets: TParsedEnv) => {
+        const results = await importSecretsAtPath(environment, path, secrets);
+        const writtenCount = results.filter((r) => r.status === "fulfilled").length;
+        let status: "written" | "partial" | "failed" = "partial";
+        if (writtenCount === results.length) status = "written";
+        else if (!writtenCount) status = "failed";
+        return {
+          status,
+          hasApproval: results.some(
+            (r) => r.status === "fulfilled" && "approval" in (r.value as object)
+          )
+        };
+      };
+
+      const envPromises = selectedEnvs.map(async (env) => {
+        await ensureFolder(env.slug, secretPath);
+
+        if (!nestedImport) {
+          const { status, hasApproval } = await writeSecrets(env.slug, secretPath, activeSecrets);
+          const isWritten = status === "written";
+          return {
+            environment: env.name,
+            slug: env.slug,
+            state: isWritten ? "success" : "failed",
+            // The flat import has always reported approvals only when every batch succeeded
+            hasApproval: isWritten && hasApproval,
+            problems: [] as string[]
+          };
+        }
+
+        // Existing folders are looked up first, so a user without folder create permission
+        // can still write into them and reused folders are not reported as new work
+        const resolveFolder = createFolderResolver({
+          listFolderNames: async (parentPath) =>
+            (await fetchProjectFolders(projectId, env.slug, parentPath)).map(({ name }) => name),
+          canCreateFolder: (parentPath) => canCreateFolderIn(env.slug, parentPath),
+          createFolder: (parentPath, name) =>
+            createFolder({ projectId, environment: env.slug, path: parentPath, name })
+        });
+        const { state, hasApproval, problems } = await runNestedImport(nestedImport, {
+          resolveFolder: (path) => resolveFolder(joinSecretPath(secretPath, path)),
+          writeSecrets: (path, secrets) =>
+            writeSecrets(env.slug, joinSecretPath(secretPath, path), secrets)
+        });
+        return {
+          environment: env.name,
+          slug: env.slug,
+          state,
+          hasApproval,
+          problems: problems.map(
+            ({ path, reason }) => `${joinSecretPath(secretPath, path)}: ${reason}`
+          )
+        };
       });
 
       const envResults = await Promise.allSettled(envPromises);
@@ -331,11 +506,22 @@ const ImportSecretsContent = ({
       const approvalEnvs: string[] = [];
       const approvalEnvSlugs: string[] = [];
       const failedEnvs: string[] = [];
+      const partialEnvs: string[] = [];
+      const partialEnvSlugs: string[] = [];
 
-      envResults.forEach((result) => {
+      envResults.forEach((result, idx) => {
         if (result.status === "fulfilled" && result.value) {
-          if (result.value.failCount > 0) {
-            failedEnvs.push(result.value.environment);
+          const { environment, problems } = result.value;
+          const envLabel = problems.length
+            ? `${environment} (${problems.join(", ")})`
+            : environment;
+          if (result.value.state === "partial") {
+            partialEnvs.push(envLabel);
+            partialEnvSlugs.push(result.value.slug);
+            if (result.value.hasApproval) approvalEnvs.push(environment);
+          } else if (result.value.state === "failed") {
+            failedEnvs.push(envLabel);
+            if (result.value.hasApproval) approvalEnvs.push(environment);
           } else if (result.value.hasApproval) {
             approvalEnvs.push(result.value.environment);
             approvalEnvSlugs.push(result.value.slug);
@@ -344,14 +530,14 @@ const ImportSecretsContent = ({
             successEnvSlugs.push(result.value.slug);
           }
         } else if (result.status === "rejected") {
-          failedEnvs.push("unknown");
+          failedEnvs.push(selectedEnvs[idx].name);
         }
       });
 
       if (successEnvs.length) {
         createNotification({
           type: "success",
-          text: `Successfully uploaded ${secretCount} secret${secretCount > 1 ? "s" : ""} into ${successEnvs.join(", ")}`
+          text: `Successfully uploaded ${secretCount} secret${secretCount > 1 ? "s" : ""}${folderSummary} into ${successEnvs.join(", ")}`
         });
       }
 
@@ -359,6 +545,13 @@ const ImportSecretsContent = ({
         createNotification({
           type: "info",
           text: `Change request submitted for ${approvalEnvs.join(", ")}`
+        });
+      }
+
+      if (partialEnvs.length) {
+        createNotification({
+          type: "warning",
+          text: `Some folders failed to upload: ${partialEnvs.join("; ")}`
         });
       }
 
@@ -370,7 +563,7 @@ const ImportSecretsContent = ({
       }
 
       onClose();
-      const completedEnvSlugs = [...successEnvSlugs, ...approvalEnvSlugs];
+      const completedEnvSlugs = [...successEnvSlugs, ...approvalEnvSlugs, ...partialEnvSlugs];
       if (completedEnvSlugs.length) {
         onComplete?.(completedEnvSlugs);
       }
@@ -387,6 +580,9 @@ const ImportSecretsContent = ({
 
   const handleBack = () => {
     setParsedSecrets(null);
+    setNestedJson(null);
+    setShouldImportNested(false);
+    setCollapsedFolders(new Set());
     setVisibleSecretKeys(new Set());
     setKeyOverrides({});
   };
@@ -400,7 +596,6 @@ const ImportSecretsContent = ({
     });
   };
 
-  const allSecretKeys = activeSecrets ? Object.keys(activeSecrets) : [];
   const areAllVisible =
     allSecretKeys.length > 0 && allSecretKeys.every((k) => visibleSecretKeys.has(k));
 
@@ -509,13 +704,26 @@ const ImportSecretsContent = ({
       <SheetHeader>
         <SheetTitle>Review & Upload Secrets</SheetTitle>
         <SheetDescription>
-          {secretCount} secret{secretCount !== 1 ? "s" : ""} found. Select environments to upload
-          to.
+          {secretCount} secret{secretCount !== 1 ? "s" : ""} found
+          {folderSummary}. Select environments to upload to.
         </SheetDescription>
       </SheetHeader>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
         <div className="flex flex-col gap-4">
+          {hasNestedErrors && (
+            <Alert variant="danger">
+              <CircleXIcon />
+              <AlertTitle>Some keys cannot be imported</AlertTitle>
+              <AlertDescription>
+                <ul className="list-disc pl-4">
+                  {nestedImport!.errors.map((error) => (
+                    <li key={error}>{error}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="relative flex flex-col gap-2">
             <Table
               className="border-collapse"
@@ -523,8 +731,29 @@ const ImportSecretsContent = ({
             >
               <TableHeader className="sticky top-0 z-[1] after:pointer-events-none after:absolute after:inset-x-0 after:-top-px after:h-px after:bg-container">
                 <TableRow className="relative h-9">
-                  <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-                    Key
+                  <TableHead
+                    className={cn(
+                      "bg-container shadow-[inset_0_-1px_0_var(--color-border)]",
+                      folderTree && "w-1/2"
+                    )}
+                  >
+                    {folderTree ? (
+                      <div className="flex items-center justify-between gap-2">
+                        Key
+                        {folderTree.children.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            className="-mr-2"
+                            onClick={toggleAllFolders}
+                          >
+                            {areAllFoldersCollapsed ? "Expand All" : "Collapse All"}
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      "Key"
+                    )}
                   </TableHead>
                   <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                     Value
@@ -537,8 +766,53 @@ const ImportSecretsContent = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.entries(activeSecrets!).map(([key, secretData]) => {
-                  const isVisible = visibleSecretKeys.has(key);
+                {reviewRows.map((row) => {
+                  if (row.type === "folder") {
+                    const { node } = row;
+                    const isExpanded = !collapsedFolders.has(node.path);
+                    return (
+                      <TableRow key={row.id} className="relative">
+                        <TableCell isTruncatable className="w-1/2">
+                          <div className="flex items-center gap-1.5">
+                            <TreeIndentGuides depth={row.depth} />
+                            <button
+                              type="button"
+                              aria-expanded={isExpanded}
+                              onClick={() => toggleFolder(node.path)}
+                              className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 text-left outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+                            >
+                              {isExpanded ? (
+                                <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
+                              ) : (
+                                <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
+                              )}
+                              <FolderIcon className="size-3.5 shrink-0 text-folder" />
+                              <span className="truncate">{node.name}</span>
+                            </button>
+                          </div>
+                        </TableCell>
+                        <TableCell isTruncatable className="w-1/2 font-mono text-muted">
+                          {joinSecretPath(secretPath, node.path)}
+                        </TableCell>
+                        <TableCell className="w-10 text-center">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can open the tooltip; z-10 lifts it above the row's stretched toggle button */}
+                              <span tabIndex={0} className={FOCUSABLE_BADGE_CLASS}>
+                                <Badge variant="neutral">{node.secretCount}</Badge>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {node.secretCount} secret{node.secretCount !== 1 ? "s" : ""},
+                              including subfolders
+                            </TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+                  const { id, key, secretData } = row;
+                  const isVisible = visibleSecretKeys.has(id);
                   const hasComments = secretData.comments.some((c) => c);
                   const hasTags = Boolean(secretData.tagSlugs?.length);
                   const hasMetadata = Boolean(secretData.secretMetadata?.length);
@@ -546,9 +820,11 @@ const ImportSecretsContent = ({
                   const editableKey = secretData.isFileSecret === true;
                   const editedKey = keyOverrides[key] ?? key;
                   return (
-                    <TableRow key={key}>
+                    <TableRow key={id}>
                       <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
                         <div className="flex w-full items-center gap-1.5">
+                          <TreeIndentGuides depth={row.depth} />
+                          {folderTree && <KeyRoundIcon className="size-3.5 shrink-0 text-secret" />}
                           {editableKey ? (
                             <Input
                               value={editedKey}
@@ -633,7 +909,7 @@ const ImportSecretsContent = ({
                         <IconButton
                           variant="ghost"
                           size="xs"
-                          onClick={() => toggleSecretVisibility(key)}
+                          onClick={() => toggleSecretVisibility(id)}
                         >
                           {isVisible ? <EyeOffIcon /> : <EyeIcon />}
                         </IconButton>
@@ -692,6 +968,28 @@ const ImportSecretsContent = ({
               onCheckedChange={setShouldOverwrite}
             />
           </Field>
+          {nestedJson && (
+            <Field orientation="horizontal" className="w-fit">
+              <FieldLabel htmlFor="import-nested-as-folders">
+                Import Nested Objects as Folders
+                <Tooltip>
+                  <TooltipTrigger>
+                    <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md text-center">
+                    Each nested object becomes a folder relative to {secretPath}, and its values
+                    become secrets in that folder. Arrays are stored as JSON strings, null as an
+                    empty value, and numbers and booleans as text.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Toggle
+                id="import-nested-as-folders"
+                checked={shouldImportNested}
+                onCheckedChange={setShouldImportNested}
+              />
+            </Field>
+          )}
         </div>
       </div>
 
@@ -707,7 +1005,13 @@ const ImportSecretsContent = ({
         <Button
           variant="project"
           onClick={handleImport}
-          isDisabled={!selectedEnvs.length || isImporting || isWaitingForTags || hasInvalidKey}
+          isDisabled={
+            !selectedEnvs.length ||
+            isImporting ||
+            isWaitingForTags ||
+            hasInvalidKey ||
+            hasNestedErrors
+          }
           isPending={isImporting || isWaitingForTags}
         >
           Upload {secretCount} Secret{secretCount !== 1 ? "s" : ""}
