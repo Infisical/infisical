@@ -500,13 +500,10 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
             <CircleAlert />
             <AlertTitle>Plan Details Unavailable</AlertTitle>
             <AlertDescription>
-              Plan details could not be loaded. Try again, or contact Infisical if the problem
-              continues.
-              {isSelfHosted && (
-                <p className="mt-2">
-                  For a self-hosted or offline license, contact our team to discuss your deployment.
-                </p>
-              )}
+              Plan details could not be loaded.{" "}
+              {isSelfHosted
+                ? "Try again, or contact our team for a self-hosted or offline license."
+                : "Try again, or contact Infisical if the problem continues."}
             </AlertDescription>
           </Alert>
           <DialogFooter>
