@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeftIcon, Loader2Icon, Lock, type LucideIcon, Search } from "lucide-react";
@@ -401,6 +401,14 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.ACME
     });
 
+  const { data: availableGcpConnections, isPending: isGcpPending } = useListAvailableAppConnections(
+    AppConnection.GCP,
+    currentProject.id,
+    {
+      enabled: caType === CaType.ACME
+    }
+  );
+
   const { data: availableAzureConnections, isPending: isAzurePending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
@@ -458,7 +466,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       ...(availableCloudflareConnections || []),
       ...(availableDNSMadeEasyConnections || []),
       ...(availableAzureDNSConnections || []),
-      ...(availablePowerDnsConnections || [])
+      ...(availablePowerDnsConnections || []),
+      ...(availableGcpConnections || [])
     ];
   }, [
     caType,
@@ -467,6 +476,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
     availablePowerDnsConnections,
+    availableGcpConnections,
     availableAzureConnections,
     availableAdcsConnections,
     availableAwsConnections,
@@ -487,6 +497,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         return availableAzureDNSConnections || [];
       case AcmeDnsProvider.PowerDns:
         return availablePowerDnsConnections || [];
+      case AcmeDnsProvider.GcpCloudDns:
+        return availableGcpConnections || [];
       default:
         return [];
     }
@@ -496,7 +508,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableCloudflareConnections,
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
-    availablePowerDnsConnections
+    availablePowerDnsConnections,
+    availableGcpConnections
   ]);
 
   const isPending =
@@ -504,7 +517,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       isCloudflarePending ||
       isDNSMadeEasyPending ||
       isAzureDNSPending ||
-      isPowerDnsPending) &&
+      isPowerDnsPending ||
+      isGcpPending) &&
       caType === CaType.ACME) ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
     (isAdcsPending && caType === CaType.ADCS) ||
@@ -538,15 +552,26 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: dnsProvider === AcmeDnsProvider.PowerDns && !!dnsAppConnection.id
     });
 
-  // Populate form with CA data when editing
+  const prefilledCaIdRef = useRef<string | null>(null);
+
+  // Prefill once per open: re-running on connection list refreshes would discard unsaved edits
   useEffect(() => {
-    if (ca && !isCaLoading) {
+    if (!popUp?.ca?.isOpen) prefilledCaIdRef.current = null;
+  }, [popUp?.ca?.isOpen]);
+
+  useEffect(() => {
+    if (ca && !isCaLoading && !isPending && prefilledCaIdRef.current !== ca.id) {
+      const prefill = (values: Parameters<typeof reset>[0]) => {
+        reset(values);
+        prefilledCaIdRef.current = ca.id;
+      };
+
       if (ca.type === CaType.ACME && availableConnections?.length) {
         const selectedConnection = availableConnections?.find(
           (connection) => connection.id === ca.configuration.dnsAppConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -571,7 +596,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           (connection) => connection.id === ca.configuration.azureAdcsConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -587,7 +612,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           (connection) => connection.id === ca.configuration.appConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -604,7 +629,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           (connection) => connection.id === ca.configuration.appConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -622,7 +647,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           (connection) => connection.id === ca.configuration.appConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -647,7 +672,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             )
           : undefined;
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -671,7 +696,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           (connection) => connection.id === ca.configuration.appConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -688,7 +713,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           (connection) => connection.id === ca.configuration.appConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -702,7 +727,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       }
     }
-  }, [ca, availableConnections, reset, isCaLoading]);
+  }, [ca, availableConnections, reset, isCaLoading, isPending]);
 
   const digicertConnectionId =
     caType === CaType.DIGICERT && configuration && "digicertConnection" in configuration
@@ -1004,6 +1029,16 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       shouldDirty: true
                     })
                   }
+                  onDnsProviderChange={() => {
+                    setValue(
+                      "configuration.dnsAppConnection",
+                      { id: "", name: "" },
+                      { shouldDirty: true }
+                    );
+                    setValue("configuration.dnsProviderConfig.hostedZoneId", "", {
+                      shouldDirty: true
+                    });
+                  }}
                 />
               )}
               {caType === CaType.AZURE_AD_CS && (

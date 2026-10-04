@@ -26,6 +26,7 @@ import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
+import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-types";
 import { TPowerDnsConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -66,6 +67,11 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
+import {
+  gcpCloudDnsDeleteTxtRecord,
+  gcpCloudDnsInsertTxtRecord,
+  validateGcpCloudDnsZone
+} from "./dns-providers/gcp-cloud-dns";
 import { powerDnsDeleteTxtRecord, powerDnsInsertTxtRecord, TPowerDnsProviderDeps } from "./dns-providers/powerdns";
 
 const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
@@ -511,6 +517,15 @@ export const executeAcmeOrder = async (
           );
           break;
         }
+        case AcmeDnsProvider.GcpCloudDns: {
+          await gcpCloudDnsInsertTxtRecord(
+            connection as TGcpConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
         default: {
           throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
         }
@@ -578,6 +593,15 @@ export const executeAcmeOrder = async (
             recordName,
             recordValue,
             powerDnsDeps
+          );
+          break;
+        }
+        case AcmeDnsProvider.GcpCloudDns: {
+          await gcpCloudDnsDeleteTxtRecord(
+            connection as TGcpConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
           );
           break;
         }
@@ -757,6 +781,16 @@ export const AcmeCertificateAuthorityFns = ({
       });
     }
 
+    if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns && appConnection.app !== AppConnection.GCP) {
+      throw new BadRequestError({
+        message: `App connection with ID '${dnsAppConnectionId}' is not a GCP connection`
+      });
+    }
+
+    if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
+      validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
+    }
+
     if (dnsResolver) {
       validateDnsResolver(dnsResolver);
     }
@@ -875,6 +909,16 @@ export const AcmeCertificateAuthorityFns = ({
           throw new BadRequestError({
             message: `App connection with ID '${dnsAppConnectionId}' is not a PowerDNS connection`
           });
+        }
+
+        if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns && appConnection.app !== AppConnection.GCP) {
+          throw new BadRequestError({
+            message: `App connection with ID '${dnsAppConnectionId}' is not a GCP connection`
+          });
+        }
+
+        if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
+          validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
         }
 
         if (dnsResolver) {

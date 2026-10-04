@@ -31,6 +31,7 @@ import {
 
 import { AppConnectionSelectField } from "./AppConnectionSelectField";
 import { REQUIRED_EAB_DIRECTORIES } from "./constants";
+import { GcpCloudDnsZoneFields } from "./GcpCloudDnsZoneFields";
 import { FormData } from "./schema";
 
 type Props = {
@@ -50,6 +51,7 @@ type Props = {
   powerDnsZones: TPowerDnsZone[];
   isPowerDnsZonesPending: boolean;
   onDnsSelectionChange: () => void;
+  onDnsProviderChange: () => void;
 };
 
 export const AcmeFields = ({
@@ -68,7 +70,8 @@ export const AcmeFields = ({
   isAzureDNSZonesPending,
   powerDnsZones,
   isPowerDnsZonesPending,
-  onDnsSelectionChange
+  onDnsSelectionChange,
+  onDnsProviderChange
 }: Props) => (
   <>
     <Controller
@@ -82,7 +85,7 @@ export const AcmeFields = ({
             value={value}
             onValueChange={(val) => {
               onChange(val);
-              onDnsSelectionChange();
+              onDnsProviderChange();
             }}
             disabled={isExistingCa}
           >
@@ -107,6 +110,7 @@ export const AcmeFields = ({
       label="DNS App Connection"
       onAfterChange={onDnsSelectionChange}
       options={availableConnections}
+      createApp={dnsProvider ? ACME_DNS_PROVIDER_APP_CONNECTION_MAP[dnsProvider] : undefined}
       isLoading={isPending}
       tooltip={
         dnsProvider
@@ -244,6 +248,13 @@ export const AcmeFields = ({
         )}
       />
     )}
+    {dnsProvider === AcmeDnsProvider.GcpCloudDns && (
+      <GcpCloudDnsZoneFields
+        key={dnsAppConnection.id}
+        control={control}
+        connectionId={dnsAppConnection.id}
+      />
+    )}
     <Controller
       control={control}
       defaultValue=""
@@ -252,6 +263,15 @@ export const AcmeFields = ({
         <Field className="mb-4">
           <FieldLabel>
             Directory URL <span className="text-danger">*</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-md">
+                The ACME directory of the CA that issues your certificates, such as Let&apos;s
+                Encrypt or ZeroSSL.
+              </TooltipContent>
+            </Tooltip>
           </FieldLabel>
           <Input
             {...field}
