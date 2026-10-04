@@ -367,6 +367,7 @@ export const MultiEnvironmentSecretEditSheet = ({
               <div className="px-4 pb-4">
                 <div className="max-h-64 overflow-y-auto">
                   <RadioGroup
+                    className="grid-cols-1"
                     value={activeEnvironment}
                     onValueChange={setActiveEnvironment}
                     disabled={isSaving}
@@ -404,9 +405,17 @@ export const MultiEnvironmentSecretEditSheet = ({
                           htmlFor={`edit-environment-${environment.slug}`}
                         >
                           <Field orientation="horizontal">
-                            <FieldContent>
-                              <FieldTitle>{environment.name}</FieldTitle>
-                              <FieldDescription>{detail}</FieldDescription>
+                            <FieldContent className="min-w-0">
+                              <FieldTitle className="max-w-full">
+                                <span className="truncate" title={environment.name}>
+                                  {environment.name}
+                                </span>
+                              </FieldTitle>
+                              <FieldDescription>
+                                <span className="block truncate" title={detail}>
+                                  {detail}
+                                </span>
+                              </FieldDescription>
                             </FieldContent>
                             <Badge variant={changed ? "project" : "outline"}>
                               {error && <LockKeyholeIcon />}
@@ -442,8 +451,8 @@ export const MultiEnvironmentSecretEditSheet = ({
                     }
                   >
                     <div className="px-4">
-                      <p className="text-sm">{environment.name}</p>
-                      {error && <p className="mt-1 text-xs text-muted">{error}</p>}
+                      <p className="text-sm wrap-anywhere">{environment.name}</p>
+                      {error && <p className="mt-1 text-xs wrap-anywhere text-muted">{error}</p>}
                     </div>
                     {secret && canDescribe(environment.slug) ? (
                       <CreateSecretForm
@@ -494,7 +503,7 @@ export const MultiEnvironmentSecretEditSheet = ({
                 );
               })}
               <SheetFooter className="shrink-0 flex-col border-t">
-                <p className="text-xs text-muted">
+                <p className="text-xs wrap-anywhere text-muted">
                   {updates.length
                     ? `${updates.length} environment${updates.length === 1 ? "" : "s"} changed: ${updates.map((plan) => plan.environment.name).join(", ")}. Only changed fields will be saved.`
                     : "No changes. Editing one environment leaves the others untouched."}
