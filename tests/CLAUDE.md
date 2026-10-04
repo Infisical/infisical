@@ -58,6 +58,10 @@ make down
 server. Run `make down` after changing anything about a container's configuration, or a
 stale one is adopted and your change does not take effect.
 
+CI (`run-blackbox-tests.yml`, on PRs only) builds the same `backend/Dockerfile` with a
+layer cache and hands it over through `INFISICAL_TEST_IMAGE`, so the harness skips its
+own build.
+
 ## 3. Where things go
 
 ```

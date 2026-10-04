@@ -91,6 +91,7 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		"REDIS_URL":         redis.MustFrom(d).URL(infra.Internal),
 		"AUTH_SECRET":       authSecret,
 		"ENCRYPTION_KEY":    encryptionKey,
+		"PORT":              fmt.Sprint(port),
 		"NODE_ENV":          "production",
 		"TELEMETRY_ENABLED": "false",
 		// Serve every route and every field at /api/docs/json. The suite generates
