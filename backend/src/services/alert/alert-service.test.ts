@@ -31,6 +31,7 @@ const buildService = (opts?: {
   resourceScopeThrows?: boolean;
   duplicateExists?: boolean;
   resolvedProjectId?: string;
+  supportsScopeWideAlerts?: boolean;
   atOrgScope?: boolean;
   // Runs right after a find() has taken its snapshot, to stand in for a concurrent transaction
   // committing between two statements of ours.
@@ -38,6 +39,12 @@ const buildService = (opts?: {
 }) => {
   const permissionCalls: TAlertPermissionInput[] = [];
   const gatedChannelTypeCalls: string[][] = [];
+  const conditionScopeCalls: {
+    projectId?: string | null;
+    resourceId?: string | null;
+    condition: unknown;
+    previousCondition?: unknown;
+  }[] = [];
   const recipientProjectIds: (string | null)[] = [];
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
@@ -69,7 +76,11 @@ const buildService = (opts?: {
     assertChannelTypesAllowed: async ({ channelTypes }) => {
       gatedChannelTypeCalls.push(channelTypes);
     },
-    ...(opts?.resolvedProjectId ? { resolveProjectId: async () => opts.resolvedProjectId as string } : {})
+    ...(opts?.resolvedProjectId ? { resolveProjectId: async () => opts.resolvedProjectId as string } : {}),
+    supportsScopeWideAlerts: opts?.supportsScopeWideAlerts,
+    assertConditionInScope: async ({ projectId, resourceId, condition, previousCondition }) => {
+      conditionScopeCalls.push({ projectId, resourceId, condition, previousCondition });
+    }
   };
   const registry = alertProviderRegistryFactory();
   registry.register(provider);
@@ -232,6 +243,7 @@ const buildService = (opts?: {
     service,
     permissionCalls,
     gatedChannelTypeCalls,
+    conditionScopeCalls,
     recipientProjectIds,
     alerts,
     memberships,
@@ -383,7 +395,28 @@ describe("alert service", () => {
 
   test("rejects a resource-less (scope-wide) alert as unsupported", async () => {
     const { service } = buildService();
-    await expect(service.createAlert({ ...validCreate, resourceId: undefined })).rejects.toThrow(/not supported yet/);
+    await expect(service.createAlert({ ...validCreate, resourceId: undefined })).rejects.toThrow(
+      "must be bound to a specific resource"
+    );
+  });
+
+  test("creates a resource-less alert when the provider supports scope-wide alerts", async () => {
+    const { service } = buildService({ supportsScopeWideAlerts: true });
+    const alert = await service.createAlert({ ...validCreate, resourceId: undefined, projectId: "proj-x" });
+    expect(alert.resourceId).toBeNull();
+    expect(alert.projectId).toBe("proj-x");
+  });
+
+  test("checks the condition's scope on create, and on update with the stored condition", async () => {
+    const { service, conditionScopeCalls } = buildService();
+    await service.createAlert(validCreate);
+    await service.updateAlert({ alertId: "alert-1", condition: { alertBefore: "5d" }, ...actor });
+    await service.updateAlert({ alertId: "alert-1", name: "renamed", ...actor });
+
+    expect(conditionScopeCalls).toHaveLength(2);
+    expect(conditionScopeCalls[0]).toMatchObject({ condition: { alertBefore: "30d" } });
+    expect(conditionScopeCalls[1]).toMatchObject({ condition: { alertBefore: "5d" } });
+    expect(conditionScopeCalls[1].previousCondition).toBeDefined();
   });
 
   test("rejects a condition that fails the provider schema", async () => {
@@ -466,6 +499,15 @@ describe("alert service", () => {
     expect(findFilters[0]).toMatchObject({ projectId: null });
   });
 
+  test("listing without a resource returns only resource-less alerts when the provider supports them", async () => {
+    const { service, alerts } = buildService({ supportsScopeWideAlerts: true });
+    alerts.set("bound", { id: "bound", name: "bound", projectId: "proj-x", ...listBase, resourceId: "resource-1" });
+    alerts.set("scope-wide", { id: "scope-wide", name: "scope-wide", projectId: "proj-x", ...listBase });
+
+    const listed = await service.listAlerts({ resourceType: RESOURCE_TYPE, projectId: "proj-x", ...actor });
+    expect(listed.map((alert) => alert.id)).toEqual(["scope-wide"]);
+  });
+
   test("create and list resolve the project from the resource when projectId is omitted", async () => {
     const { service, permissionCalls, findFilters } = buildService({ resolvedProjectId: "proj-resolved" });
 
@@ -528,7 +570,7 @@ describe("alert service", () => {
     expect(gatedChannelTypeCalls.at(-1)).toEqual([AlertChannelType.WEBHOOK]);
   });
 
-  test("update does not gate channels the alert already has", async () => {
+  test("update does not gate channels the alert already has, so a downgraded plan can still edit the alert", async () => {
     const { service, gatedChannelTypeCalls } = buildService();
     const created = await service.createAlert(validCreate);
 
@@ -543,6 +585,33 @@ describe("alert service", () => {
     });
 
     expect(gatedChannelTypeCalls.at(-1)).toEqual([]);
+  });
+
+  test("update gates a disabled channel being enabled again", async () => {
+    const { service, gatedChannelTypeCalls } = buildService();
+    const created = await service.createAlert(validCreate);
+    const email = created.channels.find((c) => c.channelType === AlertChannelType.EMAIL)!;
+    const webhook = created.channels.find((c) => c.channelType === AlertChannelType.WEBHOOK)!;
+
+    await service.updateAlert({
+      alertId: "alert-1",
+      channels: [
+        { id: email.id, name: email.name, channelType: AlertChannelType.EMAIL, enabled: false },
+        { id: webhook.id, name: webhook.name, channelType: AlertChannelType.WEBHOOK, enabled: false }
+      ],
+      ...actor
+    });
+    expect(gatedChannelTypeCalls.at(-1)).toEqual([]);
+
+    await service.updateAlert({
+      alertId: "alert-1",
+      channels: [
+        { id: email.id, name: email.name, channelType: AlertChannelType.EMAIL },
+        { id: webhook.id, name: webhook.name, channelType: AlertChannelType.WEBHOOK, enabled: true }
+      ],
+      ...actor
+    });
+    expect(gatedChannelTypeCalls.at(-1)).toEqual([AlertChannelType.WEBHOOK]);
   });
 
   test("update rejects a channel id that does not belong to the alert", async () => {

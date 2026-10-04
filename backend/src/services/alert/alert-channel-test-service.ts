@@ -15,7 +15,12 @@ import { TAlertChannelServiceFactory } from "./alert-channel-service";
 import { TAlertChannelDeps, TAlertRecipient } from "./alert-channel-types";
 import { TAlertDALFactory } from "./alert-dal";
 import { getRecipientScope } from "./alert-principal-scope-fns";
-import { getAlertResourceName, resolveAlertProjectId, TAlertProviderRegistry } from "./alert-provider-registry";
+import {
+  getAlertEvent,
+  getAlertResourceName,
+  resolveAlertProjectId,
+  TAlertProviderRegistry
+} from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { TTestAlertChannelDTO, TTestAlertChannelResponse, TTestAlertChannelResult } from "./alert-service-types";
 import { buildTestAlertPayload } from "./alert-test-payload-fns";
@@ -84,6 +89,7 @@ export const alertChannelTestServiceFactory = ({
         orgId: owner.orgId,
         projectId: owner.projectId,
         resourceId: owner.resourceId,
+        eventType: owner.eventType,
         actor: toAlertActor(dto)
       });
     }
@@ -210,6 +216,7 @@ export const alertChannelTestServiceFactory = ({
     });
 
     let alertName: string | null = null;
+    let alertEventType = dto.eventType;
     if (dto.alertId) {
       const alert = await alertDAL.findActiveById(dto.alertId);
       if (
@@ -222,6 +229,9 @@ export const alertChannelTestServiceFactory = ({
         throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' was not found in this scope` });
       }
       alertName = alert.name;
+      alertEventType = alert.eventType;
+    } else if (dto.eventType) {
+      getAlertEvent(provider, dto.eventType);
     }
 
     await provider.assertPermission({
@@ -229,6 +239,7 @@ export const alertChannelTestServiceFactory = ({
       orgId: dto.actorOrgId,
       projectId,
       resourceId: dto.resourceId,
+      eventType: alertEventType,
       actor: toAlertActor(dto)
     });
     await provider.assertResourceInScope({ orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId });

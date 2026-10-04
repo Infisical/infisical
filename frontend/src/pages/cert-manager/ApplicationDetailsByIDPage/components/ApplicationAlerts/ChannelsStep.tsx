@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FieldArrayWithId, UseFormReturn } from "react-hook-form";
+import { FieldArrayWithId, UseFormReturn, useWatch } from "react-hook-form";
 import { BellIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -21,9 +21,11 @@ import {
 import { AddChannelMenu, ChannelCard, TChannelRecipientsRenderProps } from "@app/views/Alerts";
 
 import {
+  getAlertResourceId,
   MAX_CHANNELS,
   normalizeEmail,
   TCertificateAlertForm,
+  TCertificateAlertScope,
   TMemberEmails,
   toRecipientEmails
 } from "./types";
@@ -134,7 +136,7 @@ export const ChannelsStep = ({
   fields,
   onRemove,
   projectId,
-  applicationId,
+  scope,
   alertId,
   members
 }: {
@@ -142,11 +144,12 @@ export const ChannelsStep = ({
   fields: TChannelField[];
   onRemove: (index: number) => void;
   projectId: string;
-  applicationId: string;
+  scope: TCertificateAlertScope;
   alertId?: string;
   members: TMemberEmails;
 }) => {
   const channelsError = form.formState.errors.channels?.root ?? form.formState.errors.channels;
+  const eventType = useWatch({ control: form.control, name: "eventType" });
 
   if (!fields.length) {
     return (
@@ -172,8 +175,9 @@ export const ChannelsStep = ({
           index={index}
           projectId={projectId}
           resourceType={CertificateAlertResourceType.Application}
-          resourceId={applicationId}
+          resourceId={getAlertResourceId(scope)}
           alertId={alertId}
+          eventType={eventType}
           canRemove
           onRemove={() => onRemove(index)}
           renderRecipients={(props) => <EmailRecipientsField {...props} members={members} />}

@@ -77,6 +77,7 @@ import { CreateProfileModal } from "@app/pages/cert-manager/PoliciesPage/compone
 import { PkiDocsUrls } from "../../pki-docs-urls";
 import { ApplicationAlertsCard } from "./ApplicationAlerts/ApplicationAlertsCard";
 import { LegacyApplicationAlertsCard } from "./ApplicationAlerts/LegacyApplicationAlertsCard";
+import { CertificateAlertScopeKind } from "./ApplicationAlerts/types";
 import {
   ConfigureEnrollmentModal,
   EnrollmentMethod,
@@ -620,8 +621,11 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
 
       <ApplicationAlertsCard
         projectId={application.projectId}
-        applicationId={application.id}
-        applicationName={application.name}
+        scope={{
+          kind: CertificateAlertScopeKind.Application,
+          applicationId: application.id,
+          applicationName: application.name
+        }}
         canCreate={canCreateAlerts}
         canEdit={canEditAlerts}
         canDelete={canDeleteAlerts}

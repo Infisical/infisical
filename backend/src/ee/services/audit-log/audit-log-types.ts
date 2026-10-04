@@ -962,7 +962,11 @@ export enum EventType {
   CREATE_PKI_APPLICATION_ALERT = "create-pki-application-alert",
   UPDATE_PKI_APPLICATION_ALERT = "update-pki-application-alert",
   DELETE_PKI_APPLICATION_ALERT = "delete-pki-application-alert",
-  TEST_PKI_APPLICATION_ALERT_CHANNEL = "test-pki-application-alert-channel"
+  TEST_PKI_APPLICATION_ALERT_CHANNEL = "test-pki-application-alert-channel",
+  CREATE_CERTIFICATE_MANAGER_ALERT = "create-certificate-manager-alert",
+  UPDATE_CERTIFICATE_MANAGER_ALERT = "update-certificate-manager-alert",
+  DELETE_CERTIFICATE_MANAGER_ALERT = "delete-certificate-manager-alert",
+  TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL = "test-certificate-manager-alert-channel"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -7931,6 +7935,43 @@ interface TestPkiApplicationAlertEvent {
   };
 }
 
+type TCertificateManagerAlertEventMetadata = {
+  alertId: string;
+  name: string;
+  eventType: string;
+  applications: { id: string; name: string | null }[];
+  profiles: { id: string; name: string | null }[];
+};
+
+interface CreateCertificateManagerAlertEvent {
+  type: EventType.CREATE_CERTIFICATE_MANAGER_ALERT;
+  metadata: TCertificateManagerAlertEventMetadata;
+}
+
+interface UpdateCertificateManagerAlertEvent {
+  type: EventType.UPDATE_CERTIFICATE_MANAGER_ALERT;
+  metadata: TCertificateManagerAlertEventMetadata;
+}
+
+interface DeleteCertificateManagerAlertEvent {
+  type: EventType.DELETE_CERTIFICATE_MANAGER_ALERT;
+  metadata: TCertificateManagerAlertEventMetadata;
+}
+
+interface TestCertificateManagerAlertEvent {
+  type: EventType.TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL;
+  metadata: {
+    alertId?: string;
+    alertName?: string | null;
+    channelId?: string;
+    channelName?: string | null;
+    channelType: string;
+    success: boolean;
+    deliveredTo?: number;
+    error?: string;
+  };
+}
+
 export type Event =
   | CreateAlertEvent
   | UpdateAlertEvent
@@ -7940,6 +7981,10 @@ export type Event =
   | UpdatePkiApplicationAlertEvent
   | DeletePkiApplicationAlertEvent
   | TestPkiApplicationAlertEvent
+  | CreateCertificateManagerAlertEvent
+  | UpdateCertificateManagerAlertEvent
+  | DeleteCertificateManagerAlertEvent
+  | TestCertificateManagerAlertEvent
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent

@@ -98,6 +98,15 @@ describe("alert event consumer", () => {
     expect(runs[0].payload).toEqual(makePayload());
   });
 
+  test("accepts a scope-wide event that carries no resource", async () => {
+    const { consumer, runs } = buildConsumer();
+
+    const [result] = await consumer.handle([makeEvent({ payload: makePayload({ resourceId: null }) })]);
+
+    expect(result.status).toBe(EventResultStatus.Delivered);
+    expect(runs[0].targetIds).toEqual(["req-1"]);
+  });
+
   // The outbox row id is stable across attempts, so it's the only key a retry can use to find what
   // already went out.
   test("hands the engine the event id so a retry can skip channels that already delivered", async () => {
