@@ -10,7 +10,6 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -29,6 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -92,6 +92,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
   return (
     <>
       <PageHeader
+        className="mb-10"
         scope="org"
         title={gateway.name}
         description="Gateway configuration and authentication"

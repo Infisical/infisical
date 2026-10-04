@@ -16,9 +16,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyState,
-  PageHeader,
   Tooltip
 } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
@@ -86,6 +86,7 @@ export const IntegrationDetailsByIDPage = () => {
         {integration ? (
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
+              className="mb-10"
               scope={ProjectType.SecretManager}
               title={`${integrationSlugNameMapping[integration.integration]} Integration`}
             >

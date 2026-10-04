@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
 import {
   ProjectPermissionAppConnectionActions,
@@ -24,7 +24,7 @@ export const AppConnectionsPage = withProjectPermission(
           <div className="w-full max-w-8xl">
             <PageHeader
               scope={currentProject.type}
-              className="w-full"
+              className="mb-10 w-full"
               title="Project App Connections"
               description="Manage project App Connections"
             />

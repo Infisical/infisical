@@ -5,7 +5,6 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { FolderOpen, SearchIcon, ShieldCheck } from "lucide-react";
 
-import { PageHeader } from "@app/components/v2";
 import {
   Badge,
   Card,
@@ -31,6 +30,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -218,6 +218,7 @@ export const PamApprovalRequestsPage = () => {
         <title>{t("common.head-title", { title: "Approval Requests" })}</title>
       </Helmet>
       <PageHeader
+        className="mb-10"
         scope={ProjectType.PAM}
         icon={ShieldCheck}
         title="Approval Requests"

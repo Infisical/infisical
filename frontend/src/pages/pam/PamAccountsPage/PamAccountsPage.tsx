@@ -5,7 +5,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, FolderOpen, FolderPlus, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { PageHeader } from "@app/components/v2";
 import {
   Button,
   ButtonGroup,
@@ -39,6 +38,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { PageHeader } from "@app/components/v3/platform";
 import { useOrganization } from "@app/context";
 import {
   PamAccessType,
@@ -209,6 +209,7 @@ export const PamAccountsPage = () => {
         <title>{t("common.head-title", { title: "Accounts" })}</title>
       </Helmet>
       <PageHeader
+        className="mb-10"
         title="Accounts"
         description="Access and manage privileged accounts."
         scope={ProjectType.PAM}

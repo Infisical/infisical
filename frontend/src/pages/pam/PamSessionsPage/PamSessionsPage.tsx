@@ -7,7 +7,7 @@ import { Activity, Ban, SearchIcon, Video } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { HighlightText } from "@app/components/utilities/HighlightText";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -39,6 +39,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { useOrganization, useProject } from "@app/context";
 import {
   getUserTablePreference,
@@ -209,6 +210,7 @@ export const PamSessionsPage = () => {
         <title>{t("common.head-title", { title: "Sessions" })}</title>
       </Helmet>
       <PageHeader
+        className="mb-10"
         scope={ProjectType.PAM}
         icon={Video}
         title="Sessions"

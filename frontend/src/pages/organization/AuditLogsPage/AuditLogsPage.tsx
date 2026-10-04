@@ -1,7 +1,6 @@
 import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
 import {
   LookingForOrgPageLink,
   Tabs,
@@ -9,6 +8,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 
@@ -56,6 +56,7 @@ export const AuditLogsPage = () => {
       <div className="flex w-full justify-center bg-page pb-6 text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader
+            className="mb-10"
             scope={isSubOrganization ? "namespace" : "org"}
             title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Audit Logs`}
             description="Audit logs for security and compliance teams to monitor information access."

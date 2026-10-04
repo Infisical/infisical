@@ -3,8 +3,9 @@ import { ChevronLeft, Pencil, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
 import { Button } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
@@ -67,6 +68,7 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
             Back to Templates
           </Button>
           <PageHeader
+            className="mb-10"
             scope={projectType}
             title={templateName ?? "Project Template"}
             description={

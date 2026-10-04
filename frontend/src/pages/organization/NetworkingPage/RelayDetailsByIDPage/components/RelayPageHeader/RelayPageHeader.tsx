@@ -3,7 +3,6 @@ import { BanIcon, CopyIcon, EllipsisIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -22,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions
@@ -74,6 +74,7 @@ export const RelayPageHeader = ({
   return (
     <>
       <PageHeader
+        className="mb-10"
         scope="org"
         title={relay.name}
         description="Relay configuration and authentication"

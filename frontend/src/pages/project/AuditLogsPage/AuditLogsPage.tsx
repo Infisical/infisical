@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet";
 
-import { PageHeader } from "@app/components/v2";
 import { LookingForOrgPageLink } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components";
@@ -18,6 +18,7 @@ export const AuditLogsPage = () => {
       <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader
+            className="mb-10"
             scope={currentProject.type}
             title={isCertManager ? "Audit logs" : "Project Audit logs"}
             description="Audit logs for security and compliance teams to monitor information access."
