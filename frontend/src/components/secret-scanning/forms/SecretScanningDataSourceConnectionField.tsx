@@ -1,10 +1,18 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
-import { AppConnectionOption } from "@app/components/app-connections";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import { AppConnectionOptionContent } from "@app/components/app-connections";
+import {
+  Button,
+  Combobox,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
@@ -49,35 +57,36 @@ export const SecretScanningDataSourceConnectionField = ({
   return (
     <>
       <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            tooltipText="App Connections can be created from the Organization Settings page."
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label={`${connectionName} Connection`}
-            helperText={
-              isUpdate ? (
-                "Cannot be updated"
-              ) : (
-                <p>
-                  Check out{" "}
-                  <a
-                    href={`https://infisical.com/docs/integrations/app-connections/${app}`}
-                    target="_blank"
-                    className="underline"
-                    rel="noopener noreferrer"
+        render={({ field: { value, onChange, onBlur, name }, fieldState: { error } }) => (
+          <Field className="mb-4" data-invalid={Boolean(error)} data-disabled={isUpdate}>
+            <div className="flex items-center gap-1">
+              <FieldLabel htmlFor="secret-scanning-data-source-connection">
+                {connectionName} Connection
+              </FieldLabel>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    aria-label="About app connections"
                   >
-                    our docs
-                  </a>{" "}
-                  to ensure your connection has the required permissions for secret scanning.
-                </p>
-              )
-            }
-          >
-            <FilterableSelect
+                    <InfoIcon />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  App Connections can be created from the Organization Settings page.
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <Combobox<{ id: string; name: string; projectId?: string | null }>
+              id="secret-scanning-data-source-connection"
+              name={name}
+              onBlur={onBlur}
               value={value}
-              onChange={(newValue) => {
-                if ((newValue as SingleValue<{ id: string; name: string }>)?.id === "_create") {
+              isClearable={false}
+              onValueChange={(newValue) => {
+                if (newValue.id === "_create") {
                   handlePopUpOpen("addConnection");
                   onChange(null);
                   // store for oauth callback connections
@@ -95,19 +104,48 @@ export const SecretScanningDataSourceConnectionField = ({
                 ...(availableConnections ?? [])
               ]}
               isDisabled={isUpdate}
+              isError={Boolean(error)}
+              aria-describedby={`secret-scanning-data-source-connection-help${error ? " secret-scanning-data-source-connection-error" : ""}`}
               placeholder="Select connection..."
+              searchAriaLabel={`Search ${connectionName} connections`}
+              loadingMessage={`Loading ${connectionName} connections...`}
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
-              components={{ Option: AppConnectionOption }}
+              renderOption={(option) => (
+                <AppConnectionOptionContent
+                  data={option}
+                  isOnlyOption={option.id === "_create" && !availableConnections?.length}
+                />
+              )}
             />
-          </FormControl>
+            <FieldDescription id="secret-scanning-data-source-connection-help">
+              {isUpdate ? (
+                "Cannot be updated"
+              ) : (
+                <>
+                  Check out{" "}
+                  <a
+                    href={`https://infisical.com/docs/integrations/app-connections/${app}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    our docs
+                  </a>{" "}
+                  to ensure your connection has the required permissions for secret scanning.
+                </>
+              )}
+            </FieldDescription>
+            <FieldError id="secret-scanning-data-source-connection-error">
+              {error?.message}
+            </FieldError>
+          </Field>
         )}
         control={control}
         name="connection"
       />
       {!isUpdate && !isPending && !availableConnections?.length && !canCreateConnection && (
         <p className="-mt-2.5 mb-2.5 text-xs text-warning">
-          <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
+          <InfoIcon className="mr-1 inline size-3" />
           You do not have access to any {connectionName} Connections. Contact an admin to create
           one.
         </p>
