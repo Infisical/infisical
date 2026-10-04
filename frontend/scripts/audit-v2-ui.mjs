@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import picomatch from "picomatch";
 import ts from "typescript";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -9,8 +10,8 @@ const root = path.resolve(frontend, "..");
 const relative = (file) => path.relative(root, file).split(path.sep).join("/");
 const tracked = execFileSync(
   "git",
-  ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-  { cwd: root, encoding: "utf8" }
+  ["ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", "frontend"],
+  { cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }
 )
   .split("\0")
   .filter((file) => file && existsSync(path.join(root, file)));
@@ -47,6 +48,7 @@ const families = [
   .sort();
 const edges = [];
 const computedImports = [];
+const literalGlobs = [];
 
 for (const sourcePath of sourcePaths) {
   const source = program.getSourceFile(path.join(root, sourcePath));
@@ -143,11 +145,70 @@ for (const sourcePath of sourcePaths) {
           node.expression.getText(source).startsWith("import.meta.glob")))
     ) {
       const argument = node.arguments[0];
-      if (
-        argument &&
-        ts.isStringLiteralLike(argument) &&
-        !node.expression.getText(source).startsWith("import.meta.glob")
-      )
+      if (argument && node.expression.getText(source).startsWith("import.meta.glob")) {
+        const literals = ts.isStringLiteralLike(argument)
+          ? [argument]
+          : ts.isArrayLiteralExpression(argument) && argument.elements.every(ts.isStringLiteralLike)
+            ? argument.elements
+            : null;
+        const baseOption =
+          node.arguments[1] && ts.isObjectLiteralExpression(node.arguments[1])
+            ? node.arguments[1].properties.some(
+                (property) =>
+                  ts.isSpreadAssignment(property) ||
+                  (property.name &&
+                    ((!ts.isIdentifier(property.name) && !ts.isStringLiteralLike(property.name)) ||
+                      property.name.text === "base"))
+              )
+            : Boolean(node.arguments[1] && !ts.isObjectLiteralExpression(node.arguments[1]));
+        const patterns = literals?.map((literal) => {
+          const negative = literal.text.startsWith("!");
+          const pattern = negative ? literal.text.slice(1) : literal.text;
+          const appPath = parsed.options.paths?.["@app/*"]?.[0];
+          const resolved =
+            pattern.startsWith("@app/") && appPath
+              ? path.resolve(frontend, appPath.replace("*", pattern.slice(5)))
+              : pattern.startsWith("/")
+                ? path.resolve(frontend, `.${pattern}`)
+                : pattern.startsWith(".")
+                  ? path.resolve(path.dirname(source.fileName), pattern)
+                  : null;
+          return resolved ? { negative, pattern: relative(resolved) } : null;
+        });
+        if (!patterns || patterns.some((pattern) => !pattern) || baseOption) {
+          computedImports.push({ location: location(node), expression: node.getText(source) });
+        } else {
+          const included = patterns.filter((pattern) => !pattern.negative);
+          const excluded = patterns.filter((pattern) => pattern.negative);
+          const matches = tracked.filter(
+            (file) =>
+              included.some((pattern) => picomatch.isMatch(file, pattern.pattern)) &&
+              !excluded.some((pattern) => picomatch.isMatch(file, pattern.pattern))
+          );
+          literalGlobs.push({ location: location(node), patterns, matches });
+          for (const target of matches.filter((file) => file.startsWith(legacyPrefix))) {
+            edges.push({
+              source: sourcePath,
+              location: location(node),
+              kind: "glob",
+              specifier: argument.getText(source),
+              target,
+              bindings: []
+            });
+          }
+          for (const pattern of included.filter((item) => item.pattern.startsWith(legacyPrefix))) {
+            if (!matches.some((file) => file.startsWith(legacyPrefix)))
+              edges.push({
+                source: sourcePath,
+                location: location(node),
+                kind: "glob",
+                specifier: pattern.pattern,
+                target: null,
+                bindings: []
+              });
+          }
+        }
+      } else if (argument && ts.isStringLiteralLike(argument))
         addEdge(node, argument.text, node.expression.getText(source));
       else computedImports.push({ location: location(node), expression: node.getText(source) });
     }
@@ -188,6 +249,7 @@ const result = {
   v3Ingress: edges.filter((edge) => edge.source.startsWith("frontend/src/components/v3/")),
   edges,
   computedImports,
+  literalGlobs,
   outsideLegacy,
   compatibilitySelectors: tracked.filter((file) =>
     file.startsWith("frontend/src/components/v3/generic/ReactSelect/")
