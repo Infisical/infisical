@@ -88,11 +88,13 @@ func ResolveImage(ctx context.Context, repoRoot string, log infra.Logger) (Image
 	}
 
 	iid := filepath.Join(dir, "iid")
-	out, err := exec.CommandContext(ctx, "docker", "build",
+	dockerBuild := exec.CommandContext(ctx, "docker", "build",
 		"-f", filepath.Join(tests, "cmd", "fakenet", "Dockerfile"),
-		"-t", localTag, "--iidfile", iid, dir).CombinedOutput()
-	if err != nil {
-		return Image{}, fmt.Errorf("fakenet: docker build failed: %w\n%s", err, out)
+		"-t", localTag, "--iidfile", iid, dir)
+	dockerBuild.Stdout = os.Stderr
+	dockerBuild.Stderr = os.Stderr
+	if err := dockerBuild.Run(); err != nil {
+		return Image{}, fmt.Errorf("fakenet: docker build failed (output above): %w", err)
 	}
 	b, err := os.ReadFile(iid)
 	if err != nil {

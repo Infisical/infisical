@@ -95,8 +95,10 @@ func build(ctx context.Context, repoRoot string) (string, error) {
 	args = append(args, backend)
 
 	cmd := exec.CommandContext(ctx, "docker", args...)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("infisical: docker build failed: %w\n%s", err, tail(string(out), 40))
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("infisical: docker build failed (output above): %w", err)
 	}
 
 	b, err := os.ReadFile(iidPath)
@@ -133,12 +135,4 @@ func short(id string) string {
 		return id[:12]
 	}
 	return id
-}
-
-func tail(s string, n int) string {
-	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
-	if len(lines) > n {
-		lines = lines[len(lines)-n:]
-	}
-	return strings.Join(lines, "\n")
 }
