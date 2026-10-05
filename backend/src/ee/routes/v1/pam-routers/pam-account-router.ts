@@ -98,7 +98,12 @@ const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([account
     accessibilityIssues: z
       .array(z.nativeEnum(PamAccountAccessibilityIssue))
       .describe("Reasons the account cannot launch a session, if any"),
-    isStale: z.boolean().describe("Whether the discovery source's latest scan no longer found this account.")
+    isStale: z.boolean().describe("Whether the discovery source's latest scan no longer found this account."),
+    webAccessUnavailableReason: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("Why a browser session cannot open this account, or null when it can")
   })
 );
 

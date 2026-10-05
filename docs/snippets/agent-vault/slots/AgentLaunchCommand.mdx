@@ -24,6 +24,20 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
   ```
 </AgentVaultBranch>
 
+<AgentVaultBranch agent="hermes">
+  Hermes reads its API keys from `~/.hermes/.env`, and it won't start without them. If the service you added holds one of those keys, such as your model provider's key, replace the key's value in that file with a placeholder, such as `agent-vault-openai`. The proxy attaches the real key, so Hermes only needs a value it accepts. If the service uses a [substitution](/documentation/platform/agent-vault/services#substitutions), use the exact value you entered in **Replace** instead.
+
+  <Warning>
+    Hermes treats some values as an unset key, including `dummy`, `placeholder`, `changeme`, `none`, and values made only of `x` characters, such as `sk-xxxx`. If you use one of these values, Hermes reports the key as missing instead of sending it to the proxy.
+  </Warning>
+
+  Then start Hermes. For Hermes Agent, the command is `hermes --tui`:
+
+  ```bash
+  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- hermes --tui
+  ```
+</AgentVaultBranch>
+
 <AgentVaultBranch agent="opencode">
   For OpenCode, the command is `opencode`:
 
