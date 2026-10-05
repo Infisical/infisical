@@ -171,7 +171,7 @@ export const ChannelsStep = ({
           key={field.id}
           index={index}
           projectId={projectId}
-          resourceType={getAlertResourceType(eventType)}
+          resourceType={getAlertResourceType(scope, eventType)}
           resourceId={getAlertResourceId(scope)}
           alertId={alertId}
           canRemove

@@ -28,7 +28,7 @@ type TAlertEventPayload = z.infer<typeof AlertEventPayloadSchema>;
 export type TAlertEventConsumerDep = {
   alertDAL: Pick<TAlertDALFactory, "findEnabledForEvent">;
   alertEngine: Pick<TAlertEngine, "runAlertForEvent">;
-  alertProviderRegistry: Pick<TAlertProviderRegistry, "get" | "eventTriggeredKeys">;
+  alertProviderRegistry: Pick<TAlertProviderRegistry, "get" | "eventTriggeredKeys" | "relaysFor">;
 };
 
 type TAlertLookup = TAlertDALFactory["findEnabledForEvent"];
@@ -70,13 +70,13 @@ export const alertEventConsumerFactory = ({
       };
     }
 
-    const alerts = await findAlerts({
-      orgId,
-      projectId,
-      resourceType,
-      resourceId,
-      eventType: event.eventType
-    });
+    const lookups = [
+      { resourceType, resourceId, eventType: event.eventType },
+      ...alertProviderRegistry
+        .relaysFor(resourceType, event.eventType)
+        .map((relay) => ({ resourceType: relay.resourceType, resourceId: null, eventType: relay.eventKey }))
+    ];
+    const alerts = (await Promise.all(lookups.map((lookup) => findAlerts({ orgId, projectId, ...lookup })))).flat();
 
     if (alerts.length === 0) {
       recordAlertDispatchOutcomeMetric({ resourceType, outcome: AlertDispatchOutcome.NoMatchingAlert });
@@ -89,7 +89,7 @@ export const alertEventConsumerFactory = ({
       // eslint-disable-next-line no-await-in-loop -- bounds DB connection use; a retry skips channels already delivered for this event
       const outcome = await alertEngine.runAlertForEvent(alert, {
         eventId: id,
-        eventType: event.eventType,
+        eventType: alert.eventType,
         occurredAt: event.occurredAt,
         targetIds,
         payload: (event.payload ?? {}) as Record<string, unknown>

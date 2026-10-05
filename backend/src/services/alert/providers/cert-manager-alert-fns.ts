@@ -1,21 +1,29 @@
+import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { ProjectPermissionActions } from "@app/ee/services/permission/project-permission";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
+import { getRevocationReasonLabel } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { AlertChannelType } from "../alert-channel-types";
-import { durationToDays } from "../alert-format-fns";
+import { AlertChannelType, TAlertPayload, TAlertSeverity } from "../alert-channel-types";
+import { durationToDays, expirySeverity, formatUtcDate, humanizeDays } from "../alert-format-fns";
 import {
   AlertAuditAction,
   AlertPermissionAction,
   AlertTelemetryAction,
+  DEFAULT_DEDUP_WINDOW_HOURS,
   TAlertAuditInput,
+  TAlertContext,
+  TAlertPermissionInput,
   TAlertTelemetryEvent
 } from "../alert-types";
+import { TApplicationAlertCertificate } from "./cert-manager-application-alert-dal";
 
 const MIN_ALERT_BEFORE_DAYS = 1;
 const MAX_ALERT_BEFORE_DAYS = 365;
@@ -39,11 +47,17 @@ const DAILY_SCAN_DEDUP_MARGIN_HOURS = 4;
 
 const dayMultipleDedupWindowHours = (days: number): number => days * 24 - DAILY_SCAN_DEDUP_MARGIN_HOURS;
 
-export const expirationDedupWindowHours = (days: number, dailyReminder?: boolean): number => {
+const expirationDedupWindowHours = (days: number, dailyReminder?: boolean): number => {
   if (dailyReminder || days <= 7) return dayMultipleDedupWindowHours(1);
   if (days <= 30) return dayMultipleDedupWindowHours(2);
   if (days <= 90) return dayMultipleDedupWindowHours(7);
   return dayMultipleDedupWindowHours(30);
+};
+
+export const expiryDedupWindowHours = (condition: unknown): number => {
+  const parsed = ExpiryFieldsSchema.safeParse(condition);
+  if (!parsed.success) return DEFAULT_DEDUP_WINDOW_HOURS;
+  return expirationDedupWindowHours(durationToDays(parsed.data.alertBefore), parsed.data.dailyReminder);
 };
 
 export const CERT_MANAGER_ALERT_PERMISSION_ACTIONS: Record<AlertPermissionAction, ProjectPermissionActions> = {
@@ -51,6 +65,29 @@ export const CERT_MANAGER_ALERT_PERMISSION_ACTIONS: Record<AlertPermissionAction
   [AlertPermissionAction.Create]: ProjectPermissionActions.Create,
   [AlertPermissionAction.Edit]: ProjectPermissionActions.Edit,
   [AlertPermissionAction.Delete]: ProjectPermissionActions.Delete
+};
+
+export const assertNoAlertResource = (resourceId: string | null | undefined, message: string) => {
+  if (resourceId) throw new BadRequestError({ message });
+};
+
+export const getCertManagerAlertPermission = async (
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">,
+  { action, projectId, actor }: Pick<TAlertPermissionInput, "action" | "actor"> & { projectId: string }
+) => {
+  const result = await permissionService.getProjectPermission({
+    actor: actor.actor,
+    actorId: actor.actorId,
+    projectId,
+    actorAuthMethod: actor.actorAuthMethod,
+    actorOrgId: actor.actorOrgId,
+    actionProjectType: ActionProjectType.CertificateManager
+  });
+  ForbiddenError.from(result.permission).throwUnlessCan(
+    CERT_MANAGER_ALERT_PERMISSION_ACTIONS[action],
+    ProjectPermissionSub.PkiAlerts
+  );
+  return result;
 };
 
 export const splitAltNames = (altNames: string | null): string[] =>
@@ -134,4 +171,133 @@ export const buildPkiAlertTelemetryEvent = (
     default:
       return { event: PostHogEventTypes.PkiAlertDeleted, properties };
   }
+};
+
+export enum CertificateAlertKind {
+  Expiry = "expiry",
+  Issuance = "issuance",
+  Renewal = "renewal",
+  Revocation = "revocation"
+}
+
+const CERTIFICATE_ALERT_KIND_LABELS: Record<CertificateAlertKind, string> = {
+  [CertificateAlertKind.Expiry]: "Expiration",
+  [CertificateAlertKind.Issuance]: "Issuance",
+  [CertificateAlertKind.Renewal]: "Renewal",
+  [CertificateAlertKind.Revocation]: "Revocation"
+};
+
+export const CERTIFICATE_ALERT_KIND_TELEMETRY_TYPES: Record<CertificateAlertKind, string> = {
+  [CertificateAlertKind.Expiry]: "expiration",
+  [CertificateAlertKind.Issuance]: "issuance",
+  [CertificateAlertKind.Renewal]: "renewal",
+  [CertificateAlertKind.Revocation]: "revocation"
+};
+
+const CERTIFICATE_ALERT_KIND_VERBS: Record<CertificateAlertKind, string> = {
+  [CertificateAlertKind.Expiry]: "is expiring",
+  [CertificateAlertKind.Issuance]: "was issued",
+  [CertificateAlertKind.Renewal]: "was renewed",
+  [CertificateAlertKind.Revocation]: "was revoked"
+};
+
+const certificateSeverity = (kind: CertificateAlertKind, targets: TApplicationAlertCertificate[]): TAlertSeverity => {
+  if (kind === CertificateAlertKind.Expiry) return expirySeverity(targets.map((target) => target.notAfter));
+  if (kind === CertificateAlertKind.Revocation) return "warning";
+  return "info";
+};
+
+const inApplication = (applicationName?: string | null) =>
+  applicationName ? ` in application '${applicationName}'` : "";
+
+export const buildCertificateAlertPayload = ({
+  alert,
+  targets,
+  viewUrl,
+  kind,
+  webhookSource,
+  resourceOwnerKind,
+  applicationName
+}: {
+  alert: TAlertContext;
+  targets: TApplicationAlertCertificate[];
+  viewUrl: string;
+  kind: CertificateAlertKind;
+  webhookSource?: string;
+  resourceOwnerKind: string;
+  applicationName: string | null;
+}): TAlertPayload => {
+  const alertBefore =
+    kind === CertificateAlertKind.Expiry
+      ? (alert.condition as { alertBefore?: string } | null)?.alertBefore
+      : undefined;
+  const verb = CERTIFICATE_ALERT_KIND_VERBS[kind];
+  const certificates = `${targets.length} certificate${targets.length === 1 ? "" : "s"}`;
+  let summary = `${certificates} ${verb}${inApplication(applicationName)}`;
+  if (alertBefore) {
+    summary = `${certificates}${inApplication(applicationName)} expiring within ${humanizeDays(durationToDays(alertBefore))}`;
+  } else if (targets.length === 1) {
+    summary = `Certificate '${certificateDisplayName(targets[0])}' ${verb}${inApplication(targets[0].applicationName)}`;
+  }
+
+  return {
+    alert: {
+      id: alert.id,
+      name: alert.name,
+      orgId: alert.orgId,
+      ...(alert.projectId ? { projectId: alert.projectId } : {}),
+      resourceType: alert.resourceType,
+      ...(alert.resourceId ? { resourceId: alert.resourceId } : {}),
+      ...(alertBefore ? { condition: alertBefore } : {}),
+      viewUrl
+    },
+    eventKey: alert.eventType,
+    eventLabel: CERTIFICATE_ALERT_KIND_LABELS[kind],
+    webhookType: `com.infisical.${alert.eventType}`,
+    webhookSource,
+    resourceKind: "Certificate",
+    resourceOwnerKind,
+    severity: certificateSeverity(kind, targets),
+    summary,
+    items: targets.map((certificate) => {
+      const revocationReason =
+        kind === CertificateAlertKind.Revocation ? getRevocationReasonLabel(certificate.revocationReason) : undefined;
+      const altNames = splitAltNames(certificate.altNames);
+      const name = certificateDisplayName(certificate);
+      return {
+        id: certificate.id,
+        title: name,
+        summary:
+          kind === CertificateAlertKind.Expiry
+            ? `Certificate '${name}'${inApplication(certificate.applicationName)} expires on ${formatUtcDate(certificate.notAfter)}`
+            : `Certificate '${name}' ${verb}${inApplication(certificate.applicationName)}`,
+        severity: certificateSeverity(kind, [certificate]),
+        fields: [
+          { label: "Serial Number", value: certificate.serialNumber },
+          ...(altNames.length ? [{ label: "SANs", value: altNames.join(", ") }] : []),
+          ...(certificate.profileName ? [{ label: "Profile", value: certificate.profileName }] : []),
+          ...(!alert.resourceId && certificate.applicationName
+            ? [{ label: "Application", value: certificate.applicationName }]
+            : []),
+          { label: "Expires", value: formatUtcDate(certificate.notAfter) },
+          ...(revocationReason ? [{ label: "Revocation Reason", value: revocationReason }] : [])
+        ],
+        resource: {
+          id: certificate.id,
+          serialNumber: certificate.serialNumber,
+          commonName: certificate.commonName,
+          altNames,
+          status: certificate.status,
+          notBefore: certificate.notBefore.toISOString(),
+          notAfter: certificate.notAfter.toISOString(),
+          revokedAt: certificate.revokedAt?.toISOString() ?? null,
+          revocationReason: certificate.revocationReason,
+          profileId: certificate.profileId,
+          profileName: certificate.profileName,
+          applicationId: certificate.applicationId,
+          applicationName: certificate.applicationName
+        }
+      };
+    })
+  };
 };

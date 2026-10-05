@@ -70,5 +70,17 @@ export const alertProviderRegistryFactory = () => {
     return eventTriggeredKeyCache;
   };
 
-  return { register, get, resourceTypes, eventTriggeredKeys };
+  const relaysFor = (resourceType: string, eventKey: string): { resourceType: string; eventKey: string }[] =>
+    [...providers.values()].flatMap((provider) =>
+      provider.events
+        .filter(
+          (event) =>
+            event.triggerType === AlertTriggerType.Event &&
+            event.relayedFrom?.resourceType === resourceType &&
+            event.relayedFrom.eventKey === eventKey
+        )
+        .map((event) => ({ resourceType: provider.resourceType, eventKey: event.key }))
+    );
+
+  return { register, get, resourceTypes, eventTriggeredKeys, relaysFor };
 };

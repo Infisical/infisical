@@ -1,9 +1,6 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
@@ -16,7 +13,6 @@ import {
   ALERT_SCAN_LEAD_INTERVAL,
   AlertPermissionAction,
   AlertTriggerType,
-  DEFAULT_DEDUP_WINDOW_HOURS,
   IScheduledAlertProvider,
   TAlertContext,
   TAlertPermissionInput,
@@ -25,12 +21,13 @@ import {
 } from "../alert-types";
 import {
   assertCertManagerAlertChannelTypesAllowed,
+  assertNoAlertResource,
   buildCertificateManagerAlertAuditEvent,
   buildPkiAlertTelemetryEvent,
-  CERT_MANAGER_ALERT_PERMISSION_ACTIONS,
   certificateDisplayName,
-  expirationDedupWindowHours,
+  expiryDedupWindowHours,
   ExpiryFieldsSchema,
+  getCertManagerAlertPermission,
   resolveCertManagerProjectId,
   splitAltNames
 } from "./cert-manager-alert-fns";
@@ -38,14 +35,11 @@ import { TCertManagerSignerAlertDALFactory, TSignerAlertCertificate } from "./ce
 
 const SignerExpirationConditionSchema = ExpiryFieldsSchema.strict();
 
-const assertNoResource = (resourceId?: string | null) => {
-  if (resourceId) {
-    throw new BadRequestError({
-      message:
-        "Signer certificate expiration alerts cover every signer in Certificate Manager and can't be bound to a resource. Remove resourceId."
-    });
-  }
-};
+const assertNoResource = (resourceId?: string | null) =>
+  assertNoAlertResource(
+    resourceId,
+    "Signer certificate expiration alerts cover every signer in Certificate Manager and can't be bound to a resource. Remove resourceId."
+  );
 
 const getWebhookSource = ({ alertId }: { alertId: string }) => `/alerts/${alertId}`;
 
@@ -140,18 +134,7 @@ export const certManagerSignerAlertProviderFactory = ({
     }
     assertNoResource(resourceId);
 
-    const { permission, hasRole } = await permissionService.getProjectPermission({
-      actor: actor.actor,
-      actorId: actor.actorId,
-      projectId,
-      actorAuthMethod: actor.actorAuthMethod,
-      actorOrgId: actor.actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      CERT_MANAGER_ALERT_PERMISSION_ACTIONS[action],
-      ProjectPermissionSub.PkiAlerts
-    );
+    const { hasRole } = await getCertManagerAlertPermission(permissionService, { action, projectId, actor });
 
     const definesDelivery = action === AlertPermissionAction.Create || action === AlertPermissionAction.Edit;
     if (definesDelivery && !hasRole(ProjectMembershipRole.Admin)) {
@@ -185,11 +168,7 @@ export const certManagerSignerAlertProviderFactory = ({
     buildViewUrl,
     buildPayload,
     targetId: (certificate) => certificate.id,
-    dedupWindowHours: (condition) => {
-      const parsed = SignerExpirationConditionSchema.safeParse(condition);
-      if (!parsed.success) return DEFAULT_DEDUP_WINDOW_HOURS;
-      return expirationDedupWindowHours(durationToDays(parsed.data.alertBefore), parsed.data.dailyReminder);
-    },
+    dedupWindowHours: expiryDedupWindowHours,
     assertPermission,
     assertResourceInScope: async ({ resourceId }) => assertNoResource(resourceId),
     assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseService, input),

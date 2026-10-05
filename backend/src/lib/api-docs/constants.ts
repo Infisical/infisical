@@ -2421,7 +2421,7 @@ export const ALERTING = {
   LIST: {
     resourceType: "The type of resource to list alerts for.",
     resourceId:
-      "The ID of the resource to list alerts for. If omitted, lists every alert on the resource type. For resource types that support alerts covering all of their resources, such as `cert-manager.application`, lists only those alerts.",
+      "The ID of the resource to list alerts for. If omitted, lists every alert on the resource type. For resource types that support alerts covering all of their resources, such as `cert-manager`, lists only those alerts.",
     projectId: "The ID of the project to list alerts in.",
     enabled: "Whether to list only enabled or only disabled alerts."
   },

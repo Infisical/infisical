@@ -64,6 +64,7 @@ import {
   CertificateAlertScopeKind,
   CertificateFilterKind,
   formatAlertBefore,
+  fromApiEventType,
   getAlertResourceId,
   getFilterName,
   getScopeEventTypes,
@@ -309,7 +310,10 @@ export const ApplicationAlertsCard = ({
     isLoading: isCertificateAlertsLoading,
     isError: isCertificateAlertsError
   } = useListAlerts({
-    resourceType: CertificateAlertResourceType.Application,
+    resourceType:
+      scope.kind === CertificateAlertScopeKind.CertificateManager
+        ? CertificateAlertResourceType.CertificateManager
+        : CertificateAlertResourceType.Application,
     projectId,
     ...(resourceId ? { resourceId } : {})
   });
@@ -321,10 +325,11 @@ export const ApplicationAlertsCard = ({
     { resourceType: CertificateAlertResourceType.Signer, projectId },
     { enabled: scope.kind === CertificateAlertScopeKind.CertificateManager }
   );
-  const alerts =
+  const alerts = (
     scope.kind === CertificateAlertScopeKind.CertificateManager
       ? [...certificateAlerts, ...signerAlerts]
-      : certificateAlerts;
+      : certificateAlerts
+  ).map((alert) => ({ ...alert, eventType: fromApiEventType(alert.eventType) }));
   const isAlertsLoading =
     isCertificateAlertsLoading ||
     (scope.kind === CertificateAlertScopeKind.CertificateManager && isSignerAlertsLoading);

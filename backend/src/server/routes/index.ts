@@ -249,6 +249,7 @@ import { alertProviderRegistryFactory } from "@app/services/alert/alert-provider
 import { alertQueueServiceFactory } from "@app/services/alert/alert-queue";
 import { alertRecipientResolverFactory } from "@app/services/alert/alert-recipient-resolver";
 import { alertServiceFactory } from "@app/services/alert/alert-service";
+import { certManagerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-alert-provider";
 import { certManagerApplicationAlertDALFactory } from "@app/services/alert/providers/cert-manager-application-alert-dal";
 import { certManagerApplicationAlertProviderFactory } from "@app/services/alert/providers/cert-manager-application-alert-provider";
 import { certManagerSignerAlertDALFactory } from "@app/services/alert/providers/cert-manager-signer-alert-dal";
@@ -1099,6 +1100,13 @@ export const registerRoutes = async (
   );
   alertProviderRegistry.register(
     certManagerApplicationAlertProviderFactory({
+      certManagerApplicationAlertDAL,
+      permissionService,
+      licenseService
+    })
+  );
+  alertProviderRegistry.register(
+    certManagerAlertProviderFactory({
       certManagerApplicationAlertDAL,
       permissionService,
       licenseService,

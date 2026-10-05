@@ -51,6 +51,7 @@ import {
   TCertificateAlertForm,
   TCertificateAlertScope,
   TMemberEmails,
+  toApiEventType,
   toCertificateAlertForm,
   toCondition
 } from "./types";
@@ -124,9 +125,9 @@ const CertificateAlertWizard = ({
         await createAlert.mutateAsync({
           name: values.name,
           description: values.description || undefined,
-          resourceType: getAlertResourceType(values.eventType),
+          resourceType: getAlertResourceType(scope, values.eventType),
           resourceId: getAlertResourceId(scope),
-          eventType: values.eventType,
+          eventType: toApiEventType(scope, values.eventType),
           condition,
           enabled: values.enabled,
           projectId,

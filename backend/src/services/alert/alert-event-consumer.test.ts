@@ -12,7 +12,8 @@ vi.mock("@app/lib/logger", () => ({
 const ORG_ID = "11111111-1111-1111-1111-111111111111";
 const EVENT_TYPE = "approval.workflow.request_opened";
 
-const makeAlert = (id: string) => ({ id, resourceType: "approval.workflow", orgId: ORG_ID }) as never;
+const makeAlert = (id: string) =>
+  ({ id, resourceType: "approval.workflow", orgId: ORG_ID, eventType: EVENT_TYPE }) as never;
 
 const makePayload = (overrides?: Record<string, unknown>) => ({
   orgId: ORG_ID,
@@ -36,11 +37,13 @@ const buildConsumer = (opts?: {
   alerts?: unknown[];
   results?: AlertDispatchOutcome[];
   eventKeys?: string[];
-  findAlerts?: () => Promise<unknown[]>;
+  findAlerts?: (filter: { resourceType: string; resourceId?: string | null; eventType: string }) => Promise<unknown[]>;
+  relays?: { resourceType: string; eventKey: string }[];
 }) => {
   const runs: {
     alertId: string;
     eventId: string;
+    eventType: string;
     targetIds: string[];
     payload?: Record<string, unknown>;
   }[] = [];
@@ -50,18 +53,24 @@ const buildConsumer = (opts?: {
   const eventKeys = opts?.eventKeys ?? [EVENT_TYPE];
   const consumer = alertEventConsumerFactory({
     alertDAL: {
-      findEnabledForEvent: async () => {
+      findEnabledForEvent: async (filter) => {
         lookups += 1;
-        if (opts?.findAlerts) return (await opts.findAlerts()) as never;
+        if (opts?.findAlerts) return (await opts.findAlerts(filter)) as never;
         return (opts?.alerts ?? [makeAlert("alert-1")]) as never;
       }
     },
     alertEngine: {
       runAlertForEvent: async (
         alert: { id: string },
-        input: { eventId: string; targetIds: string[]; payload: Record<string, unknown> }
+        input: { eventId: string; eventType: string; targetIds: string[]; payload: Record<string, unknown> }
       ) => {
-        runs.push({ alertId: alert.id, eventId: input.eventId, targetIds: input.targetIds, payload: input.payload });
+        runs.push({
+          alertId: alert.id,
+          eventId: input.eventId,
+          eventType: input.eventType,
+          targetIds: input.targetIds,
+          payload: input.payload
+        });
         const result = results[Math.min(runIdx, results.length - 1)];
         runIdx += 1;
         return result;
@@ -69,6 +78,7 @@ const buildConsumer = (opts?: {
     } as never,
     alertProviderRegistry: {
       eventTriggeredKeys: () => new Set(eventKeys),
+      relaysFor: () => opts?.relays ?? [],
       get: (resourceType: string) =>
         resourceType === "approval.workflow"
           ? ({ events: eventKeys.map((key) => ({ key, triggerType: AlertTriggerType.Event })) } as never)
@@ -105,6 +115,44 @@ describe("alert event consumer", () => {
 
     expect(result.status).toBe(EventResultStatus.Delivered);
     expect(runs[0].targetIds).toEqual(["req-1"]);
+  });
+
+  test("also runs the alerts of a provider that relays the event, as resource-less alerts on its own event", async () => {
+    const lookupsSeen: { resourceType: string; resourceId?: string | null; eventType: string }[] = [];
+    const { consumer, runs } = buildConsumer({
+      relays: [{ resourceType: "approval.org", eventKey: "approval.org.request_opened" }],
+      findAlerts: async (filter) => {
+        lookupsSeen.push(filter);
+        return [
+          {
+            id: filter.resourceType === "approval.org" ? "relayed-alert" : "bound-alert",
+            resourceType: filter.resourceType,
+            orgId: ORG_ID,
+            eventType: filter.eventType
+          }
+        ];
+      }
+    });
+
+    const [result] = await consumer.handle([makeEvent()]);
+
+    expect(result.status).toBe(EventResultStatus.Delivered);
+    expect(lookupsSeen).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ resourceType: "approval.workflow", resourceId: "policy-1", eventType: EVENT_TYPE }),
+        expect.objectContaining({
+          resourceType: "approval.org",
+          resourceId: null,
+          eventType: "approval.org.request_opened"
+        })
+      ])
+    );
+    expect(runs.map((run) => [run.alertId, run.eventType])).toEqual(
+      expect.arrayContaining([
+        ["bound-alert", EVENT_TYPE],
+        ["relayed-alert", "approval.org.request_opened"]
+      ])
+    );
   });
 
   // The outbox row id is stable across attempts, so it's the only key a retry can use to find what

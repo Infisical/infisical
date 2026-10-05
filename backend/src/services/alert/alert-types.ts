@@ -21,6 +21,7 @@ export type TAlertEventDefinition = {
   key: string;
   triggerType: AlertTriggerType;
   conditionSchema: z.ZodTypeAny;
+  relayedFrom?: { resourceType: string; eventKey: string };
 };
 
 export enum AlertRunStatus {

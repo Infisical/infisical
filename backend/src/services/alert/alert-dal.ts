@@ -77,14 +77,8 @@ export const alertDALFactory = (db: TDbClient) => {
               .where(`${TableName.AlertChannel}.enabled`, true)
         );
 
-      void query.where(
-        (builder) =>
-          void (filter.resourceId
-            ? builder
-                .where(`${TableName.Alert}.resourceId`, filter.resourceId)
-                .orWhereNull(`${TableName.Alert}.resourceId`)
-            : builder.whereNull(`${TableName.Alert}.resourceId`))
-      );
+      if (filter.resourceId) void query.where(`${TableName.Alert}.resourceId`, filter.resourceId);
+      else void query.whereNull(`${TableName.Alert}.resourceId`);
 
       if (filter.projectId) {
         void query.where(

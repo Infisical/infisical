@@ -119,7 +119,7 @@ describe("alert dal", () => {
     expect(calls.where).toContainEqual([`${TableName.Alert}.orgId`, "org-1"]);
     expect(calls.where).toContainEqual([`${TableName.Alert}.resourceType`, "approval.workflow"]);
     expect(calls.where).toContainEqual([`${TableName.Alert}.resourceId`, "policy-1"]);
-    expect(calls.orWhereNull).toContainEqual(`${TableName.Alert}.resourceId`);
+    expect(calls.orWhereNull ?? []).not.toContainEqual(`${TableName.Alert}.resourceId`);
     expect(calls.where).toContainEqual([`${TableName.Alert}.eventType`, "approval.workflow.request_opened"]);
     // Mirrors the cron's filter: an event must never trigger a scheduled alert.
     expect(calls.where).toContainEqual([`${TableName.Alert}.triggerType`, "event"]);

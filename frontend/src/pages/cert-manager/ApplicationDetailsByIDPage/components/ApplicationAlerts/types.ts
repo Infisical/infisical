@@ -4,6 +4,7 @@ import {
   AlertPrincipalType,
   CertificateAlertEventType,
   CertificateAlertResourceType,
+  CertificateManagerAlertEventType,
   channelFormSchema,
   MAX_CERTIFICATE_ALERT_BEFORE_DAYS,
   MAX_CERTIFICATE_ALERT_FILTER_IDS,
@@ -37,7 +38,7 @@ export enum CertificateAlertAccess {
   Admin = "admin"
 }
 
-export const CERTIFICATE_ALERT_EVENT_GROUPS: {
+const CERTIFICATE_ALERT_EVENT_GROUPS: {
   label: string;
   events: CertificateAlertEventType[];
   scopes: CertificateAlertScopeKind[];
@@ -80,10 +81,43 @@ export const isExpiryEventType = (eventType: CertificateAlertEventType) =>
 export const isFilterableEventType = (eventType: CertificateAlertEventType) =>
   eventType !== CertificateAlertEventType.SignerCertificateExpiry;
 
-export const getAlertResourceType = (eventType: CertificateAlertEventType) =>
-  eventType === CertificateAlertEventType.SignerCertificateExpiry
-    ? CertificateAlertResourceType.Signer
+const CERTIFICATE_MANAGER_EVENT_TYPES: Partial<
+  Record<CertificateAlertEventType, CertificateManagerAlertEventType>
+> = {
+  [CertificateAlertEventType.Expiry]: CertificateManagerAlertEventType.Expiry,
+  [CertificateAlertEventType.Issuance]: CertificateManagerAlertEventType.Issuance,
+  [CertificateAlertEventType.Renewal]: CertificateManagerAlertEventType.Renewal,
+  [CertificateAlertEventType.Revocation]: CertificateManagerAlertEventType.Revocation
+};
+
+const EVENT_TYPES_BY_CERTIFICATE_MANAGER_EVENT = Object.fromEntries(
+  Object.entries(CERTIFICATE_MANAGER_EVENT_TYPES).map(([eventType, apiEventType]) => [
+    apiEventType,
+    eventType
+  ])
+) as Record<string, CertificateAlertEventType>;
+
+export const getAlertResourceType = (
+  scope: TCertificateAlertScope,
+  eventType: CertificateAlertEventType
+) => {
+  if (eventType === CertificateAlertEventType.SignerCertificateExpiry)
+    return CertificateAlertResourceType.Signer;
+  return scope.kind === CertificateAlertScopeKind.CertificateManager
+    ? CertificateAlertResourceType.CertificateManager
     : CertificateAlertResourceType.Application;
+};
+
+export const toApiEventType = (
+  scope: TCertificateAlertScope,
+  eventType: CertificateAlertEventType
+): string =>
+  (scope.kind === CertificateAlertScopeKind.CertificateManager &&
+    CERTIFICATE_MANAGER_EVENT_TYPES[eventType]) ||
+  eventType;
+
+export const fromApiEventType = (eventType: string) =>
+  EVENT_TYPES_BY_CERTIFICATE_MANAGER_EVENT[eventType] ?? eventType;
 
 const ALERT_EVENT_DESCRIPTIONS: Record<CertificateAlertEventType, (where: string) => string> = {
   [CertificateAlertEventType.Expiry]: () => "Fires ahead of a certificate's expiry date.",

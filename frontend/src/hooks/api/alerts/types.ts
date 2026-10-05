@@ -30,6 +30,7 @@ export enum AlertRunStatus {
 
 export enum CertificateAlertResourceType {
   Application = "cert-manager.application",
+  CertificateManager = "cert-manager",
   Signer = "cert-manager.signer"
 }
 
@@ -39,6 +40,13 @@ export enum CertificateAlertEventType {
   Renewal = "cert-manager.application.certificate.renewal",
   Revocation = "cert-manager.application.certificate.revocation",
   SignerCertificateExpiry = "cert-manager.signer.certificate.expiry"
+}
+
+export enum CertificateManagerAlertEventType {
+  Expiry = "cert-manager.certificate.expiry",
+  Issuance = "cert-manager.certificate.issuance",
+  Renewal = "cert-manager.certificate.renewal",
+  Revocation = "cert-manager.certificate.revocation"
 }
 
 export const MIN_ALERT_BEFORE_DAYS = 1;
