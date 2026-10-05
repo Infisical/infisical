@@ -374,21 +374,22 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
   }: TClickHouseCountForProjectArg): Promise<
     { date: string; actor: string; actorMetadata: Record<string, string>; count: number }[]
   > => {
+    // uniqExact(id): retried batches can leave duplicate rows until ReplacingMergeTree merges them
     const query = `
       SELECT
-        toDate(createdAt) AS date,
+        toDate(createdAt, 'UTC') AS date,
         actor,
         JSONExtractString(actorMetadata, 'userId') AS userId,
         JSONExtractString(actorMetadata, 'email') AS email,
         JSONExtractString(actorMetadata, 'username') AS username,
         JSONExtractString(actorMetadata, 'identityId') AS identityId,
         JSONExtractString(actorMetadata, 'name') AS name,
-        count() AS count
+        uniqExact(id) AS count
       FROM ${tableName}
       WHERE orgId = {orgId:UUID}
         AND projectId = {projectId:String}
-        AND createdAt >= {startDate:DateTime64(6)}
-        AND createdAt < {endDate:DateTime64(6)}
+        AND createdAt >= {startDate:DateTime64(6, 'UTC')}
+        AND createdAt < {endDate:DateTime64(6, 'UTC')}
         AND eventType IN ({eventTypes:Array(String)})
       GROUP BY date, actor, userId, email, username, identityId, name
     `;
@@ -440,12 +441,12 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
       SELECT
         actor,
         JSONExtractString(actorMetadata, 'authMethod') AS authMethod,
-        count() AS count
+        uniqExact(id) AS count
       FROM ${tableName}
       WHERE orgId = {orgId:UUID}
         AND projectId = {projectId:String}
-        AND createdAt >= {startDate:DateTime64(6)}
-        AND createdAt < {endDate:DateTime64(6)}
+        AND createdAt >= {startDate:DateTime64(6, 'UTC')}
+        AND createdAt < {endDate:DateTime64(6, 'UTC')}
         AND eventType IN ({eventTypes:Array(String)})
       GROUP BY actor, authMethod
     `;

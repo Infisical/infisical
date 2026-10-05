@@ -270,7 +270,11 @@ export const insightsServiceFactory = ({
   const getAccessVolume = async (dto: TGetAccessVolumeDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
-    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "access-volume");
+    const clickhouseDAL = getClickHouseAuditLogDAL();
+    const cacheKey = KeyStorePrefixes.InsightsCache(
+      dto.projectId,
+      `access-volume:${clickhouseDAL ? "clickhouse" : "postgres"}`
+    );
     return withCache({
       keyStore,
       key: cacheKey,
@@ -285,7 +289,6 @@ export const insightsServiceFactory = ({
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString()
         };
-        const clickhouseDAL = getClickHouseAuditLogDAL();
         const rows = clickhouseDAL
           ? await clickhouseDAL.countByDateAndActorForProject(countArgs)
           : await auditLogDAL.countByDateAndActor(countArgs);
@@ -328,7 +331,11 @@ export const insightsServiceFactory = ({
   const getAuthMethodDistribution = async (dto: TGetAuthMethodDistributionDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
-    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `auth-methods:${dto.days}`);
+    const clickhouseDAL = getClickHouseAuditLogDAL();
+    const cacheKey = KeyStorePrefixes.InsightsCache(
+      dto.projectId,
+      `auth-methods:${dto.days}:${clickhouseDAL ? "clickhouse" : "postgres"}`
+    );
     return withCache({
       keyStore,
       key: cacheKey,
@@ -345,7 +352,6 @@ export const insightsServiceFactory = ({
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString()
         };
-        const clickhouseDAL = getClickHouseAuditLogDAL();
         const authRows = clickhouseDAL
           ? await clickhouseDAL.countByAuthMethodForProject(countArgs)
           : await auditLogDAL.countByAuthMethod(countArgs);
