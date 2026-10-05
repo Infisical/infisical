@@ -110,13 +110,13 @@ const EncryptForm = ({ cmek }: FormProps) => {
                 <FieldLabel htmlFor={`${fieldId}-encode-base-64`}>
                   Data is Base64 encoded
                 </FieldLabel>
-                <Tooltip>
+                <Tooltip hoverable selectable={false} delayDuration={50}>
                   <TooltipTrigger asChild>
                     <IconButton variant="ghost" size="xs" aria-label="About Base64 encoding">
                       <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
                     </IconButton>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
+                  <TooltipContent className="max-w-xs" sideOffset={5}>
                     Toggle this switch on if your data is already Base64 encoded to avoid redundant
                     encoding.
                   </TooltipContent>

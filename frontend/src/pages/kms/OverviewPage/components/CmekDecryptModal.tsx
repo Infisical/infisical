@@ -106,13 +106,13 @@ const DecryptForm = ({ cmek }: FormProps) => {
           onCheckedChange={setShouldDecode}
         />
         <FieldLabel htmlFor={`${fieldId}-decode-base-64`}>Decode Base64</FieldLabel>
-        <Tooltip>
+        <Tooltip hoverable selectable={false} delayDuration={50}>
           <TooltipTrigger asChild>
             <IconButton variant="ghost" size="xs" aria-label="About Base64 decoding">
               <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
             </IconButton>
           </TooltipTrigger>
-          <TooltipContent className="max-w-xs">
+          <TooltipContent className="max-w-xs" sideOffset={5}>
             Toggle this switch on if your data was originally plain text.
           </TooltipContent>
         </Tooltip>
