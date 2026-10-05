@@ -8,7 +8,17 @@ import { ProjectPermissionSub, useOrganization, useProjectPermission } from "@ap
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { TMoveWarningsCheck } from "@app/helpers/secretSyncCoverage";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
-import { useListSecretSyncsCoveringMove } from "@app/hooks/api/secretSyncs";
+import { TSecretSync, useListSecretSyncsCoveringMove } from "@app/hooks/api/secretSyncs";
+
+export type TSecretSyncMoveWarning = {
+  secretSyncs: TSecretSync[];
+  isChecking: boolean;
+  hasError: boolean;
+  needsAcknowledgement: boolean;
+  isAcknowledged: boolean;
+  setIsAcknowledged: (value: boolean) => void;
+  isBlockingSubmit: boolean;
+};
 
 // remembers the warning the user ticked. it is cleared on any change, so returning to a warning ticked
 // earlier asks again rather than carrying a yes over to syncs the user has not seen.
@@ -26,7 +36,10 @@ const useAcknowledgement = (warningKey: string) => {
 };
 
 // like the synced indicator on the dashboard, syncs the user cannot read are left out entirely
-export const useSecretSyncMoveWarning = (projectId: string, checks: TMoveWarningsCheck[]) => {
+export const useSecretSyncMoveWarning = (
+  projectId: string,
+  checks: TMoveWarningsCheck[]
+): TSecretSyncMoveWarning => {
   const { permission } = useProjectPermission();
   const canReadSecretSyncs = permission.can(
     ProjectPermissionSecretSyncActions.Read,
@@ -62,7 +75,7 @@ export const useSecretSyncMoveWarning = (projectId: string, checks: TMoveWarning
 };
 
 type Props = {
-  warning: ReturnType<typeof useSecretSyncMoveWarning>;
+  warning: TSecretSyncMoveWarning;
   projectId: string;
   noun: string;
   verb: "moved" | "copied";
