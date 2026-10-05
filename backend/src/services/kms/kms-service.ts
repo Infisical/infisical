@@ -16,7 +16,7 @@ import { THsmStatus } from "@app/ee/services/hsm/hsm-types";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
-import { generateSecretValueBlindIndexFromKmsKey } from "@app/lib/crypto/blind-index";
+import { createSecretValueBlindIndexer } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { deriveCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -1289,6 +1289,7 @@ export const kmsServiceFactory = ({
     const dataKey = await $getDataKey(encryptionContext, trx);
 
     const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const generateSecretBlindIndex = createSecretValueBlindIndexer(dataKey);
 
     return {
       encryptor: ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
@@ -1304,7 +1305,7 @@ export const kmsServiceFactory = ({
         const decryptedBlob = cipher.decrypt(cipherTextBlob, dataKey);
         return decryptedBlob;
       },
-      generateSecretBlindIndex: (secretValue: Buffer) => generateSecretValueBlindIndexFromKmsKey(secretValue, dataKey)
+      generateSecretBlindIndex
     };
   };
 

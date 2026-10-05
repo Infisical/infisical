@@ -11,7 +11,6 @@ export const SecretScanningResourcesSchema = z.object({
   id: z.string().uuid(),
   externalId: z.string(),
   name: z.string(),
-  type: z.string(),
   dataSourceId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date()

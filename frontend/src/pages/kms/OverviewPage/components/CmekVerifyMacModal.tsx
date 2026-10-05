@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faFileSignature, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -5,17 +6,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { Modal, ModalClose, ModalContent } from "@app/components/v2";
 import {
+  Badge,
   Button,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Switch,
+  Field,
+  FieldError,
+  FieldLabel,
+  IconButton,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { TCmek, useCmekVerifyMac } from "@app/hooks/api/cmeks";
 import { isBase64 } from "@app/lib/fn/base64";
 
@@ -47,6 +51,7 @@ type FormProps = Pick<Props, "cmek">;
 
 const VerifyMacForm = ({ cmek }: FormProps) => {
   const cmekVerifyMac = useCmekVerifyMac();
+  const fieldId = useId();
 
   const {
     handleSubmit,
@@ -86,16 +91,17 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
         <div className="mb-6 flex flex-col gap-2">
           <div className="flex items-center justify-between space-x-2">
             <span className="text-sm opacity-60">MAC Status:</span>
-            <Tooltip
-              content={
-                macValid
+            <Tooltip hoverable selectable={false} delayDuration={50}>
+              <TooltipTrigger asChild>
+                <Badge variant={macValid ? "success" : "danger"} tabIndex={0}>
+                  {macValid ? "Valid" : "Invalid"}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs" sideOffset={5}>
+                {macValid
                   ? "The MAC is valid. It was generated using the same key as the one used to verify it."
-                  : "The MAC is invalid. It was not generated using the same key as the one used to verify it, or the data has been tampered with."
-              }
-            >
-              <Badge variant={macValid ? "success" : "danger"}>
-                {macValid ? "Valid" : "Invalid"}
-              </Badge>
+                  : "The MAC is invalid. It was not generated using the same key as the one used to verify it, or the data has been tampered with."}
+              </TooltipContent>
             </Tooltip>
           </div>
 
@@ -106,57 +112,85 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
         </div>
       ) : (
         <>
-          <FormControl
-            label="Data to Verify"
-            errorText={errors.data?.message}
-            isError={Boolean(errors.data)}
-          >
-            <TextArea {...register("data")} className="max-h-80 min-h-40 max-w-full min-w-full" />
-          </FormControl>
-
-          <FormControl
-            label="Message Authentication Code"
-            tooltipText="Must be base64-encoded, like the MAC you received when you generated it."
-            errorText={errors.mac?.message}
-            isError={Boolean(errors.mac)}
-          >
-            <TextArea {...register("mac")} className="max-h-80 min-h-40 max-w-full min-w-full" />
-          </FormControl>
-
-          <div className="mb-6 flex w-full items-center justify-end gap-2">
-            <Controller
-              control={control}
-              name="isBase64Encoded"
-              render={({ field: { onChange, value } }) => (
-                <Switch id="encode-base-64" isChecked={value} onCheckedChange={onChange}>
-                  Data is Base64 encoded{" "}
-                  <Tooltip content="Toggle this switch on if your data is already Base64 encoded to avoid redundant encoding.">
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
-                  </Tooltip>
-                </Switch>
-              )}
+          <Field className="mb-4" data-invalid={Boolean(errors.data)}>
+            <FieldLabel htmlFor={`${fieldId}-data`}>Data to Verify</FieldLabel>
+            <TextArea
+              {...register("data")}
+              id={`${fieldId}-data`}
+              isError={Boolean(errors.data)}
+              aria-describedby={errors.data ? `${fieldId}-data-error` : undefined}
             />
-          </div>
+            <FieldError id={`${fieldId}-data-error`} errors={[errors.data]} />
+          </Field>
+
+          <Field className="mb-4" data-invalid={Boolean(errors.mac)}>
+            <div className="flex items-center gap-1">
+              <FieldLabel htmlFor={`${fieldId}-mac`}>Message Authentication Code</FieldLabel>
+              <Tooltip hoverable selectable={false} delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <IconButton variant="ghost" size="2xs" aria-label="About MAC encoding">
+                    <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs" sideOffset={5}>
+                  Must be base64-encoded, like the MAC you received when you generated it.
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <TextArea
+              {...register("mac")}
+              id={`${fieldId}-mac`}
+              isError={Boolean(errors.mac)}
+              aria-describedby={errors.mac ? `${fieldId}-mac-error` : undefined}
+            />
+            <FieldError id={`${fieldId}-mac-error`} errors={[errors.mac]} />
+          </Field>
+
+          <Controller
+            control={control}
+            name="isBase64Encoded"
+            render={({ field: { onChange, value } }) => (
+              <Field orientation="horizontal" className="mb-6">
+                <Toggle
+                  id={`${fieldId}-encode-base-64`}
+                  checked={value}
+                  onCheckedChange={onChange}
+                />
+                <FieldLabel htmlFor={`${fieldId}-encode-base-64`}>
+                  Data is Base64 encoded
+                </FieldLabel>
+                <Tooltip hoverable selectable={false} delayDuration={50}>
+                  <TooltipTrigger asChild>
+                    <IconButton variant="ghost" size="xs" aria-label="About Base64 encoding">
+                      <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs" sideOffset={5}>
+                    Toggle this switch on if your data is already Base64 encoded to avoid redundant
+                    encoding.
+                  </TooltipContent>
+                </Tooltip>
+              </Field>
+            )}
+          />
         </>
       )}
-      <div className="flex items-center">
+      <div className="flex flex-wrap items-center gap-4">
         {macValid === undefined && (
           <Button
-            className="mr-4 w-44"
+            className="w-44"
             size="sm"
-            leftIcon={<FontAwesomeIcon icon={faFileSignature} />}
+            variant="project"
             type="submit"
-            isLoading={isSubmitting}
+            isPending={isSubmitting}
             isDisabled={isSubmitting}
           >
+            <FontAwesomeIcon icon={faFileSignature} />
             Verify MAC
           </Button>
         )}
         <ModalClose asChild>
-          <Button
-            colorSchema={macValid === undefined ? "secondary" : "primary"}
-            variant={macValid === undefined ? "plain" : undefined}
-          >
+          <Button variant={macValid === undefined ? "ghost" : "project"}>
             {macValid !== undefined ? "Close" : "Cancel"}
           </Button>
         </ModalClose>
