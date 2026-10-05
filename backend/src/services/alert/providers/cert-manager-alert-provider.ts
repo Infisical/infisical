@@ -1,16 +1,10 @@
-import { MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionCertificateActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import {
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
@@ -24,7 +18,6 @@ import { durationToDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
   AlertAuditAction,
-  AlertPermissionAction,
   AlertTriggerType,
   IEventAlertProvider,
   IScheduledAlertProvider,
@@ -37,6 +30,7 @@ import {
   TFindScheduledTargetsInput
 } from "../alert-types";
 import {
+  assertCertManagerAdminAlertPermission,
   assertCertManagerAlertChannelTypesAllowed,
   assertNoAlertResource,
   buildCertificateAlertPayload,
@@ -46,7 +40,6 @@ import {
   CertificateAlertKind,
   expiryDedupWindowHours,
   ExpiryFieldsSchema,
-  getCertManagerAlertPermission,
   resolveCertManagerProjectId
 } from "./cert-manager-alert-fns";
 import {
@@ -113,9 +106,6 @@ const parseFilters = (condition: unknown) => {
   const filters = CertificateFilterSchema.safeParse(condition ?? {});
   return filters.success ? filters.data : {};
 };
-
-const isUnconditionalGrant = (rules: ReturnType<MongoAbility<ProjectPermissionSet>["rulesFor"]>) =>
-  rules.some((rule) => !rule.inverted && !rule.conditions) && !rules.some((rule) => rule.inverted);
 
 const assertNoResource = (resourceId?: string | null) =>
   assertNoAlertResource(
@@ -215,20 +205,11 @@ export const certManagerAlertProviderFactory = ({
     }
     assertNoResource(resourceId);
 
-    const { permission } = await getCertManagerAlertPermission(permissionService, { action, projectId, actor });
-
-    const definesDelivery = action === AlertPermissionAction.Create || action === AlertPermissionAction.Edit;
-    if (
-      definesDelivery &&
-      !isUnconditionalGrant(
-        permission.rulesFor(ProjectPermissionCertificateActions.Read, ProjectPermissionSub.Certificates)
-      )
-    ) {
-      throw new ForbiddenRequestError({
-        message:
-          "Certificate Manager alerts send certificate details from every application, so they require permission to read all certificates. Create the alert on an application instead."
-      });
-    }
+    await assertCertManagerAdminAlertPermission(
+      permissionService,
+      { action, projectId, actor },
+      "Certificate Manager alerts send certificate details from every application, so only Certificate Manager admins can create or edit them. Create the alert on an application instead."
+    );
   };
 
   const assertConditionInScope = async (input: {

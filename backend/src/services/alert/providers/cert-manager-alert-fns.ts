@@ -1,13 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { getRevocationReasonLabel } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -72,11 +72,12 @@ export const assertNoAlertResource = (resourceId: string | null | undefined, mes
   if (resourceId) throw new BadRequestError({ message });
 };
 
-export const getCertManagerAlertPermission = async (
+export const assertCertManagerAdminAlertPermission = async (
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">,
-  { action, projectId, actor }: Pick<TAlertPermissionInput, "action" | "actor"> & { projectId: string }
+  { action, projectId, actor }: Pick<TAlertPermissionInput, "action" | "actor"> & { projectId: string },
+  adminOnlyMessage: string
 ) => {
-  const result = await permissionService.getProjectPermission({
+  const { permission, hasRole } = await permissionService.getProjectPermission({
     actor: actor.actor,
     actorId: actor.actorId,
     projectId,
@@ -84,11 +85,15 @@ export const getCertManagerAlertPermission = async (
     actorOrgId: actor.actorOrgId,
     actionProjectType: ActionProjectType.CertificateManager
   });
-  ForbiddenError.from(result.permission).throwUnlessCan(
+  ForbiddenError.from(permission).throwUnlessCan(
     CERT_MANAGER_ALERT_PERMISSION_ACTIONS[action],
     ProjectPermissionSub.PkiAlerts
   );
-  return result;
+
+  const definesDelivery = action === AlertPermissionAction.Create || action === AlertPermissionAction.Edit;
+  if (definesDelivery && !hasRole(ProjectMembershipRole.Admin)) {
+    throw new ForbiddenRequestError({ message: adminOnlyMessage });
+  }
 };
 
 export const splitAltNames = (altNames: string | null): string[] =>

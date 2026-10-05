@@ -56,7 +56,7 @@ import {
   useUpdateAlert
 } from "@app/hooks/api/alerts";
 
-import { PkiDocsUrls } from "../../../pki-docs-urls";
+import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CertificateAlertSheet } from "./CertificateAlertSheet";
 import {
   CERTIFICATE_ALERT_EVENT_LABELS,
@@ -290,16 +290,14 @@ const AlertRow = ({
 type Props = {
   projectId: string;
   scope: TCertificateAlertScope;
-  allowedEventTypes?: CertificateAlertEventType[];
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
 };
 
-export const ApplicationAlertsCard = ({
+export const CertificateAlertsCard = ({
   projectId,
   scope,
-  allowedEventTypes,
   canCreate,
   canEdit,
   canDelete
@@ -350,10 +348,7 @@ export const ApplicationAlertsCard = ({
     scope.kind === CertificateAlertScopeKind.Application
       ? alerts.map((alert) => alert.eventType as CertificateAlertEventType)
       : [];
-  const isEventTypeAllowed = (eventType: string) =>
-    !allowedEventTypes || allowedEventTypes.includes(eventType as CertificateAlertEventType);
-  const creatableEventTypes = getScopeEventTypes(scope).filter(isEventTypeAllowed);
-  const canCreateAny = canCreate && creatableEventTypes.length > 0;
+  const creatableEventTypes = getScopeEventTypes(scope);
   const hasAllEventTypes = creatableEventTypes.every((eventType) =>
     usedEventTypes.includes(eventType)
   );
@@ -395,7 +390,7 @@ export const ApplicationAlertsCard = ({
                   <Button
                     variant="outline"
                     onClick={() => setAlertModal({ isOpen: true })}
-                    isDisabled={!canCreateAny || hasAllEventTypes}
+                    isDisabled={!canCreate || hasAllEventTypes}
                   >
                     <PlusIcon />
                     Create Alert
@@ -404,16 +399,12 @@ export const ApplicationAlertsCard = ({
               </TooltipTrigger>
               {!canCreate && (
                 <TooltipContent side="left">
-                  You don&apos;t have permission to create alerts
+                  {scope.kind === CertificateAlertScopeKind.CertificateManager
+                    ? "Only Certificate Manager admins can create these alerts"
+                    : "You don't have permission to create alerts"}
                 </TooltipContent>
               )}
-              {canCreate && !canCreateAny && (
-                <TooltipContent side="left">
-                  Creating an alert requires permission to read all certificates, or the Admin role
-                  for signer alerts
-                </TooltipContent>
-              )}
-              {canCreateAny && hasAllEventTypes && (
+              {canCreate && hasAllEventTypes && (
                 <TooltipContent side="left">
                   This application already has an alert for every alert type
                 </TooltipContent>
@@ -474,7 +465,7 @@ export const ApplicationAlertsCard = ({
                       onDelete={() =>
                         setDeleteAlertModal({ isOpen: true, alertId: a.id, name: a.name })
                       }
-                      canEdit={canEdit && isEventTypeAllowed(a.eventType)}
+                      canEdit={canEdit}
                       canDelete={canDelete}
                       scope={scope}
                     />

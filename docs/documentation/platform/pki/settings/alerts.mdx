@@ -10,9 +10,7 @@ Certificate Manager alerts use the same events and [notification channels](/docu
 
 ## Prerequisites
 
-- The **Create** action on **PKI Alerts**, which only the Certificate Manager **Admin** role has by default
-- The **Read** action on **Certificates** with no conditions, because the alert sends details of certificates from every application. Editing an alert needs it too.
-- For a **Signer Certificate Expiration** alert, the **Admin** role instead, because the alert sends details of every signer's certificate, including signers you aren't a member of
+- The Certificate Manager **Admin** role to create or edit an alert, because it sends details of certificates from every application and every signer
 - For Slack, PagerDuty, and webhook channels, the Enterprise plan. Email channels are available on every plan.
 - For email alerts, recipients who are organization members, or addresses on one of your organization's [verified email domains](/documentation/platform/email-domain)
 

@@ -58,7 +58,8 @@ const buildProvider = (opts?: {
   onFindByIds?: (args: Record<string, unknown>) => void;
   onFindNames?: (ids: string[], orgId: string) => void;
   onFindApplicationIds?: (ids: string[]) => void;
-  abilityRules?: { action: string; subject: string; inverted?: boolean; conditions?: unknown }[];
+  abilityRules?: { action: string; subject: string }[];
+  projectRoles?: string[];
   pkiEnterpriseAlerting?: boolean;
 }) => {
   const application = opts?.application ?? {
@@ -94,7 +95,10 @@ const buildProvider = (opts?: {
   const ability = () =>
     createMongoAbility((opts?.abilityRules ?? [{ action: "read", subject: "pki-alerts" }]) as never);
   const permissionService = {
-    getProjectPermission: vi.fn(async () => ({ permission: ability() }))
+    getProjectPermission: vi.fn(async () => ({
+      permission: ability(),
+      hasRole: (role: string) => (opts?.projectRoles ?? []).includes(role)
+    }))
   };
   const licenseService = {
     getPlan: async () => ({ pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false })
@@ -317,10 +321,8 @@ describe("cert manager alert provider", () => {
 
   test("refuses a resource everywhere a caller can name one", async () => {
     const { provider } = buildProvider({
-      abilityRules: [
-        { action: "create", subject: "pki-alerts" },
-        { action: "read", subject: "certificates" }
-      ]
+      abilityRules: [{ action: "create", subject: "pki-alerts" }],
+      projectRoles: ["admin"]
     });
     const create = { action: AlertPermissionAction.Create, orgId: "org-1", projectId: "proj-1", actor };
     await expect(provider.assertPermission({ ...create, resourceId: APPLICATION_ID })).rejects.toThrow(
@@ -460,38 +462,31 @@ describe("cert manager alert provider", () => {
     expect(permissionService.getProjectPermission).toHaveBeenCalled();
   });
 
-  test("creating or editing an alert with no application requires reading every certificate", async () => {
+  test("creating or editing an alert with no application requires a project admin, reading and deleting only PKI alert access", async () => {
     const create = { action: AlertPermissionAction.Create, orgId: "org-1", projectId: "proj-1", actor };
     const alertRules = [
+      { action: "read", subject: "pki-alerts" },
       { action: "create", subject: "pki-alerts" },
-      { action: "edit", subject: "pki-alerts" }
+      { action: "edit", subject: "pki-alerts" },
+      { action: "delete", subject: "pki-alerts" }
     ];
+    const admin = buildProvider({ abilityRules: alertRules, projectRoles: ["admin"] }).provider;
+    const member = buildProvider({
+      abilityRules: [...alertRules, { action: "read", subject: "certificates" }],
+      projectRoles: ["member"]
+    }).provider;
 
-    await expect(
-      buildProvider({
-        abilityRules: [...alertRules, { action: "read", subject: "certificates" }]
-      }).provider.assertPermission(create)
-    ).resolves.toBeUndefined();
-    await expect(buildProvider({ abilityRules: alertRules }).provider.assertPermission(create)).rejects.toThrow(
-      "require permission to read all certificates"
+    await expect(admin.assertPermission(create)).resolves.toBeUndefined();
+    await expect(admin.assertPermission({ ...create, action: AlertPermissionAction.Edit })).resolves.toBeUndefined();
+    await expect(member.assertPermission(create)).rejects.toThrow("only Certificate Manager admins");
+    await expect(member.assertPermission({ ...create, action: AlertPermissionAction.Edit })).rejects.toThrow(
+      "only Certificate Manager admins"
     );
+    await expect(member.assertPermission({ ...create, action: AlertPermissionAction.Read })).resolves.toBeUndefined();
+    await expect(member.assertPermission({ ...create, action: AlertPermissionAction.Delete })).resolves.toBeUndefined();
     await expect(
-      buildProvider({
-        abilityRules: [
-          ...alertRules,
-          { action: "read", subject: "certificates", conditions: { commonName: { $glob: "*.internal" } } }
-        ]
-      }).provider.assertPermission({ ...create, action: AlertPermissionAction.Edit })
-    ).rejects.toThrow("require permission to read all certificates");
-    await expect(
-      buildProvider({
-        abilityRules: [
-          ...alertRules,
-          { action: "read", subject: "certificates" },
-          { action: "read", subject: "certificates", inverted: true, conditions: { commonName: { $glob: "*.prod" } } }
-        ]
-      }).provider.assertPermission(create)
-    ).rejects.toThrow("require permission to read all certificates");
+      buildProvider({ abilityRules: [], projectRoles: ["admin"] }).provider.assertPermission(create)
+    ).rejects.toThrow();
   });
 
   test("resolveProjectId falls back to the org's Certificate Manager project without an application", async () => {

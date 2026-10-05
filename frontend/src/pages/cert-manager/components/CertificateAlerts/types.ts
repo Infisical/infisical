@@ -35,16 +35,10 @@ export const CERTIFICATE_ALERT_EVENT_LABELS: Record<CertificateAlertEventType, s
   [CertificateAlertEventType.SignerCertificateExpiry]: "Signer Certificate Expiration"
 };
 
-export enum CertificateAlertAccess {
-  ReadAllCertificates = "read-all-certificates",
-  Admin = "admin"
-}
-
 const CERTIFICATE_ALERT_EVENT_GROUPS: {
   label: string;
   events: CertificateAlertEventType[];
   scopes: CertificateAlertScopeKind[];
-  requiredAccess: CertificateAlertAccess;
 }[] = [
   {
     label: "Certificate Lifecycle",
@@ -54,21 +48,14 @@ const CERTIFICATE_ALERT_EVENT_GROUPS: {
       CertificateAlertEventType.Renewal,
       CertificateAlertEventType.Revocation
     ],
-    scopes: [CertificateAlertScopeKind.Application, CertificateAlertScopeKind.CertificateManager],
-    requiredAccess: CertificateAlertAccess.ReadAllCertificates
+    scopes: [CertificateAlertScopeKind.Application, CertificateAlertScopeKind.CertificateManager]
   },
   {
     label: "Code Signing",
     events: [CertificateAlertEventType.SignerCertificateExpiry],
-    scopes: [CertificateAlertScopeKind.CertificateManager],
-    requiredAccess: CertificateAlertAccess.Admin
+    scopes: [CertificateAlertScopeKind.CertificateManager]
   }
 ];
-
-export const getEventTypesForAccess = (access: CertificateAlertAccess[]) =>
-  CERTIFICATE_ALERT_EVENT_GROUPS.filter((group) => access.includes(group.requiredAccess)).flatMap(
-    (group) => group.events
-  );
 
 export const getScopeEventGroups = (scope: TCertificateAlertScope) =>
   CERTIFICATE_ALERT_EVENT_GROUPS.filter((group) => group.scopes.includes(scope.kind));

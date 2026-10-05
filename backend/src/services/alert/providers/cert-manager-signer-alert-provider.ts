@@ -1,8 +1,7 @@
-import { ProjectMembershipRole } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { CERT_MANAGER_SIGNER_RESOURCE_TYPE, SignerAlertEvent } from "@app/services/signer/signer-alert-events";
 import { PkiAlertScope } from "@app/services/telemetry/telemetry-types";
@@ -11,7 +10,6 @@ import { TAlertPayload } from "../alert-channel-types";
 import { durationToDays, expirySeverity, formatUtcDate, humanizeDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
-  AlertPermissionAction,
   AlertTriggerType,
   IScheduledAlertProvider,
   TAlertContext,
@@ -20,6 +18,7 @@ import {
   TFindScheduledTargetsInput
 } from "../alert-types";
 import {
+  assertCertManagerAdminAlertPermission,
   assertCertManagerAlertChannelTypesAllowed,
   assertNoAlertResource,
   buildCertificateManagerAlertAuditEvent,
@@ -27,7 +26,6 @@ import {
   certificateDisplayName,
   expiryDedupWindowHours,
   ExpiryFieldsSchema,
-  getCertManagerAlertPermission,
   resolveCertManagerProjectId,
   splitAltNames
 } from "./cert-manager-alert-fns";
@@ -134,15 +132,11 @@ export const certManagerSignerAlertProviderFactory = ({
     }
     assertNoResource(resourceId);
 
-    const { hasRole } = await getCertManagerAlertPermission(permissionService, { action, projectId, actor });
-
-    const definesDelivery = action === AlertPermissionAction.Create || action === AlertPermissionAction.Edit;
-    if (definesDelivery && !hasRole(ProjectMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({
-        message:
-          "Signer certificate expiration alerts send certificate details from every signer, so only Certificate Manager admins can create or edit them."
-      });
-    }
+    await assertCertManagerAdminAlertPermission(
+      permissionService,
+      { action, projectId, actor },
+      "Signer certificate expiration alerts send certificate details from every signer, so only Certificate Manager admins can create or edit them."
+    );
   };
 
   const getTelemetryEvent = ({ action, orgId, projectId }: TAlertTelemetryInput) => {

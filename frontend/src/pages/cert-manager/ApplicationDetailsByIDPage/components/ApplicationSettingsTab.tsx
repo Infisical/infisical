@@ -72,17 +72,17 @@ import {
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
+import { CertificateAlertsCard } from "@app/pages/cert-manager/components/CertificateAlerts/CertificateAlertsCard";
+import { CertificateAlertScopeKind } from "@app/pages/cert-manager/components/CertificateAlerts/types";
 import { CreateProfileModal } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/CreateProfileModal";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
-import { ApplicationAlertsCard } from "./ApplicationAlerts/ApplicationAlertsCard";
-import { LegacyApplicationAlertsCard } from "./ApplicationAlerts/LegacyApplicationAlertsCard";
-import { CertificateAlertScopeKind } from "./ApplicationAlerts/types";
 import {
   ConfigureEnrollmentModal,
   EnrollmentMethod,
   METHOD_LABELS
 } from "./ConfigureEnrollmentModal";
+import { LegacyApplicationAlertsCard } from "./LegacyApplicationAlertsCard";
 
 type Props = { application: TPkiApplication; profiles: TPkiApplicationProfile[] };
 
@@ -619,7 +619,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         </CardContent>
       </Card>
 
-      <ApplicationAlertsCard
+      <CertificateAlertsCard
         projectId={application.projectId}
         scope={{
           kind: CertificateAlertScopeKind.Application,
