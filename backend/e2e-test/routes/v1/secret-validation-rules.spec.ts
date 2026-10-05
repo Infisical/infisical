@@ -3,6 +3,9 @@ import { createFolder } from "e2e-test/testUtils/folders";
 import { createStaticSecretsValidationRule } from "e2e-test/testUtils/secret-validation-rules";
 import { createSecretV2, getSecretsV2, updateSecretV2 } from "e2e-test/testUtils/secrets";
 
+import { seedData1 } from "@app/db/seed-data";
+import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+
 const PROD_ENV = "prod";
 const STAGING_ENV = "staging";
 
@@ -253,6 +256,53 @@ describe("Secret validation rules", () => {
       return (res.json().folders as { id: string; name: string }[]).map((folder) => folder.name);
     };
 
+    const createSecretApprovalPolicy = async (dto: { name: string; environment: string; secretPath: string }) => {
+      const res = await testServer.inject({
+        method: "POST",
+        url: `/api/v1/secret-approvals`,
+        headers: {
+          authorization: `Bearer ${authToken}`
+        },
+        body: {
+          workspaceId: projectId,
+          environment: dto.environment,
+          name: dto.name,
+          secretPath: dto.secretPath,
+          approvers: [{ id: seedData1.id, type: ApproverType.User }],
+          approvals: 1
+        }
+      });
+      expect(res.statusCode).toBe(200);
+      return res.json().approval as { id: string };
+    };
+
+    const deleteSecretApprovalPolicy = async (id: string) => {
+      const res = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v1/secret-approvals/${id}`,
+        headers: {
+          authorization: `Bearer ${authToken}`
+        }
+      });
+      expect(res.statusCode).toBe(200);
+    };
+
+    const openChangeRequestCount = async (policyId: string) => {
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/secret-approval-requests/count`,
+        headers: {
+          authorization: `Bearer ${authToken}`
+        },
+        query: {
+          projectId,
+          policyId
+        }
+      });
+      expect(res.statusCode).toBe(200);
+      return res.json().approvals.open as number;
+    };
+
     beforeAll(async () => {
       ({ projectId, authToken, cleanup } = await createIsolatedOrgAndProject("secret-validation-rules-move-e2e"));
 
@@ -410,6 +460,52 @@ describe("Secret validation rules", () => {
 
       expect(await secretKeysAt("/to", STAGING_ENV)).toContain("MOVED_UNIQUE");
       expect(await secretKeysAt("/from", STAGING_ENV)).not.toContain("MOVED_UNIQUE");
+    }, 10_000);
+
+    test("rejects moving a secret that breaks the destination's rule into a path with a change policy", async () => {
+      await createFolder({
+        workspaceId: projectId,
+        environmentSlug: PROD_ENV,
+        secretPath: "/strict",
+        name: "guarded",
+        authToken
+      });
+      const policy = await createSecretApprovalPolicy({
+        name: "guarded-under-strict",
+        environment: PROD_ENV,
+        secretPath: "/strict/guarded"
+      });
+
+      // Registered rather than left at the end of the body so a failing assertion can't leak the policy into
+      // the tests that share this project.
+      onTestFinished(async () => {
+        await deleteSecretApprovalPolicy(policy.id);
+      });
+
+      const secret = await createSecretV2({
+        workspaceId: projectId,
+        environmentSlug: PROD_ENV,
+        secretPath: "/lenient",
+        key: "GUARDED_TOO_SHORT",
+        value: "x",
+        authToken
+      });
+
+      // A move into a path with a change policy opens a change request instead of writing directly, so the rules
+      // have to be enforced before that request is opened.
+      const res = await moveSecrets({
+        environment: PROD_ENV,
+        sourceSecretPath: "/lenient",
+        destinationSecretPath: "/strict/guarded",
+        secretIds: [secret.id]
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toContain('Secret "GUARDED_TOO_SHORT"');
+      expect(res.json().message).toContain("value must be at least 3 characters");
+
+      // no change request was opened and the secret is untouched
+      expect(await openChangeRequestCount(policy.id)).toBe(0);
+      expect(await secretKeysAt("/lenient", PROD_ENV)).toContain("GUARDED_TOO_SHORT");
     }, 10_000);
   });
 });
