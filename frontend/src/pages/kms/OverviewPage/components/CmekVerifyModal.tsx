@@ -113,13 +113,13 @@ const VerifyForm = ({ cmek }: FormProps) => {
         <div className="mb-6 flex flex-col gap-2">
           <div className="flex items-center justify-between space-x-2">
             <span className="text-sm opacity-60">Signature Status:</span>
-            <Tooltip>
+            <Tooltip hoverable selectable={false} delayDuration={50}>
               <TooltipTrigger asChild>
                 <Badge variant={signatureValid ? "success" : "danger"} tabIndex={0}>
                   {signatureValid ? "Valid" : "Invalid"}
                 </Badge>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
+              <TooltipContent className="max-w-xs" sideOffset={5}>
                 {signatureValid
                   ? "The signature is valid. signature was created using the same signing algorithm and key as the one used to sign the data."
                   : "The signature is invalid. The signature was not created using the same signing algorithm and key as the one used to sign the data. The data and signature may have been tampered with."}
@@ -160,13 +160,13 @@ const VerifyForm = ({ cmek }: FormProps) => {
           <Field className="mb-4" data-invalid={Boolean(errors.signature)}>
             <div className="flex items-center gap-1">
               <FieldLabel htmlFor={`${fieldId}-signature`}>Signature of Data</FieldLabel>
-              <Tooltip>
+              <Tooltip hoverable selectable={false} delayDuration={50}>
                 <TooltipTrigger asChild>
                   <IconButton variant="ghost" size="2xs" aria-label="About signature encoding">
                     <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
                   </IconButton>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
+                <TooltipContent className="max-w-xs" sideOffset={5}>
                   Must be base64-encoded, like the signature you received when you signed the data.
                 </TooltipContent>
               </Tooltip>
@@ -210,13 +210,13 @@ const VerifyForm = ({ cmek }: FormProps) => {
                   <FieldLabel htmlFor={`${fieldId}-encode-base-64`}>
                     Data is Base64 encoded
                   </FieldLabel>
-                  <Tooltip>
+                  <Tooltip hoverable selectable={false} delayDuration={50}>
                     <TooltipTrigger asChild>
                       <IconButton variant="ghost" size="xs" aria-label="About Base64 encoding">
                         <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
                       </IconButton>
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
+                    <TooltipContent className="max-w-xs" sideOffset={5}>
                       Toggle this switch on if your data is already Base64 encoded to avoid
                       redundant encoding.
                     </TooltipContent>
