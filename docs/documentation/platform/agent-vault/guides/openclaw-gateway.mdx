@@ -157,18 +157,18 @@ The gateway runs all the time, so run the proxy as a service that starts again w
     `enable` starts the proxy every time the machine boots, and `--now` also starts it right away.
   </Tab>
   <Tab title="Docker">
-    Add `--restart unless-stopped` after `docker run -d` in the command from the dialog, then run the command. For example:
+    In the command from the dialog, add `--restart unless-stopped` after `docker run -d`, and change `-p 17323:17323` to `-p <private-ip>:17323:17323`, replacing `<private-ip>` with the Agent Vault machine's private address. Then run the command. For example:
 
     ```bash
     docker run -d --restart unless-stopped --name agent-vault-proxy \
-      -p 17323:17323 \
+      -p <private-ip>:17323:17323 \
       -v agent-vault-proxy:/etc/infisical/agent-vault \
       infisical/cli agent-vault proxy \
       --enrollment-token <enrollment-token> \
       --domain <your-instance-url>
     ```
 
-    With `--restart unless-stopped`, Docker starts the proxy again whenever Docker itself starts, unless you stopped the container yourself. Docker must also start at boot, which you can turn on with `sudo systemctl enable docker` on most Linux machines.
+    With `--restart unless-stopped`, Docker starts the proxy again whenever Docker itself starts, unless you stopped the container yourself. Docker must also start at boot, which you can turn on with `sudo systemctl enable docker` on most Linux machines. Publishing the port on the private address keeps the proxy off any public network interface the machine has.
   </Tab>
 </Tabs>
 
