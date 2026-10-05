@@ -1,0 +1,92 @@
+export const VARIABLE_KEY_MAX_LENGTH = 64;
+export const VARIABLE_VALUE_MAX_LENGTH = 8192;
+export const MAX_REFERENCES_PER_FIELD = 3;
+
+export const VARIABLE_KEY_RE = /^[A-Z][A-Z0-9_]*$/;
+
+export const VARIABLE_KEY_MESSAGE =
+  "A variable key starts with a letter and uses only upper case letters, numbers and underscores, like GITHUB_TOKEN.";
+
+// Every {{...}} counts as a reference, so a malformed one is caught on save instead of being sent to a
+// real host as literal text.
+const REFERENCE_RE = /\{\{([^{}]*)\}\}/g;
+
+const REFERENCE_ONLY_RE = /^\{\{[A-Z][A-Z0-9_]*\}\}$/;
+
+// An opened reference the caret is still inside, so the suggestions can follow what is typed.
+const OPEN_REFERENCE_RE = /\{\{([A-Za-z0-9_]*)$/;
+
+// The rest of that reference's key after the caret, and its closing braces if it has them.
+const REFERENCE_TAIL_RE = /^([A-Za-z0-9_]*)(\}\})?/;
+
+export const toVariableReference = (key: string) => `{{${key}}}`;
+
+export const findVariableReferences = (text: string) =>
+  Array.from(text.matchAll(REFERENCE_RE), (match) => match[1]);
+
+/** A lone reference holds no secret, so a masked field can show it as text. */
+export const isVariableReferenceOnly = (text: string | undefined) =>
+  Boolean(text) && REFERENCE_ONLY_RE.test(text as string);
+
+/** Upper cases the input and turns spaces and dashes into underscores, so `github-token` lands valid. */
+export const normalizeVariableKey = (input: string) => input.toUpperCase().replace(/[\s-]/g, "_");
+
+export type TVariableSegment =
+  | { type: "text"; text: string }
+  | { type: "reference"; text: string; key: string; isValid: boolean };
+
+/** Splits a value into literal text and the references in it, in order, so each can render on its own. */
+export const splitVariableReferences = (text: string): TVariableSegment[] => {
+  const segments: TVariableSegment[] = [];
+  let last = 0;
+  Array.from(text.matchAll(REFERENCE_RE)).forEach((match) => {
+    const start = match.index ?? 0;
+    if (start > last) segments.push({ type: "text", text: text.slice(last, start) });
+    segments.push({
+      type: "reference",
+      text: match[0],
+      key: match[1],
+      isValid: VARIABLE_KEY_RE.test(match[1])
+    });
+    last = start + match[0].length;
+  });
+  if (last < text.length) segments.push({ type: "text", text: text.slice(last) });
+  return segments;
+};
+
+/**
+ * The reference the caret is in: its whole key, the part after the caret included, and where it starts and ends,
+ * closing braces and all. Null when the caret isn't in one.
+ */
+export const findVariableReferenceAtCaret = (text: string, caret: number) => {
+  const open = OPEN_REFERENCE_RE.exec(text.slice(0, caret));
+  if (!open) return null;
+  const tail = REFERENCE_TAIL_RE.exec(text.slice(caret));
+  return {
+    start: open.index,
+    query: open[1] + (tail?.[1] ?? ""),
+    end: caret + (tail?.[0].length ?? 0)
+  };
+};
+
+/**
+ * The first problem with the references in a field, or null. Without `keys`, which is the case while
+ * the list loads, only the shape of each reference is checked.
+ */
+export const variableReferenceError = (text: string, keys?: ReadonlySet<string>): string | null => {
+  const refs = findVariableReferences(text);
+
+  if (refs.length > MAX_REFERENCES_PER_FIELD) {
+    return `A value can use at most ${MAX_REFERENCES_PER_FIELD} variable references, and a reference that repeats counts each time. Combine some into one variable to use fewer.`;
+  }
+
+  const malformed = refs.find((ref) => !VARIABLE_KEY_RE.test(ref));
+  if (malformed !== undefined) {
+    return `"${toVariableReference(malformed)}" isn't a valid variable reference. ${VARIABLE_KEY_MESSAGE}`;
+  }
+
+  const missing = keys ? refs.find((ref) => !keys.has(ref)) : undefined;
+  if (missing) return `This bundle has no variable named ${missing}. Add it under Variables first.`;
+
+  return null;
+};

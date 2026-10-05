@@ -278,13 +278,14 @@ export enum TableName {
   AgentVaultService = "agent_vault_services",
   AgentVaultServiceCustomHeader = "agent_vault_service_custom_headers",
   AgentVaultServiceSubstitution = "agent_vault_service_substitutions",
+  AgentVaultVariable = "agent_vault_variables",
+  AgentVaultServiceVariableReference = "agent_vault_service_variable_references",
   AgentVaultSession = "agent_vault_sessions",
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultProxy = "agent_vault_proxies",
   AgentVaultSessionLogConfig = "agent_vault_session_log_configs",
   AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 
-  VaultExternalMigrationConfig = "vault_external_migration_configs",
   ExternalMigrationConfig = "external_migration_configs",
 
   // PKI ACME

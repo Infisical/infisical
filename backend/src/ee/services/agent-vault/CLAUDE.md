@@ -17,7 +17,7 @@ never in anything the agent holds.
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
-agent-vault-access-bundle/   bundles, services, credential encryption, grants
+agent-vault-access-bundle/   bundles, services, variables, credential encryption, grants
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
@@ -159,6 +159,69 @@ header" is the name in every layer; unqualified "header" means the credential's 
   error text is both the 403 body and the log line.
 - A PATCH replaces the whole list. Omitting a row's `value` keeps what is sealed; every other field
   replaces.
+
+## Variables
+
+A variable is a key and a sealed value on one bundle. A service uses one as `{{KEY}}` in its token, username,
+password, a custom header value or a substitution value. Nothing else takes one: a host pattern, method or
+path decides what a service can reach, so it stays literal.
+
+- **Sealed text names a variable by id, `{{<uuid>}}`, never by key.** The key form exists only at the API
+  boundary: a service write maps keys to ids before it seals (`toStoredVariableReferences`), reading the
+  primary, since a variable created a moment earlier may not be on a replica yet. So a rename is one row.
+- The variable list and its Used By rows read the primary too. The service sheet refetches the list the moment
+  it creates a variable, and a replica that has not caught up would drop the new key and fail the reference
+  to it.
+- `agent_vault_service_variable_references` holds a row per field per variable. It drives Used By, the delete
+  refusal, and the keys the service sheet lists under a stored value. **Resolve does not read it**: it pulls
+  the ids out of the decrypted fields, so a service saved mid-poll can never leave the two describing
+  different versions of a field.
+- **The rows are read off the stored text, never off the request**: `findStoredVariableIds`, kept to the
+  bundle's own variables, which is exactly what resolve expands. Nothing in the database can compare the
+  rows with sealed text, and an id with no row is a variable the delete refusal lets go while a service still
+  sends it. Any new path that seals a service field derives its rows the same way, and moving a service to
+  another bundle would have to remap its ids, since resolve expands only its own bundle's.
+- A stored value never comes back in any form, a lone `{{KEY}}` included. The sheet lists the keys a stored
+  field uses under the field and keeps the field masked until it is retyped. Settled: putting a lone
+  reference back in its field made it the one stored field that shows, and left a field mixing text with a
+  reference looking like it used none.
+- A save rebuilds the rows of each value it seals: both credential fields whenever the secret is written, since
+  a kept basic half is sealed again with it, and each header or substitution whose value arrived. An omitted
+  value keeps its sealed text and its rows, and a dropped header or substitution takes its rows through the
+  foreign key.
+- Only text that arrived is mapped from keys to ids. A kept basic half is already stored text, and one saved
+  before variables existed has to keep reaching the host as it was, braces included.
+- A credential update merges against the service read before the lock, so under the lock it re-reads the row
+  and returns a 409 if the type changed, or, for a partial basic update, the sealed secret did. Otherwise the
+  half left out is written back stale, and its rows describe text that is no longer sealed. That first read is
+  on the primary (`findByIdInAccessBundle`): a replica still behind the previous save would 409 the next one.
+- The `variableId` key is `DEFERRABLE INITIALLY DEFERRED`. A bundle delete cascades to its services and its
+  variables in one statement, and an immediate check can fire before the service cascade has removed the
+  rows, depending on which constraint was created first. The refusal that matters is the check under the
+  bundle lock (a 409 naming the services); the deferred key is the backstop and only raises at commit.
+- Every `{{...}}` in a value must be an existing, well-formed key, or the save fails. A malformed one is
+  refused without quoting it, because the text was cut from a secret. Placeholders and header prefixes (the
+  bearer prefix and custom header prefixes) can't contain double braces, which would read as a reference the
+  proxy never fills in. A service saved with braces there before the rule still resolves, but its next save
+  has to drop them; that is intended, not something to grandfather. A variable's own value is sent as is and
+  never expanded again, which is also how a service sends a literal `{{`.
+- **A value takes at most 3 references** (`AGENT_VAULT_MAX_REFERENCES_PER_FIELD`), and a repeat counts each
+  time: repeating one short reference is what fills a field in to millions of characters. The field schemas
+  refuse a fourth with a 422, and the service sheet checks the same limit before it saves.
+- **That limit is the only bound on a filled-in field**: what was typed plus three 8,192 character values,
+  about 32K characters, and nothing measures a field filled in. Settled over an exact 8,192 cap, which every
+  service save and value change had to measure against other rows' current values, so two of them measured
+  before the bundle lock and together pushed a field past it. Closing that under the lock would have meant
+  decrypting every field that uses the variable inside the transaction.
+- Resolve reads variable values on a replica, then asks the primary for any id the replica lacks, since each
+  query can land on a different replica. An id with no variable behind it on either stays as text and is
+  logged rather than dropping the service, which would also drop the service's method and path restrictions.
+  Values saved before variables existed hold no id tokens, so they pass through untouched.
+- Admin only, reads included: every variable route checks `Edit` on access bundles, which a member lacks,
+  and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
+  an empty list would claim they use none). Every value is sealed;
+  `isSecret` only decides whether the list returns it. The value route is a GET with no-store headers and
+  one audit event per read.
 
 ## Credentials at rest
 

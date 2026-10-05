@@ -268,3 +268,30 @@ describe("getInvisibleCharacterSummary", () => {
     );
   });
 });
+
+describe("SecretInput per-character mask", () => {
+  const renderAlwaysHidden = (value: string) =>
+    renderToStaticMarkup(
+      <SecretInput value={value} valueAlwaysHidden maskEachCharacter readOnly />
+    );
+
+  it("keeps the fixed-length mask unless asked for one dot per character", () => {
+    const markup = renderToStaticMarkup(<SecretInput value="abcd" valueAlwaysHidden readOnly />);
+    assert.ok(markup.includes(`>${HIDDEN_SECRET_VALUE}<`));
+    assert.ok(!markup.includes("font-mono"));
+  });
+
+  it("shows one dot per character typed", () => {
+    const markup = renderAlwaysHidden("abcd");
+    assert.ok(markup.includes(">••••<"));
+    assert.ok(!markup.includes("abcd"));
+  });
+
+  it("keeps line breaks so a multi-line value keeps its shape", () => {
+    assert.ok(renderAlwaysHidden("ab\ncd").includes("••\n••"));
+  });
+
+  it("counts an emoji as one character", () => {
+    assert.ok(renderAlwaysHidden("a\u{1F600}").includes(">••<"));
+  });
+});

@@ -14,14 +14,22 @@ import {
   BillingV2CatalogProduct,
   BillingV2CommitmentChange,
   BillingV2Entitlement,
+  BillingV2ErrorCode,
   useChangeBillingV2Commitment,
   usePreviewBillingV2Change
 } from "@app/hooks/api";
 
-import { dimCommitManageable, fmtMoney } from "../billing-v2-format";
+import { billingV2ErrorCode, dimCommitManageable, fmtMoney } from "../billing-v2-format";
 import { ChargeBreakdown } from "./ChargeBreakdown";
 import { CommitmentTerms } from "./CommitmentTerms";
-import { CostSummary, CostSummaryRow, ProductIcon, Stepper } from "./shared";
+import {
+  CostSummary,
+  CostSummaryRow,
+  PaymentActionRequiredNotice,
+  PaymentApprovalNotice,
+  ProductIcon,
+  Stepper
+} from "./shared";
 
 type Props = {
   orgId: string;
@@ -93,6 +101,12 @@ export const CommitmentView = ({
   const changesKey = JSON.stringify(changes);
   const hasChanges = changes.length > 0;
 
+  // Keyed to the changes that were declined, so editing the selection clears the notice.
+  const [declinedChangesKey, setDeclinedChangesKey] = useState<string | null>(null);
+  const showPaymentActionRequired = declinedChangesKey === changesKey;
+  const [approval, setApproval] = useState<{ changesKey: string; paymentUrl: string } | null>(null);
+  const approvalUrl = approval?.changesKey === changesKey ? approval.paymentUrl : null;
+
   // A preview is fresh only once priced for the current changes; stale ones render as skeletons.
   const previewFresh =
     !preview.isPending &&
@@ -153,9 +167,16 @@ export const CommitmentView = ({
   const canConfirm = selfServe && hasChanges && previewFresh && (!isIncreasing || acknowledged);
 
   const handleConfirm = async () => {
+    setDeclinedChangesKey(null);
+    setApproval(null);
     try {
       const result = await applyCommitment.mutateAsync({ orgId, changes, productId: prod.id });
-      if (result.checkoutUrl) {
+      if (result.outcome === "payment_action_required" && result.paymentUrl) {
+        setApproval({ changesKey, paymentUrl: result.paymentUrl });
+        return;
+      }
+      // checkout_created: no card on a trialing org, or the card needs the customer to approve it.
+      if (result.outcome === "checkout_created" && result.checkoutUrl) {
         window.location.href = result.checkoutUrl;
         return;
       }
@@ -164,8 +185,11 @@ export const CommitmentView = ({
         text: `${prod.name} commitment updated. It may take a moment to update here.`
       });
       onDone();
-    } catch {
+    } catch (error) {
       // The backend's message is surfaced by the global mutation error handler (reactQuery.tsx).
+      if (billingV2ErrorCode(error) === BillingV2ErrorCode.PaymentActionRequired) {
+        setDeclinedChangesKey(changesKey);
+      }
     }
   };
 
@@ -302,6 +326,9 @@ export const CommitmentView = ({
         {isIncreasing && (
           <CommitmentTerms acknowledged={acknowledged} onAcknowledgedChange={setAcknowledged} />
         )}
+
+        {showPaymentActionRequired && <PaymentActionRequiredNotice orgId={orgId} />}
+        {approvalUrl && <PaymentApprovalNotice paymentUrl={approvalUrl} />}
       </div>
 
       <SheetFooter className="flex-row justify-between border-t">

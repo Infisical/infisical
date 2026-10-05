@@ -687,10 +687,7 @@ const envSchema = z
     GO_SIDECAR_SPAWN_ENABLED: zodStrBool.default("false"),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
-    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional()),
-
-    /* Temporary Stripe Whitelisting ----------------------------------------------------------------------------- */
-    WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS: zpStr(z.string().optional())
+    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
   })
   .refine(
     (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS) || Boolean(data.REDIS_CLUSTER_HOSTS),
@@ -793,10 +790,7 @@ const envSchema = z
       data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID || data.CLIENT_ID_HEROKU,
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU,
-    WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS: data.WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.split(",").map((id) =>
-      id.trim()
-    )
+      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU
   }));
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;

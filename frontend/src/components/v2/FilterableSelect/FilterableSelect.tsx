@@ -87,11 +87,11 @@ export const FilterableSelect = <T,>({
       }}
       classNames={{
         container: ({ isDisabled }) =>
-          twMerge("w-full font-inter text-sm", isDisabled && "pointer-events-auto! opacity-50"),
+          twMerge("w-full font-sans text-sm", isDisabled && "pointer-events-auto! opacity-50"),
         control: ({ isFocused, isDisabled }) =>
           twMerge(
             isFocused ? "border-project/50" : "border-border-control",
-            `w-full rounded-md border bg-surface-base p-0.5 font-inter text-foreground-secondary ${
+            `w-full rounded-md border bg-surface-base p-0.5 font-sans text-foreground-secondary ${
               isDisabled
                 ? "cursor-not-allowed!"
                 : "hover:cursor-pointer hover:border-border-cool-emphasis"

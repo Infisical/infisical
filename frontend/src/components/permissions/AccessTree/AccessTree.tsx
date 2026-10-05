@@ -131,7 +131,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
         {viewMode === ViewMode.Docked && (
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
             <div>
-              <h3 className="text-lg font-semibold text-foreground">Access Tree</h3>
+              <h3 className="text-lg font-normal text-foreground">Access Tree</h3>
               <p className="text-sm text-muted">Visual access policies for the configured role.</p>
             </div>
             <ButtonGroup aria-label="Access tree layout">

@@ -585,7 +585,7 @@ export const CreateAccountSheet = ({
                 />
 
                 <div className="mt-2">
-                  <h3 className="mb-3 text-sm font-medium text-foreground">Connection Details</h3>
+                  <h3 className="mb-3 text-sm font-normal text-foreground">Connection Details</h3>
                   <div className="flex flex-col gap-4">
                     <ConnectionDetailsForm
                       control={control}
@@ -635,7 +635,7 @@ export const CreateAccountSheet = ({
 
                 {(selectedMetadata?.credentialFields.length ?? 0) > 0 && (
                   <div className="mt-2">
-                    <h3 className="mb-3 text-sm font-medium text-foreground">Credentials</h3>
+                    <h3 className="mb-3 text-sm font-normal text-foreground">Credentials</h3>
                     <div className="flex flex-col gap-4">
                       <CredentialsForm control={control} setValue={setValue} />
                       <SshCaSetupCallout
