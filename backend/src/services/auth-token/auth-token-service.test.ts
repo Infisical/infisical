@@ -345,14 +345,16 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
   });
 
   // UnauthorizedError, not NotFoundError: clients only treat a 401 as "log in again", and a 404 reads as a missing resource.
-  // Every such case shares one public name and message; only `detail`, which is logged and never sent, tells them apart.
   test("a token whose session no longer exists is refused with UnauthorizedError", async () => {
     const { service } = build({ session: null });
     const err = await expectRejected(
       service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT })),
       UnauthorizedError
     );
-    expect(err).toMatchObject({ name: "InvalidToken", detail: { reasonCode: "session_not_found" } });
+    expect(err).toMatchObject({
+      name: "InvalidToken",
+      message: "Your session is no longer valid, please re-authenticate"
+    });
   });
 
   test("a token issued before its session was invalidated is refused with UnauthorizedError", async () => {
@@ -361,7 +363,10 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
       service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT })),
       UnauthorizedError
     );
-    expect(err).toMatchObject({ name: "InvalidToken", detail: { reasonCode: "session_stale" } });
+    expect(err).toMatchObject({
+      name: "InvalidToken",
+      message: "Your session is no longer valid, please re-authenticate"
+    });
   });
 
   test("a token whose user no longer exists is refused with UnauthorizedError", async () => {
@@ -370,7 +375,10 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
       service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT })),
       UnauthorizedError
     );
-    expect(err).toMatchObject({ name: "InvalidToken", detail: { reasonCode: "user_unavailable" } });
+    expect(err).toMatchObject({
+      name: "InvalidToken",
+      message: "Your session is no longer valid, please re-authenticate"
+    });
   });
 
   test("a token whose user is not accepted is refused with UnauthorizedError", async () => {
