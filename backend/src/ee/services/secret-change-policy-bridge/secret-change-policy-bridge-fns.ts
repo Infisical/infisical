@@ -116,6 +116,11 @@ export const secretChangePolicyFnsFactory = ({
   const findSecretChangePolicy = (policyId: string, tx?: Knex) =>
     approvalPolicyDAL.findOne({ id: policyId, type: ApprovalPolicyType.SecretChange }, tx);
 
+  const findSecretChangePolicyById = async (policyId: string, tx?: Knex) => {
+    const [row] = await secretChangePolicyBridgeDAL.findSecretChangePolicies({ policyId }, tx);
+    return row ? toSecretChangePolicy(row) : undefined;
+  };
+
   const findSecretChangePolicyBySecretPath = (
     { envIds, secretPath }: { envIds: string[]; secretPath: string },
     tx?: Knex
@@ -374,6 +379,7 @@ export const secretChangePolicyFnsFactory = ({
 
   return {
     findSecretChangePolicy,
+    findSecretChangePolicyById,
     findSecretChangePolicyBySecretPath,
     findSecretChangePoliciesByEnvId,
     findSecretChangePoliciesByProjectId,

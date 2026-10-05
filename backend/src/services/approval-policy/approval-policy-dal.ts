@@ -21,9 +21,9 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findStepsByPolicyId = async (policyId: string) => {
+  const findStepsByPolicyId = async (policyId: string, tx?: Knex) => {
     try {
-      const dbInstance = db.replicaNode();
+      const dbInstance = tx || db.replicaNode();
       const steps = await dbInstance(TableName.ApprovalPolicySteps).where({ policyId }).orderBy("stepNumber", "asc");
 
       if (!steps.length) {

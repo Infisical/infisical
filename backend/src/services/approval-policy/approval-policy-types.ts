@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
 import { Event } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
+import { TSecretChangeRequestData } from "@app/ee/services/secret-change-request-bridge/secret-change-request-bridge-types";
 import { OrgServiceActor } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
 import { NotificationType } from "@app/services/notification/notification-types";
@@ -59,7 +60,11 @@ export type TApprovalPolicyConstraints =
   | TCodeSigningPolicyConstraints;
 
 export type TApprovalRequest = TPamAccessRequest | TCertRequestRequest | TCodeSigningRequest;
-export type TApprovalRequestData = TPamAccessRequestData | TCertRequestRequestData | TCodeSigningRequestData;
+export type TApprovalRequestData =
+  | TPamAccessRequestData
+  | TCertRequestRequestData
+  | TCodeSigningRequestData
+  | TSecretChangeRequestData;
 
 // Bypass-affordance fields the service stamps onto every request response.
 export type TBypassAffordances = {

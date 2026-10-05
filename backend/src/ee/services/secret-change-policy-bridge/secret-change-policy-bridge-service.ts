@@ -68,6 +68,7 @@ export const secretChangePolicyBridgeServiceFactory = ({
 }: TSecretChangePolicyBridgeServiceFactoryDep) => {
   const {
     findSecretChangePolicy,
+    findSecretChangePolicyById,
     findSecretChangePolicyBySecretPath,
     findSecretChangePoliciesByEnvId,
     findSecretChangePoliciesByProjectId,
@@ -429,6 +430,7 @@ export const secretChangePolicyBridgeServiceFactory = ({
 
   return {
     findSecretChangePolicy,
+    findSecretChangePolicyById,
     findSecretChangePolicyBySecretPath,
     findSecretChangePoliciesByEnvId,
     findSecretChangePoliciesByProjectId,

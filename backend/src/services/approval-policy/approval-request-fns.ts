@@ -25,6 +25,7 @@ export interface TCreateApprovalRequestWithStepsParams {
   policyType: ApprovalPolicyType;
   policySteps: ApprovalPolicyStep[];
   requestData: TApprovalRequestData;
+  status?: ApprovalRequestStatus;
   justification?: string | null;
   expiresAt?: Date | null;
   requesterUserId?: string | null;
@@ -61,6 +62,7 @@ export const createApprovalRequestWithSteps = async (
     policyType,
     policySteps,
     requestData,
+    status = ApprovalRequestStatus.Pending,
     justification,
     expiresAt,
     requesterUserId,
@@ -90,7 +92,7 @@ export const createApprovalRequestWithSteps = async (
         requesterName,
         requesterEmail,
         type: policyType,
-        status: ApprovalRequestStatus.Pending,
+        status,
         justification,
         currentStep: 1,
         requestData: { version: 1, requestData },

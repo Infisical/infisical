@@ -36,7 +36,9 @@ export enum ApprovalRequestStatus {
   Approved = "approved",
   Rejected = "rejected",
   Expired = "expired",
-  Cancelled = "cancelled"
+  Cancelled = "cancelled",
+  Open = "open",
+  Closed = "close"
 }
 
 export enum ApprovalRequestStepStatus {

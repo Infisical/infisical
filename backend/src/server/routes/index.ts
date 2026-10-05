@@ -206,6 +206,7 @@ import { secretChangePolicyBridgeDALFactory } from "@app/ee/services/secret-chan
 import { secretChangePolicyBridgeServiceFactory } from "@app/ee/services/secret-change-policy-bridge/secret-change-policy-bridge-service";
 import { approvalPolicySecretEnvironmentDALFactory } from "@app/ee/services/secret-change-policy-bridge/secret-change-policy-environment-dal";
 import { secretChangeRequestBridgeServiceFactory } from "@app/ee/services/secret-change-request-bridge/secret-change-request-bridge-service";
+import { secretChangeRequestDALFactory } from "@app/ee/services/secret-change-request-bridge/secret-change-request-dal";
 import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { secretRotationV2QueueServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-queue";
@@ -1842,6 +1843,7 @@ export const registerRoutes = async (
   const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
   const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
   const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
+  const secretChangeRequestDAL = secretChangeRequestDALFactory(db);
   const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
@@ -2371,7 +2373,33 @@ export const registerRoutes = async (
     secretBlindIndexDAL
   });
 
-  const secretChangeRequestBridgeService = secretChangeRequestBridgeServiceFactory({ approvalRequestDAL });
+  const secretChangeRequestBridgeService = secretChangeRequestBridgeServiceFactory({
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalPolicyDAL,
+    secretChangeRequestDAL,
+    secretApprovalRequestSecretDAL,
+    secretChangePolicyBridgeService,
+    permissionService,
+    folderDAL,
+    projectDAL,
+    projectEnvDAL,
+    kmsService,
+    secretV2BridgeDAL,
+    secretVersionV2BridgeDAL,
+    secretTagDAL,
+    secretValidationRuleService,
+    userDAL,
+    identityDAL,
+    projectSlackConfigDAL,
+    projectMicrosoftTeamsConfigDAL,
+    microsoftTeamsService,
+    smtpService,
+    notificationService,
+    queueService,
+    telemetryService
+  });
 
   const secretApprovalRequestCreationFns = secretApprovalRequestCreationFnsFactory({
     secretApprovalRequestDAL,

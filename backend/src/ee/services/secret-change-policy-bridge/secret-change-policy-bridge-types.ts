@@ -30,6 +30,7 @@ export type TSecretChangePolicyBridgeMethods = {
   createSecretChangePolicy: (dto: TCreateSapDTO) => Promise<TSecretChangePolicy>;
   updateSecretChangePolicy: (dto: TUpdateSapDTO) => Promise<TSecretChangePolicy>;
   deleteSecretChangePolicy: (dto: TDeleteSapDTO) => Promise<TSecretChangePolicy>;
+  findSecretChangePolicyById: (policyId: string, tx?: Knex) => Promise<TSecretChangePolicy | undefined>;
   findSecretChangePoliciesByEnvId: (envId: string, tx?: Knex) => Promise<TSecretChangePolicy[]>;
   findSecretChangePoliciesByProjectId: (projectId: string) => Promise<TSecretChangePolicy[]>;
   getSecretChangePolicy: (
