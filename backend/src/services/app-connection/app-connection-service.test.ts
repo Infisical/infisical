@@ -1,4 +1,4 @@
-import { createMongoAbility, ForbiddenError, MongoAbility } from "@casl/ability";
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -28,7 +28,7 @@ class PermissionReached extends Error {}
 
 const buildService = (
   connection: { orgId: string; projectId: string | null; app?: AppConnection },
-  abilities: { org?: MongoAbility; project?: MongoAbility } = {}
+  abilities: { org?: unknown; project?: unknown } = {}
 ) => {
   const permissionService = {
     getOrgPermission: vi.fn(async () => {
