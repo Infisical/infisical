@@ -1,15 +1,15 @@
 import { useState } from "react";
 import FileSaver from "file-saver";
-import { CheckIcon, CopyIcon, DownloadIcon, EyeIcon, EyeOffIcon } from "lucide-react";
+import { DownloadIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 
 import {
+  CopyButton,
   IconButton,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3";
-import { useTimedReset } from "@app/hooks";
 
 type Props = {
   serialNumber: string;
@@ -23,30 +23,14 @@ const downloadTxtFile = (filename: string, content: string) => {
   FileSaver.saveAs(blob, filename);
 };
 
-const CopyAction = ({ value, label }: { value: string; label: string }) => {
-  const [, isCopying, setCopyText] = useTimedReset<string>({
-    initialState: "Copy to clipboard"
-  });
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <IconButton
-          aria-label={`Copy ${label}`}
-          variant="ghost-muted"
-          size="xs"
-          onClick={() => {
-            navigator.clipboard.writeText(value);
-            setCopyText("Copied");
-          }}
-        >
-          {isCopying ? <CheckIcon /> : <CopyIcon />}
-        </IconButton>
-      </TooltipTrigger>
-      <TooltipContent>{isCopying ? "Copied" : `Copy ${label}`}</TooltipContent>
-    </Tooltip>
-  );
-};
+const CopyAction = ({ value, label }: { value: string; label: string }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <CopyButton value={value} ariaLabel={`Copy ${label}`} variant="ghost-muted" />
+    </TooltipTrigger>
+    <TooltipContent>Copy {label}</TooltipContent>
+  </Tooltip>
+);
 
 const PemSection = ({
   title,

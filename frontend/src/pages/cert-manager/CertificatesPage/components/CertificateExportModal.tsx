@@ -187,7 +187,7 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
             name="format"
             render={({ field, fieldState: { error } }) => (
               <Field data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="certificate-export-format">Export format</FieldLabel>
+                <FieldLabel htmlFor="certificate-export-format">Export Format</FieldLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger
                     id="certificate-export-format"
@@ -219,7 +219,7 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
                 render={({ field, fieldState: { error } }) => (
                   <Field data-invalid={Boolean(error)}>
                     <FieldLabel htmlFor="certificate-export-pkcs12-password">
-                      Keystore password
+                      Keystore Password
                       <span aria-hidden className="text-danger">
                         *
                       </span>
@@ -247,7 +247,7 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
                 render={({ field, fieldState: { error } }) => (
                   <Field data-invalid={Boolean(error)}>
                     <FieldLabel htmlFor="certificate-export-pkcs12-alias">
-                      Certificate alias
+                      Certificate Alias
                       <span aria-hidden className="text-danger">
                         *
                       </span>
