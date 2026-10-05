@@ -309,15 +309,15 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
         if (typeof allowance === "string" && allowance.trim().toLowerCase() === "unlimited") {
           return true;
         }
-        const numericAllowance =
-          typeof allowance === "number" ||
-          (typeof allowance === "string" && /^\d+$/.test(allowance.trim()))
-            ? Number(allowance)
+        const formattedAllowance =
+          typeof allowance === "string"
+            ? allowance.trim().match(/^(?:up to\s+)?(\d+|\d{1,3}(?:,\d{3})+)$/i)
             : undefined;
-        return (
-          numericAllowance !== undefined &&
-          numericAllowance > Math.max(honeyTokenQuota.used, honeyTokenQuota.limit)
-        );
+        const numericAllowance =
+          typeof allowance === "number"
+            ? allowance
+            : Number(formattedAllowance?.[1].replaceAll(",", "") ?? NaN);
+        return numericAllowance > Math.max(honeyTokenQuota.used, honeyTokenQuota.limit);
       })
     : [];
   const requiredTier = honeyTokenQuota ? higherQuotaPlans[0]?.tier : intent.planKey;
