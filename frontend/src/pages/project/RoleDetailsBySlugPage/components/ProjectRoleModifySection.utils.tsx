@@ -59,6 +59,7 @@ import {
   TPermissionCondition,
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectPermission } from "@app/hooks/api/roles/types";
 
@@ -2689,7 +2690,9 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Edit",
         value: ProjectPermissionAuditLogsActions.Edit,
-        description: "Choose which audit log event classes the project records"
+        description: isInfisicalCloud()
+          ? "Choose which audit log event classes the project records"
+          : "Choose which audit log event classes the project records and how long it keeps its audit logs"
       }
     ]
   },
