@@ -102,6 +102,7 @@ const SignForm = ({ cmek }: FormProps) => {
             <FieldLabel htmlFor={`${fieldId}-data`}>Data to Sign</FieldLabel>
             <TextArea
               {...register("data")}
+              rows={7}
               id={`${fieldId}-data`}
               isError={Boolean(errors.data)}
               aria-describedby={errors.data ? `${fieldId}-data-error` : undefined}

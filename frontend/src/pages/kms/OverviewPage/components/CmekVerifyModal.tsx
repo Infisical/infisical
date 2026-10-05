@@ -150,6 +150,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
             <FieldLabel htmlFor={`${fieldId}-data`}>Data to Verify</FieldLabel>
             <TextArea
               {...register("data")}
+              rows={7}
               id={`${fieldId}-data`}
               isError={Boolean(errors.data)}
               aria-describedby={errors.data ? `${fieldId}-data-error` : undefined}
@@ -173,6 +174,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
             </div>
             <TextArea
               {...register("signature")}
+              rows={7}
               id={`${fieldId}-signature`}
               isError={Boolean(errors.signature)}
               aria-describedby={errors.signature ? `${fieldId}-signature-error` : undefined}
