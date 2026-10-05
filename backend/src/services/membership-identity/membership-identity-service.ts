@@ -1,6 +1,12 @@
 import { Knex } from "knex";
 
-import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import {
+  AccessScope,
+  ProjectMembershipRole,
+  ProjectType,
+  TemporaryPermissionMode,
+  TMembershipRolesInsert
+} from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -315,12 +321,15 @@ export const membershipIdentityServiceFactory = ({
       const newRolesHavePermanentAdmin = data.roles.some(
         (r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary
       );
-      if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
-        await assertProductWillRetainAdmin({
-          project: await projectDAL.findById(scopeData.projectId, tx),
-          excludeMembershipIds: [existingMembership.id],
-          tx
-        });
+      if (scopeData.scope === AccessScope.Project) {
+        const project = await projectDAL.findById(scopeData.projectId, tx);
+        const newIsActive = data.isActive ?? existingMembership.isActive;
+        if (
+          !newRolesHavePermanentAdmin ||
+          (!newIsActive && (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM))
+        ) {
+          await assertProductWillRetainAdmin({ project, excludeMembershipIds: [existingMembership.id], tx });
+        }
       }
       const currentMembership = await membershipIdentityDAL.findByIdForUpdate(existingMembership.id, tx);
       if (!currentMembership) {

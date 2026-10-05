@@ -45,7 +45,7 @@ import { ActorType } from "../auth/auth-type";
 import { getIdentityActiveLockoutAuthMethods } from "../identity/identity-fns";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
-import { filterRolesNeedingPrivilegeBoundary } from "../membership/membership-fns";
+import { assertProductWillRetainAdmin, filterRolesNeedingPrivilegeBoundary } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TIdentityV2DALFactory } from "./identity-dal";
@@ -410,6 +410,24 @@ export const identityV2ServiceFactory = ({
     // Set the identity-wide PG revocation epoch atomically with the row delete
     // so any JWT issued for this identity (with iat < now) is rejected.
     const deletedIdentity = await identityDAL.transaction(async (tx) => {
+      if (scopeData.scope === AccessScope.Project) {
+        const project = await projectDAL.findById(scopeData.projectId, tx);
+        if (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM) {
+          const memberships = await membershipIdentityDAL.find(
+            {
+              scope: AccessScope.Project,
+              scopeProjectId: scopeData.projectId,
+              actorIdentityId: dto.selector.identityId
+            },
+            { tx }
+          );
+          await assertProductWillRetainAdmin({
+            project,
+            excludeMembershipIds: memberships.map(({ id }) => id),
+            tx
+          });
+        }
+      }
       await identityAccessTokenService.insertIdentityWideRevocationMarker({ identityId: dto.selector.identityId, tx });
 
       await alertService.deleteAlertsForDeletedResource(

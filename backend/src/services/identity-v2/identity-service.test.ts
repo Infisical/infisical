@@ -1,8 +1,8 @@
 import { createMongoAbility } from "@casl/ability";
-import { Knex } from "knex";
+import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, ProjectType } from "@app/db/schemas";
 
 import { identityV2ServiceFactory } from "./identity-service";
 import { TDeleteIdentityV2DTO } from "./identity-types";
@@ -40,13 +40,15 @@ const buildDto = (): TDeleteIdentityV2DTO =>
   }) as unknown as TDeleteIdentityV2DTO;
 
 const createService = ({
-  existingIdentity = { id: IDENTITY_ID, name: "ident", hasDeleteProtection: false }
-}: { existingIdentity?: Record<string, unknown> | null } = {}) => {
+  existingIdentity = { id: IDENTITY_ID, name: "ident", hasDeleteProtection: false },
+  projectType,
+  tx = TX
+}: { existingIdentity?: Record<string, unknown> | null; projectType?: ProjectType; tx?: Knex } = {}) => {
   const deleteAlertsForDeletedResource = vi.fn().mockResolvedValue(0);
 
   const identityDAL = {
     findOne: vi.fn().mockResolvedValue(existingIdentity),
-    transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
+    transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(tx)),
     deleteById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "ident" }),
     updateById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "renamed" })
   };
@@ -66,7 +68,10 @@ const createService = ({
     } as never,
     licenseService: { getPlan: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
     // The delete guards bound the removal against the roles the target identity holds.
-    membershipIdentityDAL: { getIdentityById: vi.fn().mockResolvedValue({ roles: [] }) } as never,
+    membershipIdentityDAL: {
+      getIdentityById: vi.fn().mockResolvedValue({ roles: [] }),
+      find: vi.fn().mockResolvedValue([{ id: "identity-membership" }])
+    } as never,
     membershipRoleDAL: {} as never,
     identityMetadataDAL: { delete: vi.fn(), insertMany: vi.fn() } as never,
     identityAccessTokenService: {
@@ -77,7 +82,7 @@ const createService = ({
     projectDAL: {
       findActorAccessibleProjectIds: vi.fn(),
       findOrgProjectIds: vi.fn(),
-      findById: vi.fn()
+      findById: vi.fn().mockResolvedValue(projectType ? { id: PROJECT_ID, type: projectType } : undefined)
     } as never,
     orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: true }) } as never,
     roleDAL: { find: vi.fn() } as never,
@@ -123,6 +128,28 @@ describe("deleteIdentity alert cleanup", () => {
       TX
     );
   });
+
+  test.each([ProjectType.CertificateManager, ProjectType.PAM])(
+    "refuses deleting the last project admin identity in %s",
+    async (projectType) => {
+      const query = knex({ client: "pg" }).queryBuilder();
+      vi.spyOn(query, "first").mockResolvedValue({ count: "0" });
+      const tx = Object.assign(
+        vi.fn(() => query),
+        { raw: vi.fn().mockResolvedValue(undefined) }
+      ) as unknown as Knex;
+      const { service, identityDAL, deleteAlertsForDeletedResource } = createService({ projectType, tx });
+      await expect(
+        service.deleteIdentity({
+          ...buildDto(),
+          scopeData: { scope: AccessScope.Project, orgId: ORG_ID, projectId: PROJECT_ID }
+        })
+      ).rejects.toThrow("must keep at least one admin");
+      expect(identityDAL.deleteById).not.toHaveBeenCalled();
+      expect(deleteAlertsForDeletedResource).not.toHaveBeenCalled();
+      expect(query.toSQL().bindings).toContain("identity-membership");
+    }
+  );
 
   test("delete protection stops the delete before anything is reaped", async () => {
     const { service, deleteAlertsForDeletedResource } = createService({

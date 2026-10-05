@@ -129,7 +129,7 @@ export const assertProductWillRetainAdmin = async ({
   excludeMembershipIds: string[];
   tx: Knex;
 }) => {
-  if (project?.type !== ProjectType.AgentVault) return;
+  if (!project) return;
   const productLabel = getAdminMemberOnlyProductLabel(project.type);
   if (!productLabel) return;
   await assertWillRetainProjectAdmin({ scopeProjectId: project.id, excludeMembershipIds, productLabel, tx });

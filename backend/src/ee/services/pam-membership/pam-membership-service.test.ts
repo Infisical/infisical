@@ -1,3 +1,4 @@
+import knex, { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
@@ -19,6 +20,73 @@ const ctx = {
 } as unknown as Parameters<ReturnType<typeof pamMembershipServiceFactory>["addProductUserMembers"]>[0];
 
 const user = (id: string, username: string) => ({ id, username, isGhost: false });
+
+describe("pamMembership product admin retention", () => {
+  const buildRemovalService = (adminCount: number) => {
+    const query = knex({ client: "pg" }).queryBuilder();
+    vi.spyOn(query, "first").mockResolvedValue({ count: String(adminCount) });
+    const tx = Object.assign(
+      vi.fn(() => query),
+      { raw: vi.fn().mockResolvedValue(undefined) }
+    ) as unknown as Knex;
+    const deps = {
+      permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
+      membershipDAL: {
+        find: vi.fn().mockResolvedValue([{ id: "membership-1" }]),
+        transaction: vi.fn((cb: (trx: Knex) => unknown) => cb(tx)),
+        deleteById: vi.fn()
+      },
+      membershipRoleDAL: {
+        find: vi.fn().mockResolvedValue([{ role: PamProductRole.Admin }]),
+        update: vi.fn(),
+        delete: vi.fn()
+      }
+    };
+    return {
+      service: pamMembershipServiceFactory(deps as unknown as Parameters<typeof pamMembershipServiceFactory>[0]),
+      deps,
+      tx
+    };
+  };
+
+  test("refuses last-admin removal before deleting any roles or membership", async () => {
+    const { service, deps } = buildRemovalService(0);
+    await expect(service.removeProductMember({ ...ctx, projectId: PROJECT_ID, userId: "other-user" })).rejects.toThrow(
+      "Privileged Access Manager must keep at least one admin"
+    );
+    expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
+    expect(deps.membershipDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("refuses last-admin demotion before changing the role", async () => {
+    const { service, deps } = buildRemovalService(0);
+    await expect(
+      service.updateProductMemberRole({
+        ...ctx,
+        projectId: PROJECT_ID,
+        userId: "other-user",
+        role: PamProductRole.Member
+      })
+    ).rejects.toThrow("Privileged Access Manager must keep at least one admin");
+    expect(deps.membershipRoleDAL.update).not.toHaveBeenCalled();
+  });
+
+  test("allows demotion when another admin remains, in the guard transaction", async () => {
+    const { service, deps, tx } = buildRemovalService(1);
+    await service.updateProductMemberRole({
+      ...ctx,
+      projectId: PROJECT_ID,
+      userId: "other-user",
+      role: PamProductRole.Member
+    });
+    expect(deps.membershipRoleDAL.update).toHaveBeenCalledWith(
+      { membershipId: "membership-1" },
+      { role: PamProductRole.Member },
+      tx
+    );
+    expect(tx.raw).toHaveBeenCalled();
+  });
+});
 
 // Only the collaborators addProductUserMembers touches on the add path; everything else is left
 // undefined so an unexpected reach shows up as a crash rather than a silent pass.
