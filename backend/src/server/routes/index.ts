@@ -2479,6 +2479,7 @@ export const registerRoutes = async (
     honeyTokenDAL,
     secretImportDAL,
     secretV2BridgeService,
+    secretValidationRuleService,
     reminderDAL,
     reminderService,
     keyStore
