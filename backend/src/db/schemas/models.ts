@@ -286,7 +286,6 @@ export enum TableName {
   AgentVaultSessionLogConfig = "agent_vault_session_log_configs",
   AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 
-  VaultExternalMigrationConfig = "vault_external_migration_configs",
   ExternalMigrationConfig = "external_migration_configs",
 
   // PKI ACME
