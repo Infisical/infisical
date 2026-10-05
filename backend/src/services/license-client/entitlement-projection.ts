@@ -1,7 +1,26 @@
-import { TFeatureSet } from "@app/ee/services/license/license-types";
+import { TFeatureSet, TPlanNotice } from "@app/ee/services/license/license-types";
 
 import { FEATURE_MAPPINGS } from "./feature-mapping";
-import { TEntitlementsResponse } from "./license-client-types";
+import { TEntitlementsResponse, trialPaymentFailedNoticeSchema } from "./license-client-types";
+
+// Unknown notice types are expected (the License Server adds them ahead of us), so they are dropped silently.
+const projectNotices = (rawNotices: unknown[]): TPlanNotice[] =>
+  rawNotices.flatMap((rawNotice) => {
+    const parsed = trialPaymentFailedNoticeSchema.safeParse(rawNotice);
+    if (!parsed.success) {
+      return [];
+    }
+    return [
+      {
+        type: parsed.data.type,
+        productKey: parsed.data.product_key,
+        trialPlanKey: parsed.data.trial_plan_key ?? null,
+        accessEndsAt: parsed.data.access_ends_at,
+        nextAttemptAt: parsed.data.next_attempt_at ?? null,
+        cause: parsed.data.cause ?? null
+      }
+    ];
+  });
 
 // Builds a plan-shaped TFeatureSet from the License Server entitlement set so getPlan can serve it
 // without changing its callers. Starts from the passed base (free-tier defaults) and overlays each
@@ -17,6 +36,7 @@ export const projectV2ToFeatureSet = (base: TFeatureSet, entitlements: TEntitlem
     trialPlanKey: product.trial_plan_key ?? null,
     trialEndsAt: product.trial_ends_at ?? null
   }));
+  plan.notices = projectNotices(entitlements.notices ?? []);
 
   FEATURE_MAPPINGS.forEach((mapping) => {
     if (mapping.v1Field === null) {
