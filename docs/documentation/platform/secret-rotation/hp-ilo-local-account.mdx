@@ -69,9 +69,20 @@ HP iLO ships with a self-signed SSL certificate, so Infisical can't verify the f
         - **Rotation Method** - The method to use when rotating the target user's password.
             - **Login as Target** - Infisical will use the provided iLO username and password to log in and rotate its own password.
             - **Login as Root** - Infisical will use the SSH Connection's credentials to log in and rotate the provided user's password.
-        - **Username** - The target iLO username whose password will be rotated.
+        - **Target Username** - The target iLO username whose password will be rotated.
         - **Current Password** - The current password of the target user (required when **Rotation Method** is set to **Login as Target**).
-        - **Password Requirements** - The constraints to apply when generating new passwords.
+
+        In the **Password Requirements** tab, set the constraints to apply when generating new passwords:
+
+        - **Password Length** - The length of the generated password (39 characters at most).
+        - **Digit Count** - The minimum number of digits.
+        - **Lowercase Character Count** - The minimum number of lowercase characters.
+        - **Uppercase Character Count** - The minimum number of uppercase characters.
+        - **Symbol Count** - The minimum number of symbols.
+        - **Allowed Symbols** - The symbols the generated password can contain.
+
+        In the **SSL** tab, configure how Infisical verifies the iLO's SSL certificate when it uses the Redfish API:
+
         - **Reject Unauthorized** - Whether Infisical uses the Redfish API only when it can verify the iLO's SSL certificate (enabled by default).
         - **SSL Certificate** (optional) - The PEM-encoded CA certificate to trust when verifying the iLO's SSL certificate, for an iLO with a self-signed or privately issued certificate.
 
