@@ -774,6 +774,10 @@ export enum EventType {
   PAM_ACCESS_REQUEST_REVIEW = "pam-access-request-review",
   PAM_ACCESS_GRANT_REVOKE = "pam-access-grant-revoke",
   PAM_APPROVAL_CONFIG_UPDATE = "pam-approval-config-update",
+  PAM_FOLDER_ALERT_CREATE = "pam-folder-alert-create",
+  PAM_FOLDER_ALERT_UPDATE = "pam-folder-alert-update",
+  PAM_FOLDER_ALERT_DELETE = "pam-folder-alert-delete",
+  PAM_FOLDER_ALERT_CHANNEL_TEST = "pam-folder-alert-channel-test",
   AGENT_VAULT_ACCESS_BUNDLE_CREATE = "agent-vault-access-bundle-create",
   AGENT_VAULT_ACCESS_BUNDLE_UPDATE = "agent-vault-access-bundle-update",
   AGENT_VAULT_ACCESS_BUNDLE_DELETE = "agent-vault-access-bundle-delete",
@@ -6741,6 +6745,36 @@ interface PamApprovalConfigUpdateEvent {
   };
 }
 
+type TPamFolderAlertEventMetadata = { folderId?: string; alertId: string; name: string; eventType: string };
+
+interface PamFolderAlertCreateEvent {
+  type: EventType.PAM_FOLDER_ALERT_CREATE;
+  metadata: TPamFolderAlertEventMetadata;
+}
+
+interface PamFolderAlertUpdateEvent {
+  type: EventType.PAM_FOLDER_ALERT_UPDATE;
+  metadata: TPamFolderAlertEventMetadata;
+}
+
+interface PamFolderAlertDeleteEvent {
+  type: EventType.PAM_FOLDER_ALERT_DELETE;
+  metadata: TPamFolderAlertEventMetadata;
+}
+
+interface PamFolderAlertChannelTestEvent {
+  type: EventType.PAM_FOLDER_ALERT_CHANNEL_TEST;
+  metadata: {
+    folderId?: string;
+    alertId?: string;
+    channelId?: string;
+    channelType: string;
+    success: boolean;
+    deliveredTo?: number;
+    error?: string;
+  };
+}
+
 interface UpdateCertificateRenewalConfigEvent {
   type: EventType.UPDATE_CERTIFICATE_RENEWAL_CONFIG;
   metadata: {
@@ -8519,6 +8553,10 @@ export type Event =
   | PamAccessRequestReviewEvent
   | PamAccessGrantRevokeEvent
   | PamApprovalConfigUpdateEvent
+  | PamFolderAlertCreateEvent
+  | PamFolderAlertUpdateEvent
+  | PamFolderAlertDeleteEvent
+  | PamFolderAlertChannelTestEvent
   | UpdateCertificateRenewalConfigEvent
   | UpdateCertificateMetadataEvent
   | DisableCertificateRenewalConfigEvent

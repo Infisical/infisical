@@ -26,6 +26,7 @@ import { useScopeVariant } from "@app/hooks";
 import {
   ALERT_EVENT_TYPE_DESCRIPTIONS,
   ALERT_EVENT_TYPE_LABELS,
+  ALERT_RESOURCE_EVENT_TYPES,
   ALERT_RESOURCE_TYPE_LABELS,
   AlertEventType,
   alertFormSchema,
@@ -34,6 +35,7 @@ import {
   MIN_ALERT_BEFORE_DAYS,
   parseAlertBeforeDays,
   TAlert,
+  TAlertChannelPaywall,
   TAlertForm,
   TChannelForm,
   toAlertBefore,
@@ -46,7 +48,9 @@ import { ChannelsField } from "./ChannelsField";
 
 type Props = {
   projectId?: string;
+  resourceType?: AlertResourceType;
   resourceId?: string;
+  channelPaywall?: TAlertChannelPaywall;
   alert?: TAlert;
   unavailableEventTypes?: AlertEventType[];
   onComplete: () => void;
@@ -56,9 +60,13 @@ type Props = {
 const DEFAULT_ALERT_BEFORE_DAYS = 7;
 const DEFAULT_ALERT_NAMES: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
-  [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert"
+  [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert",
+  [AlertEventType.PamAccessRequested]: "Access requested alert",
+  [AlertEventType.PamAccessRequestApproved]: "Request approved alert",
+  [AlertEventType.PamAccessRequestDenied]: "Request denied alert",
+  [AlertEventType.PamAccessRequestBypassed]: "Break-glass alert"
 };
-const AGENT_VAULT_ALERT_NAME_PLACEHOLDERS: Record<AlertEventType, string> = {
+const AGENT_VAULT_ALERT_NAME_PLACEHOLDERS: Partial<Record<AlertEventType, string>> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
   [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert"
 };
@@ -81,6 +89,7 @@ const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
 
 const buildFormDefaults = (
   alert: TAlert | undefined,
+  resourceType: AlertResourceType,
   defaultEventType: AlertEventType,
   defaultName: string
 ): TAlertForm => {
@@ -88,7 +97,7 @@ const buildFormDefaults = (
     return {
       name: defaultName,
       description: "",
-      resourceType: AlertResourceType.IdentityAuthentication,
+      resourceType,
       eventType: defaultEventType,
       alertBeforeDays: DEFAULT_ALERT_BEFORE_DAYS,
       dailyReminder: false,
@@ -113,7 +122,9 @@ const buildFormDefaults = (
 
 export const AlertForm = ({
   projectId,
+  resourceType: alertResourceType = AlertResourceType.IdentityAuthentication,
   resourceId,
+  channelPaywall,
   alert,
   unavailableEventTypes = [],
   onComplete,
@@ -124,14 +135,15 @@ export const AlertForm = ({
   const isAgentVault = scopeVariant === "av";
   const createAlert = useCreateAlert();
   const updateAlert = useUpdateAlert();
+  const eventTypes = ALERT_RESOURCE_EVENT_TYPES[alertResourceType];
   const defaultEventType =
-    Object.values(AlertEventType).find((eventType) => !unavailableEventTypes.includes(eventType)) ??
-    DEFAULT_EVENT_TYPE;
+    eventTypes.find((eventType) => !unavailableEventTypes.includes(eventType)) ?? eventTypes[0];
 
   const formMethods = useForm<TAlertForm>({
     resolver: zodResolver(alertFormSchema),
     defaultValues: buildFormDefaults(
       alert,
+      alertResourceType,
       defaultEventType,
       isAgentVault ? "" : DEFAULT_ALERT_NAMES[defaultEventType]
     )
@@ -254,7 +266,7 @@ export const AlertForm = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent position="popper">
-                      {Object.values(AlertEventType).map((eventType) => (
+                      {eventTypes.map((eventType) => (
                         <SelectItem
                           key={eventType}
                           value={eventType}
@@ -361,6 +373,7 @@ export const AlertForm = ({
             projectId={projectId}
             resourceType={resourceTypeValue}
             resourceId={resourceId ?? alert?.resourceId ?? null}
+            channelPaywall={channelPaywall}
           />
         </div>
 

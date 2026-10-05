@@ -809,6 +809,9 @@ provider's. A
 `resourceType` that doesn't declare the `eventType` fails the row terminally with both named, so a bad
 emit site shows up in the logs on its first event.
 
+Approval lifecycle events reach the outbox through `TApprovalResource.buildEvent`, which the approval
+service emits inside each transition's transaction (PAM folder alerts use it).
+
 **The event contract belongs to the domain that emits it, not to a consumer.** The identity auth method
 event (key, resource type, change enum, payload schema, and the `emitIdentityAuthMethodChanged` helper)
 lives in `src/services/identity/identity-auth-method-events.ts`. The 13 auth method services import the

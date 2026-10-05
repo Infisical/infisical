@@ -168,6 +168,10 @@ routes emitting PAM's own audit events, so folder and account auditors still see
 keeps only what the generic API cannot express: the CLI's `folderName/accountName` create, the paginated
 folder list, the approver queue and count, the approver roster, and the folder notification configs.
 
+**Folder alerts are the `pam.folder` provider on the shared alert module**, fed by the resource's `buildEvent`.
+The older per-folder Slack configs (`pam_folder_notification_configs`) are legacy: they still post and can be
+removed, never added or edited.
+
 ## Policies & Settings
 
 **Policies** are governance controls on a template (MFA, reason, session duration, command-blocking),

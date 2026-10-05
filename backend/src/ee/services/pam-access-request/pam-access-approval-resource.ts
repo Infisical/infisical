@@ -4,7 +4,6 @@ import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants } from "@app/db/sc
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApprovalPolicyActions,
@@ -75,6 +74,7 @@ import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-accou
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { terminatePamSessions } from "../pam-session/pam-session-fns";
+import { buildPamAccessRequestEvent } from "./pam-access-request-events";
 import { escapeMarkdown, getSlackSendTargets } from "./pam-access-request-fns";
 import { TPamAccessRequestData } from "./pam-access-request-types";
 import { TPamFolderNotificationConfigDALFactory } from "./pam-folder-notification-config-dal";
@@ -97,7 +97,6 @@ type TPamAccessApprovalResourceDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   pamFolderNotificationConfigDAL: Pick<TPamFolderNotificationConfigDALFactory, "findByFolderIdWithIntegration">;
 };
 
@@ -161,7 +160,6 @@ export const pamAccessApprovalResourceFactory = ({
   userDAL,
   gatewayV2Service,
   kmsService,
-  licenseService,
   pamFolderNotificationConfigDAL
 }: TPamAccessApprovalResourceDep): TPamAccessApprovalResource => {
   const $assertFolderInProject = async (folderId: string, projectId: string) => {
@@ -705,10 +703,7 @@ export const pamAccessApprovalResourceFactory = ({
     });
   };
 
-  const $chatDeliveries = async (event: PamNotificationEvent, orgId: string, folderId: string) => {
-    const plan = await licenseService.getPlan(orgId);
-    if (!plan.pamSlackNotifications) return [];
-
+  const $chatDeliveries = async (event: PamNotificationEvent, folderId: string) => {
     const configs = await pamFolderNotificationConfigDAL.findByFolderIdWithIntegration(folderId);
     return getSlackSendTargets(configs, event);
   };
@@ -761,7 +756,7 @@ export const pamAccessApprovalResourceFactory = ({
             approvalUrl
           }
         },
-        chat: (await $chatDeliveries(PamNotificationEvent.AccessRequested, orgId, inputs.folderId)).map((target) => ({
+        chat: (await $chatDeliveries(PamNotificationEvent.AccessRequested, inputs.folderId)).map((target) => ({
           ...target,
           notification: {
             type: TriggerFeature.PAM_ACCESS_REQUESTED,
@@ -800,22 +795,20 @@ export const pamAccessApprovalResourceFactory = ({
             bypassReason
           }
         },
-        chat: (await $chatDeliveries(PamNotificationEvent.AccessRequestBypassed, orgId, inputs.folderId)).map(
-          (target) => ({
-            ...target,
-            notification: {
-              type: TriggerFeature.PAM_ACCESS_REQUEST_BYPASSED,
-              payload: {
-                requesterFullName: requesterName,
-                requesterEmail: request.requesterEmail ?? "",
-                accountName,
-                folderName,
-                accessDuration: formatDuration(inputs.duration),
-                bypassReason: bypassReason ?? ""
-              }
+        chat: (await $chatDeliveries(PamNotificationEvent.AccessRequestBypassed, inputs.folderId)).map((target) => ({
+          ...target,
+          notification: {
+            type: TriggerFeature.PAM_ACCESS_REQUEST_BYPASSED,
+            payload: {
+              requesterFullName: requesterName,
+              requesterEmail: request.requesterEmail ?? "",
+              accountName,
+              folderName,
+              accessDuration: formatDuration(inputs.duration),
+              bypassReason: bypassReason ?? ""
             }
-          })
-        )
+          }
+        }))
       };
     }
 
@@ -833,7 +826,6 @@ export const pamAccessApprovalResourceFactory = ({
       chat: (
         await $chatDeliveries(
           approved ? PamNotificationEvent.AccessRequestApproved : PamNotificationEvent.AccessRequestDenied,
-          orgId,
           inputs.folderId
         )
       ).map((target) => ({
@@ -851,6 +843,19 @@ export const pamAccessApprovalResourceFactory = ({
         }
       }))
     };
+  };
+
+  const buildEvent: NonNullable<TPamAccessApprovalResource["buildEvent"]> = ({ event, request }) => {
+    const folderId = requestDataOf(request)?.folderId;
+    return folderId
+      ? buildPamAccessRequestEvent({
+          event,
+          requestId: request.id,
+          orgId: request.organizationId,
+          projectId: request.projectId,
+          folderId
+        })
+      : null;
   };
 
   const isLiveApprover: NonNullable<TPamAccessApprovalResource["isLiveApprover"]> = async ({
@@ -1051,6 +1056,7 @@ export const pamAccessApprovalResourceFactory = ({
     canAccess,
     matchesInputs,
     buildNotification,
+    buildEvent,
     buildAuditEvent,
     buildTelemetryEvent,
     decorateRequests,

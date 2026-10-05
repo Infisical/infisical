@@ -93,7 +93,7 @@ export type TFeatureSet = {
   kmip: false;
   gateway: false;
   gatewayPool: false;
-  pamSlackNotifications: boolean;
+  pamEnterpriseAlerting: boolean;
   secretScanning: false;
   enterpriseSecretSyncs: false;
   enterpriseAppConnections: false;

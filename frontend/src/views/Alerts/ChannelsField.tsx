@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { Label } from "@app/components/v3";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
   AlertPrincipalType,
+  TAlertChannelPaywall,
   TAlertForm,
   TChannelForm
 } from "@app/hooks/api/alerts";
@@ -16,6 +19,7 @@ type Props = {
   projectId?: string;
   resourceType: string;
   resourceId?: string | null;
+  channelPaywall?: TAlertChannelPaywall;
 };
 
 const buildNewChannel = (channelType: AlertChannelType, name: string): TChannelForm => ({
@@ -39,7 +43,8 @@ export const buildNextChannel = (existing: { name: string }[], channelType: Aler
   return buildNewChannel(channelType, name);
 };
 
-export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) => {
+export const ChannelsField = ({ projectId, resourceType, resourceId, channelPaywall }: Props) => {
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const {
     control,
     getValues,
@@ -63,7 +68,21 @@ export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) =>
           </Label>
           <span className="text-xs text-muted">Add at least one delivery channel.</span>
         </div>
-        <AddChannelMenu onAdd={appendChannel} />
+        <AddChannelMenu
+          onAdd={appendChannel}
+          lockedChannelTypes={channelPaywall?.lockedChannelTypes}
+          onLockedSelect={() => setIsUpgradeOpen(true)}
+          contentClassName={channelPaywall ? "min-w-56" : undefined}
+        />
+        {channelPaywall && (
+          <UpgradePlanModal
+            isOpen={isUpgradeOpen}
+            onOpenChange={setIsUpgradeOpen}
+            paywallKey={channelPaywall.paywallKey}
+            text={channelPaywall.text}
+            isEnterpriseFeature
+          />
+        )}
       </div>
 
       {rootError && <p className="text-xs text-danger">{rootError}</p>}

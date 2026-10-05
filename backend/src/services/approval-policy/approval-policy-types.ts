@@ -5,6 +5,7 @@ import { Event } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
 import { OrgServiceActor } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
+import { TEventInput } from "@app/services/event-outbox/event-outbox-types";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
@@ -215,6 +216,8 @@ export type TApprovalResource<
     comment?: string;
     bypassReason?: string;
   }) => Promise<TApprovalNotification | null>;
+  // The domain event a lifecycle event owes; called inside the transaction, so it must not touch the database.
+  buildEvent?: (args: { event: ApprovalNotificationEvent; request: TApprovalRequests }) => TEventInput | null;
   // Narrows the notified approvers to those still eligible, for a type where an approver row can
   // outlive the membership behind it.
   filterActiveApprovers?: (
