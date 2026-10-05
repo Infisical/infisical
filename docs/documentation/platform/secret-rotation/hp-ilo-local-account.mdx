@@ -17,10 +17,29 @@ description: "Learn how to automatically rotate HP iLO local account passwords."
   HP iLO has a maximum password length of **39 characters**. Infisical uses iLO-specific defaults (39 characters, no symbols) to ensure compatibility. If you customize password requirements, ensure the total length doesn't exceed 39 characters.
 </Warning>
 
+## How Infisical connects to the iLO
+
+Infisical changes the password through the iLO's Redfish API, the REST API that HP iLO serves over HTTPS on port 443. If Infisical can't use the Redfish API, it runs iLO commands over SSH instead, with the credentials of your SSH Connection.
+
+Infisical switches to SSH if any of the following happens:
+
+- Infisical can't reach the Redfish API on port 443 within 5 seconds
+- Infisical can't verify the iLO's SSL certificate while **Reject Unauthorized** is enabled
+- The SSH Connection uses an SSH key and **Rotation Method** is **Login as Root**, because the Redfish API only accepts a username and password
+- The Redfish API rejects the request without changing the password, for example because the credentials are invalid or the iLO has no account with the configured username
+
+HP iLO ships with a self-signed SSL certificate, so Infisical can't verify the factory certificate. To keep using the Redfish API, provide the CA certificate in **SSL Certificate**.
+
+<Warning>
+  **iLO 7 requires the Redfish API**
+
+  Infisical can't rotate passwords over SSH on iLO 7, so an iLO 7 rotation fails whenever Infisical can't use the Redfish API. Make sure Infisical can reach the iLO on port 443, and that Infisical can verify the iLO's SSL certificate.
+</Warning>
+
 ## Prerequisites
 
 - Create an [SSH Connection](/integrations/app-connections/ssh) with the **Secret Rotation** requirements
-- Ensure your network security policies allow incoming requests from Infisical to this rotation provider, if network restrictions apply.
+- Ensure your network security policies allow incoming requests from Infisical to the iLO on port 443 for the Redfish API, and on the SSH port for the SSH fallback, if network restrictions apply.
 
 ## Create an HP iLO local account rotation in Infisical
 
@@ -53,6 +72,8 @@ description: "Learn how to automatically rotate HP iLO local account passwords."
         - **Username** - The target iLO username whose password will be rotated.
         - **Current Password** - The current password of the target user (required when **Rotation Method** is set to **Login as Target**).
         - **Password Requirements** - The constraints to apply when generating new passwords.
+        - **Reject Unauthorized** - Whether Infisical uses the Redfish API only when it can verify the iLO's SSL certificate (enabled by default).
+        - **SSL Certificate** (optional) - The PEM-encoded CA certificate to trust when verifying the iLO's SSL certificate, for an iLO with a self-signed or privately issued certificate.
 
         5. Specify the secret names that the HP iLO credentials should be mapped to. Then click **Next**.
         ![Rotation Secrets Mapping](/images/secret-rotations-v2/hp-ilo-local-account/hp-ilo-local-account-secrets-mapping.png)
