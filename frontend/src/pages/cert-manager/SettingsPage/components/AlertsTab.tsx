@@ -20,7 +20,9 @@ export const AlertsTab = () => {
       canCreate={
         isAdmin && permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts)
       }
-      canEdit={isAdmin && permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts)}
+      canEdit={
+        isAdmin && permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts)
+      }
       canDelete={permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiAlerts)}
     />
   );
