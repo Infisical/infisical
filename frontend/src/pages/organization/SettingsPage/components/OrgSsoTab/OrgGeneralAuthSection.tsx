@@ -47,6 +47,13 @@ enum EnforceAuthType {
   OIDC = "oidc"
 }
 
+const upgradeDescriptions: Record<string, string> = {
+  "enforce SAML SSO": "Require SAML single sign-on for organization members.",
+  "enforce Google OAuth": "Require Google sign-in for organization members.",
+  "OIDC SSO": "Authenticate organization members with OIDC single sign-on.",
+  "Admin SSO Bypass": "Allow organization admins to sign in without single sign-on."
+};
+
 export const OrgGeneralAuthSection = ({
   isSamlConfigured,
   isOidcConfigured,
@@ -392,7 +399,10 @@ export const OrgGeneralAuthSection = ({
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...SsoEnforcementUpgradeIntent,
-          isEnterpriseFeature: false
+          description:
+            upgradeDescriptions[popUp.upgradePlan.data?.featureName ?? ""] ??
+            SsoEnforcementUpgradeIntent.description,
+          isEnterpriseFeature: popUp.upgradePlan.data?.planName === "Enterprise"
         }}
       />
 

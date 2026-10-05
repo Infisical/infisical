@@ -1,4 +1,4 @@
-import { CSSProperties, ReactNode, useEffect, useRef, useState } from "react";
+import { CSSProperties, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
 import { CircleAlert, ExternalLink } from "lucide-react";
@@ -362,6 +362,15 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     select: (state) => state.matches.at(-1)?.routeId ?? "unknown"
   });
 
+  const trackPaywallView = useCallback(() => {
+    analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, currentOrg.id, {
+      paywallKey,
+      paywallText: intent.description,
+      route,
+      isEnterpriseFeature: (requiredTier ?? intent.planKey) === BillingPlan.Enterprise
+    });
+  }, [currentOrg.id, paywallKey, intent.description, intent.planKey, route, requiredTier]);
+
   useEffect(() => {
     if (!isOpen) {
       hasTrackedView.current = false;
@@ -374,25 +383,14 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
       return;
     }
     hasTrackedView.current = true;
-
-    analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, currentOrg.id, {
-      paywallKey,
-      paywallText: intent.description,
-      route,
-      isEnterpriseFeature: (requiredTier ?? intent.planKey) === BillingPlan.Enterprise
-    });
+    trackPaywallView();
   }, [
     isOpen,
     honeyTokenQuota,
     canLoadBilling,
     overview.isPending,
     catalog.isPending,
-    currentOrg.id,
-    paywallKey,
-    intent.description,
-    intent.planKey,
-    route,
-    requiredTier
+    trackPaywallView
   ]);
 
   const trackUpgradeClick = () => {
@@ -517,7 +515,16 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
 
   if (overview.isPending || catalog.isPending || checkingBillingReturn) {
     return (
-      <Dialog open onOpenChange={onOpenChange}>
+      <Dialog
+        open
+        onOpenChange={(open) => {
+          if (!open && !hasTrackedView.current) {
+            hasTrackedView.current = true;
+            trackPaywallView();
+          }
+          onOpenChange(open);
+        }}
+      >
         <DialogContent
           overlayClassName="z-[70]"
           key="loading"
