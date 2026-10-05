@@ -27,11 +27,6 @@ import {
   InfisicalSecretInput,
   Input,
   PasswordGenerator,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   SheetFooter,
   TextArea,
   Toggle,
@@ -127,6 +122,8 @@ export type TSecretEditChanges = {
   skipMultilineEncoding?: boolean;
 };
 
+type TSharedSecretField = "value" | "comment" | "tags" | "metadata" | "skipMultilineEncoding";
+
 type Props = {
   secretPath?: string;
   defaultSelectedEnvs?: { name: string; slug: string }[];
@@ -143,15 +140,12 @@ type Props = {
     renameDisabledReason?: string;
     environmentOptions?: { name: string; slug: string }[];
     getEnvironmentError?: (slug: string) => string | undefined;
-    hasMixedFields?: boolean;
-    hideIdentityFields?: boolean;
-    hideFooter?: boolean;
-    inputIdPrefix?: string;
-    explicitValueAction?: boolean;
+    isSharedEdit?: boolean;
+    mixedFields?: Partial<Record<TSharedSecretField, string>>;
+    onEnvironmentsChange?: (environments: { name: string; slug: string }[]) => void;
     canEditButNotView: boolean;
     isReadOnly: boolean;
-    onDirtyChange?: (isDirty: boolean) => void;
-    onDraftChange?: (changes: TSecretEditChanges, isValid: boolean) => void;
+    onDirtyChange: (isDirty: boolean) => void;
     onSubmit: (
       changes: TSecretEditChanges,
       environments: { name: string; slug: string }[]
@@ -192,7 +186,8 @@ export const CreateSecretForm = ({
   const environments = currentProject?.environments || [];
 
   const defaultEnvs = useMemo(() => {
-    if (defaultSelectedEnvs && defaultSelectedEnvs.length > 0) return defaultSelectedEnvs;
+    if (defaultSelectedEnvs && (defaultSelectedEnvs.length > 0 || editSecret?.isSharedEdit))
+      return defaultSelectedEnvs;
     // if all envs are selected on the dashboard the array is empty so we need to resolve here
     return environments.filter((env) =>
       permission.can(
@@ -205,7 +200,7 @@ export const CreateSecretForm = ({
         })
       )
     );
-  }, [defaultSelectedEnvs, environments, permission, secretPath]);
+  }, [defaultSelectedEnvs, editSecret?.isSharedEdit, environments, permission, secretPath]);
 
   const editValuesJson =
     editSecret &&
@@ -248,7 +243,6 @@ export const CreateSecretForm = ({
     watch,
     formState: { isSubmitting, errors, dirtyFields }
   } = useForm<TFormSchema>({
-    mode: editSecret?.onDraftChange ? "onChange" : "onSubmit",
     resolver: zodResolver(
       formSchema(Boolean(currentProject?.enforceEncryptedSecretManagerSecretMetadata))
     ),
@@ -295,57 +289,48 @@ export const CreateSecretForm = ({
     .find(Boolean);
   const isEditReadOnly = Boolean(editSecret?.isReadOnly || environmentError);
   const [hasEditedHiddenValue, setHasEditedHiddenValue] = useState(false);
-  const [valueAction, setValueAction] = useState("keep");
-  const inputIdPrefix = editSecret?.inputIdPrefix ?? "create-secret";
-  const watchedSecret = watch("secrets.0");
+  const [clearValue, setClearValue] = useState(false);
+  const [sharedFieldIntents, setSharedFieldIntents] = useState<Record<string, boolean>>({});
+  const [editedMetadataEncryption, setEditedMetadataEncryption] = useState(new Set<string>());
+  const watchedValue = watch("secrets.0.value");
+  const valueWasEdited = Boolean(dirtyFields.secrets?.[0]?.value || hasEditedHiddenValue);
   const missingReplacement = Boolean(
-    editSecret?.explicitValueAction && valueAction === "replace" && !watchedSecret?.value?.trim()
+    editSecret?.isSharedEdit && valueWasEdited && !watchedValue && !clearValue
   );
-  const hasValueChanges = editSecret?.explicitValueAction
-    ? valueAction !== "keep"
-    : Boolean(dirtyFields.secrets?.[0]?.value || hasEditedHiddenValue);
+  const hasValueChanges = valueWasEdited && !missingReplacement;
   const hasEditChanges = Boolean(
     hasValueChanges ||
-      Object.keys(dirtyFields.secrets?.[0] ?? {}).some((field) => field !== "value")
+      missingReplacement ||
+      Object.keys(dirtyFields.secrets?.[0] ?? {}).some((field) => field !== "value") ||
+      Object.values(sharedFieldIntents).some(Boolean)
   );
   const onEditDirtyChange = editSecret?.onDirtyChange;
-  const getEditChanges = (secret: TFormSchema["secrets"][number]): TSecretEditChanges => {
-    const dirtySecret = dirtyFields.secrets?.[0];
-    const replacement = valueAction === "empty" ? "" : (secret.value ?? "");
-    return {
-      newSecretName: editSecret?.allowRename && dirtySecret?.key ? secret.key : undefined,
-      value: hasValueChanges ? replacement : undefined,
-      secretComment: dirtySecret?.comment ? (secret.comment ?? "") : undefined,
-      tags: dirtySecret?.tags
-        ? (secret.tags?.map((tag) => ({ id: tag.value, slug: tag.label })) ?? [])
-        : undefined,
-      secretMetadata: dirtySecret?.metadata
-        ? (secret.metadata?.map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted })) ??
-          [])
-        : undefined,
-      skipMultilineEncoding: dirtySecret?.skipMultilineEncoding
-        ? secret.skipMultilineEncoding
-        : undefined
-    };
-  };
-  const draftCallback = useRef(editSecret?.onDraftChange);
-  draftCallback.current = editSecret?.onDraftChange;
-  const editDraftJson = editSecret?.onDraftChange
-    ? JSON.stringify({
-        changes: getEditChanges(watchedSecret),
-        isValid:
-          !missingReplacement &&
-          formSchema(
-            Boolean(currentProject?.enforceEncryptedSecretManagerSecretMetadata)
-          ).safeParse(getValues()).success
-      })
-    : undefined;
+  const selectedEnvironmentsJson = JSON.stringify(selectedEnvironments);
+  const onEnvironmentsChange = editSecret?.onEnvironmentsChange;
 
   useEffect(() => {
-    if (!editDraftJson) return;
-    const { changes, isValid } = JSON.parse(editDraftJson);
-    draftCallback.current?.(changes, isValid);
-  }, [editDraftJson]);
+    onEnvironmentsChange?.(JSON.parse(selectedEnvironmentsJson));
+  }, [selectedEnvironmentsJson, onEnvironmentsChange]);
+
+  const markSharedField = (field: TSharedSecretField) => {
+    if (editSecret?.mixedFields?.[field])
+      setSharedFieldIntents((current) => ({ ...current, [field]: true }));
+  };
+  const mixedFieldWarning = (field: TSharedSecretField, label: string) =>
+    editSecret?.mixedFields?.[field] && (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label={`${label} warning for selected environments`}
+            className="text-warning focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <TriangleAlertIcon className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-72">{editSecret.mixedFields[field]}</TooltipContent>
+      </Tooltip>
+    );
 
   useEffect(() => {
     onEditDirtyChange?.(hasEditChanges);
@@ -355,7 +340,36 @@ export const CreateSecretForm = ({
     if (editSecret) {
       if (isEditReadOnly || !hasEditChanges || missingReplacement) return;
       const secret = secrets[0];
-      await editSecret.onSubmit(getEditChanges(secret), selectedEnv);
+      const dirtySecret = dirtyFields.secrets?.[0];
+      await editSecret.onSubmit(
+        {
+          newSecretName: editSecret.allowRename && dirtySecret?.key ? secret.key : undefined,
+          value: hasValueChanges ? (secret.value ?? "") : undefined,
+          secretComment:
+            dirtySecret?.comment || sharedFieldIntents.comment ? (secret.comment ?? "") : undefined,
+          tags:
+            dirtySecret?.tags || sharedFieldIntents.tags
+              ? (secret.tags?.map((tag) => ({ id: tag.value, slug: tag.label })) ?? [])
+              : undefined,
+          secretMetadata: dirtySecret?.metadata
+            ? (secret.metadata?.map(({ id, key, value, isEncrypted }) => ({
+                key,
+                value,
+                isEncrypted:
+                  !editSecret.isSharedEdit ||
+                  editedMetadataEncryption.has(id) ||
+                  currentProject?.enforceEncryptedSecretManagerSecretMetadata
+                    ? isEncrypted
+                    : undefined
+              })) ?? [])
+            : undefined,
+          skipMultilineEncoding:
+            dirtySecret?.skipMultilineEncoding || sharedFieldIntents.skipMultilineEncoding
+              ? secret.skipMultilineEncoding
+              : undefined
+        },
+        selectedEnv
+      );
       return;
     }
     if (isBatchMode && onBatchSecretCreate) {
@@ -569,15 +583,17 @@ export const CreateSecretForm = ({
           control={control}
           name="environments"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className={editSecret?.hideIdentityFields ? "hidden" : undefined}>
-              <FieldLabel htmlFor={`${inputIdPrefix}-environments`}>
+            <Field>
+              <FieldLabel htmlFor="create-secret-environments">
                 {editSecret && !editSecret.environmentOptions ? "Environment" : "Environments"}
               </FieldLabel>
               <FieldContent>
                 <Combobox
-                  id={`${inputIdPrefix}-environments`}
+                  id="create-secret-environments"
                   multiple
-                  isDisabled={Boolean(editSecret && !editSecret.environmentOptions)}
+                  isDisabled={Boolean(
+                    editSecret && (!editSecret.environmentOptions || editSecret.isReadOnly)
+                  )}
                   options={
                     editSecret?.environmentOptions ??
                     environments.filter((environment) =>
@@ -611,11 +627,10 @@ export const CreateSecretForm = ({
                 {environmentError && (
                   <FieldDescription className="text-danger">{environmentError}</FieldDescription>
                 )}
-                {editSecret?.hasMixedFields && (
+                {editSecret?.isSharedEdit && (
                   <FieldDescription>
-                    Fields that differ between environments start blank. Only fields you edit will
-                    be applied to the selected environments; unedited fields keep their existing
-                    settings.
+                    Edited fields apply to all selected environments. Unedited fields keep their
+                    existing settings.
                   </FieldDescription>
                 )}
               </FieldContent>
@@ -625,11 +640,6 @@ export const CreateSecretForm = ({
         {secretFields.map((secretField, index) => {
           const secretKey = watch(`secrets.${index}.key`);
           const metadata = watch(`secrets.${index}.metadata`) ?? [];
-          const showHiddenValue =
-            editSecret?.explicitValueAction &&
-            editSecret.canEditButNotView &&
-            valueAction === "keep";
-          const showEmptyValue = editSecret?.explicitValueAction && valueAction === "empty";
           const tagSlug = tagSearches[secretField.id]?.trim() ?? "";
           const canCreateTag =
             canCreateTags &&
@@ -644,20 +654,20 @@ export const CreateSecretForm = ({
                 secretFields.length > 1 && "border-border bg-container/50 p-4"
               )}
             >
-              <div className={editSecret?.hideIdentityFields ? "hidden" : "flex items-start gap-2"}>
+              <div className="flex items-start gap-2">
                 <Controller
                   control={control}
                   name={`secrets.${index}.key`}
                   render={({ field, fieldState: { error } }) => (
                     <Field className="flex-1">
-                      <FieldLabel htmlFor={`${inputIdPrefix}-${index}-key`}>Key</FieldLabel>
+                      <FieldLabel htmlFor={`create-secret-${index}-key`}>Key</FieldLabel>
                       <FieldContent>
                         <div className="relative">
                           <Input
                             ref={(element) => {
                               secretKeyInputRefs.current[index] = element;
                             }}
-                            id={`${inputIdPrefix}-${index}-key`}
+                            id={`create-secret-${index}-key`}
                             value={field.value ?? ""}
                             readOnly={Boolean(
                               editSecret && (!editSecret.allowRename || isEditReadOnly)
@@ -719,8 +729,9 @@ export const CreateSecretForm = ({
                 render={({ field }) => (
                   <Field className="grid grid-cols-[1fr_auto]">
                     <div className="flex items-end">
-                      <FieldLabel htmlFor={`${inputIdPrefix}-${index}-value`}>
+                      <FieldLabel htmlFor={`create-secret-${index}-value`}>
                         Value
+                        {mixedFieldWarning("value", "Value")}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <InfoIcon />
@@ -735,80 +746,50 @@ export const CreateSecretForm = ({
                       </FieldLabel>
                     </div>
                     <FieldContent className="col-span-2 row-start-2">
-                      {editSecret?.explicitValueAction && (
-                        <Select
-                          value={valueAction}
-                          disabled={isEditReadOnly}
-                          onValueChange={(action) => {
-                            setValueAction(action);
-                            setHasEditedHiddenValue(false);
-                            setValue(
-                              `secrets.${index}.value`,
-                              action === "empty" ? "" : editSecret.value,
-                              {
-                                shouldDirty: true
-                              }
-                            );
-                          }}
-                        >
-                          <SelectTrigger aria-label="Value Action">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="keep">Keep Existing</SelectItem>
-                            <SelectItem value="replace">Replace Value</SelectItem>
-                            <SelectItem value="empty">Set Empty Value</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                      {showHiddenValue && (
-                        <FieldDescription>
-                          Value hidden. Keep it unchanged or choose an explicit replacement.
-                        </FieldDescription>
-                      )}
-                      {showEmptyValue && (
-                        <FieldDescription className="text-warning">
-                          This environment will receive an empty value. The secret will not be
-                          deleted.
-                        </FieldDescription>
-                      )}
-                      {!showHiddenValue && !showEmptyValue && (
-                        <InfisicalSecretInput
-                          id={`${inputIdPrefix}-${index}-value`}
-                          autoFocus={Boolean(editSecret && !editSecret.explicitValueAction)}
-                          value={field.value ?? ""}
-                          onChange={(value) => {
-                            if (editSecret?.canEditButNotView) setHasEditedHiddenValue(true);
-                            field.onChange(value);
-                          }}
-                          isReadOnly={
-                            editSecret
-                              ? isEditReadOnly ||
-                                Boolean(editSecret.explicitValueAction && valueAction === "keep")
-                              : undefined
+                      <InfisicalSecretInput
+                        id={`create-secret-${index}-value`}
+                        autoFocus={Boolean(editSecret)}
+                        value={field.value ?? ""}
+                        onChange={(value) => {
+                          if (editSecret?.canEditButNotView) setHasEditedHiddenValue(true);
+                          setClearValue(false);
+                          field.onChange(value);
+                        }}
+                        isReadOnly={editSecret ? isEditReadOnly : undefined}
+                        canEditButNotView={editSecret?.canEditButNotView}
+                        secretPath={editSecret ? secretPath : undefined}
+                        environment={
+                          editSecret && selectedEnvironments.length === 1
+                            ? selectedEnvironments[0]?.slug
+                            : undefined
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === "Tab" && !event.shiftKey && !event.defaultPrevented) {
+                            event.preventDefault();
+                            generateButtonRefs.current[index]?.focus();
                           }
-                          canEditButNotView={editSecret?.canEditButNotView}
-                          secretPath={editSecret ? secretPath : undefined}
-                          environment={
-                            editSecret && selectedEnvironments.length === 1
-                              ? selectedEnvironments[0]?.slug
-                              : undefined
-                          }
-                          onKeyDown={(event) => {
-                            if (event.key === "Tab" && !event.shiftKey && !event.defaultPrevented) {
-                              event.preventDefault();
-                              generateButtonRefs.current[index]?.focus();
-                            }
-                          }}
-                          placeholder="Enter secret value..."
-                        />
-                      )}
+                        }}
+                        placeholder="Enter secret value..."
+                      />
                       {missingReplacement && (
                         <FieldDescription className="text-danger">
-                          Enter a replacement value or choose Set Empty Value.
+                          Enter a replacement or use Clear Value to set an empty value in all
+                          selected environments.
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => {
+                              setHasEditedHiddenValue(false);
+                              setClearValue(false);
+                              field.onChange(editSecret?.value ?? "");
+                            }}
+                          >
+                            Keep Existing Value
+                          </Button>
                         </FieldDescription>
                       )}
-                      {editSecret?.canEditButNotView && !editSecret.explicitValueAction && (
+                      {(editSecret?.canEditButNotView || editSecret?.isSharedEdit) && (
                         <>
                           <Button
                             type="button"
@@ -817,27 +798,28 @@ export const CreateSecretForm = ({
                             isDisabled={isEditReadOnly}
                             onClick={() => {
                               setHasEditedHiddenValue(true);
+                              setClearValue(true);
                               field.onChange("");
                             }}
                           >
                             Clear Value
                           </Button>
-                          {hasEditedHiddenValue && !field.value && (
-                            <FieldDescription>
-                              The existing value will be cleared when you save.
-                            </FieldDescription>
-                          )}
+                          {hasEditedHiddenValue &&
+                            !field.value &&
+                            (!editSecret.isSharedEdit || clearValue) && (
+                              <FieldDescription>
+                                {editSecret.isSharedEdit
+                                  ? "The value will be cleared in all selected environments when you save. The secrets will not be deleted."
+                                  : "The existing value will be cleared when you save."}
+                              </FieldDescription>
+                            )}
                         </>
                       )}
                       <FieldError errors={[errors.secrets?.[index]?.value]} />
                     </FieldContent>
                     <div className="col-start-2 row-start-1 flex items-center">
                       <PasswordGenerator
-                        isDisabled={Boolean(
-                          editSecret &&
-                            (isEditReadOnly ||
-                              (editSecret.explicitValueAction && valueAction !== "replace"))
-                        )}
+                        isDisabled={Boolean(editSecret && isEditReadOnly)}
                         trigger={
                           <Button
                             ref={(element) => {
@@ -864,15 +846,36 @@ export const CreateSecretForm = ({
                 name={`secrets.${index}.comment`}
                 render={({ field }) => (
                   <Field>
-                    <FieldLabel htmlFor={`${inputIdPrefix}-${index}-comment`}>Comment</FieldLabel>
+                    <FieldLabel htmlFor={`create-secret-${index}-comment`}>
+                      Comment
+                      {mixedFieldWarning("comment", "Comment")}
+                    </FieldLabel>
                     <FieldContent>
                       <TextArea
                         {...field}
-                        id={`${inputIdPrefix}-${index}-comment`}
+                        onChange={(event) => {
+                          markSharedField("comment");
+                          field.onChange(event);
+                        }}
+                        id={`create-secret-${index}-comment`}
                         placeholder="Add a comment for this secret..."
                         className="max-h-32 min-h-[60px] resize-y"
                         readOnly={editSecret ? isEditReadOnly : undefined}
                       />
+                      {editSecret?.mixedFields?.comment && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="xs"
+                          isDisabled={isEditReadOnly}
+                          onClick={() => {
+                            markSharedField("comment");
+                            field.onChange("");
+                          }}
+                        >
+                          Clear Comment
+                        </Button>
+                      )}
                     </FieldContent>
                   </Field>
                 )}
@@ -888,7 +891,10 @@ export const CreateSecretForm = ({
                         name={`secrets.${index}.tags`}
                         render={({ field }) => (
                           <Field>
-                            <FieldLabel htmlFor={`${inputIdPrefix}-${index}-tags`}>Tags</FieldLabel>
+                            <FieldLabel htmlFor={`create-secret-${index}-tags`}>
+                              Tags
+                              {mixedFieldWarning("tags", "Tags")}
+                            </FieldLabel>
                             <FieldContent>
                               {!canReadTags ? (
                                 <FieldDescription>
@@ -900,12 +906,15 @@ export const CreateSecretForm = ({
                               ) : (
                                 <Combobox
                                   key={`${secretField.id}-${tagOptions.length}`}
-                                  id={`${inputIdPrefix}-${index}-tags`}
+                                  id={`create-secret-${index}-tags`}
                                   multiple
                                   modal
                                   options={tagOptions}
                                   value={field.value ?? []}
-                                  onValueChange={field.onChange}
+                                  onValueChange={(value) => {
+                                    markSharedField("tags");
+                                    field.onChange(value);
+                                  }}
                                   onInputValueChange={(search) =>
                                     setTagSearches((current) => ({
                                       ...current,
@@ -935,6 +944,20 @@ export const CreateSecretForm = ({
                                   }
                                 />
                               )}
+                              {canReadTags && editSecret?.mixedFields?.tags && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="xs"
+                                  isDisabled={isEditReadOnly}
+                                  onClick={() => {
+                                    markSharedField("tags");
+                                    field.onChange([]);
+                                  }}
+                                >
+                                  Clear Tags
+                                </Button>
+                              )}
                             </FieldContent>
                           </Field>
                         )}
@@ -947,10 +970,11 @@ export const CreateSecretForm = ({
                           <Field orientation="horizontal">
                             <div className="flex flex-1 items-center gap-1.5">
                               <FieldLabel
-                                htmlFor={`${inputIdPrefix}-${index}-multiline-encoding`}
+                                htmlFor={`create-secret-${index}-multiline-encoding`}
                                 className="cursor-pointer"
                               >
                                 Enable Multiline Encoding
+                                {mixedFieldWarning("skipMultilineEncoding", "Multiline encoding")}
                               </FieldLabel>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -969,13 +993,14 @@ export const CreateSecretForm = ({
                               </Tooltip>
                             </div>
                             <Toggle
-                              id={`${inputIdPrefix}-${index}-multiline-encoding`}
+                              id={`create-secret-${index}-multiline-encoding`}
                               variant="project"
                               checked={editSecret ? !field.value : field.value}
                               disabled={Boolean(editSecret && isEditReadOnly)}
-                              onCheckedChange={(checked) =>
-                                field.onChange(editSecret ? !checked : checked)
-                              }
+                              onCheckedChange={(checked) => {
+                                markSharedField("skipMultilineEncoding");
+                                field.onChange(editSecret ? !checked : checked);
+                              }}
                             />
                           </Field>
                         )}
@@ -983,7 +1008,10 @@ export const CreateSecretForm = ({
 
                       <FieldGroup>
                         <Field>
-                          <FieldLabel>Metadata</FieldLabel>
+                          <FieldLabel>
+                            Metadata
+                            {mixedFieldWarning("metadata", "Metadata")}
+                          </FieldLabel>
                           <FieldContent>
                             <div className="mb-1.5 flex max-h-64 thin-scrollbar flex-col gap-3 overflow-y-auto rounded-md border border-border bg-container/50 p-4">
                               {metadata.length === 0 && (
@@ -995,7 +1023,7 @@ export const CreateSecretForm = ({
                                 <div key={metadataEntry.id} className="flex items-start gap-3">
                                   <Field className="flex-1">
                                     <FieldLabel
-                                      htmlFor={`${inputIdPrefix}-${index}-metadata-${metadataIndex}-key`}
+                                      htmlFor={`create-secret-${index}-metadata-${metadataIndex}-key`}
                                       className={metadataIndex === 0 ? "text-xs" : "sr-only"}
                                     >
                                       Key
@@ -1008,7 +1036,7 @@ export const CreateSecretForm = ({
                                           <>
                                             <Input
                                               {...inputField}
-                                              id={`${inputIdPrefix}-${index}-metadata-${metadataIndex}-key`}
+                                              id={`create-secret-${index}-metadata-${metadataIndex}-key`}
                                               placeholder="Enter key"
                                               readOnly={Boolean(editSecret && isEditReadOnly)}
                                               className="h-8"
@@ -1022,7 +1050,7 @@ export const CreateSecretForm = ({
 
                                   <Field className="flex-1">
                                     <FieldLabel
-                                      htmlFor={`${inputIdPrefix}-${index}-metadata-${metadataIndex}-value`}
+                                      htmlFor={`create-secret-${index}-metadata-${metadataIndex}-value`}
                                       className={metadataIndex === 0 ? "text-xs" : "sr-only"}
                                     >
                                       Value
@@ -1035,7 +1063,7 @@ export const CreateSecretForm = ({
                                           <>
                                             <Input
                                               {...inputField}
-                                              id={`${inputIdPrefix}-${index}-metadata-${metadataIndex}-value`}
+                                              id={`create-secret-${index}-metadata-${metadataIndex}-value`}
                                               placeholder="Enter value"
                                               readOnly={Boolean(editSecret && isEditReadOnly)}
                                               className="h-8"
@@ -1049,7 +1077,7 @@ export const CreateSecretForm = ({
 
                                   <Field className="w-10">
                                     <FieldLabel
-                                      htmlFor={`${inputIdPrefix}-${index}-metadata-${metadataIndex}-encrypted`}
+                                      htmlFor={`create-secret-${index}-metadata-${metadataIndex}-encrypted`}
                                       className={metadataIndex === 0 ? "text-xs" : "sr-only"}
                                     >
                                       Encrypt
@@ -1060,7 +1088,7 @@ export const CreateSecretForm = ({
                                       render={({ field: switchField }) => (
                                         <>
                                           <Toggle
-                                            id={`${inputIdPrefix}-${index}-metadata-${metadataIndex}-encrypted`}
+                                            id={`create-secret-${index}-metadata-${metadataIndex}-encrypted`}
                                             className="mt-2"
                                             variant="project"
                                             size="default"
@@ -1069,7 +1097,12 @@ export const CreateSecretForm = ({
                                               currentProject?.enforceEncryptedSecretManagerSecretMetadata ||
                                                 (editSecret && isEditReadOnly)
                                             )}
-                                            onCheckedChange={switchField.onChange}
+                                            onCheckedChange={(checked) => {
+                                              setEditedMetadataEncryption((current) =>
+                                                new Set(current).add(metadataEntry.id)
+                                              );
+                                              switchField.onChange(checked);
+                                            }}
                                           />
                                           <FieldError
                                             errors={[
@@ -1135,6 +1168,12 @@ export const CreateSecretForm = ({
                               </Button>
                             </div>
                             <FieldDescription>
+                              {editSecret?.isSharedEdit && (
+                                <>
+                                  Edited entries apply to all selected environments; other keys stay
+                                  unchanged.{" "}
+                                </>
+                              )}
                               Encrypted Metadata will not be searchable via the UI or API.
                             </FieldDescription>
                           </FieldContent>
@@ -1167,31 +1206,49 @@ export const CreateSecretForm = ({
           Add More
         </Button>
       </div>
-      {!editSecret?.hideFooter && (
-        <SheetFooter className="justify-between border-t">
-          {onUploadSecrets && (
-            <Button variant="outline" type="button" onClick={() => onUploadSecrets()}>
-              <UploadIcon className="size-4" />
-              Upload
-            </Button>
-          )}
-          <div className="ml-auto flex gap-2">
-            <Button onClick={onClose} variant="ghost" type="button">
-              Cancel
-            </Button>
-            <Button
-              isPending={isSubmitting}
-              isDisabled={
-                isSubmitting || Boolean(editSecret && (isEditReadOnly || !hasEditChanges))
-              }
-              variant="project"
-              type="submit"
-            >
-              {editSecret ? editSubmitLabel : "Create"}
-            </Button>
-          </div>
-        </SheetFooter>
-      )}
+      <SheetFooter
+        className={twMerge("justify-between border-t", editSecret?.isSharedEdit && "flex-wrap")}
+      >
+        {editSecret?.isSharedEdit && (
+          <p className="w-full text-xs wrap-anywhere text-muted">
+            Changes apply to all {selectedEnvironments.length} selected environment
+            {selectedEnvironments.length === 1 ? "" : "s"}.
+          </p>
+        )}
+        {onUploadSecrets && (
+          <Button variant="outline" type="button" onClick={() => onUploadSecrets()}>
+            <UploadIcon className="size-4" />
+            Upload
+          </Button>
+        )}
+        <div className="ml-auto flex gap-2">
+          <Button
+            onClick={onClose}
+            variant="ghost"
+            type="button"
+            isDisabled={Boolean(editSecret?.isSharedEdit && isSubmitting)}
+          >
+            Cancel
+          </Button>
+          <Button
+            isPending={isSubmitting}
+            isDisabled={
+              isSubmitting ||
+              Boolean(
+                editSecret &&
+                  (isEditReadOnly ||
+                    !hasEditChanges ||
+                    missingReplacement ||
+                    !selectedEnvironments.length)
+              )
+            }
+            variant="project"
+            type="submit"
+          >
+            {editSecret ? editSubmitLabel : "Create"}
+          </Button>
+        </div>
+      </SheetFooter>
     </form>
   );
 };
