@@ -23,8 +23,11 @@ export const HpIloRotationReviewFields = () => {
         <ReviewField label="Rotation Method">
           {parameters.rotationMethod?.replace(/-/g, " ") || "Login as target"}
         </ReviewField>
-        <ReviewField label="Redfish SSL Verification">
+        <ReviewField label="SSL Verification">
           {parameters.sslRejectUnauthorized === false ? "Disabled" : "Enabled"}
+        </ReviewField>
+        <ReviewField label="SSL Certificate">
+          {parameters.sslCertificate ? "Provided" : "None"}
         </ReviewField>
         <ReviewField label="Password Length">
           {parameters.passwordRequirements?.length || 32} characters

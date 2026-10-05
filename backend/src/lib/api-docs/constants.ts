@@ -3564,7 +3564,9 @@ export const SecretRotations = {
       password:
         'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".',
       sslRejectUnauthorized:
-        "Whether to verify the iLO's SSL certificate on Redfish API calls. When enabled, an iLO whose certificate cannot be verified is rotated over SSH instead. Disable only for iLOs with self-signed certificates on a trusted network, since credentials are then sent to the endpoint without authenticating it. Does not affect SSH. Defaults to true."
+        "Whether to verify the iLO's SSL certificate on Redfish API calls. When enabled, an iLO whose certificate cannot be verified is rotated over SSH instead. Disable only for iLOs with self-signed certificates on a trusted network, since credentials are then sent to the endpoint without authenticating it. Does not affect SSH. Defaults to true.",
+      sslCertificate:
+        'The PEM-encoded CA certificate to trust when verifying the iLO\'s SSL certificate on Redfish API calls, for iLOs with self-signed or privately issued certificates. Only used when "parameters.sslRejectUnauthorized" is enabled.'
     },
     GENERAL: {
       PASSWORD_REQUIREMENTS: {

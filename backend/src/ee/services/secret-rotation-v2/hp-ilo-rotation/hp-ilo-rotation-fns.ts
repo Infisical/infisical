@@ -61,6 +61,7 @@ export class HpIloAccountUnchangedError extends Error {}
 
 export type THpIloClientOptions = {
   sslRejectUnauthorized: boolean;
+  sslCertificate?: string;
 };
 
 export type THpIloClientFactory = (
@@ -241,6 +242,7 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
   // explicitly; SNI is left unset for IP hosts since TLS does not allow an IP address as the server name
   const tlsOptions = {
     rejectUnauthorized: options.sslRejectUnauthorized,
+    ca: options.sslCertificate,
     servername: net.isIP(host) ? undefined : host,
     checkServerIdentity: (_: string, cert: tls.PeerCertificate) => tls.checkServerIdentity(host, cert)
   };
@@ -326,6 +328,7 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
       timeout: requestConfig.timeout ?? HP_ILO_REDFISH_REQUEST_TIMEOUT_MS,
       url: `${baseUrl}${path}`,
       rejectUnauthorized: tlsOptions.rejectUnauthorized,
+      ca: tlsOptions.ca,
       servername: tlsOptions.servername
     });
   };
@@ -654,7 +657,8 @@ export const hpIloRotationFactory: TRotationFactory<
     username,
     passwordRequirements,
     rotationMethod = HpIloRotationMethod.LoginAsRoot,
-    sslRejectUnauthorized = true
+    sslRejectUnauthorized = true,
+    sslCertificate
   } = parameters;
 
   const getIloClient = async (
@@ -671,7 +675,7 @@ export const hpIloRotationFactory: TRotationFactory<
       gatewayId: effectiveGatewayId,
       credentials: connection.credentials
     } as TSshConnectionConfig;
-    return clientFactory(sshConfig, gatewayV2Service, { sslRejectUnauthorized });
+    return clientFactory(sshConfig, gatewayV2Service, { sslRejectUnauthorized, sslCertificate });
   };
 
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {

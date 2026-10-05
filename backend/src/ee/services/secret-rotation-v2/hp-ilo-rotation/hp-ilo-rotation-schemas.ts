@@ -44,7 +44,14 @@ const HpIloRotationParametersSchema = z.object({
     .nativeEnum(HpIloRotationMethod)
     .optional()
     .describe(SecretRotations.PARAMETERS.HP_ILO.rotationMethod),
-  sslRejectUnauthorized: z.boolean().optional().describe(SecretRotations.PARAMETERS.HP_ILO.sslRejectUnauthorized)
+  sslRejectUnauthorized: z.boolean().optional().describe(SecretRotations.PARAMETERS.HP_ILO.sslRejectUnauthorized),
+  sslCertificate: z
+    .string()
+    .trim()
+    .max(8192, "SSL certificate cannot exceed 8192 characters")
+    .transform((value) => value || undefined)
+    .optional()
+    .describe(SecretRotations.PARAMETERS.HP_ILO.sslCertificate)
 });
 
 // Only input is narrowed: rotations saved before the limit existed may hold a longer length and must still read back

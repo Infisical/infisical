@@ -17,6 +17,7 @@ export type THpIloRotation = TSecretRotationV2Base & {
     username: string;
     rotationMethod?: HpIloRotationMethod;
     sslRejectUnauthorized?: boolean;
+    sslCertificate?: string;
     passwordRequirements?: TPasswordRequirements;
   };
   secretsMapping: {

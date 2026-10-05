@@ -3,18 +3,27 @@ import { Controller, useFormContext } from "react-hook-form";
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
-  Checkbox,
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldFeedback,
+  FieldLabel,
   Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  TextArea,
+  Toggle
 } from "@app/components/v3";
+import { useScopeVariant } from "@app/hooks";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { HpIloRotationMethod } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
 
@@ -30,6 +39,11 @@ const HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS = {
     symbols: 0
   }
 };
+
+enum ParameterTab {
+  PasswordRequirements = "password-requirements",
+  Ssl = "ssl"
+}
 
 const getRotationMethodHelperText = (
   isUpdate: boolean,
@@ -52,6 +66,7 @@ export const HpIloRotationParametersFields = () => {
   const id = watch("id");
   const rotationMethod = watch("parameters.rotationMethod", HpIloRotationMethod.LoginAsRoot);
   const isUpdate = Boolean(id);
+  const scopeVariant = useScopeVariant();
 
   return (
     <>
@@ -175,31 +190,63 @@ export const HpIloRotationParametersFields = () => {
           />
         )}
       </div>
-      <Controller
-        name="parameters.sslRejectUnauthorized"
-        control={control}
-        defaultValue
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field orientation="horizontal" data-invalid={Boolean(error)}>
-            <Checkbox
-              id="hp-ilo-ssl-reject-unauthorized"
-              isChecked={value ?? true}
-              onCheckedChange={(checked) => onChange(checked === true)}
-            />
-            <FieldContent>
-              <FieldLabelWithTooltip
-                htmlFor="hp-ilo-ssl-reject-unauthorized"
-                tooltip="Applies to Redfish API calls only; SSH is not affected. When enabled, an iLO whose SSL certificate can't be verified is rotated over SSH instead. Disable it only for iLOs with self-signed certificates on a network you trust, since credentials are then sent without verifying the iLO's identity."
-                tooltipClassName="max-w-sm"
-              >
-                Verify SSL certificate for Redfish API calls
-              </FieldLabelWithTooltip>
-            </FieldContent>
-            <FieldError>{error?.message}</FieldError>
-          </Field>
-        )}
-      />
-      <PasswordRequirementsFields defaultRequirements={HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS} />
+      <Tabs defaultValue={ParameterTab.PasswordRequirements}>
+        <TabsList variant="project" className="w-full justify-start">
+          <TabsTrigger value={ParameterTab.PasswordRequirements}>Password Requirements</TabsTrigger>
+          <TabsTrigger value={ParameterTab.Ssl}>SSL</TabsTrigger>
+        </TabsList>
+        <TabsContent value={ParameterTab.PasswordRequirements}>
+          <PasswordRequirementsFields defaultRequirements={HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS} />
+        </TabsContent>
+        <TabsContent value={ParameterTab.Ssl}>
+          <Controller
+            name="parameters.sslRejectUnauthorized"
+            control={control}
+            defaultValue
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <Label htmlFor="hp-ilo-ssl-reject-unauthorized">Reject Unauthorized</Label>
+                    <FieldDescription>
+                      If enabled, Infisical will only connect if the iLO presents a valid, trusted
+                      SSL certificate. Disable this for self-signed certificates or provide a CA
+                      certificate below.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Toggle
+                    aria-invalid={Boolean(error)}
+                    id="hp-ilo-ssl-reject-unauthorized"
+                    variant={scopeVariant}
+                    checked={value ?? true}
+                    onCheckedChange={onChange}
+                  />
+                </Field>
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          <Controller
+            name="parameters.sslCertificate"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="hp-ilo-ssl-certificate">
+                  SSL Certificate <span className="text-muted">(optional)</span>
+                </FieldLabel>
+                <TextArea
+                  id="hp-ilo-ssl-certificate"
+                  className="h-[3.6rem] resize-none!"
+                  {...field}
+                  placeholder="-----BEGIN CERTIFICATE----- ... -----END CERTIFICATE-----"
+                  isError={Boolean(error?.message)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        </TabsContent>
+      </Tabs>
     </>
   );
 };

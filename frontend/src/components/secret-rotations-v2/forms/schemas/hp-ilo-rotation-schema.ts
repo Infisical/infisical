@@ -15,7 +15,13 @@ export const HpIloRotationSchema = z
     parameters: z.object({
       username: z.string().trim().min(1, "Username is required"),
       rotationMethod: z.nativeEnum(HpIloRotationMethod).optional(),
-      sslRejectUnauthorized: z.boolean().optional(),
+      sslRejectUnauthorized: z.boolean().default(true),
+      sslCertificate: z
+        .string()
+        .trim()
+        .max(8192, "SSL certificate cannot exceed 8192 characters")
+        .transform((value) => value || undefined)
+        .optional(),
       passwordRequirements: PasswordRequirementsSchema.refine(
         (requirements) => requirements.length <= HP_ILO_MAX_PASSWORD_LENGTH,
         {
