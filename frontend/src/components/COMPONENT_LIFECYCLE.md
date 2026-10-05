@@ -15,7 +15,6 @@ The [V3 migration ledger](V3_MIGRATION.md) tracks source removal, coverage, and 
 | `ContentLoader`, `FormControl`, `GenericFieldLabel`, `PageHeader`, `Tag`                                                    | Blocked                       | The V3 replacements require consumer-specific composition or accessibility changes.                           |
 | `SecretInput`, `SecretPathInput`                                                | Blocked                       | Security-sensitive or specialist behavior needs workflow-level parity validation.                             |
 | `NoticeBannerV2`                                                                                                                       | Blocked                       | Verify that V3 `Alert` covers existing layout and action requirements.                                        |
-| `Lottie`                                                                                                                               | Blocked                       | V3 `Loader` is the replacement, but the application entry point still needs the V2 compatibility path.        |
 
 ### Removed unused V2 families
 
