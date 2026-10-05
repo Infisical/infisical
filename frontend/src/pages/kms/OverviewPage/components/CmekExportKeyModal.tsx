@@ -87,7 +87,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
           <div className="mb-4 flex items-center justify-between">
             <h2>{isAsymmetricKey ? "Private Key (Base64)" : "Key Material (Base64)"}</h2>
             <div className="flex gap-2">
-              <Tooltip>
+              <Tooltip hoverable selectable={false} delayDuration={50}>
                 <TooltipTrigger asChild>
                   <IconButton
                     aria-label={isAsymmetricKey ? "Copy Private Key" : "Copy Key Material"}
@@ -101,9 +101,9 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
                     <FontAwesomeIcon icon={isCopyingPrivateKey ? faCheck : faCopy} />
                   </IconButton>
                 </TooltipTrigger>
-                <TooltipContent>{copyPrivateKeyText}</TooltipContent>
+                <TooltipContent sideOffset={5}>{copyPrivateKeyText}</TooltipContent>
               </Tooltip>
-              <Tooltip>
+              <Tooltip hoverable selectable={false} delayDuration={50}>
                 <TooltipTrigger asChild>
                   <IconButton
                     aria-label={isAsymmetricKey ? "Download Private Key" : "Download Key Material"}
@@ -119,7 +119,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
                     <FontAwesomeIcon icon={faDownload} />
                   </IconButton>
                 </TooltipTrigger>
-                <TooltipContent>Download</TooltipContent>
+                <TooltipContent sideOffset={5}>Download</TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -134,7 +134,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
           <div className="mb-4 flex items-center justify-between">
             <h2>Public Key (Base64)</h2>
             <div className="flex gap-2">
-              <Tooltip>
+              <Tooltip hoverable selectable={false} delayDuration={50}>
                 <TooltipTrigger asChild>
                   <IconButton
                     aria-label="Copy Public Key"
@@ -148,9 +148,9 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
                     <FontAwesomeIcon icon={isCopyingPublicKey ? faCheck : faCopy} />
                   </IconButton>
                 </TooltipTrigger>
-                <TooltipContent>{copyPublicKeyText}</TooltipContent>
+                <TooltipContent sideOffset={5}>{copyPublicKeyText}</TooltipContent>
               </Tooltip>
-              <Tooltip>
+              <Tooltip hoverable selectable={false} delayDuration={50}>
                 <TooltipTrigger asChild>
                   <IconButton
                     aria-label="Download Public Key"
@@ -163,7 +163,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
                     <FontAwesomeIcon icon={faDownload} />
                   </IconButton>
                 </TooltipTrigger>
-                <TooltipContent>Download</TooltipContent>
+                <TooltipContent sideOffset={5}>Download</TooltipContent>
               </Tooltip>
             </div>
           </div>
