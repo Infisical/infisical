@@ -40,7 +40,6 @@ import {
 } from "@app/hooks/api";
 import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
-import { fmtMoney } from "@app/pages/organization/BillingV2Page/billing-v2-format";
 import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
 
 import { CapabilityUpgradeIntent } from "./capability-upgrade-intents";
@@ -665,7 +664,10 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
   }
   const effectiveCadence = trialAvailable ? "monthly" : getEffectiveCadence(plan, visibleCadence);
   const comparePrice = getPlanPrice(plan, effectiveCadence);
-  const priceFractionDigits = comparePrice.amount > 0 && comparePrice.amount < 0.01 ? 6 : 2;
+  const formattedPrice = `$${comparePrice.amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: comparePrice.amount > 0 && comparePrice.amount < 0.01 ? 6 : 2
+  })}`;
   const features = getPlanFeatures(product, plan);
   const savingsPercent = Math.max(...plans.map(annualSavingsPercent));
   const isUpgradeTrial =
@@ -888,7 +890,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
                   >
                     <span className="text-muted line-through">
                       {comparePrice.amount > 0
-                        ? `${fmtMoney(comparePrice.amount, priceFractionDigits)}${comparePrice.compactUnit}`
+                        ? `${formattedPrice}${comparePrice.compactUnit}`
                         : "Usage-based"}
                     </span>
                     <span className="font-medium text-foreground">{trialPriceLabel}*</span>
@@ -929,7 +931,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
                 >
                   {comparePrice.amount > 0 ? (
                     <span className="font-medium text-foreground">
-                      {fmtMoney(comparePrice.amount, priceFractionDigits)}
+                      {formattedPrice}
                       {comparePrice.compactUnit}
                     </span>
                   ) : (
