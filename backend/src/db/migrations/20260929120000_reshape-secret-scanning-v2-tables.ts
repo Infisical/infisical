@@ -1,5 +1,7 @@
 import { Knex } from "knex";
 
+import { SecretScanningScanType } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+
 import { TableName } from "../schemas";
 
 const SCAN_STARTED_AT_LEGACY_INDEX = "secret_scanning_scans_scanning_started_at_index";
@@ -8,9 +10,6 @@ const SCAN_STARTED_AT_INDEX = "secret_scanning_scans_started_at_index";
 // Indexes on these tables are built concurrently in the next migration, outside this transaction.
 
 export async function up(knex: Knex): Promise<void> {
-  // Scan workers write to these tables continuously; fail the deploy fast rather than queue behind them.
-  await knex.raw("SET LOCAL lock_timeout = '10s'");
-
   if (await knex.schema.hasColumn(TableName.SecretScanningResource, "type")) {
     await knex.schema.alterTable(TableName.SecretScanningResource, (t) => {
       t.dropColumn("type");
@@ -30,8 +29,12 @@ export async function up(knex: Knex): Promise<void> {
 
     await knex(TableName.SecretScanningScan).whereNull("createdAt").delete();
 
-    await knex(TableName.SecretScanningScan).where({ type: "full-scan" }).update({ type: "historical" });
-    await knex(TableName.SecretScanningScan).where({ type: "diff-scan" }).update({ type: "realtime" });
+    await knex(TableName.SecretScanningScan)
+      .where({ type: "full-scan" })
+      .update({ type: SecretScanningScanType.Historical });
+    await knex(TableName.SecretScanningScan)
+      .where({ type: "diff-scan" })
+      .update({ type: SecretScanningScanType.Realtime });
 
     await knex.schema.alterTable(TableName.SecretScanningScan, (t) => {
       t.timestamp("createdAt").notNullable().defaultTo(knex.fn.now()).alter();
@@ -87,8 +90,6 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.raw("SET LOCAL lock_timeout = '10s'");
-
   if (await knex.schema.hasColumn(TableName.SecretScanningFinding, "resourceId")) {
     await knex.schema.alterTable(TableName.SecretScanningFinding, (t) => {
       t.string("projectId").nullable();
@@ -158,8 +159,12 @@ export async function down(knex: Knex): Promise<void> {
   }
 
   if (await knex.schema.hasColumn(TableName.SecretScanningScan, "startedAt")) {
-    await knex(TableName.SecretScanningScan).where({ type: "historical" }).update({ type: "full-scan" });
-    await knex(TableName.SecretScanningScan).where({ type: "realtime" }).update({ type: "diff-scan" });
+    await knex(TableName.SecretScanningScan)
+      .where({ type: SecretScanningScanType.Historical })
+      .update({ type: "full-scan" });
+    await knex(TableName.SecretScanningScan)
+      .where({ type: SecretScanningScanType.Realtime })
+      .update({ type: "diff-scan" });
 
     await knex.raw(`ALTER INDEX IF EXISTS ?? RENAME TO ??`, [SCAN_STARTED_AT_INDEX, SCAN_STARTED_AT_LEGACY_INDEX]);
 
