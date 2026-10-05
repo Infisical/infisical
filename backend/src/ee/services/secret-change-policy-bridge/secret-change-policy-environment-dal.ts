@@ -12,7 +12,7 @@ export const approvalPolicySecretEnvironmentDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ApprovalPolicySecretEnvironment);
 
   const findPolicyByEnvIdAndSecretPath = async (
-    { envIds, secretPath }: { envIds: string[]; secretPath: string },
+    { envIds, secretPath, excludePolicyId }: { envIds: string[]; secretPath: string; excludePolicyId?: string },
     tx?: Knex
   ) => {
     try {
@@ -30,6 +30,9 @@ export const approvalPolicySecretEnvironmentDALFactory = (db: TDbClient) => {
         .where(`${TableName.ApprovalPolicies}.type`, ApprovalPolicyType.SecretChange)
         .whereIn(`${TableName.ApprovalPolicySecretEnvironment}.envId`, envIds)
         .where(`${TableName.ApprovalPolicySecretEnvironment}.secretPath`, secretPath)
+        .where((qb) => {
+          if (excludePolicyId) void qb.whereNot(`${TableName.ApprovalPolicies}.id`, excludePolicyId);
+        })
         .select(selectAllTableCols(TableName.ApprovalPolicies))
         .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
         .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
@@ -57,26 +60,5 @@ export const approvalPolicySecretEnvironmentDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findEnvironmentsByPolicyId = async (policyId: string, tx?: Knex) => {
-    try {
-      const docs = await (tx || db.replicaNode())(TableName.ApprovalPolicySecretEnvironment)
-        .join(TableName.Environment, function joinActiveEnvForSecretChangePolicy() {
-          this.on(`${TableName.ApprovalPolicySecretEnvironment}.envId`, `${TableName.Environment}.id`).andOnNull(
-            `${TableName.Environment}.deleteAfter`
-          );
-        })
-        .where(`${TableName.ApprovalPolicySecretEnvironment}.policyId`, policyId)
-        .select(db.ref("id").withSchema(TableName.Environment))
-        .select(db.ref("name").withSchema(TableName.Environment))
-        .select(db.ref("slug").withSchema(TableName.Environment))
-        .select(db.ref("secretPath").withSchema(TableName.ApprovalPolicySecretEnvironment))
-        .orderBy(`${TableName.Environment}.position`, "asc");
-
-      return docs as { id: string; name: string; slug: string; secretPath: string }[];
-    } catch (error) {
-      throw new DatabaseError({ error, name: "findEnvironmentsByPolicyId" });
-    }
-  };
-
-  return { ...orm, findPolicyByEnvIdAndSecretPath, findEnvironmentsByPolicyId };
+  return { ...orm, findPolicyByEnvIdAndSecretPath };
 };

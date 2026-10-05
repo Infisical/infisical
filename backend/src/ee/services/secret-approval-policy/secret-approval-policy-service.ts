@@ -1,13 +1,11 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
-import picomatch from "picomatch";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { containsGlobPatterns } from "@app/lib/picomatch";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -24,6 +22,7 @@ import {
 } from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
 import { TSecretApprovalPolicyEnvironmentDALFactory } from "./secret-approval-policy-environment-dal";
+import { resolvePolicyForPath } from "./secret-approval-policy-fns";
 import {
   TCreateSapDTO,
   TDeleteSapDTO,
@@ -32,22 +31,6 @@ import {
   TListSapDTO,
   TUpdateSapDTO
 } from "./secret-approval-policy-types";
-
-const getPolicyScore = (policy: { secretPath?: string | null }) =>
-  // if glob pattern score is 1, if not exist score is 0 and if its not both then its exact path meaning score 2
-  // eslint-disable-next-line
-  policy.secretPath ? (containsGlobPatterns(policy.secretPath) ? 1 : 2) : 0;
-
-// picks the highest-priority policy governing a secret path: exact path match first, then glob, then env-scoped.
-const resolvePolicyForPath = <T extends { secretPath?: string | null }>(policies: T[], secretPath: string) => {
-  // this will filter policies either without scoped to secret path or the one that matches with secret path
-  const policiesFilteredByPath = policies.filter(
-    ({ secretPath: policyPath }) => !policyPath || picomatch.isMatch(secretPath, policyPath, { strictSlashes: false })
-  );
-  // now sort by priority. exact secret path gets first match followed by glob followed by just env scoped
-  // if that is tie get by first createdAt
-  return policiesFilteredByPath.sort((a, b) => getPolicyScore(b) - getPolicyScore(a)).shift();
-};
 
 type TSecretApprovalPolicyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -64,8 +47,11 @@ type TSecretApprovalPolicyServiceFactoryDep = {
     TSecretChangePolicyBridgeServiceFactory,
     | "findSecretChangePolicy"
     | "findSecretChangePolicyBySecretPath"
+    | "findSecretChangePoliciesByEnvId"
+    | "findSecretChangePoliciesByProjectId"
     | "updateSecretChangePolicy"
     | "deleteSecretChangePolicy"
+    | "getSecretChangePolicyById"
   >;
 };
 
@@ -632,8 +618,11 @@ export const secretApprovalPolicyServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
-    const sapPolicies = await secretApprovalPolicyDAL.find({ projectId, deletedAt: null });
-    return sapPolicies;
+    const [legacyPolicies, secretChangePolicies] = await Promise.all([
+      secretApprovalPolicyDAL.find({ projectId, deletedAt: null }),
+      secretChangePolicyBridgeService.findSecretChangePoliciesByProjectId(projectId)
+    ]);
+    return [...legacyPolicies, ...secretChangePolicies].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   };
 
   const findEnvPolicies = async (projectId: string, environment: string, tx?: Knex) => {
@@ -643,7 +632,11 @@ export const secretApprovalPolicyServiceFactory = ({
         message: `Environment with slug '${environment}' not found in project with ID ${projectId}`
       });
     }
-    return secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id }, tx);
+    const [legacyPolicies, secretChangePolicies] = await Promise.all([
+      secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id }, tx),
+      secretChangePolicyBridgeService.findSecretChangePoliciesByEnvId(env.id, tx)
+    ]);
+    return [...legacyPolicies, ...secretChangePolicies];
   };
 
   const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string, tx?: Knex) => {
@@ -658,7 +651,7 @@ export const secretApprovalPolicyServiceFactory = ({
     secretPaths: string[],
     tx?: Knex
   ) => {
-    const policyByPath = new Map<string, Awaited<ReturnType<typeof secretApprovalPolicyDAL.find>>[number]>();
+    const policyByPath = new Map<string, Awaited<ReturnType<typeof findEnvPolicies>>[number]>();
     const policies = await findEnvPolicies(projectId, environment, tx);
     if (!policies.length) return policyByPath;
 
@@ -690,13 +683,12 @@ export const secretApprovalPolicyServiceFactory = ({
     return getSecretApprovalPolicy(projectId, environment, secretPath);
   };
 
-  const getSecretApprovalPolicyById = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    sapId
-  }: TGetSapByIdDTO) => {
+  const getSecretApprovalPolicyById = async (dto: TGetSapByIdDTO) => {
+    if (await $useSecretChangePolicyBridge(dto.sapId)) {
+      return secretChangePolicyBridgeService.getSecretChangePolicyById(dto);
+    }
+
+    const { actorId, actor, actorOrgId, actorAuthMethod, sapId } = dto;
     const [sapPolicy] = await secretApprovalPolicyDAL.find({}, { sapId });
 
     if (!sapPolicy) {

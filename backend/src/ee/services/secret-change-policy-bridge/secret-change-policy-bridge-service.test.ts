@@ -10,6 +10,8 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { ProjectPermissionActions, ProjectPermissionSet, ProjectPermissionSub } from "../permission/project-permission";
+import { TSecretChangePolicyRow } from "./secret-change-policy-bridge-dal";
+import { toSecretChangePolicy } from "./secret-change-policy-bridge-fns";
 import { secretChangePolicyBridgeServiceFactory } from "./secret-change-policy-bridge-service";
 
 const ORG_ID = "org-1";
@@ -18,43 +20,42 @@ const ENV_DEV = { id: "env-dev", name: "Development", slug: "dev", projectId: PR
 const ENV_PROD = { id: "env-prod", name: "Production", slug: "prod", projectId: PROJECT_ID };
 const TX = { isTx: true } as unknown as Knex;
 
-const allowCreate = createMongoAbility<ProjectPermissionSet>(
-  [{ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.SecretApproval }],
-  { conditionsMatcher }
-);
-const allowEdit = createMongoAbility<ProjectPermissionSet>(
-  [{ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.SecretApproval }],
-  { conditionsMatcher }
-);
-const allowDelete = createMongoAbility<ProjectPermissionSet>(
-  [{ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.SecretApproval }],
-  { conditionsMatcher }
-);
+const allow = (action: ProjectPermissionActions) =>
+  createMongoAbility<ProjectPermissionSet>([{ action, subject: ProjectPermissionSub.SecretApproval }], {
+    conditionsMatcher
+  });
+const allowCreate = allow(ProjectPermissionActions.Create);
+const allowEdit = allow(ProjectPermissionActions.Edit);
+const allowDelete = allow(ProjectPermissionActions.Delete);
+const allowRead = allow(ProjectPermissionActions.Read);
 const denyAll = createMongoAbility<ProjectPermissionSet>([], { conditionsMatcher });
 
-const POLICY_ROW = {
+const toPolicyEnv = (env: typeof ENV_DEV) => ({ id: env.id, name: env.name, slug: env.slug });
+
+const buildRow = (overrides: Partial<TSecretChangePolicyRow> = {}): TSecretChangePolicyRow => ({
   id: "policy-1",
   projectId: PROJECT_ID,
   organizationId: ORG_ID,
   type: ApprovalPolicyType.SecretChange,
   name: "dev-policy",
-  enforcementLevel: EnforcementLevel.Hard,
-  bypassForMachineIdentities: false,
+  isActive: true,
+  maxRequestTtl: null,
   conditions: { version: 1, conditions: [] },
   constraints: { version: 1, constraints: { allowedSelfApprovals: true } },
   createdAt: new Date("2026-01-01"),
   updatedAt: new Date("2026-01-01"),
+  bypassForMachineIdentities: false,
+  enforcementLevel: EnforcementLevel.Hard,
   scopeType: null,
-  scopeId: null
-};
-const STEP_ROW = { id: "step-1", policyId: "policy-1", stepNumber: 1, requiredApprovals: 1 };
-const toEnvRow = (env: typeof ENV_DEV, secretPath = "/") => ({
-  id: env.id,
-  name: env.name,
-  slug: env.slug,
-  secretPath
+  scopeId: null,
+  secretPath: "/",
+  environments: [toPolicyEnv(ENV_DEV)],
+  steps: [{ id: "step-1", stepNumber: 1, requiredApprovals: 1 }],
+  approvers: [{ type: ApproverType.User, id: "user-1", username: "alice@example.com" }],
+  bypassers: [],
+  userApprovers: [{ userId: "user-1" }],
+  ...overrides
 });
-const toPolicyEnv = (env: typeof ENV_DEV) => ({ id: env.id, name: env.name, slug: env.slug });
 
 const ctx = {
   actor: ActorType.USER,
@@ -68,7 +69,7 @@ const ctx = {
 
 type TMembership = { effectiveUserIds: string[]; effectiveGroupIds: string[] };
 type TExistingPolicy = { id: string; environments: { id: string }[] };
-type TEnvRow = ReturnType<typeof toEnvRow>;
+type TFindFilter = { policyId?: string; projectId?: string; envId?: string; organizationId?: string };
 
 // Only the collaborators the service touches; everything else is left undefined so an
 // unexpected reach shows up as a crash rather than a silent pass.
@@ -80,17 +81,15 @@ const buildService = ({
   existingPolicy = undefined as TExistingPolicy | undefined,
   existingLegacyPolicy = undefined as TExistingPolicy | undefined,
   memberships = [{ effectiveUserIds: ["user-1"], effectiveGroupIds: [] }] as TMembership[],
-  policyRow = undefined as typeof POLICY_ROW | undefined,
-  envRows = [toEnvRow(ENV_DEV)] as TEnvRow[],
-  step = STEP_ROW as typeof STEP_ROW | null
+  rows = [buildRow()] as TSecretChangePolicyRow[]
 } = {}) => {
   const findEffectiveProjectSubjectsMembership = vi.fn();
   memberships.forEach((membership) => findEffectiveProjectSubjectsMembership.mockResolvedValueOnce(membership));
 
   const deps = {
     approvalPolicyDAL: {
-      findOne: vi.fn().mockResolvedValue(policyRow),
-      findByIdForUpdate: vi.fn().mockResolvedValue(policyRow),
+      findOne: vi.fn().mockResolvedValue(undefined),
+      findByIdForUpdate: vi.fn((id: string) => Promise.resolve(rows.find((row) => row.id === id))),
       create: vi.fn((row: Record<string, unknown>) =>
         Promise.resolve({
           id: "policy-1",
@@ -99,33 +98,50 @@ const buildService = ({
           ...row
         })
       ),
-      updateById: vi.fn((_id: string, row: Record<string, unknown>) => Promise.resolve({ ...policyRow, ...row })),
-      deleteById: vi.fn().mockResolvedValue(policyRow),
+      updateById: vi.fn((id: string, row: Record<string, unknown>) =>
+        Promise.resolve({ ...rows.find((el) => el.id === id), ...row })
+      ),
+      deleteById: vi.fn((id: string) => Promise.resolve(rows.find((row) => row.id === id))),
       transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb(TX)))
     },
     approvalPolicyStepsDAL: {
       create: vi.fn((row: Record<string, unknown>) => Promise.resolve({ id: "step-1", ...row })),
-      findOne: vi.fn().mockResolvedValue(step ?? undefined),
-      updateById: vi.fn((_id: string, row: Record<string, unknown>) => Promise.resolve({ ...step, ...row }))
+      updateById: vi.fn((id: string, row: Record<string, unknown>) => Promise.resolve({ id, ...row }))
     },
     approvalPolicyStepApproversDAL: {
-      insertMany: vi.fn((rows: unknown[]) => Promise.resolve(rows)),
+      insertMany: vi.fn((rows_: unknown[]) => Promise.resolve(rows_)),
       delete: vi.fn().mockResolvedValue([])
     },
     approvalPolicyBypassersDAL: {
-      insertMany: vi.fn((rows: unknown[]) => Promise.resolve(rows)),
+      insertMany: vi.fn((rows_: unknown[]) => Promise.resolve(rows_)),
       delete: vi.fn().mockResolvedValue([])
     },
     approvalPolicySecretEnvironmentDAL: {
-      insertMany: vi.fn((rows: unknown[]) => Promise.resolve(rows)),
+      insertMany: vi.fn((rows_: unknown[]) => Promise.resolve(rows_)),
       delete: vi.fn().mockResolvedValue([]),
-      findPolicyByEnvIdAndSecretPath: vi.fn().mockResolvedValue(existingPolicy),
-      findEnvironmentsByPolicyId: vi.fn().mockResolvedValue(envRows)
+      findPolicyByEnvIdAndSecretPath: vi.fn().mockResolvedValue(existingPolicy)
+    },
+    secretChangePolicyBridgeDAL: {
+      findSecretChangePolicies: vi.fn<(filter: TFindFilter, tx?: Knex) => Promise<TSecretChangePolicyRow[]>>(
+        ({ policyId, projectId, envId, organizationId }) =>
+          Promise.resolve(
+            rows.filter(
+              (row) =>
+                (!policyId || row.id === policyId) &&
+                (!projectId || row.projectId === projectId) &&
+                (!organizationId || row.organizationId === organizationId) &&
+                (!envId || row.environments.some((env) => env.id === envId))
+            )
+          )
+      )
     },
     secretApprovalPolicyDAL: { findPolicyByEnvIdAndSecretPath: vi.fn().mockResolvedValue(existingLegacyPolicy) },
     projectEnvDAL: {
       find: vi.fn(({ $in }: { $in: { slug: string[] } }) =>
         Promise.resolve(envs.filter((env) => $in.slug.includes(env.slug)))
+      ),
+      findOne: vi.fn(({ slug, projectId }: { slug: string; projectId: string }) =>
+        Promise.resolve(envs.find((env) => env.slug === slug && env.projectId === projectId))
       )
     },
     projectDAL: { findEffectiveProjectSubjectsMembership },
@@ -203,7 +219,10 @@ describe("secretChangePolicyBridge createSecretChangePolicy", () => {
   });
 
   test("skips the approvals count check when a group approver is present", async () => {
-    const { service } = buildService({ memberships: [{ effectiveUserIds: [], effectiveGroupIds: ["g-1"] }] });
+    const { service } = buildService({
+      memberships: [{ effectiveUserIds: [], effectiveGroupIds: ["g-1"] }],
+      rows: [buildRow({ steps: [{ id: "step-1", stepNumber: 1, requiredApprovals: 5 }] })]
+    });
 
     await expect(
       create(service, { approvals: 5, approvers: [{ type: ApproverType.Group, id: "g-1" }] })
@@ -384,11 +403,19 @@ describe("secretChangePolicyBridge createSecretChangePolicy", () => {
     });
   });
 
-  test("returns the legacy secret approval policy shape", async () => {
-    const { service } = buildService();
+  test("returns the policy re-read inside the transaction in the legacy shape", async () => {
+    const row = buildRow({
+      environments: [toPolicyEnv(ENV_DEV), toPolicyEnv(ENV_PROD)],
+      bypassers: [{ type: BypasserType.Group, id: "g-2" }]
+    });
+    const { service, deps } = buildService({ rows: [row] });
 
     const policy = await create(service, { environment: undefined, environments: ["dev", "prod"] });
 
+    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenLastCalledWith(
+      { policyId: "policy-1" },
+      TX
+    );
     expect(policy).toEqual({
       id: "policy-1",
       name: "dev-policy",
@@ -402,15 +429,18 @@ describe("secretChangePolicyBridge createSecretChangePolicy", () => {
       allowedSelfApprovals: true,
       bypassForMachineIdentities: false,
       projectId: PROJECT_ID,
-      environments: [ENV_DEV, ENV_PROD],
-      environment: ENV_DEV
+      environments: [toPolicyEnv(ENV_DEV), toPolicyEnv(ENV_PROD)],
+      environment: toPolicyEnv(ENV_DEV),
+      approvers: [{ type: ApproverType.User, id: "user-1", username: "alice@example.com" }],
+      bypassers: [{ type: BypasserType.Group, id: "g-2" }],
+      userApprovers: [{ userId: "user-1" }]
     });
   });
 });
 
 describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
-  test("rejects a policy id that does not live on the approval system", async () => {
-    const { service, deps } = buildService({ permission: allowEdit });
+  test("rejects a policy id that does not live on the global approval system", async () => {
+    const { service, deps } = buildService({ permission: allowEdit, rows: [] });
 
     const result = update(service);
     await expect(result).rejects.toBeInstanceOf(NotFoundError);
@@ -418,19 +448,25 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
     expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
   });
 
+  test("looks the policy up within the actor's organization", async () => {
+    const { service, deps } = buildService({ permission: allowEdit, rows: [buildRow({ organizationId: "org-2" })] });
+
+    await expect(update(service)).rejects.toBeInstanceOf(NotFoundError);
+    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenCalledWith({
+      policyId: "policy-1",
+      organizationId: ORG_ID
+    });
+  });
+
   test("rejects an actor without edit permission on secret approvals", async () => {
-    const { service, deps } = buildService({ permission: denyAll, policyRow: POLICY_ROW });
+    const { service, deps } = buildService({ permission: denyAll });
 
     await expect(update(service)).rejects.toBeInstanceOf(ForbiddenError);
     expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
   });
 
   test("rejects when the plan does not include secret approvals", async () => {
-    const { service, deps } = buildService({
-      permission: allowEdit,
-      policyRow: POLICY_ROW,
-      plan: { secretApproval: false }
-    });
+    const { service, deps } = buildService({ permission: allowEdit, plan: { secretApproval: false } });
 
     await expect(update(service)).rejects.toThrow(
       "Failed to update secret approval policy due to plan restriction. Upgrade plan to update secret approval policy."
@@ -439,14 +475,14 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
   });
 
   test("rejects approvals greater than the number of user approvers", async () => {
-    const { service, deps } = buildService({ permission: allowEdit, policyRow: POLICY_ROW });
+    const { service, deps } = buildService({ permission: allowEdit });
 
     await expect(update(service, { approvals: 2 })).rejects.toThrow("Approvals cannot be greater than approvers");
     expectNoWrites(deps);
   });
 
   test("rejects an environment slug that does not exist in the project", async () => {
-    const { service, deps } = buildService({ permission: allowEdit, policyRow: POLICY_ROW, envs: [ENV_DEV] });
+    const { service, deps } = buildService({ permission: allowEdit, envs: [ENV_DEV] });
 
     const result = update(service, { environments: ["dev", "staging"] });
     await expect(result).rejects.toBeInstanceOf(NotFoundError);
@@ -455,16 +491,15 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
   });
 
   test("rejects an empty environment list", async () => {
-    const { service, deps } = buildService({ permission: allowEdit, policyRow: POLICY_ROW });
+    const { service, deps } = buildService({ permission: allowEdit });
 
     await expect(update(service, { environments: [] })).rejects.toThrow("At least one environment must be provided");
     expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
   });
 
-  test("rejects moving onto a path another approval system policy already governs, excluding itself", async () => {
+  test("rejects moving onto a path another global approval system policy already governs, excluding itself", async () => {
     const { service, deps } = buildService({
       permission: allowEdit,
-      policyRow: POLICY_ROW,
       existingPolicy: { id: "other-policy", environments: [{ id: ENV_DEV.id }] }
     });
 
@@ -481,7 +516,6 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
   test("rejects moving onto a path the legacy secret approval tables already govern", async () => {
     const { service, deps } = buildService({
       permission: allowEdit,
-      policyRow: POLICY_ROW,
       existingLegacyPolicy: { id: "legacy-policy", environments: [{ id: ENV_PROD.id }] }
     });
 
@@ -498,7 +532,6 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
   test("rejects an approver who is not a project member", async () => {
     const { service, deps } = buildService({
       permission: allowEdit,
-      policyRow: POLICY_ROW,
       memberships: [{ effectiveUserIds: [], effectiveGroupIds: [] }]
     });
 
@@ -507,24 +540,30 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
   });
 
   test("locks the policy row before reading its state and rewriting it", async () => {
-    const { service, deps } = buildService({ permission: allowEdit, policyRow: POLICY_ROW });
+    const { service, deps } = buildService({ permission: allowEdit });
 
     await update(service, { secretPath: "/moved" });
 
     expect(deps.approvalPolicyDAL.findByIdForUpdate).toHaveBeenCalledWith("policy-1", TX);
     const lockOrder = deps.approvalPolicyDAL.findByIdForUpdate.mock.invocationCallOrder[0];
+    const stateRead = deps.secretChangePolicyBridgeDAL.findSecretChangePolicies.mock.calls.findIndex(
+      ([, tx]) => tx === TX
+    );
+    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies.mock.calls[stateRead]).toEqual([
+      { policyId: "policy-1" },
+      TX
+    ]);
     expect(lockOrder).toBeLessThan(
-      deps.approvalPolicySecretEnvironmentDAL.findEnvironmentsByPolicyId.mock.invocationCallOrder[0]
+      deps.secretChangePolicyBridgeDAL.findSecretChangePolicies.mock.invocationCallOrder[stateRead]
     );
     expect(lockOrder).toBeLessThan(
       deps.approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdAndSecretPath.mock.invocationCallOrder[0]
     );
     expect(lockOrder).toBeLessThan(deps.approvalPolicyStepApproversDAL.delete.mock.invocationCallOrder[0]);
-    expect(deps.approvalPolicySecretEnvironmentDAL.findEnvironmentsByPolicyId).toHaveBeenCalledWith("policy-1", TX);
   });
 
   test("rejects when the policy is deleted between the lookup and the lock", async () => {
-    const { service, deps } = buildService({ permission: allowEdit, policyRow: POLICY_ROW });
+    const { service, deps } = buildService({ permission: allowEdit });
     deps.approvalPolicyDAL.findByIdForUpdate.mockResolvedValue(undefined);
 
     await expect(update(service)).rejects.toBeInstanceOf(NotFoundError);
@@ -532,7 +571,7 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
   });
 
   test("rewrites only approvers and bypassers when no policy field changes", async () => {
-    const { service, deps } = buildService({ permission: allowEdit, policyRow: POLICY_ROW });
+    const { service, deps } = buildService({ permission: allowEdit });
 
     const policy = await update(service);
 
@@ -556,14 +595,30 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
   });
 
   test("rewrites the policy, step, approvers, environments and bypassers in one transaction", async () => {
+    const updatedRow = buildRow({
+      name: "renamed",
+      enforcementLevel: EnforcementLevel.Soft,
+      bypassForMachineIdentities: true,
+      constraints: { version: 1, constraints: { allowedSelfApprovals: false } },
+      secretPath: "/new",
+      environments: [toPolicyEnv(ENV_DEV), toPolicyEnv(ENV_PROD)],
+      steps: [{ id: "step-1", stepNumber: 1, requiredApprovals: 2 }],
+      approvers: [
+        { type: ApproverType.User, id: "user-1", username: "alice@example.com" },
+        { type: ApproverType.User, id: "user-2", username: "bob@example.com" },
+        { type: ApproverType.Group, id: "g-1" }
+      ],
+      bypassers: [{ type: BypasserType.User, id: "u-3", username: "carol@example.com" }],
+      userApprovers: [{ userId: "user-1" }, { userId: "user-2" }, { userId: "user-9" }]
+    });
     const { service, deps } = buildService({
       permission: allowEdit,
-      policyRow: POLICY_ROW,
       users: [{ id: "user-2", username: "bob@example.com" }],
       memberships: [
         { effectiveUserIds: ["user-1", "user-2"], effectiveGroupIds: ["g-1"] },
         { effectiveUserIds: ["u-3"], effectiveGroupIds: [] }
-      ]
+      ],
+      rows: [updatedRow]
     });
 
     const policy = await update(service, {
@@ -615,29 +670,17 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
       [{ policyId: "policy-1", userId: "u-3", groupId: null }],
       TX
     );
-    expect(policy).toEqual({
-      id: "policy-1",
-      name: "renamed",
-      secretPath: "/new",
-      approvals: 2,
-      envId: ENV_DEV.id,
-      createdAt: new Date("2026-01-01"),
-      updatedAt: new Date("2026-01-01"),
-      enforcementLevel: EnforcementLevel.Soft,
-      deletedAt: null,
-      allowedSelfApprovals: false,
-      bypassForMachineIdentities: true,
-      projectId: PROJECT_ID,
-      environments: [toPolicyEnv(ENV_DEV), toPolicyEnv(ENV_PROD)],
-      environment: toPolicyEnv(ENV_DEV)
-    });
+    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenLastCalledWith(
+      { policyId: "policy-1" },
+      TX
+    );
+    expect(policy).toEqual(toSecretChangePolicy(updatedRow));
   });
 
   test("rewrites the environment rows with the current environments when only the path changes", async () => {
     const { service, deps } = buildService({
       permission: allowEdit,
-      policyRow: POLICY_ROW,
-      envRows: [toEnvRow(ENV_DEV), toEnvRow(ENV_PROD)]
+      rows: [buildRow({ environments: [toPolicyEnv(ENV_DEV), toPolicyEnv(ENV_PROD)] })]
     });
 
     await update(service, { secretPath: "/moved" });
@@ -653,7 +696,7 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
   });
 
   test("recreates the approval step when the policy has none", async () => {
-    const { service, deps } = buildService({ permission: allowEdit, policyRow: POLICY_ROW, step: null });
+    const { service, deps } = buildService({ permission: allowEdit, rows: [buildRow({ steps: [] })] });
 
     await update(service, { approvals: 1 });
 
@@ -666,22 +709,22 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
 });
 
 describe("secretChangePolicyBridge deleteSecretChangePolicy", () => {
-  test("rejects a policy id that does not live on the approval system", async () => {
-    const { service, deps } = buildService({ permission: allowDelete });
+  test("rejects a policy id that does not live on the global approval system", async () => {
+    const { service, deps } = buildService({ permission: allowDelete, rows: [] });
 
     await expect(remove(service)).rejects.toBeInstanceOf(NotFoundError);
-    expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
+    expect(deps.approvalPolicyDAL.deleteById).not.toHaveBeenCalled();
   });
 
   test("rejects an actor without delete permission on secret approvals", async () => {
-    const { service, deps } = buildService({ permission: denyAll, policyRow: POLICY_ROW });
+    const { service, deps } = buildService({ permission: denyAll });
 
     await expect(remove(service)).rejects.toBeInstanceOf(ForbiddenError);
-    expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
+    expect(deps.approvalPolicyDAL.deleteById).not.toHaveBeenCalled();
   });
 
   test("hard-deletes the policy and skips the plan check", async () => {
-    const { service, deps } = buildService({ permission: allowDelete, policyRow: POLICY_ROW });
+    const { service, deps } = buildService({ permission: allowDelete });
 
     const policy = await remove(service);
 
@@ -694,8 +737,128 @@ describe("secretChangePolicyBridge deleteSecretChangePolicy", () => {
       allowedSelfApprovals: true,
       projectId: PROJECT_ID,
       environments: [toPolicyEnv(ENV_DEV)],
-      environment: toPolicyEnv(ENV_DEV)
+      environment: toPolicyEnv(ENV_DEV),
+      approvers: [{ type: ApproverType.User, id: "user-1", username: "alice@example.com" }]
     });
     expect(policy.deletedAt).toBeInstanceOf(Date);
+  });
+});
+
+describe("secretChangePolicyBridge getSecretChangePolicyById", () => {
+  const getById = (service: TService) => service.getSecretChangePolicyById({ ...ctx, sapId: "policy-1" });
+
+  test("looks the policy up within the actor's organization and reports a miss as not found", async () => {
+    const { service, deps } = buildService({ permission: allowRead, rows: [] });
+
+    const result = getById(service);
+    await expect(result).rejects.toBeInstanceOf(NotFoundError);
+    await expect(result).rejects.toThrow("Secret approval policy with ID 'policy-1' not found");
+    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenCalledWith({
+      policyId: "policy-1",
+      organizationId: ORG_ID
+    });
+    expect(deps.permissionService.getProjectPermission).not.toHaveBeenCalled();
+  });
+
+  test("rejects an actor without read permission on secret approvals", async () => {
+    const { service } = buildService({ permission: denyAll });
+
+    await expect(getById(service)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  test("returns the policy in the legacy shape", async () => {
+    const row = buildRow();
+    const { service, deps } = buildService({ permission: allowRead, rows: [row] });
+
+    await expect(getById(service)).resolves.toEqual(toSecretChangePolicy(row));
+    expect(deps.permissionService.getProjectPermission).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: PROJECT_ID })
+    );
+  });
+});
+
+describe("secretChangePolicyBridge getSecretChangePolicyByProjectId", () => {
+  const list = (service: TService) => service.getSecretChangePolicyByProjectId({ ...ctx, projectId: PROJECT_ID });
+
+  test("rejects an actor without read permission on secret approvals", async () => {
+    const { service, deps } = buildService({ permission: denyAll });
+
+    await expect(list(service)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).not.toHaveBeenCalled();
+  });
+
+  test("returns every policy of the project in the legacy shape", async () => {
+    const rows = [buildRow(), buildRow({ id: "policy-2", secretPath: "/other" })];
+    const { service, deps } = buildService({ permission: allowRead, rows });
+
+    await expect(list(service)).resolves.toEqual(rows.map(toSecretChangePolicy));
+    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenCalledWith({ projectId: PROJECT_ID });
+  });
+});
+
+describe("secretChangePolicyBridge getSecretChangePolicy", () => {
+  const globRow = buildRow({ id: "glob", secretPath: "/app/**", createdAt: new Date("2026-01-01") });
+  const exactRow = buildRow({ id: "exact", secretPath: "/app/svc", createdAt: new Date("2026-01-02") });
+
+  test("rejects an environment slug that does not exist in the project", async () => {
+    const { service, deps } = buildService();
+
+    const result = service.getSecretChangePolicy(PROJECT_ID, "staging", "/app", TX);
+    await expect(result).rejects.toBeInstanceOf(NotFoundError);
+    await expect(result).rejects.toThrow("Environment with slug 'staging' not found in project with ID project-1");
+    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).not.toHaveBeenCalled();
+  });
+
+  test("threads the transaction through the environment lookup and the policy read", async () => {
+    const { service, deps } = buildService({ rows: [globRow] });
+
+    await service.getSecretChangePolicy(PROJECT_ID, "dev", "/app/svc", TX);
+
+    expect(deps.projectEnvDAL.findOne).toHaveBeenCalledWith({ slug: "dev", projectId: PROJECT_ID }, TX);
+    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenCalledWith({ envId: ENV_DEV.id }, TX);
+  });
+
+  test("prefers an exact path over a glob and ignores a trailing slash", async () => {
+    const { service } = buildService({ rows: [globRow, exactRow] });
+
+    await expect(service.getSecretChangePolicy(PROJECT_ID, "dev", "/app/svc/")).resolves.toMatchObject({
+      id: "exact"
+    });
+    await expect(service.getSecretChangePolicy(PROJECT_ID, "dev", "/app/other")).resolves.toMatchObject({
+      id: "glob"
+    });
+    await expect(service.getSecretChangePolicy(PROJECT_ID, "dev", "/elsewhere")).resolves.toBeUndefined();
+  });
+
+  test("returns a policy per governed path when resolving several paths at once", async () => {
+    const { service, deps } = buildService({ rows: [globRow, exactRow] });
+
+    const byPath = await service.getSecretChangePolicyByPaths(
+      PROJECT_ID,
+      "dev",
+      ["/app/svc/", "/app/other", "/elsewhere"],
+      TX
+    );
+
+    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenCalledTimes(1);
+    expect([...byPath.keys()]).toEqual(["/app/svc/", "/app/other"]);
+    expect(byPath.get("/app/svc/")).toMatchObject({ id: "exact" });
+    expect(byPath.get("/app/other")).toMatchObject({ id: "glob" });
+  });
+
+  test("only requires project membership to read the policy of a folder", async () => {
+    const { service, deps } = buildService({ permission: denyAll, rows: [exactRow] });
+
+    await expect(
+      service.getSecretChangePolicyOfFolder({
+        ...ctx,
+        projectId: PROJECT_ID,
+        environment: "dev",
+        secretPath: "/app/svc"
+      })
+    ).resolves.toMatchObject({ id: "exact", userApprovers: [{ userId: "user-1" }] });
+    expect(deps.permissionService.getProjectPermission).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: PROJECT_ID })
+    );
   });
 });

@@ -17,18 +17,20 @@ import { approvalPolicyMembershipVerifierFactory } from "../access-approval-poli
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { TCreateSapDTO, TUpdateSapDTO } from "../secret-approval-policy/secret-approval-policy-types";
-import { TSecretChangePolicyEnvironment } from "./secret-change-policy-bridge-types";
+import { TSecretChangePolicyBridgeDALFactory, TSecretChangePolicyRow } from "./secret-change-policy-bridge-dal";
+import { TSecretChangePolicy, TSecretChangePolicyEnvironment } from "./secret-change-policy-bridge-types";
 import { TApprovalPolicySecretEnvironmentDALFactory } from "./secret-change-policy-environment-dal";
 
 type TSecretChangePolicyFnsFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findOne" | "findByIdForUpdate" | "updateById" | "transaction">;
-  approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "findOne" | "create" | "updateById">;
+  approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create" | "updateById">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "insertMany" | "delete">;
   approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;
   approvalPolicySecretEnvironmentDAL: Pick<
     TApprovalPolicySecretEnvironmentDALFactory,
-    "findPolicyByEnvIdAndSecretPath" | "findEnvironmentsByPolicyId" | "insertMany" | "delete"
+    "findPolicyByEnvIdAndSecretPath" | "insertMany" | "delete"
   >;
+  secretChangePolicyBridgeDAL: Pick<TSecretChangePolicyBridgeDALFactory, "findSecretChangePolicies">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
@@ -38,7 +40,7 @@ type TUpdatePolicyInput = Pick<
   TUpdateSapDTO,
   "name" | "approvals" | "secretPath" | "enforcementLevel" | "allowedSelfApprovals" | "bypassForMachineIdentities"
 > & {
-  policy: TApprovalPolicies;
+  policy: Pick<TApprovalPolicies, "id">;
   requestedEnvs?: TSecretChangePolicyEnvironment[];
   approverCount: number;
   userApproverIds: string[];
@@ -53,9 +55,35 @@ const SecretChangePolicyConstraintsSchema = z
   })
   .passthrough();
 
-const readConstraints = (policy: TApprovalPolicies) => {
-  const parsed = SecretChangePolicyConstraintsSchema.safeParse(policy.constraints);
+export const readSecretChangePolicyConstraints = (constraints: unknown): { allowedSelfApprovals?: boolean } => {
+  const parsed = SecretChangePolicyConstraintsSchema.safeParse(constraints);
   return parsed.success ? (parsed.data.constraints ?? {}) : {};
+};
+
+// The global approval system stores what the legacy policy row carried inline: the path per environment row,
+// the approval count on the first step and self-approval in the constraints blob.
+export const toSecretChangePolicy = (row: TSecretChangePolicyRow): TSecretChangePolicy => {
+  const [firstStep] = row.steps;
+  const [environment] = row.environments;
+  return {
+    id: row.id,
+    name: row.name,
+    projectId: row.projectId,
+    enforcementLevel: row.enforcementLevel,
+    bypassForMachineIdentities: row.bypassForMachineIdentities ?? false,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    deletedAt: null,
+    secretPath: row.secretPath,
+    approvals: firstStep?.requiredApprovals ?? 1,
+    allowedSelfApprovals: readSecretChangePolicyConstraints(row.constraints).allowedSelfApprovals ?? true,
+    envId: environment.id,
+    environment,
+    environments: row.environments,
+    approvers: row.approvers,
+    bypassers: row.bypassers,
+    userApprovers: row.userApprovers
+  };
 };
 
 export const splitApprovers = (approvers: TCreateSapDTO["approvers"]) => ({
@@ -78,6 +106,7 @@ export const secretChangePolicyFnsFactory = ({
   approvalPolicyStepApproversDAL,
   approvalPolicyBypassersDAL,
   approvalPolicySecretEnvironmentDAL,
+  secretChangePolicyBridgeDAL,
   secretApprovalPolicyDAL,
   projectDAL,
   userDAL
@@ -92,7 +121,17 @@ export const secretChangePolicyFnsFactory = ({
     tx?: Knex
   ) => approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdAndSecretPath({ envIds, secretPath }, tx);
 
-  // Policies are being migrated onto the approval system, so a path is taken whether the policy that
+  const findSecretChangePoliciesByEnvId = async (envId: string, tx?: Knex) => {
+    const rows = await secretChangePolicyBridgeDAL.findSecretChangePolicies({ envId }, tx);
+    return rows.map(toSecretChangePolicy);
+  };
+
+  const findSecretChangePoliciesByProjectId = async (projectId: string) => {
+    const rows = await secretChangePolicyBridgeDAL.findSecretChangePolicies({ projectId });
+    return rows.map(toSecretChangePolicy);
+  };
+
+  // Policies are being migrated onto the global approval system, so a path is taken whether the policy that
   // governs it still lives on the legacy secret approval tables or already lives on the new ones.
   const assertNoPolicyForSecretPath = async (
     {
@@ -232,22 +271,20 @@ export const secretChangePolicyFnsFactory = ({
     }
   };
 
-  const getSecretChangePolicyState = async (policy: TApprovalPolicies, tx?: Knex) => {
-    const envRows = await approvalPolicySecretEnvironmentDAL.findEnvironmentsByPolicyId(policy.id, tx);
-    const step = await approvalPolicyStepsDAL.findOne({ policyId: policy.id }, tx);
-    if (!envRows.length) {
+  const getSecretChangePolicyState = async (policyId: string, tx: Knex) => {
+    const [row] = await secretChangePolicyBridgeDAL.findSecretChangePolicies({ policyId }, tx);
+    if (!row) {
       throw new NotFoundError({
-        message: `Secret approval policy with ID '${policy.id}' no longer governs any environment`
+        message: `Secret approval policy with ID '${policyId}' no longer governs any environment`
       });
     }
 
-    const constraints = readConstraints(policy);
+    const policy = toSecretChangePolicy(row);
     return {
-      step,
-      envs: envRows.map(({ id, name, slug }) => ({ id, name, slug })),
-      secretPath: envRows[0].secretPath,
-      approvals: step?.requiredApprovals ?? 1,
-      allowedSelfApprovals: constraints.allowedSelfApprovals ?? true
+      step: row.steps[0],
+      envs: row.environments,
+      secretPath: policy.secretPath,
+      approvals: policy.approvals
     };
   };
 
@@ -273,7 +310,7 @@ export const secretChangePolicyFnsFactory = ({
       if (!lockedPolicy) {
         throw new NotFoundError({ message: `Secret approval policy with ID '${policy.id}' not found` });
       }
-      const current = await getSecretChangePolicyState(lockedPolicy, tx);
+      const current = await getSecretChangePolicyState(policy.id, tx);
 
       const nextApprovals = approvals ?? current.approvals;
       if (!groupApprovers.length && nextApprovals > approverCount)
@@ -290,12 +327,10 @@ export const secretChangePolicyFnsFactory = ({
       if (allowedSelfApprovals !== undefined) {
         updateDoc.constraints = {
           version: 1,
-          constraints: { ...readConstraints(lockedPolicy), allowedSelfApprovals }
+          constraints: { ...readSecretChangePolicyConstraints(lockedPolicy.constraints), allowedSelfApprovals }
         };
       }
-      const doc = Object.keys(updateDoc).length
-        ? await approvalPolicyDAL.updateById(policy.id, updateDoc, tx)
-        : lockedPolicy;
+      if (Object.keys(updateDoc).length) await approvalPolicyDAL.updateById(policy.id, updateDoc, tx);
 
       let { step } = current;
       if (!step) {
@@ -333,23 +368,19 @@ export const secretChangePolicyFnsFactory = ({
         tx
       );
 
-      return {
-        policy: doc,
-        envs,
-        approvals: nextApprovals,
-        secretPath: nextSecretPath,
-        allowedSelfApprovals: allowedSelfApprovals ?? current.allowedSelfApprovals
-      };
+      const [row] = await secretChangePolicyBridgeDAL.findSecretChangePolicies({ policyId: policy.id }, tx);
+      return toSecretChangePolicy(row);
     });
 
   return {
     findSecretChangePolicy,
     findSecretChangePolicyBySecretPath,
+    findSecretChangePoliciesByEnvId,
+    findSecretChangePoliciesByProjectId,
     assertNoPolicyForSecretPath,
     resolveBypassers,
     resolveApproverUserIds,
     verifyPolicyActorsMembership,
-    getSecretChangePolicyState,
     updatePolicy
   };
 };

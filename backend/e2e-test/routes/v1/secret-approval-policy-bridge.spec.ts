@@ -12,6 +12,7 @@ const envSlug = seedData1.environment.slug;
 const LEGACY_PATH = "/sap-policy-bridge-legacy";
 const NEW_PATH = "/sap-policy-bridge-new";
 const MOVED_PATH = "/sap-policy-bridge-moved";
+const GLOB_BASE = "/sap-policy-bridge-glob";
 const authHeaders = () => ({ authorization: `Bearer ${jwtAuthToken}` });
 const approvers = [{ type: ApproverType.User, id: seedData1.id }];
 
@@ -44,6 +45,16 @@ const deletePolicy = (id: string) =>
 
 const listPolicies = () =>
   testServer.inject({ method: "GET", url: `/api/v2/secret-approvals?projectId=${projectId}`, headers: authHeaders() });
+
+const getPolicy = (id: string) =>
+  testServer.inject({ method: "GET", url: `/api/v2/secret-approvals/${id}`, headers: authHeaders() });
+
+const getBoardPolicy = (secretPath: string) =>
+  testServer.inject({
+    method: "GET",
+    url: `/api/v2/secret-approvals/board?projectId=${projectId}&environment=${envSlug}&secretPath=${encodeURIComponent(secretPath)}`,
+    headers: authHeaders()
+  });
 
 const legacyRow = (id: string) => getDb()(TableName.SecretApprovalPolicy).where({ id }).first();
 const bridgeRow = (id: string) => getDb()(TableName.ApprovalPolicies).where({ id }).first();
@@ -112,7 +123,7 @@ describe("Secret approval policy bridge routing", () => {
     expect(listRes.json().approvals.map((policy: { id: string }) => policy.id)).not.toContain(legacyId);
   });
 
-  test("a policy created after the legacy one is deleted lands on the approval system tables", async () => {
+  test("a policy created after the legacy one is deleted lands on the global approval system tables", async () => {
     const createRes = await createBridgePolicy(LEGACY_PATH);
     expect(createRes.statusCode).toBe(200);
     const bridgeId = createRes.json().approval.id as string;
@@ -121,6 +132,53 @@ describe("Secret approval policy bridge routing", () => {
     expect(await bridgeRow(bridgeId)).toMatchObject({ type: ApprovalPolicyType.SecretChange, projectId });
     expect(await bridgeEnvRows(bridgeId)).toMatchObject([{ policyId: bridgeId, envId, secretPath: LEGACY_PATH }]);
     expect(await legacyRow(bridgeId)).toBeUndefined();
+    expect(createRes.json().approval).toMatchObject({
+      id: bridgeId,
+      secretPath: LEGACY_PATH,
+      approvals: 1,
+      envId,
+      environment: { id: envId, slug: envSlug },
+      environments: [{ id: envId, slug: envSlug }]
+    });
+  });
+
+  test("a policy on the global approval system is read back through the legacy routes", async () => {
+    const [bridgeId] = bridgeIds;
+
+    const listRes = await listPolicies();
+    expect(listRes.statusCode).toBe(200);
+    expect(listRes.json().approvals).toContainEqual(
+      expect.objectContaining({
+        id: bridgeId,
+        secretPath: LEGACY_PATH,
+        approvers: [{ id: seedData1.id, type: ApproverType.User }],
+        bypassers: []
+      })
+    );
+
+    const getRes = await getPolicy(bridgeId);
+    expect(getRes.statusCode).toBe(200);
+    expect(getRes.json().approval).toMatchObject({
+      id: bridgeId,
+      secretPath: LEGACY_PATH,
+      approvals: 1,
+      deletedAt: null,
+      environment: { id: envId, slug: envSlug },
+      environments: [{ id: envId, slug: envSlug }],
+      approvers: [{ id: seedData1.id, type: ApproverType.User, username: seedData1.email }],
+      bypassers: []
+    });
+
+    const boardRes = await getBoardPolicy(LEGACY_PATH);
+    expect(boardRes.statusCode).toBe(200);
+    expect(boardRes.json().policy).toMatchObject({
+      id: bridgeId,
+      secretPath: LEGACY_PATH,
+      userApprovers: [{ userId: seedData1.id }]
+    });
+
+    const missRes = await getPolicy("00000000-0000-0000-0000-000000000000");
+    expect(missRes.statusCode).toBe(404);
   });
 
   test("an update is refused when the path is governed by a policy on the other store", async () => {
@@ -147,7 +205,7 @@ describe("Secret approval policy bridge routing", () => {
     expect(await bridgeRow(bridgeId)).toMatchObject({ name: "bridge-renamed" });
   });
 
-  test("a policy on the approval system is updated in place and hard-deleted", async () => {
+  test("a policy on the global approval system is updated in place and hard-deleted", async () => {
     const [bridgeId] = bridgeIds;
 
     const updateRes = await updatePolicy(bridgeId, {
@@ -185,7 +243,7 @@ describe("Secret approval policy bridge routing", () => {
     expect(await bridgeStep(bridgeId)).toBeUndefined();
 
     // Pins the current gap: the bridge does not cancel pending requests the way legacy closes open ones.
-    // Flip this to expect "cancelled" when secret change requests move onto the approval system.
+    // Flip this to expect "cancelled" when secret change requests move onto the global approval system.
     expect(await getDb()(TableName.ApprovalRequests).where({ id: requestId }).first()).toMatchObject({
       status: "pending",
       policyId: null
@@ -194,5 +252,31 @@ describe("Secret approval policy bridge routing", () => {
     const recreateRes = await createBridgePolicy(MOVED_PATH);
     expect(recreateRes.statusCode).toBe(200);
     bridgeIds.push(recreateRes.json().approval.id);
+  });
+
+  test("a secret path is resolved across both stores with the exact path winning over a glob", async () => {
+    const legacyRes = await createLegacyPolicy(`${GLOB_BASE}/**`);
+    expect(legacyRes.statusCode).toBe(200);
+    const legacyId = legacyRes.json().approval.id as string;
+    legacyIds.push(legacyId);
+
+    const bridgeRes = await createBridgePolicy(`${GLOB_BASE}/svc`);
+    expect(bridgeRes.statusCode).toBe(200);
+    const bridgeId = bridgeRes.json().approval.id as string;
+    bridgeIds.push(bridgeId);
+
+    const exactRes = await getBoardPolicy(`${GLOB_BASE}/svc`);
+    expect(exactRes.statusCode).toBe(200);
+    expect(exactRes.json().policy).toMatchObject({ id: bridgeId, secretPath: `${GLOB_BASE}/svc` });
+
+    const globRes = await getBoardPolicy(`${GLOB_BASE}/other`);
+    expect(globRes.statusCode).toBe(200);
+    expect(globRes.json().policy).toMatchObject({ id: legacyId, secretPath: `${GLOB_BASE}/**` });
+
+    const listRes = await listPolicies();
+    expect(listRes.statusCode).toBe(200);
+    expect(listRes.json().approvals.map((policy: { id: string }) => policy.id)).toEqual(
+      expect.arrayContaining([legacyId, bridgeId])
+    );
   });
 });

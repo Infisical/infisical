@@ -201,6 +201,7 @@ import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approva
 import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-reviewer-dal";
 import { secretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { secretChangePolicyBridgeDALFactory } from "@app/ee/services/secret-change-policy-bridge/secret-change-policy-bridge-dal";
 import { secretChangePolicyBridgeServiceFactory } from "@app/ee/services/secret-change-policy-bridge/secret-change-policy-bridge-service";
 import { approvalPolicySecretEnvironmentDALFactory } from "@app/ee/services/secret-change-policy-bridge/secret-change-policy-environment-dal";
 import { secretChangeRequestBridgeServiceFactory } from "@app/ee/services/secret-change-request-bridge/secret-change-request-bridge-service";
@@ -837,6 +838,7 @@ export const registerRoutes = async (
   const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
   const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
   const approvalPolicySecretEnvironmentDAL = approvalPolicySecretEnvironmentDALFactory(db);
+  const secretChangePolicyBridgeDAL = secretChangePolicyBridgeDALFactory(db);
   const roleDAL = roleDALFactory(db);
   const pkiAlertHistoryDAL = pkiAlertHistoryDALFactory(db);
   const pkiAlertChannelDAL = pkiAlertChannelDALFactory(db);
@@ -1267,6 +1269,7 @@ export const registerRoutes = async (
     approvalPolicyStepApproversDAL,
     approvalPolicyBypassersDAL,
     approvalPolicySecretEnvironmentDAL,
+    secretChangePolicyBridgeDAL,
     secretApprovalPolicyDAL,
     projectEnvDAL,
     projectDAL,
