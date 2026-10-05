@@ -145,6 +145,7 @@
                     "root": "documentation/platform/secrets-mgmt/monitoring",
                     "pages": [
                       "documentation/platform/insights",
+                      "documentation/platform/secret-value-search",
                       "documentation/platform/webhooks",
                       "documentation/platform/event-subscriptions"
                     ]
@@ -792,7 +793,14 @@
                 "pages": [
                   "documentation/platform/agent-vault/guides/claude-code",
                   "documentation/platform/agent-vault/guides/codex",
-                  "documentation/platform/agent-vault/guides/opencode"
+                  "documentation/platform/agent-vault/guides/opencode",
+                  {
+                    "group": "Hermes Agent",
+                    "root": "documentation/platform/agent-vault/guides/hermes",
+                    "pages": [
+                      "documentation/platform/agent-vault/guides/hermes-gateway"
+                    ]
+                  }
                 ]
               },
               {

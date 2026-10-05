@@ -352,11 +352,14 @@ export const gatewayV2ServiceFactory = ({
     gatewayId,
     targetHost,
     targetPort,
+    // Named in the signed cert so the gateway need not trust a port out of the request body.
+    additionalTargetPorts,
     transport
   }: {
     gatewayId: string;
     targetHost: string;
     targetPort: number;
+    additionalTargetPorts?: number[];
     transport?: GatewayTransport;
   }): Promise<TGatewayV2ConnectionDetails | undefined> => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
@@ -425,9 +428,13 @@ export const gatewayV2ServiceFactory = ({
     const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const clientCertSerialNumber = createSerialNumber();
 
+    const allowedPorts = [targetPort, ...(additionalTargetPorts ?? [])].filter(
+      (port, index, ports) => port > 0 && ports.indexOf(port) === index
+    );
     const routingInfo = {
       targetHost,
-      targetPort
+      targetPort,
+      ...(allowedPorts.length > 1 ? { targetPorts: allowedPorts } : {})
     };
 
     const routingExtension = new x509.Extension(
@@ -1029,6 +1036,7 @@ export const gatewayV2ServiceFactory = ({
     capabilities?: {
       pkcs11?: boolean;
       sessionLogMaskingBuiltInDetection?: boolean;
+      clickhouseNativeProtocol?: boolean;
       supported_account_types?: string[];
     };
   }) => {
