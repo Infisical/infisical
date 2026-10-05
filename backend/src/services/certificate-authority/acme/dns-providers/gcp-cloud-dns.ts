@@ -6,6 +6,7 @@ import { delay } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { GCP_CLOUD_DNS_ZONE_RESOURCE_PATTERN } from "@app/services/app-connection/gcp/gcp-connection-constants";
+import { isGcpServiceDisabledError, TGoogleApiError } from "@app/services/app-connection/gcp/gcp-connection-errors";
 import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp/gcp-connection-fns";
 import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-types";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -40,27 +41,14 @@ const toFqdn = (recordName: string) => (recordName.endsWith(".") ? recordName : 
 
 const normalizeTxtValue = (value: string) => value.replace(QUOTES_REGEX, "");
 
-type TGoogleApiErrorBody = {
-  error?: {
-    message?: string;
-    errors?: { reason?: string }[];
-    details?: { "@type"?: string; reason?: string }[];
-  };
-};
-
-const isServiceDisabledError = (body: TGoogleApiErrorBody | undefined, message: string) =>
-  Boolean(body?.error?.details?.some((detail) => detail.reason === "SERVICE_DISABLED")) ||
-  Boolean(body?.error?.errors?.some((err) => err.reason === "accessNotConfigured")) ||
-  message.includes("has not been used in project");
-
 const toGcpDnsError = (error: unknown, hostedZoneId: string, fqdn: string) => {
   if (isAxiosError(error)) {
-    const body = error.response?.data as TGoogleApiErrorBody | undefined;
+    const body = error.response?.data as TGoogleApiError | undefined;
     const message = body?.error?.message || error.message || "Unknown error";
 
     if (error.response?.status === 403) {
       const [, gcpProjectId, , zoneName] = hostedZoneId.split("/");
-      if (isServiceDisabledError(body, message)) {
+      if (isGcpServiceDisabledError(body, message)) {
         return new Error(
           `The Cloud DNS API is not enabled on GCP project '${gcpProjectId}'. Enable dns.googleapis.com in the Google Cloud console and try again.`
         );

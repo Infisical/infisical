@@ -14,6 +14,7 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { AppConnection } from "../app-connection-enums";
 import { GCP_GLOBAL_LOCATION } from "./gcp-connection-constants";
 import { GcpConnectionMethod } from "./gcp-connection-enums";
+import { isGcpServiceDisabledError, TGoogleApiError } from "./gcp-connection-errors";
 import {
   GCPApp,
   GCPCloudDnsManagedZone,
@@ -298,10 +299,6 @@ export const validateGcpConnectionCredentials = async (appConnection: TGcpConnec
   return appConnection.credentials;
 };
 
-type TGoogleApiError = {
-  error?: { status?: string; message?: string };
-};
-
 const toGcpDiscoveryError = (error: unknown, context: { api: string; gcpProjectId?: string }) => {
   if (!(error instanceof AxiosError)) return error;
 
@@ -310,7 +307,7 @@ const toGcpDiscoveryError = (error: unknown, context: { api: string; gcpProjectI
   const scope = context.gcpProjectId ? `GCP project "${context.gcpProjectId}"` : "your GCP project";
 
   if (error.response?.status === 403) {
-    if (message.includes("has not been used in project") || message.includes("is disabled")) {
+    if (isGcpServiceDisabledError(body, message)) {
       return new BadRequestError({
         message: `The ${context.api} API is not enabled on ${scope}. Enable it in the Google Cloud console and try again.`
       });

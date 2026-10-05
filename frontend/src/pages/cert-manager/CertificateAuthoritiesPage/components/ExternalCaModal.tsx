@@ -560,7 +560,13 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [popUp?.ca?.isOpen]);
 
   useEffect(() => {
-    if (ca && !isCaLoading && !isPending && prefilledCaIdRef.current !== ca.id) {
+    if (
+      ca &&
+      !isCaLoading &&
+      !isPending &&
+      caType === ca.type &&
+      prefilledCaIdRef.current !== ca.id
+    ) {
       const prefill = (values: Parameters<typeof reset>[0]) => {
         reset(values);
         prefilledCaIdRef.current = ca.id;
@@ -727,7 +733,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       }
     }
-  }, [ca, availableConnections, reset, isCaLoading, isPending]);
+  }, [ca, availableConnections, reset, isCaLoading, isPending, caType]);
 
   const digicertConnectionId =
     caType === CaType.DIGICERT && configuration && "digicertConnection" in configuration
