@@ -1,12 +1,4 @@
-import {
-  ClipboardEvent,
-  KeyboardEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState
-} from "react";
+import { ClipboardEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -68,6 +60,14 @@ import { SecretType } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
 import { didAllSecretCreationsSucceed } from "./createSecretFormState";
+import {
+  editMetadataDraft,
+  getMetadataDraftChanges,
+  MetadataDraftState,
+  projectMetadataDraft,
+  removeMetadataDraft,
+  setMetadataRemovals
+} from "./sharedMetadataDraft";
 
 const formSchema = (enforceEncryptedMetadata: boolean) =>
   z
@@ -148,6 +148,27 @@ export type TSecretEditChanges = {
 };
 
 type TSharedSecretField = "value" | "comment" | "tags" | "metadata" | "skipMultilineEncoding";
+
+const preserveMetadataFocus = () => {
+  const focused = document.activeElement;
+  const id = focused?.closest("[data-metadata-row]")?.getAttribute("data-metadata-row");
+  const field = focused?.getAttribute("data-metadata-field");
+  const selection =
+    focused instanceof HTMLInputElement
+      ? [focused.selectionStart, focused.selectionEnd]
+      : undefined;
+  return () => {
+    if (!id || !field) return;
+    requestAnimationFrame(() => {
+      const input = document.querySelector<HTMLElement>(
+        `[data-metadata-row="${CSS.escape(id)}"] [data-metadata-field="${field}"]`
+      );
+      input?.focus({ preventScroll: true });
+      if (input instanceof HTMLInputElement && selection?.[0] !== null && selection?.[1] !== null)
+        input.setSelectionRange(selection?.[0] ?? null, selection?.[1] ?? null);
+    });
+  };
+};
 
 type Props = {
   secretPath?: string;
@@ -317,92 +338,34 @@ export const CreateSecretForm = ({
   const [hasEditedHiddenValue, setHasEditedHiddenValue] = useState(false);
   const [clearValue, setClearValue] = useState(false);
   const [sharedFieldIntents, setSharedFieldIntents] = useState<Record<string, boolean>>({});
-  const [editedMetadataEncryption, setEditedMetadataEncryption] = useState(new Set<string>());
-  const [editedMetadataIds, setEditedMetadataIds] = useState(new Set<string>());
-  const [removedMetadataKeys, setRemovedMetadataKeys] = useState<string[]>([]);
-  const metadataOrigins = useRef(
-    new Map<string, { key: string; value: string; isEncrypted: boolean }>()
+  const [metadataDraft, setMetadataDraft] = useState<MetadataDraftState>({
+    entries: [],
+    removedKeys: []
+  });
+  const metadataChanges = getMetadataDraftChanges(
+    metadataDraft,
+    Boolean(currentProject?.enforceEncryptedSecretManagerSecretMetadata)
   );
+  const removedMetadataKeys = metadataDraft.removedKeys;
   const [sharedTagChanges, setSharedTagChanges] = useState<
     Record<string, { tag: { id: string; slug: string }; added: boolean }>
   >({});
   const sharedTagOrigins = useRef(new Map<string, boolean>());
   const [clearTags, setClearTags] = useState(false);
-  const rebindMetadataRows = useCallback(
-    (
-      next: NonNullable<TFormSchema["secrets"][number]["metadata"]>,
-      previous: NonNullable<TFormSchema["secrets"][number]["metadata"]>
-    ) => {
-      const reboundIds = new Map<string, string>();
-      const entries = next.map((entry, position) => {
-        const previousPosition = previous.findIndex((row) => row.id === entry.id);
-        if (previousPosition < 0 || previousPosition === position) return entry;
-        const id = crypto.randomUUID();
-        reboundIds.set(entry.id, id);
-        const original = metadataOrigins.current.get(entry.id);
-        if (original) metadataOrigins.current.set(id, original);
-        return { ...entry, id };
-      });
-      const activeIds = new Set(entries.map((entry) => entry.id));
-      const rebindIds = (current: Set<string>) =>
-        new Set(
-          [...current].map((id) => reboundIds.get(id) ?? id).filter((id) => activeIds.has(id))
-        );
-      setEditedMetadataIds(rebindIds);
-      setEditedMetadataEncryption(rebindIds);
-      return entries;
-    },
-    []
-  );
-  const projectMetadataRows = useCallback(
-    (
-      defaults: NonNullable<TFormSchema["secrets"][number]["metadata"]>,
-      previous: NonNullable<TFormSchema["secrets"][number]["metadata"]>,
-      editedIds: Set<string>,
-      removedKeys: string[]
-    ) => {
-      const removed = new Set(removedKeys);
-      const edited = previous.filter((entry) => editedIds.has(entry.id));
-      const editedKeys = new Set(
-        edited.map((entry) => metadataOrigins.current.get(entry.id)?.key || entry.key.trim())
-      );
-      return {
-        rows: rebindMetadataRows(
-          [
-            ...defaults.filter((entry) => !removed.has(entry.key) && !editedKeys.has(entry.key)),
-            ...edited
-          ],
-          previous
-        ),
-        hasEdits: Boolean(edited.length)
-      };
-    },
-    [rebindMetadataRows]
-  );
-  useEffect(() => {
-    editValues?.secrets[0].metadata?.forEach((entry) => {
-      if (!metadataOrigins.current.has(entry.id))
-        metadataOrigins.current.set(entry.id, { ...entry });
-    });
-  }, [editValues]);
   const watchedValue = watch("secrets.0.value");
   const valueWasEdited = Boolean(dirtyFields.secrets?.[0]?.value || hasEditedHiddenValue);
   const missingReplacement = Boolean(
     editSecret?.isSharedEdit && valueWasEdited && !watchedValue && !clearValue
   );
   const hasValueChanges = valueWasEdited && !missingReplacement;
-  const hasMetadataEdits = Boolean(
-    editSecret?.isSharedEdit &&
-      watch("secrets.0.metadata")?.some((entry) => editedMetadataIds.has(entry.id))
-  );
+  const hasMetadataEdits = Boolean(editSecret?.isSharedEdit && metadataChanges.secretMetadata);
   const sharedDraftIntents = useRef({
     value: false,
     comment: false,
     skipMultilineEncoding: false,
     tagChanges: sharedTagChanges,
     clearTags: false,
-    metadataIds: editedMetadataIds,
-    removedMetadataKeys
+    metadata: metadataDraft
   });
   sharedDraftIntents.current = {
     value: hasEditedHiddenValue || clearValue,
@@ -410,13 +373,13 @@ export const CreateSecretForm = ({
     skipMultilineEncoding: Boolean(sharedFieldIntents.skipMultilineEncoding),
     tagChanges: sharedTagChanges,
     clearTags,
-    metadataIds: editedMetadataIds,
-    removedMetadataKeys
+    metadata: metadataDraft
   };
   useEffect(() => {
     if (!editSecret?.isSharedEdit || !editValues) return;
     const previous = structuredClone(getValues("secrets.0"));
     const intents = sharedDraftIntents.current;
+    const restoreFocus = preserveMetadataFocus();
     reset(structuredClone(editValues), { keepDirtyValues: true });
     if (intents.value) setValue("secrets.0.value", previous.value, { shouldDirty: true });
     if (intents.comment) setValue("secrets.0.comment", previous.comment, { shouldDirty: true });
@@ -424,13 +387,12 @@ export const CreateSecretForm = ({
       setValue("secrets.0.skipMultilineEncoding", previous.skipMultilineEncoding, {
         shouldDirty: true
       });
-    const metadata = projectMetadataRows(
-      editValues.secrets[0].metadata ?? [],
-      previous.metadata ?? [],
-      intents.metadataIds,
-      intents.removedMetadataKeys
+    setValue(
+      "secrets.0.metadata",
+      projectMetadataDraft(editValues.secrets[0].metadata ?? [], intents.metadata),
+      { shouldDirty: Boolean(getMetadataDraftChanges(intents.metadata, false).secretMetadata) }
     );
-    setValue("secrets.0.metadata", metadata.rows, { shouldDirty: metadata.hasEdits });
+    restoreFocus();
     const changes = Object.values(intents.tagChanges);
     sharedTagOrigins.current = new Map(
       Object.entries(intents.tagChanges).map(([id, change]) => [id, !change.added])
@@ -447,7 +409,7 @@ export const CreateSecretForm = ({
     setValue("secrets.0.tags", [...tags.values()], {
       shouldDirty: Boolean(changes.length || intents.clearTags)
     });
-  }, [editValues, editSecret?.isSharedEdit, getValues, projectMetadataRows, reset, setValue]);
+  }, [editValues, editSecret?.isSharedEdit, getValues, reset, setValue]);
   const hasEditChanges = Boolean(
     hasValueChanges ||
       missingReplacement ||
@@ -481,26 +443,18 @@ export const CreateSecretForm = ({
     if (!editSecret?.isSharedEdit) return;
     const entry = getValues("secrets.0.metadata")?.find((metadataEntry) => metadataEntry.id === id);
     if (!entry) return;
-    const original = metadataOrigins.current.get(id);
-    const next = { ...entry, ...changes };
-    const changed =
-      !original?.key ||
-      next.key.trim() !== original.key ||
-      next.value !== original.value ||
-      next.isEncrypted !== original.isEncrypted;
-    setEditedMetadataIds((current) => {
-      const ids = new Set(current);
-      if (changed) ids.add(id);
-      else ids.delete(id);
-      return ids;
-    });
-    if (changes.isEncrypted !== undefined)
-      setEditedMetadataEncryption((current) => {
-        const ids = new Set(current);
-        if (next.isEncrypted !== original?.isEncrypted) ids.add(id);
-        else ids.delete(id);
-        return ids;
-      });
+    const original = editValues?.secrets[0].metadata?.find((row) => row.id === id) ?? null;
+    setMetadataDraft((current) => editMetadataDraft(current, entry, original, changes));
+  };
+  const syncMetadataDraft = (next: MetadataDraftState) => {
+    const restoreFocus = preserveMetadataFocus();
+    setMetadataDraft(next);
+    setValue(
+      "secrets.0.metadata",
+      projectMetadataDraft(editValues?.secrets[0].metadata ?? [], next),
+      { shouldDirty: Boolean(getMetadataDraftChanges(next, false).secretMetadata) }
+    );
+    restoreFocus();
   };
   const mixedFieldWarning = (field: TSharedSecretField, label: string) =>
     editSecret?.mixedFields?.[field] && (
@@ -527,7 +481,7 @@ export const CreateSecretForm = ({
       if (isEditReadOnly || !hasEditChanges || missingReplacement) return;
       const secret = secrets[0];
       const removalConflict = editSecret.isSharedEdit
-        ? secret.metadata?.find((entry) => removedMetadataKeys.includes(entry.key))
+        ? metadataChanges.secretMetadata?.find((entry) => removedMetadataKeys.includes(entry.key))
         : undefined;
       if (removalConflict) {
         createNotification({
@@ -541,6 +495,12 @@ export const CreateSecretForm = ({
       const metadataWasEdited = editSecret.isSharedEdit
         ? hasMetadataEdits
         : Boolean(dirtySecret?.metadata);
+      let { secretMetadata }: Pick<TSecretEditChanges, "secretMetadata"> = metadataChanges;
+      if (!editSecret.isSharedEdit)
+        secretMetadata = metadataWasEdited
+          ? (secret.metadata?.map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted })) ??
+            [])
+          : undefined;
       await editSecret.onSubmit(
         {
           newSecretName: editSecret.allowRename && dirtySecret?.key ? secret.key : undefined,
@@ -563,23 +523,7 @@ export const CreateSecretForm = ({
                   clear: clearTags
                 }
               : undefined,
-          secretMetadata: metadataWasEdited
-            ? (secret.metadata
-                ?.filter(({ id }) => !editSecret.isSharedEdit || editedMetadataIds.has(id))
-                .map(({ id, key, value, isEncrypted }) => ({
-                  key,
-                  value,
-                  previousKey: editSecret.isSharedEdit
-                    ? metadataOrigins.current.get(id)?.key
-                    : undefined,
-                  isEncrypted:
-                    !editSecret.isSharedEdit ||
-                    editedMetadataEncryption.has(id) ||
-                    currentProject?.enforceEncryptedSecretManagerSecretMetadata
-                      ? isEncrypted
-                      : undefined
-                })) ?? [])
-            : undefined,
+          secretMetadata,
           removedMetadataKeys: editSecret.isSharedEdit ? removedMetadataKeys : undefined,
           skipMultilineEncoding:
             dirtySecret?.skipMultilineEncoding || sharedFieldIntents.skipMultilineEncoding
@@ -1289,7 +1233,15 @@ export const CreateSecretForm = ({
                                 </p>
                               )}
                               {metadata.map((metadataEntry, metadataIndex) => (
-                                <div key={metadataEntry.id} className="flex items-start gap-3">
+                                <div
+                                  key={
+                                    editSecret?.isSharedEdit
+                                      ? `${metadataEntry.id}:${metadataIndex}`
+                                      : metadataEntry.id
+                                  }
+                                  data-metadata-row={metadataEntry.id}
+                                  className="flex items-start gap-3"
+                                >
                                   <Field className="flex-1">
                                     <FieldLabel
                                       htmlFor={`create-secret-${index}-metadata-${metadataIndex}-key`}
@@ -1310,17 +1262,9 @@ export const CreateSecretForm = ({
                                                 markMetadataEntry(metadataEntry.id, {
                                                   key: event.target.value
                                                 });
-                                                const originalKey = metadataOrigins.current.get(
-                                                  metadataEntry.id
-                                                )?.key;
-                                                if (editSecret?.isSharedEdit && originalKey)
-                                                  setRemovedMetadataKeys((current) =>
-                                                    event.target.value.trim() === originalKey
-                                                      ? current.filter((key) => key !== originalKey)
-                                                      : [...new Set([...current, originalKey])]
-                                                  );
                                                 inputField.onChange(event);
                                               }}
+                                              data-metadata-field="key"
                                               placeholder="Enter key"
                                               readOnly={Boolean(editSecret && isEditReadOnly)}
                                               className="h-8"
@@ -1349,6 +1293,7 @@ export const CreateSecretForm = ({
                                               {...inputField}
                                               id={`create-secret-${index}-metadata-${metadataIndex}-value`}
                                               placeholder="Enter value"
+                                              data-metadata-field="value"
                                               onChange={(event) => {
                                                 markMetadataEntry(metadataEntry.id, {
                                                   value: event.target.value
@@ -1383,6 +1328,7 @@ export const CreateSecretForm = ({
                                             variant="project"
                                             size="default"
                                             checked={switchField.value}
+                                            data-metadata-field="encryption"
                                             disabled={Boolean(
                                               currentProject?.enforceEncryptedSecretManagerSecretMetadata ||
                                                 (editSecret && isEditReadOnly)
@@ -1416,21 +1362,23 @@ export const CreateSecretForm = ({
                                       "transition-transform hover:text-danger"
                                     )}
                                     onClick={() => {
-                                      const originalKey = metadataOrigins.current.get(
-                                        metadataEntry.id
-                                      )?.key;
-                                      if (editSecret?.isSharedEdit && originalKey)
-                                        setRemovedMetadataKeys((current) => [
-                                          ...new Set([...current, originalKey])
-                                        ]);
-                                      const remaining = metadata.filter(
-                                        (__, currentIndex) => currentIndex !== metadataIndex
-                                      );
+                                      if (editSecret?.isSharedEdit) {
+                                        syncMetadataDraft(
+                                          removeMetadataDraft(
+                                            metadataDraft,
+                                            metadataEntry,
+                                            editValues?.secrets[0].metadata?.find(
+                                              (row) => row.id === metadataEntry.id
+                                            ) ?? null
+                                          )
+                                        );
+                                        return;
+                                      }
                                       setValue(
                                         `secrets.${index}.metadata`,
-                                        editSecret?.isSharedEdit
-                                          ? rebindMetadataRows(remaining, metadata)
-                                          : remaining,
+                                        metadata.filter(
+                                          (__, currentIndex) => currentIndex !== metadataIndex
+                                        ),
                                         { shouldDirty: true }
                                       );
                                     }}
@@ -1455,9 +1403,8 @@ export const CreateSecretForm = ({
                                       false
                                   };
                                   if (editSecret?.isSharedEdit) {
-                                    metadataOrigins.current.set(entry.id, { ...entry });
-                                    setEditedMetadataIds((current) =>
-                                      new Set(current).add(entry.id)
+                                    setMetadataDraft((current) =>
+                                      editMetadataDraft(current, entry, null, {})
                                     );
                                   }
                                   setValue(`secrets.${index}.metadata`, [...metadata, entry], {
@@ -1492,29 +1439,12 @@ export const CreateSecretForm = ({
                                       value: key
                                     }))}
                                     onValueChange={(entries) => {
-                                      const keys = entries.map((entry) => entry.value);
-                                      setRemovedMetadataKeys(keys);
-                                      const currentMetadata = structuredClone(
-                                        getValues("secrets.0.metadata") ?? []
+                                      syncMetadataDraft(
+                                        setMetadataRemovals(
+                                          metadataDraft,
+                                          entries.map((entry) => entry.value)
+                                        )
                                       );
-                                      const retainedIds = new Set(
-                                        currentMetadata
-                                          .filter(
-                                            (entry) =>
-                                              editedMetadataIds.has(entry.id) &&
-                                              !keys.includes(entry.key.trim())
-                                          )
-                                          .map((entry) => entry.id)
-                                      );
-                                      const projection = projectMetadataRows(
-                                        editValues?.secrets[0].metadata ?? [],
-                                        currentMetadata,
-                                        retainedIds,
-                                        keys
-                                      );
-                                      setValue("secrets.0.metadata", projection.rows, {
-                                        shouldDirty: projection.hasEdits
-                                      });
                                     }}
                                     getOptionLabel={(entry) => entry.label}
                                     getOptionValue={(entry) => entry.value}

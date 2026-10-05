@@ -276,14 +276,18 @@ export const MultiEnvironmentSecretEditSheet = ({
         }
         if (changes.secretMetadata || removedMetadataKeys?.length) {
           const existing = existingSecret?.secretMetadata ?? [];
-          const removedKeys = new Set(removedMetadataKeys);
+          const removedKeys = new Set([
+            ...(removedMetadataKeys ?? []),
+            ...(changes.secretMetadata ?? []).flatMap((entry) =>
+              entry.previousKey && entry.previousKey !== entry.key ? [entry.previousKey] : []
+            )
+          ]);
           const entries = new Map(
             existing
               .filter((entry) => !removedKeys.has(entry.key))
               .map((entry) => [entry.key, entry])
           );
           changes.secretMetadata?.forEach((entry) => {
-            if (removedKeys.has(entry.key)) return;
             const { previousKey, ...update } = entry;
             entries.set(entry.key, {
               ...update,
