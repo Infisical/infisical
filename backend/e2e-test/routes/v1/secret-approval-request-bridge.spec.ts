@@ -222,9 +222,19 @@ describe("Secret approval request bridge routing", () => {
     const commits = await db(TableName.SecretApprovalRequestSecretV2).where({ secretChangeId: change?.id });
     expect(commits).toMatchObject([{ key: "SAR_BRIDGE_GLOBAL", op: "create", requestId: null }]);
 
+    const reviewRes = await reviewRequest(approval.id, ApprovalStatus.APPROVED);
+    expect(reviewRes.statusCode).toBe(200);
+    expect(reviewRes.json().review).toMatchObject({
+      requestId: approval.id,
+      reviewerUserId: seedData1.id,
+      status: ApprovalStatus.APPROVED
+    });
+    expect(await db(TableName.ApprovalRequestApprovals).where({ stepId: steps[0].id })).toMatchObject([
+      { approverUserId: seedData1.id, decision: ApprovalStatus.APPROVED }
+    ]);
+
     const responses = await Promise.all([
       getRequest(approval.id),
-      reviewRequest(approval.id, ApprovalStatus.APPROVED),
       setRequestStatus(approval.id, RequestState.Closed),
       mergeRequest(approval.id)
     ]);

@@ -1,6 +1,12 @@
 import { Knex } from "knex";
 
-import { TApprovalRequests, TSecretApprovalRequestsSecretsV2, TSecretChangeRequests } from "@app/db/schemas";
+import {
+  TApprovalRequestApprovals,
+  TApprovalRequests,
+  TSecretApprovalRequestsReviewers,
+  TSecretApprovalRequestsSecretsV2,
+  TSecretChangeRequests
+} from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
@@ -96,6 +102,22 @@ export const toSecretChangeRequest = ({
   commits
 });
 
+export const toSecretChangeRequestReview = (
+  approval: TApprovalRequestApprovals,
+  requestId: string
+): TSecretApprovalRequestsReviewers => {
+  const createdAt = approval.createdAt ?? new Date();
+  return {
+    id: approval.id,
+    status: approval.decision,
+    requestId,
+    reviewerUserId: approval.approverUserId,
+    comment: approval.comment ?? null,
+    createdAt,
+    updatedAt: createdAt // the global system does not use updatedAt. This also does not appear on the UI, so no need to change the db
+  };
+};
+
 const buildApprovalUrl = (orgId: string, projectId: string, requestId: string) =>
   `${getConfig().SITE_URL}/organizations/${orgId}/projects/secret-management/${projectId}/approval?requestId=${requestId}`;
 
@@ -182,7 +204,8 @@ export const secretChangeRequestFnsFactory = ({
     }
   };
 
-  const $queueCreatedWebhook = async ({
+  const queueChangeRequestWebhook = async ({
+    action,
     approvalRequest,
     secretChangeRequest,
     policy,
@@ -193,7 +216,7 @@ export const secretChangeRequestFnsFactory = ({
   }: Pick<
     TSecretChangeRequestSideEffectsDTO,
     "approvalRequest" | "secretChangeRequest" | "policy" | "project" | "environment" | "secretPath"
-  > & { environmentName: string }) => {
+  > & { action: ChangeRequestWebhookAction; environmentName: string }) => {
     const requestedBy: TWebhookActor | null = approvalRequest.requesterId
       ? {
           type: ActorType.USER,
@@ -214,7 +237,7 @@ export const secretChangeRequestFnsFactory = ({
           environment,
           environmentName,
           secretPath,
-          action: ChangeRequestWebhookAction.Created,
+          action,
           request: {
             id: approvalRequest.id,
             slug: secretChangeRequest.slug,
@@ -291,7 +314,8 @@ export const secretChangeRequestFnsFactory = ({
     await $sendApproverNotifications({ policy, requestId: approvalRequest.id, projectId: project.id, tx });
 
     try {
-      await $queueCreatedWebhook({
+      await queueChangeRequestWebhook({
+        action: ChangeRequestWebhookAction.Created,
         approvalRequest,
         secretChangeRequest,
         policy,
@@ -327,5 +351,5 @@ export const secretChangeRequestFnsFactory = ({
       .catch(() => {});
   };
 
-  return { resolveRequester, runSecretChangeRequestSideEffects };
+  return { resolveRequester, queueChangeRequestWebhook, runSecretChangeRequestSideEffects };
 };

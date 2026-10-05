@@ -1,20 +1,28 @@
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { TApprovalRequests, TSecretChangeRequests } from "@app/db/schemas";
+import { TApprovalRequestApprovals, TApprovalRequests, TSecretChangeRequests } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { QueueJobs, QueueName } from "@app/queue";
-import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalPolicyType,
+  ApprovalRequestApprovalDecision,
+  ApprovalRequestStatus
+} from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { ChangeRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
-import { RequestState } from "../secret-approval-request/secret-approval-request-types";
-import { secretChangeRequestFnsFactory, toSecretChangeRequest } from "./secret-change-request-bridge-fns";
+import { ApprovalStatus, RequestState } from "../secret-approval-request/secret-approval-request-types";
+import {
+  secretChangeRequestFnsFactory,
+  toSecretChangeRequest,
+  toSecretChangeRequestReview
+} from "./secret-change-request-bridge-fns";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: "https://app.test" }) }));
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
@@ -114,6 +122,41 @@ describe("toSecretChangeRequest", () => {
   });
 });
 
+describe("toSecretChangeRequestReview", () => {
+  const approval = (overrides: Partial<TApprovalRequestApprovals> = {}): TApprovalRequestApprovals => ({
+    id: "approval-1",
+    stepId: "step-1",
+    approverUserId: "user-2",
+    decision: ApprovalRequestApprovalDecision.Approved,
+    comment: "ship it",
+    createdAt: CREATED_AT,
+    ...overrides
+  });
+
+  test("maps a decision row onto the legacy reviewer shape and echoes createdAt as updatedAt", () => {
+    expect(toSecretChangeRequestReview(approval(), "request-1")).toEqual({
+      id: "approval-1",
+      status: ApprovalStatus.APPROVED,
+      requestId: "request-1",
+      reviewerUserId: "user-2",
+      comment: "ship it",
+      createdAt: CREATED_AT,
+      updatedAt: CREATED_AT
+    });
+  });
+
+  test("normalizes a missing comment to null and a missing createdAt to now", () => {
+    const result = toSecretChangeRequestReview(
+      approval({ decision: ApprovalRequestApprovalDecision.Rejected, comment: undefined, createdAt: null }),
+      "request-1"
+    );
+
+    expect(result).toMatchObject({ status: ApprovalStatus.REJECTED, comment: null });
+    expect(result.createdAt).toBeInstanceOf(Date);
+    expect(result.updatedAt).toBe(result.createdAt);
+  });
+});
+
 const buildFns = ({
   user = {
     id: "user-1",
@@ -195,6 +238,46 @@ describe("resolveRequester", () => {
 
     await expect(fns.resolveRequester(ActorType.USER, "user-1")).rejects.toBeInstanceOf(NotFoundError);
     await expect(fns.resolveRequester(ActorType.PLATFORM, "x")).rejects.toBeInstanceOf(BadRequestError);
+  });
+});
+
+describe("queueChangeRequestWebhook", () => {
+  test("queues the change request webhook under the given action", async () => {
+    const { fns, deps } = buildFns();
+
+    await fns.queueChangeRequestWebhook({
+      action: ChangeRequestWebhookAction.Reviewed,
+      approvalRequest: approvalRequest(),
+      secretChangeRequest: secretChangeRequest({ bypassReason: "hotfix" }),
+      policy: { id: "policy-1", name: "dev-policy", enforcementLevel: EnforcementLevel.Soft, userApprovers: [] },
+      project: { id: "project-1", name: "Project", orgId: "org-1" },
+      environment: "dev",
+      environmentName: "Development",
+      secretPath: "/app"
+    });
+
+    expect(deps.queueService.queue).toHaveBeenCalledWith(
+      QueueName.SecretWebhook,
+      QueueJobs.SecWebhook,
+      {
+        type: WebhookEvents.ChangeRequestModified,
+        payload: {
+          projectId: "project-1",
+          projectName: "Project",
+          environment: "dev",
+          environmentName: "Development",
+          secretPath: "/app",
+          action: ChangeRequestWebhookAction.Reviewed,
+          request: expect.objectContaining({
+            id: "request-1",
+            slug: "slug-1",
+            isBypassed: true,
+            policy: { id: "policy-1", name: "dev-policy", enforcementLevel: EnforcementLevel.Soft }
+          }) as object
+        }
+      },
+      expect.objectContaining({ jobId: expect.stringContaining("change-request-webhook-request-1-") as string })
+    );
   });
 });
 

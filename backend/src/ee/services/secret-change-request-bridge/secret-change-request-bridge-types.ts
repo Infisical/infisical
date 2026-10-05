@@ -1,6 +1,10 @@
 import { Knex } from "knex";
 
-import { TSecretApprovalRequests, TSecretApprovalRequestsSecretsV2 } from "@app/db/schemas";
+import {
+  TSecretApprovalRequests,
+  TSecretApprovalRequestsReviewers,
+  TSecretApprovalRequestsSecretsV2
+} from "@app/db/schemas";
 
 import {
   TCreateSecretApprovalRequestV2BridgeDTO,
@@ -17,13 +21,15 @@ export type TSecretChangeRequestData = Record<string, never>;
 
 export type TSecretChangeRequest = TSecretApprovalRequests & { commits: TSecretApprovalRequestsSecretsV2[] };
 
+export type TSecretChangeRequestReview = TSecretApprovalRequestsReviewers & { projectId: string };
+
 export type TSecretChangeRequestBridgeMethods = {
   generateSecretChangeRequest: (
     dto: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex; skipPostProcessing?: boolean }
   ) => Promise<TSecretChangeRequest>;
   createSecretChangeRequest: (dto: TCreateSecretApprovalRequestV2BridgeDTO, tx?: Knex) => Promise<never>;
   mergeSecretChangeRequest: (dto: TMergeSecretApprovalRequestDTO) => Promise<never>;
-  reviewSecretChangeRequest: (dto: TReviewRequestDTO) => Promise<never>;
+  reviewSecretChangeRequest: (dto: TReviewRequestDTO) => Promise<TSecretChangeRequestReview>;
   updateSecretChangeRequestStatus: (dto: TStatusChangeDTO) => Promise<never>;
   getSecretChangeRequestById: (dto: TSecretApprovalDetailsDTO) => Promise<never>;
 };

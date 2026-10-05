@@ -1,17 +1,29 @@
 import { Knex } from "knex";
 
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TQueueServiceFactory } from "@app/queue";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
-import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import {
+  ApprovalPolicyType,
+  ApprovalRequestApprovalDecision,
+  ApprovalRequestStatus
+} from "@app/services/approval-policy/approval-policy-enums";
+import {
+  TApprovalRequestApprovalsDALFactory,
   TApprovalRequestDALFactory,
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
-import { createApprovalRequestWithSteps } from "@app/services/approval-policy/approval-request-fns";
+import {
+  createApprovalRequestWithSteps,
+  isEligibleStepApprover,
+  upsertApprovalRequestStepDecision
+} from "@app/services/approval-policy/approval-request-fns";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
@@ -28,31 +40,45 @@ import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types";
 
+import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   pickApprovalCommitColumns,
   secretApprovalRequestCommitFnsFactory
 } from "../secret-approval-request/secret-approval-request-commit-fns";
 import { TSecretApprovalRequestSecretDALFactory } from "../secret-approval-request/secret-approval-request-secret-dal";
+import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
 import { TSecretChangePolicyBridgeServiceFactory } from "../secret-change-policy-bridge/secret-change-policy-bridge-service";
-import { secretChangeRequestFnsFactory, toSecretChangeRequest } from "./secret-change-request-bridge-fns";
+import {
+  secretChangeRequestFnsFactory,
+  toSecretChangeRequest,
+  toSecretChangeRequestReview
+} from "./secret-change-request-bridge-fns";
 import { TSecretChangeRequestBridgeMethods } from "./secret-change-request-bridge-types";
 import { TSecretChangeRequestDALFactory } from "./secret-change-request-dal";
 
 type TSecretChangeRequestBridgeServiceFactoryDep = {
-  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "create" | "transaction">;
+  approvalRequestDAL: Pick<
+    TApprovalRequestDALFactory,
+    "findById" | "findByIdForUpdate" | "findStepsByRequestId" | "create" | "transaction"
+  >;
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
+  approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "findOne" | "create" | "updateById">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findStepsByPolicyId">;
-  secretChangeRequestDAL: Pick<TSecretChangeRequestDALFactory, "create">;
+  secretChangeRequestDAL: Pick<TSecretChangeRequestDALFactory, "create" | "findOne">;
   secretApprovalRequestSecretDAL: Pick<
     TSecretApprovalRequestSecretDALFactory,
     "insertV2Bridge" | "insertApprovalSecretV2Tags"
   >;
   secretChangePolicyBridgeService: Pick<TSecretChangePolicyBridgeServiceFactory, "findSecretChangePolicyById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -80,11 +106,14 @@ export const secretChangeRequestBridgeServiceFactory = ({
   approvalRequestDAL,
   approvalRequestStepsDAL,
   approvalRequestStepEligibleApproversDAL,
+  approvalRequestApprovalsDAL,
   approvalPolicyDAL,
   secretChangeRequestDAL,
   secretApprovalRequestSecretDAL,
   secretChangePolicyBridgeService,
   permissionService,
+  licenseService,
+  userGroupMembershipDAL,
   folderDAL,
   projectDAL,
   projectEnvDAL,
@@ -114,22 +143,45 @@ export const secretChangeRequestBridgeServiceFactory = ({
     secretValidationRuleService
   });
 
-  const { resolveRequester, runSecretChangeRequestSideEffects } = secretChangeRequestFnsFactory({
-    userDAL,
-    identityDAL,
-    projectDAL,
-    projectEnvDAL,
-    kmsService,
-    projectSlackConfigDAL,
-    projectMicrosoftTeamsConfigDAL,
-    microsoftTeamsService,
-    smtpService,
-    notificationService,
-    queueService,
-    telemetryService
-  });
+  const { resolveRequester, queueChangeRequestWebhook, runSecretChangeRequestSideEffects } =
+    secretChangeRequestFnsFactory({
+      userDAL,
+      identityDAL,
+      projectDAL,
+      projectEnvDAL,
+      kmsService,
+      projectSlackConfigDAL,
+      projectMicrosoftTeamsConfigDAL,
+      microsoftTeamsService,
+      smtpService,
+      notificationService,
+      queueService,
+      telemetryService
+    });
 
   const findSecretChangeRequest = (requestId: string, tx?: Knex) => approvalRequestDAL.findById(requestId, tx);
+
+  const $findSecretChangeRequestOrThrow = async (requestId: string) => {
+    const approvalRequest = await approvalRequestDAL.findById(requestId);
+    if (!approvalRequest || approvalRequest.type !== ApprovalPolicyType.SecretChange) {
+      throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
+    }
+    const secretChangeRequest = await secretChangeRequestDAL.findOne({ approvalRequestId: approvalRequest.id });
+    if (!secretChangeRequest) {
+      throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
+    }
+    return { approvalRequest, secretChangeRequest };
+  };
+
+  const $findSecretChangePolicyOrThrow = async (policyId: string | null | undefined) => {
+    const policy = policyId ? await secretChangePolicyBridgeService.findSecretChangePolicyById(policyId) : undefined;
+    if (!policy) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request has been deleted."
+      });
+    }
+    return policy;
+  };
 
   const generateSecretChangeRequest: TSecretChangeRequestBridgeMethods["generateSecretChangeRequest"] = async (dto) => {
     const { actor, actorId, actorOrgId, projectId, environment, secretPath, commitMessage, trx, skipPostProcessing } =
@@ -217,16 +269,114 @@ export const secretChangeRequestBridgeServiceFactory = ({
     return result;
   };
 
-  const createSecretChangeRequest: TSecretChangeRequestBridgeMethods["createSecretChangeRequest"] = async () => {
-    throw notAvailable();
-  };
-
   const mergeSecretChangeRequest: TSecretChangeRequestBridgeMethods["mergeSecretChangeRequest"] = async () => {
     throw notAvailable();
   };
 
-  const reviewSecretChangeRequest: TSecretChangeRequestBridgeMethods["reviewSecretChangeRequest"] = async () => {
-    throw notAvailable();
+  const reviewSecretChangeRequest: TSecretChangeRequestBridgeMethods["reviewSecretChangeRequest"] = async ({
+    approvalId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    status,
+    comment
+  }) => {
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to review secret approval request due to plan restriction. Upgrade plan to review secret approval request."
+      });
+    }
+
+    const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
+    if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+
+    if (approvalRequest.status !== ApprovalRequestStatus.Open) {
+      throw new BadRequestError({ message: "You can only review open approval requests" });
+    }
+
+    const policy = await $findSecretChangePolicyOrThrow(approvalRequest.policyId);
+    if (!policy.allowedSelfApprovals && actorId === approvalRequest.requesterId) {
+      throw new BadRequestError({
+        message: "Failed to review secret approval request. Users are not authorized to review their own request."
+      });
+    }
+
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: ActorType.USER,
+      actorId,
+      projectId: approvalRequest.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const steps = await approvalRequestDAL.findStepsByRequestId(approvalRequest.id);
+    const currentStep = steps.find((step) => step.stepNumber === approvalRequest.currentStep);
+    if (!currentStep) {
+      throw new BadRequestError({
+        message: `Secret approval request with ID '${approvalId}' has no approval step to review.`
+      });
+    }
+
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actorId, actorOrgId);
+    const userGroupIds = new Set(userGroups.map((group) => group.groupId));
+    if (
+      !hasRole(ProjectMembershipRole.Admin) &&
+      approvalRequest.requesterId !== actorId &&
+      !isEligibleStepApprover(currentStep, actorId, userGroupIds)
+    ) {
+      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+    }
+
+    const decision =
+      status === ApprovalStatus.APPROVED
+        ? ApprovalRequestApprovalDecision.Approved
+        : ApprovalRequestApprovalDecision.Rejected;
+
+    const review = await approvalRequestDAL.transaction(async (tx) => {
+      const locked = await approvalRequestDAL.findByIdForUpdate(approvalRequest.id, tx);
+      if (!locked || locked.status !== ApprovalRequestStatus.Open) {
+        throw new BadRequestError({ message: "You can only review open approval requests" });
+      }
+      return upsertApprovalRequestStepDecision(
+        { stepId: currentStep.id, approverUserId: actorId, decision, comment },
+        { approvalRequestApprovalsDAL },
+        tx
+      );
+    });
+
+    try {
+      const project = await projectDAL.findById(approvalRequest.projectId);
+      const [folder] = await folderDAL.findSecretPathByFolderIds(approvalRequest.projectId, [
+        secretChangeRequest.folderId
+      ]);
+      if (project && folder) {
+        await queueChangeRequestWebhook({
+          action: ChangeRequestWebhookAction.Reviewed,
+          approvalRequest,
+          secretChangeRequest,
+          policy,
+          project,
+          environment: folder.environmentSlug,
+          environmentName: folder.environmentName,
+          secretPath: folder.path
+        });
+      } else {
+        logger.warn(
+          `Skipping change request webhook, project or folder not found [requestId=${approvalRequest.id}] [action=${ChangeRequestWebhookAction.Reviewed}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue change request webhook [requestId=${approvalRequest.id}] [action=${ChangeRequestWebhookAction.Reviewed}]`
+      );
+    }
+
+    return { ...toSecretChangeRequestReview(review, approvalRequest.id), projectId: approvalRequest.projectId };
   };
 
   const updateSecretChangeRequestStatus: TSecretChangeRequestBridgeMethods["updateSecretChangeRequestStatus"] =
@@ -241,7 +391,6 @@ export const secretChangeRequestBridgeServiceFactory = ({
   return {
     findSecretChangeRequest,
     generateSecretChangeRequest,
-    createSecretChangeRequest,
     mergeSecretChangeRequest,
     reviewSecretChangeRequest,
     updateSecretChangeRequestStatus,

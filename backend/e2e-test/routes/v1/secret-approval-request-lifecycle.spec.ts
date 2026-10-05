@@ -7,6 +7,7 @@ import { ApproverType } from "@app/ee/services/access-approval-policy/access-app
 import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import {
   ApprovalPolicyType,
+  ApprovalRequestApprovalDecision,
   ApprovalRequestStatus,
   ApprovalRequestStepStatus
 } from "@app/services/approval-policy/approval-policy-enums";
@@ -218,15 +219,51 @@ describe("Secret change request lifecycle on a policy on the global approval sys
     expect((await getSecret(secretPath, BASE_KEY)).statusCode).toBe(200);
   });
 
-  test("reviewing, merging and closing are refused until the bridge supports them", async () => {
+  test("each request can be reviewed on the global tables and stays open", async () => {
     expect(requestIds).toHaveLength(3);
+    const db = getDb();
 
     for await (const requestId of requestIds) {
-      const responses = await Promise.all([
-        getRequest(requestId),
-        reviewRequest(requestId, ApprovalStatus.APPROVED),
-        mergeRequest(requestId)
+      const reviewRes = await reviewRequest(requestId, ApprovalStatus.APPROVED);
+      expect(reviewRes.statusCode).toBe(200);
+      expect(reviewRes.json().review).toMatchObject({
+        requestId,
+        reviewerUserId: seedData1.id,
+        status: ApprovalStatus.APPROVED
+      });
+
+      const [step] = await db(TableName.ApprovalRequestSteps).where({ requestId });
+      expect(await db(TableName.ApprovalRequestApprovals).where({ stepId: step.id })).toMatchObject([
+        { approverUserId: seedData1.id, decision: ApprovalRequestApprovalDecision.Approved }
       ]);
+      expect(step).toMatchObject({ status: ApprovalRequestStepStatus.InProgress });
+      expect(await db(TableName.ApprovalRequests).where({ id: requestId }).first()).toMatchObject({
+        status: ApprovalRequestStatus.Open,
+        currentStep: 1
+      });
+      expect(await db(TableName.SecretChangeRequests).where({ approvalRequestId: requestId }).first()).toMatchObject({
+        hasMerged: false
+      });
+    }
+  });
+
+  test("a reviewer changing their decision updates the same row", async () => {
+    const [requestId] = requestIds;
+    const db = getDb();
+
+    const reviewRes = await reviewRequest(requestId, ApprovalStatus.REJECTED);
+    expect(reviewRes.statusCode).toBe(200);
+    expect(reviewRes.json().review).toMatchObject({ requestId, status: ApprovalStatus.REJECTED });
+
+    const [step] = await db(TableName.ApprovalRequestSteps).where({ requestId });
+    expect(await db(TableName.ApprovalRequestApprovals).where({ stepId: step.id })).toMatchObject([
+      { approverUserId: seedData1.id, decision: ApprovalRequestApprovalDecision.Rejected }
+    ]);
+  });
+
+  test("reading details and merging are refused until the bridge supports them", async () => {
+    for await (const requestId of requestIds) {
+      const responses = await Promise.all([getRequest(requestId), mergeRequest(requestId)]);
       for (const res of responses) {
         expect(res.statusCode).toBe(400);
         expect(res.json().message).toBe(BRIDGE_MESSAGE);
@@ -234,9 +271,6 @@ describe("Secret change request lifecycle on a policy on the global approval sys
 
       expect(await getDb()(TableName.ApprovalRequests).where({ id: requestId }).first()).toMatchObject({
         status: ApprovalRequestStatus.Open
-      });
-      expect(await getDb()(TableName.ApprovalRequestApprovals).count("* as count").first()).toMatchObject({
-        count: "0"
       });
     }
   });
