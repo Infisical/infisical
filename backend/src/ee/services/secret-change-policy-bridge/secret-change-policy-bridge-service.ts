@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -44,7 +44,7 @@ type TSecretChangePolicyBridgeServiceFactoryDep = {
   secretChangePolicyBridgeDAL: Pick<TSecretChangePolicyBridgeDALFactory, "findSecretChangePolicies">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -145,6 +145,17 @@ export const secretChangePolicyBridgeServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
     );
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+    }
+    if (project.version !== ProjectVersion.V3) {
+      throw new BadRequestError({
+        message:
+          "Secret approval policies on the new approval system are only supported on projects that have been upgraded to the latest secrets version. Upgrade the project before creating one."
+      });
+    }
 
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.secretApproval) {

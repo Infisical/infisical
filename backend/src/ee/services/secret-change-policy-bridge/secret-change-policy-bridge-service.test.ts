@@ -2,8 +2,9 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
+import { ProjectVersion } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { EnforcementLevel } from "@app/lib/types";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -76,6 +77,7 @@ type TFindFilter = { policyId?: string; projectId?: string; envId?: string; orga
 const buildService = ({
   permission = allowCreate,
   plan = { secretApproval: true },
+  project = { id: PROJECT_ID, version: ProjectVersion.V3 } as { id: string; version: ProjectVersion } | null,
   envs = [ENV_DEV, ENV_PROD],
   users = [] as { id: string; username: string }[],
   existingPolicy = undefined as TExistingPolicy | undefined,
@@ -144,7 +146,7 @@ const buildService = ({
         Promise.resolve(envs.find((env) => env.slug === slug && env.projectId === projectId))
       )
     },
-    projectDAL: { findEffectiveProjectSubjectsMembership },
+    projectDAL: { findById: vi.fn().mockResolvedValue(project), findEffectiveProjectSubjectsMembership },
     userDAL: {
       find: vi.fn(({ $in }: { $in: { username: string[] } }) =>
         Promise.resolve(users.filter((user) => $in.username.includes(user.username)))
@@ -240,6 +242,26 @@ describe("secretChangePolicyBridge createSecretChangePolicy", () => {
     const { service, deps } = buildService({ plan: { secretApproval: false } });
 
     await expect(create(service)).rejects.toThrow("plan restriction");
+    expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("rejects a project that has not been upgraded to the latest secrets version", async () => {
+    const { service, deps } = buildService({ project: { id: PROJECT_ID, version: ProjectVersion.V2 } });
+
+    const result = create(service);
+    await expect(result).rejects.toBeInstanceOf(BadRequestError);
+    await expect(result).rejects.toThrow("upgraded to the latest secrets version");
+    expect(deps.projectDAL.findById).toHaveBeenCalledWith(PROJECT_ID);
+    expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
+    expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("reports a missing project as not found", async () => {
+    const { service, deps } = buildService({ project: null });
+
+    const result = create(service);
+    await expect(result).rejects.toBeInstanceOf(NotFoundError);
+    await expect(result).rejects.toThrow(`Project with ID '${PROJECT_ID}' not found`);
     expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
   });
 
