@@ -62,7 +62,10 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   secretApprovalPolicyEnvironmentDAL: TSecretApprovalPolicyEnvironmentDALFactory;
   secretChangePolicyBridgeService: Pick<
     TSecretChangePolicyBridgeServiceFactory,
-    "findSecretChangePolicy" | "updateSecretChangePolicy" | "deleteSecretChangePolicy"
+    | "findSecretChangePolicy"
+    | "findSecretChangePolicyBySecretPath"
+    | "updateSecretChangePolicy"
+    | "deleteSecretChangePolicy"
   >;
 };
 
@@ -97,12 +100,13 @@ export const secretApprovalPolicyServiceFactory = ({
     if (!envIds && !envId) {
       throw new BadRequestError({ message: "At least one environment should be provided" });
     }
-    const policy = await secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({
-      envIds: envId ? [envId] : envIds || [],
-      secretPath
-    });
+    const policyEnvIds = envId ? [envId] : envIds || [];
+    const policies = await Promise.all([
+      secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({ envIds: policyEnvIds, secretPath }),
+      secretChangePolicyBridgeService.findSecretChangePolicyBySecretPath({ envIds: policyEnvIds, secretPath })
+    ]);
 
-    return policyId ? policy && policy.id !== policyId : Boolean(policy);
+    return policies.some((policy) => policy && policy.id !== policyId);
   };
 
   const $useSecretChangePolicyBridge = async (policyId: string) =>

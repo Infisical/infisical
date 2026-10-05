@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import { Knex } from "knex";
 
 import { ActionProjectType, TApprovalPolicies, TProjectEnvironments } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -58,16 +57,20 @@ export const secretChangePolicyBridgeServiceFactory = ({
   permissionService,
   licenseService
 }: TSecretChangePolicyBridgeServiceFactoryDep) => {
-  const { assertNoPolicyForSecretPath, resolveBypassers, resolveApproverUserIds, verifyPolicyActorsMembership } =
-    secretChangePolicyFnsFactory({
-      approvalPolicySecretEnvironmentDAL,
-      secretApprovalPolicyDAL,
-      projectDAL,
-      userDAL
-    });
-
-  const findSecretChangePolicy = (policyId: string, tx?: Knex) =>
-    approvalPolicyDAL.findOne({ id: policyId, type: ApprovalPolicyType.SecretChange }, tx);
+  const {
+    findSecretChangePolicy,
+    findSecretChangePolicyBySecretPath,
+    assertNoPolicyForSecretPath,
+    resolveBypassers,
+    resolveApproverUserIds,
+    verifyPolicyActorsMembership
+  } = secretChangePolicyFnsFactory({
+    approvalPolicyDAL,
+    approvalPolicySecretEnvironmentDAL,
+    secretApprovalPolicyDAL,
+    projectDAL,
+    userDAL
+  });
 
   const $toSecretChangePolicy = (
     policy: TApprovalPolicies,
@@ -255,6 +258,7 @@ export const secretChangePolicyBridgeServiceFactory = ({
 
   return {
     findSecretChangePolicy,
+    findSecretChangePolicyBySecretPath,
     createSecretChangePolicy,
     updateSecretChangePolicy,
     deleteSecretChangePolicy,

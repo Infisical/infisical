@@ -1,5 +1,9 @@
+import { Knex } from "knex";
+
 import { TProjectEnvironments } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -10,6 +14,7 @@ import { TCreateSapDTO } from "../secret-approval-policy/secret-approval-policy-
 import { TApprovalPolicySecretEnvironmentDALFactory } from "./secret-change-policy-environment-dal";
 
 type TSecretChangePolicyFnsFactoryDep = {
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findOne">;
   approvalPolicySecretEnvironmentDAL: Pick<
     TApprovalPolicySecretEnvironmentDALFactory,
     "findPolicyByEnvIdAndSecretPath"
@@ -20,12 +25,21 @@ type TSecretChangePolicyFnsFactoryDep = {
 };
 
 export const secretChangePolicyFnsFactory = ({
+  approvalPolicyDAL,
   approvalPolicySecretEnvironmentDAL,
   secretApprovalPolicyDAL,
   projectDAL,
   userDAL
 }: TSecretChangePolicyFnsFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
+
+  const findSecretChangePolicy = (policyId: string, tx?: Knex) =>
+    approvalPolicyDAL.findOne({ id: policyId, type: ApprovalPolicyType.SecretChange }, tx);
+
+  const findSecretChangePolicyBySecretPath = (
+    { envIds, secretPath }: { envIds: string[]; secretPath: string },
+    tx?: Knex
+  ) => approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdAndSecretPath({ envIds, secretPath }, tx);
 
   // Policies are being migrated onto the approval system, so a path is taken whether the policy that
   // governs it still lives on the legacy secret approval tables or already lives on the new ones.
@@ -161,5 +175,12 @@ export const secretChangePolicyFnsFactory = ({
     }
   };
 
-  return { assertNoPolicyForSecretPath, resolveBypassers, resolveApproverUserIds, verifyPolicyActorsMembership };
+  return {
+    findSecretChangePolicy,
+    findSecretChangePolicyBySecretPath,
+    assertNoPolicyForSecretPath,
+    resolveBypassers,
+    resolveApproverUserIds,
+    verifyPolicyActorsMembership
+  };
 };
