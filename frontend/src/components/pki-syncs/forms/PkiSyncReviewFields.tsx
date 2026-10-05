@@ -14,13 +14,13 @@ import {
 import { useProject } from "@app/context";
 import {
   BOOLEAN_SYNC_OPTION_FIELDS,
+  getUnusedExportOptionKeys,
   KEY_VALUE_SYNC_OPTION_FIELDS,
   PKI_SYNC_MAP,
   VALUE_SYNC_OPTION_FIELDS
 } from "@app/helpers/pkiSyncs";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
-  isKeystoreExportFormat,
   PKI_SYNC_EXPORT_FORMAT_LABELS,
   PkiSyncExportFormat,
   usePkiSyncOption,
@@ -107,10 +107,7 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
     syncOptions && "postSyncCommand" in syncOptions ? syncOptions.postSyncCommand : undefined;
   const exportFormat = (syncOptions as { exportFormat?: PkiSyncExportFormat } | undefined)
     ?.exportFormat;
-  const inapplicableOptionKeys = new Set<string>([
-    ...(isKeystoreExportFormat(exportFormat) ? [] : ["keystoreAlias"]),
-    ...(exportFormat === PkiSyncExportFormat.Jks ? [] : ["includeTruststore"])
-  ]);
+  const inapplicableOptionKeys = getUnusedExportOptionKeys(exportFormat);
   const healthCheckCommand =
     syncOptions && "healthCheckCommand" in syncOptions ? syncOptions.healthCheckCommand : undefined;
 

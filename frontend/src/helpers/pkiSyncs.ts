@@ -1,5 +1,11 @@
 import { AppConnection } from "@app/hooks/api/appConnections";
-import { HostCommandVariable, PkiSync, PkiSyncStatus } from "@app/hooks/api/pkiSyncs";
+import {
+  HostCommandVariable,
+  isKeystoreExportFormat,
+  PkiSync,
+  PkiSyncExportFormat,
+  PkiSyncStatus
+} from "@app/hooks/api/pkiSyncs";
 
 export const PKI_SYNC_MAP: Record<
   PkiSync,
@@ -184,6 +190,17 @@ export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "group", label: "Group" }
 ] as const;
 
+export const getUnusedExportOptionKeys = (exportFormat?: PkiSyncExportFormat): Set<string> => {
+  if (!exportFormat) return new Set();
+  return new Set([
+    ...(exportFormat === PkiSyncExportFormat.Pem
+      ? []
+      : ["combineCertificateChain", "pemCertificateExtension"]),
+    ...(isKeystoreExportFormat(exportFormat) ? [] : ["keystoreAlias"]),
+    ...(exportFormat === PkiSyncExportFormat.Jks ? [] : ["includeTruststore"])
+  ]);
+};
+
 export const POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS: Record<HostCommandVariable, string> = {
   [HostCommandVariable.CertificatePath]: "Full path of the certificate file delivered this run",
   [HostCommandVariable.CertificateDirectory]: "The destination directory",
@@ -233,9 +250,3 @@ export const getPkiSyncFailureMessage = (
     return message;
   }
 };
-
-// A sync that succeeded can still carry a message, such as files it could not clean up.
-export const getPkiSyncWarningMessage = (
-  status: PkiSyncStatus | null | undefined,
-  message: string | null | undefined
-): string | null => (status === PkiSyncStatus.Succeeded && message ? message : null);

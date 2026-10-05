@@ -123,54 +123,61 @@ const refineTargetHost = (data: unknown, ctx: z.RefinementCtx) => {
 const isServerDestination = (destination: PkiSync) =>
   destination === PkiSync.WindowsServer || destination === PkiSync.LinuxServer;
 
-const isServerSyncForm = <T extends { destination: PkiSync }>(
-  data: T
-): data is Extract<T, { destination: PkiSync.WindowsServer | PkiSync.LinuxServer }> =>
-  isServerDestination(data.destination);
-
-// Only keystore formats use the password, so a value left behind after switching to PEM is ignored.
-const refineExportPassword = (
-  data: { destination: PkiSync; syncOptions?: unknown; credentials?: unknown },
-  ctx: z.RefinementCtx
-) => {
-  const password = (data.credentials as { exportPassword?: string } | undefined)?.exportPassword;
-  const exportFormat = (data.syncOptions as { exportFormat?: PkiSyncExportFormat } | undefined)
-    ?.exportFormat;
-  if (!isServerDestination(data.destination) || !password || !isKeystoreExportFormat(exportFormat))
-    return;
-  const result = ExportPasswordSchema.safeParse(password);
-  if (!result.success) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["credentials", "exportPassword"],
-      message: result.error.issues[0]?.message ?? "Invalid export password"
-    });
-  }
+type TKeystoreFieldIssue = {
+  path: ["credentials", "exportPassword"] | ["syncOptions", "keystoreAlias"];
+  message: string;
 };
 
-// The alias is kept while switching formats, so it is only validated when a keystore format uses it.
-const refineKeystoreAlias = (
-  data: { destination: PkiSync; syncOptions?: unknown },
-  ctx: z.RefinementCtx
-) => {
+// Values left behind after switching to PEM are not checked, since only keystore formats use them.
+export const getKeystoreFieldIssues = (
+  data: { destination?: PkiSync; syncOptions?: unknown; credentials?: unknown },
+  { requirePassword }: { requirePassword: boolean }
+): TKeystoreFieldIssue[] => {
   const { exportFormat, keystoreAlias } = (data.syncOptions ?? {}) as {
     exportFormat?: PkiSyncExportFormat;
     keystoreAlias?: string;
   };
-  if (
-    !isServerDestination(data.destination) ||
-    !keystoreAlias ||
-    !isKeystoreExportFormat(exportFormat)
-  )
-    return;
-  const result = KeystoreAliasSchema.safeParse(keystoreAlias);
-  if (!result.success) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["syncOptions", "keystoreAlias"],
-      message: result.error.issues[0]?.message ?? "Invalid keystore alias"
-    });
+  if (!data.destination || !isServerDestination(data.destination)) return [];
+  if (!isKeystoreExportFormat(exportFormat)) return [];
+
+  const issues: TKeystoreFieldIssue[] = [];
+  const password = (data.credentials as { exportPassword?: string } | undefined)?.exportPassword;
+  if (!password) {
+    if (requirePassword) {
+      issues.push({
+        path: ["credentials", "exportPassword"],
+        message: KEYSTORE_PASSWORD_REQUIRED_MESSAGE
+      });
+    }
+  } else {
+    const result = ExportPasswordSchema.safeParse(password);
+    if (!result.success) {
+      issues.push({
+        path: ["credentials", "exportPassword"],
+        message: result.error.issues[0]?.message ?? "Invalid export password"
+      });
+    }
   }
+  if (keystoreAlias) {
+    const result = KeystoreAliasSchema.safeParse(keystoreAlias);
+    if (!result.success) {
+      issues.push({
+        path: ["syncOptions", "keystoreAlias"],
+        message: result.error.issues[0]?.message ?? "Invalid keystore alias"
+      });
+    }
+  }
+  return issues;
+};
+
+const refineKeystoreFields = (
+  data: { destination: PkiSync; syncOptions?: unknown; credentials?: unknown },
+  ctx: z.RefinementCtx,
+  options: { requirePassword: boolean }
+) => {
+  getKeystoreFieldIssues(data, options).forEach(({ path, message }) =>
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path, message })
+  );
 };
 
 // Drops keystore options the chosen format does not use, since the API rejects them.
@@ -205,26 +212,12 @@ export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
     });
   }
 
-  if (
-    isServerSyncForm(data) &&
-    isKeystoreExportFormat(data.syncOptions?.exportFormat) &&
-    !data.credentials?.exportPassword
-  ) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["credentials", "exportPassword"],
-      message: KEYSTORE_PASSWORD_REQUIRED_MESSAGE
-    });
-  }
-
-  refineExportPassword(data, ctx);
-  refineKeystoreAlias(data, ctx);
+  refineKeystoreFields(data, ctx, { requirePassword: true });
   refineTargetHost(data, ctx);
 });
 
 export const UpdatePkiSyncFormSchema = UpdatePkiSyncUnionSchema.superRefine((data, ctx) => {
-  refineExportPassword(data, ctx);
-  refineKeystoreAlias(data, ctx);
+  refineKeystoreFields(data, ctx, { requirePassword: false });
   refineTargetHost(data, ctx);
 });
 

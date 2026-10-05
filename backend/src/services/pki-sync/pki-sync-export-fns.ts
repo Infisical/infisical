@@ -5,7 +5,6 @@ import {
   generateJksTruststore,
   getJksTruststoreCertificates
 } from "@app/services/certificate/certificate-jks-fns";
-import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 export enum PkiSyncExportFormat {
   Pem = "pem",
@@ -43,71 +42,6 @@ export const KEYSTORE_PASSWORD_REQUIRED_MESSAGE = "A password is required when t
 
 export const JKS_KEYSTORE_SUFFIX = ".jks";
 export const JKS_TRUSTSTORE_SUFFIX = ".truststore.jks";
-
-// A stale truststore still grants trust, so it is removed even when certificate removal is off.
-export const planStaleCertificateFileCleanup = ({
-  previousMetadata,
-  previousExternalIdentifier,
-  writtenPaths,
-  writtenTruststorePaths,
-  deliveredPaths,
-  currentHost,
-  canRemoveCertificates,
-  caseInsensitive = false
-}: {
-  previousMetadata: TSyncMetadata;
-  previousExternalIdentifier?: string | null;
-  writtenPaths: string[];
-  writtenTruststorePaths: string[];
-  deliveredPaths: Set<string>;
-  currentHost: string;
-  canRemoveCertificates: boolean;
-  caseInsensitive?: boolean;
-}) => {
-  const normalize = (filePath: string) => (caseInsensitive ? filePath.toLowerCase() : filePath);
-  const previousFiles = previousMetadata?.files?.length
-    ? previousMetadata.files
-    : [previousExternalIdentifier].filter((filePath): filePath is string => Boolean(filePath));
-  const current = new Set([...writtenPaths, ...deliveredPaths].map(normalize));
-  const staleFiles = previousFiles.filter((filePath) => !current.has(normalize(filePath)));
-
-  const truststores = new Set((previousMetadata?.truststoreFiles ?? []).map((filePath) => filePath.toLowerCase()));
-  const isTruststore = (filePath: string) => truststores.has(filePath.toLowerCase());
-
-  const previousHost = previousMetadata?.host;
-  let filesToRemove: string[] = [];
-  let filesToKeep: string[] = [];
-  if (!previousHost) {
-    // Recorded before hosts were saved, so keep tracking the files without deleting anything yet.
-    filesToKeep = staleFiles;
-  } else if (previousHost.toLowerCase() === currentHost.toLowerCase()) {
-    filesToRemove = canRemoveCertificates ? staleFiles : staleFiles.filter(isTruststore);
-    filesToKeep = canRemoveCertificates ? [] : staleFiles.filter((filePath) => !isTruststore(filePath));
-  }
-
-  const buildSyncMetadata = (filesToRetry: string[]) => {
-    const trackedStaleFiles = [...filesToKeep, ...filesToRetry];
-    return {
-      files: [...writtenPaths, ...trackedStaleFiles],
-      truststoreFiles: [...writtenTruststorePaths, ...trackedStaleFiles.filter(isTruststore)],
-      host: currentHost
-    };
-  };
-
-  return { filesToRemove, buildSyncMetadata };
-};
-
-const MAX_LISTED_STALE_FILES = 3;
-
-export const buildStaleFileWarning = (failures: Array<{ path: string; error: string }>): string | undefined => {
-  if (failures.length === 0) return undefined;
-  const listed = failures
-    .slice(0, MAX_LISTED_STALE_FILES)
-    .map(({ path, error }) => `"${path}" (${error})`)
-    .join(", ");
-  const more = failures.length > MAX_LISTED_STALE_FILES ? ` and ${failures.length - MAX_LISTED_STALE_FILES} more` : "";
-  return `Could not remove ${failures.length} file(s) this sync no longer writes: ${listed}${more}. Removal will be retried on the next sync.`;
-};
 
 export enum PemCertificateExtension {
   Pem = "pem",

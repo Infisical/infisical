@@ -151,7 +151,6 @@ export type TPkiSyncSyncResult = {
     validationErrors?: Array<{ name: string; error: string }>;
   };
   partialFailureMessage?: string;
-  warningMessage?: string;
 };
 
 export type TCreatePkiSyncDTO = {

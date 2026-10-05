@@ -16,7 +16,7 @@ import {
   HoverCardTrigger,
   TBadgeProps
 } from "@app/components/v3";
-import { getPkiSyncFailureMessage, getPkiSyncWarningMessage } from "@app/helpers/pkiSyncs";
+import { getPkiSyncFailureMessage } from "@app/helpers/pkiSyncs";
 import { PkiSyncStatus } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
@@ -55,7 +55,6 @@ export const PkiSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }: Pr
   }
 
   const failureMessage = getPkiSyncFailureMessage(status, lastSyncMessage);
-  const warningMessage = getPkiSyncWarningMessage(status, lastSyncMessage);
 
   const badge = (
     <Badge variant={variant}>
@@ -66,7 +65,7 @@ export const PkiSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }: Pr
 
   if (
     ![PkiSyncStatus.Succeeded, PkiSyncStatus.Failed].includes(status) ||
-    (!lastSyncedAt && !failureMessage && !warningMessage)
+    (!lastSyncedAt && !failureMessage)
   ) {
     return badge;
   }
@@ -86,17 +85,6 @@ export const PkiSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }: Pr
               </div>
               <div className="rounded-sm bg-surface-active p-2 text-xs">
                 {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}
-              </div>
-            </div>
-          )}
-          {warningMessage && (
-            <div>
-              <div className="mb-2 flex items-center gap-1.5 self-start text-warning">
-                <AlertTriangleIcon className="size-3" />
-                <div className="text-xs">Warning</div>
-              </div>
-              <div className="rounded-sm bg-surface-active p-2 text-xs break-words">
-                {warningMessage}
               </div>
             </div>
           )}

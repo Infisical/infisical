@@ -126,6 +126,33 @@ const recoverPrivateKey = (encryptedPrivateKeyInfo: Buffer, password: string) =>
   return plain;
 };
 
+const P256_OID_TLV = Buffer.from("06082a8648ce3d030107", "hex");
+// Public P-256 domain parameters (ECParameters), as "openssl ecparam -param_enc explicit" writes them.
+const P256_EXPLICIT_PARAMETERS = Buffer.from(
+  "3081f7020101302c06072a8648ce3d0101022100ffffffff00000001000000000000000000000000ffffffffffffffffffffffff305b0420ffffffff00000001000000000000000000000000fffffffffffffffffffffffc04205ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b031500c49d360886e704936a6678e1139d26b7819f7e900441046b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c2964fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5022100ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551020101",
+  "hex"
+);
+
+const derLength = (length: number) =>
+  length < 0x80 ? Buffer.from([length]) : Buffer.from([0x82, (length >> 8) & 0xff, length & 0xff]);
+const derSequence = (...parts: Buffer[]) => {
+  const body = Buffer.concat(parts);
+  return Buffer.concat([Buffer.from([0x30]), derLength(body.length), body]);
+};
+
+// Swaps the named-curve OID in a P-256 PKCS#8 key for the explicit parameters it stands for.
+const toExplicitCurvePkcs8 = (namedPkcs8: Buffer) => {
+  const algorithm = Buffer.from("301306072a8648ce3d020106082a8648ce3d030107", "hex");
+  const start = namedPkcs8.indexOf(algorithm);
+  const version = Buffer.from("020100", "hex");
+  const privateKey = namedPkcs8.subarray(start + algorithm.length);
+  return derSequence(
+    version,
+    derSequence(Buffer.from("06072a8648ce3d0201", "hex"), P256_EXPLICIT_PARAMETERS),
+    privateKey
+  );
+};
+
 const der = (pem: string) => new crypto.X509Certificate(pem).raw;
 
 const privateKeyEntry = (jks: Buffer, password: string) => {
@@ -219,6 +246,49 @@ describe("generateJksFromCertificate", () => {
 
     const entry = privateKeyEntry(jks, PASSWORD);
     expectKeyMatchesCertificate(recoverPrivateKey(entry.protectedKey, PASSWORD), entry.chain[0]);
+  });
+
+  test("re-encodes an EC key with explicit curve parameters using the named curve", async () => {
+    const keys = (await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+      "sign",
+      "verify"
+    ])) as CryptoKeyPair;
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "03",
+      name: "CN=explicit.example.com",
+      notBefore: new Date(2026, 0, 1),
+      notAfter: new Date(2027, 0, 1),
+      signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
+      keys
+    });
+    const namedPkcs8 = Buffer.from(await webcrypto.subtle.exportKey("pkcs8", keys.privateKey));
+    const explicitPkcs8 = toExplicitCurvePkcs8(namedPkcs8);
+    const explicitKey = crypto.createPrivateKey({ key: explicitPkcs8, format: "der", type: "pkcs8" });
+    expect(explicitKey.export({ type: "pkcs8", format: "der" }).includes(P256_OID_TLV)).toBe(false);
+
+    const jks = generateJksFromCertificate({
+      certificate: cert.toString("pem"),
+      privateKey: explicitKey.export({ type: "pkcs8", format: "pem" }) as string,
+      password: PASSWORD,
+      alias: "explicit"
+    });
+
+    const entry = privateKeyEntry(jks, PASSWORD);
+    const recovered = recoverPrivateKey(entry.protectedKey, PASSWORD);
+    expect(recovered.includes(P256_OID_TLV)).toBe(true);
+    expectKeyMatchesCertificate(recovered, entry.chain[0]);
+  });
+
+  test("rejects EC keys on curves Java does not support", () => {
+    const { privateKey } = crypto.generateKeyPairSync("ec", { namedCurve: "secp224r1" });
+    expect(() =>
+      generateJksFromCertificate({
+        certificate: leaf.certificate,
+        privateKey: privateKey.export({ type: "pkcs8", format: "pem" }) as string,
+        password: PASSWORD,
+        alias: "a"
+      })
+    ).toThrow("P-256, P-384, and P-521 curves only");
   });
 
   test("rejects a private key that does not belong to the certificate", () => {

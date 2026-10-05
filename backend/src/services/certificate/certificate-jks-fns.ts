@@ -1,4 +1,6 @@
 /* eslint-disable no-bitwise */
+import type { JsonWebKey, KeyObject } from "node:crypto";
+
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -96,6 +98,24 @@ const certificateDer = (pem: string): Buffer => {
 };
 
 const JKS_SUPPORTED_KEY_TYPES = new Set(["rsa", "ec"]);
+const JKS_SUPPORTED_EC_CURVES = new Set(["P-256", "P-384", "P-521"]);
+
+// Java cannot load an EC key encoded with explicit curve parameters, so re-encode it with the named curve.
+const toNamedCurveEcKey = (key: KeyObject): KeyObject => {
+  let jwk: JsonWebKey | undefined;
+  try {
+    jwk = key.export({ format: "jwk" });
+  } catch {
+    jwk = undefined;
+  }
+  if (!jwk?.crv || !JKS_SUPPORTED_EC_CURVES.has(jwk.crv)) {
+    throw new BadRequestError({
+      message:
+        "Java KeyStore export supports EC keys on the P-256, P-384, and P-521 curves only. Use PEM format instead."
+    });
+  }
+  return crypto.nativeCrypto.createPrivateKey({ key: jwk, format: "jwk" });
+};
 
 const privateKeyPkcs8Der = (privateKeyPem: string, leafCertificatePem: string): Buffer => {
   let key;
@@ -111,6 +131,8 @@ const privateKeyPkcs8Der = (privateKeyPem: string, leafCertificatePem: string): 
       message: `Java KeyStore export supports RSA and EC keys only, and this certificate uses a '${key.asymmetricKeyType ?? "unknown"}' key. Use PEM format instead.`
     });
   }
+
+  if (key.asymmetricKeyType === "ec") key = toNamedCurveEcKey(key);
 
   if (!new crypto.nativeCrypto.X509Certificate(leafCertificatePem).checkPrivateKey(key)) {
     throw new BadRequestError({

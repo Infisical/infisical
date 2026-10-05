@@ -3,14 +3,12 @@ import forge from "node-forge";
 import { crypto } from "@app/lib/crypto/cryptography";
 
 import {
-  buildStaleFileWarning,
   exportCertificateForSync,
   getExportedCertificateFileSuffixes,
   getUnusedKeystoreOptionMessage,
   isExportFormatBlockedByFips,
   PemCertificateExtension,
   PkiSyncExportFormat,
-  planStaleCertificateFileCleanup,
   TExportedCertificateFile
 } from "./pki-sync-export-fns";
 
@@ -254,120 +252,5 @@ describe("isExportFormatBlockedByFips", () => {
   test("allows JKS when FIPS mode is off", () => {
     vi.spyOn(crypto, "isFipsModeEnabled").mockReturnValue(false);
     expect(isExportFormatBlockedByFips(PkiSyncExportFormat.Jks)).toBe(false);
-  });
-});
-
-describe("planStaleCertificateFileCleanup", () => {
-  const host = "host-a";
-  const base = {
-    writtenPaths: ["/certs/app.jks"],
-    writtenTruststorePaths: [],
-    deliveredPaths: new Set(["/certs/app.jks"]),
-    currentHost: host
-  };
-  const previousMetadata = {
-    host,
-    files: ["/certs/app.pem", "/certs/app.key", "/certs/app.truststore.jks"],
-    truststoreFiles: ["/certs/app.truststore.jks"]
-  };
-
-  test("removes every stale file when certificate removal is on", () => {
-    const plan = planStaleCertificateFileCleanup({ ...base, previousMetadata, canRemoveCertificates: true });
-    expect(plan.filesToRemove).toEqual(previousMetadata.files);
-    expect(plan.buildSyncMetadata([])).toEqual({ files: ["/certs/app.jks"], truststoreFiles: [], host });
-  });
-
-  test("only removes a recorded truststore when certificate removal is off, and keeps tracking the rest", () => {
-    const plan = planStaleCertificateFileCleanup({ ...base, previousMetadata, canRemoveCertificates: false });
-    expect(plan.filesToRemove).toEqual(["/certs/app.truststore.jks"]);
-    expect(plan.buildSyncMetadata([]).files).toEqual(["/certs/app.jks", "/certs/app.pem", "/certs/app.key"]);
-  });
-
-  test("keeps tracking a file whose removal failed so the next sync retries it", () => {
-    const plan = planStaleCertificateFileCleanup({ ...base, previousMetadata, canRemoveCertificates: false });
-    expect(plan.buildSyncMetadata(["/certs/app.truststore.jks"])).toEqual({
-      files: ["/certs/app.jks", "/certs/app.pem", "/certs/app.key", "/certs/app.truststore.jks"],
-      truststoreFiles: ["/certs/app.truststore.jks"],
-      host
-    });
-  });
-
-  test("keeps a keystore whose certificate name ends in .truststore", () => {
-    const plan = planStaleCertificateFileCleanup({
-      ...base,
-      previousMetadata: { host, files: ["/certs/api.truststore.jks"], truststoreFiles: [] },
-      canRemoveCertificates: false
-    });
-    expect(plan.filesToRemove).toEqual([]);
-    expect(plan.buildSyncMetadata([]).files).toContain("/certs/api.truststore.jks");
-  });
-
-  test("keeps a file another certificate wrote this run", () => {
-    const plan = planStaleCertificateFileCleanup({
-      ...base,
-      deliveredPaths: new Set(["/certs/app.jks", "/certs/app.pem"]),
-      previousMetadata,
-      canRemoveCertificates: true
-    });
-    expect(plan.filesToRemove).toEqual(["/certs/app.key", "/certs/app.truststore.jks"]);
-  });
-
-  test("deletes nothing and keeps tracking files recorded before hosts were saved", () => {
-    const plan = planStaleCertificateFileCleanup({
-      ...base,
-      previousMetadata: { files: ["/certs/app.pem", "/certs/app.key"] },
-      canRemoveCertificates: true
-    });
-    expect(plan.filesToRemove).toEqual([]);
-    expect(plan.buildSyncMetadata([])).toEqual({
-      files: ["/certs/app.jks", "/certs/app.pem", "/certs/app.key"],
-      truststoreFiles: [],
-      host
-    });
-  });
-
-  test("neither deletes nor keeps files recorded on a different host", () => {
-    const plan = planStaleCertificateFileCleanup({
-      ...base,
-      previousMetadata: { ...previousMetadata, host: "host-b" },
-      canRemoveCertificates: true
-    });
-    expect(plan.filesToRemove).toEqual([]);
-    expect(plan.buildSyncMetadata([]).files).toEqual(["/certs/app.jks"]);
-  });
-
-  test("falls back to the external identifier when no files were recorded", () => {
-    const plan = planStaleCertificateFileCleanup({
-      ...base,
-      previousMetadata: { host, files: [] },
-      previousExternalIdentifier: "/certs/app.pfx",
-      canRemoveCertificates: true
-    });
-    expect(plan.filesToRemove).toEqual(["/certs/app.pfx"]);
-  });
-
-  test("compares paths without regard to case when asked", () => {
-    const plan = planStaleCertificateFileCleanup({
-      writtenPaths: ["C:\\certs\\App.jks"],
-      writtenTruststorePaths: [],
-      deliveredPaths: new Set(["C:\\certs\\App.jks"]),
-      currentHost: "HOST-A",
-      previousMetadata: { host, files: ["C:\\certs\\app.jks", "C:\\certs\\app.pem"] },
-      canRemoveCertificates: true,
-      caseInsensitive: true
-    });
-    expect(plan.filesToRemove).toEqual(["C:\\certs\\app.pem"]);
-  });
-});
-
-describe("buildStaleFileWarning", () => {
-  test("returns nothing when every removal succeeded", () => {
-    expect(buildStaleFileWarning([])).toBeUndefined();
-  });
-
-  test("names the files that could not be removed", () => {
-    const warning = buildStaleFileWarning([{ path: "/certs/app.truststore.jks", error: "Permission denied" }]);
-    expect(warning).toContain("/certs/app.truststore.jks");
-    expect(warning).toContain("Permission denied");
   });
 });

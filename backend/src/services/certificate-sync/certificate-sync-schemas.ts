@@ -19,9 +19,7 @@ export const BaseSyncMetadataSchema = z.object({}).catchall(z.unknown());
  * removal targets exactly what was written
  */
 export const ServerSyncMetadataSchema = z.object({
-  files: z.array(z.string()).optional(),
-  truststoreFiles: z.array(z.string()).optional(),
-  host: z.string().optional()
+  files: z.array(z.string()).optional()
 });
 
 export const SyncMetadataSchema = AwsElbSyncMetadataSchema.extend(ServerSyncMetadataSchema.shape)

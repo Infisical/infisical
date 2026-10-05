@@ -161,8 +161,6 @@ Infisical writes a new keystore on every sync instead of adding to the file on t
   Java KeyStore stores aliases in lowercase, so an alias of `Tomcat` is saved as `tomcat`. Java looks up aliases without regard to case, so configuring `Tomcat` in your server still finds the entry.
 </Note>
 
-When you change the export format or turn off **Include Truststore**, the next sync removes a truststore it no longer writes. Other files it no longer writes, such as the `.pem` and `.key` files after a switch to Java KeyStore, are removed only when **Enable Removal of Certificates** is on. If a file can't be removed, the sync still succeeds, shows a warning, and tries again on the next sync.
-
 <Warning>
   Java KeyStore isn't available when Infisical runs in FIPS mode, because the format can only protect private keys with cryptography that isn't FIPS-approved. Use PEM instead.
 </Warning>
