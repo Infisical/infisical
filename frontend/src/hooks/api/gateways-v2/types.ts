@@ -153,6 +153,6 @@ export type TGatewayConnectedResources = {
   dynamicSecrets: TGatewayConnectedDynamicSecret[];
   kubernetesAuths: TGatewayConnectedKubernetesAuth[];
   pkiDiscoveryConfigs: TGatewayConnectedPkiDiscoveryConfig[];
-  pamAccounts: TGatewayConnectedPamAccount[];
-  pamAccountTemplates: TGatewayConnectedPamAccountTemplate[];
+  pamAccounts?: TGatewayConnectedPamAccount[];
+  pamAccountTemplates?: TGatewayConnectedPamAccountTemplate[];
 };

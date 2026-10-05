@@ -37,8 +37,8 @@ const totalCountOf = (r: TGatewayConnectedResources | undefined) =>
       r.dynamicSecrets.length +
       r.kubernetesAuths.length +
       r.pkiDiscoveryConfigs.length +
-      r.pamAccounts.length +
-      r.pamAccountTemplates.length
+      (r.pamAccounts?.length ?? 0) +
+      (r.pamAccountTemplates?.length ?? 0)
     : 0;
 
 const ResourceRow = ({
@@ -171,15 +171,15 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
               </AccordionItem>
             )}
 
-            {(resources?.pamAccounts.length ?? 0) > 0 && (
+            {(resources?.pamAccounts?.length ?? 0) > 0 && (
               <AccordionItem value="pam-accounts">
                 <AccordionTrigger>
                   <span className="flex-1">PAM Accounts</span>
-                  <Badge variant="neutral">{resources?.pamAccounts.length}</Badge>
+                  <Badge variant="neutral">{resources?.pamAccounts?.length}</Badge>
                 </AccordionTrigger>
                 <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
-                    {resources?.pamAccounts.map((a) => (
+                    {resources?.pamAccounts?.map((a) => (
                       <ResourceRow
                         key={a.id}
                         name={a.name}
@@ -196,15 +196,15 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
               </AccordionItem>
             )}
 
-            {(resources?.pamAccountTemplates.length ?? 0) > 0 && (
+            {(resources?.pamAccountTemplates?.length ?? 0) > 0 && (
               <AccordionItem value="pam-account-templates">
                 <AccordionTrigger>
                   <span className="flex-1">PAM Account Templates</span>
-                  <Badge variant="neutral">{resources?.pamAccountTemplates.length}</Badge>
+                  <Badge variant="neutral">{resources?.pamAccountTemplates?.length}</Badge>
                 </AccordionTrigger>
                 <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
-                    {resources?.pamAccountTemplates.map((t) => (
+                    {resources?.pamAccountTemplates?.map((t) => (
                       <ResourceRow
                         key={t.id}
                         name={t.name}

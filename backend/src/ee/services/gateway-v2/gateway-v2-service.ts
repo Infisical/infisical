@@ -79,8 +79,8 @@ type TGatewayV2ServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findByGatewayId" | "countByGatewayId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId" | "countByGatewayId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId" | "countByGatewayId">;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "findByGatewayId" | "countByGatewayId">;
-  pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "findByGatewayId" | "countByGatewayId">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByGatewayId" | "countByGatewayIds">;
+  pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "findByGatewayId" | "countByGatewayIds">;
   resourceAuthMethodService: Pick<
     TResourceAuthMethodServiceFactory,
     | "initAtCreate"
@@ -337,8 +337,8 @@ export const gatewayV2ServiceFactory = ({
         gatewayIds.map((id) => identityKubernetesAuthDAL.countByGatewayId(id).then((count) => ({ id, count })))
       ),
       Promise.all(gatewayIds.map((id) => pkiDiscoveryConfigDAL.countByGatewayId(id).then((count) => ({ id, count })))),
-      Promise.all(gatewayIds.map((id) => pamAccountDAL.countByGatewayId(id).then((count) => ({ id, count })))),
-      Promise.all(gatewayIds.map((id) => pamAccountTemplateDAL.countByGatewayId(id).then((count) => ({ id, count }))))
+      pamAccountDAL.countByGatewayIds(gatewayIds),
+      pamAccountTemplateDAL.countByGatewayIds(gatewayIds)
     ]);
 
     const countMap = new Map<string, number>();

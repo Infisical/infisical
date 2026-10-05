@@ -125,6 +125,8 @@ export type TPamAccountDetail = TPamAccounts &
     isStale: boolean;
   };
 
+const effectiveGatewayIdSql = `coalesce("${TableName.PamAccount}"."gatewayId", "${TableName.PamAccountTemplate}"."gatewayId")`;
+
 export type TPamAccountDALFactory = ReturnType<typeof pamAccountDALFactory>;
 
 export const pamAccountDALFactory = (db: TDbClient) => {
@@ -505,7 +507,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     const docs = await (tx || db.replicaNode())(TableName.PamAccount)
       .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
       .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
-      .where(`${TableName.PamAccount}.gatewayId`, gatewayId)
+      .whereRaw(`${effectiveGatewayIdSql} = ?`, [gatewayId])
       .select(
         `${TableName.PamAccount}.id`,
         `${TableName.PamAccount}.name`,
@@ -516,19 +518,20 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return docs as { id: string; name: string; accountType: string; folderName: string | null }[];
   };
 
-  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
-    const result = await (tx || db.replicaNode())(TableName.PamAccount)
-      .where(`${TableName.PamAccount}.gatewayId`, gatewayId)
-      .count("id")
-      .first();
-
-    return parseInt(String(result?.count || "0"), 10);
-  };
+  const countByGatewayIds = async (gatewayIds: string[], tx?: Knex) =>
+    (await (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .whereRaw(`${effectiveGatewayIdSql} = ANY(?::uuid[])`, [gatewayIds])
+      .groupByRaw(effectiveGatewayIdSql)
+      .select(db.raw(`${effectiveGatewayIdSql} as id`), db.raw("count(*)::int as count"))) as {
+      id: string;
+      count: number;
+    }[];
 
   return {
     ...orm,
     findByGatewayId,
-    countByGatewayId,
+    countByGatewayIds,
     findAccessible,
     findByIdWithDetails,
     findByIdsWithDetails,

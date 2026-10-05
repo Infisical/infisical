@@ -69,14 +69,14 @@ export const pamAccountTemplateDALFactory = (db: TDbClient) => {
       .where(`${TableName.PamAccountTemplate}.gatewayId`, gatewayId)
       .select("id", "name", "type");
 
-  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
-    const result = await (tx || db.replicaNode())(TableName.PamAccountTemplate)
-      .where(`${TableName.PamAccountTemplate}.gatewayId`, gatewayId)
-      .count("id")
-      .first();
-
-    return parseInt(String(result?.count || "0"), 10);
-  };
+  const countByGatewayIds = async (gatewayIds: string[], tx?: Knex) =>
+    (await (tx || db.replicaNode())(TableName.PamAccountTemplate)
+      .whereIn(`${TableName.PamAccountTemplate}.gatewayId`, gatewayIds)
+      .groupBy(`${TableName.PamAccountTemplate}.gatewayId`)
+      .select(`${TableName.PamAccountTemplate}.gatewayId as id`, db.raw("count(*)::int as count"))) as {
+      id: string;
+      count: number;
+    }[];
 
   return {
     ...orm,
@@ -84,6 +84,6 @@ export const pamAccountTemplateDALFactory = (db: TDbClient) => {
     countAccountsByTemplateId,
     getTemplateRotationStats,
     findByGatewayId,
-    countByGatewayId
+    countByGatewayIds
   };
 };
