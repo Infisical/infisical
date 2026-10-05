@@ -115,7 +115,7 @@ type TSecretFolderServiceFactoryDep = {
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "existsByFolderIds">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
   secretImportDAL: Pick<TSecretImportDALFactory, "findImportByFolderIds">;
-  secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
+  secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects" | "$validateSecrets">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
@@ -2003,7 +2003,8 @@ export const secretFolderServiceFactory = ({
             secretApprovalRequestSecretDAL,
             secretQueueService,
             reminderDAL,
-            reminderService
+            reminderService,
+            validateSecrets: secretV2BridgeService.$validateSecrets
           })
         );
       }

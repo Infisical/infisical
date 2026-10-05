@@ -1629,7 +1629,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     secretApprovalRequestSecretDAL,
     secretQueueService,
     reminderDAL,
-    reminderService
+    reminderService,
+    validateSecrets
   } = dto;
 
   const sourceFolder = await folderDAL.findBySecretPath(projectId, sourceEnvironment, sourceSecretPath, tx);
@@ -1811,6 +1812,27 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       );
     }
   }
+
+  // a move writes these secrets at the destination, directly or through a change request, so they are held to
+  // the destination's validation rules. the source copies still exist in this transaction, so they are left out
+  // of the duplicate lookup rather than reported as duplicates of the secrets being moved.
+  await validateSecrets(
+    {
+      projectId,
+      environment: destinationEnvironment,
+      envId: destinationFolder.envId,
+      secretPath: destinationFolder.path,
+      secrets: secretsToApplyAtDestination.map((secret) => ({
+        key: secret.key,
+        // an empty value is stored without ciphertext, but the moved secret is still held to the rules as empty
+        value: secret.value ?? "",
+        secretId: destinationSecretsGroupedByKey[secret.key]?.[0]?.id
+      })),
+      excludedSecretIds: secretsToApplyAtDestination.map((secret) => secret.id)
+    },
+    permission,
+    tx
+  );
 
   const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
     projectId,

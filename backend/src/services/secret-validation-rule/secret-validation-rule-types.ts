@@ -129,6 +129,11 @@ export type TValidateSecretsDTO = {
   envId: string;
   secretPath: string;
   secrets: TSecretToValidate[];
+  /**
+   * Secrets left out of the duplicate lookup without being the ones written, such as the source copies
+   * a move is about to remove. Unlike `secretId`, they bring no version history into the check.
+   */
+  excludedSecretIds?: string[];
 };
 
 export type TFindConstraintsForGeneratedSecretDTO = {

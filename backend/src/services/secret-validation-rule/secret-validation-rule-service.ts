@@ -401,7 +401,8 @@ export const secretValidationRuleServiceFactory = ({
    * every secret in the project back out.
    *
    * The index is built over the value as stored, so a value carrying a `${...}` reference is skipped:
-   * its stored form would never line up with the resolved one anyway.
+   * its stored form would never line up with the resolved one anyway. An empty value is skipped too:
+   * it is stored without an index, so empty secrets never count as duplicates of one another.
    */
   const $findDuplicatesInScope = async (
     {
@@ -409,9 +410,10 @@ export const secretValidationRuleServiceFactory = ({
       environment,
       secretPath,
       secrets,
+      excludedSecretIds: otherExcludedSecretIds = [],
       scope,
       generateSecretBlindIndex
-    }: Pick<TValidateSecretsDTO, "projectId" | "environment" | "secretPath" | "secrets"> & {
+    }: Pick<TValidateSecretsDTO, "projectId" | "environment" | "secretPath" | "secrets" | "excludedSecretIds"> & {
       scope: { envId?: string | null; secretPath: string };
       generateSecretBlindIndex: (value: Buffer) => Promise<string>;
     },
@@ -419,7 +421,7 @@ export const secretValidationRuleServiceFactory = ({
   ): Promise<Record<string, TDuplicateSecret>> => {
     const candidates = secrets.filter(
       (secret): secret is typeof secret & { value: string } =>
-        secret.value !== undefined && !containsSecretReference(secret.value)
+        Boolean(secret.value && !containsSecretReference(secret.value))
     );
     if (!candidates.length) return {};
 
@@ -437,7 +439,10 @@ export const secretValidationRuleServiceFactory = ({
       else seenInBatch.set(blindIndexes[idx], { key: secret.key, environment, secretPath });
     });
 
-    const excludedSecretIds = candidates.map((secret) => secret.secretId).filter(Boolean) as string[];
+    const excludedSecretIds = [
+      ...(candidates.map((secret) => secret.secretId).filter(Boolean) as string[]),
+      ...otherExcludedSecretIds
+    ];
     const existing = await secretDAL.findExistingSecretsWithMatchingValues(
       projectId,
       [...new Set(blindIndexes)],
@@ -477,7 +482,7 @@ export const secretValidationRuleServiceFactory = ({
   };
 
   const validateSecrets = async (
-    { projectId, environment, envId, secretPath, secrets }: TValidateSecretsDTO,
+    { projectId, environment, envId, secretPath, secrets, excludedSecretIds }: TValidateSecretsDTO,
     tx?: Knex
   ) => {
     if (!secrets.length) return;
@@ -536,6 +541,7 @@ export const secretValidationRuleServiceFactory = ({
             environment,
             secretPath,
             secrets,
+            excludedSecretIds,
             scope: reuseAcrossSecretsRule.scope,
             generateSecretBlindIndex
           },

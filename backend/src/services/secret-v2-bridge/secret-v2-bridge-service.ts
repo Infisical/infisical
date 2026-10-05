@@ -3271,7 +3271,8 @@ export const secretV2BridgeServiceFactory = ({
         secretApprovalRequestSecretDAL,
         secretQueueService,
         reminderDAL,
-        reminderService
+        reminderService,
+        validateSecrets: $validateSecrets
       })
     );
 
@@ -4047,6 +4048,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretVersionsByIds,
     findSecretIdsByFolderIdAndKeys,
     $validateSecretReferences,
+    $validateSecrets,
     redactSecretVersionValue
   };
 };
