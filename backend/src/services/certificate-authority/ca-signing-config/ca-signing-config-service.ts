@@ -31,9 +31,7 @@ import {
   VenafiDestinationConfigSchema
 } from "./ca-signing-config-types";
 
-type TExternalSigningType = CaSigningConfigType.Venafi | CaSigningConfigType.AzureAdCs | CaSigningConfigType.Adcs;
-
-const CA_SIGNING_CONFIG_CONNECTION_MAP: Record<TExternalSigningType, AppConnection> = {
+const CA_SIGNING_CONFIG_CONNECTION_MAP: Partial<Record<CaSigningConfigType, AppConnection>> = {
   [CaSigningConfigType.Venafi]: AppConnection.Venafi,
   [CaSigningConfigType.AzureAdCs]: AppConnection.AzureADCS,
   [CaSigningConfigType.Adcs]: AppConnection.ADCS
@@ -69,19 +67,6 @@ export const caSigningConfigServiceFactory = ({
   appConnectionService,
   caAutoRenewalQueue
 }: TCaSigningConfigServiceFactoryDep) => {
-  const validateSigningAppConnectionUsage = async (
-    type: TExternalSigningType,
-    connectionId: string,
-    projectId: string,
-    actor: OrgServiceActor
-  ) => {
-    await appConnectionService.validateAppConnectionUsageById(
-      CA_SIGNING_CONFIG_CONNECTION_MAP[type],
-      { connectionId, projectId },
-      actor
-    );
-  };
-
   const getSigningConfigByCaId = async (internalCaId: string) => {
     const config = await caSigningConfigDAL.findByCaId(internalCaId);
     if (!config) {
@@ -147,12 +132,6 @@ export const caSigningConfigServiceFactory = ({
         throw new BadRequestError({ message: "Destination config is required for Venafi signing" });
       }
       VenafiDestinationConfigSchema.parse(destinationConfig);
-      await validateSigningAppConnectionUsage(
-        CaSigningConfigType.Venafi,
-        appConnectionId,
-        ca.projectId,
-        permissionActor
-      );
     }
 
     // Azure AD CS requires appConnectionId and destinationConfig
@@ -164,12 +143,6 @@ export const caSigningConfigServiceFactory = ({
         throw new BadRequestError({ message: "Destination config is required for Azure AD CS signing" });
       }
       AzureAdCsDestinationConfigSchema.parse(destinationConfig);
-      await validateSigningAppConnectionUsage(
-        CaSigningConfigType.AzureAdCs,
-        appConnectionId,
-        ca.projectId,
-        permissionActor
-      );
     }
 
     if (type === CaSigningConfigType.Adcs) {
@@ -180,7 +153,15 @@ export const caSigningConfigServiceFactory = ({
         throw new BadRequestError({ message: "Destination config is required for ADCS signing" });
       }
       AdcsDestinationConfigSchema.parse(destinationConfig);
-      await validateSigningAppConnectionUsage(CaSigningConfigType.Adcs, appConnectionId, ca.projectId, permissionActor);
+    }
+
+    const signingConnectionApp = CA_SIGNING_CONFIG_CONNECTION_MAP[type];
+    if (signingConnectionApp && appConnectionId) {
+      await appConnectionService.validateAppConnectionUsageById(
+        signingConnectionApp,
+        { connectionId: appConnectionId, projectId: ca.projectId },
+        permissionActor
+      );
     }
 
     const isExternalCa = EXTERNAL_SIGNING_TYPES.includes(type);
@@ -307,18 +288,21 @@ export const caSigningConfigServiceFactory = ({
       lastExternalCertificateId?: string;
     } = {};
 
+    const signingConnectionApp = CA_SIGNING_CONFIG_CONNECTION_MAP[existing.type as CaSigningConfigType];
+    if (signingConnectionApp && appConnectionId !== undefined) {
+      await appConnectionService.validateAppConnectionUsageById(
+        signingConnectionApp,
+        { connectionId: appConnectionId, projectId: ca.projectId },
+        permissionActor
+      );
+    }
+
     if (existing.type === CaSigningConfigType.Internal && parentCaId !== undefined) {
       updateData.parentCaId = parentCaId;
     }
 
     if (existing.type === CaSigningConfigType.Venafi) {
       if (appConnectionId !== undefined) {
-        await validateSigningAppConnectionUsage(
-          CaSigningConfigType.Venafi,
-          appConnectionId,
-          ca.projectId,
-          permissionActor
-        );
         updateData.appConnectionId = appConnectionId;
       }
       if (destinationConfig !== undefined) {
@@ -330,12 +314,6 @@ export const caSigningConfigServiceFactory = ({
 
     if (existing.type === CaSigningConfigType.AzureAdCs) {
       if (appConnectionId !== undefined) {
-        await validateSigningAppConnectionUsage(
-          CaSigningConfigType.AzureAdCs,
-          appConnectionId,
-          ca.projectId,
-          permissionActor
-        );
         updateData.appConnectionId = appConnectionId;
       }
       if (destinationConfig !== undefined) {
@@ -346,12 +324,6 @@ export const caSigningConfigServiceFactory = ({
 
     if (existing.type === CaSigningConfigType.Adcs) {
       if (appConnectionId !== undefined) {
-        await validateSigningAppConnectionUsage(
-          CaSigningConfigType.Adcs,
-          appConnectionId,
-          ca.projectId,
-          permissionActor
-        );
         updateData.appConnectionId = appConnectionId;
       }
       if (destinationConfig !== undefined) {
