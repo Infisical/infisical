@@ -2907,6 +2907,8 @@ const OverviewPageContent = () => {
           intent: {
             ...HoneyTokensUpgradeIntent,
             upgradeLabel: "Increase Honey Token Limit",
+            description: "Compare plans to increase your organization's honey token allowance.",
+            quota: data,
             quotaNotice: `You have used ${data.used} out of the ${data.limit} honey token limit.`
           }
         });

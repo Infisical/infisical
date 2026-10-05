@@ -25,6 +25,8 @@ type Props = {
   paywallKey: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onOpenAutoFocus?: (event: Event) => void;
+  onCloseAutoFocus?: (event: Event) => void;
 };
 
 const CapabilityUpgradeDialog = ({
@@ -32,6 +34,8 @@ const CapabilityUpgradeDialog = ({
   paywallKey,
   isOpen,
   onOpenChange,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   canManageBilling = false,
   canReadBilling = false,
   productPlans = []
@@ -139,12 +143,10 @@ const CapabilityUpgradeDialog = ({
       scopeName={isInstance ? "Infisical Instance" : (intent.productName ?? "Infisical Platform")}
       icon={scopeIcon}
       title={intent.title}
-      description={
-        isInstance
-          ? "Review licensing for your self-hosted instance."
-          : "Review your organization's subscription options."
-      }
+      description={scopeDescription}
       onOpenChange={onOpenChange}
+      onOpenAutoFocus={onOpenAutoFocus}
+      onCloseAutoFocus={onCloseAutoFocus}
       footer={
         <Button
           data-upgrade-cta
@@ -158,9 +160,9 @@ const CapabilityUpgradeDialog = ({
         </Button>
       }
     >
-      <section aria-label="Capability details" className="flex flex-col gap-4">
+      <section aria-label="Feature details" className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-medium">Capability Details</h3>
+          <h3 className="text-sm font-medium">Feature Details</h3>
           {intent.isEnterpriseFeature && <Badge variant="info">Enterprise Feature</Badge>}
         </div>
         <ul className="flex flex-col gap-4">
@@ -169,19 +171,6 @@ const CapabilityUpgradeDialog = ({
             <div className="text-sm">
               <p className="font-medium">{intent.title.replace(/^Unlock /, "")}</p>
               <p className="mt-1 text-muted">{intent.description}</p>
-            </div>
-          </li>
-          <li className="flex items-start gap-3">
-            {isInstance ? (
-              <Server aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted" />
-            ) : (
-              <Shield aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted" />
-            )}
-            <div className="text-sm">
-              <p className="font-medium">
-                {isInstance ? "Instance Licensing" : "Subscription Scope"}
-              </p>
-              <p className="mt-1 text-muted">{scopeDescription}</p>
             </div>
           </li>
         </ul>

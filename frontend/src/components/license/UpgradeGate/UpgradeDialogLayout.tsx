@@ -18,6 +18,8 @@ type Props = {
   description: string;
   color?: string;
   onOpenChange: (isOpen: boolean) => void;
+  onOpenAutoFocus?: (event: Event) => void;
+  onCloseAutoFocus?: (event: Event) => void;
   children: ReactNode;
   footer: ReactNode;
 };
@@ -39,12 +41,18 @@ export const UpgradeDialogLayout = ({
   description,
   color,
   onOpenChange,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   children,
   footer
 }: Props) => (
   <Dialog open onOpenChange={onOpenChange}>
     <DialogContent
-      onOpenAutoFocus={focusUpgradeContinuation}
+      onOpenAutoFocus={(event) => {
+        onOpenAutoFocus?.(event);
+        if (!event.defaultPrevented) focusUpgradeContinuation(event);
+      }}
+      onCloseAutoFocus={onCloseAutoFocus}
       showCloseButton={false}
       height="fixed"
       overlayClassName="z-[70]"

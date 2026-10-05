@@ -51,6 +51,7 @@ export type UpgradeIntent = {
   title: string;
   description: string;
   quotaNotice?: string;
+  quota?: { used: number; limit: number };
 };
 
 export const DynamicSecretsUpgradeIntent = {

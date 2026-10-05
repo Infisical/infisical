@@ -82,9 +82,7 @@ export const ProductUpgradeDialog = ({
         {plans.map((candidate) => (
           <TabsTrigger key={candidate.tier} value={candidate.tier} className="items-center">
             {candidate.name}
-            {candidate.tier === currentPlanTier && (
-              <span className="text-xs text-muted">· Current</span>
-            )}
+            {candidate.tier === currentPlanTier && <span className="text-muted">· Current</span>}
           </TabsTrigger>
         ))}
       </TabsList>

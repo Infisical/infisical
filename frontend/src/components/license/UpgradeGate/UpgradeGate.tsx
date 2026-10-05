@@ -50,7 +50,12 @@ import {
   ProductUpgradeDialog
 } from "./ProductUpgradeDialog";
 import { ProductUpgradeSuccessDialog } from "./ProductUpgradeSuccessDialog";
-import { BillingPlan, buildUpgradeReturnPath, UpgradeIntent } from "./upgrade-intents";
+import {
+  BillingPlan,
+  buildUpgradeReturnPath,
+  UpgradeFeature,
+  UpgradeIntent
+} from "./upgrade-intents";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
 
@@ -63,6 +68,8 @@ type Props = {
 
 type CapabilityProps = Omit<Props, "intent"> & {
   intent: CapabilityUpgradeIntent;
+  onOpenAutoFocus?: (event: Event) => void;
+  onCloseAutoFocus?: (event: Event) => void;
 };
 
 type PlanPrice = {
@@ -250,7 +257,7 @@ const ProductUpgradeHeader = ({ product, productName, description }: ProductUpgr
 );
 
 const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props) => {
-  const [selectedTier, setSelectedTier] = useState<string>(intent.planKey);
+  const [selectedTier, setSelectedTier] = useState<string>();
   const [cadence, setCadence] = useState<BillingV2Cadence>("annual");
   const [startedTrial, setStartedTrial] = useState<BillingV2Plan | null>(null);
   const refreshedReturn = useRef<string>();
@@ -289,7 +296,32 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
   const hasActiveTrial = Boolean(entitlement?.isTrialing || entitlement?.trialPlan);
   const activeTier = entitlement?.trialPlan ?? entitlement?.planTier;
   const activePlanIndex = paidPlans.findIndex((candidate) => candidate.tier === activeTier);
-  const targetPlanIndex = paidPlans.findIndex((candidate) => candidate.tier === intent.planKey);
+  const honeyTokenQuota =
+    intent.featureKey === UpgradeFeature.HoneyTokens ? intent.quota : undefined;
+  const honeyTokenComparison = product?.compare?.find(
+    (row) => row.label.trim().toLowerCase() === "honey tokens"
+  );
+  const higherQuotaPlans = honeyTokenQuota
+    ? paidPlans.filter((candidate, index) => {
+        if (activePlanIndex < 0 || index <= activePlanIndex) return false;
+        if (!candidate.upgradeable && !candidate.trialable && !candidate.salesLed) return false;
+        const allowance = honeyTokenComparison?.cells[candidate.tier];
+        if (typeof allowance === "string" && allowance.trim().toLowerCase() === "unlimited") {
+          return true;
+        }
+        const numericAllowance =
+          typeof allowance === "number" ||
+          (typeof allowance === "string" && /^\d+$/.test(allowance.trim()))
+            ? Number(allowance)
+            : undefined;
+        return (
+          numericAllowance !== undefined &&
+          numericAllowance > Math.max(honeyTokenQuota.used, honeyTokenQuota.limit)
+        );
+      })
+    : [];
+  const requiredTier = honeyTokenQuota ? higherQuotaPlans[0]?.tier : intent.planKey;
+  const targetPlanIndex = paidPlans.findIndex((candidate) => candidate.tier === requiredTier);
   const returnedPlan =
     canLoadBilling &&
     returnedFromBilling &&
@@ -351,7 +383,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
 
   useEffect(() => {
     if (!isOpen) {
-      setSelectedTier(intent.planKey);
+      setSelectedTier(undefined);
       setCadence("annual");
       setStartedTrial(null);
     }
@@ -371,7 +403,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     window.location.assign(`/organizations/${billingOrgId}/billing?${search.toString()}`);
   };
 
-  if (isSubOrganization) {
+  if (isSubOrganization && canReadBilling) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
@@ -429,11 +461,8 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
             </AlertDescription>
           </Alert>
           <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button data-upgrade-cta variant="org" onClick={() => onOpenChange(false)}>
               Close
-            </Button>
-            <Button data-upgrade-cta variant="org" onClick={openRootBilling}>
-              Continue to Billing
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -602,10 +631,10 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
       ? product.baselinePlan
       : undefined;
   const plans = baselinePlan ? [baselinePlan, ...paidPlans] : paidPlans;
-  const requiredPlan = plans.find((candidate) => candidate.tier === intent.planKey);
+  const requiredPlan = plans.find((candidate) => candidate.tier === requiredTier);
   const plan =
     plans.find((candidate) => candidate.tier === selectedTier) ?? requiredPlan ?? plans[0];
-  if (!plan) {
+  if (!plan || (honeyTokenQuota && !requiredPlan)) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
@@ -619,17 +648,32 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
             productName={productName}
             description="Review product plans and manage access for your team."
           />
-          <Alert variant="danger">
+          <Alert variant={honeyTokenQuota ? "info" : "danger"}>
             <CircleAlert />
-            <AlertTitle>Plan Unavailable</AlertTitle>
-            <AlertDescription>This plan is not available for your organization.</AlertDescription>
+            <AlertTitle>{honeyTokenQuota ? "Plan Limit Reached" : "Plan Unavailable"}</AlertTitle>
+            <AlertDescription>
+              {honeyTokenQuota
+                ? `${intent.quotaNotice} Contact our team to discuss a higher honey token allowance.`
+                : "This plan is not available for your organization."}
+            </AlertDescription>
           </Alert>
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
-            <Button data-upgrade-cta variant="org" onClick={openRootBilling}>
-              View Billing Options
+            <Button
+              data-upgrade-cta
+              variant="org"
+              onClick={
+                honeyTokenQuota
+                  ? () => {
+                      trackUpgradeClick();
+                      window.open(CONTACT_SALES_URL, "_blank", "noopener,noreferrer");
+                    }
+                  : openRootBilling
+              }
+            >
+              {honeyTokenQuota ? "Contact Sales" : "View Billing Options"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -637,8 +681,11 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     );
   }
 
-  const requiredPlanIndex = plans.findIndex((candidate) => candidate.tier === intent.planKey);
-  const planMeetsRequirement = Boolean(requiredPlan) && plans.indexOf(plan) >= requiredPlanIndex;
+  const requiredPlanIndex = plans.findIndex((candidate) => candidate.tier === requiredTier);
+  const planMeetsRequirement =
+    Boolean(requiredPlan) &&
+    plans.indexOf(plan) >= requiredPlanIndex &&
+    (!honeyTokenQuota || higherQuotaPlans.includes(plan));
   const selfServe = overview.data.mode !== "managed" && overview.data.selfServe;
   const { checkoutFrozen } = overview.data;
   const trialAvailable =
@@ -876,7 +923,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
           {plan.tier === product.baselinePlan?.tier && (
             <div className="flex items-center justify-center gap-3 px-1 text-sm">
               <span className="text-muted">Current plan</span>
-              <span className="font-medium text-foreground">FREE</span>
+              <span className="font-medium text-foreground">Free</span>
             </div>
           )}
           {!plan.salesLed &&
