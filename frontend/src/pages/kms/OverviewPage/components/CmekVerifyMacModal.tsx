@@ -91,13 +91,13 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
         <div className="mb-6 flex flex-col gap-2">
           <div className="flex items-center justify-between space-x-2">
             <span className="text-sm opacity-60">MAC Status:</span>
-            <Tooltip>
+            <Tooltip hoverable selectable={false} delayDuration={50}>
               <TooltipTrigger asChild>
                 <Badge variant={macValid ? "success" : "danger"} tabIndex={0}>
                   {macValid ? "Valid" : "Invalid"}
                 </Badge>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
+              <TooltipContent className="max-w-xs" sideOffset={5}>
                 {macValid
                   ? "The MAC is valid. It was generated using the same key as the one used to verify it."
                   : "The MAC is invalid. It was not generated using the same key as the one used to verify it, or the data has been tampered with."}
@@ -126,13 +126,13 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
           <Field className="mb-4" data-invalid={Boolean(errors.mac)}>
             <div className="flex items-center gap-1">
               <FieldLabel htmlFor={`${fieldId}-mac`}>Message Authentication Code</FieldLabel>
-              <Tooltip>
+              <Tooltip hoverable selectable={false} delayDuration={50}>
                 <TooltipTrigger asChild>
                   <IconButton variant="ghost" size="2xs" aria-label="About MAC encoding">
                     <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
                   </IconButton>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
+                <TooltipContent className="max-w-xs" sideOffset={5}>
                   Must be base64-encoded, like the MAC you received when you generated it.
                 </TooltipContent>
               </Tooltip>
@@ -159,13 +159,13 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
                 <FieldLabel htmlFor={`${fieldId}-encode-base-64`}>
                   Data is Base64 encoded
                 </FieldLabel>
-                <Tooltip>
+                <Tooltip hoverable selectable={false} delayDuration={50}>
                   <TooltipTrigger asChild>
                     <IconButton variant="ghost" size="xs" aria-label="About Base64 encoding">
                       <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
                     </IconButton>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
+                  <TooltipContent className="max-w-xs" sideOffset={5}>
                     Toggle this switch on if your data is already Base64 encoded to avoid redundant
                     encoding.
                   </TooltipContent>
