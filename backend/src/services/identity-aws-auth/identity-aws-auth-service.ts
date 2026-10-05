@@ -41,7 +41,7 @@ import { recordIdentityLastLoginDebounced } from "../membership-identity/members
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityAwsAuthDALFactory } from "./identity-aws-auth-dal";
-import { extractPrincipalArn, extractPrincipalArnEntity } from "./identity-aws-auth-fns";
+import { extractPrincipalArn, extractPrincipalArnEntity, isAwsRootPrincipalArn } from "./identity-aws-auth-fns";
 import {
   TAttachAwsAuthDTO,
   TAwsGetCallerIdentityHeaders,
@@ -174,6 +174,18 @@ export const identityAwsAuthServiceFactory = ({
         headers,
         data: body
       });
+
+      if (isAwsRootPrincipalArn(Arn)) {
+        throw new UnauthorizedError({
+          message: "Access denied: AWS account root principals cannot use AWS Auth.",
+          detail: {
+            reasonCode: "root_principal_not_supported",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
+      }
 
       if (identityAwsAuth.allowedAccountIds) {
         // validate if Account is in the list of allowed Account IDs
