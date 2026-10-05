@@ -1692,6 +1692,12 @@ export const secretApprovalRequestServiceFactory = ({
   }: TGenerateSecretApprovalRequestDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
+    if (await secretChangePolicyBridgeService.findSecretChangePolicy(policy.id)) {
+      throw new BadRequestError({
+        message: `Secret approval policy with ID '${policy.id}' is on the new approval system, which does not support projects that have not been upgraded to the latest secrets version.`
+      });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
