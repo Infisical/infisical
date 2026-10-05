@@ -210,7 +210,6 @@ export const PamSessionsPage = () => {
         <title>{t("common.head-title", { title: "Sessions" })}</title>
       </Helmet>
       <PageHeader
-        className="mb-10"
         scope={ProjectType.PAM}
         icon={Video}
         title="Sessions"

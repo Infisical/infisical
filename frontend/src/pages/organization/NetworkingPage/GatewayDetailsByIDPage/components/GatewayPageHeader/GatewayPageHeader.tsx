@@ -92,7 +92,6 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
   return (
     <>
       <PageHeader
-        className="mb-10"
         scope="org"
         title={gateway.name}
         description="Gateway configuration and authentication"

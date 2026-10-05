@@ -86,7 +86,6 @@ export const IntegrationDetailsByIDPage = () => {
         {integration ? (
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
-              className="mb-10"
               scope={ProjectType.SecretManager}
               title={`${integrationSlugNameMapping[integration.integration]} Integration`}
             >

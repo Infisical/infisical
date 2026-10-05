@@ -88,14 +88,13 @@ export const SettingsPage = () => {
       </Helmet>
       <div className="w-full max-w-8xl">
         <PageHeader
-          className="mb-10"
           scope={ProjectType.SecretManager}
           title={activeTab?.name ?? baseTitle}
           description={activeTab?.description}
         >
           <LookingForOrgPageLink page="settings" />
         </PageHeader>
-        <div className="grow rounded-br-md rounded-bl-md py-5 outline-hidden xl:overflow-x-hidden xl:py-0">
+        <div className="grow rounded-br-md rounded-bl-md pb-5 outline-hidden xl:overflow-x-hidden xl:pb-0">
           {ActiveTabComponent ? <ActiveTabComponent /> : null}
         </div>
       </div>

@@ -17,7 +17,6 @@ export const PamAuditLogsPage = () => {
         <title>{t("common.head-title", { title: "Audit Logs" })}</title>
       </Helmet>
       <PageHeader
-        className="mb-10"
         scope={ProjectType.PAM}
         icon={FileText}
         title="Audit Logs"

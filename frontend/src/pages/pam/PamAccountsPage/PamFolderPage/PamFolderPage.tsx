@@ -217,7 +217,6 @@ export const PamFolderPage = () => {
       </Helmet>
 
       <PageHeader
-        className="mb-10"
         title="Accounts"
         description="Access and manage privileged accounts."
         scope={ProjectType.PAM}

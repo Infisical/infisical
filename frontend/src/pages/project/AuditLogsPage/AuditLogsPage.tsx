@@ -18,7 +18,6 @@ export const AuditLogsPage = () => {
       <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader
-            className="mb-10"
             scope={currentProject.type}
             title={isCertManager ? "Audit logs" : "Project Audit logs"}
             description="Audit logs for security and compliance teams to monitor information access."

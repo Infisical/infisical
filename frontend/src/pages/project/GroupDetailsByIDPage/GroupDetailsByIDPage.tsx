@@ -129,7 +129,7 @@ const Page = () => {
   const backLinkLabel = isCertManager ? "Groups" : "Project Groups";
 
   return (
-    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="@container mx-auto flex max-w-8xl flex-col">
       {groupMembership ? (
         <>
           <PageHeader

@@ -68,7 +68,6 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
             Back to Templates
           </Button>
           <PageHeader
-            className="mb-10"
             scope={projectType}
             title={templateName ?? "Project Template"}
             description={

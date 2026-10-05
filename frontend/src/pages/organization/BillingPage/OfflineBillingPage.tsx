@@ -23,7 +23,6 @@ export const OfflineBillingPage = () => {
       <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader
-            className="mb-10"
             scope="org"
             title={t("billing.title")}
             description="Your plan is provisioned through an offline license."
