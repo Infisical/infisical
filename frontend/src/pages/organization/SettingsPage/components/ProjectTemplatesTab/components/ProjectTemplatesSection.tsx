@@ -74,8 +74,6 @@ export const ProjectTemplatesSection = () => {
               onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
               intent={{
                 ...ProjectTemplatesUpgradeIntent,
-                description:
-                  "Your current plan does not include access to project templates. To unlock this feature, please upgrade to Infisical Enterprise plan.",
                 isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
               }}
             />

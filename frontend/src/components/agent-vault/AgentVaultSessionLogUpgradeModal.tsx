@@ -15,8 +15,6 @@ export const AgentVaultSessionLogUpgradeModal = ({ isOpen, onOpenChange }: Props
     onOpenChange={onOpenChange}
     intent={{
       ...AgentVaultSessionLogsUpgradeIntent,
-      description:
-        "Your current plan does not include session logs, which record every request your agents make. To unlock them, upgrade to the Infisical Enterprise plan.",
       isEnterpriseFeature: true
     }}
   />

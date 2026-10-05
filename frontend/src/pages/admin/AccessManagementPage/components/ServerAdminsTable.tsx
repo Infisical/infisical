@@ -402,9 +402,7 @@ export const ServerAdminsTable = () => {
         />
         <UpgradeGate
           intent={{
-            ...InstanceUserManagementUpgradeIntent,
-            description:
-              "Your current plan does not allow removing server admins. Contact our team to update your instance license."
+            ...InstanceUserManagementUpgradeIntent
           }}
           paywallKey="admin.server-admins"
           isOpen={popUp.upgradePlan.isOpen}

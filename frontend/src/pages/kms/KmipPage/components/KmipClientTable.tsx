@@ -358,8 +358,6 @@ export const KmipClientTable = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...KmipUpgradeIntent,
-          description:
-            "Your current plan does not include access to KMIP. To unlock this feature, please upgrade to Infisical Enterprise plan.",
           isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
         }}
       />

@@ -102,15 +102,15 @@ const CapabilityUpgradeDialog = ({
 
   let billingTitle = "Organization Subscription Required";
   let billingDescription =
-    "This capability is shared across products. Review your billing options to find a subscription that includes it.";
+    "This feature is shared across products. Review your billing options to find a subscription that includes it.";
   if (isInstance) {
     billingTitle = "Instance License Required";
     billingDescription =
-      "This capability is licensed for the entire instance, not an individual product. Contact our team to discuss your deployment.";
+      "This feature is licensed for the entire instance, not an individual product. Contact our team to discuss your deployment.";
   } else if (!canReadBilling) {
     billingTitle = "Billing Access Required";
     billingDescription =
-      "Ask an organization member with billing access to review subscription options for this capability.";
+      "Ask an organization member with billing access to review subscription options for this feature.";
   } else if (isSubOrganization) {
     billingTitle = "Root Organization Billing";
     billingDescription =
@@ -122,7 +122,7 @@ const CapabilityUpgradeDialog = ({
   } else if (isProduct) {
     billingTitle = "Product Subscription Required";
     billingDescription =
-      "Review your billing options to find a subscription that includes this capability.";
+      "Review your billing options to find a subscription that includes this feature.";
   }
 
   const visiblePlans = isProduct

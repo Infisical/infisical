@@ -498,9 +498,7 @@ export const UserIdentitiesTable = () => {
         />
         <UpgradeGate
           intent={{
-            ...InstanceUserManagementUpgradeIntent,
-            description:
-              popUp.upgradePlan.data?.text ?? InstanceUserManagementUpgradeIntent.description
+            ...InstanceUserManagementUpgradeIntent
           }}
           paywallKey="admin.user-identities"
           isOpen={popUp.upgradePlan.isOpen}

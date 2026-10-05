@@ -106,8 +106,6 @@ export const IdentitySingleRoleModify = ({ identityProjectMembership, role, onSu
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...CustomRolesUpgradeIntent,
-          description:
-            "Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan.",
           isEnterpriseFeature: true
         }}
       />

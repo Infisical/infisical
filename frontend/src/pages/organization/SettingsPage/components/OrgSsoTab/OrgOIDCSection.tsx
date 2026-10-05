@@ -275,8 +275,6 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...OidcSsoUpgradeIntent,
-          description:
-            "Your current plan does not include access to OIDC SSO. To unlock this feature, please upgrade to Infisical Enterprise plan.",
           isEnterpriseFeature: true
         }}
       />

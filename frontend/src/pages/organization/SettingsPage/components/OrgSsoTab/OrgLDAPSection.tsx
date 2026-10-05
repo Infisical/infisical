@@ -221,8 +221,6 @@ export const OrgLDAPSection = ({ onSwitchProvider }: Props): JSX.Element => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...LdapUpgradeIntent,
-          description:
-            "Your current plan does not include access to LDAP authentication. To unlock this feature, please upgrade to Infisical Enterprise plan.",
           isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
         }}
       />

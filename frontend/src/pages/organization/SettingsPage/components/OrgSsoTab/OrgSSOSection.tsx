@@ -267,7 +267,6 @@ export const OrgSSOSection = ({ onSwitchProvider }: Props): JSX.Element => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...SamlSsoUpgradeIntent,
-          description: popUp.upgradePlan.data?.text ?? SamlSsoUpgradeIntent.description,
           isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
         }}
       />

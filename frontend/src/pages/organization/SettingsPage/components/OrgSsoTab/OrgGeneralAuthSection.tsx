@@ -392,7 +392,6 @@ export const OrgGeneralAuthSection = ({
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...SsoEnforcementUpgradeIntent,
-          description: `Your current plan does not include access to ${popUp.upgradePlan.data?.featureName ?? "enforce SAML SSO"}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.planName ?? "Pro"} plan.`,
           isEnterpriseFeature: false
         }}
       />

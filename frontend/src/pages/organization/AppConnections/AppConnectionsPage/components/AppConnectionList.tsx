@@ -215,8 +215,6 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...EnterpriseAppConnectionsUpgradeIntent,
-          description:
-            "All App Connections can be unlocked if you switch to Infisical Enterprise plan.",
           isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
         }}
       />

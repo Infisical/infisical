@@ -33,7 +33,7 @@ export const getProductPlanSummaries = (plans: SubscriptionPlan["productPlans"])
 
     const isTrialing = Boolean(plan.trialPlanKey || plan.status === "trialing");
     const planKey = isTrialing ? (plan.trialPlanKey ?? plan.planKey) : plan.planKey;
-    if (!planKey) return;
+    if (!planKey || planKey === "free") return;
 
     const productKey =
       plan.productKey === "legacy_secret_management" ? "secrets_management" : plan.productKey;
@@ -41,7 +41,12 @@ export const getProductPlanSummaries = (plans: SubscriptionPlan["productPlans"])
 
     summaries.set(productKey, {
       productKey,
-      productName: PRODUCT_NAMES.get(productKey) ?? productKey.replace(/_/g, " "),
+      productName:
+        PRODUCT_NAMES.get(productKey) ??
+        productKey
+          .split("_")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" "),
       planLabel: PLAN_LABELS.get(planKey) ?? planKey.replace(/_/g, " "),
       isTrialing,
       isGracePeriod: plan.status === "grace"

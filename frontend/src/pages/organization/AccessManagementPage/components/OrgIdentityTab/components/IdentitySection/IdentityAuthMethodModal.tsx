@@ -116,7 +116,10 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
         }}
         intent={{
           ...IdentityAuthUpgradeIntent,
-          description: `Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`,
+          description:
+            popUp.upgradePlan.data?.featureName === "LDAP authentication"
+              ? "Authenticate machine identities with LDAP."
+              : "Restrict machine identity access to trusted IP addresses.",
           isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
         }}
       />

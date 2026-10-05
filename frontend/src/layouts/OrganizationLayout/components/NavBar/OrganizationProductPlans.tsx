@@ -25,7 +25,7 @@ export const OrganizationProductPlans = ({ plans, billingOrgId, isSubOrganizatio
           <ChevronDown />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start">
+      <PopoverContent align="end" side="bottom" collisionPadding={16}>
         <div className="flex flex-col gap-4">
           <div>
             <p className="text-sm font-medium">Product Plans</p>
@@ -39,7 +39,7 @@ export const OrganizationProductPlans = ({ plans, billingOrgId, isSubOrganizatio
           {billingOrgId && (
             <>
               <Separator />
-              <Button variant="outline" size="xs" asChild>
+              <Button variant="outline" size="xs" className="self-end" asChild>
                 <Link to="/organizations/$orgId/billing" params={{ orgId: billingOrgId }}>
                   View Billing
                 </Link>

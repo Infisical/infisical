@@ -317,8 +317,6 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...MachineIdentityTemplatesUpgradeIntent,
-          description:
-            popUp.upgradePlan.data?.text ?? MachineIdentityTemplatesUpgradeIntent.description,
           isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
         }}
       />

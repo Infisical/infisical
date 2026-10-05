@@ -126,7 +126,6 @@ export const GroupsSection = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...GroupsUpgradeIntent,
-          description: popUp.upgradePlan?.data?.text ?? GroupsUpgradeIntent.description,
           isEnterpriseFeature: Boolean(popUp.upgradePlan?.data?.isEnterpriseFeature)
         }}
       />

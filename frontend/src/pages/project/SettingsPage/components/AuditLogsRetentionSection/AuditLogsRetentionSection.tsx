@@ -142,7 +142,6 @@ export const AuditLogsRetentionSection = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...AuditRetentionUpgradeIntent,
-          description: popUp.upgradePlan?.data?.text ?? AuditRetentionUpgradeIntent.description,
           isEnterpriseFeature: false
         }}
       />

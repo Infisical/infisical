@@ -89,8 +89,6 @@ export const LogStreamProviderSelect = ({ onSelect }: Props) => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...AuditLogStreamsUpgradeIntent,
-          description:
-            "Your current plan does not include access to this audit log stream provider. To unlock this feature, please upgrade to Infisical Enterprise plan.",
           isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
         }}
       />

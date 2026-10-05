@@ -122,7 +122,6 @@ export const HsmConnectorsTab = () => {
           onOpenChange={setUpgradeOpen}
           intent={{
             ...HsmConnectorsUpgradeIntent,
-            description: "To use HSM Connectors, upgrade to Infisical's Enterprise plan.",
             isEnterpriseFeature: false
           }}
         />

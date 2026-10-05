@@ -259,7 +259,6 @@ const Page = withPermission(
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           intent={{
             ...CustomRolesUpgradeIntent,
-            description: popUp.upgradePlan?.data?.text ?? CustomRolesUpgradeIntent.description,
             isEnterpriseFeature: Boolean(popUp.upgradePlan?.data?.isEnterpriseFeature)
           }}
         />

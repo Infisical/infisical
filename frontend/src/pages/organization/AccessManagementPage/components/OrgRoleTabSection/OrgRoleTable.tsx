@@ -515,8 +515,7 @@ export const OrgRoleTable = () => {
       />
       <UpgradeGate
         intent={{
-          ...CustomRolesUpgradeIntent,
-          description: popUp.upgradePlan.data?.text ?? CustomRolesUpgradeIntent.description
+          ...CustomRolesUpgradeIntent
         }}
         paywallKey="organization.org-role"
         isOpen={popUp.upgradePlan.isOpen}

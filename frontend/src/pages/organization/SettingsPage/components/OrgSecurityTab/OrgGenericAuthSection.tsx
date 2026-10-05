@@ -143,8 +143,6 @@ export const OrgGenericAuthSection = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...MfaEnforcementUpgradeIntent,
-          description:
-            "Your current plan does not include access to enforce user MFA. To unlock this feature, please upgrade to Infisical Advanced plan.",
           isEnterpriseFeature: false
         }}
       />

@@ -116,7 +116,6 @@ export const OrgSettingsSubmenuView = ({ onBack }: { onBack: () => void }) => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...SubOrganizationsUpgradeIntent,
-          description: "You need to upgrade your plan to manage sub-organizations.",
           isEnterpriseFeature: false
         }}
       />

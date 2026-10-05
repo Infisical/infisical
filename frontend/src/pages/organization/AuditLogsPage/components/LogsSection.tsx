@@ -221,8 +221,6 @@ const LogsSectionComponent = ({
           }}
           intent={{
             ...AuditLogsUpgradeIntent,
-            description:
-              "Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan.",
             isEnterpriseFeature: false
           }}
         />
@@ -311,8 +309,6 @@ const LogsSectionComponent = ({
         }}
         intent={{
           ...AuditLogsUpgradeIntent,
-          description:
-            "Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan.",
           isEnterpriseFeature: false
         }}
       />

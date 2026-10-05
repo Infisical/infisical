@@ -600,7 +600,6 @@ export const OrgSsoTab = withPermission(
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           intent={{
             ...ssoUpgradeIntent,
-            description: `Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`,
             isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
           }}
         />

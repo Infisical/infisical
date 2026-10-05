@@ -205,8 +205,6 @@ const Content = ({ role, onClose }: ContentProps) => {
         onOpenChange={(open) => handleUpgradePlanPopUpToggle("upgradePlan", open)}
         intent={{
           ...CustomRolesUpgradeIntent,
-          description:
-            "Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Advanced plan.",
           isEnterpriseFeature: false
         }}
       />

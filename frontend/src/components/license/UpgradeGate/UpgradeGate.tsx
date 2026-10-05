@@ -261,6 +261,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
   const [cadence, setCadence] = useState<BillingV2Cadence>("annual");
   const [startedTrial, setStartedTrial] = useState<BillingV2Plan | null>(null);
   const refreshedReturn = useRef<string>();
+  const hasTrackedView = useRef(false);
   const queryClient = useQueryClient();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { permission } = useOrgPermission();
@@ -294,7 +295,8 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     .sort((left, right) => (left.displayOrder ?? 0) - (right.displayOrder ?? 0));
   const entitlement = overview.data?.entitlements[intent.productKey];
   const hasActiveTrial = Boolean(entitlement?.isTrialing || entitlement?.trialPlan);
-  const activeTier = entitlement?.trialPlan ?? entitlement?.planTier;
+  const activeTier =
+    entitlement?.trialPlan ?? entitlement?.planTier ?? (entitlement?.entitled ? undefined : "free");
   const activePlanIndex = paidPlans.findIndex((candidate) => candidate.tier === activeTier);
   const honeyTokenQuota =
     intent.featureKey === UpgradeFeature.HoneyTokens ? intent.quota : undefined;
@@ -303,7 +305,8 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
   );
   const higherQuotaPlans = honeyTokenQuota
     ? paidPlans.filter((candidate, index) => {
-        if (activePlanIndex < 0 || index <= activePlanIndex) return false;
+        if (activePlanIndex < 0 && activeTier !== "free") return false;
+        if (index <= activePlanIndex) return false;
         if (!candidate.upgradeable && !candidate.trialable && !candidate.salesLed) return false;
         const allowance = honeyTokenComparison?.cells[candidate.tier];
         if (typeof allowance === "string" && allowance.trim().toLowerCase() === "unlimited") {
@@ -360,24 +363,44 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
   });
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      hasTrackedView.current = false;
+      return;
+    }
+    if (
+      hasTrackedView.current ||
+      (honeyTokenQuota && canLoadBilling && (overview.isPending || catalog.isPending))
+    ) {
+      return;
+    }
+    hasTrackedView.current = true;
 
     analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, currentOrg.id, {
       paywallKey,
       paywallText: intent.description,
       route,
-      isEnterpriseFeature: intent.planKey === BillingPlan.Enterprise
+      isEnterpriseFeature: (requiredTier ?? intent.planKey) === BillingPlan.Enterprise
     });
-    // A paywall view is one closed-to-open transition, not a new event when its data resolves.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [
+    isOpen,
+    honeyTokenQuota,
+    canLoadBilling,
+    overview.isPending,
+    catalog.isPending,
+    currentOrg.id,
+    paywallKey,
+    intent.description,
+    intent.planKey,
+    route,
+    requiredTier
+  ]);
 
   const trackUpgradeClick = () => {
     analytics.captureForOrganization(AnalyticsEvent.PaywallUpgradeClicked, currentOrg.id, {
       paywallKey,
       paywallText: intent.description,
       route,
-      isEnterpriseFeature: intent.planKey === BillingPlan.Enterprise
+      isEnterpriseFeature: (requiredTier ?? intent.planKey) === BillingPlan.Enterprise
     });
   };
 

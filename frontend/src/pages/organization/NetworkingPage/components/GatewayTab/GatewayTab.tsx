@@ -504,8 +504,6 @@ export const GatewayTab = withPermission(
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           intent={{
             ...GatewayPoolsUpgradeIntent,
-            description:
-              "Your current plan does not include access to gateway pools. To unlock this feature, please upgrade to Infisical Enterprise plan.",
             isEnterpriseFeature: true
           }}
         />
