@@ -197,6 +197,7 @@ import {
 import { secretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { secretApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-environment-dal";
 import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
+import { secretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
 import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-reviewer-dal";
 import { secretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -2370,6 +2371,15 @@ export const registerRoutes = async (
     secretBlindIndexDAL
   });
 
+  const secretChangeRequestBridgeService = secretChangeRequestBridgeServiceFactory({ approvalRequestDAL });
+
+  const secretApprovalRequestCreationFns = secretApprovalRequestCreationFnsFactory({
+    secretApprovalRequestDAL,
+    secretApprovalRequestSecretDAL,
+    secretChangePolicyBridgeService,
+    secretChangeRequestBridgeService
+  });
+
   const secretV2BridgeService = secretV2BridgeServiceFactory({
     folderDAL,
     projectDAL,
@@ -2382,9 +2392,8 @@ export const registerRoutes = async (
     secretTagDAL,
     projectEnvDAL,
     secretImportDAL,
-    secretApprovalRequestDAL,
     secretApprovalPolicyService,
-    secretApprovalRequestSecretDAL,
+    secretApprovalRequestCreationFns,
     kmsService,
     resourceMetadataDAL,
     reminderService,
@@ -2394,8 +2403,6 @@ export const registerRoutes = async (
     projectFolderGrantDAL,
     orgDAL
   });
-
-  const secretChangeRequestBridgeService = secretChangeRequestBridgeServiceFactory({ approvalRequestDAL });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
     permissionService,
@@ -2447,8 +2454,7 @@ export const registerRoutes = async (
     projectEnvDAL,
     projectBotService,
     secretApprovalPolicyService,
-    secretApprovalRequestDAL,
-    secretApprovalRequestSecretDAL,
+    secretApprovalRequestCreationFns,
     secretV2BridgeService,
     secretApprovalRequestService,
     licenseService,
@@ -2477,8 +2483,7 @@ export const registerRoutes = async (
     secretTagDAL,
     secretVersionTagDAL: secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
-    secretApprovalRequestDAL,
-    secretApprovalRequestSecretDAL,
+    secretApprovalRequestCreationFns,
     secretQueueService,
     secretSyncQueue,
     dynamicSecretDAL,
@@ -2548,8 +2553,7 @@ export const registerRoutes = async (
     queueService,
     folderDAL,
     secretApprovalPolicyService,
-    secretApprovalRequestDAL,
-    secretApprovalRequestSecretDAL,
+    secretApprovalRequestCreationFns,
     secretQueueService,
     projectBotService,
     kmsService,

@@ -23,6 +23,10 @@ export const secretChangeRequestBridgeServiceFactory = ({
     throw notAvailable();
   };
 
+  const createSecretChangeRequest: TSecretChangeRequestBridgeMethods["createSecretChangeRequest"] = async () => {
+    throw notAvailable();
+  };
+
   const mergeSecretChangeRequest: TSecretChangeRequestBridgeMethods["mergeSecretChangeRequest"] = async () => {
     throw notAvailable();
   };
@@ -43,6 +47,7 @@ export const secretChangeRequestBridgeServiceFactory = ({
   return {
     findSecretChangeRequest,
     generateSecretChangeRequest,
+    createSecretChangeRequest,
     mergeSecretChangeRequest,
     reviewSecretChangeRequest,
     updateSecretChangeRequestStatus,

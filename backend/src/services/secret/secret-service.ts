@@ -25,10 +25,9 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
-import { getCommitterIds, shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
+import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
+import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, SymmetricKeySize } from "@app/lib/crypto";
@@ -36,7 +35,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
@@ -141,11 +139,7 @@ type TSecretServiceFactoryDep = {
     TSecretApprovalRequestServiceFactory,
     "generateSecretApprovalRequest" | "generateSecretApprovalRequestV2Bridge"
   >;
-  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create" | "transaction">;
-  secretApprovalRequestSecretDAL: Pick<
-    TSecretApprovalRequestSecretDALFactory,
-    "insertMany" | "insertApprovalSecretTags"
-  >;
+  secretApprovalRequestCreationFns: Pick<TSecretApprovalRequestCreationFnsFactory, "createSecretApprovalRequest">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
@@ -172,8 +166,7 @@ export const secretServiceFactory = ({
   secretImportDAL,
   secretVersionTagDAL,
   secretApprovalPolicyService,
-  secretApprovalRequestDAL,
-  secretApprovalRequestSecretDAL,
+  secretApprovalRequestCreationFns,
   secretV2BridgeService,
   secretApprovalRequestService,
   licenseService,
@@ -3216,18 +3209,6 @@ export const secretServiceFactory = ({
           tx
         );
 
-        const approvalRequestDoc = await secretApprovalRequestDAL.create(
-          {
-            folderId: destinationFolder.id,
-            slug: alphaNumericNanoId(),
-            policyId: destinationFolderPolicy.id,
-            status: "open",
-            hasMerged: false,
-            ...getCommitterIds(actor, actorId)
-          },
-          tx
-        );
-
         const commits = locallyCreatedSecrets.concat(locallyUpdatedSecrets).map((doc) => {
           const { operation } = doc;
           const localSecret = destinationSecretsGroupedByBlindIndex[doc.secretBlindIndex as string]?.[0];
@@ -3236,7 +3217,6 @@ export const secretServiceFactory = ({
             op: operation,
             keyEncoding: doc.keyEncoding,
             algorithm: doc.algorithm,
-            requestId: approvalRequestDoc.id,
             metadata: doc.metadata,
             secretKeyIV: doc.secretKeyIV,
             secretKeyTag: doc.secretKeyTag,
@@ -3255,7 +3235,10 @@ export const secretServiceFactory = ({
               : {})
           };
         });
-        await secretApprovalRequestSecretDAL.insertMany(commits, tx);
+        await secretApprovalRequestCreationFns.createSecretApprovalRequest(
+          { policy: destinationFolderPolicy, folderId: destinationFolder.id, actor, actorId, commits },
+          tx
+        );
       } else {
         // apply changes directly
         if (locallyCreatedSecrets.length) {
@@ -3341,17 +3324,6 @@ export const secretServiceFactory = ({
         // if secret approval policy exists for source, we create the secret approval request
         const localSecretsIds = decryptedSourceSecrets.map(({ id }) => id);
         const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(sourceFolder.id, localSecretsIds, tx);
-        const approvalRequestDoc = await secretApprovalRequestDAL.create(
-          {
-            folderId: sourceFolder.id,
-            slug: alphaNumericNanoId(),
-            policyId: sourceFolderPolicy.id,
-            status: "open",
-            hasMerged: false,
-            ...getCommitterIds(actor, actorId)
-          },
-          tx
-        );
 
         const commits = locallyDeletedSecrets.map((doc) => {
           const { operation } = doc;
@@ -3361,7 +3333,6 @@ export const secretServiceFactory = ({
             op: operation,
             keyEncoding: doc.keyEncoding,
             algorithm: doc.algorithm,
-            requestId: approvalRequestDoc.id,
             metadata: doc.metadata,
             secretKeyIV: doc.secretKeyIV,
             secretKeyTag: doc.secretKeyTag,
@@ -3379,7 +3350,10 @@ export const secretServiceFactory = ({
           };
         });
 
-        await secretApprovalRequestSecretDAL.insertMany(commits, tx);
+        await secretApprovalRequestCreationFns.createSecretApprovalRequest(
+          { policy: sourceFolderPolicy, folderId: sourceFolder.id, actor, actorId, commits },
+          tx
+        );
       } else {
         // if no secret approval policy is present, we delete directly.
         await secretDAL.delete(
