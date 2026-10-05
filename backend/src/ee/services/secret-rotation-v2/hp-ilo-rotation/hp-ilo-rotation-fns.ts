@@ -369,13 +369,23 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
     const checkedPaths = new Set<string>();
     let memberLookups = 0;
     let isSearchTruncated = false;
+    let unreadableAccounts = 0;
 
+    // A login without user-management privilege can list the collection but only read its own account, so a 403 on
+    // another member just means it is not the account being looked for. A 404 is an account removed after listing
     const readMemberUsername = async (memberPath: string) => {
-      const { data: account } = await sendRequest<TRedfishAccount>(memberPath, {
-        method: "GET",
-        headers: { Authorization: authorization }
-      });
-      return account.UserName;
+      try {
+        const { data: account } = await sendRequest<TRedfishAccount>(memberPath, {
+          method: "GET",
+          headers: { Authorization: authorization }
+        });
+        return account.UserName;
+      } catch (error) {
+        const status = isAxiosError(error) ? error.response?.status : undefined;
+        if (status !== 403 && status !== 404) throw error;
+        unreadableAccounts += 1;
+        return undefined;
+      }
     };
 
     const findByReadingMembers = async (memberPaths: string[]) => {
@@ -457,10 +467,13 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
     }
 
     if (!accountPath) {
+      const unreadableNote = unreadableAccounts
+        ? ` (${unreadableAccounts} account(s) could not be read with the credentials used)`
+        : "";
       throw new Error(
         isSearchTruncated
-          ? `HP iLO account '${username}' not found within the first ${checkedPaths.size} accounts checked; the search stopped before reaching the end of the account list`
-          : `HP iLO account '${username}' not found`
+          ? `HP iLO account '${username}' not found within the first ${checkedPaths.size} accounts checked; the search stopped before reaching the end of the account list${unreadableNote}`
+          : `HP iLO account '${username}' not found${unreadableNote}`
       );
     }
 
