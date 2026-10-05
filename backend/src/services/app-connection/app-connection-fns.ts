@@ -378,7 +378,7 @@ export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?
 // Add a product only once nothing creates other connection types in it through the API.
 export const PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES = [ProjectType.AgentVault];
 
-export const listAppConnectionOptions = (orgId: string, projectType?: ProjectType) => {
+export const listAppConnectionOptions = (projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
     getGitHubConnectionListItem(),
