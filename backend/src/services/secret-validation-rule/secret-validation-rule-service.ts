@@ -401,8 +401,7 @@ export const secretValidationRuleServiceFactory = ({
    * every secret in the project back out.
    *
    * The index is built over the value as stored, so a value carrying a `${...}` reference is skipped:
-   * its stored form would never line up with the resolved one anyway. An empty value is skipped too:
-   * it is stored without an index, so empty secrets never count as duplicates of one another.
+   * its stored form would never line up with the resolved one anyway.
    */
   const $findDuplicatesInScope = async (
     {
@@ -421,7 +420,7 @@ export const secretValidationRuleServiceFactory = ({
   ): Promise<Record<string, TDuplicateSecret>> => {
     const candidates = secrets.filter(
       (secret): secret is typeof secret & { value: string } =>
-        Boolean(secret.value && !containsSecretReference(secret.value))
+        secret.value !== undefined && !containsSecretReference(secret.value)
     );
     if (!candidates.length) return {};
 
