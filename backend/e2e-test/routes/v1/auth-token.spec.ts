@@ -102,4 +102,45 @@ describe("Auth Token V1", () => {
 
     expect(refreshRes.statusCode).toBeGreaterThanOrEqual(400);
   });
+
+  test("checkAuth with a JWT whose session was revoked returns 401", async () => {
+    // A distinct user agent gets a session of its own, so revoking it leaves the shared test session alone.
+    const loginRes = await testServer.inject({
+      method: "POST",
+      url: "/api/v3/auth/login",
+      headers: { "user-agent": "auth-token-spec-revoked-session" },
+      body: {
+        email: seedData1.email,
+        password: seedData1.password
+      }
+    });
+    expect(loginRes.statusCode).toBe(200);
+
+    const { accessToken } = loginRes.json();
+    const { tokenVersionId } = JSON.parse(Buffer.from(accessToken.split(".")[1], "base64url").toString()) as {
+      tokenVersionId: string;
+    };
+    expect(tokenVersionId).not.toBe(seedData1.token.id);
+
+    const revokeRes = await testServer.inject({
+      method: "DELETE",
+      url: `/api/v2/users/me/sessions/${tokenVersionId}`,
+      headers: { authorization: `Bearer ${jwtAuthToken}` }
+    });
+    expect(revokeRes.statusCode).toBe(200);
+
+    const res = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/auth/checkAuth",
+      headers: { authorization: `Bearer ${accessToken}` }
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toEqual({
+      reqId: expect.any(String),
+      statusCode: 401,
+      error: "InvalidToken",
+      message: "Your session is no longer valid, please re-authenticate"
+    });
+  });
 });
