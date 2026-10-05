@@ -35,7 +35,7 @@ const useAcknowledgement = (warningKey: string) => {
   };
 };
 
-// like the synced indicator on the dashboard, syncs the user cannot read are left out entirely
+// intentionally warns only about syncs the user can read
 export const useSecretSyncMoveWarning = (
   projectId: string,
   moves: TItemMove[]
@@ -100,41 +100,39 @@ const getTitle = ({
 
 const SecretSyncMoveWarningItem = ({
   sync,
+  orgId,
   projectId
 }: {
   sync: TSecretSync;
+  orgId: string;
   projectId: string;
-}) => {
-  const { currentOrg } = useOrganization();
-
-  return (
-    <li>
-      <span className="font-medium text-foreground">{sync.name}</span>
-      {` (${SECRET_SYNC_MAP[sync.destination].name}) syncs `}
-      <code>{sync.folder?.path ?? "/"}</code>
-      {sync.syncOptions.includeAllSubFolders ? " and all its subfolders." : "."}
-      {!sync.isAutoSyncEnabled &&
-        " Auto-sync is off, so it sends them on its next manual sync."}{" "}
-      <Link
-        to={ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path}
-        params={{
-          orgId: currentOrg.id,
-          projectId,
-          destination: sync.destination,
-          syncId: sync.id
-        }}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 underline underline-offset-2"
-      >
-        View Sync
-        <ExternalLinkIcon className="size-3" />
-      </Link>
-    </li>
-  );
-};
+}) => (
+  <li>
+    <span className="font-medium text-foreground">{sync.name}</span>
+    {` (${SECRET_SYNC_MAP[sync.destination].name}) syncs `}
+    <code>{sync.folder?.path ?? "/"}</code>
+    {sync.syncOptions.includeAllSubFolders ? " and all its subfolders." : "."}
+    {!sync.isAutoSyncEnabled && " Auto-sync is off, so it sends them on its next manual sync."}{" "}
+    <Link
+      to={ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path}
+      params={{
+        orgId,
+        projectId,
+        destination: sync.destination,
+        syncId: sync.id
+      }}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 underline underline-offset-2"
+    >
+      View Sync
+      <ExternalLinkIcon className="size-3" />
+    </Link>
+  </li>
+);
 
 export const SecretSyncMoveWarning = ({ warning, projectId, noun, verb }: Props) => {
+  const { currentOrg } = useOrganization();
   const { needsAcknowledgement, isChecking, hasError, secretSyncs } = warning;
 
   if (isChecking || !needsAcknowledgement) return null;
@@ -148,7 +146,12 @@ export const SecretSyncMoveWarning = ({ warning, projectId, noun, verb }: Props)
         {secretSyncs.length > 0 && (
           <ul className="max-h-40 list-disc overflow-y-auto pl-4">
             {secretSyncs.map((sync) => (
-              <SecretSyncMoveWarningItem key={sync.id} sync={sync} projectId={projectId} />
+              <SecretSyncMoveWarningItem
+                key={sync.id}
+                sync={sync}
+                orgId={currentOrg.id}
+                projectId={projectId}
+              />
             ))}
           </ul>
         )}
