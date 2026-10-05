@@ -1,6 +1,5 @@
 import { BadRequestError } from "@app/lib/errors";
 
-import { MAX_DESCRIBED_FAILING_SECRETS } from "./secret-validation-rule-constants";
 import { TConstraintViolation } from "./secret-validation-rule-constraint-fns";
 
 export type TCanDescribeLocation = (environment: string, secretPath: string) => boolean;
@@ -28,18 +27,7 @@ export const describeSecretValidationFailures = (
   failures: TSecretValidationFailure[],
   canDescribeLocation?: TCanDescribeLocation
 ) => {
-  // capped by secret rather than by failure, so every failure of a secret that is listed stays visible
-  const failingKeys = [...new Set(failures.map((failure) => failure.secretKey))];
-  const describedKeys = new Set(failingKeys.slice(0, MAX_DESCRIBED_FAILING_SECRETS));
-  const described = failures
-    .filter((failure) => describedKeys.has(failure.secretKey))
-    .map((failure) => describeFailure(failure, canDescribeLocation));
-
-  const remaining = failingKeys.length - describedKeys.size;
-  if (remaining > 0) {
-    described.push(`...and ${remaining} more ${remaining === 1 ? "secret" : "secrets"} failed validation`);
-  }
-
+  const described = failures.map((failure) => describeFailure(failure, canDescribeLocation));
   return `Secret validation failed:\n${described.join("\n\n")}`;
 };
 
