@@ -1,12 +1,11 @@
 import { ForbiddenError, MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
-import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
+import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionSet,
   ProjectPermissionSub
@@ -17,19 +16,17 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import {
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
-  CertificateAlertEvent,
-  CodeSigningAlertEvent
+  CertificateAlertEvent
 } from "@app/services/certificate/certificate-alert-events";
 import { getRevocationReasonLabel } from "@app/services/pki-alert-v2/pki-alert-v2-types";
-import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PkiAlertScope } from "@app/services/telemetry/telemetry-types";
 
-import { AlertChannelType, TAlertPayload, TAlertSeverity } from "../alert-channel-types";
+import { TAlertPayload, TAlertSeverity } from "../alert-channel-types";
 import { durationToDays, expirySeverity, formatUtcDate, humanizeDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
   AlertAuditAction,
   AlertPermissionAction,
-  AlertTelemetryAction,
   AlertTriggerType,
   DEFAULT_DEDUP_WINDOW_HOURS,
   IEventAlertProvider,
@@ -44,34 +41,33 @@ import {
   TFindScheduledTargetsInput
 } from "../alert-types";
 import {
+  assertCertManagerAlertChannelTypesAllowed,
+  buildCertificateManagerAlertAuditEvent,
+  buildPkiAlertTelemetryEvent,
+  CERT_MANAGER_ALERT_PERMISSION_ACTIONS,
+  certificateDisplayName,
+  expirationDedupWindowHours,
+  ExpiryFieldsSchema,
+  resolveCertManagerProjectId,
+  splitAltNames
+} from "./cert-manager-alert-fns";
+import {
   TApplicationAlertCertificate,
   TCertManagerApplicationAlertDALFactory
 } from "./cert-manager-application-alert-dal";
 
 const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
 
-type TCertManagerAlertEvent = CertificateAlertEvent | CodeSigningAlertEvent;
+const CERT_MANAGER_DELIVERY_RESOURCE_TYPE = "cert-manager";
 
-const toCertificateManagerEventKey = (eventType: TCertManagerAlertEvent) =>
-  eventType.replace(`${CERT_MANAGER_APPLICATION_RESOURCE_TYPE}.`, "cert-manager.");
+const toCertificateManagerEventKey = (eventType: CertificateAlertEvent) =>
+  eventType.replace(`${CERT_MANAGER_APPLICATION_RESOURCE_TYPE}.`, `${CERT_MANAGER_DELIVERY_RESOURCE_TYPE}.`);
 
-const isExpiryEvent = (eventType: TCertManagerAlertEvent) =>
-  eventType === CertificateAlertEvent.Expiry || eventType === CodeSigningAlertEvent.SignerCertificateExpiry;
-
-const TELEMETRY_ALERT_TYPE_BY_EVENT: Record<TCertManagerAlertEvent, string> = {
+const TELEMETRY_ALERT_TYPE_BY_EVENT: Record<CertificateAlertEvent, string> = {
   [CertificateAlertEvent.Expiry]: "expiration",
   [CertificateAlertEvent.Issuance]: "issuance",
   [CertificateAlertEvent.Renewal]: "renewal",
-  [CertificateAlertEvent.Revocation]: "revocation",
-  [CodeSigningAlertEvent.SignerCertificateExpiry]: "signer-certificate-expiration"
-};
-
-const MIN_CERTIFICATE_ALERT_BEFORE_DAYS = 1;
-const MAX_CERTIFICATE_ALERT_BEFORE_DAYS = 365;
-
-const isValidAlertBefore = (alertBefore: string): boolean => {
-  const days = durationToDays(alertBefore);
-  return days >= MIN_CERTIFICATE_ALERT_BEFORE_DAYS && days <= MAX_CERTIFICATE_ALERT_BEFORE_DAYS;
+  [CertificateAlertEvent.Revocation]: "revocation"
 };
 
 const filterIdsSchema = (field: string, noun: string) =>
@@ -101,21 +97,7 @@ const CertificateFilterSchema = z.object({
   profileIds: filterIdsSchema("profileIds", "profile")
 });
 
-const ExpiryFieldsSchema = z.object({
-  alertBefore: z
-    .string()
-    .refine(
-      isValidAlertBefore,
-      `Must be a number of days, weeks, months or years adding up to ${MIN_CERTIFICATE_ALERT_BEFORE_DAYS} to ${MAX_CERTIFICATE_ALERT_BEFORE_DAYS} days, e.g. '30d' or '2w'`
-    ),
-  dailyReminder: z.boolean().optional()
-});
-
 const ExpirationConditionSchema = ExpiryFieldsSchema.merge(CertificateFilterSchema).strict();
-
-const SignerExpirationConditionSchema = ExpiryFieldsSchema.strict(
-  "Signer certificate expiration alerts cover every signer and take no filters. Remove applicationIds and profileIds."
-);
 
 const EventConditionSchema = CertificateFilterSchema.strict().nullish();
 
@@ -125,56 +107,37 @@ const assertValidApplicationId = (applicationId: string) => {
   }
 };
 
-const EVENT_LABELS: Record<TCertManagerAlertEvent, string> = {
+const EVENT_LABELS: Record<CertificateAlertEvent, string> = {
   [CertificateAlertEvent.Expiry]: "Expiration",
   [CertificateAlertEvent.Issuance]: "Issuance",
   [CertificateAlertEvent.Renewal]: "Renewal",
-  [CertificateAlertEvent.Revocation]: "Revocation",
-  [CodeSigningAlertEvent.SignerCertificateExpiry]: "Expiration"
+  [CertificateAlertEvent.Revocation]: "Revocation"
 };
 
-const EVENT_VERBS: Record<TCertManagerAlertEvent, string> = {
+const EVENT_VERBS: Record<CertificateAlertEvent, string> = {
   [CertificateAlertEvent.Expiry]: "is expiring",
   [CertificateAlertEvent.Issuance]: "was issued",
   [CertificateAlertEvent.Renewal]: "was renewed",
-  [CertificateAlertEvent.Revocation]: "was revoked",
-  [CodeSigningAlertEvent.SignerCertificateExpiry]: "is expiring"
+  [CertificateAlertEvent.Revocation]: "was revoked"
 };
 
-const PERMISSION_ACTIONS: Record<AlertPermissionAction, ProjectPermissionActions> = {
-  [AlertPermissionAction.Read]: ProjectPermissionActions.Read,
-  [AlertPermissionAction.Create]: ProjectPermissionActions.Create,
-  [AlertPermissionAction.Edit]: ProjectPermissionActions.Edit,
-  [AlertPermissionAction.Delete]: ProjectPermissionActions.Delete
-};
-
-const eventSeverity = (eventType: TCertManagerAlertEvent, targets: TApplicationAlertCertificate[]): TAlertSeverity => {
-  if (isExpiryEvent(eventType)) return expirySeverity(targets.map((target) => target.notAfter));
+const eventSeverity = (eventType: CertificateAlertEvent, targets: TApplicationAlertCertificate[]): TAlertSeverity => {
+  if (eventType === CertificateAlertEvent.Expiry) return expirySeverity(targets.map((target) => target.notAfter));
   if (eventType === CertificateAlertEvent.Revocation) return "warning";
   return "info";
 };
-
-const splitAltNames = (altNames: string | null): string[] =>
-  (altNames ?? "")
-    .split(",")
-    .map((name) => name.trim())
-    .filter(Boolean);
-
-const certificateDisplayName = (certificate: TApplicationAlertCertificate): string =>
-  certificate.commonName || splitAltNames(certificate.altNames)[0] || certificate.serialNumber;
 
 const inApplication = (applicationName?: string | null) =>
   applicationName ? ` in application '${applicationName}'` : "";
 
 const buildSummary = (
-  eventType: TCertManagerAlertEvent,
+  eventType: CertificateAlertEvent,
   targets: TApplicationAlertCertificate[],
   applicationName: string | null,
   alertBefore?: string
 ): string => {
   if (alertBefore) {
-    const noun = eventType === CodeSigningAlertEvent.SignerCertificateExpiry ? "signer certificate" : "certificate";
-    const certificates = `${targets.length} ${noun}${targets.length === 1 ? "" : "s"}`;
+    const certificates = `${targets.length} certificate${targets.length === 1 ? "" : "s"}`;
     return `${certificates}${inApplication(applicationName)} expiring within ${humanizeDays(durationToDays(alertBefore))}`;
   }
   if (targets.length === 1) {
@@ -183,28 +146,11 @@ const buildSummary = (
   return `${targets.length} certificates ${EVENT_VERBS[eventType]}${inApplication(applicationName)}`;
 };
 
-const formatSigners = (signerNames: string[] = []) =>
-  `${signerNames.length === 1 ? "signer" : "signers"} ${signerNames.map((name) => `'${name}'`).join(", ")}`;
-
-const buildItemSummary = (eventType: TCertManagerAlertEvent, certificate: TApplicationAlertCertificate): string => {
-  if (eventType === CodeSigningAlertEvent.SignerCertificateExpiry) {
-    return `Certificate '${certificateDisplayName(certificate)}' of ${formatSigners(certificate.signerNames)} expires on ${formatUtcDate(certificate.notAfter)}`;
-  }
+const buildItemSummary = (eventType: CertificateAlertEvent, certificate: TApplicationAlertCertificate): string => {
   if (eventType === CertificateAlertEvent.Expiry) {
     return `Certificate '${certificateDisplayName(certificate)}'${inApplication(certificate.applicationName)} expires on ${formatUtcDate(certificate.notAfter)}`;
   }
   return `Certificate '${certificateDisplayName(certificate)}' ${EVENT_VERBS[eventType]}${inApplication(certificate.applicationName)}`;
-};
-
-const DAILY_SCAN_DEDUP_MARGIN_HOURS = 4;
-
-const dayMultipleDedupWindowHours = (days: number): number => days * 24 - DAILY_SCAN_DEDUP_MARGIN_HOURS;
-
-const expirationDedupWindowHours = (days: number, dailyReminder?: boolean): number => {
-  if (dailyReminder || days <= 7) return dayMultipleDedupWindowHours(1);
-  if (days <= 30) return dayMultipleDedupWindowHours(2);
-  if (days <= 90) return dayMultipleDedupWindowHours(7);
-  return dayMultipleDedupWindowHours(30);
 };
 
 const formatIds = (ids: string[]) => ids.map((id) => `'${id}'`).join(", ");
@@ -235,25 +181,13 @@ export const certManagerApplicationAlertProviderFactory = ({
   IEventAlertProvider<TApplicationAlertCertificate> => {
   const buildViewUrl = async (alert: TAlertContext): Promise<string> => {
     const base = `${getConfig().SITE_URL}/organizations/${alert.orgId}/projects/cert-manager/${alert.projectId}`;
-    if (alert.eventType === CodeSigningAlertEvent.SignerCertificateExpiry) return `${base}/code-signing`;
     if (!alert.resourceId) return `${base}/inventory`;
     const application = await certManagerApplicationAlertDAL.findApplicationById(alert.resourceId);
     return application ? `${base}/applications/${encodeURIComponent(application.name)}` : `${base}/applications`;
   };
 
   const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TApplicationAlertCertificate[]> => {
-    if (!input.projectId) return [];
-    if (input.eventType === CodeSigningAlertEvent.SignerCertificateExpiry) {
-      if (input.resourceId) return [];
-      const { alertBefore } = SignerExpirationConditionSchema.parse(input.condition);
-      return certManagerApplicationAlertDAL.findExpiringSignerCertificates({
-        projectId: input.projectId,
-        alertBeforeInterval: `${durationToDays(alertBefore)} days`,
-        leadInterval: ALERT_SCAN_LEAD_INTERVAL,
-        asOf: input.asOf,
-        alreadyAlerted: input.alreadyAlerted
-      });
-    }
+    if (!input.projectId || !input.alreadyAlerted?.channelIds.length) return [];
     const { alertBefore, applicationIds, profileIds } = ExpirationConditionSchema.parse(input.condition);
 
     return certManagerApplicationAlertDAL.findExpiringCertificates({
@@ -289,13 +223,13 @@ export const certManagerApplicationAlertProviderFactory = ({
     targets: TApplicationAlertCertificate[],
     viewUrl: string
   ): TAlertPayload => {
-    const eventType = alert.eventType as TCertManagerAlertEvent;
+    const eventType = alert.eventType as CertificateAlertEvent;
     const isApplicationAlert = Boolean(alert.resourceId);
-    const isSignerAlert = eventType === CodeSigningAlertEvent.SignerCertificateExpiry;
     const deliveryEventKey = isApplicationAlert ? eventType : toCertificateManagerEventKey(eventType);
-    const alertBefore = isExpiryEvent(eventType)
-      ? (alert.condition as { alertBefore?: string } | null)?.alertBefore
-      : undefined;
+    const alertBefore =
+      eventType === CertificateAlertEvent.Expiry
+        ? (alert.condition as { alertBefore?: string } | null)?.alertBefore
+        : undefined;
 
     return {
       alert: {
@@ -303,7 +237,7 @@ export const certManagerApplicationAlertProviderFactory = ({
         name: alert.name,
         orgId: alert.orgId,
         ...(alert.projectId ? { projectId: alert.projectId } : {}),
-        resourceType: alert.resourceType,
+        resourceType: isApplicationAlert ? alert.resourceType : CERT_MANAGER_DELIVERY_RESOURCE_TYPE,
         ...(alert.resourceId ? { resourceId: alert.resourceId } : {}),
         ...(alertBefore ? { condition: alertBefore } : {}),
         viewUrl
@@ -312,7 +246,7 @@ export const certManagerApplicationAlertProviderFactory = ({
       eventLabel: EVENT_LABELS[eventType],
       webhookType: `com.infisical.${deliveryEventKey}`,
       webhookSource: getWebhookSource({ alertId: alert.id, resourceId: alert.resourceId }),
-      resourceKind: isSignerAlert ? "Signer Certificate" : "Certificate",
+      resourceKind: "Certificate",
       resourceOwnerKind: isApplicationAlert ? "Application" : "Certificate Manager",
       severity: eventSeverity(eventType, targets),
       summary: buildSummary(
@@ -333,14 +267,6 @@ export const certManagerApplicationAlertProviderFactory = ({
           summary: buildItemSummary(eventType, certificate),
           severity: eventSeverity(eventType, [certificate]),
           fields: [
-            ...(isSignerAlert && certificate.signerNames?.length
-              ? [
-                  {
-                    label: certificate.signerNames.length === 1 ? "Signer" : "Signers",
-                    value: certificate.signerNames.join(", ")
-                  }
-                ]
-              : []),
             { label: "Serial Number", value: certificate.serialNumber },
             ...(altNames.length ? [{ label: "SANs", value: altNames.join(", ") }] : []),
             ...(certificate.profileName ? [{ label: "Profile", value: certificate.profileName }] : []),
@@ -363,8 +289,7 @@ export const certManagerApplicationAlertProviderFactory = ({
             profileId: certificate.profileId,
             profileName: certificate.profileName,
             applicationId: certificate.applicationId,
-            applicationName: certificate.applicationName,
-            ...(isSignerAlert ? { signerIds: certificate.signerIds, signerNames: certificate.signerNames } : {})
+            applicationName: certificate.applicationName
           }
         };
       })
@@ -373,40 +298,19 @@ export const certManagerApplicationAlertProviderFactory = ({
 
   const getCertificateManagerAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
     if (input.action === AlertAuditAction.TestChannel) {
-      const { test } = input;
-      return {
-        type: EventType.TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL,
-        metadata: {
-          alertId: test.alertId,
-          alertName: test.alertName ?? null,
-          channelId: test.channelId,
-          channelName: test.channelName ?? null,
-          channelType: test.channelType,
-          success: test.success,
-          deliveredTo: test.deliveredTo,
-          error: test.error
-        }
-      };
+      return buildCertificateManagerAlertAuditEvent(input, { applications: [], profiles: [] });
     }
-
-    const { alert } = input;
-    const { applicationIds = [], profileIds = [] } = parseFilters(alert.condition);
+    const { applicationIds = [], profileIds = [] } = parseFilters(input.alert.condition);
     const nameById = new Map(
-      Object.values(alert.filters ?? {})
+      Object.values(input.alert.filters ?? {})
         .flat()
         .map((resource) => [resource.id, resource.name])
     );
     const withNames = (ids: string[]) => ids.map((id) => ({ id, name: nameById.get(id) ?? null }));
-    const metadata = {
-      alertId: alert.id,
-      name: alert.name,
-      eventType: alert.eventType,
+    return buildCertificateManagerAlertAuditEvent(input, {
       applications: withNames(applicationIds),
       profiles: withNames(profileIds)
-    };
-    if (input.action === AlertAuditAction.Create) return { type: EventType.CREATE_CERTIFICATE_MANAGER_ALERT, metadata };
-    if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_CERTIFICATE_MANAGER_ALERT, metadata };
-    return { type: EventType.DELETE_CERTIFICATE_MANAGER_ALERT, metadata };
+    });
   };
 
   const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
@@ -459,29 +363,19 @@ export const certManagerApplicationAlertProviderFactory = ({
         ? { applicationId: resourceId, alertScope: PkiAlertScope.Application }
         : { alertScope: PkiAlertScope.CertificateManager })
     };
-    switch (action) {
-      case AlertTelemetryAction.Create:
-        return {
-          event: PostHogEventTypes.PkiAlertCreated,
-          properties: {
-            ...properties,
-            alertType: TELEMETRY_ALERT_TYPE_BY_EVENT[eventType as TCertManagerAlertEvent]
-          }
-        };
-      case AlertTelemetryAction.Update:
-        return { event: PostHogEventTypes.PkiAlertUpdated, properties };
-      default:
-        return { event: PostHogEventTypes.PkiAlertDeleted, properties };
-    }
+    return buildPkiAlertTelemetryEvent(
+      action,
+      properties,
+      TELEMETRY_ALERT_TYPE_BY_EVENT[eventType as CertificateAlertEvent]
+    );
   };
 
   const $assertCertificateManagerPermission = async ({
     action,
     projectId,
-    eventType,
     actor
   }: TAlertPermissionInput & { projectId: string }) => {
-    const { permission, hasRole } = await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor: actor.actor,
       actorId: actor.actorId,
       projectId,
@@ -489,20 +383,13 @@ export const certManagerApplicationAlertProviderFactory = ({
       actorOrgId: actor.actorOrgId,
       actionProjectType: ActionProjectType.CertificateManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(PERMISSION_ACTIONS[action], ProjectPermissionSub.PkiAlerts);
+    ForbiddenError.from(permission).throwUnlessCan(
+      CERT_MANAGER_ALERT_PERMISSION_ACTIONS[action],
+      ProjectPermissionSub.PkiAlerts
+    );
 
     const definesDelivery = action === AlertPermissionAction.Create || action === AlertPermissionAction.Edit;
     if (!definesDelivery) return;
-
-    if (eventType === CodeSigningAlertEvent.SignerCertificateExpiry) {
-      if (!hasRole(ProjectMembershipRole.Admin)) {
-        throw new ForbiddenRequestError({
-          message:
-            "Signer certificate expiration alerts send certificate details from every signer, so only Certificate Manager admins can create or edit them."
-        });
-      }
-      return;
-    }
 
     if (
       !isUnconditionalGrant(
@@ -517,16 +404,9 @@ export const certManagerApplicationAlertProviderFactory = ({
   };
 
   const assertPermission = async (input: TAlertPermissionInput): Promise<void> => {
-    const { action, projectId, resourceId, eventType, actor } = input;
+    const { action, projectId, resourceId, actor } = input;
     if (!projectId) {
       throw new BadRequestError({ message: "Certificate alerts must be created in Certificate Manager" });
-    }
-
-    if (resourceId && eventType === CodeSigningAlertEvent.SignerCertificateExpiry) {
-      throw new BadRequestError({
-        message:
-          "Signer certificate expiration alerts cover every signer in Certificate Manager and can't be bound to an application. Remove resourceId."
-      });
     }
 
     if (!resourceId) {
@@ -544,7 +424,10 @@ export const certManagerApplicationAlertProviderFactory = ({
       actorAuthMethod: actor.actorAuthMethod,
       actorOrgId: actor.actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(PERMISSION_ACTIONS[action], ResourcePermissionSub.PkiAlerts);
+    ForbiddenError.from(permission).throwUnlessCan(
+      CERT_MANAGER_ALERT_PERMISSION_ACTIONS[action],
+      ResourcePermissionSub.PkiAlerts
+    );
   };
 
   const assertResourceInScope = async (input: {
@@ -639,31 +522,13 @@ export const certManagerApplicationAlertProviderFactory = ({
   };
 
   const resolveProjectId = async ({ orgId, resourceId }: { orgId: string; resourceId?: string | null }) => {
-    if (!resourceId) {
-      const projectId = await certManagerProjectResolver.getActiveProjectId(orgId);
-      if (!projectId) {
-        throw new NotFoundError({ message: "Certificate Manager isn't set up for this organization" });
-      }
-      return projectId;
-    }
+    if (!resourceId) return resolveCertManagerProjectId(certManagerProjectResolver, orgId);
     assertValidApplicationId(resourceId);
     const application = await certManagerApplicationAlertDAL.findApplicationById(resourceId);
     if (!application || application.orgId !== orgId) {
       throw new NotFoundError({ message: `Application with ID '${resourceId}' not found` });
     }
     return application.projectId;
-  };
-
-  const assertChannelTypesAllowed = async ({ orgId, channelTypes }: { orgId: string; channelTypes: string[] }) => {
-    const gatedType = channelTypes.find((channelType) => channelType !== AlertChannelType.EMAIL);
-    if (!gatedType) return;
-
-    const plan = await licenseService.getPlan(orgId);
-    if (!plan.pkiEnterpriseAlerting) {
-      throw new BadRequestError({
-        message: `Failed to save a ${gatedType} channel due to plan restriction. Upgrade plan to alert on channels other than email, or disable or remove the ${gatedType} channel.`
-      });
-    }
   };
 
   return {
@@ -674,11 +539,6 @@ export const certManagerApplicationAlertProviderFactory = ({
         key: CertificateAlertEvent.Expiry,
         triggerType: AlertTriggerType.Scheduled,
         conditionSchema: ExpirationConditionSchema
-      },
-      {
-        key: CodeSigningAlertEvent.SignerCertificateExpiry,
-        triggerType: AlertTriggerType.Scheduled,
-        conditionSchema: SignerExpirationConditionSchema
       },
       ...[CertificateAlertEvent.Issuance, CertificateAlertEvent.Renewal, CertificateAlertEvent.Revocation].map(
         (key) => ({
@@ -702,7 +562,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     assertPermission,
     assertResourceInScope,
     assertConditionInScope,
-    assertChannelTypesAllowed,
+    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseService, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
     getAuditEvent,

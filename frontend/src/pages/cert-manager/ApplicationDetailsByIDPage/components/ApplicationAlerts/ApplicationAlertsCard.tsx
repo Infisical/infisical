@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  AlertTriangleIcon,
   BellIcon,
   CircleStopIcon,
   EyeIcon,
@@ -13,6 +14,9 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   Card,
@@ -300,11 +304,33 @@ export const ApplicationAlertsCard = ({
     { label: "Actions", className: "w-5 text-right" }
   ];
   const resourceId = getAlertResourceId(scope);
-  const { data: alerts = [], isLoading: isAlertsLoading } = useListAlerts({
+  const {
+    data: certificateAlerts = [],
+    isLoading: isCertificateAlertsLoading,
+    isError: isCertificateAlertsError
+  } = useListAlerts({
     resourceType: CertificateAlertResourceType.Application,
     projectId,
     ...(resourceId ? { resourceId } : {})
   });
+  const {
+    data: signerAlerts = [],
+    isLoading: isSignerAlertsLoading,
+    isError: isSignerAlertsError
+  } = useListAlerts(
+    { resourceType: CertificateAlertResourceType.Signer, projectId },
+    { enabled: scope.kind === CertificateAlertScopeKind.CertificateManager }
+  );
+  const alerts =
+    scope.kind === CertificateAlertScopeKind.CertificateManager
+      ? [...certificateAlerts, ...signerAlerts]
+      : certificateAlerts;
+  const isAlertsLoading =
+    isCertificateAlertsLoading ||
+    (scope.kind === CertificateAlertScopeKind.CertificateManager && isSignerAlertsLoading);
+  const isAlertsError =
+    isCertificateAlertsError ||
+    (scope.kind === CertificateAlertScopeKind.CertificateManager && isSignerAlertsError);
   const usedEventTypes =
     scope.kind === CertificateAlertScopeKind.Application
       ? alerts.map((alert) => alert.eventType as CertificateAlertEventType)
@@ -381,13 +407,24 @@ export const ApplicationAlertsCard = ({
           </CardAction>
         </CardHeader>
         <CardContent>
+          {isAlertsError && (
+            <Alert variant="warning" className="mb-4">
+              <AlertTriangleIcon />
+              <AlertTitle>Some alerts could not be loaded</AlertTitle>
+              <AlertDescription>
+                Reload the page to try again. Alerts that failed to load aren&apos;t listed below.
+              </AlertDescription>
+            </Alert>
+          )}
           {!isAlertsLoading && alerts.length === 0 ? (
-            <Empty className="border">
-              <EmptyMedia variant="icon">
-                <BellIcon />
-              </EmptyMedia>
-              <EmptyDescription>{config.emptyDescription}</EmptyDescription>
-            </Empty>
+            !isAlertsError && (
+              <Empty className="border">
+                <EmptyMedia variant="icon">
+                  <BellIcon />
+                </EmptyMedia>
+                <EmptyDescription>{config.emptyDescription}</EmptyDescription>
+              </Empty>
+            )
           ) : (
             <Table>
               <TableHeader>

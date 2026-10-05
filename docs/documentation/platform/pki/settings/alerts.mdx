@@ -75,12 +75,12 @@ Only each signer's current certificate counts. When you reissue a signer's certi
     | `type` | `com.infisical.cert-manager.certificate.<event>`, for example `com.infisical.cert-manager.certificate.issuance` |
     | `subject` | `cert-manager.certificate.<event>`, for example `cert-manager.certificate.issuance` |
     | `source` | `/alerts/<alert-id>` |
-    | `data.alert.resourceType` | `cert-manager.application`, with no `resourceId` |
+    | `data.alert.resourceType` | `cert-manager`, with no `resourceId` |
     | `data.metadata.viewUrl` | Opens the certificate inventory |
     | `data.items[].fields` | Includes an entry labelled `Application` when the certificate belongs to an application |
     | `data.items[].resource.applicationId` | `null` for a certificate outside an application |
 
-    A **Signer Certificate Expiration** alert sends `cert-manager.signer-certificate.expiry` as its `subject` (`type` is `com.infisical.cert-manager.signer-certificate.expiry`), opens **Code Signing** from `data.metadata.viewUrl`, and adds a `Signer` field (`Signers` when several signers share the certificate) plus `signerIds` and `signerNames` to each item.
+    A **Signer Certificate Expiration** alert has `cert-manager.signer` as its `data.alert.resourceType` and sends `cert-manager.signer.certificate.expiry` as its `subject` (`type` is `com.infisical.cert-manager.signer.certificate.expiry`). It opens **Code Signing** from `data.metadata.viewUrl` and sends one item per certificate. Each item's `fields` are `Signer` (`Signers` when several signers share the certificate), `Serial Number`, `SANs` when the certificate has any, and `Expires`. Its `resource` has `id`, `serialNumber`, `commonName`, `altNames`, `status`, `notBefore`, `notAfter`, `signerIds`, and `signerNames`, with no application, profile, or revocation keys.
   </Accordion>
 </AccordionGroup>
 

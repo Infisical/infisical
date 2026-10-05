@@ -21,7 +21,6 @@ const buildDAL = (firstQueryRows: unknown[] = []) => {
       }
     });
   }) as unknown as Knex;
-  Object.assign(reader, { raw: builder.raw.bind(builder) });
 
   const db = Object.assign(reader, { replicaNode: () => reader }) as unknown as TDbClient;
   return { dal: certManagerApplicationAlertDALFactory(db), queries };
@@ -37,7 +36,8 @@ describe("cert manager certificate alert DAL", () => {
       applicationId: APPLICATION_ID,
       alertBeforeInterval: "30 days",
       leadInterval: "1 hour",
-      asOf
+      asOf,
+      alreadyAlerted: { alertId: "alert-1", channelIds: ["channel-1"], since: asOf }
     });
 
     const [{ sql, bindings }] = queries;
@@ -68,19 +68,22 @@ describe("cert manager certificate alert DAL", () => {
 
     expect(queries).toHaveLength(2);
     const [notFullyNotified, leastRecentlyNotified] = queries;
-    expect(notFullyNotified.sql).toContain('count(distinct "tgt"."channelId")');
-    expect(notFullyNotified.sql).toContain('"tgt"."targetId" = "certificates".id::text');
-    expect(notFullyNotified.sql).toContain('count(distinct "everTgt"."channelId")');
+    expect(notFullyNotified.sql).toContain('"certificates".id::text not in ((select "deliveredTgt"."targetId"');
+    expect(notFullyNotified.sql).toContain('having count(distinct "deliveredTgt"."channelId") >= ?');
+    expect(notFullyNotified.sql).not.toContain('"deliveredTgt"."targetId" = "certificates".id::text');
     expect(notFullyNotified.sql).toMatch(/order by "certificates"\."notAfter" asc limit \?$/);
     expect(notFullyNotified.bindings).toEqual(
-      expect.arrayContaining(["alert-1", since, "success", "channel-1", "channel-2", 2, 1000])
+      expect.arrayContaining(["alert-1", "success", "channel-1", "channel-2", 2, 1000])
     );
-    expect(leastRecentlyNotified.sql).toContain('max("lastHist"."triggeredAt") as "lastDeliveredAt"');
-    expect(leastRecentlyNotified.sql).toContain('group by "lastTgt"."targetId"');
+    expect(leastRecentlyNotified.sql).toContain('count(distinct "tgt"."channelId")');
+    expect(leastRecentlyNotified.sql).toContain('"hist"."triggeredAt" >= ?');
+    expect(leastRecentlyNotified.bindings).toEqual(expect.arrayContaining([since]));
+    expect(leastRecentlyNotified.sql).toContain('max("deliveredHist"."triggeredAt") as "lastDeliveredAt"');
+    expect(leastRecentlyNotified.sql).toContain('group by "deliveredTgt"."targetId"');
     expect(leastRecentlyNotified.sql).toContain(
       'order by "lastDelivered"."lastDeliveredAt" asc, "certificates"."notAfter" asc limit ?'
     );
-    expect(leastRecentlyNotified.sql).toContain('having count(distinct "lastTgt"."channelId") >= ?');
+    expect(leastRecentlyNotified.sql).toContain('having count(distinct "deliveredTgt"."channelId") >= ?');
   });
 
   test("findExpiringCertificates stops after the never-notified query when it fills the cap", async () => {
@@ -96,30 +99,6 @@ describe("cert manager certificate alert DAL", () => {
 
     expect(certificates).toHaveLength(1000);
     expect(queries).toHaveLength(1);
-  });
-
-  test("findExpiringSignerCertificates scans each active signer's current certificate", async () => {
-    const { dal, queries } = buildDAL();
-
-    await dal.findExpiringSignerCertificates({
-      projectId: PROJECT_ID,
-      alertBeforeInterval: "30 days",
-      leadInterval: "1 day",
-      asOf: new Date("2026-01-02T00:00:00Z"),
-      alreadyAlerted: { alertId: "alert-1", channelIds: ["channel-1"], since: new Date("2026-01-01T00:00:00Z") }
-    });
-
-    const [{ sql, bindings }] = queries;
-    expect(sql).toContain('group by "pki_signers"."certificateId"');
-    expect(sql).toContain('array_agg("pki_signers".name order by "pki_signers".name) as "signerNames"');
-    expect(sql).toContain('as "signers" on "signers"."certificateId" = "certificates"."id"');
-    expect(sql).toContain('"pki_signers"."projectId" = ?');
-    expect(sql).toContain('"pki_signers"."status" = ?');
-    expect(sql).toContain('not "certificates"."status" = ?');
-    expect(sql).toContain('count(distinct "everTgt"."channelId")');
-    expect(bindings).toEqual(expect.arrayContaining([PROJECT_ID, "active", "alert-1"]));
-    expect(queries[1].sql).toContain('as "signers" on "signers"."certificateId" = "certificates"."id"');
-    expect(queries[1].sql).toContain('"lastDelivered"."lastDeliveredAt" asc');
   });
 
   test("findCertificatesByIds keeps event targets inside the alert's project and application", async () => {
@@ -164,7 +143,8 @@ describe("cert manager certificate alert DAL", () => {
       profileIds: ["prof-1"],
       alertBeforeInterval: "30 days",
       leadInterval: "1 day",
-      asOf: new Date("2026-01-01T00:00:00Z")
+      asOf: new Date("2026-01-01T00:00:00Z"),
+      alreadyAlerted: { alertId: "alert-1", channelIds: ["channel-1"], since: new Date("2026-01-01T00:00:00Z") }
     });
 
     const [{ sql, bindings }] = queries;
@@ -173,21 +153,6 @@ describe("cert manager certificate alert DAL", () => {
     expect(sql).toContain('"certificates"."applicationId" in (?, ?)');
     expect(sql).toContain('"certificates"."profileId" in (?)');
     expect(bindings).toEqual(expect.arrayContaining(["app-1", "app-2", "prof-1"]));
-  });
-
-  test("findExpiringCertificates adds no exclusion when the alert has no enabled channels", async () => {
-    const { dal, queries } = buildDAL();
-
-    await dal.findExpiringCertificates({
-      projectId: PROJECT_ID,
-      applicationId: APPLICATION_ID,
-      alertBeforeInterval: "30 days",
-      leadInterval: "1 day",
-      asOf: new Date("2026-01-02T00:00:00Z"),
-      alreadyAlerted: { alertId: "alert-1", channelIds: [], since: new Date() }
-    });
-
-    expect(queries[0].sql).not.toContain("count(distinct");
   });
 
   test("findCertificatesByIds narrows a project-wide lookup by the profile list", async () => {

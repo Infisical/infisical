@@ -12,6 +12,7 @@ interface AlertNotificationTemplateProps extends Omit<BaseEmailWrapperProps, "ti
   severity?: string;
   viewUrl: string;
   items: { id: string; title: string; identifier?: string; fields?: { label: string; value: string }[] }[];
+  remainingCount?: number;
 }
 
 const SEVERITY_STYLES: Record<string, { label: string; color: string; background: string; border: string }> = {
@@ -30,7 +31,8 @@ export const AlertNotificationTemplate = ({
   severity = "info",
   viewUrl,
   siteUrl,
-  items
+  items,
+  remainingCount = 0
 }: AlertNotificationTemplateProps) => {
   const title = `${resourceKind} ${eventLabel} Notice`;
   const sev = SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.info;
@@ -81,6 +83,11 @@ export const AlertNotificationTemplate = ({
             ))}
           </Section>
         ))}
+        {remainingCount > 0 && (
+          <Text className="text-[13px] text-gray-600 text-center m-0 mt-[4px]">
+            And {remainingCount} more. View them all in Infisical.
+          </Text>
+        )}
       </Section>
 
       <Section className="text-center mt-[28px] mb-[4px]">

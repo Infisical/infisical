@@ -2416,7 +2416,6 @@ export const ALERTING = {
     resourceId: "The ID of the resource the alert watches.",
     projectId: "The ID of the project the alert belongs to.",
     alertId: "The ID of the saved alert the channel belongs to.",
-    eventType: "The event of the alert being created. Ignored when `alertId` is set.",
     channelId: "The ID of the saved channel to test."
   },
   LIST: {

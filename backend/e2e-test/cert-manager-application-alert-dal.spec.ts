@@ -60,7 +60,7 @@ const insertDelivery = async (
   );
 };
 
-const scan = (alreadyAlerted?: { alertId: string; channelIds: string[]; since: Date }) =>
+const scan = (alreadyAlerted: { alertId: string; channelIds: string[]; since: Date }) =>
   dal.findExpiringCertificates({
     projectId: PROJECT_ID,
     alertBeforeInterval: "30 days",
@@ -144,8 +144,14 @@ describe("cert manager certificate alert DAL (postgres)", () => {
     await testDb(TableName.Certificate).whereIn("id", allCertificateIds()).del();
   });
 
-  test("without an already-alerted filter every due certificate comes back", async () => {
-    expect(ownIds(await scan()).sort()).toEqual(allCertificateIds().sort());
+  test("an alert with no deliveries yet gets every due certificate", async () => {
+    const found = ownIds(await scan({ alertId: randomUUID(), channelIds, since }));
+    expect(found.sort()).toEqual(allCertificateIds().sort());
+  });
+
+  test("certificates still owed to a channel come before ones already delivered on every channel", async () => {
+    const found = ownIds(await scan({ alertId, channelIds, since }));
+    expect(found[found.length - 1]).toBe(certificateIds.beforeWindow);
   });
 
   test("a certificate is dropped only when every enabled channel delivered it inside the window", async () => {

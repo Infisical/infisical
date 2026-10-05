@@ -41,7 +41,6 @@ export type TAlertPermissionInput = {
   orgId: string;
   projectId?: string | null;
   resourceId?: string | null;
-  eventType?: string;
   actor: TGenericPermission;
 };
 
@@ -191,9 +190,9 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // afterwards, so this returns all current matches in the window (not minus already-alerted).
   // Must be ordered most-urgent-first (soonest expiry): the engine's per-channel maxTargetsPerRun cap
   // keeps the head of this list and defers the tail, so urgency ordering ensures the targets closest
-  // to expiry are never the ones dropped. A provider that caps its own row count puts the targets this
-  // alert notified least recently ahead of that, so a cap below the due count rotates instead of
-  // re-sending the same head every run.
+  // to expiry are never the ones dropped. A provider that caps its own row count first takes targets
+  // not yet delivered on every channel, then the ones this alert notified least recently, so a cap
+  // below the due count rotates instead of re-sending the same head every run.
   // Required for any Scheduled event; the registry enforces that at boot.
   findScheduledTargets?(input: TFindScheduledTargetsInput): Promise<TTarget[]>;
 

@@ -13,15 +13,12 @@ import {
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
 import { isValidEmail } from "@app/helpers/email";
-import {
-  AlertChannelType,
-  AlertPrincipalType,
-  CertificateAlertResourceType
-} from "@app/hooks/api/alerts";
+import { AlertChannelType, AlertPrincipalType } from "@app/hooks/api/alerts";
 import { AddChannelMenu, ChannelCard, TChannelRecipientsRenderProps } from "@app/views/Alerts";
 
 import {
   getAlertResourceId,
+  getAlertResourceType,
   MAX_CHANNELS,
   normalizeEmail,
   TCertificateAlertForm,
@@ -174,10 +171,9 @@ export const ChannelsStep = ({
           key={field.id}
           index={index}
           projectId={projectId}
-          resourceType={CertificateAlertResourceType.Application}
+          resourceType={getAlertResourceType(eventType)}
           resourceId={getAlertResourceId(scope)}
           alertId={alertId}
-          eventType={eventType}
           canRemove
           onRemove={() => onRemove(index)}
           renderRecipients={(props) => <EmailRecipientsField {...props} members={members} />}

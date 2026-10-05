@@ -19,7 +19,6 @@ const RESOURCE_TYPE = "cert-manager.application";
 const EXPIRY_EVENT = "cert-manager.application.certificate.expiry";
 const ISSUANCE_EVENT = "cert-manager.application.certificate.issuance";
 const REVOCATION_EVENT = "cert-manager.application.certificate.revocation";
-const SIGNER_EXPIRY_EVENT = "cert-manager.signer-certificate.expiry";
 const APPLICATION_ID = "7b0a6b54-3c1e-4f3a-9d5e-2f1b8c4d6e90";
 const OTHER_APPLICATION_ID = "6c8e4a1f-9b2d-4f3c-8e7a-2b3c4d5e6f70";
 const PROFILE_ID = "7d9f5b2a-0c3e-4a4d-9f8b-3c4d5e6f7081";
@@ -59,7 +58,6 @@ const buildProvider = (opts?: {
   application?: { id: string; name: string; projectId: string; orgId: string };
   certificates?: TApplicationAlertCertificate[];
   onFindExpiring?: (args: Record<string, unknown>) => void;
-  onFindExpiringSigners?: (args: Record<string, unknown>) => void;
   onFindByIds?: (args: Record<string, unknown>) => void;
   onFindNames?: (ids: string[], orgId: string) => void;
   onFindApplicationIds?: (ids: string[]) => void;
@@ -83,10 +81,6 @@ const buildProvider = (opts?: {
     },
     findExpiringCertificates: async (args: Record<string, unknown>) => {
       opts?.onFindExpiring?.(args);
-      return opts?.certificates ?? [];
-    },
-    findExpiringSignerCertificates: async (args: Record<string, unknown>) => {
-      opts?.onFindExpiringSigners?.(args);
       return opts?.certificates ?? [];
     },
     findCertificatesByIds: async (args: Record<string, unknown>) => {
@@ -203,6 +197,28 @@ describe("cert manager application alert provider", () => {
     });
   });
 
+  test("findScheduledTargets scans nothing when the alert has no channel to deliver to", async () => {
+    let scanned = false;
+    const { provider } = buildProvider({
+      onFindExpiring: () => {
+        scanned = true;
+      }
+    });
+
+    const targets = await provider.findScheduledTargets({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceId: null,
+      eventType: EXPIRY_EVENT,
+      condition: { alertBefore: "2w" },
+      asOf: new Date(),
+      alreadyAlerted: { alertId: "alert-1", channelIds: [], since: new Date() }
+    });
+
+    expect(targets).toEqual([]);
+    expect(scanned).toBe(false);
+  });
+
   test("findScheduledTargets converts alertBefore to days and scopes the scan to the alert's application", async () => {
     let args: Record<string, unknown> | undefined;
     const { provider } = buildProvider({
@@ -216,7 +232,8 @@ describe("cert manager application alert provider", () => {
       resourceId: "7b0a6b54-3c1e-4f3a-9d5e-2f1b8c4d6e90",
       eventType: EXPIRY_EVENT,
       condition: { alertBefore: "2w" },
-      asOf: new Date()
+      asOf: new Date(),
+      alreadyAlerted: { alertId: "alert-1", channelIds: ["channel-1"], since: new Date() }
     });
     expect(args).toMatchObject({
       projectId: "proj-1",
@@ -242,7 +259,8 @@ describe("cert manager application alert provider", () => {
       resourceId: null,
       eventType: EXPIRY_EVENT,
       condition: { alertBefore: "2w", profileIds: [PROFILE_ID] },
-      asOf: new Date()
+      asOf: new Date(),
+      alreadyAlerted: { alertId: "alert-1", channelIds: ["channel-1"], since: new Date() }
     });
     await provider.findEventTargets({
       orgId: "org-1",
@@ -287,6 +305,7 @@ describe("cert manager application alert provider", () => {
     expect(payload.webhookType).toBe(`com.infisical.${EXPIRY_EVENT}`);
     expect(payload.eventKey).toBe(EXPIRY_EVENT);
     expect(payload.webhookSource).toBe(`/applications/${alertContext().resourceId}/alerts/alert-1`);
+    expect(payload.alert.resourceType).toBe(RESOURCE_TYPE);
     expect(payload.alert.resourceId).toBe(alertContext().resourceId);
     expect(payload.severity).toBe("critical");
     expect(payload.items[0]).toMatchObject({ id: "cert-1", title: "api.example.com" });
@@ -429,6 +448,8 @@ describe("cert manager application alert provider", () => {
     );
 
     expect(payload.resourceOwnerKind).toBe("Certificate Manager");
+    expect(payload.alert.resourceType).toBe("cert-manager");
+    expect(payload.alert).not.toHaveProperty("resourceId");
     expect(payload.webhookSource).toBe("/alerts/alert-1");
     expect(payload.eventKey).toBe("cert-manager.certificate.expiry");
     expect(payload.webhookType).toBe("com.infisical.cert-manager.certificate.expiry");
@@ -769,147 +790,6 @@ describe("cert manager application alert provider", () => {
         alertScope: PkiAlertScope.CertificateManager,
         alertType: "issuance"
       }
-    });
-  });
-
-  describe("signer certificate expiration", () => {
-    const signerCertificate = sampleCertificate({
-      id: "cert-signer",
-      commonName: "release signing",
-      altNames: null,
-      applicationId: null,
-      applicationName: null,
-      signerIds: ["signer-1"],
-      signerNames: ["release-signer"]
-    });
-    const signerAlert = alertContext({
-      resourceId: null,
-      eventType: SIGNER_EXPIRY_EVENT,
-      condition: { alertBefore: "30d" }
-    });
-
-    test("is a scheduled event that takes only alertBefore and dailyReminder", () => {
-      const event = buildProvider().provider.events.find((candidate) => candidate.key === SIGNER_EXPIRY_EVENT)!;
-      expect(event.triggerType).toBe("scheduled");
-      expect(event.conditionSchema.safeParse({ alertBefore: "30d", dailyReminder: true }).success).toBe(true);
-      expect(event.conditionSchema.safeParse({ alertBefore: "30d", applicationIds: [APPLICATION_ID] }).success).toBe(
-        false
-      );
-      expect(event.conditionSchema.safeParse({ alertBefore: "400d" }).success).toBe(false);
-    });
-
-    test("scans the active certificate of every signer and never an application", async () => {
-      let signerArgs: Record<string, unknown> | undefined;
-      let certificateScan = false;
-      const { provider } = buildProvider({
-        certificates: [signerCertificate],
-        onFindExpiringSigners: (args) => {
-          signerArgs = args;
-        },
-        onFindExpiring: () => {
-          certificateScan = true;
-        }
-      });
-      const asOf = new Date("2026-10-01T00:00:00.000Z");
-
-      const targets = await provider.findScheduledTargets({
-        orgId: "org-1",
-        projectId: "proj-1",
-        resourceId: null,
-        eventType: SIGNER_EXPIRY_EVENT,
-        condition: { alertBefore: "2w" },
-        asOf
-      });
-
-      expect(targets).toEqual([signerCertificate]);
-      expect(certificateScan).toBe(false);
-      expect(signerArgs).toMatchObject({ projectId: "proj-1", alertBeforeInterval: "14 days", asOf });
-      await expect(
-        provider.findScheduledTargets({
-          orgId: "org-1",
-          projectId: "proj-1",
-          resourceId: APPLICATION_ID,
-          eventType: SIGNER_EXPIRY_EVENT,
-          condition: { alertBefore: "2w" },
-          asOf
-        })
-      ).resolves.toEqual([]);
-    });
-
-    test("creating or editing one requires a project admin and refuses an application", async () => {
-      const create = {
-        action: AlertPermissionAction.Create,
-        orgId: "org-1",
-        projectId: "proj-1",
-        eventType: SIGNER_EXPIRY_EVENT,
-        actor
-      };
-      const alertRules = [
-        { action: "create", subject: "pki-alerts" },
-        { action: "edit", subject: "pki-alerts" },
-        { action: "read", subject: "pki-alerts" }
-      ];
-
-      await expect(
-        buildProvider({ abilityRules: alertRules, projectRoles: ["admin"] }).provider.assertPermission(create)
-      ).resolves.toBeUndefined();
-      await expect(
-        buildProvider({
-          abilityRules: [...alertRules, { action: "read", subject: "code-signers" }],
-          projectRoles: ["member"]
-        }).provider.assertPermission(create)
-      ).rejects.toThrow("only Certificate Manager admins");
-      await expect(
-        buildProvider({
-          abilityRules: [...alertRules, { action: "read", subject: "code-signers" }]
-        }).provider.assertPermission({ ...create, action: AlertPermissionAction.Edit })
-      ).rejects.toThrow("only Certificate Manager admins");
-      await expect(
-        buildProvider({ abilityRules: alertRules }).provider.assertPermission({
-          ...create,
-          action: AlertPermissionAction.Read
-        })
-      ).resolves.toBeUndefined();
-      await expect(
-        buildProvider({ abilityRules: alertRules, projectRoles: ["admin"] }).provider.assertPermission({
-          ...create,
-          resourceId: APPLICATION_ID
-        })
-      ).rejects.toThrow("can't be bound to an application");
-    });
-
-    test("buildPayload names the signer and links to Code Signing", async () => {
-      const { provider } = buildProvider();
-      const viewUrl = await provider.buildViewUrl(signerAlert);
-      const payload = provider.buildPayload(signerAlert, [signerCertificate], viewUrl);
-
-      expect(viewUrl).toBe("https://app.infisical.com/organizations/org-1/projects/cert-manager/proj-1/code-signing");
-      expect(payload.resourceKind).toBe("Signer Certificate");
-      expect(payload.eventKey).toBe("cert-manager.signer-certificate.expiry");
-      expect(payload.webhookType).toBe("com.infisical.cert-manager.signer-certificate.expiry");
-      expect(payload.eventLabel).toBe("Expiration");
-      expect(payload.resourceOwnerKind).toBe("Certificate Manager");
-      expect(payload.summary).toBe("1 signer certificate expiring within 30 days");
-      expect(payload.items[0].summary).toMatch(/^Certificate 'release signing' of signer 'release-signer' expires on /);
-      expect(payload.items[0].fields?.[0]).toEqual({ label: "Signer", value: "release-signer" });
-      expect(payload.items[0].resource).toMatchObject({ signerIds: ["signer-1"], signerNames: ["release-signer"] });
-      expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(44);
-    });
-
-    test("a certificate shared by several signers is one item naming every signer", async () => {
-      const { provider } = buildProvider();
-      const sharedCertificate = {
-        ...signerCertificate,
-        signerIds: ["signer-1", "signer-2"],
-        signerNames: ["build-signer", "release-signer"]
-      };
-      const payload = provider.buildPayload(signerAlert, [sharedCertificate], await provider.buildViewUrl(signerAlert));
-
-      expect(payload.items).toHaveLength(1);
-      expect(payload.items[0].summary).toMatch(
-        /^Certificate 'release signing' of signers 'build-signer', 'release-signer' expires on /
-      );
-      expect(payload.items[0].fields?.[0]).toEqual({ label: "Signers", value: "build-signer, release-signer" });
     });
   });
 });

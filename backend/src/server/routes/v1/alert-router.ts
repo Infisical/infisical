@@ -146,7 +146,6 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         resourceId: z.string().uuid().nullable().optional().describe(ALERTING.TEST_CHANNEL.resourceId),
         projectId: z.string().nullable().optional().describe(ALERTING.TEST_CHANNEL.projectId),
         alertId: z.string().uuid().optional().describe(ALERTING.TEST_CHANNEL.alertId),
-        eventType: z.string().trim().min(1).max(255).optional().describe(ALERTING.TEST_CHANNEL.eventType),
         channelId: z.string().uuid().optional().describe(ALERTING.TEST_CHANNEL.channelId),
         channelType: z.nativeEnum(AlertChannelType),
         config: z.record(z.unknown()).default({}),

@@ -27,7 +27,6 @@ import { useGetOrgUsers } from "@app/hooks/api";
 import {
   AlertChannelType,
   CertificateAlertEventType,
-  CertificateAlertResourceType,
   TAlert,
   toChannelInput,
   useCreateAlert,
@@ -46,6 +45,7 @@ import {
   CertificateAlertStep,
   emptyCertificateAlertForm,
   getAlertResourceId,
+  getAlertResourceType,
   getSteps,
   STEP_FIELDS,
   TCertificateAlertForm,
@@ -124,7 +124,7 @@ const CertificateAlertWizard = ({
         await createAlert.mutateAsync({
           name: values.name,
           description: values.description || undefined,
-          resourceType: CertificateAlertResourceType.Application,
+          resourceType: getAlertResourceType(values.eventType),
           resourceId: getAlertResourceId(scope),
           eventType: values.eventType,
           condition,

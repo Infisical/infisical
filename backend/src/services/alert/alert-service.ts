@@ -108,7 +108,7 @@ export const alertServiceFactory = ({
   const $assertAlertPermission = (
     provider: IResourceAlertProvider,
     action: AlertPermissionAction,
-    scope: { orgId: string; projectId?: string | null; resourceId?: string | null; eventType?: string },
+    scope: { orgId: string; projectId?: string | null; resourceId?: string | null },
     dto: TGenericPermission
   ) =>
     provider.assertPermission({
@@ -116,7 +116,6 @@ export const alertServiceFactory = ({
       orgId: scope.orgId,
       projectId: scope.projectId,
       resourceId: scope.resourceId,
-      eventType: scope.eventType,
       actor: toAlertActor(dto)
     });
 
@@ -212,7 +211,7 @@ export const alertServiceFactory = ({
     await $assertAlertPermission(
       provider,
       AlertPermissionAction.Create,
-      { orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId, eventType: dto.eventType },
+      { orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId },
       dto
     );
 
@@ -461,7 +460,7 @@ export const alertServiceFactory = ({
     await $assertAlertPermission(
       provider,
       AlertPermissionAction.Edit,
-      { orgId: alert.orgId, projectId: alert.projectId, resourceId: alert.resourceId, eventType: alert.eventType },
+      { orgId: alert.orgId, projectId: alert.projectId, resourceId: alert.resourceId },
       dto
     );
 

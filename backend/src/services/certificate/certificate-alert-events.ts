@@ -13,10 +13,6 @@ export enum CertificateAlertEvent {
   Revocation = "cert-manager.application.certificate.revocation"
 }
 
-export enum CodeSigningAlertEvent {
-  SignerCertificateExpiry = "cert-manager.signer-certificate.expiry"
-}
-
 export const getIssuanceAlertEvent = (isRenewal?: boolean) =>
   isRenewal ? CertificateAlertEvent.Renewal : CertificateAlertEvent.Issuance;
 

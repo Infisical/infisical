@@ -97,8 +97,7 @@ const OWNING_ALERT = {
   orgId: ORG_ID,
   projectId: null,
   resourceType: RESOURCE_TYPE,
-  resourceId: "resource-1",
-  eventType: "test.resource.saved"
+  resourceId: "resource-1"
 };
 
 const buildDeps = (overrides?: {
@@ -390,37 +389,6 @@ describe("alertChannelTestService", () => {
     await expect(service.testChannel(dto)).rejects.toThrow("forbidden");
     restore();
     expect(actions).toEqual(["edit", "create"]);
-  });
-
-  test("checks the permission for the event being set up, and the saved alert's event when there is one", async () => {
-    const eventTypes: (string | undefined)[] = [];
-    const restore = stubSend("slack", async () => ({ success: true }));
-    const newService = () =>
-      alertChannelTestServiceFactory(
-        buildDeps({
-          registry: buildProvider({
-            assertPermission: async (input) => {
-              eventTypes.push(input.eventType);
-            }
-          })
-        }).deps
-      );
-    const dto = {
-      ...actor,
-      resourceType: RESOURCE_TYPE,
-      resourceId: OWNING_ALERT.resourceId,
-      channelType: "slack" as never,
-      config: { webhookUrl: "https://hooks.slack.com/services/T/B/new" }
-    };
-
-    await newService().testChannel({ ...dto, eventType: "test.resource.expiration" });
-    await newService().testChannel({ ...dto, alertId: OWNING_ALERT.id, eventType: "test.resource.expiration" });
-    await newService().testChannel({ ...dto, alertId: OWNING_ALERT.id, eventType: "test.resource.unknown" });
-    await expect(newService().testChannel({ ...dto, eventType: "test.resource.unknown" })).rejects.toThrow(
-      "Event type 'test.resource.unknown' is not supported by resource type"
-    );
-    restore();
-    expect(eventTypes).toEqual(["test.resource.expiration", "test.resource.saved", "test.resource.saved"]);
   });
 
   test("rejects an alert id from another resource or that does not exist", async () => {

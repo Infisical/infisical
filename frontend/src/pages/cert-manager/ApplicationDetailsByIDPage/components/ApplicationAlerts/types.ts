@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   AlertPrincipalType,
   CertificateAlertEventType,
+  CertificateAlertResourceType,
   channelFormSchema,
   MAX_CERTIFICATE_ALERT_BEFORE_DAYS,
   MAX_CERTIFICATE_ALERT_FILTER_IDS,
@@ -78,6 +79,11 @@ export const isExpiryEventType = (eventType: CertificateAlertEventType) =>
 
 export const isFilterableEventType = (eventType: CertificateAlertEventType) =>
   eventType !== CertificateAlertEventType.SignerCertificateExpiry;
+
+export const getAlertResourceType = (eventType: CertificateAlertEventType) =>
+  eventType === CertificateAlertEventType.SignerCertificateExpiry
+    ? CertificateAlertResourceType.Signer
+    : CertificateAlertResourceType.Application;
 
 const ALERT_EVENT_DESCRIPTIONS: Record<CertificateAlertEventType, (where: string) => string> = {
   [CertificateAlertEventType.Expiry]: () => "Fires ahead of a certificate's expiry date.",

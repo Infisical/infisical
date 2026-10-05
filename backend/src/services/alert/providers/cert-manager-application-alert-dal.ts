@@ -5,7 +5,6 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { AlertRunStatus, TAlreadyAlertedFilter } from "@app/services/alert/alert-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { SignerStatus } from "@app/services/signer/signer-enums";
 
 export type TCertManagerApplicationAlertDALFactory = ReturnType<typeof certManagerApplicationAlertDALFactory>;
 
@@ -23,15 +22,13 @@ export type TApplicationAlertCertificate = {
   revocationReason: number | null;
   applicationId: string | null;
   applicationName: string | null;
-  signerIds?: string[];
-  signerNames?: string[];
 };
 
 type TExpiryWindow = {
   alertBeforeInterval: string;
   leadInterval: string;
   asOf: Date;
-  alreadyAlerted?: TAlreadyAlertedFilter;
+  alreadyAlerted: TAlreadyAlertedFilter;
 };
 
 type TCertificateScope = {
@@ -43,120 +40,35 @@ type TCertificateScope = {
 
 const MAX_EXPIRING_CERTIFICATES_PER_RUN = 1000;
 
-const applyCertificateScope = <TQuery extends Knex.QueryBuilder>(
-  query: TQuery,
-  { projectId, applicationId, applicationIds, profileIds }: TCertificateScope
-): TQuery => {
-  void query.where(`${TableName.Certificate}.projectId`, projectId);
-  if (applicationId) void query.where(`${TableName.Certificate}.applicationId`, applicationId);
-  if (applicationIds?.length) void query.whereIn(`${TableName.Certificate}.applicationId`, applicationIds);
-  if (profileIds?.length) void query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
-  return query;
-};
-
-const CERTIFICATE_TARGET_COLUMNS = [
-  `${TableName.Certificate}.id`,
-  `${TableName.Certificate}.serialNumber`,
-  `${TableName.Certificate}.commonName`,
-  `${TableName.Certificate}.altNames`,
-  `${TableName.Certificate}.status`,
-  `${TableName.Certificate}.notBefore`,
-  `${TableName.Certificate}.notAfter`,
-  `${TableName.Certificate}.revokedAt`,
-  `${TableName.Certificate}.revocationReason`,
-  `${TableName.Certificate}.applicationId`,
-  `${TableName.Certificate}.profileId`,
-  "profile.slug as profileName",
-  `${TableName.PkiApplication}.name as applicationName`
-];
-
-const applyExpiryWindow = <TQuery extends Knex.QueryBuilder>(
-  reader: Knex,
-  query: TQuery,
-  { alertBeforeInterval, leadInterval, asOf, alreadyAlerted }: TExpiryWindow
-): TQuery => {
-  if (alreadyAlerted?.channelIds.length) {
-    const deliveredChannelCount = reader(`${TableName.AlertHistory} as hist`)
-      .join(`${TableName.AlertHistoryTarget} as tgt`, "hist.id", "tgt.alertHistoryId")
-      .where("hist.alertId", alreadyAlerted.alertId)
-      .where("hist.triggeredAt", ">=", alreadyAlerted.since)
-      .where("tgt.status", AlertRunStatus.SUCCESS)
-      .whereIn("tgt.channelId", alreadyAlerted.channelIds)
-      .whereRaw(`"tgt"."targetId" = "${TableName.Certificate}".id::text`)
-      .countDistinct("tgt.channelId");
-    void query.whereRaw("(?) < ?", [deliveredChannelCount, alreadyAlerted.channelIds.length]);
-  }
-
-  void query
-    .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
-    .whereRaw(`"${TableName.Certificate}"."notAfter" > ?::timestamptz`, [asOf])
-    .whereRaw(`"${TableName.Certificate}"."notAfter" <= ?::timestamptz + ?::interval + ?::interval`, [
-      asOf,
-      alertBeforeInterval,
-      leadInterval
-    ]);
-  return query;
-};
-
-const selectExpiring = async (
-  reader: Knex,
-  buildQuery: () => Knex.QueryBuilder,
-  window: TExpiryWindow
-): Promise<TApplicationAlertCertificate[]> => {
-  const { alreadyAlerted } = window;
-  const dueQuery = () => applyExpiryWindow(reader, buildQuery(), window);
-
-  if (!alreadyAlerted?.channelIds.length) {
-    return (await dueQuery()
-      .orderBy(`${TableName.Certificate}.notAfter`, "asc")
-      .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN)) as TApplicationAlertCertificate[];
-  }
-
-  const channelCount = alreadyAlerted.channelIds.length;
-  const everDeliveredChannelCount = reader(`${TableName.AlertHistory} as everHist`)
-    .join(`${TableName.AlertHistoryTarget} as everTgt`, "everHist.id", "everTgt.alertHistoryId")
-    .where("everHist.alertId", alreadyAlerted.alertId)
-    .where("everTgt.status", AlertRunStatus.SUCCESS)
-    .whereIn("everTgt.channelId", alreadyAlerted.channelIds)
-    .whereRaw(`"everTgt"."targetId" = "${TableName.Certificate}".id::text`)
-    .countDistinct("everTgt.channelId");
-  const notFullyNotified = (await dueQuery()
-    .whereRaw("(?) < ?", [everDeliveredChannelCount, channelCount])
-    .orderBy(`${TableName.Certificate}.notAfter`, "asc")
-    .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN)) as TApplicationAlertCertificate[];
-  if (notFullyNotified.length >= MAX_EXPIRING_CERTIFICATES_PER_RUN) return notFullyNotified;
-
-  const lastDelivered = reader(`${TableName.AlertHistory} as lastHist`)
-    .join(`${TableName.AlertHistoryTarget} as lastTgt`, "lastHist.id", "lastTgt.alertHistoryId")
-    .where("lastHist.alertId", alreadyAlerted.alertId)
-    .where("lastTgt.status", AlertRunStatus.SUCCESS)
-    .whereIn("lastTgt.channelId", alreadyAlerted.channelIds)
-    .groupBy("lastTgt.targetId")
-    .havingRaw(`count(distinct "lastTgt"."channelId") >= ?`, [channelCount])
-    .select("lastTgt.targetId")
-    .max("lastHist.triggeredAt as lastDeliveredAt");
-  const leastRecentlyNotified = (await dueQuery()
-    .joinRaw(`inner join (?) as "lastDelivered" on "lastDelivered"."targetId" = "${TableName.Certificate}".id::text`, [
-      lastDelivered
-    ])
-    .orderBy("lastDelivered.lastDeliveredAt", "asc")
-    .orderBy(`${TableName.Certificate}.notAfter`, "asc")
-    .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN - notFullyNotified.length)) as TApplicationAlertCertificate[];
-
-  return [...notFullyNotified, ...leastRecentlyNotified];
-};
-
 export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
-  const $selectCertificates = (reader: Knex, scope: TCertificateScope) => {
-    const query = applyCertificateScope(
-      reader(TableName.Certificate)
-        .leftJoin(`${TableName.PkiCertificateProfile} as profile`, `${TableName.Certificate}.profileId`, "profile.id")
-        .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`),
-      scope
-    );
-
-    return query.select(CERTIFICATE_TARGET_COLUMNS);
-  };
+  const $selectCertificates = (
+    reader: Knex,
+    { projectId, applicationId, applicationIds, profileIds }: TCertificateScope
+  ) =>
+    reader(TableName.Certificate)
+      .leftJoin(`${TableName.PkiCertificateProfile} as profile`, `${TableName.Certificate}.profileId`, "profile.id")
+      .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
+      .where(`${TableName.Certificate}.projectId`, projectId)
+      .modify((query) => {
+        if (applicationId) void query.where(`${TableName.Certificate}.applicationId`, applicationId);
+        if (applicationIds?.length) void query.whereIn(`${TableName.Certificate}.applicationId`, applicationIds);
+        if (profileIds?.length) void query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
+      })
+      .select(
+        `${TableName.Certificate}.id`,
+        `${TableName.Certificate}.serialNumber`,
+        `${TableName.Certificate}.commonName`,
+        `${TableName.Certificate}.altNames`,
+        `${TableName.Certificate}.status`,
+        `${TableName.Certificate}.notBefore`,
+        `${TableName.Certificate}.notAfter`,
+        `${TableName.Certificate}.revokedAt`,
+        `${TableName.Certificate}.revocationReason`,
+        `${TableName.Certificate}.applicationId`,
+        `${TableName.Certificate}.profileId`,
+        "profile.slug as profileName",
+        `${TableName.PkiApplication}.name as applicationName`
+      );
 
   const findExpiringCertificates = async (
     scope: TCertificateScope & TExpiryWindow,
@@ -164,47 +76,66 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
   ): Promise<TApplicationAlertCertificate[]> => {
     try {
       const reader = tx || db.replicaNode();
-      return await selectExpiring(
-        reader,
-        () => $selectCertificates(reader, scope).whereNull(`${TableName.Certificate}.renewedByCertificateId`),
-        scope
-      );
+      const { alertId, channelIds, since } = scope.alreadyAlerted;
+
+      const deliveredOnEveryChannel = reader(`${TableName.AlertHistory} as deliveredHist`)
+        .join(`${TableName.AlertHistoryTarget} as deliveredTgt`, "deliveredHist.id", "deliveredTgt.alertHistoryId")
+        .where("deliveredHist.alertId", alertId)
+        .where("deliveredTgt.status", AlertRunStatus.SUCCESS)
+        .whereIn("deliveredTgt.channelId", channelIds)
+        .groupBy("deliveredTgt.targetId")
+        .havingRaw(`count(distinct "deliveredTgt"."channelId") >= ?`, [channelIds.length]);
+
+      const notFullyNotified = (await $selectCertificates(reader, scope)
+        .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
+        .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
+        .whereRaw(`"${TableName.Certificate}"."notAfter" > ?::timestamptz`, [scope.asOf])
+        .whereRaw(`"${TableName.Certificate}"."notAfter" <= ?::timestamptz + ?::interval + ?::interval`, [
+          scope.asOf,
+          scope.alertBeforeInterval,
+          scope.leadInterval
+        ])
+        .whereRaw(`"${TableName.Certificate}".id::text not in (?)`, [
+          deliveredOnEveryChannel.clone().select("deliveredTgt.targetId")
+        ])
+        .orderBy(`${TableName.Certificate}.notAfter`, "asc")
+        .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN)) as TApplicationAlertCertificate[];
+      if (notFullyNotified.length >= MAX_EXPIRING_CERTIFICATES_PER_RUN) return notFullyNotified;
+
+      const deliveredChannelCountSince = reader(`${TableName.AlertHistory} as hist`)
+        .join(`${TableName.AlertHistoryTarget} as tgt`, "hist.id", "tgt.alertHistoryId")
+        .where("hist.alertId", alertId)
+        .where("hist.triggeredAt", ">=", since)
+        .where("tgt.status", AlertRunStatus.SUCCESS)
+        .whereIn("tgt.channelId", channelIds)
+        .whereRaw(`"tgt"."targetId" = "${TableName.Certificate}".id::text`)
+        .countDistinct("tgt.channelId");
+      const leastRecentlyNotified = (await $selectCertificates(reader, scope)
+        .joinRaw(
+          `inner join (?) as "lastDelivered" on "lastDelivered"."targetId" = "${TableName.Certificate}".id::text`,
+          [
+            deliveredOnEveryChannel
+              .clone()
+              .select("deliveredTgt.targetId")
+              .max("deliveredHist.triggeredAt as lastDeliveredAt")
+          ]
+        )
+        .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
+        .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
+        .whereRaw(`"${TableName.Certificate}"."notAfter" > ?::timestamptz`, [scope.asOf])
+        .whereRaw(`"${TableName.Certificate}"."notAfter" <= ?::timestamptz + ?::interval + ?::interval`, [
+          scope.asOf,
+          scope.alertBeforeInterval,
+          scope.leadInterval
+        ])
+        .whereRaw("(?) < ?", [deliveredChannelCountSince, channelIds.length])
+        .orderBy("lastDelivered.lastDeliveredAt", "asc")
+        .orderBy(`${TableName.Certificate}.notAfter`, "asc")
+        .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN - notFullyNotified.length)) as TApplicationAlertCertificate[];
+
+      return [...notFullyNotified, ...leastRecentlyNotified];
     } catch (error) {
       throw new DatabaseError({ error, name: "FindExpiringCertificates" });
-    }
-  };
-
-  const findExpiringSignerCertificates = async (
-    scope: { projectId: string } & TExpiryWindow,
-    tx?: Knex
-  ): Promise<TApplicationAlertCertificate[]> => {
-    try {
-      const reader = tx || db.replicaNode();
-      const activeSigners = reader(TableName.PkiSigners)
-        .where(`${TableName.PkiSigners}.projectId`, scope.projectId)
-        .where(`${TableName.PkiSigners}.status`, SignerStatus.Active)
-        .whereNotNull(`${TableName.PkiSigners}.certificateId`)
-        .groupBy(`${TableName.PkiSigners}.certificateId`)
-        .select(`${TableName.PkiSigners}.certificateId`)
-        .select(
-          reader.raw(`array_agg("${TableName.PkiSigners}".id order by "${TableName.PkiSigners}".name) as "signerIds"`),
-          reader.raw(
-            `array_agg("${TableName.PkiSigners}".name order by "${TableName.PkiSigners}".name) as "signerNames"`
-          )
-        );
-      const buildQuery = () =>
-        reader(TableName.Certificate)
-          .join(activeSigners.clone().as("signers"), "signers.certificateId", `${TableName.Certificate}.id`)
-          .leftJoin(`${TableName.PkiCertificateProfile} as profile`, `${TableName.Certificate}.profileId`, "profile.id")
-          .leftJoin(
-            TableName.PkiApplication,
-            `${TableName.Certificate}.applicationId`,
-            `${TableName.PkiApplication}.id`
-          )
-          .select([...CERTIFICATE_TARGET_COLUMNS, "signers.signerIds", "signers.signerNames"]);
-      return await selectExpiring(reader, buildQuery, scope);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindExpiringSignerCertificates" });
     }
   };
 
@@ -306,7 +237,6 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
 
   return {
     findExpiringCertificates,
-    findExpiringSignerCertificates,
     findCertificatesByIds,
     findApplicationById,
     findApplicationNamesByIds,
