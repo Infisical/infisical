@@ -112,7 +112,6 @@ const Page = withPermission(
               {isSubOrganization ? "Sub-" : ""}Organization Users
             </Link>
             <PageHeader
-              className="mb-10"
               scope={isSubOrganization ? "namespace" : "org"}
               title={
                 membership.user.firstName || membership.user.lastName

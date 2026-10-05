@@ -79,7 +79,6 @@ export const ProductSettingsPage = () => {
       <div className="h-full">
         <div className="mx-auto h-full w-full max-w-8xl bg-page text-foreground-inverse">
           <PageHeader
-            className="mb-10"
             scope={ProjectType.SecretManager}
             title="Product Settings"
             description="Configure organization-wide settings for secrets management projects."

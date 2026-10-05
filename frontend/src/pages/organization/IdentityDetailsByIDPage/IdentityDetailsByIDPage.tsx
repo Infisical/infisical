@@ -108,7 +108,6 @@ const Page = () => {
             {isSubOrganization ? "Sub-" : ""}Organization Machine Identities
           </Link>
           <PageHeader
-            className="mb-10"
             scope={isSubOrganization ? "namespace" : "org"}
             description={`Configure and manage${isScopeIdentity ? " machine identity and " : " "}${isSubOrganization ? "sub-" : ""}organization access control`}
             title={data.identity.name}

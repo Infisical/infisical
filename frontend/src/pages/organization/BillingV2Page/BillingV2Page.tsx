@@ -251,12 +251,7 @@ export const BillingV2Page = () => {
       </Helmet>
       <div className="mb-8 flex w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
-          <PageHeader
-            className="mb-10"
-            scope="org"
-            title={t("billing.title")}
-            description={pageDescription}
-          />
+          <PageHeader scope="org" title={t("billing.title")} description={pageDescription} />
           <OrgPermissionCan
             passThrough={false}
             I={OrgPermissionBillingActions.Read}
