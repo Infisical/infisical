@@ -240,6 +240,27 @@ export const MultiEnvironmentSecretEditSheet = ({
       });
       return;
     }
+    const collision = selected
+      .map((environment) => {
+        const existing = initialSecrets.find((secret) => secret.env === environment.slug);
+        return {
+          environment,
+          entry: changes.secretMetadata?.find(
+            (entry) =>
+              entry.previousKey &&
+              entry.previousKey !== entry.key &&
+              existing?.secretMetadata?.some((metadataEntry) => metadataEntry.key === entry.key)
+          )
+        };
+      })
+      .find((candidate) => candidate.entry);
+    if (collision?.entry) {
+      createNotification({
+        type: "error",
+        text: `Metadata key "${collision.entry.key}" already exists in ${collision.environment.name}. Choose another key.`
+      });
+      return;
+    }
     const plans = selected
       .map((environment) => {
         const { tagChanges, removedMetadataKeys, ...targetChanges } = changes;
