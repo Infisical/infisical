@@ -412,7 +412,11 @@ export const identityV2ServiceFactory = ({
     const deletedIdentity = await identityDAL.transaction(async (tx) => {
       if (scopeData.scope === AccessScope.Project) {
         const project = await projectDAL.findById(scopeData.projectId, tx);
-        if (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM) {
+        if (
+          project?.type === ProjectType.CertificateManager ||
+          project?.type === ProjectType.PAM ||
+          project?.type === ProjectType.AgentVault
+        ) {
           const memberships = await membershipIdentityDAL.find(
             {
               scope: AccessScope.Project,

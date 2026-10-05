@@ -311,7 +311,10 @@ export const membershipGroupServiceFactory = ({
         const newIsActive = data.isActive ?? existingMembership.isActive;
         if (
           !newRolesHavePermanentAdmin ||
-          (!newIsActive && (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM))
+          (!newIsActive &&
+            (project?.type === ProjectType.CertificateManager ||
+              project?.type === ProjectType.PAM ||
+              project?.type === ProjectType.AgentVault))
         ) {
           await assertProductWillRetainAdmin({ project, excludeMembershipIds: [existingMembership.id], tx });
         }

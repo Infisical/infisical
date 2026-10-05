@@ -129,7 +129,7 @@ describe("deleteIdentity alert cleanup", () => {
     );
   });
 
-  test.each([ProjectType.CertificateManager, ProjectType.PAM])(
+  test.each([ProjectType.CertificateManager, ProjectType.PAM, ProjectType.AgentVault])(
     "refuses deleting the last project admin identity in %s",
     async (projectType) => {
       const query = knex({ client: "pg" }).queryBuilder();
