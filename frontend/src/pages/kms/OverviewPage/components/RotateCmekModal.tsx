@@ -45,7 +45,9 @@ export const RotateCmekModal = ({ isOpen, onOpenChange, cmek }: Props) => {
         <Alert variant="warning" className="mb-4">
           <TriangleAlertIcon />
           <AlertDescription>
-            <p>Data encrypted outside Infisical may be affected</p>
+            <p>
+              <strong>Data encrypted outside Infisical may be affected</strong>
+            </p>
             <p>
               Data encrypted through Infisical stays decryptable. However, any system that holds
               this key&apos;s material directly, such as a KMIP client or an exported copy of the
