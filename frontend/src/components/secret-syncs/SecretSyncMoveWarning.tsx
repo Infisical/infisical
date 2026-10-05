@@ -34,13 +34,17 @@ export const useSecretSyncMoveWarning = (projectId: string, checks: TMoveWarning
   );
 
   const {
-    data: secretSyncs = [],
+    data: fetchedSecretSyncs = [],
     isLoading: isChecking,
-    isError: hasError
+    isError
   } = useListSecretSyncsCoveringMove(projectId, checks, {
     enabled: canReadSecretSyncs && checks.length > 0
   });
 
+  // a disabled query keeps its last result, so a user whose read access is revoked mid-dialog must not
+  // keep seeing the syncs it listed
+  const secretSyncs = canReadSecretSyncs ? fetchedSecretSyncs : [];
+  const hasError = canReadSecretSyncs && isError;
   const needsAcknowledgement = hasError || secretSyncs.length > 0;
   const { isAcknowledged, setIsAcknowledged } = useAcknowledgement(
     JSON.stringify({ checks, syncIds: secretSyncs.map(({ id }) => id), hasError })
