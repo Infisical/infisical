@@ -1813,9 +1813,9 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     }
   }
 
-  // a move writes these secrets at the destination, directly or through a change request, so they are held to
-  // the destination's validation rules. the source copies still exist in this transaction, so they are left out
-  // of the duplicate lookup rather than reported as duplicates of the secrets being moved.
+  // validate the moved secrets against the destination's validation rules before writing anything, whether the
+  // move is applied directly or through a change request. the source secrets still exist at this point, so they
+  // are excluded from the duplicate check; otherwise each moved secret would be reported as a duplicate of itself.
   await validateSecrets(
     {
       projectId,
@@ -1824,7 +1824,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       secretPath: destinationFolder.path,
       secrets: secretsToApplyAtDestination.map((secret) => ({
         key: secret.key,
-        // an empty value is stored without ciphertext, but the moved secret is still held to the rules as empty
+        // empty values are stored without an encrypted value, so treat a missing value as an empty string
         value: secret.value ?? "",
         secretId: destinationSecretsGroupedByKey[secret.key]?.[0]?.id
       })),

@@ -130,8 +130,8 @@ export type TValidateSecretsDTO = {
   secretPath: string;
   secrets: TSecretToValidate[];
   /**
-   * Secrets left out of the duplicate lookup without being the ones written, such as the source copies
-   * a move is about to remove. Unlike `secretId`, they bring no version history into the check.
+   * IDs of secrets to ignore when checking for duplicate values, e.g. the source copies of secrets being moved.
+   * Unlike `secretId`, these are only skipped in the duplicate check; their version history is not checked.
    */
   excludedSecretIds?: string[];
 };

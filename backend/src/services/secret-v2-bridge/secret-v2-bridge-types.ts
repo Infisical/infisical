@@ -316,7 +316,7 @@ export type TFnSecretMove = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
-  // the secret service's rule check, which also words the failure for what the actor may read
+  // validates secrets against the project's validation rules; the error only names locations the actor can read
   validateSecrets: (
     dto: TValidateSecretsDTO,
     permission: MongoAbility<ProjectPermissionSet>,
