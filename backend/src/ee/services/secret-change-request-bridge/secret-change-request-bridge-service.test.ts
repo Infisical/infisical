@@ -253,7 +253,7 @@ describe("secretChangeRequestBridge generateSecretChangeRequest", () => {
     expect(runSecretChangeRequestSideEffects).not.toHaveBeenCalled();
   });
 
-  test("writes nothing when the policy no longer exists on the approval system", async () => {
+  test("writes nothing when the policy no longer exists on the global approval system", async () => {
     const { service, deps } = buildService({ policy: null });
 
     await expect(generate(service)).rejects.toBeInstanceOf(NotFoundError);

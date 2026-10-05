@@ -12,8 +12,8 @@ const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 const BRIDGE_MESSAGE = "Secret change requests on the approval system are not available yet.";
 const projectId = seedData1.projectV3.id;
 const envSlug = seedData1.environment.slug;
-const NEW_SYSTEM_FOLDER = "sar-bridge-new";
-const NEW_SYSTEM_PATH = `/${NEW_SYSTEM_FOLDER}`;
+const GLOBAL_SYSTEM_FOLDER = "sar-bridge-global";
+const GLOBAL_SYSTEM_PATH = `/${GLOBAL_SYSTEM_FOLDER}`;
 const authHeaders = () => ({ authorization: `Bearer ${jwtAuthToken}` });
 
 const createSecret = (key: string, value: string, secretPath = "/") =>
@@ -85,7 +85,7 @@ const seedLegacyPolicy = async (db: Knex) => {
   return policy;
 };
 
-const createNewSystemPolicy = async () => {
+const createGlobalSystemPolicy = async () => {
   const res = await testServer.inject({
     method: "POST",
     url: "/api/v2/secret-approvals",
@@ -93,10 +93,10 @@ const createNewSystemPolicy = async () => {
     body: {
       projectId,
       environment: envSlug,
-      secretPath: NEW_SYSTEM_PATH,
+      secretPath: GLOBAL_SYSTEM_PATH,
       approvers: [{ type: ApproverType.User, id: seedData1.id }],
       approvals: 1,
-      name: "new-system-bridge-test-policy"
+      name: "global-system-bridge-test-policy"
     }
   });
   expect(res.statusCode).toBe(200);
@@ -105,24 +105,24 @@ const createNewSystemPolicy = async () => {
 
 describe("Secret approval request bridge routing", () => {
   let legacyPolicyId: string;
-  let newSystemPolicyId: string;
-  let newSystemFolderId: string;
-  const newSystemRequestIds: string[] = [];
+  let globalSystemPolicyId: string;
+  let globalSystemFolderId: string;
+  const globalSystemRequestIds: string[] = [];
   const secretKeys = ["SAR_BRIDGE_MERGE", "SAR_BRIDGE_STATUS"];
 
   beforeAll(async () => {
     const db = getDb();
     legacyPolicyId = (await seedLegacyPolicy(db)).id;
-    newSystemFolderId = (
+    globalSystemFolderId = (
       await createFolder({
         workspaceId: projectId,
         environmentSlug: envSlug,
         secretPath: "/",
-        name: NEW_SYSTEM_FOLDER,
+        name: GLOBAL_SYSTEM_FOLDER,
         authToken: jwtAuthToken
       })
     ).id;
-    newSystemPolicyId = await createNewSystemPolicy();
+    globalSystemPolicyId = await createGlobalSystemPolicy();
   });
 
   afterAll(async () => {
@@ -136,13 +136,13 @@ describe("Secret approval request bridge routing", () => {
       throw new Error(`cleanup: unexpected ${res.statusCode} deleting policy ${legacyPolicyId} - ${res.payload}`);
     }
     await Promise.all(secretKeys.map((key) => deleteSecret(key)));
-    await db(TableName.ApprovalRequests).whereIn("id", newSystemRequestIds).del();
-    await db(TableName.ApprovalPolicies).where({ id: newSystemPolicyId }).del();
+    await db(TableName.ApprovalRequests).whereIn("id", globalSystemRequestIds).del();
+    await db(TableName.ApprovalPolicies).where({ id: globalSystemPolicyId }).del();
     await deleteFolder({
       workspaceId: projectId,
       environmentSlug: envSlug,
       secretPath: "/",
-      id: newSystemFolderId,
+      id: globalSystemFolderId,
       authToken: jwtAuthToken,
       forceDelete: true
     });
@@ -184,17 +184,17 @@ describe("Secret approval request bridge routing", () => {
     expect(reopenRes.json().approval.status).toBe(RequestState.Open);
   });
 
-  test("a secret written under a policy on the approval system opens a secret change request there", async () => {
-    const createRes = await createSecret("SAR_BRIDGE_NEW", "value", NEW_SYSTEM_PATH);
+  test("a secret written under a policy on the global approval system opens a secret change request there", async () => {
+    const createRes = await createSecret("SAR_BRIDGE_GLOBAL", "value", GLOBAL_SYSTEM_PATH);
     expect(createRes.statusCode).toBe(200);
     const { approval } = createRes.json();
-    newSystemRequestIds.push(approval.id);
+    globalSystemRequestIds.push(approval.id);
 
     expect(approval).toMatchObject({
-      policyId: newSystemPolicyId,
+      policyId: globalSystemPolicyId,
       status: RequestState.Open,
       hasMerged: false,
-      folderId: newSystemFolderId,
+      folderId: globalSystemFolderId,
       committerUserId: seedData1.id,
       slug: expect.any(String)
     });
@@ -203,7 +203,7 @@ describe("Secret approval request bridge routing", () => {
     expect(await db(TableName.ApprovalRequests).where({ id: approval.id }).first()).toMatchObject({
       type: ApprovalPolicyType.SecretChange,
       status: ApprovalRequestStatus.Open,
-      policyId: newSystemPolicyId,
+      policyId: globalSystemPolicyId,
       requesterId: seedData1.id,
       requesterEmail: seedData1.email,
       currentStep: 1
@@ -211,7 +211,7 @@ describe("Secret approval request bridge routing", () => {
     expect(await db(TableName.SecretApprovalRequest).where({ id: approval.id }).first()).toBeUndefined();
 
     const change = await db(TableName.SecretChangeRequests).where({ approvalRequestId: approval.id }).first();
-    expect(change).toMatchObject({ slug: approval.slug, folderId: newSystemFolderId, hasMerged: false });
+    expect(change).toMatchObject({ slug: approval.slug, folderId: globalSystemFolderId, hasMerged: false });
 
     const steps = await db(TableName.ApprovalRequestSteps).where({ requestId: approval.id });
     expect(steps).toHaveLength(1);
@@ -220,7 +220,7 @@ describe("Secret approval request bridge routing", () => {
     ]);
 
     const commits = await db(TableName.SecretApprovalRequestSecretV2).where({ secretChangeId: change?.id });
-    expect(commits).toMatchObject([{ key: "SAR_BRIDGE_NEW", op: "create", requestId: null }]);
+    expect(commits).toMatchObject([{ key: "SAR_BRIDGE_GLOBAL", op: "create", requestId: null }]);
 
     const responses = await Promise.all([
       getRequest(approval.id),
