@@ -75,10 +75,12 @@ const describeChannel = (channel: TChannelForm, members: TMemberEmails): string 
 const FilterDetails = ({
   applicationIds,
   profileIds,
+  sources,
   conditionNames
 }: {
   applicationIds: string[];
   profileIds: string[];
+  sources: string[];
   conditionNames: Record<string, string>;
 }) => {
   const getApplicationName = (id: string) =>
@@ -100,6 +102,17 @@ const FilterDetails = ({
           <PkiSyncFilterValueBadges values={profileIds.map(getProfileName)} />
         ) : (
           CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Profiles].allLabel
+        )}
+      </Detail>
+      <Detail label={CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Sources].label}>
+        {sources.length ? (
+          <PkiSyncFilterValueBadges
+            values={sources.map((source) =>
+              getFilterName(CertificateFilterKind.Sources, source, conditionNames)
+            )}
+          />
+        ) : (
+          CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Sources].allLabel
         )}
       </Detail>
     </>
@@ -134,11 +147,14 @@ export const ReviewStep = ({ form, scope, members }: Props) => {
       {scope.kind === CertificateAlertScopeKind.CertificateManager &&
         isFilterableEventType(values.eventType) && (
           <Section title="Certificate Filters">
-            {values.applicationIds?.length || values.profileIds?.length ? (
+            {values.applicationIds?.length ||
+            values.profileIds?.length ||
+            values.sources?.length ? (
               <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                 <FilterDetails
                   applicationIds={values.applicationIds ?? []}
                   profileIds={values.profileIds ?? []}
+                  sources={values.sources ?? []}
                   conditionNames={values.conditionNames}
                 />
               </div>

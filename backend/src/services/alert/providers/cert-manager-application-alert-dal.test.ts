@@ -1,6 +1,7 @@
 import knex, { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 
 import { certManagerApplicationAlertDALFactory } from "./cert-manager-application-alert-dal";
 
@@ -162,6 +163,26 @@ describe("cert manager certificate alert DAL", () => {
 
     expect(queries[0].sql).toContain('"certificates"."profileId" in (?)');
     expect(queries[0].sql).toContain('"certificates"."id" in (?)');
+  });
+
+  test("the source filter matches the listed sources, and issued also matches certificates with no source", async () => {
+    const { dal, queries } = buildDAL();
+
+    await dal.findCertificatesByIds({
+      projectId: PROJECT_ID,
+      sources: [CertificateSource.Imported],
+      certificateIds: ["c"]
+    });
+    await dal.findCertificatesByIds({
+      projectId: PROJECT_ID,
+      sources: [CertificateSource.Issued, CertificateSource.Discovered],
+      certificateIds: ["c"]
+    });
+
+    expect(queries[0].sql).toContain('("certificates"."source" in (?))');
+    expect(queries[0].sql).not.toContain('"certificates"."source" is null');
+    expect(queries[0].bindings).toEqual(expect.arrayContaining(["imported"]));
+    expect(queries[1].sql).toContain('("certificates"."source" in (?, ?) or "certificates"."source" is null)');
   });
 
   test("application and profile id checks are scoped to the project", async () => {

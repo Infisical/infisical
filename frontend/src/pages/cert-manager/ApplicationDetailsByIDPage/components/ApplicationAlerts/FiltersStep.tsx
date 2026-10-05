@@ -22,7 +22,11 @@ import {
 import { useListWorkspaceCertificates } from "@app/hooks/api";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 
-import { ApplicationFilterSelect, ProfileFilterSelect } from "./CertificateFilterSelects";
+import {
+  ApplicationFilterSelect,
+  ProfileFilterSelect,
+  SourceFilterSelect
+} from "./CertificateFilterSelects";
 import {
   CERTIFICATE_FILTER_DEFINITIONS,
   CertificateFilterKind,
@@ -34,6 +38,12 @@ const MATCHED_PAGE_SIZE = 20;
 
 const FILTER_KINDS = Object.values(CertificateFilterKind);
 
+const FILTER_SELECTS = {
+  [CertificateFilterKind.Applications]: ApplicationFilterSelect,
+  [CertificateFilterKind.Profiles]: ProfileFilterSelect,
+  [CertificateFilterKind.Sources]: SourceFilterSelect
+};
+
 type Props = { form: UseFormReturn<TCertificateAlertForm>; projectId: string };
 
 export const FiltersStep = ({ form, projectId }: Props) => {
@@ -42,12 +52,14 @@ export const FiltersStep = ({ form, projectId }: Props) => {
     name: CertificateFilterKind.Applications
   });
   const profileIds = useWatch({ control: form.control, name: CertificateFilterKind.Profiles });
+  const sources = useWatch({ control: form.control, name: CertificateFilterKind.Sources });
   const conditionNames = useWatch({ control: form.control, name: "conditionNames" });
-  const filters = { applicationIds, profileIds };
+  const filters = { applicationIds, profileIds, sources };
 
   const previewFilters = {
     applicationIds: applicationIds?.length ? applicationIds : undefined,
-    profileIds: profileIds?.length ? profileIds : undefined
+    profileIds: profileIds?.length ? profileIds : undefined,
+    sources: sources?.length ? sources : undefined
   };
   const previewKey = JSON.stringify(previewFilters);
   const [page, setPage] = useState(1);
@@ -67,11 +79,15 @@ export const FiltersStep = ({ form, projectId }: Props) => {
     limit: MATCHED_PAGE_SIZE,
     status: CertStatus.ACTIVE,
     applicationIds: previewFilters.applicationIds,
-    profileIds: previewFilters.profileIds
+    profileIds: previewFilters.profileIds,
+    source: previewFilters.sources
   });
 
   const setFilter = (kind: CertificateFilterKind, ids: string[] | undefined) =>
-    form.setValue(kind, ids, { shouldDirty: true, shouldValidate: true });
+    form.setValue(kind, ids as TCertificateAlertForm[typeof kind], {
+      shouldDirty: true,
+      shouldValidate: true
+    });
   const addFilter = (kind: CertificateFilterKind) => form.setValue(kind, [], { shouldDirty: true });
 
   const presentKinds = FILTER_KINDS.filter((kind) => filters[kind] !== undefined);
@@ -124,10 +140,7 @@ export const FiltersStep = ({ form, projectId }: Props) => {
       {presentKinds.length > 0 ? (
         <div className="mt-3 flex flex-col gap-3">
           {presentKinds.map((kind, index) => {
-            const Select =
-              kind === CertificateFilterKind.Applications
-                ? ApplicationFilterSelect
-                : ProfileFilterSelect;
+            const Select = FILTER_SELECTS[kind];
             const { label } = CERTIFICATE_FILTER_DEFINITIONS[kind];
             return (
               <Fragment key={kind}>
@@ -146,10 +159,12 @@ export const FiltersStep = ({ form, projectId }: Props) => {
                         value={filters[kind] ?? []}
                         conditionNames={conditionNames}
                         onChange={(selected) => {
-                          form.setValue("conditionNames", {
-                            ...conditionNames,
-                            ...Object.fromEntries(selected.map(({ id, name }) => [id, name]))
-                          });
+                          if (kind !== CertificateFilterKind.Sources) {
+                            form.setValue("conditionNames", {
+                              ...conditionNames,
+                              ...Object.fromEntries(selected.map(({ id, name }) => [id, name]))
+                            });
+                          }
                           setFilter(
                             kind,
                             selected.map(({ id }) => id)

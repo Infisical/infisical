@@ -180,6 +180,16 @@ describe("cert manager alert provider", () => {
     expect(schema.safeParse({ alertBefore: "30d", profileIds: [PROFILE_ID, PROFILE_ID] }).success).toBe(false);
   });
 
+  test("the source filter takes issued, imported or discovered, each once", () => {
+    const schema = expiryConditionSchema(buildProvider().provider);
+    expect(schema.safeParse({ alertBefore: "30d", sources: ["imported", "discovered"] }).success).toBe(true);
+    expect(schema.safeParse({ alertBefore: "30d", sources: ["issued"] }).success).toBe(true);
+    expect(schema.safeParse({ alertBefore: "30d", sources: [] }).success).toBe(false);
+    expect(schema.safeParse({ alertBefore: "30d", sources: ["external"] }).success).toBe(false);
+    const duplicated = schema.safeParse({ alertBefore: "30d", sources: ["imported", "imported"] });
+    expect(duplicated.error?.issues[0].message).toBe("sources lists the same source more than once");
+  });
+
   test("filter IDs match case-insensitively when checked and named", async () => {
     const { provider } = buildProvider();
     await expect(
@@ -237,7 +247,7 @@ describe("cert manager alert provider", () => {
       projectId: "proj-1",
       resourceId: null,
       eventType: EXPIRY_EVENT,
-      condition: { alertBefore: "2w", profileIds: [PROFILE_ID] },
+      condition: { alertBefore: "2w", profileIds: [PROFILE_ID], sources: ["imported"] },
       asOf: new Date(),
       alreadyAlerted: { alertId: "alert-1", channelIds: ["channel-1"], since: new Date() }
     });
@@ -246,19 +256,21 @@ describe("cert manager alert provider", () => {
       projectId: "proj-1",
       resourceId: null,
       eventType: ISSUANCE_EVENT,
-      condition: { applicationIds: [APPLICATION_ID] },
+      condition: { applicationIds: [APPLICATION_ID], sources: ["issued", "discovered"] },
       targetIds: ["cert-1"]
     } as never);
 
     expect(scheduledArgs).toMatchObject({
       projectId: "proj-1",
       profileIds: [PROFILE_ID],
+      sources: ["imported"],
       alertBeforeInterval: "14 days"
     });
     expect(scheduledArgs?.applicationId).toBeUndefined();
     expect(eventArgs).toMatchObject({
       projectId: "proj-1",
       applicationIds: [APPLICATION_ID],
+      sources: ["issued", "discovered"],
       certificateIds: ["cert-1"]
     });
   });
@@ -385,7 +397,8 @@ describe("cert manager alert provider", () => {
       condition: {
         alertBefore: "30d",
         applicationIds: [APPLICATION_ID, OTHER_APPLICATION_ID],
-        profileIds: [PROFILE_ID]
+        profileIds: [PROFILE_ID],
+        sources: ["imported"]
       },
       filters: {
         applications: [{ id: APPLICATION_ID, name: "payments-api" }],
@@ -400,7 +413,8 @@ describe("cert manager alert provider", () => {
         { id: APPLICATION_ID, name: "payments-api" },
         { id: OTHER_APPLICATION_ID, name: null }
       ],
-      profiles: [{ id: PROFILE_ID, name: "tls-server" }]
+      profiles: [{ id: PROFILE_ID, name: "tls-server" }],
+      sources: ["imported"]
     };
 
     expect(provider.getAuditEvent?.({ action: AlertAuditAction.Create, alert })).toEqual({

@@ -29,7 +29,7 @@ Certificate Manager alerts use the same events and [notification channels](/docu
     Select the **Alert Type** from the **Certificate Lifecycle** or **Code Signing** group, then enter an **Alert Name** and an optional **Description**. For an expiration alert, enter **Alert Before** as a number and a unit, for example `30d` or `2w`, up to 365 days. Turn on **Repeat daily until expiry** to get a reminder every day. See [how often expiration alerts repeat](/documentation/platform/pki/applications/alerting/overview#faq). Select **Continue**.
   </Step>
   <Step>
-    On the **Filters** step, optionally select **Add Filter** to narrow the alert by **Applications** or **Certificate Profiles**. See [which certificates an alert covers](#which-certificates-an-alert-covers). **Matched Certificates** lists the active certificates the alert covers. The list updates as you change filters. Select **Continue**.
+    On the **Filters** step, optionally select **Add Filter** to narrow the alert by **Applications**, **Certificate Profiles**, or **Source**. See [which certificates an alert covers](#which-certificates-an-alert-covers). **Matched Certificates** lists the active certificates the alert covers. The list updates as you change filters. Select **Continue**.
   </Step>
   <Step>
     Select **Add Channel** and choose where to send notifications. You can add up to 10 channels. Select **Continue**.
@@ -41,14 +41,15 @@ Certificate Manager alerts use the same events and [notification channels](/docu
 
 ## Which certificates an alert covers
 
-If you don't add a filter, the alert covers every certificate in Certificate Manager. Each filter you add narrows the alert:
+If you don't add a filter, the alert covers every certificate in Certificate Manager. Each filter you add narrows the alert, and a certificate must match every filter:
 
-| Applications filter | Certificate Profiles filter | Certificates covered |
-|---------------------|-----------------------------|----------------------|
-| None | None | Every certificate |
-| Added | None | Every certificate in the selected applications |
-| None | Added | Every certificate issued from the selected profiles |
-| Added | Added | Certificates in the selected applications that were issued from the selected profiles |
+| Filter | Certificates covered |
+|--------|----------------------|
+| **Applications** | Certificates in one of the selected applications |
+| **Certificate Profiles** | Certificates issued from one of the selected profiles |
+| **Source** | Certificates with one of the selected sources: **Managed** for certificates issued through Certificate Manager, **Imported**, or **Discovered** |
+
+For example, a **Source** filter set to **Imported** covers every imported certificate, including ones outside any application or profile. Add an **Applications** filter as well, and the alert covers only the imported certificates in those applications.
 
 You can select up to 100 applications and 100 profiles.
 

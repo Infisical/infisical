@@ -7941,6 +7941,7 @@ type TCertificateManagerAlertEventMetadata = {
   eventType: string;
   applications: { id: string; name: string | null }[];
   profiles: { id: string; name: string | null }[];
+  sources: string[];
 };
 
 interface CreateCertificateManagerAlertEvent {

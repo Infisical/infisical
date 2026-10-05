@@ -174,7 +174,8 @@ export const certManagerSignerAlertProviderFactory = ({
     assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseService, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
-    getAuditEvent: (input) => buildCertificateManagerAlertAuditEvent(input, { applications: [], profiles: [] }),
+    getAuditEvent: (input) =>
+      buildCertificateManagerAlertAuditEvent(input, { applications: [], profiles: [], sources: [] }),
     getWebhookSource,
     getTelemetryEvent,
     resolveProjectId: async ({ orgId, resourceId }) => {

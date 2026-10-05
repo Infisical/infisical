@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { CertSource } from "@app/hooks/api/certificates/enums";
+
 export enum AlertResourceType {
   IdentityAuthentication = "identity.authentication"
 }
@@ -105,6 +107,7 @@ export type TAlert = {
     dailyReminder?: boolean;
     applicationIds?: string[];
     profileIds?: string[];
+    sources?: CertSource[];
   } | null;
   enabled: boolean;
   orgId: string;

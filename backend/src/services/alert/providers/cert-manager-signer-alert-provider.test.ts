@@ -200,7 +200,14 @@ describe("cert manager signer alert provider", () => {
 
     expect(provider.getAuditEvent?.({ action: AlertAuditAction.Create, alert })).toEqual({
       type: EventType.CREATE_CERTIFICATE_MANAGER_ALERT,
-      metadata: { alertId: "alert-1", name: "signer-expiry", eventType: EXPIRY_EVENT, applications: [], profiles: [] }
+      metadata: {
+        alertId: "alert-1",
+        name: "signer-expiry",
+        eventType: EXPIRY_EVENT,
+        applications: [],
+        profiles: [],
+        sources: []
+      }
     });
     expect(
       provider.getTelemetryEvent?.({

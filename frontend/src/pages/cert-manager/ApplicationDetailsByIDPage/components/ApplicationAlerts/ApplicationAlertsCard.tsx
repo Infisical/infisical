@@ -97,6 +97,7 @@ const SCOPE_CARD_CONFIG: Record<
 const AlertFiltersSummary = ({ alert }: { alert: TAlert }) => {
   const applicationIds = alert.condition?.applicationIds ?? [];
   const profileIds = alert.condition?.profileIds ?? [];
+  const sources = alert.condition?.sources ?? [];
   const conditionNames = toConditionNames(alert);
   const namesOf = (kind: CertificateFilterKind, ids: string[]) =>
     ids.map((id) => getFilterName(kind, id, conditionNames)).join(", ");
@@ -105,13 +106,14 @@ const AlertFiltersSummary = ({ alert }: { alert: TAlert }) => {
     return <span className="text-muted">All signers</span>;
   }
 
-  if (!applicationIds.length && !profileIds.length) {
+  if (!applicationIds.length && !profileIds.length && !sources.length) {
     return <span className="text-muted">All certificates</span>;
   }
 
   const summary = [
     applicationIds.length ? pluralize(applicationIds.length, "application") : null,
-    profileIds.length ? pluralize(profileIds.length, "certificate profile") : null
+    profileIds.length ? pluralize(profileIds.length, "certificate profile") : null,
+    sources.length ? pluralize(sources.length, "source") : null
   ]
     .filter(Boolean)
     .join(", ");
@@ -136,6 +138,14 @@ const AlertFiltersSummary = ({ alert }: { alert: TAlert }) => {
               {CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Profiles].label}:{" "}
             </span>
             {namesOf(CertificateFilterKind.Profiles, profileIds)}
+          </span>
+        )}
+        {sources.length > 0 && (
+          <span>
+            <span className="text-muted">
+              {CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Sources].label}:{" "}
+            </span>
+            {namesOf(CertificateFilterKind.Sources, sources)}
           </span>
         )}
       </TooltipContent>

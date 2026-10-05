@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { DatabaseError } from "@app/lib/errors";
 import { AlertRunStatus, TAlreadyAlertedFilter } from "@app/services/alert/alert-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
@@ -36,6 +37,7 @@ type TCertificateScope = {
   applicationId?: string | null;
   applicationIds?: string[];
   profileIds?: string[];
+  sources?: CertificateSource[];
 };
 
 const MAX_EXPIRING_CERTIFICATES_PER_RUN = 1000;
@@ -43,7 +45,7 @@ const MAX_EXPIRING_CERTIFICATES_PER_RUN = 1000;
 export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
   const $selectCertificates = (
     reader: Knex,
-    { projectId, applicationId, applicationIds, profileIds }: TCertificateScope
+    { projectId, applicationId, applicationIds, profileIds, sources }: TCertificateScope
   ) =>
     reader(TableName.Certificate)
       .leftJoin(`${TableName.PkiCertificateProfile} as profile`, `${TableName.Certificate}.profileId`, "profile.id")
@@ -53,6 +55,12 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
         if (applicationId) void query.where(`${TableName.Certificate}.applicationId`, applicationId);
         if (applicationIds?.length) void query.whereIn(`${TableName.Certificate}.applicationId`, applicationIds);
         if (profileIds?.length) void query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
+        if (sources?.length) {
+          void query.where((qb) => {
+            void qb.whereIn(`${TableName.Certificate}.source`, sources);
+            if (sources.includes(CertificateSource.Issued)) void qb.orWhereNull(`${TableName.Certificate}.source`);
+          });
+        }
       })
       .select(
         `${TableName.Certificate}.id`,

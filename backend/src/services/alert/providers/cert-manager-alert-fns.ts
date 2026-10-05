@@ -6,6 +6,7 @@ import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audi
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { getRevocationReasonLabel } from "@app/services/pki-alert-v2/pki-alert-v2-types";
@@ -132,7 +133,11 @@ type TAlertFilterNames = { id: string; name: string | null }[];
 
 export const buildCertificateManagerAlertAuditEvent = (
   input: TAlertAuditInput,
-  { applications, profiles }: { applications: TAlertFilterNames; profiles: TAlertFilterNames }
+  {
+    applications,
+    profiles,
+    sources
+  }: { applications: TAlertFilterNames; profiles: TAlertFilterNames; sources: CertificateSource[] }
 ): TAuditEvent => {
   if (input.action === AlertAuditAction.TestChannel) {
     const { test } = input;
@@ -152,7 +157,7 @@ export const buildCertificateManagerAlertAuditEvent = (
   }
 
   const { alert } = input;
-  const metadata = { alertId: alert.id, name: alert.name, eventType: alert.eventType, applications, profiles };
+  const metadata = { alertId: alert.id, name: alert.name, eventType: alert.eventType, applications, profiles, sources };
   if (input.action === AlertAuditAction.Create) return { type: EventType.CREATE_CERTIFICATE_MANAGER_ALERT, metadata };
   if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_CERTIFICATE_MANAGER_ALERT, metadata };
   return { type: EventType.DELETE_CERTIFICATE_MANAGER_ALERT, metadata };

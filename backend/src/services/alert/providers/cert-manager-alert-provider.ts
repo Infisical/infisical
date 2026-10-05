@@ -8,6 +8,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
@@ -92,7 +93,12 @@ const filterIdsSchema = (field: string, noun: string) =>
 
 const CertificateFilterSchema = z.object({
   applicationIds: filterIdsSchema("applicationIds", "application"),
-  profileIds: filterIdsSchema("profileIds", "profile")
+  profileIds: filterIdsSchema("profileIds", "profile"),
+  sources: z
+    .array(z.nativeEnum(CertificateSource))
+    .min(1, "sources must list at least one source. Omit it to cover every source.")
+    .refine((sources) => new Set(sources).size === sources.length, "sources lists the same source more than once")
+    .optional()
 });
 
 const ExpirationConditionSchema = ExpiryFieldsSchema.merge(CertificateFilterSchema).strict();
@@ -138,12 +144,13 @@ export const certManagerAlertProviderFactory = ({
 
   const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TApplicationAlertCertificate[]> => {
     if (!input.projectId || input.resourceId || !input.alreadyAlerted?.channelIds.length) return [];
-    const { alertBefore, applicationIds, profileIds } = ExpirationConditionSchema.parse(input.condition);
+    const { alertBefore, applicationIds, profileIds, sources } = ExpirationConditionSchema.parse(input.condition);
 
     return certManagerApplicationAlertDAL.findExpiringCertificates({
       projectId: input.projectId,
       applicationIds,
       profileIds,
+      sources,
       alertBeforeInterval: `${durationToDays(alertBefore)} days`,
       leadInterval: ALERT_SCAN_LEAD_INTERVAL,
       asOf: input.asOf,
@@ -159,6 +166,7 @@ export const certManagerAlertProviderFactory = ({
       projectId: input.projectId,
       applicationIds: condition?.applicationIds,
       profileIds: condition?.profileIds,
+      sources: condition?.sources,
       certificateIds: input.targetIds
     });
   };
@@ -176,9 +184,9 @@ export const certManagerAlertProviderFactory = ({
 
   const getAuditEvent = (input: TAlertAuditInput) => {
     if (input.action === AlertAuditAction.TestChannel) {
-      return buildCertificateManagerAlertAuditEvent(input, { applications: [], profiles: [] });
+      return buildCertificateManagerAlertAuditEvent(input, { applications: [], profiles: [], sources: [] });
     }
-    const { applicationIds = [], profileIds = [] } = parseFilters(input.alert.condition);
+    const { applicationIds = [], profileIds = [], sources = [] } = parseFilters(input.alert.condition);
     const nameById = new Map(
       Object.values(input.alert.filters ?? {})
         .flat()
@@ -187,7 +195,8 @@ export const certManagerAlertProviderFactory = ({
     const withNames = (ids: string[]) => ids.map((id) => ({ id, name: nameById.get(id) ?? null }));
     return buildCertificateManagerAlertAuditEvent(input, {
       applications: withNames(applicationIds),
-      profiles: withNames(profileIds)
+      profiles: withNames(profileIds),
+      sources
     });
   };
 

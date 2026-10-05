@@ -12,6 +12,8 @@ import {
   TAlertChannelRecipient,
   TChannelForm
 } from "@app/hooks/api/alerts";
+import { CertSource } from "@app/hooks/api/certificates/enums";
+import { getCertSourceLabel } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
 export enum CertificateAlertScopeKind {
   Application = "application",
@@ -190,7 +192,8 @@ export const toRecipientEmails = (
 
 export enum CertificateFilterKind {
   Applications = "applicationIds",
-  Profiles = "profileIds"
+  Profiles = "profileIds",
+  Sources = "sources"
 }
 
 export const CERTIFICATE_FILTER_DEFINITIONS: Record<
@@ -208,6 +211,12 @@ export const CERTIFICATE_FILTER_DEFINITIONS: Record<
     hint: "Issued from one of these profiles",
     allLabel: "All certificate profiles",
     unknownLabel: "Unknown profile"
+  },
+  [CertificateFilterKind.Sources]: {
+    label: "Source",
+    hint: "Managed, imported, or discovered certificates",
+    allLabel: "All sources",
+    unknownLabel: "Unknown source"
   }
 };
 
@@ -217,7 +226,10 @@ export const getFilterName = (
   kind: CertificateFilterKind,
   id: string,
   conditionNames: Record<string, string>
-) => conditionNames[id] ?? CERTIFICATE_FILTER_DEFINITIONS[kind].unknownLabel;
+) =>
+  kind === CertificateFilterKind.Sources
+    ? getCertSourceLabel(id as CertSource)
+    : (conditionNames[id] ?? CERTIFICATE_FILTER_DEFINITIONS[kind].unknownLabel);
 
 export const toConditionNames = (alert: TAlert): Record<string, string> =>
   Object.fromEntries(
@@ -230,7 +242,8 @@ const isUnfinishedFilter = (ids?: string[]) => ids?.length === 0;
 
 const UNFINISHED_FILTER_MESSAGES: Record<CertificateFilterKind, string> = {
   [CertificateFilterKind.Applications]: "Select at least one application, or remove this filter",
-  [CertificateFilterKind.Profiles]: "Select at least one profile, or remove this filter"
+  [CertificateFilterKind.Profiles]: "Select at least one profile, or remove this filter",
+  [CertificateFilterKind.Sources]: "Select at least one source, or remove this filter"
 };
 
 export enum CertificateAlertStep {
@@ -300,6 +313,7 @@ export const certificateAlertFormSchema = z
         `Select up to ${MAX_CERTIFICATE_ALERT_FILTER_IDS} profiles`
       )
       .optional(),
+    sources: z.array(z.nativeEnum(CertSource)).optional(),
     conditionNames: z.record(z.string()),
     channels: z.array(channelFormSchema).min(1, "Add at least one channel").max(MAX_CHANNELS)
   })
@@ -365,6 +379,7 @@ export const toCertificateAlertForm = (
   enabled: alert.enabled,
   applicationIds: alert.condition?.applicationIds,
   profileIds: alert.condition?.profileIds,
+  sources: alert.condition?.sources,
   conditionNames: toConditionNames(alert),
   channels: alert.channels.map(
     (channel): TChannelForm => ({
@@ -395,7 +410,8 @@ export const toCondition = (scope: TCertificateAlertScope, form: TCertificateAle
     isFilterableEventType(form.eventType)
       ? {
           ...(form.applicationIds?.length ? { applicationIds: form.applicationIds } : {}),
-          ...(form.profileIds?.length ? { profileIds: form.profileIds } : {})
+          ...(form.profileIds?.length ? { profileIds: form.profileIds } : {}),
+          ...(form.sources?.length ? { sources: form.sources } : {})
         }
       : {};
 
