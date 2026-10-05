@@ -1,4 +1,12 @@
-import { ClipboardEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ClipboardEvent,
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -318,7 +326,35 @@ export const CreateSecretForm = ({
   const [sharedTagChanges, setSharedTagChanges] = useState<
     Record<string, { tag: { id: string; slug: string }; added: boolean }>
   >({});
+  const sharedTagOrigins = useRef(new Map<string, boolean>());
   const [clearTags, setClearTags] = useState(false);
+  const rebindMetadataRows = useCallback(
+    (
+      next: NonNullable<TFormSchema["secrets"][number]["metadata"]>,
+      previous: NonNullable<TFormSchema["secrets"][number]["metadata"]>
+    ) => {
+      const reboundIds = new Map<string, string>();
+      const entries = next.map((entry, position) => {
+        const previousPosition = previous.findIndex((row) => row.id === entry.id);
+        if (previousPosition < 0 || previousPosition === position) return entry;
+        const id = crypto.randomUUID();
+        reboundIds.set(entry.id, id);
+        const original = metadataOrigins.current.get(entry.id);
+        if (original) metadataOrigins.current.set(id, original);
+        return { ...entry, id };
+      });
+      if (reboundIds.size) {
+        setEditedMetadataIds(
+          (current) => new Set([...current].map((id) => reboundIds.get(id) ?? id))
+        );
+        setEditedMetadataEncryption(
+          (current) => new Set([...current].map((id) => reboundIds.get(id) ?? id))
+        );
+      }
+      return entries;
+    },
+    []
+  );
   useEffect(() => {
     editValues?.secrets[0].metadata?.forEach((entry) => {
       if (!metadataOrigins.current.has(entry.id))
@@ -341,7 +377,7 @@ export const CreateSecretForm = ({
     skipMultilineEncoding: false,
     tagChanges: sharedTagChanges,
     clearTags: false,
-    metadata: false
+    metadataIds: editedMetadataIds
   });
   sharedDraftIntents.current = {
     value: hasEditedHiddenValue || clearValue,
@@ -349,7 +385,7 @@ export const CreateSecretForm = ({
     skipMultilineEncoding: Boolean(sharedFieldIntents.skipMultilineEncoding),
     tagChanges: sharedTagChanges,
     clearTags,
-    metadata: Boolean(hasMetadataEdits || removedMetadataKeys.length)
+    metadataIds: editedMetadataIds
   };
   useEffect(() => {
     if (!editSecret?.isSharedEdit || !editValues) return;
@@ -362,12 +398,26 @@ export const CreateSecretForm = ({
       setValue("secrets.0.skipMultilineEncoding", previous.skipMultilineEncoding, {
         shouldDirty: true
       });
+    const editedMetadata =
+      previous.metadata?.filter((entry) => intents.metadataIds.has(entry.id)) ?? [];
+    const editedKeys = new Set(
+      editedMetadata.map((entry) => metadataOrigins.current.get(entry.id)?.key || entry.key.trim())
+    );
     setValue(
       "secrets.0.metadata",
-      intents.metadata ? previous.metadata : editValues.secrets[0].metadata,
-      { shouldDirty: intents.metadata }
+      rebindMetadataRows(
+        [
+          ...(editValues.secrets[0].metadata ?? []).filter((entry) => !editedKeys.has(entry.key)),
+          ...editedMetadata
+        ],
+        previous.metadata ?? []
+      ),
+      { shouldDirty: Boolean(editedMetadata.length) }
     );
     const changes = Object.values(intents.tagChanges);
+    sharedTagOrigins.current = new Map(
+      Object.entries(intents.tagChanges).map(([id, change]) => [id, !change.added])
+    );
     const removals = new Set(changes.filter((entry) => !entry.added).map((entry) => entry.tag.id));
     const tags = new Map(
       (intents.clearTags ? [] : (editValues.secrets[0].tags ?? []))
@@ -380,7 +430,7 @@ export const CreateSecretForm = ({
     setValue("secrets.0.tags", [...tags.values()], {
       shouldDirty: Boolean(changes.length || intents.clearTags)
     });
-  }, [editValues, editSecret?.isSharedEdit, getValues, reset, setValue]);
+  }, [editValues, editSecret?.isSharedEdit, getValues, rebindMetadataRows, reset, setValue]);
   const hasEditChanges = Boolean(
     hasValueChanges ||
       missingReplacement ||
@@ -1063,6 +1113,14 @@ export const CreateSecretForm = ({
                                       const originalTags = new Set(
                                         clearTags ? [] : editSecret.tags?.map((tag) => tag.id)
                                       );
+                                      [...previous, ...value].forEach((tag) => {
+                                        if (!sharedTagOrigins.current.has(tag.value))
+                                          sharedTagOrigins.current.set(
+                                            tag.value,
+                                            originalTags.has(tag.value)
+                                          );
+                                      });
+                                      const tagOrigins = new Map(sharedTagOrigins.current);
                                       setSharedTagChanges((current) => {
                                         const next = { ...current };
                                         previous
@@ -1071,7 +1129,7 @@ export const CreateSecretForm = ({
                                               !value.some((entry) => entry.value === tag.value)
                                           )
                                           .forEach((tag) => {
-                                            if (originalTags.has(tag.value))
+                                            if (tagOrigins.get(tag.value))
                                               next[tag.value] = {
                                                 tag: { id: tag.value, slug: tag.label },
                                                 added: false
@@ -1084,7 +1142,7 @@ export const CreateSecretForm = ({
                                               !previous.some((entry) => entry.value === tag.value)
                                           )
                                           .forEach((tag) => {
-                                            if (originalTags.has(tag.value)) delete next[tag.value];
+                                            if (tagOrigins.get(tag.value)) delete next[tag.value];
                                             else
                                               next[tag.value] = {
                                                 tag: { id: tag.value, slug: tag.label },
@@ -1135,6 +1193,7 @@ export const CreateSecretForm = ({
                                     markSharedField("tags");
                                     setClearTags(true);
                                     setSharedTagChanges({});
+                                    sharedTagOrigins.current.clear();
                                     field.onChange([]);
                                   }}
                                 >
@@ -1337,11 +1396,14 @@ export const CreateSecretForm = ({
                                         setRemovedMetadataKeys((current) => [
                                           ...new Set([...current, originalKey])
                                         ]);
+                                      const remaining = metadata.filter(
+                                        (__, currentIndex) => currentIndex !== metadataIndex
+                                      );
                                       setValue(
                                         `secrets.${index}.metadata`,
-                                        metadata.filter(
-                                          (__, currentIndex) => currentIndex !== metadataIndex
-                                        ),
+                                        editSecret?.isSharedEdit
+                                          ? rebindMetadataRows(remaining, metadata)
+                                          : remaining,
                                         { shouldDirty: true }
                                       );
                                     }}
