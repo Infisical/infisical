@@ -171,7 +171,7 @@ export const MultiEnvironmentSecretEditSheet = ({
     values.length && values.every((value) => JSON.stringify(value) === JSON.stringify(values[0]))
       ? values[0]
       : fallback;
-  const selectedSecrets = environments.map((environment) =>
+  const selectedSecrets = selectedEnvironments.map((environment) =>
     draft?.secrets.find((secret) => secret.env === environment.slug)
   );
   const selectedValues = selectedSecrets.map((secret) =>
@@ -183,6 +183,7 @@ export const MultiEnvironmentSecretEditSheet = ({
       a.id.localeCompare(b.id)
     )
   );
+  const selectedTags = [...new Map(tags.flat().map((tag) => [tag.id, tag])).values()];
   const metadata = selectedSecrets.map((secret) =>
     (secret?.secretMetadata ?? [])
       .map((entry) => ({ ...entry, isEncrypted: entry.isEncrypted ?? false }))
@@ -191,30 +192,33 @@ export const MultiEnvironmentSecretEditSheet = ({
   const encodings = selectedSecrets.map((secret) => secret?.skipMultilineEncoding ?? false);
   const commonValue = common(selectedValues, undefined);
   const commonMetadata = common(metadata, []);
+  const metadataKeys = [
+    ...new Set(metadata.flatMap((entries) => entries.map((entry) => entry.key)))
+  ].sort();
   const differs = (values: unknown[]) =>
     values.length > 1 &&
     values.some((value) => JSON.stringify(value) !== JSON.stringify(values[0]));
   let valueWarning: string | undefined;
   if (selectedValues.some((value) => value === undefined)) {
     valueWarning =
-      "Some values in this view cannot be read. Leaving Value unchanged preserves them; entering a value replaces it in all selected environments.";
+      "Some selected values cannot be read. Leaving Value unchanged preserves them; entering a value replaces it in all selected environments.";
   } else if (differs(selectedValues)) {
     valueWarning =
-      "Values differ between environments in this view. Leaving Value blank preserves each value; entering a value replaces it in all selected environments.";
+      "Values differ between selected environments. Leaving Value blank preserves each value; entering a value replaces it in all selected environments.";
   }
   const mixedFields = {
     value: valueWarning,
     comment: differs(comments)
-      ? "Comments differ between environments in this view. Editing Comment replaces it in all selected environments; Clear Comment removes them."
+      ? "Comments differ between selected environments. Editing Comment replaces it in all selected environments; Clear Comment removes them."
       : undefined,
     tags: differs(tags)
-      ? "Tags differ between environments in this view. Selecting tags replaces the tags in all selected environments; Clear Tags removes them."
+      ? "Shown tags may apply to only some selected environments. Adding or removing a tag applies that change to all selected environments; unchanged tags stay as they are. Clear Tags removes all tags."
       : undefined,
     metadata: differs(metadata)
-      ? "Metadata differs between environments in this view. Edited entries apply to all selected environments; other keys and unchanged encryption settings are preserved."
+      ? "Metadata differs between selected environments. Edited entries apply to all selected environments; other keys and unchanged encryption settings are preserved. Use Remove Metadata Keys to remove existing keys."
       : undefined,
     skipMultilineEncoding: differs(encodings)
-      ? "Multiline encoding differs between environments in this view. Changing this setting applies it to all selected environments."
+      ? "Multiline encoding differs between selected environments. Changing this setting applies it to all selected environments."
       : undefined
   };
 
@@ -238,24 +242,35 @@ export const MultiEnvironmentSecretEditSheet = ({
     }
     const plans = selected
       .map((environment) => {
-        const targetChanges = { ...changes };
-        if (changes.secretMetadata) {
-          const existing =
-            initialSecrets.find((secret) => secret.env === environment.slug)?.secretMetadata ?? [];
-          const removedKeys = new Set(
-            commonMetadata
-              .filter((entry) => !changes.secretMetadata?.some((next) => next.key === entry.key))
-              .map((entry) => entry.key)
+        const { tagChanges, removedMetadataKeys, ...targetChanges } = changes;
+        const existingSecret = initialSecrets.find((secret) => secret.env === environment.slug);
+        if (tagChanges) {
+          const entries = new Map(
+            (tagChanges.clear ? [] : (existingSecret?.tags ?? []))
+              .filter((tag) => !tagChanges.removals.includes(tag.id))
+              .map((tag) => [tag.id, { id: tag.id, slug: tag.slug }])
           );
+          tagChanges.additions.forEach((tag) => entries.set(tag.id, tag));
+          targetChanges.tags = [...entries.values()];
+        }
+        if (changes.secretMetadata || removedMetadataKeys?.length) {
+          const existing = existingSecret?.secretMetadata ?? [];
+          const removedKeys = new Set(removedMetadataKeys);
           const entries = new Map(
             existing
               .filter((entry) => !removedKeys.has(entry.key))
               .map((entry) => [entry.key, entry])
           );
-          changes.secretMetadata.forEach((entry) => {
+          changes.secretMetadata?.forEach((entry) => {
+            if (removedKeys.has(entry.key)) return;
+            const { previousKey, ...update } = entry;
             entries.set(entry.key, {
-              ...entry,
-              isEncrypted: entry.isEncrypted ?? entries.get(entry.key)?.isEncrypted ?? false
+              ...update,
+              isEncrypted:
+                entry.isEncrypted ??
+                entries.get(entry.key)?.isEncrypted ??
+                existing.find((metadataEntry) => metadataEntry.key === previousKey)?.isEncrypted ??
+                false
             });
           });
           targetChanges.secretMetadata = [...entries.values()];
@@ -382,8 +397,9 @@ export const MultiEnvironmentSecretEditSheet = ({
                 key: secretKey,
                 value: commonValue ?? "",
                 comment: common(comments, ""),
-                tags: common(tags, []),
+                tags: selectedTags,
                 metadata: commonMetadata,
+                metadataKeys,
                 skipMultilineEncoding: common(encodings, false),
                 canEditButNotView: commonValue === undefined,
                 isReadOnly: isSaving,
