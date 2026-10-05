@@ -487,7 +487,14 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
           overlayClassName="z-[70]"
-          onOpenAutoFocus={focusUpgradeContinuation}
+          onOpenAutoFocus={(event) => {
+            const action = (event.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>(
+              "[data-upgrade-cta]:not(:disabled)"
+            );
+            if (!action) return;
+            event.preventDefault();
+            action.focus({ preventScroll: true });
+          }}
           showCloseButton={false}
           className="z-[70] sm:max-w-xl"
         >
@@ -507,11 +514,25 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
             </AlertDescription>
           </Alert>
           <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              variant="outline"
+              className={isSelfHosted ? "mr-auto" : undefined}
+              onClick={() => onOpenChange(false)}
+            >
               Close
             </Button>
+            <Button
+              data-upgrade-cta={isSelfHosted ? undefined : true}
+              variant={isSelfHosted ? "ghost" : "org"}
+              onClick={() => {
+                overview.refetch();
+                catalog.refetch();
+              }}
+            >
+              {isSelfHosted ? "Retry" : "Try Again"}
+            </Button>
             {isSelfHosted && (
-              <Button variant="outline" asChild>
+              <Button data-upgrade-cta variant="org" asChild>
                 <a
                   href={CONTACT_SALES_URL}
                   target="_blank"
@@ -523,16 +544,6 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
                 </a>
               </Button>
             )}
-            <Button
-              data-upgrade-cta
-              variant="org"
-              onClick={() => {
-                overview.refetch();
-                catalog.refetch();
-              }}
-            >
-              Try Again
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
