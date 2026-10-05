@@ -440,7 +440,7 @@ export const listAppConnectionOptions = (orgId: string, projectType?: ProjectTyp
     getStripeConnectionListItem()
   ]
     .filter((option) => {
-      if (option.app === AppConnection.Stripe) {
+      if (option.app == AppConnection.Stripe) {
         if (!getConfig().WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.includes(orgId)) {
           return false;
         }
