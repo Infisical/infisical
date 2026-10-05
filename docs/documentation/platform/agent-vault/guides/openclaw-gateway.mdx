@@ -268,6 +268,10 @@ For channel tokens in OpenClaw's config, set the placeholder with `openclaw conf
 openclaw config set channels.telegram.botToken __TELEGRAM_BOT_TOKEN__
 ```
 
+<Note>
+If the channel's service uses a substitution, make sure you set the token to the exact value you entered in **Replace** in [Step 2](#create-an-access-bundle).
+</Note>
+
 The real values are now stored in Infisical, so you don't need to keep them on the OpenClaw machine.
 
 ### Route the gateway through the proxy
@@ -278,11 +282,10 @@ Set OpenClaw's proxy URL, replacing `<session-token>` with the token from [Step 
 openclaw config set proxy.proxyUrl http://x-agent-vault:<session-token>@<proxy-host>:17323
 ```
 
-OpenClaw routes all of the gateway's outbound HTTP and WebSocket traffic through this proxy, including traffic from its messaging platform clients. Then reinstall and restart the gateway service so it picks up the new settings:
+OpenClaw routes all of the gateway's outbound HTTP and WebSocket traffic through this proxy, including traffic from its messaging platform clients. Then reinstall the gateway service so it picks up the new settings. This also restarts the gateway.
 
 ```bash
 openclaw gateway install --force
-openclaw gateway restart
 ```
 
 ## Step 4: Verify it works
@@ -349,7 +352,13 @@ To follow the gateway's logs, run `openclaw logs --follow`. To check the gateway
   <Accordion title="The proxy logs no requests from OpenClaw">
     By default, the proxy only logs the requests it brokers, blocks, or can't complete. If no service matches a request, the proxy forwards the request unchanged and doesn't log it. To see every request, restart the proxy with `--log-level debug` added to its command.
 
-    If the proxy still logs nothing from OpenClaw, the gateway isn't using the proxy. Run `openclaw config get proxy` to check the proxy URL, then run `openclaw gateway restart`.
+    If the proxy still logs nothing from OpenClaw, the gateway isn't using the proxy. `openclaw config get proxy` hides the proxy URL because it contains your session token, so check the value in OpenClaw's config file instead:
+
+    ```bash
+    jq -r '.proxy.proxyUrl' ~/.openclaw/openclaw.json
+    ```
+
+    If the URL is wrong, set it again with `openclaw config set proxy.proxyUrl`, then run `openclaw gateway restart`.
   </Accordion>
   <Accordion title="The messaging platform's requests skip the proxy">
     OpenClaw has proxy settings for individual channels, such as `channels.telegram.proxy`. If one of these is set, that channel's requests use it instead of the proxy URL from [Step 3](#route-the-gateway-through-the-proxy). Remove the setting for your channel, then run `openclaw gateway restart`.
@@ -382,6 +391,25 @@ To follow the gateway's logs, run `openclaw logs --follow`. To check the gateway
   </Accordion>
   <Accordion title="OpenClaw still uses a real key">
     A key saved during onboarding can take priority over the placeholder in `~/.openclaw/.env`. Run `openclaw models auth list`, remove any saved profile for that provider with `openclaw models auth logout <profile-id>`, then run `openclaw gateway restart`.
+  </Accordion>
+  <Accordion title="A messaging platform rejects the channel's token">
+    The platform received the placeholder instead of the real token, because the placeholder in the channel's config doesn't match **Replace** in the service's substitution. For example, Telegram reports `getMe returned 404`. Set the channel's token to the exact **Replace** value with `openclaw config set`.
+
+    After a rejected token, OpenClaw stops the channel and doesn't start it again on its own. Once the placeholder matches, start the channel, replacing `<channel>` with its name, such as `telegram`:
+
+    ```bash
+    openclaw gateway call channels.start --params '{"channel":"<channel>"}'
+    ```
+  </Accordion>
+  <Accordion title="Channels don't start after several gateway restarts">
+    If the gateway restarts several times within five minutes, OpenClaw stops starting channels automatically, and its logs mention a crash-loop breaker. Start each channel yourself, replacing `<channel>` with its name:
+
+    ```bash
+    openclaw gateway call channels.start --params '{"channel":"<channel>"}'
+    ```
+  </Accordion>
+  <Accordion title="The gateway is stuck waiting for state ownership">
+    Another OpenClaw process may be using OpenClaw's state, usually an `openclaw tui --local` session from the [terminal guide](/documentation/platform/agent-vault/guides/openclaw). The gateway waits for that process to exit. Quit the terminal session, then run `openclaw gateway restart`.
   </Accordion>
 </AccordionGroup>
 
