@@ -438,7 +438,7 @@ export const secretValidationRuleServiceFactory = ({
     });
 
     const excludedSecretIds = candidates.map((secret) => secret.secretId).filter(Boolean) as string[];
-    const existing = await secretDAL.findExistingSecretsByBlindIndexes(
+    const existing = await secretDAL.findExistingSecretsWithMatchingValues(
       projectId,
       [...new Set(blindIndexes)],
       excludedSecretIds.length ? excludedSecretIds : undefined,

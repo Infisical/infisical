@@ -109,6 +109,18 @@ export type TestConnectionRequest =
       username: string;
       password?: string;
       database: string;
+      httpPort?: number;
+      nativePort?: number;
+      sslEnabled?: boolean;
+      sslRejectUnauthorized?: boolean;
+      sslCertificate?: string;
+    }
+  | {
+      mode: TestConnectionMode.ClickHouse;
+      probeOnly: true;
+      database: string;
+      httpPort?: number;
+      nativePort?: number;
       sslEnabled?: boolean;
       sslRejectUnauthorized?: boolean;
       sslCertificate?: string;
@@ -123,6 +135,9 @@ const SQL_DIALECTS = {
 } as const;
 
 const tcp = (host: string, port: number) => ({ host, port, request: { mode: TestConnectionMode.Tcp } as const });
+
+export const testVerifiesCredential = (request: TestConnectionRequest): boolean =>
+  request.mode !== TestConnectionMode.Tcp && !("probeOnly" in request && request.probeOnly);
 
 export const exceedsOraclePasswordLimit = (
   accountType: PamAccountType,
@@ -140,7 +155,12 @@ export const buildGatewayConnectionTest = async (
   orgId: string,
   // Off for account create and update, which must not fail against a gateway predating the test they need.
   opts?: { allowNewerGatewayTests?: boolean }
-): Promise<{ host: string; port: number; request: TestConnectionRequest } | null> => {
+): Promise<{
+  host: string;
+  port: number;
+  request: TestConnectionRequest;
+  additionalPorts?: number[];
+} | null> => {
   const creds = credentials && isCredentialConfigured(accountType, credentials) ? credentials : null;
 
   const target =
@@ -384,24 +404,37 @@ export const buildGatewayConnectionTest = async (
     case PamAccountType.ClickHouse: {
       const cd = connectionDetails as {
         database: string;
+        port?: number;
+        nativePort?: number;
         sslEnabled?: boolean;
         sslRejectUnauthorized?: boolean;
         sslCertificate?: string;
       };
       const c = creds as { username: string; password?: string } | null;
-      if (!c) return tcp(host, port);
+      const details = {
+        database: cd.database,
+        httpPort: cd.port,
+        nativePort: cd.nativePort,
+        sslEnabled: cd.sslEnabled,
+        sslRejectUnauthorized: cd.sslRejectUnauthorized,
+        sslCertificate: cd.sslCertificate
+      };
+      const additionalPorts = [cd.port, cd.nativePort].filter((p): p is number => typeof p === "number");
+      if (!c) {
+        // Only a gateway with native support understands probeOnly, and a native port already requires one.
+        if (cd.nativePort === undefined) return tcp(host, port);
+        return {
+          host,
+          port,
+          additionalPorts,
+          request: { mode: TestConnectionMode.ClickHouse, probeOnly: true, ...details }
+        };
+      }
       return {
         host,
         port,
-        request: {
-          mode: TestConnectionMode.ClickHouse,
-          username: c.username,
-          password: c.password,
-          database: cd.database,
-          sslEnabled: cd.sslEnabled,
-          sslRejectUnauthorized: cd.sslRejectUnauthorized,
-          sslCertificate: cd.sslCertificate
-        }
+        additionalPorts,
+        request: { mode: TestConnectionMode.ClickHouse, username: c.username, password: c.password, ...details }
       };
     }
     case PamAccountType.Windows:

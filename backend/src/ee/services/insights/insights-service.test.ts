@@ -53,6 +53,8 @@ const projectScopedDepStubs: Pick<
     findStaleByProject: unreachable("secretV2BridgeDAL.findStaleByProject"),
     countStaleByProject: unreachable("secretV2BridgeDAL.countStaleByProject"),
     findDuplicatedSecretValues: unreachable("secretV2BridgeDAL.findDuplicatedSecretValues"),
+    findDuplicatedSecretValuesInOrg: unreachable("secretV2BridgeDAL.findDuplicatedSecretValuesInOrg"),
+    findSecretsWithMatchingValue: unreachable("secretV2BridgeDAL.findSecretsWithMatchingValue"),
     countByProject: unreachable("secretV2BridgeDAL.countByProject")
   },
   dynamicSecretDAL: {
@@ -121,7 +123,10 @@ const buildService = (catalog: TSecretsProjectWarning[]) => {
       setItemWithExpiry: async () => "OK",
       ttl: async () => -2
     },
-    orgDAL: { countSecretManagerProjectMembers: unreachable("orgDAL.countSecretManagerProjectMembers") },
+    orgDAL: {
+      countSecretManagerProjectMembers: unreachable("orgDAL.countSecretManagerProjectMembers"),
+      findById: unreachable("orgDAL.findById")
+    },
     identityOrgMembershipDAL: {
       countSecretManagerProjectIdentities: unreachable("identityOrgMembershipDAL.countSecretManagerProjectIdentities")
     },

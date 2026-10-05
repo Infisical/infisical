@@ -138,6 +138,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
             .object({
               pkcs11: z.boolean().optional(),
               sessionLogMaskingBuiltInDetection: z.boolean().optional(),
+              clickhouseNativeProtocol: z.boolean().optional(),
               supported_account_types: z.array(z.string().trim().max(64)).max(64).optional()
             })
             .optional()
