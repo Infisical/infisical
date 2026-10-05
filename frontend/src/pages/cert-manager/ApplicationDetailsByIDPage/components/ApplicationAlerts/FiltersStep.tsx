@@ -163,7 +163,7 @@ export const FiltersStep = ({ form, projectId }: Props) => {
                     type="button"
                     size="xs"
                     variant="ghost"
-                    className="mt-6.5 hover:text-danger"
+                    className="mt-6.5"
                     aria-label={`Remove ${label} filter`}
                     onClick={() => setFilter(kind, undefined)}
                   >
