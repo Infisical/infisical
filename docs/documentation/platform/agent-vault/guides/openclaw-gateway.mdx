@@ -352,11 +352,13 @@ To follow the gateway's logs, run `openclaw logs --follow`. To check the gateway
   <Accordion title="The proxy logs no requests from OpenClaw">
     By default, the proxy only logs the requests it brokers, blocks, or can't complete. If no service matches a request, the proxy forwards the request unchanged and doesn't log it. To see every request, restart the proxy with `--log-level debug` added to its command.
 
-    If the proxy still logs nothing from OpenClaw, the gateway isn't using the proxy. `openclaw config get proxy` hides the proxy URL because it contains your session token, so check the value in OpenClaw's config file instead:
+    If the proxy still logs nothing from OpenClaw, the gateway isn't using the proxy. `openclaw config get proxy` hides the proxy URL because it contains your session token, so check the value in OpenClaw's config file instead. This command prints the URL with the session token removed:
 
     ```bash
-    jq -r '.proxy.proxyUrl' ~/.openclaw/openclaw.json
+    jq -r '.proxy.proxyUrl' ~/.openclaw/openclaw.json | sed -E 's#//[^@]*@#//#'
     ```
+
+    Check that it prints `http://<proxy-host>:17323` with the Agent Vault machine's address.
 
     If the URL is wrong, set it again with `openclaw config set proxy.proxyUrl`, then run `openclaw gateway restart`.
   </Accordion>
