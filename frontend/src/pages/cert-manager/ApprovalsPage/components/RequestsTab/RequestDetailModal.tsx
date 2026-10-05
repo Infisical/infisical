@@ -258,7 +258,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
           </div>
 
           <div>
-            <h4 className="mb-2 text-sm font-medium text-foreground-secondary">Requester</h4>
+            <h4 className="mb-2 text-sm font-normal text-foreground-secondary">Requester</h4>
             <div className="rounded border border-border-control bg-surface-hover p-3">
               <div className="text-sm font-medium text-foreground">
                 {request.requesterName || "Unknown"}
@@ -268,7 +268,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
           </div>
 
           <div>
-            <h4 className="mb-2 text-sm font-medium text-foreground-secondary">
+            <h4 className="mb-2 text-sm font-normal text-foreground-secondary">
               Certificate Details
             </h4>
             <div className="space-y-2 rounded border border-border-control bg-surface-hover p-3">
@@ -331,7 +331,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
 
           {request.justification && (
             <div>
-              <h4 className="mb-2 text-sm font-medium text-foreground-secondary">Justification</h4>
+              <h4 className="mb-2 text-sm font-normal text-foreground-secondary">Justification</h4>
               <div className="rounded border border-border-control bg-surface-hover p-3 text-sm text-label">
                 {request.justification}
               </div>
@@ -339,7 +339,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
           )}
 
           <div>
-            <h4 className="mb-2 text-sm font-medium text-foreground-secondary">
+            <h4 className="mb-2 text-sm font-normal text-foreground-secondary">
               Approval Progress
             </h4>
             <div className="space-y-2">

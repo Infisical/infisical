@@ -912,20 +912,35 @@ const SingleEnvContent = ({
 
     let isDestinationUpdated = true;
     let isSourceUpdated = true;
+    let secretMoveSucceeded = false;
 
     if (secretsToMove.length) {
-      const result = await moveSecrets.mutateAsync({
-        shouldOverwrite: data.shouldOverwrite,
-        sourceEnvironment: sourceEnv.slug,
-        sourceSecretPath,
-        destinationEnvironment: data.environment,
-        destinationSecretPath: selectedPath.secretPath,
-        projectId,
-        projectSlug,
-        secretIds: secretsToMove.map((sec) => sec.id)
-      });
-      isDestinationUpdated = result.isDestinationUpdated;
-      isSourceUpdated = result.isSourceUpdated;
+      try {
+        const result = await moveSecrets.mutateAsync({
+          shouldOverwrite: data.shouldOverwrite,
+          sourceEnvironment: sourceEnv.slug,
+          sourceSecretPath,
+          destinationEnvironment: data.environment,
+          destinationSecretPath: selectedPath.secretPath,
+          projectId,
+          projectSlug,
+          secretIds: secretsToMove.map((sec) => sec.id)
+        });
+        isDestinationUpdated = result.isDestinationUpdated;
+        isSourceUpdated = result.isSourceUpdated;
+        secretMoveSucceeded = true;
+      } catch (error) {
+        if (!foldersToMove.length && !rotationsToMove.length) throw error;
+        let message = (error as Error)?.message ?? "Failed to move selected secrets";
+        if (axios.isAxiosError(error)) {
+          const responseMessage = (error?.response?.data as { message?: string })?.message;
+          if (responseMessage) message = responseMessage;
+        }
+        createNotification({
+          type: "error",
+          text: `Failed to move selected secrets: ${message}`
+        });
+      }
     }
 
     const rotationFailures: { name: string; message: string }[] = [];
@@ -982,7 +997,7 @@ const SingleEnvContent = ({
       }
     }
 
-    if (secretsToMove.length) {
+    if (secretMoveSucceeded) {
       if (isDestinationUpdated && isSourceUpdated) {
         createNotification({
           type: "success",

@@ -11,6 +11,7 @@ import { TAgentVaultMembershipServiceFactory } from "@app/ee/services/agent-vaul
 import { TAgentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
 import { TAgentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { TAgentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { TAgentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-service";
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
@@ -175,6 +176,7 @@ import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secre
 import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
+import { TSecretValueTrackingServiceFactory } from "@app/services/secret-value-tracking/secret-value-tracking-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSignerPolicyServiceFactory } from "@app/services/signer/signer-policy-service";
 import { TSignerServiceFactory } from "@app/services/signer/signer-service";
@@ -314,6 +316,7 @@ declare module "fastify" {
       projectEnv: TProjectEnvServiceFactory;
       projectKey: TProjectKeyServiceFactory;
       secret: TSecretServiceFactory;
+      secretValueTracking: TSecretValueTrackingServiceFactory;
       secretReplication: TSecretReplicationServiceFactory;
       secretTag: TSecretTagServiceFactory;
       secretValidationRule: TSecretValidationRuleServiceFactory;
@@ -371,6 +374,7 @@ declare module "fastify" {
       agentVaultAccessBundle: TAgentVaultAccessBundleServiceFactory;
       agentVaultProxy: TAgentVaultProxyServiceFactory;
       agentVaultSession: TAgentVaultSessionServiceFactory;
+      agentVaultSessionLog: TAgentVaultSessionLogServiceFactory;
       agentVaultMembership: TAgentVaultMembershipServiceFactory;
       certManagerInstance: TCertManagerInstanceServiceFactory;
       certManagerExport: TCertManagerExportServiceFactory;

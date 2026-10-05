@@ -145,6 +145,7 @@
                     "root": "documentation/platform/secrets-mgmt/monitoring",
                     "pages": [
                       "documentation/platform/insights",
+                      "documentation/platform/secret-value-search",
                       "documentation/platform/webhooks",
                       "documentation/platform/event-subscriptions"
                     ]
@@ -800,7 +801,9 @@
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
                   "documentation/platform/agent-vault/services",
+                  "documentation/platform/agent-vault/variables",
                   "documentation/platform/agent-vault/sessions",
+                  "documentation/platform/agent-vault/session-logs",
                   "documentation/platform/agent-vault/proxies",
                   "documentation/platform/agent-vault/access-control"
                 ]
@@ -4405,6 +4408,16 @@
                     ]
                   },
                   {
+                    "group": "Variables",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-variables/list",
+                      "api-reference/endpoints/agent-vault-variables/create",
+                      "api-reference/endpoints/agent-vault-variables/update",
+                      "api-reference/endpoints/agent-vault-variables/delete",
+                      "api-reference/endpoints/agent-vault-variables/get-value"
+                    ]
+                  },
+                  {
                     "group": "Access bundle members",
                     "pages": [
                       "api-reference/endpoints/agent-vault-access-bundle-members/list",
@@ -4438,8 +4451,28 @@
                     "group": "Sessions",
                     "pages": [
                       "api-reference/endpoints/agent-vault-sessions/list",
+                      "api-reference/endpoints/agent-vault-sessions/get",
                       "api-reference/endpoints/agent-vault-sessions/create",
-                      "api-reference/endpoints/agent-vault-sessions/revoke"
+                      "api-reference/endpoints/agent-vault-sessions/revoke",
+                      "api-reference/endpoints/agent-vault-session-logs/list",
+                      "api-reference/endpoints/agent-vault-session-logs/tail"
+                    ]
+                  },
+                  {
+                    "group": "Settings",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-settings/get-session-log-settings",
+                      "api-reference/endpoints/agent-vault-settings/update-session-log-settings"
+                    ]
+                  },
+                  {
+                    "group": "App connections",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-app-connections/list",
+                      "api-reference/endpoints/agent-vault-app-connections/get",
+                      "api-reference/endpoints/agent-vault-app-connections/create",
+                      "api-reference/endpoints/agent-vault-app-connections/update",
+                      "api-reference/endpoints/agent-vault-app-connections/delete"
                     ]
                   }
                 ]

@@ -1,5 +1,6 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { TableName, TKmsKekHistory, TKmsRootConfig } from "@app/db/schemas";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { getConfig, initEnvConfig, TEnvConfig } from "@app/lib/config/env";
 import { TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -22,8 +23,12 @@ import { projectDALFactory } from "@app/services/project/project-dal";
 // These tests exercise the boot path ($resolveRootKey / $promoteRotation), which the API layer never
 // calls: promotion happens only when an *instance* starts with a key that matches a staged row. Each
 // "instance" below is a fresh KMS service whose env carries a different key, booted against the same
-// database the test server is running on. The tests form one saga — each builds on the state the
-// previous one left — and the file gets a freshly migrated database from the environment setup.
+// database the test server is running on. The tests form one saga, each building on the state the
+// previous one left.
+//
+// Every spec file shares that database, and the saga ends with the root key wrapped by a key only it
+// knew, so a later spec that boots a KMS on the configured key could not start one. The root key itself
+// never changes, only what wraps it, so afterAll puts the rows back as they were.
 
 // Simulates a separate instance booting with `key` as its configured encryption key.
 const bootInstanceWithKey = async (key: string) => {
@@ -76,11 +81,26 @@ describe("encryption key rotation: boot-time promotion", () => {
     stop: async () => {}
   };
 
+  let rootConfigsBefore: TKmsRootConfig[];
+  let kekHistoryBefore: TKmsKekHistory[];
+
   beforeAll(async () => {
     // Spec files run in a separate module graph from the test server, so the env config and the
     // cryptography module must be initialized here as well (same process env, same result).
     initLogger();
     await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+
+    rootConfigsBefore = await testDb(TableName.KmsServerRootConfig).select("*");
+    kekHistoryBefore = await testDb(TableName.KmsKekHistory).select("*");
+  });
+
+  afterAll(async () => {
+    await testDb.transaction(async (tx) => {
+      await tx(TableName.KmsServerRootConfig).delete();
+      await tx(TableName.KmsKekHistory).delete();
+      if (rootConfigsBefore.length) await tx(TableName.KmsServerRootConfig).insert(rootConfigsBefore);
+      if (kekHistoryBefore.length) await tx(TableName.KmsKekHistory).insert(kekHistoryBefore);
+    });
   });
 
   let originalLabel: string;

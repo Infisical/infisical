@@ -97,10 +97,11 @@ export type TEventOutboxServiceFactoryDep = {
 export type TEventOutboxServiceFactory = ReturnType<typeof eventOutboxServiceFactory>;
 
 export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry }: TEventOutboxServiceFactoryDep) => {
-  // `tx` is required so the row commits with the business write. Nothing is caught on purpose: a bad
-  // event is a bug at the emit site (500, not 400), and swallowing a failed insert would leave the
-  // caller with a poisoned transaction.
-  const emit = async (event: TEventInput, tx: Knex): Promise<void> => {
+  // Pass the caller's `tx` so the row commits with the business write; omit it only when there is no
+  // business write to be atomic with. Nothing is caught on purpose: a bad event is a bug at the emit
+  // site (500, not 400), and swallowing a failed insert would leave the caller with a poisoned
+  // transaction.
+  const emit = async (event: TEventInput, tx?: Knex): Promise<void> => {
     const parsed = EventInputSchema.safeParse(event);
     if (!parsed.success) {
       throw new InternalServerError({

@@ -322,7 +322,7 @@ export const HoneyTokenTableRow = ({
                 TABLE_ROW_ACTION_BAR_CLASS_NAME
               )}
             >
-              <Tooltip disableHoverableContent>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <IconButton
                     variant="ghost"

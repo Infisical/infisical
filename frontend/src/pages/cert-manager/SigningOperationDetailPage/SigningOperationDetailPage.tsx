@@ -83,7 +83,7 @@ export const SigningOperationDetailPage = () => {
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-foreground">Signing Operation</h1>
+            <h1 className="text-xl font-normal text-foreground">Signing Operation</h1>
             <Badge variant={getSigningOperationStatusBadgeVariant(operation.status)}>
               {signingOperationStatusLabels[operation.status] ?? operation.status}
             </Badge>

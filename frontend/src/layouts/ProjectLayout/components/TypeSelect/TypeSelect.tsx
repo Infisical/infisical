@@ -25,6 +25,8 @@ import {
   NavbarSwitcherTrigger
 } from "@app/layouts/NavbarSwitcher";
 
+import { ProductPlanBadge } from "./ProductPlanBadge";
+
 const PRODUCT_TYPES: ProjectType[] = [
   ProjectType.SecretManager,
   ProjectType.CertificateManager,
@@ -130,10 +132,11 @@ const TypeSelectInner = ({
               });
             }
           }}
-          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
+          className="group grid min-w-min cursor-pointer grid-flow-col grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
         >
           <ProductIcon className="h-[14px] w-[14px] shrink-0" />
           <span className="truncate">{pillLabel}</span>
+          <ProductPlanBadge type={currentType} />
         </button>
         <PreviewBadge type={currentType} />
         <NavbarSwitcherTrigger aria-label="switch-product-type" />

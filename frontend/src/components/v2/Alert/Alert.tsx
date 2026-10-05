@@ -71,7 +71,7 @@ const Alert = forwardRef<
         </div>
         <div className="flex flex-col gap-y-1">
           {hideTitle ? null : (
-            <h5 className="leading-6 font-medium tracking-tight" {...props}>
+            <h5 className="leading-6 font-normal tracking-tight" {...props}>
               {defaultTitle}
             </h5>
           )}
