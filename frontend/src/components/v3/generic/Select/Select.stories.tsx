@@ -589,10 +589,10 @@ export const InsideDialog: Story = {
   render: () => (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">Open dialog</Button>
+        <Button variant="outline">Open Dialog</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle>Service region</DialogTitle>
+        <DialogTitle>Service Region</DialogTitle>
         <DialogDescription>Choose a region for this demo service.</DialogDescription>
         <NestedForm />
       </DialogContent>
@@ -613,11 +613,11 @@ export const InsideSheet: Story = {
   render: () => (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline">Open sheet</Button>
+        <Button variant="outline">Open Sheet</Button>
       </SheetTrigger>
       <SheetContent>
         <div className="flex flex-col gap-4 p-6">
-          <SheetTitle>Service region</SheetTitle>
+          <SheetTitle>Service Region</SheetTitle>
           <SheetDescription>Choose a region for this demo service.</SheetDescription>
           <NestedForm containerPortal />
         </div>
