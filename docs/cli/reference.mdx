@@ -483,17 +483,31 @@ Stop and remove a gateway's systemd service. Run the command as root on Linux.
 <CLICommand
   id="init"
   command="init"
+  usage="[flags]"
+  flags={[
+    { name: "--project-id", value: "<string>", type: "string", description: "Project ID to link this directory to. When set, skips the interactive org and project pickers and writes `.infisical.json` directly." },
+  ]}
   examples={[
     { title: "Link the current directory to a project", code: "infisical init" },
+    { title: "Link a known project without prompts", code: "infisical init --project-id <project-id>" },
     { title: "Link a project using another profile", code: "infisical init --profile=<profile>" },
   ]}
 >
 
 Link the current directory to an Infisical project. The command lists the projects in your profile's organization and writes the one you choose to `.infisical.json`, so later commands in this directory and its subdirectories know which project to use. It needs a user login, and starts one if you have no profile.
 
+To link a project without prompts, such as in a script or from an AI agent, pass `--project-id`. You can find the ID in the project's settings in the Infisical dashboard. The CLI doesn't look up the organization or project, so if your login can't access the project, the error appears only when a later command such as `infisical secrets` or `infisical run` uses it.
+
 If `.infisical.json` already exists in the current directory, the command asks before replacing it. The new file holds only the project ID, so settings you added, such as `defaultEnvironment`, are lost. See [project config](/cli/project-config) for the file format.
 
-`--org` only accepts the organization of the profile you're using. To link a project in a different organization, switch to a profile for that organization, or change your profile's organization with [infisical profile set-org](/cli/reference#profile-set-org).
+Without a terminal (when standard input isn't a TTY), `init` never prompts:
+
+- If `--project-id` isn't set, the command exits with an error that points you to `--project-id`.
+- If `.infisical.json` already exists, the command exits without replacing it. To link a different project, change `workspaceId` in `.infisical.json`.
+
+`--org` only accepts the organization of the profile you're using, with or without `--project-id`. To link a project in a different organization, switch to a profile for that organization, or change your profile's organization with [infisical profile set-org](/cli/reference#profile-set-org).
+
+If you run a non-interactive init with a profile other than your default, chosen with `--profile` or `INFISICAL_PROFILE`, later commands in the directory won't use that profile unless you choose it again. In that case, `init` suggests running [infisical profile bind](/cli/reference#profile-bind) so the directory always uses it.
 
 </CLICommand>
 
@@ -616,6 +630,8 @@ Stop and remove the KMIP server's systemd service. Run the command as root on Li
 >
 
 Log in to Infisical. By default, `infisical login` opens a browser, and falls back to prompts in the terminal if the browser login fails. Pass `--interactive` to go straight to the prompts, or `--email`, `--password`, and `--organization-id` to log in with no prompts at all.
+
+Without a terminal (when standard input isn't a TTY), the browser login waits for the browser to send the session back to the CLI, and doesn't offer to let you paste a token instead.
 
 A user login is stored as a [profile](/cli/reference#profile): an account on an Infisical instance, plus the organization it uses. Without `--save-as` or `--profile`, the profile is named after the account and organization, such as `scott@example.com--acme-x4k2`. Credentials are kept in your system keyring; see [infisical vault](/cli/reference#vault) to store them elsewhere.
 
