@@ -35,6 +35,10 @@ import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretReminderRecipient } from "../secret-reminder-recipients/secret-reminder-recipients-types";
+import {
+  describeSecretValidationFailures,
+  SecretValidationError
+} from "../secret-validation-rule/secret-validation-rule-errors";
 import { createSecretBlindIndexer, TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
@@ -1630,7 +1634,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     secretQueueService,
     reminderDAL,
     reminderService,
-    validateSecrets
+    secretValidationRuleService
   } = dto;
 
   const sourceFolder = await folderDAL.findBySecretPath(projectId, sourceEnvironment, sourceSecretPath, tx);
@@ -1816,23 +1820,37 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
   // validate the moved secrets against the destination's validation rules before writing anything, whether the
   // move is applied directly or through a change request. the source secrets still exist at this point, so they
   // are excluded from the duplicate check; otherwise each moved secret would be reported as a duplicate of itself.
-  await validateSecrets(
-    {
-      projectId,
-      environment: destinationEnvironment,
-      envId: destinationFolder.envId,
-      secretPath: destinationFolder.path,
-      secrets: secretsToApplyAtDestination.map((secret) => ({
-        key: secret.key,
-        // empty values are stored without an encrypted value, so treat a missing value as an empty string
-        value: secret.value ?? "",
-        secretId: destinationSecretsGroupedByKey[secret.key]?.[0]?.id
-      })),
-      excludedSecretIds: secretsToApplyAtDestination.map((secret) => secret.id)
-    },
-    permission,
-    tx
-  );
+  try {
+    await secretValidationRuleService.validateSecrets(
+      {
+        projectId,
+        environment: destinationEnvironment,
+        envId: destinationFolder.envId,
+        secretPath: destinationFolder.path,
+        secrets: secretsToApplyAtDestination.map((secret) => ({
+          key: secret.key,
+          // empty values are stored without an encrypted value, so treat a missing value as an empty string
+          value: secret.value ?? "",
+          secretId: destinationSecretsGroupedByKey[secret.key]?.[0]?.id
+        })),
+        excludedSecretIds: secretsToApplyAtDestination.map((secret) => secret.id)
+      },
+      tx
+    );
+  } catch (error) {
+    if (!(error instanceof SecretValidationError)) throw error;
+
+    // Which secret already holds a duplicated value is only named to a writer who may read there, so the
+    // message is resolved against their permission rather than formatted inside validation.
+    throw new BadRequestError({
+      message: describeSecretValidationFailures(error.failures, (environment, secretPath) =>
+        permission.can(
+          ProjectPermissionSecretActions.DescribeSecret,
+          subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+        )
+      )
+    });
+  }
 
   const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
     projectId,

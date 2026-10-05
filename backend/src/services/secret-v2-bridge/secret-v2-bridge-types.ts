@@ -26,7 +26,7 @@ import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
-import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
+import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TSecretValueBlindIndexes } from "./secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
@@ -316,12 +316,7 @@ export type TFnSecretMove = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
-  // validates secrets against the project's validation rules; the error only names locations the actor can read
-  validateSecrets: (
-    dto: TValidateSecretsDTO,
-    permission: MongoAbility<ProjectPermissionSet>,
-    tx?: Knex
-  ) => Promise<void>;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
 
 export type TFnSecretMoveResult = {
