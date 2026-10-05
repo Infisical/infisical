@@ -196,7 +196,7 @@ export const getUnusedExportOptionKeys = (exportFormat?: PkiSyncExportFormat): S
     ...(exportFormat === PkiSyncExportFormat.Pem
       ? []
       : ["combineCertificateChain", "pemCertificateExtension"]),
-    ...(isKeystoreExportFormat(exportFormat) ? [] : ["keystoreAlias"]),
+    ...(isKeystoreExportFormat(exportFormat) ? ["includePrivateKey"] : ["keystoreAlias"]),
     ...(exportFormat === PkiSyncExportFormat.Jks ? [] : ["includeTruststore"])
   ]);
 };
