@@ -353,6 +353,7 @@ DeepSeek
 Gemini
 Grok
 Groq
+Hermes
 Hermes Agent
 Mistral
 OpenClaw
