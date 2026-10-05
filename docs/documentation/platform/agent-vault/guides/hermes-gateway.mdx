@@ -50,19 +50,10 @@ This guide walks you through running the [Hermes Agent](https://hermes-agent.nou
 ## Prerequisites
 
 - An Infisical organization where you're an Agent Vault admin
-- Two machines on the same private network, one for Agent Vault and one for Hermes (physical machines, virtual machines, or containers)
+- [Two machines on the same private network](/documentation/platform/agent-vault/proxies#choose-where-to-run-the-proxy), one for Agent Vault and one for Hermes (physical machines, virtual machines, or containers)
 - [Hermes Agent](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart) installed on the Hermes machine, with the [gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) set up and working with your real API keys
 - The [Infisical CLI](/cli/install) 0.43.133 or later installed on the Agent Vault machine (earlier versions don't apply [substitutions](/documentation/platform/agent-vault/services#substitutions))
 - `curl` and `jq` installed on the Hermes machine
-
-<Note>
-  You can technically run Hermes and the proxy on one machine, but we recommend using two separate machines.
-  If they run on the same machine, Hermes could read the proxy's
-  [state directory](/documentation/platform/agent-vault/proxies#state-directory). That directory contains sensitive values,
-  like the proxy's access token and the private key of its certificate authority.
-  
-  We also recommend keeping both machines on the same private network. This is because every request Hermes makes goes through the proxy, and a round trip between networks adds latency to every request.
-</Note>
 
 ## Step 1: List the API keys Hermes uses
 
