@@ -129,10 +129,6 @@ export type TValidateSecretsDTO = {
   envId: string;
   secretPath: string;
   secrets: TSecretToValidate[];
-  /**
-   * IDs of secrets to ignore when checking for duplicate values, e.g. the source copies of secrets being moved.
-   * Unlike `secretId`, these are only skipped in the duplicate check; their version history is not checked.
-   */
   excludedSecretIds?: string[];
 };
 
