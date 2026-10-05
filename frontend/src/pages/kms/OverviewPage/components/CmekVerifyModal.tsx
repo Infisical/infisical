@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faFileSignature, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleCheckIcon, CircleXIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -116,6 +117,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
             <Tooltip hoverable selectable={false} delayDuration={50}>
               <TooltipTrigger asChild>
                 <Badge variant={signatureValid ? "success" : "danger"} tabIndex={0}>
+                  {signatureValid ? <CircleCheckIcon /> : <CircleXIcon />}
                   {signatureValid ? "Valid" : "Invalid"}
                 </Badge>
               </TooltipTrigger>
