@@ -13,6 +13,14 @@ export type TApprovalPolicyDALFactory = ReturnType<typeof approvalPolicyDALFacto
 export const approvalPolicyDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ApprovalPolicies);
 
+  const findByIdForUpdate = async (id: string, tx: Knex) => {
+    try {
+      return await tx(TableName.ApprovalPolicies).where({ id }).forUpdate().first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindApprovalPolicyByIdForUpdate" });
+    }
+  };
+
   const findStepsByPolicyId = async (policyId: string) => {
     try {
       const dbInstance = db.replicaNode();
@@ -486,6 +494,7 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
 
   return {
     ...orm,
+    findByIdForUpdate,
     findStepsByPolicyId,
     findBypassersByPolicyId,
     findBypassersByPolicyIds,

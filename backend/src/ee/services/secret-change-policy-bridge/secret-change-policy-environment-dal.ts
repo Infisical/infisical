@@ -57,5 +57,26 @@ export const approvalPolicySecretEnvironmentDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findPolicyByEnvIdAndSecretPath };
+  const findEnvironmentsByPolicyId = async (policyId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.ApprovalPolicySecretEnvironment)
+        .join(TableName.Environment, function joinActiveEnvForSecretChangePolicy() {
+          this.on(`${TableName.ApprovalPolicySecretEnvironment}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
+        .where(`${TableName.ApprovalPolicySecretEnvironment}.policyId`, policyId)
+        .select(db.ref("id").withSchema(TableName.Environment))
+        .select(db.ref("name").withSchema(TableName.Environment))
+        .select(db.ref("slug").withSchema(TableName.Environment))
+        .select(db.ref("secretPath").withSchema(TableName.ApprovalPolicySecretEnvironment))
+        .orderBy(`${TableName.Environment}.position`, "asc");
+
+      return docs as { id: string; name: string; slug: string; secretPath: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findEnvironmentsByPolicyId" });
+    }
+  };
+
+  return { ...orm, findPolicyByEnvIdAndSecretPath, findEnvironmentsByPolicyId };
 };

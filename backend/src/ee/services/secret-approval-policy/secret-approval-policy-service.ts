@@ -652,8 +652,6 @@ export const secretApprovalPolicyServiceFactory = ({
     return resolvePolicyForPath(policies, removeTrailingSlash(path));
   };
 
-  // batched variant of getSecretApprovalPolicy: fetches the env policies once, then matches every supplied path in
-  // memory. returns a Map keyed by the original input path, containing only paths governed by a policy.
   const getSecretApprovalPolicyByPaths = async (
     projectId: string,
     environment: string,

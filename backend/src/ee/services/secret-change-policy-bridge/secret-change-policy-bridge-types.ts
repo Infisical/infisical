@@ -11,10 +11,12 @@ import {
   TUpdateSapDTO
 } from "../secret-approval-policy/secret-approval-policy-types";
 
+export type TSecretChangePolicyEnvironment = Pick<TProjectEnvironments, "id" | "name" | "slug">;
+
 export type TSecretChangePolicy = TSecretApprovalPolicies & {
   projectId: string;
-  environments: TProjectEnvironments[];
-  environment: TProjectEnvironments;
+  environments: TSecretChangePolicyEnvironment[];
+  environment: TSecretChangePolicyEnvironment;
 };
 
 export type TSecretChangePolicyBridgeMethods = {
