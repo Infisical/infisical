@@ -1,6 +1,12 @@
+import { createMongoAbility, ForbiddenError, MongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
-import { NotFoundError } from "@app/lib/errors";
+import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  ProjectPermissionAppConnectionActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { AppConnection } from "./app-connection-enums";
@@ -20,19 +26,35 @@ const actor = {
 
 class PermissionReached extends Error {}
 
-const buildService = (connection: { orgId: string; projectId: string | null }) => {
+const buildService = (
+  connection: { orgId: string; projectId: string | null; app?: AppConnection },
+  abilities: { org?: MongoAbility; project?: MongoAbility } = {}
+) => {
   const permissionService = {
     getOrgPermission: vi.fn(async () => {
-      throw new PermissionReached();
+      if (!abilities.org) throw new PermissionReached();
+      return { permission: abilities.org };
     }),
     getProjectPermission: vi.fn(async () => {
-      throw new PermissionReached();
+      if (!abilities.project) throw new PermissionReached();
+      return { permission: abilities.project };
     })
   };
 
   const overrides: Record<string, unknown> = {
     appConnectionDAL: {
-      findById: vi.fn(async () => ({ id: CONNECTION_ID, app: AppConnection.AWS, ...connection }))
+      findById: vi.fn(async () => ({
+        id: CONNECTION_ID,
+        app: AppConnection.AWS,
+        encryptedCredentials: Buffer.from("{}"),
+        ...connection
+      }))
+    },
+    projectDAL: { findProjectById: vi.fn(async (id: string) => ({ id, type: "cert-manager" })) },
+    kmsService: {
+      createCipherPairWithDataKey: vi.fn(async () => ({
+        decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
+      }))
     },
     permissionService,
     licenseService: { getPlan: vi.fn(async () => ({})) }
@@ -88,5 +110,96 @@ describe("app connection in another org reads as missing", () => {
     const { service } = buildService({ orgId: ACTOR_ORG_ID, projectId: null });
 
     await expect(call(service)).rejects.toBeInstanceOf(PermissionReached);
+  });
+});
+
+describe("validateAppConnectionUsageById refuses connections the caller cannot use", () => {
+  const canConnectOrg = createMongoAbility([
+    { action: OrgPermissionAppConnectionActions.Connect, subject: OrgPermissionSubjects.AppConnections }
+  ]);
+  const canConnectProject = createMongoAbility([
+    { action: ProjectPermissionAppConnectionActions.Connect, subject: ProjectPermissionSub.AppConnections }
+  ]);
+
+  test("org connection without Connect permission", async () => {
+    const { service } = buildService({ orgId: ACTOR_ORG_ID, projectId: null }, { org: createMongoAbility([]) });
+
+    await expect(
+      service.validateAppConnectionUsageById(
+        AppConnection.AWS,
+        { connectionId: CONNECTION_ID, projectId: "proj-1" },
+        actor
+      )
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  test("project connection without Connect permission", async () => {
+    const { service } = buildService({ orgId: ACTOR_ORG_ID, projectId: "proj-1" }, { project: createMongoAbility([]) });
+
+    await expect(
+      service.validateAppConnectionUsageById(
+        AppConnection.AWS,
+        { connectionId: CONNECTION_ID, projectId: "proj-1" },
+        actor
+      )
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  test("project connection from another project, even with Connect there", async () => {
+    const { service } = buildService({ orgId: ACTOR_ORG_ID, projectId: "proj-2" }, { project: canConnectProject });
+
+    await expect(
+      service.validateAppConnectionUsageById(
+        AppConnection.AWS,
+        { connectionId: CONNECTION_ID, projectId: "proj-1" },
+        actor
+      )
+    ).rejects.toThrow(BadRequestError);
+    await expect(
+      service.validateAppConnectionUsageById(
+        AppConnection.AWS,
+        { connectionId: CONNECTION_ID, projectId: "proj-1" },
+        actor
+      )
+    ).rejects.toThrow(/from project with ID "proj-2" to project with ID "proj-1"/);
+  });
+
+  test("project connection in the same project with Connect passes", async () => {
+    const { service } = buildService({ orgId: ACTOR_ORG_ID, projectId: "proj-1" }, { project: canConnectProject });
+
+    await expect(
+      service.validateAppConnectionUsageById(
+        AppConnection.AWS,
+        { connectionId: CONNECTION_ID, projectId: "proj-1" },
+        actor
+      )
+    ).resolves.toMatchObject({ id: CONNECTION_ID, projectId: "proj-1" });
+  });
+
+  test("org connection with Connect passes", async () => {
+    const { service } = buildService({ orgId: ACTOR_ORG_ID, projectId: null }, { org: canConnectOrg });
+
+    await expect(
+      service.validateAppConnectionUsageById(
+        AppConnection.AWS,
+        { connectionId: CONNECTION_ID, projectId: "proj-1" },
+        actor
+      )
+    ).resolves.toMatchObject({ id: CONNECTION_ID });
+  });
+
+  test("connection of the wrong type, even with Connect", async () => {
+    const { service } = buildService(
+      { orgId: ACTOR_ORG_ID, projectId: null, app: AppConnection.AWS },
+      { org: canConnectOrg }
+    );
+
+    await expect(
+      service.validateAppConnectionUsageById(
+        AppConnection.Venafi,
+        { connectionId: CONNECTION_ID, projectId: "proj-1" },
+        actor
+      )
+    ).rejects.toThrow(BadRequestError);
   });
 });
