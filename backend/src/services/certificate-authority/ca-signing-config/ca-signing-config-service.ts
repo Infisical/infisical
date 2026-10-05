@@ -9,6 +9,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -47,6 +48,7 @@ type TCaSigningConfigServiceFactoryDep = {
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   caAutoRenewalQueue: Pick<
     TCaAutoRenewalQueueFactory,
@@ -62,27 +64,19 @@ export const caSigningConfigServiceFactory = ({
   internalCertificateAuthorityDAL,
   permissionService,
   licenseService,
+  appConnectionDAL,
   appConnectionService,
   caAutoRenewalQueue
 }: TCaSigningConfigServiceFactoryDep) => {
+  const validateAppConnectionOrg = async (connectionId: string, actorOrgId: string) => {
+    const appConnection = await appConnectionDAL.findById(connectionId);
+    if (!appConnection || appConnection.orgId !== actorOrgId) {
+      throw new BadRequestError({ message: "App connection not found or does not belong to your organization" });
+    }
+  };
+
   const validateAdcsAppConnectionUsage = async (connectionId: string, projectId: string, actor: OrgServiceActor) => {
     await appConnectionService.validateAppConnectionUsageById(AppConnection.ADCS, { connectionId, projectId }, actor);
-  };
-
-  const validateVenafiAppConnectionUsage = async (connectionId: string, projectId: string, actor: OrgServiceActor) => {
-    await appConnectionService.validateAppConnectionUsageById(AppConnection.Venafi, { connectionId, projectId }, actor);
-  };
-
-  const validateAzureAdCsAppConnectionUsage = async (
-    connectionId: string,
-    projectId: string,
-    actor: OrgServiceActor
-  ) => {
-    await appConnectionService.validateAppConnectionUsageById(
-      AppConnection.AzureADCS,
-      { connectionId, projectId },
-      actor
-    );
   };
 
   const getSigningConfigByCaId = async (internalCaId: string) => {
@@ -150,7 +144,7 @@ export const caSigningConfigServiceFactory = ({
         throw new BadRequestError({ message: "Destination config is required for Venafi signing" });
       }
       VenafiDestinationConfigSchema.parse(destinationConfig);
-      await validateVenafiAppConnectionUsage(appConnectionId, ca.projectId, permissionActor);
+      await validateAppConnectionOrg(appConnectionId, actorOrgId);
     }
 
     // Azure AD CS requires appConnectionId and destinationConfig
@@ -162,7 +156,7 @@ export const caSigningConfigServiceFactory = ({
         throw new BadRequestError({ message: "Destination config is required for Azure AD CS signing" });
       }
       AzureAdCsDestinationConfigSchema.parse(destinationConfig);
-      await validateAzureAdCsAppConnectionUsage(appConnectionId, ca.projectId, permissionActor);
+      await validateAppConnectionOrg(appConnectionId, actorOrgId);
     }
 
     if (type === CaSigningConfigType.Adcs) {
@@ -306,7 +300,7 @@ export const caSigningConfigServiceFactory = ({
 
     if (existing.type === CaSigningConfigType.Venafi) {
       if (appConnectionId !== undefined) {
-        await validateVenafiAppConnectionUsage(appConnectionId, ca.projectId, permissionActor);
+        await validateAppConnectionOrg(appConnectionId, actorOrgId);
         updateData.appConnectionId = appConnectionId;
       }
       if (destinationConfig !== undefined) {
@@ -318,7 +312,7 @@ export const caSigningConfigServiceFactory = ({
 
     if (existing.type === CaSigningConfigType.AzureAdCs) {
       if (appConnectionId !== undefined) {
-        await validateAzureAdCsAppConnectionUsage(appConnectionId, ca.projectId, permissionActor);
+        await validateAppConnectionOrg(appConnectionId, actorOrgId);
         updateData.appConnectionId = appConnectionId;
       }
       if (destinationConfig !== undefined) {
