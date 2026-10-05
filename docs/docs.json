@@ -145,6 +145,7 @@
                     "root": "documentation/platform/secrets-mgmt/monitoring",
                     "pages": [
                       "documentation/platform/insights",
+                      "documentation/platform/secret-value-search",
                       "documentation/platform/webhooks",
                       "documentation/platform/event-subscriptions"
                     ]
