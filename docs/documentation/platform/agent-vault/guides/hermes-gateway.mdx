@@ -4,6 +4,8 @@ sidebarTitle: "With a gateway"
 description: "Learn how to run the Hermes Agent gateway through Agent Vault so Hermes can make authenticated API requests from a messaging platform without ever seeing your credentials."
 ---
 
+import SeparateMachinesNote from "/snippets/agent-vault/SeparateMachinesNote.mdx";
+
 This guide walks you through running the [Hermes Agent](https://hermes-agent.nousresearch.com/docs/) [gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) through Agent Vault, so Hermes can make authenticated API calls without holding any real credentials. The gateway connects Hermes to a messaging platform such as Slack or Telegram.
 
 <Tip>
@@ -50,10 +52,12 @@ This guide walks you through running the [Hermes Agent](https://hermes-agent.nou
 ## Prerequisites
 
 - An Infisical organization where you're an Agent Vault admin
-- [Two machines on the same private network](/documentation/platform/agent-vault/proxies#choose-where-to-run-the-proxy), one for Agent Vault and one for Hermes (physical machines, virtual machines, or containers)
+- Two machines on the same private network, one for the Agent Vault proxy and one for Hermes (physical machines, virtual machines, or containers)
 - [Hermes Agent](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart) installed on the Hermes machine, with the [gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) set up and working with your real API keys
 - The [Infisical CLI](/cli/install) 0.43.133 or later installed on the Agent Vault machine (earlier versions don't apply [substitutions](/documentation/platform/agent-vault/services#substitutions))
 - `curl` and `jq` installed on the Hermes machine
+
+<SeparateMachinesNote />
 
 ## Step 1: List the API keys Hermes uses
 

@@ -9,6 +9,7 @@ import ServiceVerifyIntro from "/snippets/agent-vault/slots/ServiceVerifyIntro.m
 import ServiceVerifyProse from "/snippets/agent-vault/slots/ServiceVerifyProse.mdx";
 import ServiceVerifyCurl from "/snippets/agent-vault/slots/ServiceVerifyCurl.mdx";
 import ServiceCheckCallout from "/snippets/agent-vault/slots/ServiceCheckCallout.mdx";
+import SeparateMachinesNote from "/snippets/agent-vault/SeparateMachinesNote.mdx";
 
 This quickstart guide walks you through using Agent Vault to launch an agent that makes authenticated API calls without needing an actual token.
 
@@ -18,10 +19,12 @@ This quickstart guide walks you through using Agent Vault to launch an agent tha
 
 <ul>
   <li>An Infisical organization where you're an Agent Vault admin</li>
-  <li>The <a href="/cli/install">Infisical CLI</a> installed on the host that will run the proxy and on the host that will run the agent (we recommend <a href="/documentation/platform/agent-vault/proxies#choose-where-to-run-the-proxy">giving each host its own machine</a>)</li>
+  <li>The <a href="/cli/install">Infisical CLI</a> installed on the host that will run the Agent Vault proxy and on the host that will run the agent</li>
   <AgentPrereqLine />
   <ServicePrereqLine />
 </ul>
+
+<SeparateMachinesNote />
 
 ## Step 1: Set up in Infisical
 
