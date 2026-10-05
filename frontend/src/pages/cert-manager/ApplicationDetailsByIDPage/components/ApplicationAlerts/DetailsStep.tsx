@@ -56,8 +56,9 @@ export const DetailsStep = ({
   ) => {
     onChange(next);
     if (!isFilterableEventType(next)) {
-      form.setValue(CertificateFilterKind.Applications, undefined, { shouldDirty: true });
-      form.setValue(CertificateFilterKind.Profiles, undefined, { shouldDirty: true });
+      Object.values(CertificateFilterKind).forEach((kind) =>
+        form.setValue(kind, undefined, { shouldDirty: true })
+      );
     }
   };
 

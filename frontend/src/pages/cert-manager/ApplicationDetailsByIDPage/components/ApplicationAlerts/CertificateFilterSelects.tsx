@@ -30,7 +30,7 @@ const FilterCombobox = ({
   kind: CertificateFilterKind;
   options: TFilterOption[];
   isLoading: boolean;
-  onSearchChange: (search: string) => void;
+  onSearchChange?: (search: string) => void;
   placeholder: string;
 }) => {
   const optionNames = useMemo(
@@ -116,7 +116,6 @@ export const SourceFilterSelect = (props: Props) => (
     kind={CertificateFilterKind.Sources}
     options={SOURCE_OPTIONS}
     isLoading={false}
-    onSearchChange={() => {}}
     placeholder="Select sources"
   />
 );

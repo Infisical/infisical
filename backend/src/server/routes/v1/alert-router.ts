@@ -98,12 +98,12 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: z.string().min(1).max(255).describe(ALERTING.CREATE.name),
         description: z.string().max(1000).optional().describe(ALERTING.CREATE.description),
-        resourceType: z.string().min(1).describe(ALERTING.CREATE.resourceType),
+        resourceType: z.string().trim().min(1).max(255).describe(ALERTING.CREATE.resourceType),
         resourceId: z.string().uuid().nullable().optional().describe(ALERTING.CREATE.resourceId),
-        eventType: z.string().min(1).describe(ALERTING.CREATE.eventType),
+        eventType: z.string().trim().min(1).max(255).describe(ALERTING.CREATE.eventType),
         condition: z.unknown().optional().describe(ALERTING.CREATE.condition),
         enabled: z.boolean().optional().describe(ALERTING.CREATE.enabled),
-        projectId: z.string().nullable().optional().describe(ALERTING.CREATE.projectId),
+        projectId: z.string().uuid().nullable().optional().describe(ALERTING.CREATE.projectId),
         channels: z
           .array(CreateChannelInputSchema)
           .min(1)
@@ -142,9 +142,9 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       operationId: "testAlertChannel",
       description: "Send a test notification through a saved channel or a channel described in the request.",
       body: z.object({
-        resourceType: z.string().min(1).describe(ALERTING.TEST_CHANNEL.resourceType),
+        resourceType: z.string().trim().min(1).max(255).describe(ALERTING.TEST_CHANNEL.resourceType),
         resourceId: z.string().uuid().nullable().optional().describe(ALERTING.TEST_CHANNEL.resourceId),
-        projectId: z.string().nullable().optional().describe(ALERTING.TEST_CHANNEL.projectId),
+        projectId: z.string().uuid().nullable().optional().describe(ALERTING.TEST_CHANNEL.projectId),
         alertId: z.string().uuid().optional().describe(ALERTING.TEST_CHANNEL.alertId),
         channelId: z.string().uuid().optional().describe(ALERTING.TEST_CHANNEL.channelId),
         channelType: z.nativeEnum(AlertChannelType),
@@ -203,9 +203,9 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       operationId: "listAlerts",
       description: "List the alerts on a resource type.",
       querystring: z.object({
-        resourceType: z.string().min(1).describe(ALERTING.LIST.resourceType),
+        resourceType: z.string().trim().min(1).max(255).describe(ALERTING.LIST.resourceType),
         resourceId: z.string().uuid().optional().describe(ALERTING.LIST.resourceId),
-        projectId: z.string().optional().describe(ALERTING.LIST.projectId),
+        projectId: z.string().uuid().optional().describe(ALERTING.LIST.projectId),
         enabled: z
           .enum(["true", "false"])
           .transform((value) => value === "true")
