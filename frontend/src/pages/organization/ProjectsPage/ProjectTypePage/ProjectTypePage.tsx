@@ -340,7 +340,7 @@ const ProjectTypeContent = ({
   const typeTitle = getProjectTitle(projectType);
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="mx-auto flex max-w-8xl flex-col">
       <Helmet>
         <title>{typeTitle} Projects</title>
         <link rel="icon" href="/infisical.ico" />

@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet";
 
-import { PageHeader } from "@app/components/v2";
 import { LookingForOrgPageLink } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components";

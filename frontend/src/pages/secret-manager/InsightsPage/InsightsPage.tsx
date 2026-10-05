@@ -13,7 +13,7 @@ import {
   SecretAccessInsightsUpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   ProjectPermissionInsightsActions,
   ProjectPermissionSub,

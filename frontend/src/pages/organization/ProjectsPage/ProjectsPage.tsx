@@ -5,7 +5,7 @@ import { Outlet, useMatches } from "@tanstack/react-router";
 
 import { AnnouncementModal } from "@app/components/announcements/AnnouncementModal";
 import { useAnnouncementSeen } from "@app/components/announcements/useAnnouncementSeen";
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import { useOrganization } from "@app/context";
 import { useGetRecentAnnouncements } from "@app/hooks/api/announcement";
 

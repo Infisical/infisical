@@ -2999,13 +2999,14 @@ const OverviewPageContent = () => {
   };
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-6 md:gap-8">
+    <div className="mx-auto flex max-w-8xl flex-col">
       <Helmet>
         <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
       <PageHeader
+        className="mb-6 md:mb-10"
         scope={ProjectType.SecretManager}
         title={currentProject.name}
         description={currentProject.description}

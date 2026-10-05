@@ -5,6 +5,7 @@ import { SecretType } from "@app/db/schemas";
 import { request } from "./request";
 
 type TRawSecret = {
+  id: string;
   secretKey: string;
   secretValue: string;
   secretComment?: string;
