@@ -472,10 +472,7 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: (req) => {
-      const appConnectionOptions = server.services.appConnection.listAppConnectionOptions(
-        req.permission.orgId,
-        req.query.projectType
-      );
+      const appConnectionOptions = server.services.appConnection.listAppConnectionOptions(req.query.projectType);
       return { appConnectionOptions };
     }
   });
