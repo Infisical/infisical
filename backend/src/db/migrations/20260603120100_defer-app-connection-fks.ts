@@ -14,7 +14,6 @@ const BLOCKING_APP_CONNECTION_FKS: TFk[] = [
   { table: TableName.SecretScanningDataSource, column: "connectionId" },
   { table: TableName.PkiSync, column: "connectionId" },
   { table: TableName.ExternalMigrationConfig, column: "connectionId" },
-  { table: TableName.VaultExternalMigrationConfig, column: "connectionId" },
   { table: TableName.HoneyTokenConfig, column: "connectionId" },
   { table: TableName.PamProjectRecordingConfig, column: "connectionId", originalOnDelete: "RESTRICT" }
 ];
