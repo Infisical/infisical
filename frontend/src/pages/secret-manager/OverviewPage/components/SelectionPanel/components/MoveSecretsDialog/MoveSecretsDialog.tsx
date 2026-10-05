@@ -56,7 +56,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
-import { TMoveWarningsCheck } from "@app/helpers/secretSyncCoverage";
+import { TItemMove } from "@app/helpers/secretSyncCoverage";
 import { removeTrailingSlash } from "@app/helpers/string";
 import { useMoveSecrets } from "@app/hooks/api";
 import {
@@ -545,9 +545,9 @@ const buildDestinationTargets = ({
   return { checks: isSelfMove ? [] : checks, isSelfMove };
 };
 
-// one check per path the items land at. a moved folder always lands at a new path (the backend rejects a
+// one move per path the items land at. a moved folder always lands at a new path (the backend rejects a
 // name clash), so only recursive syncs above it can cover it or anything inside it.
-const buildMoveWarningChecks = ({
+const buildItemMoves = ({
   sourceSecretPath,
   destinationPath,
   secretEnvironments,
@@ -557,23 +557,28 @@ const buildMoveWarningChecks = ({
   destinationPath?: string;
   secretEnvironments: { sourceEnv: string; destinationEnvironment: string }[];
   movedFolders: MovedFolder[];
-}): TMoveWarningsCheck[] => {
+}): TItemMove[] => {
   if (!destinationPath) return [];
 
-  const secretChecks = secretEnvironments.map(({ sourceEnv, destinationEnvironment }) => ({
-    sourceEnvironment: sourceEnv,
-    sourceSecretPath: removeTrailingSlash(sourceSecretPath),
-    destinationEnvironment,
-    destinationSecretPath: removeTrailingSlash(destinationPath)
+  const secretMoves = secretEnvironments.map(({ sourceEnv, destinationEnvironment }) => ({
+    source: { environment: sourceEnv, secretPath: removeTrailingSlash(sourceSecretPath) },
+    destination: {
+      environment: destinationEnvironment,
+      secretPath: removeTrailingSlash(destinationPath)
+    }
   }));
-  const folderChecks = movedFolders.map(({ folderName, sourceEnv, destinationEnvironment }) => ({
-    sourceEnvironment: sourceEnv,
-    sourceSecretPath: `${removeTrailingSlash(sourceSecretPath)}/${folderName}`,
-    destinationEnvironment,
-    destinationSecretPath: `${removeTrailingSlash(destinationPath)}/${folderName}`
+  const folderMoves = movedFolders.map(({ folderName, sourceEnv, destinationEnvironment }) => ({
+    source: {
+      environment: sourceEnv,
+      secretPath: `${removeTrailingSlash(sourceSecretPath)}/${folderName}`
+    },
+    destination: {
+      environment: destinationEnvironment,
+      secretPath: `${removeTrailingSlash(destinationPath)}/${folderName}`
+    }
   }));
 
-  return [...secretChecks, ...folderChecks];
+  return [...secretMoves, ...folderMoves];
 };
 
 // memoizes the destination checks for the moved folders and runs the destination approval-policy eligibility
@@ -918,9 +923,9 @@ const SingleEnvContent = ({
     Object.values(secrets).some((secretRecord) => Boolean(secretRecord[sourceEnv.slug])) ||
     Object.values(rotations).some((rotationRecord) => Boolean(rotationRecord[sourceEnv.slug]));
 
-  const moveWarningChecks = useMemo(
+  const itemMoves = useMemo(
     () =>
-      buildMoveWarningChecks({
+      buildItemMoves({
         sourceSecretPath,
         destinationPath: destinationSelected && !isSelfMove ? selectedPath?.secretPath : undefined,
         secretEnvironments: hasSecretsToMove
@@ -939,7 +944,7 @@ const SingleEnvContent = ({
       movedFolders
     ]
   );
-  const secretSyncWarning = useSecretSyncMoveWarning(projectId, moveWarningChecks);
+  const secretSyncWarning = useSecretSyncMoveWarning(projectId, itemMoves);
 
   const handleFormSubmit = async (data: TSingleEnvFormSchema) => {
     if (!selectedPath) {
@@ -1331,9 +1336,9 @@ const MultiEnvContent = ({
       destinationPath: destinationSelected ? selectedPath?.secretPath : undefined
     });
 
-  const moveWarningChecks = useMemo(
+  const itemMoves = useMemo(
     () =>
-      buildMoveWarningChecks({
+      buildItemMoves({
         sourceSecretPath,
         destinationPath: destinationSelected && !isSelfMove ? selectedPath?.secretPath : undefined,
         secretEnvironments: environments
@@ -1359,7 +1364,7 @@ const MultiEnvContent = ({
       movedFolders
     ]
   );
-  const secretSyncWarning = useSecretSyncMoveWarning(projectId, moveWarningChecks);
+  const secretSyncWarning = useSecretSyncMoveWarning(projectId, itemMoves);
 
   const environmentsToBeSkipped = useMemo(() => {
     if (!destinationSelected) return [];

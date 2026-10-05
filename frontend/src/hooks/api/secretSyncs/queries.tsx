@@ -1,10 +1,7 @@
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import {
-  getSecretSyncsNewlyCoveringPaths,
-  TMoveWarningsCheck
-} from "@app/helpers/secretSyncCoverage";
+import { getSecretSyncsNewlyCoveringPaths, TItemMove } from "@app/helpers/secretSyncCoverage";
 import { SecretSync, TSecretSyncOption } from "@app/hooks/api/secretSyncs";
 import {
   TListSecretSyncOptions,
@@ -49,8 +46,8 @@ export const secretSyncKeys = {
       secretPath,
       keySchema
     ] as const,
-  coveringMove: (projectId: string, checks: TMoveWarningsCheck[]) =>
-    [...secretSyncKeys.all, "covering-move", projectId, checks] as const
+  coveringMove: (projectId: string, moves: TItemMove[]) =>
+    [...secretSyncKeys.all, "covering-move", projectId, moves] as const
 };
 
 export type TSecretSyncRecursiveConflict = {
@@ -109,17 +106,17 @@ export const useListSecretSyncs = (
   });
 };
 
-// keyed on the checks so a new destination always fetches a fresh list, never a cached one that
+// keyed on the moves so a new destination always fetches a fresh list, never a cached one that
 // predates a sync created since
 export const useListSecretSyncsCoveringMove = (
   projectId: string,
-  checks: TMoveWarningsCheck[],
+  moves: TItemMove[],
   { enabled }: { enabled: boolean }
 ) =>
   useQuery({
-    queryKey: secretSyncKeys.coveringMove(projectId, checks),
+    queryKey: secretSyncKeys.coveringMove(projectId, moves),
     queryFn: () => fetchSecretSyncsByProjectId(projectId),
-    select: (secretSyncs) => getSecretSyncsNewlyCoveringPaths(secretSyncs, checks),
+    select: (secretSyncs) => getSecretSyncsNewlyCoveringPaths(secretSyncs, moves),
     enabled,
     staleTime: 0,
     gcTime: 0

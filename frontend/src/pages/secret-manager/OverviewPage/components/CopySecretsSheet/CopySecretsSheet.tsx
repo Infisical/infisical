@@ -204,10 +204,11 @@ const CopySecretsSession = ({
       isSourcePathSettled &&
       isDestinationPathSettled
       ? requestGroups.map((group) => ({
-          sourceEnvironment: sourceEnvironmentSlug,
-          sourceSecretPath: group.sourcePath,
-          destinationEnvironment: destinationEnvironmentSlug,
-          destinationSecretPath: group.destinationPath
+          source: { environment: sourceEnvironmentSlug, secretPath: group.sourcePath },
+          destination: {
+            environment: destinationEnvironmentSlug,
+            secretPath: group.destinationPath
+          }
         }))
       : []
   );

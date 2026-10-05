@@ -8,12 +8,10 @@ type TCoverageSync = {
   syncOptions?: { includeAllSubFolders?: boolean } | null;
 };
 
-export type TMoveWarningsCheck = {
-  sourceEnvironment: string;
-  sourceSecretPath: string;
-  destinationEnvironment: string;
-  destinationSecretPath: string;
-};
+export type TPathRef = { environment: string; secretPath: string };
+
+// one item moved or copied from its source path to the path it lands at
+export type TItemMove = { source: TPathRef; destination: TPathRef };
 
 const toPathSegments = (path: string) => path.split("/").filter(Boolean);
 
@@ -22,7 +20,7 @@ const toPathSegments = (path: string) => path.split("/").filter(Boolean);
 // moved has no folder at its landing path, and only the recursive syncs above it can cover it there.
 export const isPathCoveredBySecretSync = (
   sync: TCoverageSync,
-  { environment, secretPath }: { environment: string; secretPath: string }
+  { environment, secretPath }: TPathRef
 ) => {
   if (!sync.folder || sync.environment?.slug !== environment) return false;
 
@@ -37,27 +35,20 @@ export const isPathCoveredBySecretSync = (
   );
 };
 
-// The syncs that would start sending items to their destination if they were moved or copied as the checks
-// describe, one check per path the items land at. A sync that already covers a check's source is left out
-// for that check, since the items already reach it.
+// The syncs that would start sending items to their destination if they were moved or copied as described.
+// A sync that already covers a move's source is left out for that move, since the items already reach it.
 export const getSecretSyncsNewlyCoveringPaths = <
   T extends TCoverageSync & { id: string; name: string }
 >(
   syncs: T[],
-  checks: TMoveWarningsCheck[]
+  moves: TItemMove[]
 ) =>
   syncs
     .filter((sync) =>
-      checks.some(
-        (check) =>
-          isPathCoveredBySecretSync(sync, {
-            environment: check.destinationEnvironment,
-            secretPath: check.destinationSecretPath
-          }) &&
-          !isPathCoveredBySecretSync(sync, {
-            environment: check.sourceEnvironment,
-            secretPath: check.sourceSecretPath
-          })
+      moves.some(
+        (move) =>
+          isPathCoveredBySecretSync(sync, move.destination) &&
+          !isPathCoveredBySecretSync(sync, move.source)
       )
     )
     .sort((a, b) => a.name.localeCompare(b.name));

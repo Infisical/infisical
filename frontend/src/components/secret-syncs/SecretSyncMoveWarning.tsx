@@ -6,7 +6,7 @@ import { Alert, AlertDescription, AlertTitle, Checkbox, Label } from "@app/compo
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useOrganization, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
-import { TMoveWarningsCheck } from "@app/helpers/secretSyncCoverage";
+import { TItemMove } from "@app/helpers/secretSyncCoverage";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { TSecretSync, useListSecretSyncsCoveringMove } from "@app/hooks/api/secretSyncs";
 
@@ -38,7 +38,7 @@ const useAcknowledgement = (warningKey: string) => {
 // like the synced indicator on the dashboard, syncs the user cannot read are left out entirely
 export const useSecretSyncMoveWarning = (
   projectId: string,
-  checks: TMoveWarningsCheck[]
+  moves: TItemMove[]
 ): TSecretSyncMoveWarning => {
   const { permission } = useProjectPermission();
   const canReadSecretSyncs = permission.can(
@@ -50,8 +50,8 @@ export const useSecretSyncMoveWarning = (
     data: fetchedSecretSyncs = [],
     isLoading: isChecking,
     isError
-  } = useListSecretSyncsCoveringMove(projectId, checks, {
-    enabled: canReadSecretSyncs && checks.length > 0
+  } = useListSecretSyncsCoveringMove(projectId, moves, {
+    enabled: canReadSecretSyncs && moves.length > 0
   });
 
   // a disabled query keeps its last result, so a user whose read access is revoked mid-dialog must not
@@ -60,7 +60,7 @@ export const useSecretSyncMoveWarning = (
   const hasError = canReadSecretSyncs && isError;
   const needsAcknowledgement = hasError || secretSyncs.length > 0;
   const { isAcknowledged, setIsAcknowledged } = useAcknowledgement(
-    JSON.stringify({ checks, syncIds: secretSyncs.map(({ id }) => id), hasError })
+    JSON.stringify({ moves, syncIds: secretSyncs.map(({ id }) => id), hasError })
   );
 
   return {
@@ -82,20 +82,59 @@ type Props = {
 };
 
 const getTitle = ({
-  subject,
+  noun,
+  verb,
   count,
   hasError
 }: {
-  subject: string;
+  noun: string;
+  verb: Props["verb"];
   count: number;
   hasError: boolean;
 }) => {
   if (hasError) return "Could not check the destination for secret syncs";
+
+  const subject = `${noun.charAt(0).toUpperCase()}${noun.slice(1)} ${verb}`;
   return `${subject} here will be synced to ${count} external destination${count === 1 ? "" : "s"}`;
 };
 
-export const SecretSyncMoveWarning = ({ warning, projectId, noun, verb }: Props) => {
+const SecretSyncMoveWarningItem = ({
+  sync,
+  projectId
+}: {
+  sync: TSecretSync;
+  projectId: string;
+}) => {
   const { currentOrg } = useOrganization();
+
+  return (
+    <li>
+      <span className="font-medium text-foreground">{sync.name}</span>
+      {` (${SECRET_SYNC_MAP[sync.destination].name}) syncs `}
+      <code>{sync.folder?.path ?? "/"}</code>
+      {sync.syncOptions.includeAllSubFolders ? " and all its subfolders." : "."}
+      {!sync.isAutoSyncEnabled &&
+        " Auto-sync is off, so it sends them on its next manual sync."}{" "}
+      <Link
+        to={ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path}
+        params={{
+          orgId: currentOrg.id,
+          projectId,
+          destination: sync.destination,
+          syncId: sync.id
+        }}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 underline underline-offset-2"
+      >
+        View Sync
+        <ExternalLinkIcon className="size-3" />
+      </Link>
+    </li>
+  );
+};
+
+export const SecretSyncMoveWarning = ({ warning, projectId, noun, verb }: Props) => {
   const { needsAcknowledgement, isChecking, hasError, secretSyncs } = warning;
 
   if (isChecking || !needsAcknowledgement) return null;
@@ -103,41 +142,13 @@ export const SecretSyncMoveWarning = ({ warning, projectId, noun, verb }: Props)
   return (
     <Alert variant="warning">
       <TriangleAlertIcon />
-      <AlertTitle>
-        {getTitle({
-          subject: `${noun.charAt(0).toUpperCase()}${noun.slice(1)} ${verb}`,
-          count: secretSyncs.length,
-          hasError
-        })}
-      </AlertTitle>
+      <AlertTitle>{getTitle({ noun, verb, count: secretSyncs.length, hasError })}</AlertTitle>
       <AlertDescription>
         {hasError && <p>Secret syncs may send these {noun} to external destinations.</p>}
         {secretSyncs.length > 0 && (
           <ul className="max-h-40 list-disc overflow-y-auto pl-4">
             {secretSyncs.map((sync) => (
-              <li key={sync.id}>
-                <span className="font-medium text-foreground">{sync.name}</span>
-                {` (${SECRET_SYNC_MAP[sync.destination].name}) syncs `}
-                <code>{sync.folder?.path ?? "/"}</code>
-                {sync.syncOptions.includeAllSubFolders ? " and all its subfolders." : "."}
-                {!sync.isAutoSyncEnabled &&
-                  " Auto-sync is off, so it sends them on its next manual sync."}{" "}
-                <Link
-                  to={ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path}
-                  params={{
-                    orgId: currentOrg.id,
-                    projectId,
-                    destination: sync.destination,
-                    syncId: sync.id
-                  }}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 underline underline-offset-2"
-                >
-                  View Sync
-                  <ExternalLinkIcon className="size-3" />
-                </Link>
-              </li>
+              <SecretSyncMoveWarningItem key={sync.id} sync={sync} projectId={projectId} />
             ))}
           </ul>
         )}

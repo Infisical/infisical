@@ -64,11 +64,9 @@ describe("getSecretSyncsNewlyCoveringPaths", () => {
     ...overrides
   });
 
-  const check = (sourceSecretPath: string, destinationSecretPath: string, environment = "dev") => ({
-    sourceEnvironment: environment,
-    sourceSecretPath,
-    destinationEnvironment: environment,
-    destinationSecretPath
+  const move = (sourceSecretPath: string, destinationSecretPath: string, environment = "dev") => ({
+    source: { environment, secretPath: sourceSecretPath },
+    destination: { environment, secretPath: destinationSecretPath }
   });
 
   const ids = (syncs: { id: string }[]) => syncs.map(({ id }) => id);
@@ -76,34 +74,34 @@ describe("getSecretSyncsNewlyCoveringPaths", () => {
   test("leaves out a sync that already covers the source", () => {
     const syncs = [sync("shared", { folder: { path: "/" } }), sync("new")];
 
-    expect(ids(getSecretSyncsNewlyCoveringPaths(syncs, [check("/other", "/apps")]))).toEqual([
+    expect(ids(getSecretSyncsNewlyCoveringPaths(syncs, [move("/other", "/apps")]))).toEqual([
       "new"
     ]);
   });
 
-  test("returns nothing when no check lands under a sync", () => {
-    expect(getSecretSyncsNewlyCoveringPaths([sync("a")], [check("/", "/other")])).toEqual([]);
+  test("returns nothing when no move lands under a sync", () => {
+    expect(getSecretSyncsNewlyCoveringPaths([sync("a")], [move("/", "/other")])).toEqual([]);
     expect(getSecretSyncsNewlyCoveringPaths([sync("a")], [])).toEqual([]);
   });
 
   test("leaves out a sync rooted beneath the landing path", () => {
     const syncs = [sync("nested", { folder: { path: "/apps/other" } })];
 
-    expect(getSecretSyncsNewlyCoveringPaths(syncs, [check("/x", "/apps")])).toEqual([]);
-    expect(getSecretSyncsNewlyCoveringPaths(syncs, [check("/x", "/")])).toEqual([]);
+    expect(getSecretSyncsNewlyCoveringPaths(syncs, [move("/x", "/apps")])).toEqual([]);
+    expect(getSecretSyncsNewlyCoveringPaths(syncs, [move("/x", "/")])).toEqual([]);
   });
 
-  test("returns a sync once even when several checks land under it", () => {
-    const checks = [check("/x", "/apps"), { ...check("/y", "/apps"), sourceEnvironment: "prod" }];
+  test("returns a sync once even when several moves land under it", () => {
+    const moves = [move("/x", "/apps"), move("/y", "/apps")];
 
-    expect(ids(getSecretSyncsNewlyCoveringPaths([sync("a")], checks))).toEqual(["a"]);
+    expect(ids(getSecretSyncsNewlyCoveringPaths([sync("a")], moves))).toEqual(["a"]);
   });
 
   test("orders syncs by name", () => {
     const syncs = [sync("b", { name: "zeta" }), sync("a", { name: "alpha" })];
 
     expect(
-      getSecretSyncsNewlyCoveringPaths(syncs, [check("/other", "/apps")]).map(({ name }) => name)
+      getSecretSyncsNewlyCoveringPaths(syncs, [move("/other", "/apps")]).map(({ name }) => name)
     ).toEqual(["alpha", "zeta"]);
   });
 });
