@@ -10,6 +10,7 @@ import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/ser
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getStsVerificationUrl } from "@app/lib/aws/endpoint";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -159,7 +160,7 @@ export const identityAwsAuthServiceFactory = ({
         throw new BadRequestError({ message: "Invalid AWS region" });
       }
 
-      const url = region ? `https://sts.${region}.amazonaws.com` : identityAwsAuth.stsEndpoint;
+      const url = getStsVerificationUrl(region, identityAwsAuth.stsEndpoint);
 
       const {
         data: {

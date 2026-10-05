@@ -1,5 +1,6 @@
 import RE2 from "re2";
 
+import { getStsVerificationUrl } from "@app/lib/aws/endpoint";
 import { isValidAwsRegion } from "@app/lib/aws/region";
 import { request } from "@app/lib/config/request";
 import { UnauthorizedError } from "@app/lib/errors";
@@ -67,7 +68,7 @@ export const verifyStsAndExtractCaller = async ({
     });
   }
 
-  const url = `https://sts.${region}.amazonaws.com`;
+  const url = getStsVerificationUrl(region);
 
   let stsResponse: { data: TGetCallerIdentityResponse };
   try {
