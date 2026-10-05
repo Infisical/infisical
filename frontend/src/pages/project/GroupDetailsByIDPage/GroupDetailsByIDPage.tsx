@@ -190,7 +190,7 @@ const Page = () => {
           </div>
         </>
       ) : (
-        <>
+        <div className="flex flex-col gap-8">
           <Link
             {...backLinkProps}
             className="flex w-fit items-center gap-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -207,7 +207,7 @@ const Page = () => {
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
-        </>
+        </div>
       )}
       <DeleteConfirmDialog
         isOpen={popUp.deleteGroup.isOpen}
