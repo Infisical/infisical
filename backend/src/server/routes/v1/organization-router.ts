@@ -14,6 +14,7 @@ import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-t
 import { KeyStorePrefixes, KeyStoreTtls } from "@app/keystore/keystore";
 import { ApiDocsTags, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
+import { JobState } from "@app/queue/queue-service";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -730,5 +731,64 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       });
       return stats;
     }
+  });
+
+  // Makes every secret value in the organization searchable by value. The walk is chunked across
+  // queued jobs, so this starts it and the status route reports how far it has got.
+  server.route({
+    method: "POST",
+    url: "/secret-value-tracking",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "enableOrgWideSecretValueTracking",
+      description: "Start the backfill that makes every secret value in the organization searchable",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({ message: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectsTotal } = await server.services.secretValueTracking.enableForOrg(req.permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING,
+          metadata: { projectsTotal }
+        }
+      });
+
+      return { message: "Successfully started org-wide secret value tracking" };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secret-value-tracking/status",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "getOrgWideSecretValueTrackingStatus",
+      description: "Report progress of the org-wide secret value tracking backfill",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          status: z.nativeEnum(JobState),
+          message: z.string().optional(),
+          projectsTotal: z.number(),
+          projectsDone: z.number(),
+          secretsProcessed: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => server.services.secretValueTracking.getOrgStatus(req.permission)
   });
 };

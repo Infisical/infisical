@@ -260,7 +260,7 @@ export const KeyStoreTtls = {
   EmailDispatchMailboxWindowInSeconds: 86400, // 24 hours
   EmailDispatchAbuseProbeInSeconds: 7200, // 2 hours
   InsightsCacheInSeconds: 300, // 5 minutes
-  InsightsDuplicationCacheInSeconds: 3600, // 1 hour
+  InsightsDuplicationCacheInSeconds: 300, // 5 minutes
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
   InsightsOrgCacheInSeconds: 900, // 15 minutes
   AdminConfigInSeconds: 60,
