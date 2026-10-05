@@ -218,7 +218,6 @@ export const PamApprovalRequestsPage = () => {
         <title>{t("common.head-title", { title: "Approval Requests" })}</title>
       </Helmet>
       <PageHeader
-        className="mb-10"
         scope={ProjectType.PAM}
         icon={ShieldCheck}
         title="Approval Requests"

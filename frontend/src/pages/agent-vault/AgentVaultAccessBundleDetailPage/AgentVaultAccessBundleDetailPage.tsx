@@ -80,7 +80,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
   }
 
   return (
-    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
       <Helmet>
         <title>{t("common.head-title", { title: accessBundle.name })}</title>
       </Helmet>
@@ -126,24 +126,26 @@ export const AgentVaultAccessBundleDetailPage = () => {
         )}
       </PageHeader>
 
-      <ServicesCard
-        accessBundleId={accessBundle.id}
-        services={accessBundle.services}
-        canManage={isAdmin}
-        onAdd={() => {
-          setServiceToEdit(null);
-          setIsServiceSheetOpen(true);
-        }}
-        onEdit={(service) => {
-          setServiceToEdit(service);
-          setIsServiceSheetOpen(true);
-        }}
-      />
+      <div className="flex flex-col gap-8">
+        <ServicesCard
+          accessBundleId={accessBundle.id}
+          services={accessBundle.services}
+          canManage={isAdmin}
+          onAdd={() => {
+            setServiceToEdit(null);
+            setIsServiceSheetOpen(true);
+          }}
+          onEdit={(service) => {
+            setServiceToEdit(service);
+            setIsServiceSheetOpen(true);
+          }}
+        />
 
-      {/* The variables routes are admin only. */}
-      {isAdmin && (
-        <VariablesCard accessBundleId={accessBundle.id} services={accessBundle.services} />
-      )}
+        {/* The variables routes are admin only. */}
+        {isAdmin && (
+          <VariablesCard accessBundleId={accessBundle.id} services={accessBundle.services} />
+        )}
+      </div>
 
       <ManageAccessSheet
         accessBundle={isManageAccessOpen ? accessBundle : null}

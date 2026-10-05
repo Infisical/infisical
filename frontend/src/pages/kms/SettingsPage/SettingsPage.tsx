@@ -25,7 +25,6 @@ export const SettingsPage = () => {
       </Helmet>
       <div className="w-full max-w-8xl">
         <PageHeader
-          className="mb-10"
           scope={ProjectType.KMS}
           title="Project Settings"
           description="Configure general project settings"
@@ -34,7 +33,7 @@ export const SettingsPage = () => {
         </PageHeader>
         <Tabs orientation="vertical" defaultValue={tabs[0].key}>
           {tabs.map(({ key, Component }) => (
-            <TabPanel value={key} key={key}>
+            <TabPanel className="pt-0" value={key} key={key}>
               <Component />
             </TabPanel>
           ))}

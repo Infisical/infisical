@@ -104,7 +104,6 @@ export const PamDiscoveryPage = () => {
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
-          className="mb-10"
           scope={ProjectType.PAM}
           icon={Radar}
           title="Discovery"

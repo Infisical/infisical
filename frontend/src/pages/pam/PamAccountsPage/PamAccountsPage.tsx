@@ -209,7 +209,6 @@ export const PamAccountsPage = () => {
         <title>{t("common.head-title", { title: "Accounts" })}</title>
       </Helmet>
       <PageHeader
-        className="mb-10"
         title="Accounts"
         description="Access and manage privileged accounts."
         scope={ProjectType.PAM}

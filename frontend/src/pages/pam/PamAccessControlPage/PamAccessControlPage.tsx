@@ -56,7 +56,6 @@ export const PamAccessControlPage = () => {
         <title>{t("common.head-title", { title: "Access Control" })}</title>
       </Helmet>
       <PageHeader
-        className="mb-10"
         scope={ProjectType.PAM}
         icon={Shield}
         title="Access Control"

@@ -74,7 +74,6 @@ export const RelayPageHeader = ({
   return (
     <>
       <PageHeader
-        className="mb-10"
         scope="org"
         title={relay.name}
         description="Relay configuration and authentication"

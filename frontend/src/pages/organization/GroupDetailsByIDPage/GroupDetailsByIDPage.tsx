@@ -97,7 +97,6 @@ const Page = () => {
             {isSubOrganization ? "Sub-" : ""}Organization Groups
           </Link>
           <PageHeader
-            className="mb-10"
             scope={isSubOrganization ? "namespace" : "org"}
             description={`Configure and manage ${isSubOrganization ? "sub-" : ""}organization group`}
             title={data.group.name}

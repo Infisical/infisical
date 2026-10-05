@@ -181,7 +181,7 @@ export const AgentVaultSessionsPage = () => {
   }
 
   return (
-    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
       <Helmet>
         <title>{t("common.head-title", { title: "Sessions" })}</title>
       </Helmet>
@@ -192,353 +192,362 @@ export const AgentVaultSessionsPage = () => {
         description="Create sessions that let your agents reach the services in an access bundle."
       />
 
-      {sessionLogHealth?.isStorageFull &&
-        sessionLogSettings &&
-        areAgentVaultSessionLogsOn(sessionLogSettings) && (
-          <Alert variant="danger">
-            <CircleAlertIcon />
-            <AlertDescription>
-              Session logs have reached their limit for this organization. Contact Infisical
-              support.
-            </AlertDescription>
-          </Alert>
-        )}
+      <div className="flex flex-col gap-8">
+        {sessionLogHealth?.isStorageFull &&
+          sessionLogSettings &&
+          areAgentVaultSessionLogsOn(sessionLogSettings) && (
+            <Alert variant="danger">
+              <CircleAlertIcon />
+              <AlertDescription>
+                Session logs have reached their limit for this organization. Contact Infisical
+                support.
+              </AlertDescription>
+            </Alert>
+          )}
 
-      {sessionLogHealth?.connectionError &&
-        sessionLogSettings &&
-        areAgentVaultSessionLogsOn(sessionLogSettings) &&
-        !isSessionLogPlanLapsed && (
-          <Alert variant="danger">
-            <CircleAlertIcon />
-            <AlertDescription>
-              <p>{sessionLogHealth.connectionError}</p>
-              <AlertAction>
-                <Button variant="outline" size="sm" asChild>
-                  <Link
-                    to="/organizations/$orgId/agent-vault/settings"
-                    params={{ orgId: currentOrg.id }}
-                  >
-                    Go to Settings
-                  </Link>
-                </Button>
-              </AlertAction>
-            </AlertDescription>
-          </Alert>
-        )}
+        {sessionLogHealth?.connectionError &&
+          sessionLogSettings &&
+          areAgentVaultSessionLogsOn(sessionLogSettings) &&
+          !isSessionLogPlanLapsed && (
+            <Alert variant="danger">
+              <CircleAlertIcon />
+              <AlertDescription>
+                <p>{sessionLogHealth.connectionError}</p>
+                <AlertAction>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link
+                      to="/organizations/$orgId/agent-vault/settings"
+                      params={{ orgId: currentOrg.id }}
+                    >
+                      Go to Settings
+                    </Link>
+                  </Button>
+                </AlertAction>
+              </AlertDescription>
+            </Alert>
+          )}
 
-      {isSessionLogPlanLapsed && (
-        <Alert variant="warning">
-          <TriangleAlertIcon />
-          <AlertDescription>
-            <p>Your plan no longer includes session logs, so new requests aren&apos;t recorded.</p>
-            <AlertAction>
-              <Button variant="outline" size="sm" onClick={() => setIsUpgradeOpen(true)}>
-                Upgrade
-              </Button>
-            </AlertAction>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {sessionLogSettings &&
-        Boolean(sessionLogSettings.bucket) &&
-        !isSessionLogPlanLapsed &&
-        !areAgentVaultSessionLogsOn(sessionLogSettings) && (
+        {isSessionLogPlanLapsed && (
           <Alert variant="warning">
             <TriangleAlertIcon />
             <AlertDescription>
               <p>
-                Sessions aren&apos;t being logged, so there is no record of what your agents
-                reached.
+                Your plan no longer includes session logs, so new requests aren&apos;t recorded.
               </p>
               <AlertAction>
-                <Button variant="outline" size="sm" asChild>
-                  <Link
-                    to="/organizations/$orgId/agent-vault/settings"
-                    params={{ orgId: currentOrg.id }}
-                  >
-                    Go to Settings
-                  </Link>
+                <Button variant="outline" size="sm" onClick={() => setIsUpgradeOpen(true)}>
+                  Upgrade
                 </Button>
               </AlertAction>
             </AlertDescription>
           </Alert>
         )}
 
-      {isAdmin && <SessionLogReadAccessAlert />}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Sessions
-            <DocumentationLinkBadge href={AgentVaultDocsUrls.sessions} />
-          </CardTitle>
-          <CardDescription>
-            A session names the actor who holds it, the access bundle it carries, and when it
-            expires.
-          </CardDescription>
-          <CardAction>
-            <Button
-              variant="av"
-              isDisabled={!hasReachableBundles}
-              onClick={() => setIsCreateDialogOpen(true)}
-            >
-              <PlusIcon />
-              Create Session
-            </Button>
-          </CardAction>
-        </CardHeader>
-        <CardContent className="flex items-center gap-2">
-          <InputGroup className="flex-1">
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search by identity, email, or access bundle..."
-            />
-          </InputGroup>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton aria-label="Filter sessions" variant={statuses.length ? "av" : "outline"}>
-                <FilterIcon />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Status</DropdownMenuLabel>
-              {STATUS_OPTIONS.map((status) => {
-                const { label, icon: Icon, iconClassName } = SESSION_STATUS_PRESENTATION[status];
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={status}
-                    checked={statuses.includes(status)}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setStatuses((prev) =>
-                        prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
-                      );
-                      setPage(1);
-                    }}
-                  >
-                    <Icon className={iconClassName} />
-                    {label}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {isAdmin && (
-            <Tabs
-              value={scope}
-              onValueChange={(value) => {
-                setScope(value as AgentVaultSessionScope);
-                setPage(1);
-                setUserTablePreference(
-                  "agentVaultSessionsTable",
-                  PreferenceKey.SessionScope,
-                  value
-                );
-              }}
-            >
-              <TabsList variant="filled">
-                <TabsTrigger value={AgentVaultSessionScope.All}>All Sessions</TabsTrigger>
-                <TabsTrigger value={AgentVaultSessionScope.Mine}>My Sessions</TabsTrigger>
-              </TabsList>
-            </Tabs>
+        {sessionLogSettings &&
+          Boolean(sessionLogSettings.bucket) &&
+          !isSessionLogPlanLapsed &&
+          !areAgentVaultSessionLogsOn(sessionLogSettings) && (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertDescription>
+                <p>
+                  Sessions aren&apos;t being logged, so there is no record of what your agents
+                  reached.
+                </p>
+                <AlertAction>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link
+                      to="/organizations/$orgId/agent-vault/settings"
+                      params={{ orgId: currentOrg.id }}
+                    >
+                      Go to Settings
+                    </Link>
+                  </Button>
+                </AlertAction>
+              </AlertDescription>
+            </Alert>
           )}
-        </CardContent>
 
-        {!isPending && sessions.length === 0 ? (
-          <CardContent>
-            <Empty className="border">
-              <EmptyHeader>
-                <EmptyTitle>{emptyTitle}</EmptyTitle>
-                <EmptyDescription>{emptyDescription}</EmptyDescription>
-              </EmptyHeader>
-              {!isFiltered && !hasReachableBundles && isAdmin && (
-                <Button variant="av" asChild>
-                  <Link
-                    to="/organizations/$orgId/agent-vault/access-bundles"
-                    params={{ orgId: currentOrg.id }}
-                  >
-                    Go to Access Bundles
-                  </Link>
-                </Button>
-              )}
-            </Empty>
+        {isAdmin && <SessionLogReadAccessAlert />}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Sessions
+              <DocumentationLinkBadge href={AgentVaultDocsUrls.sessions} />
+            </CardTitle>
+            <CardDescription>
+              A session names the actor who holds it, the access bundle it carries, and when it
+              expires.
+            </CardDescription>
+            <CardAction>
+              <Button
+                variant="av"
+                isDisabled={!hasReachableBundles}
+                onClick={() => setIsCreateDialogOpen(true)}
+              >
+                <PlusIcon />
+                Create Session
+              </Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex items-center gap-2">
+            <InputGroup className="flex-1">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search by identity, email, or access bundle..."
+              />
+            </InputGroup>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  aria-label="Filter sessions"
+                  variant={statuses.length ? "av" : "outline"}
+                >
+                  <FilterIcon />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Status</DropdownMenuLabel>
+                {STATUS_OPTIONS.map((status) => {
+                  const { label, icon: Icon, iconClassName } = SESSION_STATUS_PRESENTATION[status];
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={status}
+                      checked={statuses.includes(status)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setStatuses((prev) =>
+                          prev.includes(status)
+                            ? prev.filter((s) => s !== status)
+                            : [...prev, status]
+                        );
+                        setPage(1);
+                      }}
+                    >
+                      <Icon className={iconClassName} />
+                      {label}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {isAdmin && (
+              <Tabs
+                value={scope}
+                onValueChange={(value) => {
+                  setScope(value as AgentVaultSessionScope);
+                  setPage(1);
+                  setUserTablePreference(
+                    "agentVaultSessionsTable",
+                    PreferenceKey.SessionScope,
+                    value
+                  );
+                }}
+              >
+                <TabsList variant="filled">
+                  <TabsTrigger value={AgentVaultSessionScope.All}>All Sessions</TabsTrigger>
+                  <TabsTrigger value={AgentVaultSessionScope.Mine}>My Sessions</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
           </CardContent>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Identity</TableHead>
-                <TableHead>Access Bundle</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead variant="action" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isPending &&
-                Array.from({ length: 5 }).map((_, index) => (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <TableRow key={`session-skeleton-${index}`}>
-                    {Array.from({ length: 6 }).map((__, cell) => (
-                      // eslint-disable-next-line react/no-array-index-key
-                      <TableCell key={`session-skeleton-${index}-${cell}`}>
-                        <Skeleton className="h-4 w-full" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              {!isPending &&
-                sessions.map((session) => (
-                  <TableRow
-                    key={session.id}
-                    onClick={() => openSheet(session.id)}
-                    className="cursor-pointer"
-                  >
-                    <TableCell>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex w-fit items-center gap-2">
-                            {session.actor.type === AgentVaultMemberType.MachineIdentity ? (
-                              <BotIcon className="size-4 text-muted" />
-                            ) : (
-                              <UserIcon className="size-4 text-muted" />
-                            )}
-                            {memberDisplayName(session.actor)}
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {session.actor.type === AgentVaultMemberType.MachineIdentity
-                            ? `${session.actor.id ?? "Deleted"} (machine identity)`
-                            : memberSubtitle(session.actor)}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      <div className="max-w-72">
-                        <OverflowBadgeList
-                          items={session.accessBundles}
-                          getKey={(bundle) => bundle.id ?? bundle.name}
-                          getLabel={(bundle) => bundle.name}
-                          icon={<PackageIcon />}
-                          getClassName={(bundle) => (bundle.id ? undefined : "text-muted")}
-                          getTooltip={(bundle) =>
-                            bundle.id ? bundle.name : `${bundle.name} (deleted)`
-                          }
-                          getLinkProps={(bundle) =>
-                            bundle.id
-                              ? linkOptions({
-                                  to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-                                  params: { orgId: currentOrg.id, accessBundleId: bundle.id }
-                                })
-                              : undefined
-                          }
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="text-sm">
-                            {format(new Date(session.createdAt), "MMM d, yyyy")}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      <SessionExpiry expiresAt={session.expiresAt} />
-                    </TableCell>
-                    <TableCell>
-                      <SessionStatusBadge status={session.status} />
-                    </TableCell>
-                    <TableCell variant="action">
-                      <div className="flex items-center justify-end gap-1">
-                        <SessionLogLossIndicator counts={session.recentSessionLogCounts} />
+
+          {!isPending && sessions.length === 0 ? (
+            <CardContent>
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyTitle>{emptyTitle}</EmptyTitle>
+                  <EmptyDescription>{emptyDescription}</EmptyDescription>
+                </EmptyHeader>
+                {!isFiltered && !hasReachableBundles && isAdmin && (
+                  <Button variant="av" asChild>
+                    <Link
+                      to="/organizations/$orgId/agent-vault/access-bundles"
+                      params={{ orgId: currentOrg.id }}
+                    >
+                      Go to Access Bundles
+                    </Link>
+                  </Button>
+                )}
+              </Empty>
+            </CardContent>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Identity</TableHead>
+                  <TableHead>Access Bundle</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead variant="action" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isPending &&
+                  Array.from({ length: 5 }).map((_, index) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <TableRow key={`session-skeleton-${index}`}>
+                      {Array.from({ length: 6 }).map((__, cell) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <TableCell key={`session-skeleton-${index}-${cell}`}>
+                          <Skeleton className="h-4 w-full" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                {!isPending &&
+                  sessions.map((session) => (
+                    <TableRow
+                      key={session.id}
+                      onClick={() => openSheet(session.id)}
+                      className="cursor-pointer"
+                    >
+                      <TableCell>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <IconButton
-                              variant="ghost"
-                              size="xs"
-                              aria-label="View session logs"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                openSheet(session.id);
-                              }}
-                            >
-                              <LogsIcon />
-                            </IconButton>
+                            <div className="flex w-fit items-center gap-2">
+                              {session.actor.type === AgentVaultMemberType.MachineIdentity ? (
+                                <BotIcon className="size-4 text-muted" />
+                              ) : (
+                                <UserIcon className="size-4 text-muted" />
+                              )}
+                              {memberDisplayName(session.actor)}
+                            </div>
                           </TooltipTrigger>
-                          <TooltipContent>View Session Logs</TooltipContent>
+                          <TooltipContent>
+                            {session.actor.type === AgentVaultMemberType.MachineIdentity
+                              ? `${session.actor.id ?? "Deleted"} (machine identity)`
+                              : memberSubtitle(session.actor)}
+                          </TooltipContent>
                         </Tooltip>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton
-                              variant="ghost"
-                              size="xs"
-                              aria-label="Open session actions"
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-72">
+                          <OverflowBadgeList
+                            items={session.accessBundles}
+                            getKey={(bundle) => bundle.id ?? bundle.name}
+                            getLabel={(bundle) => bundle.name}
+                            icon={<PackageIcon />}
+                            getClassName={(bundle) => (bundle.id ? undefined : "text-muted")}
+                            getTooltip={(bundle) =>
+                              bundle.id ? bundle.name : `${bundle.name} (deleted)`
+                            }
+                            getLinkProps={(bundle) =>
+                              bundle.id
+                                ? linkOptions({
+                                    to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
+                                    params: { orgId: currentOrg.id, accessBundleId: bundle.id }
+                                  })
+                                : undefined
+                            }
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-sm">
+                              {format(new Date(session.createdAt), "MMM d, yyyy")}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <SessionExpiry expiresAt={session.expiresAt} />
+                      </TableCell>
+                      <TableCell>
+                        <SessionStatusBadge status={session.status} />
+                      </TableCell>
+                      <TableCell variant="action">
+                        <div className="flex items-center justify-end gap-1">
+                          <SessionLogLossIndicator counts={session.recentSessionLogCounts} />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <IconButton
+                                variant="ghost"
+                                size="xs"
+                                aria-label="View session logs"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openSheet(session.id);
+                                }}
+                              >
+                                <LogsIcon />
+                              </IconButton>
+                            </TooltipTrigger>
+                            <TooltipContent>View Session Logs</TooltipContent>
+                          </Tooltip>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                variant="ghost"
+                                size="xs"
+                                aria-label="Open session actions"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <MoreHorizontalIcon />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              sideOffset={2}
+                              align="end"
                               onClick={(event) => event.stopPropagation()}
                             >
-                              <MoreHorizontalIcon />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            sideOffset={2}
-                            align="end"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            <DropdownMenuItem onClick={() => openSheet(session.id)}>
-                              <LogsIcon />
-                              View Session Logs
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="danger"
-                              isDisabled={session.status !== AgentVaultSessionStatus.Active}
-                              onClick={() => setSessionToRevoke(session)}
-                            >
-                              <BanIcon />
-                              Revoke Session
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        )}
+                              <DropdownMenuItem onClick={() => openSheet(session.id)}>
+                                <LogsIcon />
+                                View Session Logs
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="danger"
+                                isDisabled={session.status !== AgentVaultSessionStatus.Active}
+                                onClick={() => setSessionToRevoke(session)}
+                              >
+                                <BanIcon />
+                                Revoke Session
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          )}
 
-        {totalCount > 0 && (
-          <CardContent className="-mt-5 pt-0">
-            <Pagination
-              count={totalCount}
-              page={page}
-              perPage={perPage}
-              onChangePage={setPage}
-              onChangePerPage={(newPerPage) => {
-                setPerPage(newPerPage);
-                setPage(1);
-                setUserTablePreference(
-                  "agentVaultSessionsTable",
-                  PreferenceKey.PerPage,
-                  newPerPage
-                );
-              }}
-            />
-          </CardContent>
-        )}
-      </Card>
+          {totalCount > 0 && (
+            <CardContent className="-mt-5 pt-0">
+              <Pagination
+                count={totalCount}
+                page={page}
+                perPage={perPage}
+                onChangePage={setPage}
+                onChangePerPage={(newPerPage) => {
+                  setPerPage(newPerPage);
+                  setPage(1);
+                  setUserTablePreference(
+                    "agentVaultSessionsTable",
+                    PreferenceKey.PerPage,
+                    newPerPage
+                  );
+                }}
+              />
+            </CardContent>
+          )}
+        </Card>
+      </div>
 
       <CreateSessionDialog
         isOpen={isCreateDialogOpen}

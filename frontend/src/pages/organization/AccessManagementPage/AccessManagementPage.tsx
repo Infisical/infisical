@@ -112,7 +112,6 @@ export const AccessManagementPage = () => {
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
-          className="mb-10"
           scope={isSubOrganization ? "namespace" : "org"}
           title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Access Control`}
           description={`Manage fine-grained access for users, groups, roles, and machine identities within your ${isSubOrganization ? "sub-" : ""}organization resources.`}

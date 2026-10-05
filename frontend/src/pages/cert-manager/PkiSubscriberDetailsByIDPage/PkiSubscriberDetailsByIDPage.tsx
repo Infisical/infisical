@@ -77,7 +77,7 @@ const Page = () => {
   return (
     <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {data && (
-        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
             backLink={
               <Link
@@ -129,16 +129,18 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <LegacyPkiDeprecationAlert resource={LegacyPkiResource.PkiSubscriber} />
-          <div className="flex">
-            <div className="mr-4 w-96">
-              <PkiSubscriberDetailsSection
-                subscriberName={data.name}
-                handlePopUpOpen={handlePopUpOpen}
-              />
-            </div>
-            <div className="w-full">
-              <PkiSubscriberCertificatesSection subscriberName={data.name} />
+          <div className="flex flex-col gap-8">
+            <LegacyPkiDeprecationAlert resource={LegacyPkiResource.PkiSubscriber} />
+            <div className="flex">
+              <div className="mr-4 w-96">
+                <PkiSubscriberDetailsSection
+                  subscriberName={data.name}
+                  handlePopUpOpen={handlePopUpOpen}
+                />
+              </div>
+              <div className="w-full">
+                <PkiSubscriberCertificatesSection subscriberName={data.name} />
+              </div>
             </div>
           </div>
         </div>

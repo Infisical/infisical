@@ -82,7 +82,6 @@ export const Page = () => {
             Roles
           </Link>
           <PageHeader
-            className="mb-10"
             scope={isSubOrganization ? "namespace" : "org"}
             title={data.name}
             description={

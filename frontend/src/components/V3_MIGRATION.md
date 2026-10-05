@@ -60,7 +60,7 @@ In the table, E is the number of external consumer files and I is the number of 
 | `Modal/Modal.tsx` | 55 / 2 | V3 Dialog/Sheet chosen by form size; verify nested overlays, portal lifetime, close/discard, mutation errors, and focus. | `frontend/src/pages/organization/AccessManagementPage/components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal.tsx:65` |
 | `NoticeBanner/NoticeBanner.tsx` | 0 / 0 | Deleted in first wave; no consumer. | Only its own/root barrels exported it. |
 | `NoticeBannerV2/NoticeBannerV2.tsx` | 2 / 0 | V3 Alert composition; preserve warnings and associated actions. | `frontend/src/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewSecretRotationV2GeneratedCredentials.tsx:273` |
-| `PageHeader/PageHeader.tsx` | 32 / 0 | V3 PageHeader; preserve action slots, scope icons, responsive behavior, and caller spacing. | `frontend/src/pages/organization/ProjectsPage/ProjectsPage.tsx:53` |
+| `PageHeader/PageHeader.tsx` | 32 / 0 | V3 PageHeader owns the normal 40px bottom boundary; remove only header-boundary compensation and preserve body spacing, actions, scopes and responsive intent. | `frontend/src/pages/organization/ProjectsPage/ProjectsPage.tsx:53` |
 | `Pagination/Pagination.tsx` | 12 / 0 | V3 Pagination; preserve page origin, size change, counts, and filtering/reset behavior. | `frontend/src/pages/organization/GroupDetailsByIDPage/components/AddGroupProjectModal.tsx:163` |
 | `PasswordGenerator/PasswordGenerator.tsx` | 0 / 0 | Deleted in first wave; V3 generator remains independent. | No external consumer; its private Slider also deleted. |
 | `Popover/Popover.tsx` | 0 / 0 | Deleted in first wave; no consumer. | No incoming module edge or external symbol reference. |
@@ -124,6 +124,14 @@ All source anchors in this surface table are relative to `frontend/src/`. Refres
 - Third-party Radix, Lexical, Lottie, Font Awesome and react-select packages have current non-V2 consumers. A dependency is deleted only after its remaining ownership is proved; no package-name-based purge.
 
 ## Execution sequence and ownership
+
+### PageHeader compatibility boundary
+
+V3 `PageHeader` supplies the legacy normal bottom boundary through `mb-10`, so ordinary consumers need no repeated spacing prop. Existing marginless V3 pages must remove their header-boundary parent gap in the same change as the shared default. Their normal next-region spacing deliberately increases from 32px to 40px; this is harmonization, not pixel-identical parity. Keep card-to-card gaps in existing body containers, and group body regions only when multiple sections previously shared the page's gap.
+
+Compact/responsive layouts remain explicit: Overview uses 24px below `md` and 40px above; Insights uses 16px below `dashboard` and 40px above. A narrow Insights stats strip remains its own region before the cards. General Secret Manager/KMS Settings remove only the body's header-boundary top padding, preserving bottom/horizontal padding and independent card spacing. Keep PAM's block flow so adjacent margins retain their collapsing behavior. Tabs and conditional notices are real next regions, not empty spacing to remove.
+
+This contract does not certify source removal on merged main or workflow acceptance. The final five header-only consumers and legacy source/export deletion remain a separate dependent layer until verified and explicitly authorized to merge.
 
 One owner controls each implementation family or domain unit. Domain writes run on isolated branches and may proceed in parallel only when their consumer files and shared replacements do not overlap. Shared primitives, the root barrel, and lifecycle decisions have an explicit owner. Recheck reservations and fetch `main` before each wave.
 

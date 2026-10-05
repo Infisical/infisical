@@ -19,7 +19,6 @@ export const OverviewPage = () => {
       <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <PageHeader
-            className="mb-10"
             scope={ProjectType.KMS}
             title="Project Overview"
             description="Manage keys and perform cryptographic operations."
