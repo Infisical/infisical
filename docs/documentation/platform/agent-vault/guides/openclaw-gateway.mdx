@@ -256,7 +256,7 @@ Replace each API key you added a service for in [Step 2](#create-an-access-bundl
 - **For a service that attaches the credential to a header:** use any value (the proxy replaces the header with the real credential)
 - **For a service with a substitution:** use the exact placeholder you entered in **Replace**
 
-For model provider keys saved during onboarding, run `openclaw models auth list` to find the saved profile, then remove it with `openclaw models auth logout <profile-id>`. Then add the provider's placeholder to `~/.openclaw/.env`. If you added keys to that file yourself, replace their values there too. For example:
+For model provider keys saved during onboarding, run `openclaw models auth list` to find the saved profile, then remove it with `openclaw models auth logout <profile-id>`. Then create `~/.openclaw/.env`, or add to it if it already exists, with the provider's placeholder. If you added keys to that file yourself, replace their values there too. For example:
 
 ```bash
 OPENROUTER_API_KEY=agent-vault-openrouter
