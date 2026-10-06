@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   ChevronRightIcon,
@@ -97,6 +97,15 @@ type Props = {
 type TReviewRow =
   | { type: "folder"; id: string; depth: number; node: TFolderNode }
   | { type: "secret"; id: string; depth: number; key: string; secretData: TParsedEnv[string] };
+
+const ImportKeyContent = ({ depth, children }: { depth?: number; children: ReactNode }) => (
+  <div
+    className={cn("flex w-full items-center", depth === undefined ? "gap-1.5" : "gap-2")}
+    style={depth === undefined ? undefined : { paddingInlineStart: `${depth * 1.5}rem` }}
+  >
+    {children}
+  </div>
+);
 
 type ContentProps = {
   environments: { name: string; slug: string }[];
@@ -774,10 +783,7 @@ const ImportSecretsContent = ({
                     return (
                       <TableRow key={row.id} className="group/folder">
                         <TableCell isTruncatable className="w-1/2">
-                          <div
-                            className="flex items-center gap-2"
-                            style={{ paddingInlineStart: `${row.depth * 1.5}rem` }}
-                          >
+                          <ImportKeyContent depth={row.depth}>
                             <button
                               type="button"
                               aria-label={`${isExpanded ? "Collapse" : "Expand"} ${node.name}`}
@@ -801,7 +807,7 @@ const ImportSecretsContent = ({
                               )}
                               <span className="truncate">{node.name}</span>
                             </button>
-                          </div>
+                          </ImportKeyContent>
                         </TableCell>
                         <TableCell isTruncatable className="w-1/2 font-mono text-muted">
                           {joinSecretPath(secretPath, node.path)}
@@ -836,15 +842,7 @@ const ImportSecretsContent = ({
                   return (
                     <TableRow key={id}>
                       <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
-                        <div
-                          className={cn(
-                            "flex w-full items-center",
-                            folderTree ? "gap-2" : "gap-1.5"
-                          )}
-                          style={
-                            folderTree ? { paddingInlineStart: `${row.depth * 1.5}rem` } : undefined
-                          }
-                        >
+                        <ImportKeyContent depth={folderTree ? row.depth : undefined}>
                           {folderTree && (
                             <KeyRoundIcon className="size-4 shrink-0 text-secret" aria-hidden />
                           )}
@@ -919,7 +917,7 @@ const ImportSecretsContent = ({
                               <TooltipContent>Multi-line encoding enabled</TooltipContent>
                             </Tooltip>
                           )}
-                        </div>
+                        </ImportKeyContent>
                       </TableCell>
                       <TableCell isTruncatable className="w-1/2 font-mono text-xs whitespace-pre">
                         {isVisible ? (
