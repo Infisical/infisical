@@ -3566,7 +3566,7 @@ export const SecretRotations = {
       sslRejectUnauthorized:
         "Whether to verify the iLO's SSL certificate on Redfish API calls. When enabled, an iLO whose certificate cannot be verified is rotated over SSH instead. Disable only for iLOs with self-signed certificates on a trusted network, since credentials are then sent to the endpoint without authenticating it. Does not affect SSH. Defaults to true.",
       sslCertificate:
-        'The PEM-encoded CA certificate to trust when verifying the iLO\'s SSL certificate on Redfish API calls, for iLOs with self-signed or privately issued certificates. Only used when "parameters.sslRejectUnauthorized" is enabled.'
+        'The PEM-encoded CA certificate to trust when verifying the iLO\'s SSL certificate on Redfish API calls, for iLOs with self-signed or privately issued certificates. Only used when "parameters.sslRejectUnauthorized" is enabled. When both are set, the rotation fails instead of falling back to SSH if Infisical cannot connect to the Redfish API.'
     },
     GENERAL: {
       PASSWORD_REQUIREMENTS: {

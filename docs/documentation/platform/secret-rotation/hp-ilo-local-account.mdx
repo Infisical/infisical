@@ -24,11 +24,15 @@ Infisical changes the password through the iLO's Redfish API, the REST API that 
 Infisical switches to SSH if any of the following happens:
 
 - Infisical can't reach the Redfish API on port 443 within 5 seconds
-- Infisical can't verify the iLO's SSL certificate while **Reject Unauthorized** is enabled
+- Infisical can't verify the iLO's SSL certificate while **Reject Unauthorized** is enabled and **SSL Certificate** is empty
 - The SSH Connection uses an SSH key and **Rotation Method** is **Login as Root**, because the Redfish API only accepts a username and password
 - The Redfish API rejects the request without changing the password, for example because the credentials are invalid or the iLO has no account with the configured username
 
 HP iLO ships with a self-signed SSL certificate, so Infisical can't verify the factory certificate. To keep using the Redfish API, provide the CA certificate in **SSL Certificate**.
+
+<Note>
+  If you provide an **SSL Certificate** and keep **Reject Unauthorized** enabled, Infisical doesn't switch to SSH when it can't connect to the Redfish API. The rotation fails instead, for example when the certificate isn't the CA that issued the iLO's SSL certificate or port 443 is blocked. Once Infisical connects to the Redfish API, it can still switch to SSH if a later request fails, for example because the credentials are invalid.
+</Note>
 
 <Warning>
   **iLO 7 requires the Redfish API**

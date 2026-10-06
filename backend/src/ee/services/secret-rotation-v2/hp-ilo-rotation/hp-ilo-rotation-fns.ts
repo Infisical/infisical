@@ -30,6 +30,7 @@ import {
 
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { generatePassword } from "../shared/utils";
+import { HpIloAccountUnchangedError, HpIloFallbackNotAllowedError } from "./hp-ilo-rotation-errors";
 import { HP_ILO_MAX_PASSWORD_LENGTH, HpIloRotationMethod } from "./hp-ilo-rotation-schemas";
 import {
   THpIloRotationGeneratedCredentials,
@@ -54,10 +55,6 @@ export type THpIloClient = {
   changePasswordAsTarget: (username: string, currentPassword: string, newPassword: string) => Promise<void>;
   verifyPassword: (username: string, password: string) => Promise<void>;
 };
-
-// Signals that an operation failed without modifying the iLO account, which is what makes it safe for the fallback
-// client to retry it; any other error may hide a password change that was applied
-export class HpIloAccountUnchangedError extends Error {}
 
 export type THpIloClientOptions = {
   sslRejectUnauthorized: boolean;
@@ -563,7 +560,10 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
   // connection; whether a given account's credentials work is left to the operation, whose 401 falls back safely.
   // A certificate that fails verification (the iLO default is self-signed) disables this client, so no credentials
   // are sent to an endpoint that cannot be authenticated. The probe gives up quickly and is not retried, so a blocked
-  // 443 falls back to SSH without waiting out the full request timeout and its retries
+  // 443 falls back to SSH without waiting out the full request timeout and its retries.
+  // A user who supplies a CA certificate and keeps verification on has asked for the Redfish API specifically, so a
+  // failed probe is reported instead of silently rotating over SSH. Later operations keep their fallback, since a
+  // failure there can have causes unrelated to that choice
   const isEnabled = async () => {
     try {
       await sendRequest(HP_ILO_REDFISH_SERVICE_ROOT_PATH, {
@@ -572,7 +572,12 @@ export const hpIloApiClientFactory: THpIloClientFactory = (config, gatewayV2Serv
         "axios-retry": { retries: 0 }
       });
       return true;
-    } catch {
+    } catch (error) {
+      if (options.sslRejectUnauthorized && options.sslCertificate) {
+        throw new HpIloFallbackNotAllowedError(
+          `Unable to connect to the HP iLO Redfish API on host '${host}': ${describeRedfishError(error)}. SSH fallback is disabled because an SSL certificate is provided with Reject Unauthorized enabled; check that the certificate is the CA that issued the iLO's SSL certificate and that port ${HP_ILO_REDFISH_PORT} is reachable`
+        );
+      }
       return false;
     }
   };
@@ -595,7 +600,10 @@ export const hpIloFallbackClientFactory =
 
     const enabledChecks: Promise<boolean>[] = [];
     const isClientEnabled = (index: number) => {
-      enabledChecks[index] ??= clients[index].isEnabled().catch(() => false);
+      enabledChecks[index] ??= clients[index].isEnabled().catch((error) => {
+        if (error instanceof HpIloFallbackNotAllowedError) throw error;
+        return false;
+      });
       return enabledChecks[index];
     };
 

@@ -4,12 +4,21 @@ vi.mock("@app/lib/logger", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
 }));
 
+vi.mock("@app/lib/validator", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/validator")>()),
+  safeRequest: { request: vi.fn() }
+}));
+
+// eslint-disable-next-line import/first
+import { safeRequest } from "@app/lib/validator";
 // eslint-disable-next-line import/first
 import { TSshConnectionConfig } from "@app/services/app-connection/ssh";
 
 // eslint-disable-next-line import/first
+import { HpIloAccountUnchangedError, HpIloFallbackNotAllowedError } from "./hp-ilo-rotation-errors";
+// eslint-disable-next-line import/first
 import {
-  HpIloAccountUnchangedError,
+  hpIloApiClientFactory,
   hpIloFallbackClientFactory,
   isIloPrompt,
   THpIloClient,
@@ -156,6 +165,20 @@ describe("hpIloFallbackClientFactory", () => {
     });
   });
 
+  test("does not fall back when the first client rules out a fallback", async () => {
+    const primary = createMockClient();
+    const fallback = createMockClient();
+    primary.isEnabled.mockRejectedValueOnce(new HpIloFallbackNotAllowedError("certificate rejected"));
+    const client = buildClient(primary, fallback);
+
+    await expect(client.changePasswordAsAdmin("target", "new-pass")).rejects.toThrow("certificate rejected");
+    await expect(client.verifyPassword("target", "new-pass")).rejects.toThrow("certificate rejected");
+    await expect(client.isEnabled()).rejects.toThrow("certificate rejected");
+    expect(fallback.isEnabled).not.toHaveBeenCalled();
+    expect(fallback.changePasswordAsAdmin).not.toHaveBeenCalled();
+    expect(fallback.verifyPassword).not.toHaveBeenCalled();
+  });
+
   test("checks whether each client is enabled only once across calls", async () => {
     const primary = createMockClient(false);
     const fallback = createMockClient();
@@ -171,5 +194,53 @@ describe("hpIloFallbackClientFactory", () => {
   test("reports enabled when any client is enabled", async () => {
     await expect(buildClient(createMockClient(false), createMockClient()).isEnabled()).resolves.toBe(true);
     await expect(buildClient(createMockClient(false), createMockClient(false)).isEnabled()).resolves.toBe(false);
+  });
+});
+
+describe("hpIloApiClientFactory isEnabled", () => {
+  const config = {
+    method: "password",
+    credentials: { host: "ilo.example.com", port: 22, username: "admin", password: "pass" }
+  } as TSshConnectionConfig;
+  const gatewayV2Service = { getPlatformConnectionDetailsByGatewayId: vi.fn() };
+  const certificate = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----";
+
+  const probeFailure = () => vi.mocked(safeRequest.request).mockRejectedValueOnce(new Error("self-signed certificate"));
+
+  test("is enabled when the service root responds", async () => {
+    vi.mocked(safeRequest.request).mockResolvedValueOnce({ data: {} } as Awaited<
+      ReturnType<typeof safeRequest.request>
+    >);
+
+    const client = hpIloApiClientFactory(config, gatewayV2Service, {
+      sslRejectUnauthorized: true,
+      sslCertificate: certificate
+    });
+
+    await expect(client.isEnabled()).resolves.toBe(true);
+  });
+
+  test("rules out a fallback when the probe fails with a certificate and verification enabled", async () => {
+    probeFailure();
+
+    const client = hpIloApiClientFactory(config, gatewayV2Service, {
+      sslRejectUnauthorized: true,
+      sslCertificate: certificate
+    });
+
+    const result = client.isEnabled();
+    await expect(result).rejects.toBeInstanceOf(HpIloFallbackNotAllowedError);
+    await expect(result).rejects.toThrow("self-signed certificate");
+  });
+
+  test.each([
+    { name: "no certificate is provided", options: { sslRejectUnauthorized: true } },
+    { name: "verification is disabled", options: { sslRejectUnauthorized: false, sslCertificate: certificate } }
+  ])("allows a fallback when the probe fails and $name", async ({ options }) => {
+    probeFailure();
+
+    const client = hpIloApiClientFactory(config, gatewayV2Service, options);
+
+    await expect(client.isEnabled()).resolves.toBe(false);
   });
 });
