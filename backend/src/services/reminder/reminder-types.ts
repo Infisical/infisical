@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TAlertChannelInput } from "../alert/alert-channel-service-types";
-import { TAlertWritePlan } from "../alert/alert-service-types";
+import { TPreparedAlert } from "../alert/alert-service";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export type TReminder = {
@@ -42,13 +42,13 @@ export type TPrepareReminderDTO = TCreateReminderDTO & {
 export type TPreparedReminder = {
   secretId: string;
   projectId: string;
-  row: {
+  schedule: {
     message?: string | null;
     repeatDays?: number | null;
     nextReminderDate: Date;
     fromDate?: Date;
   };
-  alertPlan: TAlertWritePlan;
+  alert: TPreparedAlert;
 };
 
 export type TBatchCreateReminderDTO = {

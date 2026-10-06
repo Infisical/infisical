@@ -1,13 +1,6 @@
-import { TAlerts, TAlertsInsert } from "@app/db/schemas";
 import { TGenericPermission } from "@app/lib/types";
 
-import {
-  TAlertChannelEmbedded,
-  TAlertChannelInput,
-  TChannelRecipientInput,
-  TPreparedChannelCreate,
-  TPreparedChannelUpdate
-} from "./alert-channel-service-types";
+import { TAlertChannelEmbedded, TAlertChannelInput, TChannelRecipientInput } from "./alert-channel-service-types";
 import { AlertChannelType } from "./alert-channel-types";
 import { AlertRunStatus } from "./alert-types";
 
@@ -93,20 +86,16 @@ export type TAlertLastRun = {
   status: AlertRunStatus;
 };
 
-// An alert write that has passed every check, with channel configs already encrypted. Built by
-// prepareCreateAlert or prepareUpdateAlert and written by applyAlertWrite, which a caller can run inside
-// its own transaction so the alert lands, or does not, together with the caller's rows.
-export type TAlertWritePlan =
-  | {
-      kind: "create";
-      alert: TAlertsInsert;
-      channels: TPreparedChannelCreate[];
-    }
-  | {
-      kind: "update";
-      alert: TAlerts;
-      patch: Partial<Pick<TAlertsInsert, "name" | "description" | "condition" | "enabled">>;
-      deleteChannelIds: string[];
-      channelUpdates: TPreparedChannelUpdate[];
-      channelCreates: TPreparedChannelCreate[];
-    };
+// The alert a domain service keeps on one of its own resources, set in full each time. `channels` is either
+// the alert's complete channel list, or the recipients of its channels of one type, which leaves every other
+// channel (eg a Slack or webhook channel added through the alert API) as it is.
+export type TPrepareAlertForResourceDTO = TGenericPermission & {
+  resourceType: string;
+  resourceId: string;
+  projectId: string;
+  eventType: string;
+  name: string;
+  channels:
+    | { replaceAll: TAlertChannelInput[] }
+    | { replaceRecipients: { channelType: AlertChannelType; recipients: TChannelRecipientInput[] } };
+};

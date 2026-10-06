@@ -9,7 +9,7 @@ import { AlertTriggerType } from "./alert-types";
 
 export type TAlertDALFactory = ReturnType<typeof alertDALFactory>;
 
-export type TAlertChannelSummary = {
+export type TAlertWithChannels = {
   id: string;
   name: string;
   resourceId: string | null;
@@ -228,14 +228,14 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
-  // For a service that owns alerts on its own resource and needs to know whether one exists and what
-  // channels it has, without decrypting channel configs. Reads the primary: the caller decides between
-  // create and update on the result, and a replica that has not seen the alert yet sends it into the
-  // create path and the unique index.
-  const findChannelSummariesForResources = async (
+  // Each alert on these resources with its channels' ids, names, types and enabled flags, without
+  // decrypting any channel config. Reads the primary: prepareAlertForResource decides between creating
+  // and updating on this, and a replica that has not yet seen a new alert would send it into the unique
+  // index.
+  const findWithChannelsForResources = async (
     { resourceType, resourceIds }: { resourceType: string; resourceIds: string[] },
     tx?: Knex
-  ): Promise<TAlertChannelSummary[]> => {
+  ): Promise<TAlertWithChannels[]> => {
     if (resourceIds.length === 0) return [];
     try {
       const rows = await (tx || db)(TableName.Alert)
@@ -280,13 +280,13 @@ export const alertDALFactory = (db: TDbClient) => {
         ]
       });
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindChannelSummariesForResources" });
+      throw new DatabaseError({ error, name: "FindWithChannelsForResources" });
     }
   };
 
   return {
     ...alertOrm,
-    findChannelSummariesForResources,
+    findWithChannelsForResources,
     findRecipientsForResources,
     findEnabledByResourceType,
     findEnabledForEvent,

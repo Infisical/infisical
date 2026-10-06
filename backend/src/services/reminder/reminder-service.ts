@@ -8,13 +8,11 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TGenericPermission } from "@app/lib/types";
 
-import { TAlertChannelInput, TChannelRecipientInput } from "../alert/alert-channel-service-types";
+import { TChannelRecipientInput } from "../alert/alert-channel-service-types";
 import { AlertChannelType } from "../alert/alert-channel-types";
 import { TAlertServiceFactory } from "../alert/alert-service";
-import { TAlertWritePlan } from "../alert/alert-service-types";
-import { AlertPrincipalType, MAX_RECIPIENTS_PER_CHANNEL } from "../alert/alert-types";
+import { AlertPrincipalType } from "../alert/alert-types";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -35,10 +33,8 @@ type TReminderServiceFactoryDep = {
   eventEmitter: TEventEmitter;
   alertService: Pick<
     TAlertServiceFactory,
-    | "prepareCreateAlert"
-    | "prepareUpdateAlert"
-    | "applyAlertWrite"
-    | "findAlertChannelSummariesForResources"
+    | "prepareAlertForResource"
+    | "applyPreparedAlert"
     | "findRecipientsForResources"
     | "deleteAlertsForDeletedResources"
     | "repointAlertsForResource"
@@ -106,79 +102,6 @@ export const reminderServiceFactory = ({
       });
     }
     return inScope.length ? inScope : [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: projectId }];
-  };
-
-  // Given `channels`, they are the alert's complete channel list. Otherwise the reminder API only knows
-  // user ids, so it owns the alert's email channels and leaves every other channel (Slack, webhook,
-  // PagerDuty) as the user configured it. The alert is prepared as the caller, so the reminder provider
-  // checks they can edit the secret, and the alert module refuses anything it would not accept from its
-  // own API (eg more channels than an alert can hold).
-  const $prepareReminderAlert = async ({
-    secretId,
-    secretKey,
-    projectId,
-    recipients,
-    channels,
-    actor
-  }: {
-    secretId: string;
-    secretKey: string;
-    projectId: string;
-    recipients?: string[] | null;
-    channels?: TAlertChannelInput[];
-    actor: TGenericPermission;
-  }): Promise<TAlertWritePlan> => {
-    const [existing] = await alertService.findAlertChannelSummariesForResources({
-      resourceType: SECRET_REMINDER_RESOURCE_TYPE,
-      resourceIds: [secretId]
-    });
-
-    const $plan = (alertChannels: TAlertChannelInput[]) =>
-      existing
-        ? alertService.prepareUpdateAlert({
-            alertId: existing.id,
-            name: reminderAlertName(secretKey),
-            channels: alertChannels,
-            ...actor
-          })
-        : alertService.prepareCreateAlert({
-            name: reminderAlertName(secretKey),
-            resourceType: SECRET_REMINDER_RESOURCE_TYPE,
-            resourceId: secretId,
-            eventType: SECRET_REMINDER_DUE_EVENT,
-            condition: null,
-            projectId,
-            channels: alertChannels,
-            ...actor
-          });
-
-    if (channels) return $plan(channels);
-
-    const emailRecipients = await $resolveEmailRecipients({ orgId: actor.actorOrgId, projectId, recipients });
-    const existingEmailChannels =
-      existing?.channels.filter((channel) => channel.channelType === AlertChannelType.EMAIL) ?? [];
-
-    const emailChannels: TAlertChannelInput[] = [];
-    for (let i = 0; i < emailRecipients.length; i += MAX_RECIPIENTS_PER_CHANNEL) {
-      const index = emailChannels.length;
-      emailChannels.push({
-        ...(existingEmailChannels[index] ? { id: existingEmailChannels[index].id } : {}),
-        name: existingEmailChannels[index]?.name ?? (index === 0 ? "Email" : `Email ${index + 1}`),
-        channelType: AlertChannelType.EMAIL,
-        recipients: emailRecipients.slice(i, i + MAX_RECIPIENTS_PER_CHANNEL)
-      });
-    }
-
-    const otherChannels: TAlertChannelInput[] = (existing?.channels ?? [])
-      .filter((channel) => channel.channelType !== AlertChannelType.EMAIL)
-      .map((channel) => ({
-        id: channel.id,
-        name: channel.name,
-        channelType: channel.channelType as AlertChannelType,
-        enabled: channel.enabled
-      }));
-
-    return $plan([...emailChannels, ...otherChannels]);
   };
 
   const $getSecretForPermissionCheck = async (secretId: string) => {
@@ -262,33 +185,51 @@ export const reminderServiceFactory = ({
     );
 
     const { nextReminderDate, fromDate } = $schedule(reminder);
-    const alertPlan = await $prepareReminderAlert({
-      secretId: secret.id,
-      secretKey: secretKey ?? secret.key,
+
+    // Given `channels`, they are the alert's complete channel list. Otherwise the reminder API only knows
+    // user ids, so it sets the alert's email recipients and leaves every other channel as the user set it.
+    const alert = await alertService.prepareAlertForResource({
+      resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+      resourceId: secret.id,
       projectId: secret.projectId,
-      recipients: reminder.recipients,
-      channels: reminder.channels,
-      actor: { actor, actorId, actorOrgId, actorAuthMethod }
+      eventType: SECRET_REMINDER_DUE_EVENT,
+      name: reminderAlertName(secretKey ?? secret.key),
+      channels: reminder.channels
+        ? { replaceAll: reminder.channels }
+        : {
+            replaceRecipients: {
+              channelType: AlertChannelType.EMAIL,
+              recipients: await $resolveEmailRecipients({
+                orgId: actorOrgId,
+                projectId: secret.projectId,
+                recipients: reminder.recipients
+              })
+            }
+          },
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod
     });
 
     return {
       secretId: secret.id,
       projectId: secret.projectId,
-      row: { message: reminder.message, repeatDays: reminder.repeatDays, nextReminderDate, fromDate },
-      alertPlan
+      schedule: { message: reminder.message, repeatDays: reminder.repeatDays, nextReminderDate, fromDate },
+      alert
     };
   };
 
   // Writes a prepared reminder and its alert in the caller's transaction, so the two land together.
   const applyReminder: TReminderServiceFactory["applyReminder"] = async (prepared, tx) => {
-    await alertService.applyAlertWrite(prepared.alertPlan, tx);
+    await alertService.applyPreparedAlert(prepared.alert, tx);
 
     const existingReminder = await reminderDAL.findOne({ secretId: prepared.secretId }, tx);
     if (existingReminder) {
-      await reminderDAL.updateById(existingReminder.id, prepared.row, tx);
+      await reminderDAL.updateById(existingReminder.id, prepared.schedule, tx);
       return { id: existingReminder.id, created: false };
     }
-    const newReminder = await reminderDAL.create({ secretId: prepared.secretId, ...prepared.row }, tx);
+    const newReminder = await reminderDAL.create({ secretId: prepared.secretId, ...prepared.schedule }, tx);
     return { id: newReminder.id, created: true };
   };
 

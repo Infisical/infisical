@@ -195,24 +195,10 @@ describe("orphaned reminder alert reaping", () => {
   });
 });
 
-type TStoredAlert = {
-  id: string;
-  name: string;
-  resourceId: string;
-  channels: Array<{
-    id: string;
-    name: string;
-    channelType: string;
-    enabled: boolean;
-  }>;
-};
-
-const buildWriteService = (
-  opts: { existingAlert?: TStoredAlert; projectUserIds?: string[]; alertRefusal?: Error } = {}
-) => {
+const buildWriteService = (opts: { projectUserIds?: string[]; alertRefusal?: Error } = {}) => {
   const calls: string[] = [];
-  const created: unknown[] = [];
-  const updated: Array<{ alertId: string; name?: string; channels?: unknown[] }> = [];
+  // What the reminder asked the alert module to set on its secret.
+  const alertRequests: Array<Record<string, unknown>> = [];
   const copied: unknown[] = [];
   const deletedAlerts: Array<{ resourceIds: string[]; tx: unknown }> = [];
   const repointed: Array<{ fromResourceId: string; toResourceId: string; tx: unknown }> = [];
@@ -254,26 +240,12 @@ const buildWriteService = (
     alertService: {
       filterRecipientsInScope: async (_scope: unknown, recipients: { principalType: string; principalId: string }[]) =>
         opts.projectUserIds ? recipients.filter((r) => opts.projectUserIds!.includes(r.principalId)) : recipients,
-      findAlertChannelSummariesForResources: async () => (opts.existingAlert ? [opts.existingAlert] : []),
-      prepareCreateAlert: async (input: unknown) => {
+      prepareAlertForResource: async (input: Record<string, unknown>) => {
         if (opts.alertRefusal) throw opts.alertRefusal;
-        created.push(input);
-        return { kind: "create" };
+        alertRequests.push(input);
+        return {};
       },
-      prepareUpdateAlert: async ({
-        alertId,
-        name,
-        channels
-      }: {
-        alertId: string;
-        name?: string;
-        channels?: unknown[];
-      }) => {
-        if (opts.alertRefusal) throw opts.alertRefusal;
-        updated.push({ alertId, name, channels });
-        return { kind: "update" };
-      },
-      applyAlertWrite: async (_plan: unknown, trx: unknown) => {
+      applyPreparedAlert: async (_prepared: unknown, trx: unknown) => {
         calls.push("alert:apply");
         writeTxs.push(trx);
       },
@@ -295,7 +267,7 @@ const buildWriteService = (
     }
   } as never);
 
-  return { service, calls, created, updated, deletedAlerts, repointed, copied, reminderTx, writeTxs };
+  return { service, calls, alertRequests, deletedAlerts, repointed, copied, reminderTx, writeTxs };
 };
 
 const caller = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null };
@@ -311,10 +283,10 @@ const saveReminder = (
 
 describe("reminder alert sync", () => {
   test("a new reminder gets an alert with an email channel to its recipients, written as the caller", async () => {
-    const { service, created } = buildWriteService();
+    const { service, alertRequests } = buildWriteService();
     await saveReminder(service, { recipients: ["user-1", "user-2"] });
 
-    expect(created).toEqual([
+    expect(alertRequests).toEqual([
       expect.objectContaining({
         name: "Reminder for DB_PASSWORD",
         resourceType: SECRET_REMINDER_RESOURCE_TYPE,
@@ -322,16 +294,15 @@ describe("reminder alert sync", () => {
         eventType: SECRET_REMINDER_DUE_EVENT,
         projectId: "proj-1",
         ...caller,
-        channels: [
-          {
-            name: "Email",
+        channels: {
+          replaceRecipients: {
             channelType: "email",
             recipients: [
               { principalType: "user", principalId: "user-1" },
               { principalType: "user", principalId: "user-2" }
             ]
           }
-        ]
+        }
       })
     ]);
   });
@@ -367,29 +338,29 @@ describe("reminder alert sync", () => {
   });
 
   test("a rename in the same request names the alert after the new key", async () => {
-    const { service, created } = buildWriteService();
+    const { service, alertRequests } = buildWriteService();
     await service.prepareReminder({
       ...caller,
       secretKey: "RENAMED",
       reminder: { secretId: "secret-1", repeatDays: 30, recipients: ["user-1"] }
     } as never);
-    expect(created).toEqual([expect.objectContaining({ name: "Reminder for RENAMED" })]);
+    expect(alertRequests).toEqual([expect.objectContaining({ name: "Reminder for RENAMED" })]);
   });
 
   test("no recipients means everyone in the project", async () => {
-    const { service, created } = buildWriteService();
+    const { service, alertRequests } = buildWriteService();
     await saveReminder(service, { recipients: [] });
-    expect((created[0] as { channels: { recipients: unknown }[] }).channels[0].recipients).toEqual([
-      { principalType: "project-members", principalId: "proj-1" }
-    ]);
+    expect(
+      (alertRequests[0].channels as { replaceRecipients: { recipients: unknown } }).replaceRecipients.recipients
+    ).toEqual([{ principalType: "project-members", principalId: "proj-1" }]);
   });
 
   test("recipients who left the project are dropped instead of failing the write", async () => {
-    const { service, created } = buildWriteService({ projectUserIds: ["user-1"] });
+    const { service, alertRequests } = buildWriteService({ projectUserIds: ["user-1"] });
     await saveReminder(service, { recipients: ["user-1", "user-gone"] });
-    expect((created[0] as { channels: { recipients: unknown }[] }).channels[0].recipients).toEqual([
-      { principalType: "user", principalId: "user-1" }
-    ]);
+    expect(
+      (alertRequests[0].channels as { replaceRecipients: { recipients: unknown } }).replaceRecipients.recipients
+    ).toEqual([{ principalType: "user", principalId: "user-1" }]);
   });
 
   test("refuses a recipient list with nobody left in the project rather than sending to everyone", async () => {
@@ -400,7 +371,7 @@ describe("reminder alert sync", () => {
     expect(calls).toEqual([]);
   });
 
-  test("given channels, saves them as the alert's complete channel list", async () => {
+  test("given channels, sets them as the alert's complete channel list", async () => {
     const channels = [
       {
         name: "Email",
@@ -409,58 +380,9 @@ describe("reminder alert sync", () => {
       },
       { name: "Webhook", channelType: "webhook", config: { url: "https://example.com" } }
     ];
-    const save = (service: ReturnType<typeof buildWriteService>["service"]) =>
-      saveReminder(service, { recipients: ["user-1"], channels });
-
-    const existing = buildWriteService({
-      existingAlert: { id: "alert-1", name: "Reminder for OLD_NAME", resourceId: "secret-1", channels: [] }
-    });
-    await save(existing.service);
-    expect(existing.updated).toEqual([{ alertId: "alert-1", name: "Reminder for DB_PASSWORD", channels }]);
-
-    const fresh = buildWriteService();
-    await save(fresh.service);
-    expect(fresh.created).toEqual([expect.objectContaining({ resourceId: "secret-1", channels })]);
-  });
-
-  test("more than 20 recipients are split across email channels", async () => {
-    const { service, created } = buildWriteService();
-    await saveReminder(service, { recipients: Array.from({ length: 45 }, (_, i) => `user-${i}`) });
-    const { channels } = created[0] as { channels: { name: string; recipients: unknown[] }[] };
-    expect(channels.map((c) => c.name)).toEqual(["Email", "Email 2", "Email 3"]);
-    expect(channels.map((c) => c.recipients.length)).toEqual([20, 20, 5]);
-  });
-
-  test("updating keeps Slack, webhook and PagerDuty channels and reuses the email channel", async () => {
-    const { service, updated, created } = buildWriteService({
-      existingAlert: {
-        id: "alert-1",
-        name: "Reminder for OLD_NAME",
-        resourceId: "secret-1",
-        channels: [
-          { id: "ch-email", name: "Team email", channelType: "email", enabled: true },
-          { id: "ch-hook", name: "Webhook", channelType: "webhook", enabled: false }
-        ]
-      }
-    });
-    await saveReminder(service, { recipients: ["user-1"] });
-
-    expect(created).toHaveLength(0);
-    expect(updated).toEqual([
-      {
-        alertId: "alert-1",
-        name: "Reminder for DB_PASSWORD",
-        channels: [
-          {
-            id: "ch-email",
-            name: "Team email",
-            channelType: "email",
-            recipients: [{ principalType: "user", principalId: "user-1" }]
-          },
-          { id: "ch-hook", name: "Webhook", channelType: "webhook", enabled: false }
-        ]
-      }
-    ]);
+    const { service, alertRequests } = buildWriteService();
+    await saveReminder(service, { recipients: ["user-1"], channels });
+    expect(alertRequests).toEqual([expect.objectContaining({ channels: { replaceAll: channels } })]);
   });
 
   test("deleting a reminder by secret also removes its alert inside the caller's transaction", async () => {

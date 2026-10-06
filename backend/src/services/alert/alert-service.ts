@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { TAlertChannels, TAlerts } from "@app/db/schemas";
+import { TAlertChannels, TAlerts, TAlertsInsert } from "@app/db/schemas";
 import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -15,22 +15,24 @@ import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal"
 import { TAlertChannelServiceFactory } from "./alert-channel-service";
 import {
   TAlertChannelEmbedded,
+  TAlertChannelInput,
   TChannelRecipientInput,
   TPreparedChannelCreate,
   TPreparedChannelUpdate
 } from "./alert-channel-service-types";
-import { TAlertDALFactory } from "./alert-dal";
+import { AlertChannelType } from "./alert-channel-types";
+import { TAlertDALFactory, TAlertWithChannels } from "./alert-dal";
 import { TAlertHistoryDALFactory } from "./alert-history-dal";
 import { getRecipientScope } from "./alert-principal-scope-fns";
 import { getAlertResourceName, resolveAlertProjectId, TAlertProviderRegistry } from "./alert-provider-registry";
 import {
   TAlertLastRun,
   TAlertResponse,
-  TAlertWritePlan,
   TCreateAlertDTO,
   TDeleteAlertDTO,
   TGetAlertDTO,
   TListAlertsDTO,
+  TPrepareAlertForResourceDTO,
   TUpdateAlertDTO
 } from "./alert-service-types";
 import {
@@ -40,6 +42,7 @@ import {
   AlertTelemetryAction,
   IResourceAlertProvider,
   MAX_CHANNELS_PER_ALERT,
+  MAX_RECIPIENTS_PER_CHANNEL,
   TAlertAuditInput,
   TAlertEventDefinition,
   toAlertActor
@@ -66,6 +69,27 @@ export type TAlertServiceFactoryDep = {
 };
 
 export type TAlertServiceFactory = ReturnType<typeof alertServiceFactory>;
+
+// An alert write that has passed every check and is ready to be written.
+type TAlertWritePlan =
+  | {
+      kind: "create";
+      alert: TAlertsInsert;
+      channels: TPreparedChannelCreate[];
+    }
+  | {
+      kind: "update";
+      alert: TAlerts;
+      patch: Partial<Pick<TAlertsInsert, "name" | "description" | "condition" | "enabled">>;
+      deleteChannelIds: string[];
+      channelUpdates: TPreparedChannelUpdate[];
+      channelCreates: TPreparedChannelCreate[];
+    };
+
+// What prepareAlertForResource returns. Its contents belong to this module: a caller only hands it back
+// to applyPreparedAlert, inside the caller's own transaction.
+const PREPARED_ALERT = Symbol("prepared alert");
+export type TPreparedAlert = { readonly [PREPARED_ALERT]: TAlertWritePlan };
 
 const buildGenericAlertAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
   if (input.action === AlertAuditAction.TestChannel) {
@@ -415,10 +439,8 @@ export const alertServiceFactory = ({
     return { plan, provider, cipher };
   };
 
-  // Writes a plan from prepareCreateAlert or prepareUpdateAlert. Everything that can be refused was checked
-  // and every channel config encrypted while preparing, so this is plain inserts and updates and can run
-  // inside another service's transaction.
-  const applyAlertWrite = async (plan: TAlertWritePlan, tx: Knex): Promise<TAlerts> => {
+  // Everything that can be refused was checked while preparing, so this only writes.
+  const $applyPlan = async (plan: TAlertWritePlan, tx: Knex): Promise<TAlerts> => {
     if (plan.kind === "create") {
       let createdAlert: TAlerts;
       try {
@@ -461,15 +483,71 @@ export const alertServiceFactory = ({
     return updatedAlert;
   };
 
-  const prepareCreateAlert = async (dto: TCreateAlertDTO): Promise<TAlertWritePlan> => (await $prepareCreate(dto)).plan;
+  // Spreads recipients over as many channels of one type as they need, reusing that type's existing channels
+  // in order so their ids, names and settings survive, and keeps every other channel as it is.
+  const $channelsWithRecipients = (
+    existing: TAlertWithChannels | undefined,
+    { channelType, recipients }: { channelType: AlertChannelType; recipients: TChannelRecipientInput[] }
+  ): TAlertChannelInput[] => {
+    const sameType = existing?.channels.filter((channel) => channel.channelType === channelType) ?? [];
+    const label = channelType.charAt(0).toUpperCase() + channelType.slice(1);
 
-  const prepareUpdateAlert = async (dto: TUpdateAlertDTO): Promise<TAlertWritePlan> => (await $prepareUpdate(dto)).plan;
+    const replaced: TAlertChannelInput[] = [];
+    for (let i = 0; i < recipients.length; i += MAX_RECIPIENTS_PER_CHANNEL) {
+      const index = replaced.length;
+      replaced.push({
+        ...(sameType[index] ? { id: sameType[index].id } : {}),
+        name: sameType[index]?.name ?? (index === 0 ? label : `${label} ${index + 1}`),
+        channelType,
+        recipients: recipients.slice(i, i + MAX_RECIPIENTS_PER_CHANNEL)
+      });
+    }
+
+    const others: TAlertChannelInput[] = (existing?.channels ?? [])
+      .filter((channel) => channel.channelType !== channelType)
+      .map((channel) => ({
+        id: channel.id,
+        name: channel.name,
+        channelType: channel.channelType as AlertChannelType,
+        enabled: channel.enabled
+      }));
+
+    return [...replaced, ...others];
+  };
+
+  // For a service that keeps one alert on each of its own resources (eg a secret's reminder): creates it or
+  // updates it, with every check the alert API runs, and returns it ready for applyPreparedAlert inside the
+  // caller's transaction. Nothing is written here.
+  const prepareAlertForResource = async (dto: TPrepareAlertForResourceDTO): Promise<TPreparedAlert> => {
+    const { resourceType, resourceId, projectId, eventType, name, channels, ...actor } = dto;
+    const [existing] = await alertDAL.findWithChannelsForResources({ resourceType, resourceIds: [resourceId] });
+    const alertChannels =
+      "replaceAll" in channels ? channels.replaceAll : $channelsWithRecipients(existing, channels.replaceRecipients);
+
+    const { plan } = existing
+      ? await $prepareUpdate({ alertId: existing.id, name, channels: alertChannels, ...actor })
+      : await $prepareCreate({
+          name,
+          resourceType,
+          resourceId,
+          eventType,
+          condition: null,
+          projectId,
+          channels: alertChannels,
+          ...actor
+        });
+    return { [PREPARED_ALERT]: plan };
+  };
+
+  const applyPreparedAlert = async (prepared: TPreparedAlert, tx: Knex): Promise<void> => {
+    await $applyPlan(prepared[PREPARED_ALERT], tx);
+  };
 
   const createAlert = async (dto: TCreateAlertDTO): Promise<TAlertResponse> => {
     const { plan, provider, cipher } = await $prepareCreate(dto);
 
     const { created, channels } = await alertDAL.transaction(async (tx) => {
-      const createdAlert = await applyAlertWrite(plan, tx);
+      const createdAlert = await $applyPlan(plan, tx);
       const attachedChannels = await alertChannelDAL.findByAlertId(createdAlert.id, {}, tx);
       const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, tx);
       return { created: createdAlert, channels: details };
@@ -566,7 +644,7 @@ export const alertServiceFactory = ({
     const { plan, provider, cipher } = await $prepareUpdate(dto);
 
     const { updated, channels } = await alertDAL.transaction(async (tx) => {
-      const updatedAlert = await applyAlertWrite(plan, tx);
+      const updatedAlert = await $applyPlan(plan, tx);
       const attachedChannels = await alertChannelDAL.findByAlertId(updatedAlert.id, {}, tx);
       const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, tx);
       return { updated: updatedAlert, channels: details };
@@ -654,9 +732,6 @@ export const alertServiceFactory = ({
     { resourceType, resourceId }: { resourceType: string; resourceId: string },
     tx?: Knex
   ): Promise<number> => $reapAlerts({ resourceType, resourceId }, tx);
-
-  const findAlertChannelSummariesForResources = (input: { resourceType: string; resourceIds: string[] }, tx?: Knex) =>
-    alertDAL.findChannelSummariesForResources(input, tx);
 
   const deleteAlertsForDeletedResources = async (
     { resourceType, resourceIds }: { resourceType: string; resourceIds: string[] },
@@ -787,16 +862,14 @@ export const alertServiceFactory = ({
     getTelemetryEvent,
     getAuditEvent,
     createAlert,
-    prepareCreateAlert,
-    prepareUpdateAlert,
-    applyAlertWrite,
+    prepareAlertForResource,
+    applyPreparedAlert,
     getAlertById,
     listAlerts,
     updateAlert,
     deleteAlert,
     deleteAlertsForResource,
     deleteAlertsForDeletedResource,
-    findAlertChannelSummariesForResources,
     deleteAlertsForDeletedResources,
     repointAlertsForResource,
     copyAlertsForResource,

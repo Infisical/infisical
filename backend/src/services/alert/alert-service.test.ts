@@ -113,6 +113,24 @@ const buildService = (opts?: {
         return row;
       },
       findActiveById: async (id: string) => alerts.get(id),
+      findWithChannelsForResources: async ({
+        resourceType,
+        resourceIds
+      }: {
+        resourceType: string;
+        resourceIds: string[];
+      }) =>
+        [...alerts.values()]
+          .filter((row) => row.resourceType === resourceType && resourceIds.includes(row.resourceId as string))
+          .map((row) => ({
+            id: row.id,
+            name: row.name,
+            resourceId: row.resourceId,
+            channels: (memberships.get(row.id as string) ?? []).map((channelId) => {
+              const channel = channels.get(channelId) as TChannelRow;
+              return { id: channel.id, name: channel.name, channelType: channel.channelType, enabled: channel.enabled };
+            })
+          })),
       findActiveByScope: async (filter: Record<string, unknown>) => {
         findFilters.push(filter);
         return [...alerts.values()].filter((row) => matches(row, filter));
@@ -505,15 +523,63 @@ describe("alert service", () => {
     );
   });
 
-  test("a prepared write changes nothing until it is applied", async () => {
-    const { service, alerts, channels } = buildService();
-    const plan = await service.prepareCreateAlert(validCreate);
-    expect(alerts.size).toBe(0);
-    expect(channels.size).toBe(0);
+  describe("an alert a service keeps on its own resource", () => {
+    const resourceAlert = (recipientIds: string[]) => ({
+      resourceType: RESOURCE_TYPE,
+      resourceId: "resource-1",
+      projectId: "proj-1",
+      eventType: "test.resource.opened",
+      name: "Resource alert",
+      channels: {
+        replaceRecipients: {
+          channelType: AlertChannelType.EMAIL,
+          recipients: recipientIds.map((principalId) => ({ principalType: AlertPrincipalType.USER, principalId }))
+        }
+      },
+      ...actor
+    });
+    const tx = {} as never;
 
-    await service.applyAlertWrite(plan, {} as never);
-    expect(alerts.size).toBe(1);
-    expect(channels.size).toBe(2);
+    test("is written only when applied", async () => {
+      const { service, alerts, channels } = buildService();
+      const prepared = await service.prepareAlertForResource(resourceAlert(["user-1"]));
+      expect(alerts.size).toBe(0);
+      expect(channels.size).toBe(0);
+
+      await service.applyPreparedAlert(prepared, tx);
+      expect(alerts.size).toBe(1);
+      expect([...channels.values()].map((c) => c.name)).toEqual(["Email"]);
+    });
+
+    test("spreads recipients over as many email channels as they need", async () => {
+      const { service, channels } = buildService();
+      const recipientIds = Array.from({ length: 45 }, (_, i) => `user-${i}`);
+      await service.applyPreparedAlert(await service.prepareAlertForResource(resourceAlert(recipientIds)), tx);
+
+      expect([...channels.values()].map((c) => [c.name, c.recipients.length])).toEqual([
+        ["Email", 20],
+        ["Email 2", 20],
+        ["Email 3", 5]
+      ]);
+    });
+
+    test("updates the existing alert, reusing its email channel and keeping its other channels", async () => {
+      const { service, alerts, channels } = buildService();
+      await service.createAlert({ ...validCreate, eventType: "test.resource.opened", condition: null });
+      const [emailBefore, webhookBefore] = [...channels.values()];
+
+      await service.applyPreparedAlert(await service.prepareAlertForResource(resourceAlert(["user-2"])), tx);
+
+      expect(alerts.size).toBe(1);
+      expect([...channels.values()]).toEqual([
+        expect.objectContaining({
+          id: emailBefore.id,
+          name: "email-ch",
+          recipients: [expect.objectContaining({ principalId: "user-2" })]
+        }),
+        expect.objectContaining({ id: webhookBefore.id, name: "webhook-ch" })
+      ]);
+    });
   });
 
   test("update rejects an empty channel list", async () => {
