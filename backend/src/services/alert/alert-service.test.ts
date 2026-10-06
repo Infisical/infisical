@@ -306,14 +306,13 @@ describe("alert service", () => {
     expect(orgScoped.recipientProjectIds).toEqual([null, null]);
   });
 
-  test("falls back to the generic alert audit events when the provider defines none", () => {
+  test("builds the generic alert audit events", () => {
     const { service } = buildService();
     const alert = {
       id: "alert-1",
       name: "expiry",
       resourceType: RESOURCE_TYPE,
       resourceId: "resource-1",
-      resourceName: "Resource One",
       eventType: "test.resource.expiration"
     };
 
@@ -324,6 +323,15 @@ describe("alert service", () => {
         name: "expiry",
         resourceType: RESOURCE_TYPE,
         resourceId: "resource-1",
+        eventType: "test.resource.expiration"
+      }
+    });
+    expect(service.getAuditEvent({ action: AlertAuditAction.Update, alert })).toEqual({
+      type: "update-alert",
+      metadata: {
+        alertId: "alert-1",
+        name: "expiry",
+        resourceType: RESOURCE_TYPE,
         eventType: "test.resource.expiration"
       }
     });

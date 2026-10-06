@@ -2,11 +2,9 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
-import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { getRevocationReasonLabel } from "@app/services/pki-alert-v2/pki-alert-v2-types";
@@ -15,11 +13,9 @@ import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/teleme
 import { AlertChannelType, TAlertPayload, TAlertSeverity } from "../alert-channel-types";
 import { durationToDays, expirySeverity, formatUtcDate, humanizeDays } from "../alert-format-fns";
 import {
-  AlertAuditAction,
   AlertPermissionAction,
   AlertTelemetryAction,
   DEFAULT_DEDUP_WINDOW_HOURS,
-  TAlertAuditInput,
   TAlertContext,
   TAlertPermissionInput,
   TAlertTelemetryEvent
@@ -134,40 +130,6 @@ export const resolveCertManagerProjectId = async (
     throw new NotFoundError({ message: "Certificate Manager isn't set up for this organization" });
   }
   return projectId;
-};
-
-type TAlertFilterNames = { id: string; name: string | null }[];
-
-export const toAlertChannelTestAuditMetadata = ({
-  test
-}: Extract<TAlertAuditInput, { action: AlertAuditAction.TestChannel }>) => ({
-  alertId: test.alertId,
-  alertName: test.alertName ?? null,
-  channelId: test.channelId,
-  channelName: test.channelName ?? null,
-  channelType: test.channelType,
-  success: test.success,
-  deliveredTo: test.deliveredTo,
-  error: test.error
-});
-
-export const buildCertificateManagerAlertAuditEvent = (
-  input: TAlertAuditInput,
-  {
-    applications,
-    profiles,
-    sources
-  }: { applications: TAlertFilterNames; profiles: TAlertFilterNames; sources: CertificateSource[] }
-): TAuditEvent => {
-  if (input.action === AlertAuditAction.TestChannel) {
-    return { type: EventType.TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL, metadata: toAlertChannelTestAuditMetadata(input) };
-  }
-
-  const { alert } = input;
-  const metadata = { alertId: alert.id, name: alert.name, eventType: alert.eventType, applications, profiles, sources };
-  if (input.action === AlertAuditAction.Create) return { type: EventType.CREATE_CERTIFICATE_MANAGER_ALERT, metadata };
-  if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_CERTIFICATE_MANAGER_ALERT, metadata };
-  return { type: EventType.DELETE_CERTIFICATE_MANAGER_ALERT, metadata };
 };
 
 export const buildPkiAlertTelemetryEvent = (

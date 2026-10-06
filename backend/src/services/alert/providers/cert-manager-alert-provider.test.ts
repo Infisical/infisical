@@ -4,7 +4,7 @@ import { vi } from "vitest";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
-import { AlertAuditAction, AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
+import { AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
 import { certManagerAlertProviderFactory, TCertManagerAlertProviderDep } from "./cert-manager-alert-provider";
 import { TAlertCertificate } from "./cert-manager-certificate-alert-dal";
 
@@ -386,62 +386,6 @@ describe("cert manager alert provider", () => {
       profiles: [{ id: PROFILE_ID, name: "tls-server" }]
     });
     expect(names?.get("alert-2")).toEqual({ applications: [], profiles: [] });
-  });
-
-  test("an alert with no application logs Certificate Manager audit events naming its filters", () => {
-    const { provider } = buildProvider();
-    const alert = {
-      id: "alert-1",
-      name: "prod-expiry",
-      resourceType: RESOURCE_TYPE,
-      resourceId: null,
-      eventType: EXPIRY_EVENT,
-      condition: {
-        alertBefore: "30d",
-        applicationIds: [APPLICATION_ID, OTHER_APPLICATION_ID],
-        profileIds: [PROFILE_ID],
-        sources: ["imported"]
-      },
-      filters: {
-        applications: [{ id: APPLICATION_ID, name: "payments-api" }],
-        profiles: [{ id: PROFILE_ID, name: "tls-server" }]
-      }
-    };
-    const metadata = {
-      alertId: "alert-1",
-      name: "prod-expiry",
-      eventType: EXPIRY_EVENT,
-      applications: [
-        { id: APPLICATION_ID, name: "payments-api" },
-        { id: OTHER_APPLICATION_ID, name: null }
-      ],
-      profiles: [{ id: PROFILE_ID, name: "tls-server" }],
-      sources: ["imported"]
-    };
-
-    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Create, alert })).toEqual({
-      type: "create-certificate-manager-alert",
-      metadata
-    });
-    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Delete, alert })).toEqual({
-      type: "delete-certificate-manager-alert",
-      metadata
-    });
-    expect(
-      provider.getAuditEvent?.({
-        action: AlertAuditAction.TestChannel,
-        test: {
-          resourceType: RESOURCE_TYPE,
-          alertId: "alert-1",
-          alertName: "prod-expiry",
-          channelType: "email",
-          success: true
-        }
-      })
-    ).toMatchObject({
-      type: "test-certificate-manager-alert-channel",
-      metadata: { alertId: "alert-1", alertName: "prod-expiry", channelType: "email", success: true }
-    });
   });
 
   test("assertPermission requires a project", async () => {

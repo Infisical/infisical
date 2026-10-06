@@ -1,11 +1,10 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
-import { AlertAuditAction, AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
+import { AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
 import { TSignerAlertCertificate } from "./cert-manager-signer-alert-dal";
 import {
   certManagerSignerAlertProviderFactory,
@@ -194,23 +193,9 @@ describe("cert manager signer alert provider", () => {
     expect(payload.items[0].fields?.[0]).toEqual({ label: "Signers", value: "build-signer, release-signer" });
   });
 
-  test("logs its own signer alert audit events and PKI alert telemetry", () => {
+  test("maps alert creation to PKI alert telemetry", () => {
     const provider = buildProvider();
-    const alert = { ...signerAlert, enabled: true, channels: [] } as never;
 
-    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Create, alert })).toEqual({
-      type: EventType.CREATE_SIGNER_ALERT,
-      metadata: { alertId: "alert-1", name: "signer-expiry", eventType: EXPIRY_EVENT }
-    });
-    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Delete, alert })?.type).toBe(
-      EventType.DELETE_SIGNER_ALERT
-    );
-    expect(
-      provider.getAuditEvent?.({
-        action: AlertAuditAction.TestChannel,
-        test: { resourceType: RESOURCE_TYPE, alertId: "alert-1", channelType: "email", success: true }
-      })
-    ).toMatchObject({ type: EventType.TEST_SIGNER_ALERT_CHANNEL, metadata: { alertId: "alert-1", success: true } });
     expect(
       provider.getTelemetryEvent?.({
         action: AlertTelemetryAction.Create,

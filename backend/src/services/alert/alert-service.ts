@@ -58,7 +58,7 @@ export type TAlertServiceFactoryDep = {
 
 export type TAlertServiceFactory = ReturnType<typeof alertServiceFactory>;
 
-const buildGenericAlertAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
+const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
   if (input.action === AlertAuditAction.TestChannel) {
     const { test } = input;
     return {
@@ -626,12 +626,6 @@ export const alertServiceFactory = ({
       resourceId: alert.resourceId,
       eventType: alert.eventType
     });
-
-  const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
-    const resourceType =
-      input.action === AlertAuditAction.TestChannel ? input.test.resourceType : input.alert.resourceType;
-    return alertProviderRegistry.get(resourceType)?.getAuditEvent?.(input) ?? buildGenericAlertAuditEvent(input);
-  };
 
   return {
     getTelemetryEvent,

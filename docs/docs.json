@@ -3981,17 +3981,6 @@
                         ]
                       },
                       {
-                        "group": "Alerts",
-                        "pages": [
-                          "api-reference/endpoints/alerts/list",
-                          "api-reference/endpoints/alerts/create",
-                          "api-reference/endpoints/alerts/get",
-                          "api-reference/endpoints/alerts/update",
-                          "api-reference/endpoints/alerts/delete",
-                          "api-reference/endpoints/alerts/test-channel"
-                        ]
-                      },
-                      {
                         "group": "Certificate syncs",
                         "pages": [
                           "api-reference/endpoints/pki/syncs/list",
@@ -5085,35 +5074,35 @@
     },
     {
       "source": "/api-reference/endpoints/pki/applications/alerts/list",
-      "destination": "/api-reference/endpoints/alerts/list"
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
     },
     {
       "source": "/api-reference/endpoints/pki/applications/alerts/create",
-      "destination": "/api-reference/endpoints/alerts/create"
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
     },
     {
       "source": "/api-reference/endpoints/pki/applications/alerts/update",
-      "destination": "/api-reference/endpoints/alerts/update"
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
     },
     {
       "source": "/api-reference/endpoints/pki/applications/alerts/delete",
-      "destination": "/api-reference/endpoints/alerts/delete"
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
     },
     {
       "source": "/api-reference/endpoints/pki-alerts/create",
-      "destination": "/api-reference/endpoints/alerts/create"
+      "destination": "/documentation/platform/pki/settings/alerts"
     },
     {
       "source": "/api-reference/endpoints/pki-alerts/read",
-      "destination": "/api-reference/endpoints/alerts/get"
+      "destination": "/documentation/platform/pki/settings/alerts"
     },
     {
       "source": "/api-reference/endpoints/pki-alerts/update",
-      "destination": "/api-reference/endpoints/alerts/update"
+      "destination": "/documentation/platform/pki/settings/alerts"
     },
     {
       "source": "/api-reference/endpoints/pki-alerts/delete",
-      "destination": "/api-reference/endpoints/alerts/delete"
+      "destination": "/documentation/platform/pki/settings/alerts"
     },
     {
       "source": "/documentation/platform/pki/alerting",

@@ -17,11 +17,9 @@ import { PkiAlertScope } from "@app/services/telemetry/telemetry-types";
 import { durationToDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
-  AlertAuditAction,
   AlertTriggerType,
   IEventAlertProvider,
   IScheduledAlertProvider,
-  TAlertAuditInput,
   TAlertContext,
   TAlertFilters,
   TAlertPermissionInput,
@@ -34,7 +32,6 @@ import {
   assertCertManagerAlertChannelTypesAllowed,
   assertNoAlertResource,
   buildCertificateAlertPayload,
-  buildCertificateManagerAlertAuditEvent,
   buildPkiAlertTelemetryEvent,
   CERTIFICATE_ALERT_KIND_TELEMETRY_TYPES,
   CertificateAlertKind,
@@ -168,24 +165,6 @@ export const certManagerAlertProviderFactory = ({
       applicationName: null
     });
 
-  const getAuditEvent = (input: TAlertAuditInput) => {
-    if (input.action === AlertAuditAction.TestChannel) {
-      return buildCertificateManagerAlertAuditEvent(input, { applications: [], profiles: [], sources: [] });
-    }
-    const { applicationIds = [], profileIds = [], sources = [] } = parseFilters(input.alert.condition);
-    const nameById = new Map(
-      Object.values(input.alert.filters ?? {})
-        .flat()
-        .map((resource) => [resource.id, resource.name])
-    );
-    const withNames = (ids: string[]) => ids.map((id) => ({ id, name: nameById.get(id) ?? null }));
-    return buildCertificateManagerAlertAuditEvent(input, {
-      applications: withNames(applicationIds),
-      profiles: withNames(profileIds),
-      sources
-    });
-  };
-
   const getTelemetryEvent = ({ action, orgId, projectId, eventType }: TAlertTelemetryInput) => {
     if (!projectId) return undefined;
     return buildPkiAlertTelemetryEvent(
@@ -305,7 +284,6 @@ export const certManagerAlertProviderFactory = ({
     assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseService, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
-    getAuditEvent,
     getWebhookSource: getScopeWideAlertWebhookSource,
     getFilters,
     resolveProjectId: async ({ orgId, resourceId }) => {

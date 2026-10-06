@@ -2,7 +2,6 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { ResourceType } from "@app/db/schemas";
-import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
@@ -17,11 +16,9 @@ import { PkiAlertScope } from "@app/services/telemetry/telemetry-types";
 import { durationToDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
-  AlertAuditAction,
   AlertTriggerType,
   IEventAlertProvider,
   IScheduledAlertProvider,
-  TAlertAuditInput,
   TAlertContext,
   TAlertPermissionInput,
   TAlertTelemetryInput,
@@ -104,38 +101,6 @@ export const certManagerApplicationAlertProviderFactory = ({
 
   const getWebhookSource = ({ alertId, resourceId }: { alertId: string; resourceId?: string | null }) =>
     resourceId ? `/applications/${resourceId}/alerts/${alertId}` : undefined;
-
-  const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
-    if (input.action === AlertAuditAction.TestChannel) {
-      const { test } = input;
-      return {
-        type: EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL,
-        metadata: {
-          applicationId: test.resourceId ?? null,
-          applicationName: test.resourceName ?? null,
-          alertId: test.alertId,
-          alertName: test.alertName ?? null,
-          channelId: test.channelId,
-          channelName: test.channelName ?? null,
-          channelType: test.channelType,
-          success: test.success,
-          deliveredTo: test.deliveredTo,
-          error: test.error
-        }
-      };
-    }
-
-    const metadata = {
-      applicationId: input.alert.resourceId,
-      applicationName: input.alert.resourceName ?? null,
-      alertId: input.alert.id,
-      name: input.alert.name,
-      eventType: input.alert.eventType
-    };
-    if (input.action === AlertAuditAction.Create) return { type: EventType.CREATE_PKI_APPLICATION_ALERT, metadata };
-    if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_PKI_APPLICATION_ALERT, metadata };
-    return { type: EventType.DELETE_PKI_APPLICATION_ALERT, metadata };
-  };
 
   const getTelemetryEvent = ({ action, orgId, projectId, resourceId, eventType }: TAlertTelemetryInput) => {
     if (!projectId || !resourceId) return undefined;
@@ -240,7 +205,6 @@ export const certManagerApplicationAlertProviderFactory = ({
     assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseService, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
-    getAuditEvent,
     getWebhookSource,
     resolveProjectId,
     getResourceNames: async ({ orgId, resourceIds }) =>

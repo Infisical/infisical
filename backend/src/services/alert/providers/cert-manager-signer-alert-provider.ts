@@ -1,4 +1,3 @@
-import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
@@ -11,10 +10,8 @@ import { TAlertPayload } from "../alert-channel-types";
 import { durationToDays, expirySeverity, formatUtcDate, humanizeDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
-  AlertAuditAction,
   AlertTriggerType,
   IScheduledAlertProvider,
-  TAlertAuditInput,
   TAlertContext,
   TAlertPermissionInput,
   TAlertTelemetryInput,
@@ -30,8 +27,7 @@ import {
   ExpiryFieldsSchema,
   getScopeWideAlertWebhookSource,
   resolveCertManagerProjectId,
-  splitAltNames,
-  toAlertChannelTestAuditMetadata
+  splitAltNames
 } from "./cert-manager-alert-fns";
 import { TCertManagerSignerAlertDALFactory, TSignerAlertCertificate } from "./cert-manager-signer-alert-dal";
 
@@ -141,16 +137,6 @@ export const certManagerSignerAlertProviderFactory = ({
     );
   };
 
-  const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
-    if (input.action === AlertAuditAction.TestChannel) {
-      return { type: EventType.TEST_SIGNER_ALERT_CHANNEL, metadata: toAlertChannelTestAuditMetadata(input) };
-    }
-    const metadata = { alertId: input.alert.id, name: input.alert.name, eventType: input.alert.eventType };
-    if (input.action === AlertAuditAction.Create) return { type: EventType.CREATE_SIGNER_ALERT, metadata };
-    if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_SIGNER_ALERT, metadata };
-    return { type: EventType.DELETE_SIGNER_ALERT, metadata };
-  };
-
   const getTelemetryEvent = ({ action, orgId, projectId }: TAlertTelemetryInput) => {
     if (!projectId) return undefined;
     return buildPkiAlertTelemetryEvent(
@@ -180,7 +166,6 @@ export const certManagerSignerAlertProviderFactory = ({
     assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseService, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
-    getAuditEvent,
     getWebhookSource: getScopeWideAlertWebhookSource,
     getTelemetryEvent,
     resolveProjectId: async ({ orgId, resourceId }) => {

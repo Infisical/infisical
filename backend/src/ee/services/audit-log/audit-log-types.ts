@@ -993,18 +993,6 @@ export enum EventType {
   UPDATE_ALERT = "update-alert",
   DELETE_ALERT = "delete-alert",
   TEST_ALERT_CHANNEL = "test-alert-channel",
-  CREATE_PKI_APPLICATION_ALERT = "create-pki-application-alert",
-  UPDATE_PKI_APPLICATION_ALERT = "update-pki-application-alert",
-  DELETE_PKI_APPLICATION_ALERT = "delete-pki-application-alert",
-  TEST_PKI_APPLICATION_ALERT_CHANNEL = "test-pki-application-alert-channel",
-  CREATE_CERTIFICATE_MANAGER_ALERT = "create-certificate-manager-alert",
-  UPDATE_CERTIFICATE_MANAGER_ALERT = "update-certificate-manager-alert",
-  DELETE_CERTIFICATE_MANAGER_ALERT = "delete-certificate-manager-alert",
-  TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL = "test-certificate-manager-alert-channel",
-  CREATE_SIGNER_ALERT = "create-signer-alert",
-  UPDATE_SIGNER_ALERT = "update-signer-alert",
-  DELETE_SIGNER_ALERT = "delete-signer-alert",
-  TEST_SIGNER_ALERT_CHANNEL = "test-signer-alert-channel",
 
   // Authorization
   PERMISSION_DENIED = "permission-denied",
@@ -7990,123 +7978,11 @@ interface TestAlertChannelEvent {
   };
 }
 
-type TPkiApplicationAlertEventMetadata = {
-  applicationId: string | null;
-  applicationName: string | null;
-};
-
-interface CreatePkiApplicationAlertEvent {
-  type: EventType.CREATE_PKI_APPLICATION_ALERT;
-  metadata: TPkiApplicationAlertEventMetadata & { alertId: string; name: string; eventType: string };
-}
-
-interface UpdatePkiApplicationAlertEvent {
-  type: EventType.UPDATE_PKI_APPLICATION_ALERT;
-  metadata: TPkiApplicationAlertEventMetadata & { alertId: string; name: string; eventType: string };
-}
-
-interface DeletePkiApplicationAlertEvent {
-  type: EventType.DELETE_PKI_APPLICATION_ALERT;
-  metadata: TPkiApplicationAlertEventMetadata & { alertId: string; name: string; eventType: string };
-}
-
-interface TestPkiApplicationAlertEvent {
-  type: EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL;
-  metadata: TPkiApplicationAlertEventMetadata & {
-    alertId?: string;
-    alertName?: string | null;
-    channelId?: string;
-    channelName?: string | null;
-    channelType: string;
-    success: boolean;
-    deliveredTo?: number;
-    error?: string;
-  };
-}
-
-type TCertificateManagerAlertEventMetadata = {
-  alertId: string;
-  name: string;
-  eventType: string;
-  applications: { id: string; name: string | null }[];
-  profiles: { id: string; name: string | null }[];
-  sources: string[];
-};
-
-interface CreateCertificateManagerAlertEvent {
-  type: EventType.CREATE_CERTIFICATE_MANAGER_ALERT;
-  metadata: TCertificateManagerAlertEventMetadata;
-}
-
-interface UpdateCertificateManagerAlertEvent {
-  type: EventType.UPDATE_CERTIFICATE_MANAGER_ALERT;
-  metadata: TCertificateManagerAlertEventMetadata;
-}
-
-interface DeleteCertificateManagerAlertEvent {
-  type: EventType.DELETE_CERTIFICATE_MANAGER_ALERT;
-  metadata: TCertificateManagerAlertEventMetadata;
-}
-
-type TAlertChannelTestEventMetadata = {
-  alertId?: string;
-  alertName?: string | null;
-  channelId?: string;
-  channelName?: string | null;
-  channelType: string;
-  success: boolean;
-  deliveredTo?: number;
-  error?: string;
-};
-
-interface TestCertificateManagerAlertEvent {
-  type: EventType.TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL;
-  metadata: TAlertChannelTestEventMetadata;
-}
-
-type TSignerAlertEventMetadata = {
-  alertId: string;
-  name: string;
-  eventType: string;
-};
-
-interface CreateSignerAlertEvent {
-  type: EventType.CREATE_SIGNER_ALERT;
-  metadata: TSignerAlertEventMetadata;
-}
-
-interface UpdateSignerAlertEvent {
-  type: EventType.UPDATE_SIGNER_ALERT;
-  metadata: TSignerAlertEventMetadata;
-}
-
-interface DeleteSignerAlertEvent {
-  type: EventType.DELETE_SIGNER_ALERT;
-  metadata: TSignerAlertEventMetadata;
-}
-
-interface TestSignerAlertEvent {
-  type: EventType.TEST_SIGNER_ALERT_CHANNEL;
-  metadata: TAlertChannelTestEventMetadata;
-}
-
 export type Event =
   | CreateAlertEvent
   | UpdateAlertEvent
   | DeleteAlertEvent
   | TestAlertChannelEvent
-  | CreatePkiApplicationAlertEvent
-  | UpdatePkiApplicationAlertEvent
-  | DeletePkiApplicationAlertEvent
-  | TestPkiApplicationAlertEvent
-  | CreateCertificateManagerAlertEvent
-  | UpdateCertificateManagerAlertEvent
-  | DeleteCertificateManagerAlertEvent
-  | TestCertificateManagerAlertEvent
-  | CreateSignerAlertEvent
-  | UpdateSignerAlertEvent
-  | DeleteSignerAlertEvent
-  | TestSignerAlertEvent
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent

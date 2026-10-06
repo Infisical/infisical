@@ -4,7 +4,7 @@ import { vi } from "vitest";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
-import { AlertAuditAction, AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
+import { AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
 import {
   certManagerApplicationAlertProviderFactory,
   TCertManagerApplicationAlertProviderDep
@@ -240,69 +240,6 @@ describe("cert manager application alert provider", () => {
       { label: "Expires", value: expect.any(String) as string },
       { label: "Revocation Reason", value: "Key Compromise" }
     ]);
-  });
-
-  test("emits application-specific audit events carrying the application", () => {
-    const { provider } = buildProvider();
-    const alert = {
-      id: "alert-1",
-      name: "tls-expiry",
-      resourceType: "cert-manager.application",
-      resourceId: "app-1",
-      resourceName: "payments-api",
-      eventType: EXPIRY_EVENT
-    };
-    const metadata = {
-      applicationId: "app-1",
-      applicationName: "payments-api",
-      alertId: "alert-1",
-      name: "tls-expiry",
-      eventType: EXPIRY_EVENT
-    };
-
-    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Create, alert })).toEqual({
-      type: "create-pki-application-alert",
-      metadata
-    });
-    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Update, alert })).toEqual({
-      type: "update-pki-application-alert",
-      metadata
-    });
-    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Delete, alert })).toEqual({
-      type: "delete-pki-application-alert",
-      metadata
-    });
-    expect(
-      provider.getAuditEvent?.({
-        action: AlertAuditAction.TestChannel,
-        test: {
-          resourceType: "cert-manager.application",
-          resourceId: "app-1",
-          resourceName: "payments-api",
-          alertId: "alert-1",
-          alertName: "tls-expiry",
-          channelId: "channel-1",
-          channelName: "Email",
-          channelType: "email",
-          success: true,
-          deliveredTo: 1
-        }
-      })
-    ).toEqual({
-      type: "test-pki-application-alert-channel",
-      metadata: {
-        applicationId: "app-1",
-        applicationName: "payments-api",
-        alertId: "alert-1",
-        alertName: "tls-expiry",
-        channelId: "channel-1",
-        channelName: "Email",
-        channelType: "email",
-        success: true,
-        deliveredTo: 1,
-        error: undefined
-      }
-    });
   });
 
   test("buildViewUrl deep-links to the application and falls back to the applications list", async () => {

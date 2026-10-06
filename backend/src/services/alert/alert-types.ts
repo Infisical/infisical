@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { Event as TAuditEvent } from "@app/ee/services/audit-log/audit-log-types";
 import { TGenericPermission } from "@app/lib/types";
 import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
@@ -137,22 +136,15 @@ export enum AlertAuditAction {
 type TAlertAuditAlert = {
   id: string;
   name: string;
-  condition?: unknown;
-  filters?: TAlertFilters;
   resourceType: string;
   resourceId: string | null;
-  resourceName?: string | null;
   eventType: string;
 };
 
 type TAlertChannelTestAudit = {
   resourceType: string;
   resourceId?: string | null;
-  resourceName?: string | null;
-  alertId?: string;
-  alertName?: string | null;
   channelId?: string;
-  channelName?: string | null;
   channelType: string;
   success: boolean;
   deliveredTo?: number;
@@ -238,8 +230,6 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   includeLastRun?: boolean;
 
   getWebhookSource?: (input: { alertId: string; resourceId?: string | null }) => string | undefined;
-
-  getAuditEvent?(input: TAlertAuditInput): TAuditEvent;
 
   getResourceNames?(input: { orgId: string; resourceIds: string[] }): Promise<Map<string, string>>;
 
