@@ -53,7 +53,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
             </div>
           </div>
         </HoverCardTrigger>
-        <HoverCardContent side="bottom" className="w-80">
+        <HoverCardContent side="bottom">
           <p className="mb-2">Infisical is constantly adding support for more services.</p>
           <p>
             {`If you don't see the third-party
