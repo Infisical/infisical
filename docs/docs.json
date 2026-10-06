@@ -633,6 +633,7 @@
                       "documentation/platform/pki/settings/policies",
                       "documentation/platform/pki/settings/profiles",
                       "documentation/platform/pki/settings/certificate-cleanup",
+                      "documentation/platform/pki/settings/alerts",
                       {
                         "group": "HSM",
                         "pages": [
@@ -817,8 +818,13 @@
                   "documentation/platform/agent-vault/access-bundles",
                   "documentation/platform/agent-vault/services",
                   "documentation/platform/agent-vault/variables",
-                  "documentation/platform/agent-vault/sessions",
-                  "documentation/platform/agent-vault/session-logs",
+                  {
+                    "group": "Sessions",
+                    "root": "documentation/platform/agent-vault/sessions",
+                    "pages": [
+                      "documentation/platform/agent-vault/session-logs"
+                    ]
+                  },
                   "documentation/platform/agent-vault/proxies",
                   "documentation/platform/agent-vault/access-control"
                 ]
@@ -3945,15 +3951,6 @@
                         ]
                       },
                       {
-                        "group": "Application alerts",
-                        "pages": [
-                          "api-reference/endpoints/pki/applications/alerts/list",
-                          "api-reference/endpoints/pki/applications/alerts/create",
-                          "api-reference/endpoints/pki/applications/alerts/update",
-                          "api-reference/endpoints/pki/applications/alerts/delete"
-                        ]
-                      },
-                      {
                         "group": "Enrollment methods",
                         "pages": [
                           "api-reference/endpoints/pki/applications/enrollment/get-state",
@@ -3987,15 +3984,6 @@
                               "api-reference/endpoints/pki/applications/enrollment/clear-scep"
                             ]
                           }
-                        ]
-                      },
-                      {
-                        "group": "Alerting",
-                        "pages": [
-                          "api-reference/endpoints/pki-alerts/create",
-                          "api-reference/endpoints/pki-alerts/read",
-                          "api-reference/endpoints/pki-alerts/update",
-                          "api-reference/endpoints/pki-alerts/delete"
                         ]
                       },
                       {
@@ -5089,6 +5077,38 @@
     {
       "source": "/documentation/platform/pki/est",
       "destination": "/documentation/platform/pki/applications/enrollment-methods/est"
+    },
+    {
+      "source": "/api-reference/endpoints/pki/applications/alerts/list",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
+    },
+    {
+      "source": "/api-reference/endpoints/pki/applications/alerts/create",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
+    },
+    {
+      "source": "/api-reference/endpoints/pki/applications/alerts/update",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
+    },
+    {
+      "source": "/api-reference/endpoints/pki/applications/alerts/delete",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
+    },
+    {
+      "source": "/api-reference/endpoints/pki-alerts/create",
+      "destination": "/documentation/platform/pki/settings/alerts"
+    },
+    {
+      "source": "/api-reference/endpoints/pki-alerts/read",
+      "destination": "/documentation/platform/pki/settings/alerts"
+    },
+    {
+      "source": "/api-reference/endpoints/pki-alerts/update",
+      "destination": "/documentation/platform/pki/settings/alerts"
+    },
+    {
+      "source": "/api-reference/endpoints/pki-alerts/delete",
+      "destination": "/documentation/platform/pki/settings/alerts"
     },
     {
       "source": "/documentation/platform/pki/alerting",
