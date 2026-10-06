@@ -66,8 +66,7 @@ const buildService = (opts: {
       },
       deleteById: async (id: string, tx: unknown) => {
         deletes.push({ id, tx });
-      },
-      findOrphanedReminderAlertResourceIds: async () => orphanBatches.shift() ?? []
+      }
     },
     eventEmitter: {
       emit: async (
@@ -79,6 +78,7 @@ const buildService = (opts: {
       }
     },
     alertService: {
+      findOrphanedResourceIds: async () => orphanBatches.shift() ?? [],
       deleteAlertsForDeletedResources: async ({ resourceIds }: { resourceIds: string[] }) => {
         reaped.push(resourceIds);
         return resourceIds.length;

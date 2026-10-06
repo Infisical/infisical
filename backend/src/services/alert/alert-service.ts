@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { TAlertChannels, TAlerts, TAlertsInsert } from "@app/db/schemas";
+import { TableName, TAlertChannels, TAlerts, TAlertsInsert } from "@app/db/schemas";
 import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -825,6 +825,11 @@ export const alertServiceFactory = ({
     }
   };
 
+  const findOrphanedResourceIds = (
+    input: { resourceType: string; resourceTable: TableName; limit: number },
+    tx?: Knex
+  ) => alertDAL.findOrphanedResourceIds(input, tx);
+
   const findRecipientsForResources = (
     input: { resourceType: string; resourceIds: string[]; channelType: string; principalType: string },
     tx?: Knex
@@ -876,6 +881,7 @@ export const alertServiceFactory = ({
     moveAlertsToResource,
     copyAlertsToResource,
     findRecipientsForResources,
+    findOrphanedResourceIds,
     filterRecipientsInScope
   };
 };

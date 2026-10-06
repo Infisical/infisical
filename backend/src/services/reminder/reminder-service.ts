@@ -39,6 +39,7 @@ type TReminderServiceFactoryDep = {
     | "deleteAlertsForDeletedResources"
     | "moveAlertsToResource"
     | "copyAlertsToResource"
+    | "findOrphanedResourceIds"
     | "filterRecipientsInScope"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -323,8 +324,9 @@ export const reminderServiceFactory = ({
   const reapOrphanedReminderAlerts: TReminderServiceFactory["reapOrphanedReminderAlerts"] = async () => {
     for (let batch = 0; batch < MAX_ORPHAN_REAP_BATCHES; batch += 1) {
       // eslint-disable-next-line no-await-in-loop -- each batch is its own short transaction
-      const orphanedSecretIds = await reminderDAL.findOrphanedReminderAlertResourceIds({
+      const orphanedSecretIds = await alertService.findOrphanedResourceIds({
         resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+        resourceTable: TableName.SecretV2,
         limit: ORPHAN_REAP_BATCH_SIZE
       });
       if (orphanedSecretIds.length === 0) return;

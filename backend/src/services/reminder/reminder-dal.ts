@@ -37,30 +37,6 @@ export const reminderDALFactory = (db: TDbClient) => {
     }));
   };
 
-  // Reminder alerts whose secret row is gone. Alerts have no foreign key to secrets, so this is how
-  // every secret delete path (including folder and environment cascades) gets cleaned up.
-  const findOrphanedReminderAlertResourceIds = async (
-    { resourceType, limit }: { resourceType: string; limit: number },
-    tx?: Knex
-  ): Promise<string[]> => {
-    const rows = (await (tx || db.replicaNode())(TableName.Alert)
-      .where(`${TableName.Alert}.resourceType`, resourceType)
-      .whereNotNull(`${TableName.Alert}.resourceId`)
-      .whereNotExists((qb) => {
-        void qb
-          .select(db.raw("1"))
-          .from(TableName.SecretV2)
-          // The CASE keeps a non-uuid resourceId from failing the cast for the whole query.
-          .whereRaw(
-            `"${TableName.SecretV2}"."id" = CASE WHEN "${TableName.Alert}"."resourceId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN "${TableName.Alert}"."resourceId"::uuid END`
-          );
-      })
-      .limit(limit)
-      .select(`${TableName.Alert}.resourceId`)) as { resourceId: string }[];
-
-    return rows.map((row) => row.resourceId);
-  };
-
   const findByIdForUpdate = async (id: string, tx: Knex) => {
     const reminder = await tx(TableName.Reminder).where({ id }).forUpdate().first();
     return reminder;
@@ -133,7 +109,6 @@ export const reminderDALFactory = (db: TDbClient) => {
     ...reminderOrm,
     findDueReminders,
     findByIdForUpdate,
-    findOrphanedReminderAlertResourceIds,
     findSecretReminder,
     findSecretReminders,
     findByProjectAndDateRange

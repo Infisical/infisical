@@ -284,8 +284,37 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
+  // The resource ids of alerts whose resource row no longer exists in `resourceTable`. alerts.resourceId has
+  // no foreign key, so a resource deleted by a cascade (eg a folder deletion removing its secrets) leaves its
+  // alerts behind; this is how its owner finds them.
+  const findOrphanedResourceIds = async (
+    { resourceType, resourceTable, limit }: { resourceType: string; resourceTable: TableName; limit: number },
+    tx?: Knex
+  ): Promise<string[]> => {
+    try {
+      const rows = (await (tx || db.replicaNode())(TableName.Alert)
+        .where(`${TableName.Alert}.resourceType`, resourceType)
+        .whereNotNull(`${TableName.Alert}.resourceId`)
+        .whereNotExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(resourceTable)
+            // The CASE keeps a non-uuid resourceId from failing the cast for the whole query.
+            .whereRaw(
+              `"${resourceTable}"."id" = CASE WHEN "${TableName.Alert}"."resourceId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN "${TableName.Alert}"."resourceId"::uuid END`
+            );
+        })
+        .limit(limit)
+        .select(`${TableName.Alert}.resourceId`)) as { resourceId: string }[];
+      return rows.map((row) => row.resourceId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOrphanedResourceIds" });
+    }
+  };
+
   return {
     ...alertOrm,
+    findOrphanedResourceIds,
     findWithChannelsForResources,
     findRecipientsForResources,
     findEnabledByResourceType,
