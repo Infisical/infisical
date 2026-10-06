@@ -5,7 +5,7 @@ import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/se
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
 import { logger } from "@app/lib/logger";
 
-import { TGitHubDataSource } from "./github-secret-scanning-types";
+import { GitHubDataSourceConfigSchema } from "./github-secret-scanning-schemas";
 
 export const githubSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
@@ -43,10 +43,10 @@ export const githubSecretScanningService = (
       return;
     }
 
-    const dataSource = (await secretScanningV2DAL.dataSources.findOne({
+    const dataSource = await secretScanningV2DAL.dataSources.findOne({
       externalId: String(installation.id),
       type: SecretScanningDataSource.GitHub
-    })) as TGitHubDataSource | undefined;
+    });
 
     if (!dataSource) {
       logger.error(
@@ -55,10 +55,18 @@ export const githubSecretScanningService = (
       return;
     }
 
-    const {
-      isAutoScanEnabled,
-      config: { includeRepos }
-    } = dataSource;
+    const parsedConfig = GitHubDataSourceConfigSchema.safeParse(dataSource.config);
+
+    if (!parsedConfig.success) {
+      logger.error(
+        parsedConfig.error,
+        `secretScanningV2PushEvent: GitHub - Invalid data source config [dataSourceId=${dataSource.id}] [installationId=${installation.id}]`
+      );
+      return;
+    }
+
+    const { isAutoScanEnabled } = dataSource;
+    const { includeRepos } = parsedConfig.data;
 
     if (!isAutoScanEnabled) {
       logger.info(

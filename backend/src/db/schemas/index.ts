@@ -274,7 +274,6 @@ export * from "./user-group-membership";
 export * from "./user-mfa-recovery-codes";
 export * from "./user-secret-activation";
 export * from "./users";
-export * from "./vault-external-migration-configs";
 export * from "./webauthn-credentials";
 export * from "./webhooks";
 export * from "./workflow-integrations";

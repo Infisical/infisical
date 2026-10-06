@@ -20,7 +20,7 @@ export const CodeSigningPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Code Signing" })}</title>
       </Helmet>
-      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}
           icon={PenTool}

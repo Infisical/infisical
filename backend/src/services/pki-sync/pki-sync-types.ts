@@ -127,6 +127,8 @@ export type TCertificateMap = Record<
     cert: string;
     privateKey: string;
     certificateChain?: string;
+    // The stored chain before includeRootCa is applied.
+    fullCertificateChain?: string;
     caCertificate?: string;
     alternativeNames?: string[];
     certificateId?: string;

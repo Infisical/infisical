@@ -114,7 +114,7 @@ const Page = () => {
         >
           {(isAllowed) =>
             isAllowed ? (
-              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
                 <PageHeader
                   backLink={
                     cameFromProfile && search.profileId ? (
