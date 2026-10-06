@@ -43,6 +43,7 @@ import { registerGoDaddyConnectionRouter } from "./godaddy-connection-router";
 import { registerHasuraCloudConnectionRouter } from "./hasura-cloud-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
+import { registerHpeIloConnectionRouter } from "./hpe-ilo-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connection-router";
 import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
@@ -178,5 +179,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.NutanixPrismCentral]: registerNutanixPrismCentralConnectionRouter,
     [AppConnection.Spacelift]: registerSpaceliftConnectionRouter,
     [AppConnection.Daytona]: registerDaytonaConnectionRouter,
-    [AppConnection.Stripe]: registerStripeConnectionRouter
+    [AppConnection.Stripe]: registerStripeConnectionRouter,
+    [AppConnection.HpeIloRedFish]: registerHpeIloConnectionRouter
   };

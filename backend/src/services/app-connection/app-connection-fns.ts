@@ -182,6 +182,7 @@ import {
 } from "./hc-vault";
 import { HerokuConnectionMethod } from "./heroku";
 import { getHerokuConnectionListItem, validateHerokuConnectionCredentials } from "./heroku/heroku-connection-fns";
+import { getHpeIloConnectionListItem, HpeIloConnectionMethod, validateHpeIloConnectionCredentials } from "./hpe-ilo";
 import {
   getHumanitecConnectionListItem,
   HumanitecConnectionMethod,
@@ -357,13 +358,18 @@ const PKI_APP_CONNECTIONS = [
 
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
 
+// connections a Secret Manager feature will use but that no sync or rotation map references yet;
+// drop an entry once its rotation registers in SECRET_ROTATION_CONNECTION_MAP
+const PENDING_SECRET_MANAGER_APP_CONNECTIONS = [AppConnection.HpeIloRedFish];
+
 export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
   switch (projectType) {
     case ProjectType.SecretManager:
       return (
         Boolean(SECRET_SYNC_APP_CONNECTION_MAP[app]) ||
         Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[app]) ||
-        EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(app)
+        EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(app) ||
+        PENDING_SECRET_MANAGER_APP_CONNECTIONS.includes(app)
       );
     case ProjectType.SecretScanning:
       return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[app]);
@@ -472,7 +478,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getPowerDnsConnectionListItem(),
     getSpaceliftConnectionListItem(),
     getDaytonaConnectionListItem(),
-    getStripeConnectionListItem()
+    getStripeConnectionListItem(),
+    getHpeIloConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -709,7 +716,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.PowerDns]: validatePowerDnsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -832,6 +840,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case KempLoadMasterConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
+    case HpeIloConnectionMethod.BasicAuth:
       return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
@@ -987,7 +996,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.PowerDns]: platformManagedCredentialsNotSupported,
   [AppConnection.Spacelift]: platformManagedCredentialsNotSupported,
   [AppConnection.Daytona]: platformManagedCredentialsNotSupported,
-  [AppConnection.Stripe]: platformManagedCredentialsNotSupported
+  [AppConnection.Stripe]: platformManagedCredentialsNotSupported,
+  [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

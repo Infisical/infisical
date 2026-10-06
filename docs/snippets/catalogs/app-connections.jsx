@@ -592,6 +592,14 @@ export const appConnections = [
     category: "Networking & DNS",
   },
   {
+    name: "HPE iLO",
+    slug: "hpe-ilo",
+    path: "/integrations/app-connections/hpe-ilo",
+    description:
+      "Learn how to connect HPE iLO to manage iLO local accounts with Infisical.",
+    category: "Networking & DNS",
+  },
+  {
     name: "NetScaler",
     slug: "netscaler",
     path: "/integrations/app-connections/netscaler",
