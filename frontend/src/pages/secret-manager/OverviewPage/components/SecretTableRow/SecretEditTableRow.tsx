@@ -2180,34 +2180,36 @@ export const SecretEditTableRow = ({
           )}
         >
           <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
-            <PopoverAnchor asChild>
-              <div className="flex items-center gap-1.5">
-                {nameInput}
-                {commentPreview &&
-                  !isImportedSecret &&
-                  !revokedProjectFolderGrant &&
-                  canDescribeSecret && (
-                    <Tooltip open={isCommentOpen ? false : undefined}>
-                      <TooltipTrigger asChild>
-                        <IconButton
-                          aria-label="View secret comment"
-                          variant="ghost-muted"
-                          size="xs"
-                          className="size-3.5 rounded-none border-0 [&>svg]:size-3.5 [&>svg]:stroke-2"
-                          onClick={() => setIsCommentOpen(true)}
-                        >
-                          <MessageSquareIcon className="size-3.5" />
-                        </IconButton>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-72">
-                        <p className="line-clamp-2 break-words whitespace-pre-wrap">
-                          {commentPreview}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-              </div>
-            </PopoverAnchor>
+            <div className="flex items-center gap-1.5">
+              {nameInput}
+              {commentPreview &&
+                !isImportedSecret &&
+                !revokedProjectFolderGrant &&
+                canDescribeSecret && (
+                  <PopoverAnchor asChild>
+                    <span className="inline-flex shrink-0">
+                      <Tooltip open={isCommentOpen ? false : undefined}>
+                        <TooltipTrigger asChild>
+                          <IconButton
+                            aria-label="View secret comment"
+                            variant="ghost-muted"
+                            size="xs"
+                            className="size-3.5 rounded-none border-0 [&>svg]:size-3.5 [&>svg]:stroke-2"
+                            onClick={() => setIsCommentOpen(true)}
+                          >
+                            <MessageSquareIcon className="size-3.5" />
+                          </IconButton>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-72">
+                          <p className="line-clamp-2 break-words whitespace-pre-wrap">
+                            {commentPreview}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </span>
+                  </PopoverAnchor>
+                )}
+            </div>
             {commentPopoverContent}
           </Popover>
         </TableCell>
