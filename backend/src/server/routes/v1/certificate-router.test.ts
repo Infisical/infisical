@@ -12,6 +12,7 @@ describe.each([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(
   (authMode) => {
     let app: FastifyInstance;
     const actor = authMode === AuthMode.IDENTITY_ACCESS_TOKEN ? ActorType.IDENTITY : ActorType.USER;
+    const authMethod = authMode === AuthMode.IDENTITY_ACCESS_TOKEN ? null : AuthMethod.EMAIL;
     const requestId = "550e8400-e29b-41d4-a716-446655440005";
     const certificate = "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----";
     const certificateChain =
@@ -66,7 +67,7 @@ describe.each([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(
       app.addHook("onRequest", async (req) => {
         Object.assign(req, {
           auth: { authMode },
-          permission: { type: actor, id: "actor-id", authMethod: AuthMethod.EMAIL, orgId: "org-id" },
+          permission: { type: actor, id: "actor-id", authMethod, orgId: "org-id" },
           auditLogInfo: {}
         });
       });
@@ -86,7 +87,7 @@ describe.each([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(
       expect(getCertificateFromRequest).toHaveBeenCalledWith({
         actor,
         actorId: "actor-id",
-        actorAuthMethod: AuthMethod.EMAIL,
+        actorAuthMethod: authMethod,
         actorOrgId: "org-id",
         certificateRequestId: requestId
       });
