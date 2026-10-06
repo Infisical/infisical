@@ -145,6 +145,7 @@
                     "root": "documentation/platform/secrets-mgmt/monitoring",
                     "pages": [
                       "documentation/platform/insights",
+                      "documentation/platform/secret-value-search",
                       "documentation/platform/webhooks",
                       "documentation/platform/event-subscriptions"
                     ]
@@ -384,6 +385,7 @@
                       "documentation/platform/dynamic-secrets/github",
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/ldap",
+                      "documentation/platform/dynamic-secrets/oauth2",
                       "documentation/platform/dynamic-secrets/tailscale"
                     ]
                   },
@@ -792,7 +794,21 @@
                 "pages": [
                   "documentation/platform/agent-vault/guides/claude-code",
                   "documentation/platform/agent-vault/guides/codex",
-                  "documentation/platform/agent-vault/guides/opencode"
+                  "documentation/platform/agent-vault/guides/opencode",
+                  {
+                    "group": "Hermes Agent",
+                    "root": "documentation/platform/agent-vault/guides/hermes",
+                    "pages": [
+                      "documentation/platform/agent-vault/guides/hermes-gateway"
+                    ]
+                  },
+                  {
+                    "group": "OpenClaw",
+                    "root": "documentation/platform/agent-vault/guides/openclaw",
+                    "pages": [
+                      "documentation/platform/agent-vault/guides/openclaw-gateway"
+                    ]
+                  }
                 ]
               },
               {
@@ -2542,7 +2558,11 @@
                   {
                     "group": "Audit logs",
                     "pages": [
-                      "api-reference/endpoints/audit-logs/export-audit-log"
+                      "api-reference/endpoints/audit-logs/export-audit-log",
+                      "api-reference/endpoints/audit-logs/get-organization-audit-log-settings",
+                      "api-reference/endpoints/audit-logs/update-organization-audit-log-settings",
+                      "api-reference/endpoints/audit-logs/get-project-audit-log-settings",
+                      "api-reference/endpoints/audit-logs/update-project-audit-log-settings"
                     ]
                   },
                   {

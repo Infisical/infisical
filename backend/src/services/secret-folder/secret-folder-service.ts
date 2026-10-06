@@ -53,6 +53,7 @@ import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bri
 import { TFnSecretMoveResult } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
+import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import {
   TCreateFolderDTO,
@@ -116,6 +117,7 @@ type TSecretFolderServiceFactoryDep = {
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
   secretImportDAL: Pick<TSecretImportDALFactory, "findImportByFolderIds">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
@@ -147,6 +149,7 @@ export const secretFolderServiceFactory = ({
   honeyTokenDAL,
   secretImportDAL,
   secretV2BridgeService,
+  secretValidationRuleService,
   reminderDAL,
   reminderService,
   keyStore
@@ -2019,7 +2022,8 @@ export const secretFolderServiceFactory = ({
             secretApprovalRequestCreationFns,
             secretQueueService,
             reminderDAL,
-            reminderService
+            reminderService,
+            secretValidationRuleService
           })
         );
       }

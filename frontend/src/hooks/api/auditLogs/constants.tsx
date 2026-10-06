@@ -287,6 +287,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.LIST_PKI_SUBSCRIBER_CERTS]: "List PKI subscriber certificates",
 
   [EventType.UPDATE_ORG]: "Update Organization",
+  [EventType.ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING]: "Enable Org-Wide Secret Value Tracking",
   [EventType.CREATE_PROJECT]: "Create Project",
   [EventType.UPDATE_PROJECT]: "Update Project",
   [EventType.DELETE_PROJECT]: "Delete Project",
@@ -297,6 +298,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.DASHBOARD_LIST_SECRETS]: "Dashboard List Secrets",
   [EventType.DASHBOARD_GET_SECRET_VALUE]: "Dashboard Get Secret Value",
+  [EventType.SEARCH_SECRETS_BY_VALUE]: "Search Secrets by Value",
   [EventType.DASHBOARD_GET_SECRET_VERSION_VALUE]: "Dashboard Get Secret Version Value",
 
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR]:
@@ -310,6 +312,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.VIEW_INSIGHTS_AUTH_METHODS]: "View Machine Identity Auth Methods Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY]: "View Secrets Management Summary Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION]: "View Secrets Duplication Insights",
+  [EventType.VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION]: "View Org Secrets Duplication Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS]:
     "View Secrets Management Resource Counts Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE]: "View Secrets Management Usage Insights",
@@ -494,7 +497,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
   [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",
   [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy",
-  [EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE]: "Update session log settings"
+  [EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE]: "Update session log settings",
+  [EventType.PERMISSION_DENIED]: "Permission denied",
+  [EventType.UPDATE_AUDIT_LOG_SETTINGS]: "Update audit log settings"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

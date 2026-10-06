@@ -1,6 +1,5 @@
-import { type ComponentProps, useEffect, useRef } from "react";
+import { type ComponentProps, useEffect, useRef, useSyncExternalStore } from "react";
 import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { useReducedMotion } from "motion/react";
 
 import { cn } from "../../utils";
 
@@ -30,6 +29,12 @@ const sizeStyles: Record<LoaderSize, string> = {
   lg: "w-32"
 };
 
+const subscribeToReducedMotion = (onChange: () => void) => {
+  const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mediaQuery.addEventListener("change", onChange);
+  return () => mediaQuery.removeEventListener("change", onChange);
+};
+
 function Loader({
   className,
   label = "Loading",
@@ -37,7 +42,11 @@ function Loader({
   variant = "neutral",
   ...props
 }: LoaderProps) {
-  const prefersReducedMotion = Boolean(useReducedMotion());
+  const prefersReducedMotion = useSyncExternalStore(
+    subscribeToReducedMotion,
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false
+  );
   const animationRef = useRef<DotLottie | null>(null);
 
   useEffect(() => {

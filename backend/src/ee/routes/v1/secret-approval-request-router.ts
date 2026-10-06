@@ -144,7 +144,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     schema: {
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       body: z.object({
         bypassReason: z.string().max(1000).optional()
@@ -221,7 +221,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     schema: {
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       body: z.object({
         status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED]),
@@ -286,7 +286,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     schema: {
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       body: z.object({
         status: z.nativeEnum(RequestState)
@@ -351,7 +351,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     schema: {
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({

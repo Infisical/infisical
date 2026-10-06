@@ -36,6 +36,13 @@ export type TOrgSeatUsage = {
 export type TFeatureSet = {
   _id: null;
   slug: string | null;
+  productPlans?: {
+    productKey: string;
+    planKey: string | null;
+    status: string | null;
+    trialPlanKey: string | null;
+    trialEndsAt: string | null;
+  }[];
   // True when features are sourced from an offline (air-gapped) license; the billing UI renders a
   // read-only offline banner instead of the live billing surface.
   isOffline?: boolean;

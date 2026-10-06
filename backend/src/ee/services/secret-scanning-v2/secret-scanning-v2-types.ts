@@ -168,11 +168,11 @@ export type TCloneRepository = {
 
 export type TSecretScanningFactoryListRawResources<T extends TSecretScanningDataSourceWithConnection> = (
   dataSource: T
-) => Promise<Pick<TSecretScanningResources, "externalId" | "name" | "type">[]>;
+) => Promise<Pick<TSecretScanningResources, "externalId" | "name">[]>;
 
 export type TSecretScanningFactoryGetDiffScanResourcePayload<
   P extends TQueueSecretScanningResourceDiffScan["payload"]
-> = (payload: P) => Pick<TSecretScanningResources, "externalId" | "name" | "type">;
+> = (payload: P) => Pick<TSecretScanningResources, "externalId" | "name">;
 
 export type TSecretScanningFactoryGetFullScanPath<T extends TSecretScanningDataSourceWithConnection> = (parameters: {
   dataSource: T;
@@ -244,7 +244,7 @@ export type TGetFindingsPayload = Promise<TFindingsPayload>;
 
 export type TUpdateSecretScanningFindingDTO = {
   status?: SecretScanningFindingStatus;
-  remarks?: string | null;
+  triageComment?: string | null;
   findingId: string;
 };
 

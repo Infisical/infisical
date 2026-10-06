@@ -87,7 +87,6 @@ import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/aut
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
-import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import {
@@ -560,7 +559,7 @@ export const Navbar = () => {
                               a={OrgPermissionSubjects.SubOrganization}
                             >
                               {(isAllowed) =>
-                                isAllowed ? (
+                                isAllowed && !isSubOrganization ? (
                                   <CommandItem
                                     className="text-muted"
                                     onSelect={() => {
@@ -624,9 +623,6 @@ export const Navbar = () => {
       </div>
 
       <VersionBadge />
-      <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
-        {getSubscriptionPlanLabel(subscription)}
-      </Badge>
       {!location.pathname.startsWith("/admin") && user.superAdmin && (
         <Button variant="outline" size="xs" className="mt-px mr-2" asChild>
           <Link to="/admin" onClick={handleNavigateToAdminConsole}>

@@ -51,6 +51,7 @@ import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
@@ -818,6 +819,7 @@ export const secretApprovalRequestServiceFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
 
       mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
         const secrets = await applySecretApprovalCommitsV2Bridge({
@@ -831,6 +833,7 @@ export const secretApprovalRequestServiceFactory = ({
           actorOrgId,
           permission,
           cipher,
+          blindIndexer,
           creates,
           updates,
           deletes,

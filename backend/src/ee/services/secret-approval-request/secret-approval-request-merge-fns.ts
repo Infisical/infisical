@@ -17,6 +17,7 @@ import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretOperations } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { TSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
@@ -315,6 +316,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
     actorOrgId,
     permission,
     cipher,
+    blindIndexer,
     creates,
     updates,
     deletes,
@@ -330,12 +332,13 @@ export const secretApprovalRequestMergeFnsFactory = ({
     actorOrgId: string;
     permission: MongoAbility<ProjectPermissionSet>;
     cipher: TSecretManagerCipher;
+    blindIndexer: TSecretBlindIndexer;
     creates: TSecretApprovalBridgeCommit[];
     updates: TSecretApprovalBridgeCommit[];
     deletes: TSecretApprovalBridgeCommit[];
     tx: Knex;
   }): Promise<TMergedSecretsV2Bridge> => {
-    const { decryptor: secretManagerDecryptor, generateSecretBlindIndex, encryptor: secretManagerEncryptor } = cipher;
+    const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } = cipher;
 
     // The request-time check ran before the approvals did. Another write, or another pending
     // request, may have claimed a proposed value since, so the rules are enforced again here,
@@ -363,8 +366,8 @@ export const secretApprovalRequestMergeFnsFactory = ({
     const creationBlindIndexes = await Promise.all(
       creates.map((el) =>
         el.encryptedValue
-          ? generateSecretBlindIndex(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }))
-          : Promise.resolve(undefined)
+          ? blindIndexer.generateBlindIndexes(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }))
+          : Promise.resolve(null)
       )
     );
 
@@ -379,7 +382,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
             version: 1,
             encryptedComment: el.encryptedComment,
             encryptedValue: el.encryptedValue,
-            secretValueBlindIndex: creationBlindIndexes[idx],
+            blindIndexes: creationBlindIndexes[idx],
             skipMultilineEncoding: el.skipMultilineEncoding,
             key: el.key,
             secretMetadata: toSecretMetadataInput(el.secretMetadata),
@@ -437,7 +440,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
           folderDAL,
           encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
           decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-          generateSecretBlindIndex,
+          blindIndexer,
           tx
         });
       }
@@ -462,8 +465,8 @@ export const secretApprovalRequestMergeFnsFactory = ({
         const shouldComputeBlindIndex =
           !el.secret?.isRotatedSecret && el.encryptedValue !== null && el.encryptedValue !== undefined;
         return shouldComputeBlindIndex
-          ? generateSecretBlindIndex(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue as Buffer }))
-          : Promise.resolve(undefined);
+          ? blindIndexer.generateBlindIndexes(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue as Buffer }))
+          : Promise.resolve(null);
       })
     );
 
@@ -478,7 +481,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
               !el.secret?.isRotatedSecret && el.encryptedValue !== null && el.encryptedValue !== undefined
                 ? {
                     encryptedValue: el.encryptedValue,
-                    secretValueBlindIndex: updationBlindIndexes[idx],
+                    blindIndexes: updationBlindIndexes[idx],
                     references: el.encryptedValue
                       ? getAllSecretReferences(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString())
                           .nestedReferences
@@ -531,7 +534,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
         folderDAL,
         encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
         decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-        generateSecretBlindIndex,
+        blindIndexer,
         tx
       });
     }

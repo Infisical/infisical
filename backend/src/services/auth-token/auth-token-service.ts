@@ -358,6 +358,12 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return { newRefreshToken, updatedSession };
   };
 
+  const sessionNoLongerValid = () =>
+    new UnauthorizedError({
+      name: "InvalidToken",
+      message: "Your session is no longer valid, please re-authenticate"
+    });
+
   const validateUserSessionFreshness = async ({
     userId,
     tokenVersionId,
@@ -372,15 +378,13 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     const session = await tokenDAL.findOneTokenSession({ id: tokenVersionId, userId }, undefined, {
       readFromPrimary
     });
-    if (!session) throw new NotFoundError({ name: "Session not found" });
-    if (accessVersion !== session.accessVersion) {
-      throw new UnauthorizedError({ name: "StaleSession", message: "User session is stale, please re-authenticate" });
-    }
+    if (!session) throw sessionNoLongerValid();
+    if (accessVersion !== session.accessVersion) throw sessionNoLongerValid();
 
     const user = await requestMemoize(requestMemoKeys.userFindById(session.userId), () =>
       userDAL.findById(session.userId)
     );
-    if (!user || !user.isAccepted) throw new NotFoundError({ message: `User with ID '${session.userId}' not found` });
+    if (!user || !user.isAccepted) throw sessionNoLongerValid();
 
     if (isUserLocked(user)) {
       throw new UnauthorizedError({ message: "Account is locked" });

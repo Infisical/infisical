@@ -27,6 +27,7 @@ const applySecretApprovalCommitsV2Bridge = vi.fn();
 const findMergedFolder = vi.fn();
 const syncMergedSecrets = vi.fn().mockResolvedValue(undefined);
 const notifySecretApprovalBypass = vi.fn().mockResolvedValue(undefined);
+const BLIND_INDEXER = { generateBlindIndexes: vi.fn() };
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 vi.mock("../secret-approval-request/secret-approval-request-commit-fns", async (importOriginal) => ({
@@ -42,6 +43,9 @@ vi.mock("../secret-approval-request/secret-approval-request-merge-fns", async (i
     syncMergedSecrets,
     notifySecretApprovalBypass
   })
+}));
+vi.mock("@app/services/secret-v2-bridge/secret-blind-index-fns", () => ({
+  createSecretBlindIndexer: async () => BLIND_INDEXER
 }));
 vi.mock("./secret-change-request-bridge-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./secret-change-request-bridge-fns")>()),
@@ -668,6 +672,7 @@ describe("secretChangeRequestBridge mergeSecretChangeRequest", () => {
         actorId: "approver-1",
         actorOrgId: "org-1",
         cipher: CIPHER,
+        blindIndexer: BLIND_INDEXER,
         creates: COMMIT_ROWS,
         updates: [],
         deletes: [],
