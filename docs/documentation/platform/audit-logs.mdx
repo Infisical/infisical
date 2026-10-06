@@ -305,9 +305,9 @@ To keep a misconfigured client from filling the log, Infisical records the first
 
 ### Certificate issuance failures
 
-If Infisical can't issue a certificate, it records a `certificate-issuance-failed` event with the reason. Infisical records the event for certificates requested from a certificate profile through the API or the Infisical UI, ACME, EST, and SCEP, including manual renewals and certificates issued after an approval. The event is in the `management` class, so it's always recorded.
+If Infisical can't issue a certificate, it records a `certificate-issuance-failed` event with the reason. Infisical records the event for certificates requested from a certificate profile through the API or the Infisical UI, ACME, EST, and SCEP, including renewals and certificates issued after an approval. The event is in the `management` class, so it's always recorded.
 
-Infisical doesn't record the event for automatic renewals, for EST enrollment through a certificate template, or for EST requests rejected before Infisical reads the CSR, such as a failed sign-in.
+If an automatic renewal fails before Infisical sends it to an external CA, Infisical records an `automated-renew-certificate-failed` event instead. Infisical doesn't record the event for EST enrollment through a certificate template, or for EST requests rejected before Infisical reads the CSR, such as a failed sign-in.
 
 The event records which certificate failed and why:
 

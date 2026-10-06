@@ -74,6 +74,21 @@ describe("recordCertificateIssuanceFailure", () => {
     });
   });
 
+  it("drops empty metadata fields", async () => {
+    const { deps, record } = setup();
+
+    await record(new Error("x"), { commonName: "", applicationId: null, caId: undefined });
+
+    const [call] = deps.auditLogService.createCollapsedAuditLog.mock.calls[0] as [
+      { event: { metadata: Record<string, unknown> } }
+    ];
+    expect(call.event.metadata).toEqual({
+      operation: CertificateIssuanceOperation.ISSUE,
+      errorName: "Error",
+      error: "x"
+    });
+  });
+
   it("does not look up names it was already given", async () => {
     const { deps, record } = setup();
 

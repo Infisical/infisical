@@ -20,6 +20,16 @@ type TCertificateIssuanceFailedMetadata = Omit<
   "errorName" | "error" | keyof TAuditLogCollapseSummary
 >;
 
+// Callers pass whatever they have; empty values are dropped before the event is written.
+type TCertificateIssuanceFailedMetadataInput = Pick<TCertificateIssuanceFailedMetadata, "operation"> & {
+  [K in Exclude<keyof TCertificateIssuanceFailedMetadata, "operation">]?: TCertificateIssuanceFailedMetadata[K] | null;
+};
+
+const withoutEmptyFields = <T extends Record<string, unknown>>(fields: T) =>
+  Object.fromEntries(
+    Object.entries(fields).filter(([, value]) => value !== undefined && value !== null && value !== "")
+  ) as { [K in keyof T]: Exclude<T[K], null> };
+
 export type TRecordCertificateIssuanceFailureDeps = {
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
   certificateAuthorityDAL?: Pick<TCertificateAuthorityDALFactory, "findById">;
@@ -30,7 +40,7 @@ export type TRecordCertificateIssuanceFailureDTO = {
   auditLogInfo: AuditLogInfo;
   projectId: string;
   error: unknown;
-  metadata: TCertificateIssuanceFailedMetadata;
+  metadata: TCertificateIssuanceFailedMetadataInput;
 };
 
 // Lets the code that created a certificate request attach its id to the error it rethrows, so the
@@ -73,10 +83,13 @@ export const recordCertificateIssuanceFailure = async (
       event: {
         type: EventType.CERTIFICATE_ISSUANCE_FAILED,
         metadata: {
-          ...metadata,
-          ...(certificateRequestId && { certificateRequestId }),
-          ...(ca?.name && { caName: ca.name }),
-          ...(application?.name && { applicationName: application.name }),
+          ...withoutEmptyFields({
+            ...metadata,
+            certificateRequestId,
+            caName: metadata.caName ?? ca?.name,
+            applicationName: metadata.applicationName ?? application?.name
+          }),
+          operation: metadata.operation,
           errorName,
           error: errorMessage
         }

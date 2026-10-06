@@ -131,16 +131,14 @@ export const recordCertificateRequestFailure = async (
       error: error ?? new Error(certificateRequest.errorMessage || "Certificate issuance failed"),
       metadata: {
         operation: resolvedOperation,
-        ...(certificateRequest.enrollmentType && {
-          enrollmentType: certificateRequest.enrollmentType as EnrollmentType
-        }),
+        enrollmentType: certificateRequest.enrollmentType as EnrollmentType | null,
         certificateRequestId: certificateRequest.id,
-        ...(certificateRequest.profileId && { certificateProfileId: certificateRequest.profileId }),
-        ...(profile && { profileName: profile.slug }),
-        ...(certificateRequest.caId && { caId: certificateRequest.caId }),
-        ...(commonName && { commonName }),
-        ...(originalCertificateId && { originalCertificateId }),
-        ...(certificateRequest.applicationId && { applicationId: certificateRequest.applicationId })
+        certificateProfileId: certificateRequest.profileId,
+        profileName: profile?.slug,
+        caId: certificateRequest.caId,
+        commonName,
+        originalCertificateId,
+        applicationId: certificateRequest.applicationId
       }
     });
   } catch (auditError) {

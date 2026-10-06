@@ -1249,8 +1249,8 @@ export const pkiAcmeServiceFactory = ({
               profileName: profile.slug,
               caId: ca.id,
               caName: ca.name,
-              ...(certificateRequest.commonName && { commonName: certificateRequest.commonName }),
-              ...(accountApplicationId && { applicationId: accountApplicationId })
+              commonName: certificateRequest.commonName,
+              applicationId: accountApplicationId
             }
           }
         );

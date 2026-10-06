@@ -1074,9 +1074,9 @@ export const pkiScepServiceFactory = ({
             enrollmentType: EnrollmentType.SCEP,
             certificateProfileId: params.profile.id,
             profileName: params.profile.slug,
-            ...(params.profile.caId && { caId: params.profile.caId }),
-            ...(commonName && { commonName }),
-            ...(params.applicationId && { applicationId: params.applicationId })
+            caId: params.profile.caId,
+            commonName,
+            applicationId: params.applicationId
           }
         }
       );

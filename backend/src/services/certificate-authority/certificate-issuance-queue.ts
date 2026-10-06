@@ -1321,14 +1321,15 @@ export const certificateIssuanceQueueFactory = ({
           const isFinalAttempt = attemptsMade + 1 >= maxAttempts;
           const { certificateRequestId, certificateId, caId } = job.data;
           if (isFinalAttempt && certificateRequestId && certificateRequestService) {
+            const finalMessage = `AWS ACM DNS validation did not complete after ${maxAttempts} attempts: ${error.message}`;
             try {
               await certificateRequestService.updateCertificateRequestStatus({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
                 operation: job.data.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
                 originalCertificateId: job.data.originalCertificateId,
-                error,
-                errorMessage: `AWS ACM DNS validation did not complete after ${maxAttempts} attempts: ${error.message}`
+                error: new AcmPendingError(finalMessage),
+                errorMessage: finalMessage
               });
               logger.info(
                 `Marked certificate request FAILED after exhausted ACM validation retries [certificateRequestId=${certificateRequestId}] [certificateId=${certificateId}] [caId=${caId}]`
