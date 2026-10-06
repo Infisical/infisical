@@ -55,7 +55,6 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
@@ -189,15 +188,8 @@ type TSecretV2BridgeServiceFactoryDep = {
   >;
   reminderService: Pick<
     TReminderServiceFactory,
-    | "prepareReminder"
-    | "applyReminder"
-    | "createReminder"
-    | "getReminder"
-    | "batchCreateReminders"
-    | "moveReminderAlerts"
-    | "copyReminderAlerts"
+    "prepareReminder" | "applyReminder" | "createReminder" | "getReminder" | "moveReminders" | "copyReminders"
   >;
-  reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -227,7 +219,6 @@ export const secretV2BridgeServiceFactory = ({
   resourceMetadataDAL,
   keyStore,
   reminderService,
-  reminderDAL,
   secretValidationRuleService,
   projectFolderGrantDAL,
   orgDAL
@@ -3285,7 +3276,6 @@ export const secretV2BridgeServiceFactory = ({
         secretApprovalRequestDAL,
         secretApprovalRequestSecretDAL,
         secretQueueService,
-        reminderDAL,
         reminderService,
         secretValidationRuleService
       })

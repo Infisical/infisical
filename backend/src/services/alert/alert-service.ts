@@ -744,7 +744,7 @@ export const alertServiceFactory = ({
 
   // For a resource that is recreated under a new id (eg a secret moved between folders), so its alerts
   // and their history follow it instead of being rebuilt.
-  const repointAlertsForResource = async (
+  const moveAlertsToResource = async (
     {
       resourceType,
       fromResourceId,
@@ -755,19 +755,21 @@ export const alertServiceFactory = ({
     await alertDAL.update({ resourceType, resourceId: fromResourceId }, { resourceId: toResourceId }, tx);
   };
 
-  // For a resource recreated under a new id while the original stays (eg a secret moved out of a folder
-  // whose approval policy holds the source until the request merges), so both keep working alerts.
-  // Channel configs are copied still encrypted: both ids belong to the same project and share its cipher,
-  // so no KMS call is needed and this is safe inside the caller's transaction.
-  const copyAlertsForResource = async (
+  // For a resource recreated under a new id in the same project while the original stays (eg a secret moved
+  // out of a folder whose approval policy holds the source until the request merges), so both keep working
+  // alerts. Channel configs are copied still encrypted, which is only valid because both ids share the
+  // project's cipher, so only that project's alerts are copied. No KMS call, so it is safe in the caller's
+  // transaction.
+  const copyAlertsToResource = async (
     {
       resourceType,
+      projectId,
       fromResourceId,
       toResourceId
-    }: { resourceType: string; fromResourceId: string; toResourceId: string },
+    }: { resourceType: string; projectId: string; fromResourceId: string; toResourceId: string },
     tx: Knex
   ): Promise<void> => {
-    const alerts = await alertDAL.find({ resourceType, resourceId: fromResourceId }, { tx });
+    const alerts = await alertDAL.find({ resourceType, resourceId: fromResourceId, projectId }, { tx });
     if (alerts.length === 0) return;
 
     const channels = await alertChannelDAL.findByAlertIds(
@@ -871,8 +873,8 @@ export const alertServiceFactory = ({
     deleteAlertsForResource,
     deleteAlertsForDeletedResource,
     deleteAlertsForDeletedResources,
-    repointAlertsForResource,
-    copyAlertsForResource,
+    moveAlertsToResource,
+    copyAlertsToResource,
     findRecipientsForResources,
     filterRecipientsInScope
   };

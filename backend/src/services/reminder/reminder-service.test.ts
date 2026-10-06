@@ -200,6 +200,7 @@ const buildWriteService = (opts: { projectUserIds?: string[]; alertRefusal?: Err
   // What the reminder asked the alert module to set on its secret.
   const alertRequests: Array<Record<string, unknown>> = [];
   const copied: unknown[] = [];
+  const insertedReminders: Record<string, unknown>[] = [];
   const deletedAlerts: Array<{ resourceIds: string[]; tx: unknown }> = [];
   const repointed: Array<{ fromResourceId: string; toResourceId: string; tx: unknown }> = [];
 
@@ -217,8 +218,16 @@ const buildWriteService = (opts: { projectUserIds?: string[]; alertRefusal?: Err
       },
       updateById: async () => ({}),
       delete: async () => [],
+      // A secret id starting "plain-" has no reminder.
       findSecretReminders: async (secretIds: string[]) =>
-        secretIds.map((secretId) => ({ id: `rem-${secretId}`, secretId, recipients: ["stale-user"] }))
+        secretIds
+          .filter((secretId) => !secretId.startsWith("plain-"))
+          .map((secretId) => ({ id: `rem-${secretId}`, secretId, repeatDays: 30, message: "rotate it" })),
+      insertMany: async (rows: Record<string, unknown>[]) => {
+        calls.push("reminder:insert");
+        insertedReminders.push(...rows);
+        return rows;
+      }
     },
     eventEmitter: { emit: async () => {} },
     secretV2BridgeDAL: {
@@ -229,7 +238,8 @@ const buildWriteService = (opts: { projectUserIds?: string[]; alertRefusal?: Err
         folderId: "folder-1",
         tags: []
       }),
-      invalidateSecretCacheByProjectId: async () => {}
+      invalidateSecretCacheByProjectId: async () => {},
+      find: async (filter: { $in: { id: string[] } }) => filter.$in.id.map((id) => ({ id, projectId: "proj-1" }))
     },
     folderDAL: {
       findSecretPathByFolderIds: async () => [{ id: "folder-1", path: "/", environmentSlug: "dev" }]
@@ -256,18 +266,18 @@ const buildWriteService = (opts: { projectUserIds?: string[]; alertRefusal?: Err
         deletedAlerts.push({ resourceIds, tx });
         return resourceIds.length;
       },
-      repointAlertsForResource: async (input: { fromResourceId: string; toResourceId: string }, tx: unknown) => {
-        calls.push("alert:repoint");
+      moveAlertsToResource: async (input: { fromResourceId: string; toResourceId: string }, tx: unknown) => {
+        calls.push("alert:move");
         repointed.push({ ...input, tx });
       },
-      copyAlertsForResource: async (input: { fromResourceId: string; toResourceId: string }, tx: unknown) => {
+      copyAlertsToResource: async (input: { fromResourceId: string; toResourceId: string }, tx: unknown) => {
         calls.push("alert:copy");
         copied.push({ ...input, tx });
       }
     }
   } as never);
 
-  return { service, calls, alertRequests, deletedAlerts, repointed, copied, reminderTx, writeTxs };
+  return { service, calls, alertRequests, deletedAlerts, repointed, copied, insertedReminders, reminderTx, writeTxs };
 };
 
 const caller = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null };
@@ -392,28 +402,41 @@ describe("reminder alert sync", () => {
     expect(deletedAlerts).toEqual([{ resourceIds: ["secret-1"], tx }]);
   });
 
-  test("moving reminders clears the destination's alert, then moves the source alert onto it", async () => {
-    const { service, calls, deletedAlerts, repointed } = buildWriteService();
+  test("moving a reminder replaces the destination's reminder and moves the source alert onto it", async () => {
+    const { service, calls, deletedAlerts, repointed, insertedReminders } = buildWriteService();
     const tx = { tx: true } as never;
-    await service.moveReminderAlerts([{ fromSecretId: "secret-src", toSecretId: "secret-dst" }], tx);
+    await service.moveReminders([{ fromSecretId: "secret-src", toSecretId: "secret-dst" }], tx);
 
-    expect(calls).toEqual(["alert:delete", "alert:repoint"]);
+    expect(calls).toEqual(["alert:delete", "reminder:insert", "alert:move"]);
     expect(deletedAlerts).toEqual([{ resourceIds: ["secret-dst"], tx }]);
+    expect(insertedReminders).toEqual([expect.objectContaining({ secretId: "secret-dst", repeatDays: 30 })]);
     expect(repointed).toEqual([
       { resourceType: SECRET_REMINDER_RESOURCE_TYPE, fromResourceId: "secret-src", toResourceId: "secret-dst", tx }
     ]);
   });
 
-  test("copying reminder alerts clears the destination's alert, then copies the source alert onto it", async () => {
+  test("copying a reminder gives the destination a copy of the source alert in the source's project", async () => {
     const { service, calls, repointed, copied } = buildWriteService();
     const tx = { tx: true } as never;
-    await service.copyReminderAlerts([{ fromSecretId: "secret-src", toSecretId: "secret-dst" }], tx);
+    await service.copyReminders([{ fromSecretId: "secret-src", toSecretId: "secret-dst" }], tx);
 
-    expect(calls).toEqual(["alert:delete", "alert:copy"]);
+    expect(calls).toEqual(["alert:delete", "reminder:insert", "alert:copy"]);
     expect(repointed).toEqual([]);
     expect(copied).toEqual([
-      { resourceType: SECRET_REMINDER_RESOURCE_TYPE, fromResourceId: "secret-src", toResourceId: "secret-dst", tx }
+      {
+        resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+        projectId: "proj-1",
+        fromResourceId: "secret-src",
+        toResourceId: "secret-dst",
+        tx
+      }
     ]);
+  });
+
+  test("a moved secret with no reminder leaves the destination's reminder alone", async () => {
+    const { service, calls } = buildWriteService();
+    await service.moveReminders([{ fromSecretId: "plain-src", toSecretId: "secret-dst" }], { tx: true } as never);
+    expect(calls).toEqual([]);
   });
 
   test("dashboard recipients come from the alert, not the old recipients table", async () => {

@@ -51,14 +51,8 @@ export type TPreparedReminder = {
   alert: TPreparedAlert;
 };
 
-export type TBatchCreateReminderDTO = {
-  secretId: string;
-  message?: string | null;
-  repeatDays?: number | null;
-  nextReminderDate?: string | Date | null;
-  fromDate?: Date | null;
-  projectId?: string;
-}[];
+// A secret recreated under a new id (eg by a move between folders).
+export type TReminderMove = { fromSecretId: string; toSecretId: string };
 
 export interface TReminderServiceFactory {
   prepareReminder: (dto: TPrepareReminderDTO) => Promise<TPreparedReminder>;
@@ -104,17 +98,9 @@ export interface TReminderServiceFactory {
 
   deleteReminderBySecretId: (secretId: string, projectId: string, tx?: Knex) => Promise<void>;
 
-  batchCreateReminders: (
-    remindersData: TBatchCreateReminderDTO,
-    tx?: Knex
-  ) => Promise<{
-    created: number;
-    reminderIds: string[];
-  }>;
+  moveReminders: (moves: TReminderMove[], tx: Knex) => Promise<void>;
 
-  moveReminderAlerts: (moves: { fromSecretId: string; toSecretId: string }[], tx: Knex) => Promise<void>;
-
-  copyReminderAlerts: (moves: { fromSecretId: string; toSecretId: string }[], tx: Knex) => Promise<void>;
+  copyReminders: (moves: TReminderMove[], tx: Knex) => Promise<void>;
 
   getRemindersForDashboard: (secretIds: string[]) => Promise<Record<string, TReminder & { recipients: string[] }>>;
 }

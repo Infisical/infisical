@@ -29,6 +29,7 @@ import { ActorType } from "../auth/auth-type";
 import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TReminderMove } from "../reminder/reminder-types";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -1629,7 +1630,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
     secretQueueService,
-    reminderDAL,
     reminderService,
     secretValidationRuleService
   } = dto;
@@ -1722,9 +1722,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
       : undefined
   }));
-
-  const sourceReminders = await reminderDAL.findSecretReminders(secretIds, tx);
-  const sourceSecretIdToKey = Object.fromEntries(decryptedSourceSecrets.map((s) => [s.id, s.key]));
 
   // Looked up before the destination is written, because how the reminders' alerts are carried over
   // depends on whether the source keeps its secrets.
@@ -2033,42 +2030,15 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       })
     );
 
-    // carry the source secrets' reminders over to the destination secrets so the schedule
-    // (message, repeatDays, nextReminderDate, fromDate) survives the move, and the reminder's alert
-    // (who gets notified and how) follows it.
-    const remindersToCreate = sourceReminders
-      .map((rem) => {
-        const key = rem.secretId ? sourceSecretIdToKey[rem.secretId] : undefined;
-        const destinationSecretId = key ? destinationSecretIdByKey[key] : undefined;
-        if (!rem.secretId || !destinationSecretId) return null;
-        return {
-          sourceSecretId: rem.secretId,
-          secretId: destinationSecretId,
-          message: rem.message,
-          repeatDays: rem.repeatDays,
-          nextReminderDate: rem.nextReminderDate,
-          fromDate: rem.fromDate,
-          projectId
-        };
-      })
-      .filter((r): r is NonNullable<typeof r> => Boolean(r));
-
-    if (remindersToCreate.length) {
-      // we can delete the reminders in this case, because if it gets in this step,
-      //  it means that the move is a overwrite move or there is no existing reminder for the secret.
-      await reminderDAL.delete({ $in: { secretId: remindersToCreate.map((r) => r.secretId) } }, tx);
-      await reminderService.batchCreateReminders(
-        remindersToCreate.map(({ sourceSecretId, ...reminder }) => reminder),
-        tx
-      );
-      const alertMoves = remindersToCreate.map((r) => ({ fromSecretId: r.sourceSecretId, toSecretId: r.secretId }));
-      // A source held by an approval policy keeps its secrets, and their reminders, until the request merges,
-      // so those reminders keep their alerts and the destination gets copies.
-      if (shouldApplyPolicy(sourceFolderPolicy, actor)) {
-        await reminderService.copyReminderAlerts(alertMoves, tx);
-      } else {
-        await reminderService.moveReminderAlerts(alertMoves, tx);
-      }
+    // Each moved secret is recreated under a new id and takes its reminder with it. A source held by an
+    // approval policy keeps its secrets, and their reminders, until the request merges, so those are copied.
+    const reminderMoves = decryptedSourceSecrets
+      .map((s) => ({ fromSecretId: s.id, toSecretId: destinationSecretIdByKey[s.key] }))
+      .filter((move): move is TReminderMove => Boolean(move.toSecretId));
+    if (shouldApplyPolicy(sourceFolderPolicy, actor)) {
+      await reminderService.copyReminders(reminderMoves, tx);
+    } else {
+      await reminderService.moveReminders(reminderMoves, tx);
     }
 
     isDestinationUpdated = true;

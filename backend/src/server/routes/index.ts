@@ -2414,7 +2414,6 @@ export const registerRoutes = async (
     kmsService,
     resourceMetadataDAL,
     reminderService,
-    reminderDAL,
     keyStore,
     secretValidationRuleService,
     projectFolderGrantDAL,
@@ -2509,7 +2508,6 @@ export const registerRoutes = async (
     secretImportDAL,
     secretV2BridgeService,
     secretValidationRuleService,
-    reminderDAL,
     reminderService,
     keyStore
   });

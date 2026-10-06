@@ -20,7 +20,7 @@ import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-
 import { TReminderDALFactory } from "./reminder-dal";
 import { emitSecretReminderDue, SECRET_REMINDER_DUE_EVENT, SECRET_REMINDER_RESOURCE_TYPE } from "./reminder-events";
 import { advanceReminderDate, getReminderDueWindow, toUtcDateString } from "./reminder-fns";
-import { TBatchCreateReminderDTO, TCreateReminderDTO, TReminderServiceFactory } from "./reminder-types";
+import { TCreateReminderDTO, TReminderMove, TReminderServiceFactory } from "./reminder-types";
 
 const ORPHAN_REAP_BATCH_SIZE = 500;
 const MAX_ORPHAN_REAP_BATCHES = 20;
@@ -37,12 +37,12 @@ type TReminderServiceFactoryDep = {
     | "applyPreparedAlert"
     | "findRecipientsForResources"
     | "deleteAlertsForDeletedResources"
-    | "repointAlertsForResource"
-    | "copyAlertsForResource"
+    | "moveAlertsToResource"
+    | "copyAlertsToResource"
     | "filterRecipientsInScope"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "findOneWithTags">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "findOneWithTags" | "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
 };
 
@@ -387,108 +387,66 @@ export const reminderServiceFactory = ({
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
   };
 
-  const batchCreateReminders: TReminderServiceFactory["batchCreateReminders"] = async (
-    remindersData: TBatchCreateReminderDTO,
-    tx?: Knex
-  ) => {
-    if (!remindersData || remindersData.length === 0) {
-      return { created: 0, reminderIds: [] };
-    }
-
-    const processedReminders = remindersData.map(
-      ({
-        secretId,
-        message,
-        repeatDays,
-        nextReminderDate: nextReminderDateInput,
-        projectId,
-        fromDate: fromDateInput
-      }) => {
-        let nextReminderDate;
-        const fromDate = fromDateInput ? new Date(fromDateInput) : undefined;
-        if (nextReminderDateInput) {
-          nextReminderDate = new Date(nextReminderDateInput);
-        }
-
-        if (repeatDays && !nextReminderDate) {
-          if (fromDate) {
-            nextReminderDate = fromDate;
-          } else {
-            nextReminderDate = $addDays(repeatDays);
-          }
-        }
-
-        if (!nextReminderDate) {
-          throw new BadRequestError({
-            message: `repeatDays must be a positive number for secretId: ${secretId}`
-          });
-        }
-
-        return {
-          secretId,
-          message,
-          repeatDays,
-          nextReminderDate,
-          projectId,
-          fromDate
-        };
-      }
-    );
-
-    const newReminders = await reminderDAL.insertMany(
-      processedReminders.map(({ secretId, message, repeatDays, nextReminderDate, fromDate }) => ({
-        secretId,
-        message,
-        repeatDays,
-        nextReminderDate,
-        fromDate
-      })),
+  // A moved secret takes its reminder with it, schedule and alert, replacing any reminder the destination
+  // secret already had. Returns the moves whose source had a reminder.
+  const $carrySchedules = async (moves: TReminderMove[], tx: Knex): Promise<TReminderMove[]> => {
+    const sourceReminders = await reminderDAL.findSecretReminders(
+      moves.map((move) => move.fromSecretId),
       tx
     );
+    const reminderBySecretId = new Map(sourceReminders.map((reminder) => [reminder.secretId, reminder]));
+    const carried = moves.filter((move) => reminderBySecretId.has(move.fromSecretId));
+    if (carried.length === 0) return [];
 
-    const projectIds = new Set(processedReminders.map((r) => r.projectId).filter((id): id is string => Boolean(id)));
-    for (const projectId of projectIds) {
-      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
-    }
-
-    return {
-      created: newReminders.length,
-      reminderIds: newReminders.map((r) => r.id)
-    };
+    const destinationIds = carried.map((move) => move.toSecretId);
+    await reminderDAL.delete({ $in: { secretId: destinationIds } }, tx);
+    await alertService.deleteAlertsForDeletedResources(
+      { resourceType: SECRET_REMINDER_RESOURCE_TYPE, resourceIds: destinationIds },
+      tx
+    );
+    await reminderDAL.insertMany(
+      carried.map((move) => {
+        const { message, repeatDays, nextReminderDate, fromDate } = reminderBySecretId.get(move.fromSecretId)!;
+        return { secretId: move.toSecretId, message, repeatDays, nextReminderDate, fromDate };
+      }),
+      tx
+    );
+    return carried;
   };
 
-  type TReminderAlertMove = { fromSecretId: string; toSecretId: string };
-
-  // A destination secret that already had a reminder loses that reminder in the move, so its alert goes too.
-  const $clearDestinationReminderAlerts = (moves: TReminderAlertMove[], tx: Knex) =>
-    alertService.deleteAlertsForDeletedResources(
-      { resourceType: SECRET_REMINDER_RESOURCE_TYPE, resourceIds: moves.map((move) => move.toSecretId) },
-      tx
-    );
-
-  const $alertResource = (move: TReminderAlertMove) => ({
-    resourceType: SECRET_REMINDER_RESOURCE_TYPE,
-    fromResourceId: move.fromSecretId,
-    toResourceId: move.toSecretId
-  });
-
-  // For a secret that is deleted at its source. Alerts follow it to its new id rather than being rebuilt,
-  // so channel secrets (webhook signing keys, PagerDuty integration keys) and send history go with it.
-  const moveReminderAlerts: TReminderServiceFactory["moveReminderAlerts"] = async (moves, tx) => {
-    if (moves.length === 0) return;
-    await $clearDestinationReminderAlerts(moves, tx);
-    for (const move of moves) {
-      await alertService.repointAlertsForResource($alertResource(move), tx);
+  // For a secret deleted at its source. Its alert follows it to the new id rather than being rebuilt, so
+  // channel secrets (webhook signing keys, PagerDuty integration keys) and send history go with it.
+  const moveReminders: TReminderServiceFactory["moveReminders"] = async (moves, tx) => {
+    const carried = await $carrySchedules(moves, tx);
+    for (const move of carried) {
+      await alertService.moveAlertsToResource(
+        {
+          resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+          fromResourceId: move.fromSecretId,
+          toResourceId: move.toSecretId
+        },
+        tx
+      );
     }
   };
 
-  // For a secret that stays at its source as well. Its reminder keeps firing there, so it keeps its alert
-  // and the destination gets its own.
-  const copyReminderAlerts: TReminderServiceFactory["copyReminderAlerts"] = async (moves, tx) => {
-    if (moves.length === 0) return;
-    await $clearDestinationReminderAlerts(moves, tx);
-    for (const move of moves) {
-      await alertService.copyAlertsForResource($alertResource(move), tx);
+  // For a secret that also stays at its source, whose reminder keeps firing there. The source keeps its
+  // alert and the destination gets a copy.
+  const copyReminders: TReminderServiceFactory["copyReminders"] = async (moves, tx) => {
+    const carried = await $carrySchedules(moves, tx);
+    if (carried.length === 0) return;
+    const secrets = await secretV2BridgeDAL.find({ $in: { id: carried.map((move) => move.fromSecretId) } }, { tx });
+    const projectIdBySecretId = new Map(secrets.map((secret) => [secret.id, secret.projectId]));
+    for (const move of carried) {
+      await alertService.copyAlertsToResource(
+        {
+          resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+          projectId: projectIdBySecretId.get(move.fromSecretId)!,
+          fromResourceId: move.fromSecretId,
+          toResourceId: move.toSecretId
+        },
+        tx
+      );
     }
   };
 
@@ -521,9 +479,8 @@ export const reminderServiceFactory = ({
     reapOrphanedReminderAlerts,
     deleteReminder,
     deleteReminderBySecretId,
-    batchCreateReminders,
-    moveReminderAlerts,
-    copyReminderAlerts,
+    moveReminders,
+    copyReminders,
     getRemindersForDashboard
   };
 };
