@@ -278,7 +278,7 @@ const caller = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAut
 
 const saveReminder = (
   service: ReturnType<typeof buildWriteService>["service"],
-  fields: { recipients?: string[] | null; channels?: unknown[] }
+  fields: { recipients?: string[] | null; resolvedRecipients?: unknown[]; channels?: unknown[] }
 ) =>
   service.createReminder({
     ...caller,
@@ -340,6 +340,21 @@ describe("reminder alert sync", () => {
       /None of the selected reminder recipients/
     );
     expect(calls).toEqual([]);
+  });
+
+  test("recipients a caller already resolved are used as given, without a second membership check", async () => {
+    const { service, created } = buildWriteService({ projectUserIds: [] });
+    await saveReminder(service, { resolvedRecipients: [{ principalType: "user", principalId: "user-1" }] });
+    expect((created[0] as { channels: { recipients: unknown }[] }).channels[0].recipients).toEqual([
+      { principalType: "user", principalId: "user-1" }
+    ]);
+  });
+
+  test("resolving recipients refuses a list with nobody left in the project", async () => {
+    const { service } = buildWriteService({ projectUserIds: [] });
+    await expect(
+      service.resolveReminderRecipients({ actorOrgId: "org-1", projectId: "proj-1", recipients: ["user-gone"] })
+    ).rejects.toThrow(/None of the selected reminder recipients/);
   });
 
   test("given channels, saves them as the alert's complete channel list", async () => {

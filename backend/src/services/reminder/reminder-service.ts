@@ -10,7 +10,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TGenericPermission } from "@app/lib/types";
 
-import { TAlertChannelInput } from "../alert/alert-channel-service-types";
+import { TAlertChannelInput, TChannelRecipientInput } from "../alert/alert-channel-service-types";
 import { AlertChannelType } from "../alert/alert-channel-types";
 import { TAlertServiceFactory } from "../alert/alert-service";
 import { AlertPrincipalType, MAX_RECIPIENTS_PER_CHANNEL } from "../alert/alert-types";
@@ -78,23 +78,46 @@ export const reminderServiceFactory = ({
     return bySecret;
   };
 
+  // Who a reminder's email goes to. An empty list keeps the reminder's original meaning: everyone in the
+  // project. Exposed so a caller that writes something else first (a secret update) can refuse the
+  // request before that write instead of after it has committed.
+  const resolveReminderRecipients: TReminderServiceFactory["resolveReminderRecipients"] = async ({
+    actorOrgId,
+    projectId,
+    recipients
+  }) => {
+    // Reminder recipients were never pruned when someone left the project, so drop them rather than fail.
+    const requested = [...new Set(recipients ?? [])];
+    const inScope = await alertService.filterRecipientsInScope(
+      { orgId: actorOrgId, projectId },
+      requested.map((principalId) => ({ principalType: AlertPrincipalType.USER, principalId }))
+    );
+    // Falling back to the whole project here would send the secret's key, path and note to people nobody
+    // chose, so a list with nobody left in it is refused instead.
+    if (requested.length && !inScope.length) {
+      throw new BadRequestError({
+        message: "None of the selected reminder recipients are members of this project. Choose recipients again."
+      });
+    }
+    return inScope.length ? inScope : [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: projectId }];
+  };
+
   // Given `channels`, they are the alert's complete channel list. Otherwise the reminder API only knows
   // user ids, so it owns the alert's email channels and leaves every other channel (Slack, webhook,
-  // PagerDuty) as the user configured it. An empty list keeps the reminder's original meaning: everyone
-  // in the project. The alert is written as the caller, so the reminder provider checks they can edit
-  // the secret.
+  // PagerDuty) as the user configured it. The alert is written as the caller, so the reminder provider
+  // checks they can edit the secret.
   const $syncReminderAlert = async ({
     secretId,
     secretKey,
     projectId,
-    recipients,
+    emailRecipients,
     channels,
     actor
   }: {
     secretId: string;
     secretKey: string;
     projectId: string;
-    recipients?: string[] | null;
+    emailRecipients: TChannelRecipientInput[];
     channels?: TAlertChannelInput[];
     actor: TGenericPermission;
   }) => {
@@ -130,22 +153,6 @@ export const reminderServiceFactory = ({
       return;
     }
 
-    // Reminder recipients were never pruned when someone left the project, so drop them rather than fail.
-    const requested = [...new Set(recipients ?? [])];
-    const inScope = await alertService.filterRecipientsInScope(
-      { orgId: actor.actorOrgId, projectId },
-      requested.map((principalId) => ({ principalType: AlertPrincipalType.USER, principalId }))
-    );
-    // Falling back to the whole project here would send the secret's key, path and note to people nobody
-    // chose, so a list with nobody left in it is refused instead.
-    if (requested.length && !inScope.length) {
-      throw new BadRequestError({
-        message: "None of the selected reminder recipients are members of this project. Choose recipients again."
-      });
-    }
-    const emailRecipients = inScope.length
-      ? inScope
-      : [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: projectId }];
     const existingEmailChannels =
       existing?.channels.filter((channel) => channel.channelType === AlertChannelType.EMAIL) ?? [];
 
@@ -203,6 +210,7 @@ export const reminderServiceFactory = ({
     repeatDays,
     nextReminderDate: nextReminderDateInput,
     recipients,
+    resolvedRecipients,
     channels,
     projectId,
     fromDate: fromDateInput,
@@ -214,6 +222,7 @@ export const reminderServiceFactory = ({
     repeatDays?: number | null;
     nextReminderDate?: string | null;
     recipients?: string[] | null;
+    resolvedRecipients?: TChannelRecipientInput[];
     channels?: TAlertChannelInput[];
     fromDate?: string | null;
     projectId: string;
@@ -238,9 +247,12 @@ export const reminderServiceFactory = ({
       throw new BadRequestError({ message: "repeatDays must be a positive number" });
     }
 
+    const emailRecipients =
+      resolvedRecipients ?? (await resolveReminderRecipients({ actorOrgId: actor.actorOrgId, projectId, recipients }));
+
     // The alert goes first, outside any transaction because encrypting channel config can call out to
     // KMS. If the reminder write then fails, an alert with no reminder never fires and is reused next time.
-    await $syncReminderAlert({ secretId, secretKey, projectId, recipients, channels, actor });
+    await $syncReminderAlert({ secretId, secretKey, projectId, emailRecipients, channels, actor });
 
     const existingReminder = await reminderDAL.findOne({ secretId });
     let reminderId: string;
@@ -556,6 +568,7 @@ export const reminderServiceFactory = ({
   };
 
   return {
+    resolveReminderRecipients,
     createReminder,
     getReminder,
     dispatchDueReminders,

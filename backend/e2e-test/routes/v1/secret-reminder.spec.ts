@@ -14,7 +14,7 @@ import {
   setSecretReminder,
   waitForReminderEmails
 } from "../../testUtils/reminders";
-import { createSecretV2, getSecretByNameV2 } from "../../testUtils/secrets";
+import { createSecretV2, getSecretByNameV2, updateSecretV2 } from "../../testUtils/secrets";
 import { addUserMembership, createUser, deleteUsers } from "../../testUtils/users";
 
 const ENVIRONMENT = "dev";
@@ -236,6 +236,51 @@ describe("Secret reminders delivered through alerts", () => {
     await reapOrphanedReminderAlerts();
 
     await expectAlertFullyRemoved(alert);
+  });
+
+  test("a secret update sets the reminder and its recipients", async () => {
+    const secretId = await createSecret("WITH_UPDATE");
+    await updateSecretV2({
+      workspaceId: projectId,
+      environmentSlug: ENVIRONMENT,
+      secretPath: "/",
+      key: "WITH_UPDATE",
+      value: "rotated",
+      reminder: { repeatDays: 14, note: "rotate it", recipients: [member.userId] },
+      authToken
+    });
+
+    const reminder = await getSecretReminder({ secretId, authToken });
+    expect(reminder?.repeatDays).toBe(14);
+    expect(reminder?.recipients).toEqual([member.userId]);
+  });
+
+  test("a secret update with recipients outside the project is refused before the secret changes", async () => {
+    const secretId = await createSecret("REFUSED");
+    const outsider = await newUser("outsider");
+
+    await updateSecretV2({
+      workspaceId: projectId,
+      environmentSlug: ENVIRONMENT,
+      secretPath: "/",
+      key: "REFUSED",
+      value: "rotated",
+      reminder: { repeatDays: 14, recipients: [outsider.userId] },
+      authToken
+    }).expect((res) => {
+      expect(res.statusCode).toBe(400);
+      expect(res.json<{ message: string }>().message).toMatch(/None of the selected reminder recipients/);
+    });
+
+    const secret = await getSecretByNameV2({
+      workspaceId: projectId,
+      environmentSlug: ENVIRONMENT,
+      secretPath: "/",
+      key: "REFUSED",
+      authToken
+    });
+    expect(secret.secretValue).toBe("value");
+    expect(await getSecretReminder({ secretId, authToken })).toBeNull();
   });
 
   test("deleting a reminder removes its alert, channels and recipients", async () => {

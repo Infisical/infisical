@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TAlertChannelInput } from "../alert/alert-channel-service-types";
+import { TAlertChannelInput, TChannelRecipientInput } from "../alert/alert-channel-service-types";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export type TReminder = {
@@ -26,6 +26,8 @@ export type TCreateReminderDTO = {
     fromDate?: string | null;
     nextReminderDate?: string | null;
     recipients?: string[] | null;
+    // From resolveReminderRecipients, for a caller that checked them before its own write.
+    resolvedRecipients?: TChannelRecipientInput[];
     channels?: TAlertChannelInput[];
   };
 };
@@ -40,6 +42,12 @@ export type TBatchCreateReminderDTO = {
 }[];
 
 export interface TReminderServiceFactory {
+  resolveReminderRecipients: (input: {
+    actorOrgId: string;
+    projectId: string;
+    recipients?: string[] | null;
+  }) => Promise<TChannelRecipientInput[]>;
+
   createReminder: ({ actor, actorId, actorOrgId, actorAuthMethod, reminder }: TCreateReminderDTO) => Promise<{
     id: string;
     created: boolean;

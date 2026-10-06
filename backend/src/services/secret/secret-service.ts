@@ -1985,23 +1985,11 @@ export const secretServiceFactory = ({
         newSecretName,
         metadata,
         secretValue,
-        secretMetadata
+        secretMetadata,
+        secretReminderNote,
+        secretReminderRepeatDays,
+        secretReminderRecipients
       });
-
-      if (secretReminderRepeatDays) {
-        await reminderService.createReminder({
-          actor,
-          actorId,
-          actorOrgId,
-          actorAuthMethod,
-          reminder: {
-            secretId: secret.id,
-            message: secretReminderNote,
-            repeatDays: secretReminderRepeatDays,
-            recipients: secretReminderRecipients
-          }
-        });
-      }
       return { type: SecretProtectionType.Direct as const, secret };
     }
 

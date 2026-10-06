@@ -186,7 +186,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   >;
   reminderService: Pick<
     TReminderServiceFactory,
-    "createReminder" | "getReminder" | "batchCreateReminders" | "moveReminderAlerts"
+    "resolveReminderRecipients" | "createReminder" | "getReminder" | "batchCreateReminders" | "moveReminderAlerts"
   >;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
@@ -792,6 +792,15 @@ export const secretV2BridgeServiceFactory = ({
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
+    // A recipient nobody can notify has to fail here, before the secret changes, not after it has committed.
+    const reminderRecipients = inputSecret.secretReminderRepeatDays
+      ? await reminderService.resolveReminderRecipients({
+          actorOrgId,
+          projectId,
+          recipients: inputSecret.secretReminderRecipients
+        })
+      : undefined;
+
     const updatedSecret = await secretDAL.transaction(async (tx) => {
       const modifiedSecretsInDB = await fnSecretBulkUpdate({
         folderId,
@@ -866,7 +875,7 @@ export const secretV2BridgeServiceFactory = ({
           secretId: secret.id,
           message: inputSecret.secretReminderNote,
           repeatDays: inputSecret.secretReminderRepeatDays,
-          recipients: inputSecret.secretReminderRecipients
+          resolvedRecipients: reminderRecipients
         }
       });
     }
