@@ -498,6 +498,10 @@ Link the current directory to an Infisical project. The command lists the projec
 
 If `.infisical.json` already exists in the current directory, the command asks before replacing it. The new file holds only the project ID, so settings you added, such as `defaultEnvironment`, are lost. See [project config](/cli/project-config) for the file format.
 
+<Note>
+  If you run `init` without a terminal, such as in CI or from a script, the command never prompts. It exits with an error unless you pass `--project-id`, and it doesn't replace an existing `.infisical.json`. To link a different project, edit `workspaceId` in `.infisical.json`.
+</Note>
+
 </CLICommand>
 
 <CLICommand
