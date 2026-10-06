@@ -435,7 +435,11 @@ export const reminderServiceFactory = ({
   const copyReminders: TReminderServiceFactory["copyReminders"] = async (moves, tx) => {
     const carried = await $carrySchedules(moves, tx);
     if (carried.length === 0) return;
-    const secrets = await secretV2BridgeDAL.find({ $in: { id: carried.map((move) => move.fromSecretId) } }, { tx });
+    // Qualified: this find joins tags, metadata, folders and environments, which all have an id column.
+    const secrets = await secretV2BridgeDAL.find(
+      { $in: { [`${TableName.SecretV2}.id` as "id"]: carried.map((move) => move.fromSecretId) } },
+      { tx }
+    );
     const projectIdBySecretId = new Map(secrets.map((secret) => [secret.id, secret.projectId]));
     for (const move of carried) {
       await alertService.copyAlertsToResource(

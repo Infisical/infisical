@@ -239,7 +239,9 @@ const buildWriteService = (opts: { projectUserIds?: string[]; alertRefusal?: Err
         tags: []
       }),
       invalidateSecretCacheByProjectId: async () => {},
-      find: async (filter: { $in: { id: string[] } }) => filter.$in.id.map((id) => ({ id, projectId: "proj-1" }))
+      // Only the qualified column works against the real query, which joins several tables with an id.
+      find: async (filter: { $in: Record<string, string[]> }) =>
+        filter.$in["secrets_v2.id"].map((id) => ({ id, projectId: "proj-1" }))
     },
     folderDAL: {
       findSecretPathByFolderIds: async () => [{ id: "folder-1", path: "/", environmentSlug: "dev" }]
