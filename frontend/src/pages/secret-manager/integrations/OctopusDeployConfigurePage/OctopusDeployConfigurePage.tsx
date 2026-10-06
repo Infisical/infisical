@@ -6,15 +6,9 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  Card,
-  CardTitle,
-  FilterableSelect,
-  FormControl,
-  Spinner
-} from "@app/components/v2";
+import { Button, Card, CardTitle, FilterableSelect, FormControl } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import { Spinner } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration, useGetIntegrationAuthApps } from "@app/hooks/api";
