@@ -69,7 +69,7 @@ describe("Auth Token V1", () => {
     expect(res.statusCode).toBeGreaterThanOrEqual(400);
   });
 
-  test("Logout invalidates session, subsequent refresh and access fail", async () => {
+  test("Logout invalidates session, subsequent access and refresh fail", async () => {
     // Login to get tokens
     const loginRes = await testServer.inject({
       method: "POST",
@@ -98,6 +98,17 @@ describe("Auth Token V1", () => {
     });
     expect(logoutRes.statusCode).toBe(200);
 
+    // Before the refresh below: replaying the old refresh token deletes the session, which would turn this into the
+    // missing-session case instead of the stale-access-version one.
+    const checkAuthRes = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/auth/checkAuth",
+      headers: { authorization: `Bearer ${accessToken}` }
+    });
+
+    expect(checkAuthRes.statusCode).toBe(401);
+    expect(checkAuthRes.json()).toEqual(sessionNoLongerValidResponse);
+
     // Subsequent refresh should fail
     const refreshRes = await testServer.inject({
       method: "POST",
@@ -108,15 +119,6 @@ describe("Auth Token V1", () => {
     });
 
     expect(refreshRes.statusCode).toBeGreaterThanOrEqual(400);
-
-    const checkAuthRes = await testServer.inject({
-      method: "POST",
-      url: "/api/v1/auth/checkAuth",
-      headers: { authorization: `Bearer ${accessToken}` }
-    });
-
-    expect(checkAuthRes.statusCode).toBe(401);
-    expect(checkAuthRes.json()).toEqual(sessionNoLongerValidResponse);
   });
 
   test("checkAuth with a JWT whose session was revoked returns 401", async () => {
