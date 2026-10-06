@@ -90,6 +90,7 @@ const createService = ({
     identityOidcAuthDAL,
     gatewayV2DAL,
     gatewayPoolDAL,
+    orgDAL: { findById: vi.fn().mockResolvedValue({ requireGatewayPools: false }) },
     permissionService: {
       getOrgPermission: vi
         .fn()
