@@ -993,10 +993,6 @@ export enum EventType {
   UPDATE_ALERT = "update-alert",
   DELETE_ALERT = "delete-alert",
   TEST_ALERT_CHANNEL = "test-alert-channel",
-  CREATE_PKI_APPLICATION_ALERT = "create-pki-application-alert",
-  UPDATE_PKI_APPLICATION_ALERT = "update-pki-application-alert",
-  DELETE_PKI_APPLICATION_ALERT = "delete-pki-application-alert",
-  TEST_PKI_APPLICATION_ALERT_CHANNEL = "test-pki-application-alert-channel",
 
   // Authorization
   PERMISSION_DENIED = "permission-denied",
@@ -7982,49 +7978,11 @@ interface TestAlertChannelEvent {
   };
 }
 
-type TPkiApplicationAlertEventMetadata = {
-  applicationId: string | null;
-  applicationName: string | null;
-};
-
-interface CreatePkiApplicationAlertEvent {
-  type: EventType.CREATE_PKI_APPLICATION_ALERT;
-  metadata: TPkiApplicationAlertEventMetadata & { alertId: string; name: string; eventType: string };
-}
-
-interface UpdatePkiApplicationAlertEvent {
-  type: EventType.UPDATE_PKI_APPLICATION_ALERT;
-  metadata: TPkiApplicationAlertEventMetadata & { alertId: string; name: string; eventType: string };
-}
-
-interface DeletePkiApplicationAlertEvent {
-  type: EventType.DELETE_PKI_APPLICATION_ALERT;
-  metadata: TPkiApplicationAlertEventMetadata & { alertId: string; name: string; eventType: string };
-}
-
-interface TestPkiApplicationAlertEvent {
-  type: EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL;
-  metadata: TPkiApplicationAlertEventMetadata & {
-    alertId?: string;
-    alertName?: string | null;
-    channelId?: string;
-    channelName?: string | null;
-    channelType: string;
-    success: boolean;
-    deliveredTo?: number;
-    error?: string;
-  };
-}
-
 export type Event =
   | CreateAlertEvent
   | UpdateAlertEvent
   | DeleteAlertEvent
   | TestAlertChannelEvent
-  | CreatePkiApplicationAlertEvent
-  | UpdatePkiApplicationAlertEvent
-  | DeletePkiApplicationAlertEvent
-  | TestPkiApplicationAlertEvent
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent

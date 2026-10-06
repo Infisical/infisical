@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FieldArrayWithId, UseFormReturn } from "react-hook-form";
+import { FieldArrayWithId, UseFormReturn, useWatch } from "react-hook-form";
 import { BellIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -13,17 +13,16 @@ import {
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
 import { isValidEmail } from "@app/helpers/email";
-import {
-  AlertChannelType,
-  AlertPrincipalType,
-  CertificateAlertResourceType
-} from "@app/hooks/api/alerts";
+import { AlertChannelType, AlertPrincipalType } from "@app/hooks/api/alerts";
 import { AddChannelMenu, ChannelCard, TChannelRecipientsRenderProps } from "@app/views/Alerts";
 
 import {
+  getAlertResourceId,
+  getAlertResourceType,
   MAX_CHANNELS,
   normalizeEmail,
   TCertificateAlertForm,
+  TCertificateAlertScope,
   TMemberEmails,
   toRecipientEmails
 } from "./types";
@@ -134,7 +133,7 @@ export const ChannelsStep = ({
   fields,
   onRemove,
   projectId,
-  applicationId,
+  scope,
   alertId,
   members
 }: {
@@ -142,11 +141,12 @@ export const ChannelsStep = ({
   fields: TChannelField[];
   onRemove: (index: number) => void;
   projectId: string;
-  applicationId: string;
+  scope: TCertificateAlertScope;
   alertId?: string;
   members: TMemberEmails;
 }) => {
   const channelsError = form.formState.errors.channels?.root ?? form.formState.errors.channels;
+  const eventType = useWatch({ control: form.control, name: "eventType" });
 
   if (!fields.length) {
     return (
@@ -171,8 +171,8 @@ export const ChannelsStep = ({
           key={field.id}
           index={index}
           projectId={projectId}
-          resourceType={CertificateAlertResourceType.Application}
-          resourceId={applicationId}
+          resourceType={getAlertResourceType(scope, eventType)}
+          resourceId={getAlertResourceId(scope)}
           alertId={alertId}
           canRemove
           onRemove={() => onRemove(index)}

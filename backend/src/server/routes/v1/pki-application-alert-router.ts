@@ -12,7 +12,7 @@ import {
   PkiAlertV2ResponseSchema,
   UpdatePkiAlertV2Schema
 } from "@app/services/pki-alert-v2/pki-alert-v2-types";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { ApplicationIdParamsSchema } from "./pki-application-schemas";
 
@@ -114,6 +114,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
           orgId: req.permission.orgId,
           projectId: req.internalCertManagerProjectId,
           applicationId: req.params.applicationId,
+          alertScope: PkiAlertScope.Application,
           alertType: alert.eventType
         }
       });
@@ -175,7 +176,8 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         properties: {
           orgId: req.permission.orgId,
           projectId: req.internalCertManagerProjectId,
-          applicationId: req.params.applicationId
+          applicationId: req.params.applicationId,
+          alertScope: PkiAlertScope.Application
         }
       });
 
@@ -231,7 +233,8 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         properties: {
           orgId: req.permission.orgId,
           projectId: req.internalCertManagerProjectId,
-          applicationId: req.params.applicationId
+          applicationId: req.params.applicationId,
+          alertScope: PkiAlertScope.Application
         }
       });
 
