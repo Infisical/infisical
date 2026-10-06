@@ -1060,23 +1060,26 @@ export const pkiScepServiceFactory = ({
         commonName = undefined;
       }
 
-      await recordCertificateIssuanceFailure({ auditLogService, certificateAuthorityDAL, pkiApplicationDAL }, {
-        auditLogInfo: {
-          ipAddress: clientIp,
-          actor: { type: ActorType.SCEP_ACCOUNT, metadata: { profileId: params.profile.id } }
-        },
-        projectId: params.profile.projectId,
-        error,
-        metadata: {
-          operation,
-          enrollmentType: EnrollmentType.SCEP,
-          certificateProfileId: params.profile.id,
-          profileName: params.profile.slug,
-          ...(params.profile.caId && { caId: params.profile.caId }),
-          ...(commonName && { commonName }),
-          ...(params.applicationId && { applicationId: params.applicationId })
+      await recordCertificateIssuanceFailure(
+        { auditLogService, certificateAuthorityDAL, pkiApplicationDAL },
+        {
+          auditLogInfo: {
+            ipAddress: clientIp,
+            actor: { type: ActorType.SCEP_ACCOUNT, metadata: { profileId: params.profile.id } }
+          },
+          projectId: params.profile.projectId,
+          error,
+          metadata: {
+            operation,
+            enrollmentType: EnrollmentType.SCEP,
+            certificateProfileId: params.profile.id,
+            profileName: params.profile.slug,
+            ...(params.profile.caId && { caId: params.profile.caId }),
+            ...(commonName && { commonName }),
+            ...(params.applicationId && { applicationId: params.applicationId })
+          }
         }
-      });
+      );
       throw error;
     }
   };
