@@ -730,25 +730,22 @@ const ImportSecretsContent = ({
                       folderTree && "w-1/2"
                     )}
                   >
-                    {folderTree ? (
-                      <div className="flex items-center justify-between gap-2">
+                    {folderTree && folderTree.children.length > 0 ? (
+                      <button
+                        type="button"
+                        className="flex cursor-pointer items-center gap-1 rounded-xs outline-none focus-visible:ring-2 focus-visible:ring-ring [&>svg]:size-4"
+                        aria-label={
+                          areAllFoldersCollapsed ? "Expand all folders" : "Collapse all folders"
+                        }
+                        aria-expanded={!areAllFoldersCollapsed}
+                        title={
+                          areAllFoldersCollapsed ? "Expand all folders" : "Collapse all folders"
+                        }
+                        onClick={toggleAllFolders}
+                      >
+                        {areAllFoldersCollapsed ? <ChevronsUpDownIcon /> : <ChevronsDownUpIcon />}
                         Key
-                        {folderTree.children.length > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            className="-mr-2"
-                            onClick={toggleAllFolders}
-                          >
-                            {areAllFoldersCollapsed ? (
-                              <ChevronsUpDownIcon />
-                            ) : (
-                              <ChevronsDownUpIcon />
-                            )}
-                            {areAllFoldersCollapsed ? "Expand All" : "Collapse All"}
-                          </Button>
-                        )}
-                      </div>
+                      </button>
                     ) : (
                       "Key"
                     )}
