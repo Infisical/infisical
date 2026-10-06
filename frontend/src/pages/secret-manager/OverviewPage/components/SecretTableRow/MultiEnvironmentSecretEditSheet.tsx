@@ -201,18 +201,18 @@ export const MultiEnvironmentSecretEditSheet = ({
   let valueWarning: string | undefined;
   if (selectedValues.some((value) => value === undefined)) {
     valueWarning =
-      "Some selected values cannot be read. Leaving Value unchanged preserves them; entering a value replaces it in all selected environments.";
+      "Some selected values cannot be read. Leave the masked value unchanged to preserve them. Enter a replacement or delete the mask to remove the value in all selected environments when you save.";
   } else if (differs(selectedValues)) {
     valueWarning =
-      "Values differ between selected environments. Leaving Value blank preserves each value; entering a value replaces it in all selected environments.";
+      "Values differ between selected environments. Leave the masked value unchanged to preserve each value. Enter a replacement or delete the mask to remove the value in all selected environments when you save.";
   }
   const mixedFields = {
     value: valueWarning,
     comment: differs(comments)
-      ? "Comments differ between selected environments. Editing Comment replaces it in all selected environments; Clear Comment removes them."
+      ? "Comments differ between selected environments. The displayed comment comes from one environment. Edit or delete it to replace or remove comments in all selected environments when you save."
       : undefined,
     tags: differs(tags)
-      ? "Shown tags may apply to only some selected environments. Adding or removing a tag applies that change to all selected environments; unchanged tags stay as they are. Clear Tags removes all tags."
+      ? "Shown tags may apply to only some selected environments. Adding or removing a tag applies that change to all selected environments; unchanged tags stay as they are. Remove every shown tag to remove all tags from the selected environments."
       : undefined,
     metadata: differs(metadata)
       ? "Metadata differs between selected environments. Edited entries apply to all selected environments; other keys and unchanged encryption settings are preserved. Use Remove Metadata Keys to remove existing keys."
@@ -267,7 +267,7 @@ export const MultiEnvironmentSecretEditSheet = ({
         const existingSecret = initialSecrets.find((secret) => secret.env === environment.slug);
         if (tagChanges) {
           const entries = new Map(
-            (tagChanges.clear ? [] : (existingSecret?.tags ?? []))
+            (existingSecret?.tags ?? [])
               .filter((tag) => !tagChanges.removals.includes(tag.id))
               .map((tag) => [tag.id, { id: tag.id, slug: tag.slug }])
           );
@@ -421,7 +421,7 @@ export const MultiEnvironmentSecretEditSheet = ({
               editSecret={{
                 key: secretKey,
                 value: commonValue ?? "",
-                comment: common(comments, ""),
+                comment: common(comments, comments.find(Boolean) ?? ""),
                 tags: selectedTags,
                 metadata: commonMetadata,
                 metadataKeys,
