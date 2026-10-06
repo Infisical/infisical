@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { Bell, BellIcon } from "lucide-react";
 
@@ -36,6 +36,7 @@ export const NotificationDropdown = () => {
   const router = useRouter();
   const [visibleNotificationCount, setVisibleNotificationCount] = useState(NOTIFICATIONS_PER_PAGE);
   const [isClearAllOpen, setIsClearAllOpen] = useState(false);
+  const clearAllButtonRef = useRef<HTMLButtonElement>(null);
 
   const { data: notifications, isLoading } = useGetMyNotifications();
   const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead();
@@ -97,6 +98,9 @@ export const NotificationDropdown = () => {
           align="end"
           side="bottom"
           className="flex h-[550px] w-[400px] overflow-hidden p-0"
+          onInteractOutside={(e) => {
+            if (isClearAllOpen) e.preventDefault();
+          }}
         >
           <div className="flex w-full flex-col">
             <div className="flex items-center justify-between border-b border-border px-3 py-2">
@@ -109,6 +113,7 @@ export const NotificationDropdown = () => {
                 )}
               </div>
               <button
+                ref={clearAllButtonRef}
                 type="button"
                 className="text-xs font-medium text-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                 onClick={(e) => {
@@ -169,7 +174,12 @@ export const NotificationDropdown = () => {
         </DropdownMenuContent>
       </DropdownMenu>
       <AlertDialog open={isClearAllOpen} onOpenChange={setIsClearAllOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            clearAllButtonRef.current?.focus();
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Clear All Notifications?</AlertDialogTitle>
             <AlertDialogDescription>
