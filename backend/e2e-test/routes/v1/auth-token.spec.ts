@@ -2,6 +2,13 @@ import { seedData1 } from "@app/db/seed-data";
 
 import { extractCookie } from "../../testUtils/cookies";
 
+const sessionNoLongerValidResponse = {
+  reqId: expect.any(String),
+  statusCode: 401,
+  error: "InvalidToken",
+  message: "Your session is no longer valid, please re-authenticate"
+};
+
 describe("Auth Token V1", () => {
   test("checkAuth with valid JWT returns 200", async () => {
     const res = await testServer.inject({
@@ -62,7 +69,7 @@ describe("Auth Token V1", () => {
     expect(res.statusCode).toBeGreaterThanOrEqual(400);
   });
 
-  test("Logout invalidates session, subsequent refresh fails", async () => {
+  test("Logout invalidates session, subsequent refresh and access fail", async () => {
     // Login to get tokens
     const loginRes = await testServer.inject({
       method: "POST",
@@ -101,6 +108,15 @@ describe("Auth Token V1", () => {
     });
 
     expect(refreshRes.statusCode).toBeGreaterThanOrEqual(400);
+
+    const checkAuthRes = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/auth/checkAuth",
+      headers: { authorization: `Bearer ${accessToken}` }
+    });
+
+    expect(checkAuthRes.statusCode).toBe(401);
+    expect(checkAuthRes.json()).toEqual(sessionNoLongerValidResponse);
   });
 
   test("checkAuth with a JWT whose session was revoked returns 401", async () => {
@@ -136,11 +152,6 @@ describe("Auth Token V1", () => {
     });
 
     expect(res.statusCode).toBe(401);
-    expect(res.json()).toEqual({
-      reqId: expect.any(String),
-      statusCode: 401,
-      error: "InvalidToken",
-      message: "Your session is no longer valid, please re-authenticate"
-    });
+    expect(res.json()).toEqual(sessionNoLongerValidResponse);
   });
 });

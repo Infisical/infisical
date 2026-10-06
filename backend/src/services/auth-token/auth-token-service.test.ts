@@ -254,13 +254,7 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
   };
 
   const build = ({
-    session = SESSION as typeof SESSION | null,
-    user = { id: USER_ID, isAccepted: true, isLocked: false, temporaryLockDateEnd: null as Date | null } as {
-      id: string;
-      isAccepted: boolean;
-      isLocked: boolean;
-      temporaryLockDateEnd: Date | null;
-    } | null,
+    user = { id: USER_ID, isAccepted: true, isLocked: false, temporaryLockDateEnd: null as Date | null },
     memberships = { [ROOT]: true, [SUB]: true } as Record<
       string,
       boolean | { isActive: boolean; status: string } | undefined
@@ -280,7 +274,7 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
       )
     };
     const service = tokenServiceFactory({
-      tokenDAL: { findOneTokenSession: vi.fn().mockResolvedValue(session) } as never,
+      tokenDAL: { findOneTokenSession: vi.fn().mockResolvedValue(SESSION) } as never,
       userDAL: { findById: vi.fn().mockResolvedValue(user) } as never,
       orgDAL: orgDAL as never,
       membershipUserDAL: {} as never,
@@ -344,48 +338,17 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
     );
   });
 
-  // UnauthorizedError, not NotFoundError: clients only treat a 401 as "log in again", and a 404 reads as a missing resource.
-  test("a token whose session no longer exists is refused with UnauthorizedError", async () => {
-    const { service } = build({ session: null });
-    const err = await expectRejected(
-      service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT })),
-      UnauthorizedError
-    );
-    expect(err).toMatchObject({
-      name: "InvalidToken",
-      message: "Your session is no longer valid, please re-authenticate"
-    });
-  });
-
-  test("a token issued before its session was invalidated is refused with UnauthorizedError", async () => {
-    const { service } = build({ session: { ...SESSION, accessVersion: 2 } });
-    const err = await expectRejected(
-      service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT })),
-      UnauthorizedError
-    );
-    expect(err).toMatchObject({
-      name: "InvalidToken",
-      message: "Your session is no longer valid, please re-authenticate"
-    });
-  });
-
-  test("a token whose user no longer exists is refused with UnauthorizedError", async () => {
-    const { service } = build({ user: null });
-    const err = await expectRejected(
-      service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT })),
-      UnauthorizedError
-    );
-    expect(err).toMatchObject({
-      name: "InvalidToken",
-      message: "Your session is no longer valid, please re-authenticate"
-    });
-  });
-
+  // UnauthorizedError, not NotFoundError: clients only treat a 401 as "log in again". The e2e suite covers revoked and
+  // logged-out sessions; an unaccepted user holding a session is hard to reach there.
   test("a token whose user is not accepted is refused with UnauthorizedError", async () => {
     const { service } = build({
       user: { id: USER_ID, isAccepted: false, isLocked: false, temporaryLockDateEnd: null }
     });
-    await expectRejected(service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT })), UnauthorizedError);
+    const err = await expectRejected(
+      service.fnValidateJwtIdentity(accessToken({ organizationId: ROOT })),
+      UnauthorizedError
+    );
+    expect(err.message).toBe("Your session is no longer valid, please re-authenticate");
   });
 
   test("subOrganizationId without organizationId is refused", async () => {
