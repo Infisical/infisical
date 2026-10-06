@@ -47,11 +47,11 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
     schema: {
       operationId: "deleteUserNotifications",
       response: {
-        200: z.object({})
+        204: z.null()
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
       if (req.auth.authMode !== AuthMode.JWT) {
         throw new UnauthorizedError({ message: "This endpoint can only be accessed by users" });
       }
@@ -61,7 +61,7 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
         orgId: req.auth.orgId
       });
 
-      return {};
+      return reply.code(204).send(null);
     }
   });
 

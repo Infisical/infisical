@@ -53,7 +53,7 @@ export const Notification = ({ notification, onDelete }: Props) => {
               aria-label="Delete notification"
               variant="ghost-muted"
               size="2xs"
-              className="absolute -top-0.5 right-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 hover:text-danger [@media(hover:none)]:opacity-100"
+              className="absolute -top-0.5 right-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(notification.id);

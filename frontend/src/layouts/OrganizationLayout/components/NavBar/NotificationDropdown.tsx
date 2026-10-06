@@ -118,7 +118,7 @@ export const NotificationDropdown = () => {
                 }}
                 disabled={!notifications?.length || isClearingAll}
               >
-                {unreadCount > 0 ? "Mark all as read" : "Clear all"}
+                {unreadCount > 0 ? "Mark all as read" : "Clear All"}
               </button>
             </div>
             <div className="flex h-full w-full overflow-auto">
@@ -171,7 +171,7 @@ export const NotificationDropdown = () => {
       <AlertDialog open={isClearAllOpen} onOpenChange={setIsClearAllOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
+            <AlertDialogTitle>Clear All Notifications?</AlertDialogTitle>
             <AlertDialogDescription>
               This will remove all your notifications for this organization, including account
               notifications. This cannot be undone.
@@ -191,7 +191,7 @@ export const NotificationDropdown = () => {
                 });
               }}
             >
-              Clear all
+              Clear All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
