@@ -10,6 +10,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelMembershipDALFactory } from "./alert-channel-membership-dal";
+import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
 import { TAlertChannelServiceFactory } from "./alert-channel-service";
 import { TAlertChannelEmbedded, TAlertChannelInput, TChannelRecipientInput } from "./alert-channel-service-types";
 import { TAlertDALFactory } from "./alert-dal";
@@ -27,8 +28,9 @@ import { AlertPermissionAction, IResourceAlertProvider, TAlertEventDefinition, t
 
 export type TAlertServiceFactoryDep = {
   alertDAL: TAlertDALFactory;
-  alertChannelDAL: Pick<TAlertChannelDALFactory, "findByAlertId" | "findByAlertIds" | "delete">;
+  alertChannelDAL: Pick<TAlertChannelDALFactory, "findByAlertId" | "findByAlertIds" | "delete" | "create">;
   alertChannelMembershipDAL: Pick<TAlertChannelMembershipDALFactory, "insertMany">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "findByChannelIds" | "insertMany">;
   alertChannelService: Pick<
     TAlertChannelServiceFactory,
     | "createChannelInTx"
@@ -47,6 +49,7 @@ export const alertServiceFactory = ({
   alertDAL,
   alertChannelDAL,
   alertChannelMembershipDAL,
+  alertChannelRecipientDAL,
   alertChannelService,
   kmsService,
   alertProviderRegistry
@@ -495,6 +498,74 @@ export const alertServiceFactory = ({
     await alertDAL.update({ resourceType, resourceId: fromResourceId }, { resourceId: toResourceId }, tx);
   };
 
+  // For a resource recreated under a new id while the original stays (eg a secret moved out of a folder
+  // whose approval policy holds the source until the request merges), so both keep working alerts.
+  // Channel configs are copied still encrypted: both ids belong to the same project and share its cipher,
+  // so no KMS call is needed and this is safe inside the caller's transaction.
+  const copyAlertsForResource = async (
+    {
+      resourceType,
+      fromResourceId,
+      toResourceId
+    }: { resourceType: string; fromResourceId: string; toResourceId: string },
+    tx: Knex
+  ): Promise<void> => {
+    const alerts = await alertDAL.find({ resourceType, resourceId: fromResourceId }, { tx });
+    if (alerts.length === 0) return;
+
+    const channels = await alertChannelDAL.findByAlertIds(
+      alerts.map((alert) => alert.id),
+      tx
+    );
+    const recipients = await alertChannelRecipientDAL.findByChannelIds(
+      channels.map((channel) => channel.id),
+      tx
+    );
+
+    for (const alert of alerts) {
+      const { id: alertId, createdAt, updatedAt, condition, ...alertFields } = alert;
+      // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+      const copiedAlert = await alertDAL.create(
+        {
+          ...alertFields,
+          resourceId: toResourceId,
+          condition: condition != null ? JSON.stringify(condition) : null
+        },
+        tx
+      );
+      for (const channel of channels.filter((row) => row.alertId === alertId)) {
+        // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+        const copiedChannel = await alertChannelDAL.create(
+          {
+            name: channel.name,
+            channelType: channel.channelType,
+            encryptedConfig: channel.encryptedConfig,
+            enabled: channel.enabled,
+            orgId: channel.orgId,
+            projectId: channel.projectId,
+            createdByActorId: channel.createdByActorId,
+            createdByActorType: channel.createdByActorType
+          },
+          tx
+        );
+        // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+        await alertChannelMembershipDAL.insertMany([{ alertId: copiedAlert.id, channelId: copiedChannel.id }], tx);
+        const channelRecipients = recipients.filter((recipient) => recipient.channelId === channel.id);
+        if (channelRecipients.length > 0) {
+          // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+          await alertChannelRecipientDAL.insertMany(
+            channelRecipients.map(({ principalType, principalId }) => ({
+              channelId: copiedChannel.id,
+              principalType,
+              principalId
+            })),
+            tx
+          );
+        }
+      }
+    }
+  };
+
   const findRecipientsForResources = (
     input: { resourceType: string; resourceIds: string[]; channelType: string; principalType: string },
     tx?: Knex
@@ -517,6 +588,7 @@ export const alertServiceFactory = ({
     findAlertChannelSummariesForResources,
     deleteAlertsForDeletedResources,
     repointAlertsForResource,
+    copyAlertsForResource,
     findRecipientsForResources,
     filterRecipientsInScope
   };

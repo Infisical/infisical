@@ -1148,6 +1148,7 @@ export const registerRoutes = async (
     alertDAL,
     alertChannelDAL,
     alertChannelMembershipDAL,
+    alertChannelRecipientDAL,
     alertChannelService,
     kmsService,
     alertProviderRegistry

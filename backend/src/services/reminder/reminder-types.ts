@@ -97,5 +97,7 @@ export interface TReminderServiceFactory {
 
   moveReminderAlerts: (moves: { fromSecretId: string; toSecretId: string }[], tx: Knex) => Promise<void>;
 
+  copyReminderAlerts: (moves: { fromSecretId: string; toSecretId: string }[], tx: Knex) => Promise<void>;
+
   getRemindersForDashboard: (secretIds: string[]) => Promise<Record<string, TReminder & { recipients: string[] }>>;
 }

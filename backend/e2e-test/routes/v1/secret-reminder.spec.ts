@@ -14,6 +14,7 @@ import {
   setSecretReminder,
   waitForReminderEmails
 } from "../../testUtils/reminders";
+import { createSecretApprovalPolicy } from "../../testUtils/secret-approval-policies";
 import { createSecretV2, getSecretByNameV2, updateSecretV2 } from "../../testUtils/secrets";
 import { addUserMembership, createUser, deleteUsers } from "../../testUtils/users";
 
@@ -180,6 +181,67 @@ describe("Secret reminders delivered through alerts", () => {
     });
     expect(moved.id).not.toBe(secretId);
     expect((await reminderAlerts(moved.id)).map((alert) => alert.id)).toEqual([before.id]);
+  });
+
+  // An approval policy on the source folder holds its secrets until the request merges, so for a
+  // while the same reminder lives on two secrets. Both must keep someone to notify.
+  test("moving a secret out of a folder with an approval policy leaves the source its alert and copies it", async () => {
+    await createFolder({
+      workspaceId: projectId,
+      environmentSlug: ENVIRONMENT,
+      secretPath: "/",
+      name: "held",
+      authToken
+    });
+    const sourceId = await createSecret("HELD", { secretPath: "/held" });
+    await setSecretReminder({ secretId: sourceId, authToken, repeatDays: 30, recipients: [member.userId] });
+    const [sourceAlert] = await reminderAlerts(sourceId);
+    await createSecretApprovalPolicy({
+      projectId,
+      environmentSlug: ENVIRONMENT,
+      secretPath: "/held",
+      approverUserIds: [member.userId],
+      authToken
+    });
+
+    const move = await testServer.inject({
+      method: "POST",
+      url: "/api/v4/secrets/move",
+      headers: { authorization: `Bearer ${authToken}` },
+      body: {
+        projectId,
+        sourceEnvironment: ENVIRONMENT,
+        sourceSecretPath: "/held",
+        destinationEnvironment: ENVIRONMENT,
+        destinationSecretPath: "/",
+        secretIds: [sourceId]
+      }
+    });
+    expect(move.statusCode).toBe(200);
+
+    const stillAtSource = await getSecretByNameV2({
+      workspaceId: projectId,
+      environmentSlug: ENVIRONMENT,
+      secretPath: "/held",
+      key: "HELD",
+      authToken
+    });
+    expect(stillAtSource.id).toBe(sourceId);
+    expect((await reminderAlerts(sourceId)).map((alert) => alert.id)).toEqual([sourceAlert.id]);
+
+    const copy = await getSecretByNameV2({
+      workspaceId: projectId,
+      environmentSlug: ENVIRONMENT,
+      secretPath: "/",
+      key: "HELD",
+      authToken
+    });
+    const [copiedAlert] = await reminderAlerts(copy.id);
+    expect(copiedAlert.id).not.toBe(sourceAlert.id);
+    expect(copiedAlert.channels.map((channel) => channel.recipients)).toEqual(
+      sourceAlert.channels.map((channel) => channel.recipients)
+    );
+    expect((await getSecretReminder({ secretId: copy.id, authToken }))?.recipients).toEqual([member.userId]);
   });
 
   test(

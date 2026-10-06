@@ -1702,6 +1702,14 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
   const sourceReminders = await reminderDAL.findSecretReminders(secretIds, tx);
   const sourceSecretIdToKey = Object.fromEntries(decryptedSourceSecrets.map((s) => [s.id, s.key]));
 
+  // Looked up before the destination is written, because how the reminders' alerts are carried over
+  // depends on whether the source keeps its secrets.
+  const sourceFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+    projectId,
+    sourceFolder.environment.slug,
+    sourceFolder.path
+  );
+
   let isSourceUpdated = false;
   let isDestinationUpdated = false;
 
@@ -1994,10 +2002,14 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         remindersToCreate.map(({ sourceSecretId, ...reminder }) => reminder),
         tx
       );
-      await reminderService.moveReminderAlerts(
-        remindersToCreate.map((r) => ({ fromSecretId: r.sourceSecretId, toSecretId: r.secretId })),
-        tx
-      );
+      const alertMoves = remindersToCreate.map((r) => ({ fromSecretId: r.sourceSecretId, toSecretId: r.secretId }));
+      // A source held by an approval policy keeps its secrets, and their reminders, until the request merges,
+      // so those reminders keep their alerts and the destination gets copies.
+      if (shouldApplyPolicy(sourceFolderPolicy, actor)) {
+        await reminderService.copyReminderAlerts(alertMoves, tx);
+      } else {
+        await reminderService.moveReminderAlerts(alertMoves, tx);
+      }
     }
 
     isDestinationUpdated = true;
@@ -2006,12 +2018,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
   // Next step is to delete the secrets from the source folder:
   const sourceSecretsGroupByKey = groupBy(sourceSecrets, (i) => i.key);
   const locallyDeletedSecrets = decryptedSourceSecrets.map((el) => ({ ...el, operation: SecretOperations.Delete }));
-
-  const sourceFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
-    projectId,
-    sourceFolder.environment.slug,
-    sourceFolder.path
-  );
 
   if (shouldApplyPolicy(sourceFolderPolicy, actor)) {
     // if secret approval policy exists for source, we create the secret approval request

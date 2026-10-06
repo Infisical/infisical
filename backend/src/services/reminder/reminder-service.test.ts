@@ -211,6 +211,7 @@ const buildWriteService = (opts: { existingAlert?: TStoredAlert; projectUserIds?
   const calls: string[] = [];
   const created: unknown[] = [];
   const updated: Array<{ alertId: string; name?: string; channels?: unknown[] }> = [];
+  const copied: unknown[] = [];
   const deletedAlerts: Array<{ resourceIds: string[]; tx: unknown }> = [];
   const repointed: Array<{ fromResourceId: string; toResourceId: string; tx: unknown }> = [];
 
@@ -267,11 +268,15 @@ const buildWriteService = (opts: { existingAlert?: TStoredAlert; projectUserIds?
       repointAlertsForResource: async (input: { fromResourceId: string; toResourceId: string }, tx: unknown) => {
         calls.push("alert:repoint");
         repointed.push({ ...input, tx });
+      },
+      copyAlertsForResource: async (input: { fromResourceId: string; toResourceId: string }, tx: unknown) => {
+        calls.push("alert:copy");
+        copied.push({ ...input, tx });
       }
     }
   } as never);
 
-  return { service, calls, created, updated, deletedAlerts, repointed };
+  return { service, calls, created, updated, deletedAlerts, repointed, copied };
 };
 
 const caller = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null };
@@ -435,6 +440,18 @@ describe("reminder alert sync", () => {
     expect(calls).toEqual(["alert:delete", "alert:repoint"]);
     expect(deletedAlerts).toEqual([{ resourceIds: ["secret-dst"], tx }]);
     expect(repointed).toEqual([
+      { resourceType: SECRET_REMINDER_RESOURCE_TYPE, fromResourceId: "secret-src", toResourceId: "secret-dst", tx }
+    ]);
+  });
+
+  test("copying reminder alerts clears the destination's alert, then copies the source alert onto it", async () => {
+    const { service, calls, repointed, copied } = buildWriteService();
+    const tx = { tx: true } as never;
+    await service.copyReminderAlerts([{ fromSecretId: "secret-src", toSecretId: "secret-dst" }], tx);
+
+    expect(calls).toEqual(["alert:delete", "alert:copy"]);
+    expect(repointed).toEqual([]);
+    expect(copied).toEqual([
       { resourceType: SECRET_REMINDER_RESOURCE_TYPE, fromResourceId: "secret-src", toResourceId: "secret-dst", tx }
     ]);
   });

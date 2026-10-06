@@ -186,7 +186,12 @@ type TSecretV2BridgeServiceFactoryDep = {
   >;
   reminderService: Pick<
     TReminderServiceFactory,
-    "resolveReminderRecipients" | "createReminder" | "getReminder" | "batchCreateReminders" | "moveReminderAlerts"
+    | "resolveReminderRecipients"
+    | "createReminder"
+    | "getReminder"
+    | "batchCreateReminders"
+    | "moveReminderAlerts"
+    | "copyReminderAlerts"
   >;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;

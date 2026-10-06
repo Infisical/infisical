@@ -40,6 +40,7 @@ type TReminderServiceFactoryDep = {
     | "findRecipientsForResources"
     | "deleteAlertsForDeletedResources"
     | "repointAlertsForResource"
+    | "copyAlertsForResource"
     | "filterRecipientsInScope"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -527,23 +528,38 @@ export const reminderServiceFactory = ({
     };
   };
 
-  // Alerts are copied by moving them rather than rebuilding them, so channel secrets (webhook signing
-  // keys, PagerDuty integration keys) and send history follow the secret to its new id.
-  const moveReminderAlerts: TReminderServiceFactory["moveReminderAlerts"] = async (moves, tx) => {
-    if (moves.length === 0) return;
-    await alertService.deleteAlertsForDeletedResources(
+  type TReminderAlertMove = { fromSecretId: string; toSecretId: string };
+
+  // A destination secret that already had a reminder loses that reminder in the move, so its alert goes too.
+  const $clearDestinationReminderAlerts = (moves: TReminderAlertMove[], tx: Knex) =>
+    alertService.deleteAlertsForDeletedResources(
       { resourceType: SECRET_REMINDER_RESOURCE_TYPE, resourceIds: moves.map((move) => move.toSecretId) },
       tx
     );
+
+  const $alertResource = (move: TReminderAlertMove) => ({
+    resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+    fromResourceId: move.fromSecretId,
+    toResourceId: move.toSecretId
+  });
+
+  // For a secret that is deleted at its source. Alerts follow it to its new id rather than being rebuilt,
+  // so channel secrets (webhook signing keys, PagerDuty integration keys) and send history go with it.
+  const moveReminderAlerts: TReminderServiceFactory["moveReminderAlerts"] = async (moves, tx) => {
+    if (moves.length === 0) return;
+    await $clearDestinationReminderAlerts(moves, tx);
     for (const move of moves) {
-      await alertService.repointAlertsForResource(
-        {
-          resourceType: SECRET_REMINDER_RESOURCE_TYPE,
-          fromResourceId: move.fromSecretId,
-          toResourceId: move.toSecretId
-        },
-        tx
-      );
+      await alertService.repointAlertsForResource($alertResource(move), tx);
+    }
+  };
+
+  // For a secret that stays at its source as well. Its reminder keeps firing there, so it keeps its alert
+  // and the destination gets its own.
+  const copyReminderAlerts: TReminderServiceFactory["copyReminderAlerts"] = async (moves, tx) => {
+    if (moves.length === 0) return;
+    await $clearDestinationReminderAlerts(moves, tx);
+    for (const move of moves) {
+      await alertService.copyAlertsForResource($alertResource(move), tx);
     }
   };
 
@@ -577,6 +593,7 @@ export const reminderServiceFactory = ({
     deleteReminderBySecretId,
     batchCreateReminders,
     moveReminderAlerts,
+    copyReminderAlerts,
     getRemindersForDashboard
   };
 };
