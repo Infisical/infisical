@@ -75,6 +75,18 @@ export const caSigningConfigServiceFactory = ({
     return config;
   };
 
+  const validateSigningAppConnection = async (
+    type: CaSigningConfigType,
+    connectionId: string | undefined,
+    projectId: string,
+    actor: OrgServiceActor
+  ) => {
+    const app = CA_SIGNING_CONFIG_CONNECTION_MAP[type];
+    if (!app || connectionId === undefined) return;
+
+    await appConnectionService.validateAppConnectionUsageById(app, { connectionId, projectId }, actor);
+  };
+
   const createSigningConfig = async ({
     caId,
     type,
@@ -155,14 +167,7 @@ export const caSigningConfigServiceFactory = ({
       AdcsDestinationConfigSchema.parse(destinationConfig);
     }
 
-    const signingConnectionApp = CA_SIGNING_CONFIG_CONNECTION_MAP[type];
-    if (signingConnectionApp && appConnectionId) {
-      await appConnectionService.validateAppConnectionUsageById(
-        signingConnectionApp,
-        { connectionId: appConnectionId, projectId: ca.projectId },
-        permissionActor
-      );
-    }
+    await validateSigningAppConnection(type, appConnectionId, ca.projectId, permissionActor);
 
     const isExternalCa = EXTERNAL_SIGNING_TYPES.includes(type);
 
@@ -288,14 +293,12 @@ export const caSigningConfigServiceFactory = ({
       lastExternalCertificateId?: string;
     } = {};
 
-    const signingConnectionApp = CA_SIGNING_CONFIG_CONNECTION_MAP[existing.type as CaSigningConfigType];
-    if (signingConnectionApp && appConnectionId !== undefined) {
-      await appConnectionService.validateAppConnectionUsageById(
-        signingConnectionApp,
-        { connectionId: appConnectionId, projectId: ca.projectId },
-        permissionActor
-      );
-    }
+    await validateSigningAppConnection(
+      existing.type as CaSigningConfigType,
+      appConnectionId,
+      ca.projectId,
+      permissionActor
+    );
 
     if (existing.type === CaSigningConfigType.Internal && parentCaId !== undefined) {
       updateData.parentCaId = parentCaId;
