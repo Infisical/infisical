@@ -56,7 +56,7 @@ export type TAlertServiceFactoryDep = {
     | "applyChannelCreate"
     | "prepareChannelUpdate"
     | "applyChannelUpdate"
-    | "deleteChannelInTx"
+    | "deleteChannel"
     | "getDetailsForChannels"
     | "filterRecipientsInScope"
   >;
@@ -446,7 +446,7 @@ export const alertServiceFactory = ({
       Object.keys(plan.patch).length > 0 ? await alertDAL.updateById(plan.alert.id, plan.patch, tx) : plan.alert;
     for (const channelId of plan.deleteChannelIds) {
       // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
-      await alertChannelService.deleteChannelInTx(channelId, tx);
+      await alertChannelService.deleteChannel(channelId, tx);
     }
     for (const prepared of plan.channelUpdates) {
       // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial

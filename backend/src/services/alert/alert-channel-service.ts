@@ -43,10 +43,10 @@ export type TAlertChannelServiceFactoryDep = {
 
 export type TAlertChannelServiceFactory = ReturnType<typeof alertChannelServiceFactory>;
 
-// Everything the transaction-aware primitives need to write a channel inline. Channels are only ever
-// created through their owning alert, so authorization is the alert's (the caller has already run the
-// provider's assertPermission) and channel names are not required to be unique.
-export type TCreateChannelInTxInput = {
+// What a channel write needs. Channels are only ever created through their owning alert, so authorization
+// is the alert's (the caller has already run the provider's assertPermission) and channel names are not
+// required to be unique.
+export type TCreateChannelInput = {
   name: string;
   channelType: AlertChannelType | string;
   config: Record<string, unknown>;
@@ -59,7 +59,7 @@ export type TCreateChannelInTxInput = {
   createdByActorType: string;
 };
 
-export type TUpdateChannelInTxInput = {
+export type TUpdateChannelInput = {
   channelId: string;
   channelType?: AlertChannelType | string;
   name?: string;
@@ -212,7 +212,7 @@ export const alertChannelServiceFactory = ({
   };
 
   const prepareChannelCreate = async (
-    input: TCreateChannelInTxInput,
+    input: TCreateChannelInput,
     encryptor: TAlertEncryptor,
     tx?: Knex
   ): Promise<TPreparedChannelCreate> => {
@@ -237,6 +237,8 @@ export const alertChannelServiceFactory = ({
     };
   };
 
+  // The apply and delete steps take a required tx: a channel only means something together with its
+  // alert membership, which the caller writes in the same transaction.
   const applyChannelCreate = async (prepared: TPreparedChannelCreate, tx: Knex): Promise<TAlertChannels> => {
     const created = await alertChannelDAL.create(prepared.row, tx);
     if (prepared.recipients.length) {
@@ -252,14 +254,8 @@ export const alertChannelServiceFactory = ({
     return created;
   };
 
-  const createChannelInTx = async (
-    input: TCreateChannelInTxInput,
-    encryptor: TAlertEncryptor,
-    tx: Knex
-  ): Promise<TAlertChannels> => applyChannelCreate(await prepareChannelCreate(input, encryptor, tx), tx);
-
   const prepareChannelUpdate = async (
-    input: TUpdateChannelInTxInput,
+    input: TUpdateChannelInput,
     channel: TAlertChannels,
     cipher: { encryptor: TAlertEncryptor; decryptor: TAlertDecryptor },
     tx?: Knex
@@ -315,13 +311,6 @@ export const alertChannelServiceFactory = ({
     }
   };
 
-  const updateChannelInTx = async (
-    input: TUpdateChannelInTxInput,
-    channel: TAlertChannels,
-    cipher: { encryptor: TAlertEncryptor; decryptor: TAlertDecryptor },
-    tx: Knex
-  ): Promise<void> => applyChannelUpdate(await prepareChannelUpdate(input, channel, cipher, tx), tx);
-
   // For callers that carry recipient lists from outside the alert module (eg reminder recipients that
   // were never pruned when someone left the project), where an out-of-scope id should be dropped
   // rather than fail the whole write.
@@ -350,7 +339,7 @@ export const alertChannelServiceFactory = ({
     });
   };
 
-  const deleteChannelInTx = async (channelId: string, tx: Knex): Promise<void> => {
+  const deleteChannel = async (channelId: string, tx: Knex): Promise<void> => {
     await alertChannelDAL.deleteById(channelId, tx);
   };
 
@@ -388,13 +377,11 @@ export const alertChannelServiceFactory = ({
   };
 
   return {
-    createChannelInTx,
-    updateChannelInTx,
     prepareChannelCreate,
     applyChannelCreate,
     prepareChannelUpdate,
     applyChannelUpdate,
-    deleteChannelInTx,
+    deleteChannel,
     getDetailsForChannels,
     validateRecipients,
     assertRecipientTypesAllowed,

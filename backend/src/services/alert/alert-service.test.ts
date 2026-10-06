@@ -204,7 +204,7 @@ const buildService = (opts?: {
         });
         return {};
       },
-      deleteChannelInTx: async (channelId: string) => {
+      deleteChannel: async (channelId: string) => {
         channels.delete(channelId);
         detach(channelId);
       },

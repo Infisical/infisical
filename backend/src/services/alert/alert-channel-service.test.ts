@@ -99,6 +99,24 @@ const buildService = (opts?: { seed?: TRow[]; projectUserIds?: string[] }) => {
   return { service, store, recipients, scopeCheckTxs };
 };
 
+type TService = ReturnType<typeof buildService>["service"];
+
+// Prepares then applies in one transaction, the way the alert service writes a channel.
+const createChannel = async (
+  service: TService,
+  input: Parameters<TService["prepareChannelCreate"]>[0],
+  enc: Parameters<TService["prepareChannelCreate"]>[1],
+  trx: Knex
+) => service.applyChannelCreate(await service.prepareChannelCreate(input, enc, trx), trx);
+
+const updateChannel = async (
+  service: TService,
+  input: Parameters<TService["prepareChannelUpdate"]>[0],
+  channel: Parameters<TService["prepareChannelUpdate"]>[1],
+  channelCipher: Parameters<TService["prepareChannelUpdate"]>[2],
+  trx: Knex
+) => service.applyChannelUpdate(await service.prepareChannelUpdate(input, channel, channelCipher, trx), trx);
+
 const seedRow = (
   over: Partial<TRow> & { id: string; channelType: AlertChannelType; encryptedConfig: Buffer }
 ): TRow => ({
@@ -115,7 +133,8 @@ const seedRow = (
 describe("alert channel service", () => {
   test("creates a webhook channel, stores config, and redacts secrets in the detail view", async () => {
     const { service } = buildService();
-    const channel = await service.createChannelInTx(
+    const channel = await createChannel(
+      service,
       {
         name: "Ops webhook",
         channelType: AlertChannelType.WEBHOOK,
@@ -137,7 +156,8 @@ describe("alert channel service", () => {
   test("requires recipients for a directed (email) channel and rejects them for others", async () => {
     const { service } = buildService();
     await expect(
-      service.createChannelInTx(
+      createChannel(
+        service,
         { name: "Team email", channelType: AlertChannelType.EMAIL, config: {}, orgId: "org-1", ...CHANNEL_INPUT },
         encryptor as never,
         tx
@@ -145,7 +165,8 @@ describe("alert channel service", () => {
     ).rejects.toThrow("require at least one recipient");
 
     await expect(
-      service.createChannelInTx(
+      createChannel(
+        service,
         {
           name: "Ops webhook",
           channelType: AlertChannelType.WEBHOOK,
@@ -162,7 +183,8 @@ describe("alert channel service", () => {
 
   test("creates a directed email channel with recipients", async () => {
     const { service, recipients } = buildService();
-    const channel = await service.createChannelInTx(
+    const channel = await createChannel(
+      service,
       {
         name: "Team email",
         channelType: AlertChannelType.EMAIL,
@@ -183,7 +205,8 @@ describe("alert channel service", () => {
   test("rejects duplicate recipients instead of dropping them", async () => {
     const { service } = buildService();
     await expect(
-      service.createChannelInTx(
+      createChannel(
+        service,
         {
           name: "Team email",
           channelType: AlertChannelType.EMAIL,
@@ -209,7 +232,8 @@ describe("alert channel service", () => {
 
   test("stores email recipients exactly as sent", async () => {
     const { service, recipients } = buildService();
-    const channel = await service.createChannelInTx(
+    const channel = await createChannel(
+      service,
       {
         name: "Team email",
         channelType: AlertChannelType.EMAIL,
@@ -238,7 +262,8 @@ describe("alert channel service", () => {
   test("rejects an email recipient on an unverified domain", async () => {
     const { service } = buildService();
     await expect(
-      service.createChannelInTx(
+      createChannel(
+        service,
         {
           name: "Team email",
           channelType: AlertChannelType.EMAIL,
@@ -279,7 +304,8 @@ describe("alert channel service", () => {
     });
 
     // Config sent without signingSecret -> keep the existing one.
-    await service.updateChannelInTx(
+    await updateChannel(
+      service,
       { recipientScope: RECIPIENT_SCOPE, channelId: "ch-1", config: { url: "https://example.com/hook" } },
       store.get("ch-1") as never,
       cipher,
@@ -299,7 +325,8 @@ describe("alert channel service", () => {
     });
 
     await expect(
-      service.updateChannelInTx(
+      updateChannel(
+        service,
         { recipientScope: RECIPIENT_SCOPE, channelId: "ch-1", channelType: AlertChannelType.SLACK },
         channel as never,
         cipher,
@@ -316,7 +343,8 @@ describe("alert channel service", () => {
       encryptedConfig: encConfig({ url: "https://example.com/hook", signingSecret: "s3cr3t" })
     });
 
-    await service.updateChannelInTx(
+    await updateChannel(
+      service,
       {
         recipientScope: RECIPIENT_SCOPE,
         channelId: "ch-1",
@@ -340,7 +368,8 @@ describe("alert channel service", () => {
       encryptedConfig: encConfig({ url: "https://example.com/hook", signingSecret: "old" })
     });
 
-    await service.updateChannelInTx(
+    await updateChannel(
+      service,
       {
         recipientScope: RECIPIENT_SCOPE,
         channelId: "ch-1",
@@ -363,7 +392,8 @@ describe("alert channel service", () => {
     });
 
     await expect(
-      service.updateChannelInTx(
+      updateChannel(
+        service,
         { recipientScope: RECIPIENT_SCOPE, channelId: "ch-1", config: { webhookUrl: "" } },
         channel as never,
         cipher,
@@ -374,7 +404,8 @@ describe("alert channel service", () => {
 
   test("accepts all project members on a channel in the same project", async () => {
     const { service, recipients } = buildService();
-    const channel = await service.createChannelInTx(
+    const channel = await createChannel(
+      service,
       {
         name: "Email",
         channelType: AlertChannelType.EMAIL,
@@ -396,7 +427,8 @@ describe("alert channel service", () => {
   test("rejects all project members on an org-scoped channel", async () => {
     const { service } = buildService();
     await expect(
-      service.createChannelInTx(
+      createChannel(
+        service,
         {
           name: "Email",
           channelType: AlertChannelType.EMAIL,
@@ -415,7 +447,8 @@ describe("alert channel service", () => {
   test("rejects all project members that names another project", async () => {
     const { service } = buildService();
     await expect(
-      service.createChannelInTx(
+      createChannel(
+        service,
         {
           name: "Email",
           channelType: AlertChannelType.EMAIL,
@@ -434,7 +467,8 @@ describe("alert channel service", () => {
 
   test("checks recipient scope inside the caller's transaction", async () => {
     const { service, scopeCheckTxs } = buildService();
-    await service.createChannelInTx(
+    await createChannel(
+      service,
       {
         name: "Email",
         channelType: AlertChannelType.EMAIL,
@@ -453,7 +487,8 @@ describe("alert channel service", () => {
 
   test("accepts a platform creator with no actor id", async () => {
     const { service, store } = buildService();
-    const channel = await service.createChannelInTx(
+    const channel = await createChannel(
+      service,
       {
         name: "Email",
         channelType: AlertChannelType.EMAIL,
