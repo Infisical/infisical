@@ -1,3 +1,5 @@
+ARG NODE_VERSION=22.23.2
+
 # Build toolchain for the FIPS test/dev image.
 #
 # This layer is expensive (~15 min from scratch: two OpenSSL builds, SoftHSM2, Oracle
@@ -46,10 +48,11 @@ RUN ARCH=$(dpkg --print-architecture) && \
     unzip "$ORACLE_ZIP" -d /opt/oracle && \
     rm "$ORACLE_ZIP"
 
-FROM node:22.23.2-trixie-slim
+FROM node:${NODE_VERSION}-trixie-slim
 
-# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
-RUN npm install -g npm@10.9.9
+ARG NPM_VERSION=11.19.1
+RUN npm install -g npm@${NPM_VERSION} && test "$(npm --version)" = "${NPM_VERSION}"
+ENV npm_config_min_release_age=7
 
 ARG SOFTHSM2_VERSION=2.5.0
 ARG SOFTHSM2_COMMIT=369df0383d101bc8952692c2a368ac8bc887d1b4

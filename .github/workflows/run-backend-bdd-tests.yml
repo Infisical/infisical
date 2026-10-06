@@ -8,7 +8,13 @@ on:
       - "!backend/README.md"
       - "!backend/.*"
       - "backend/.eslintrc.js"
+      - "backend/.npmrc"
+      - ".npmrc"
+      - ".nvmrc"
       - "build-versions.env"
+      - "scripts/check-node-toolchain.mjs"
+      - ".github/actions/setup-node-toolchain/**"
+      - ".github/workflows/run-backend-bdd-tests.yml"
   workflow_call:
 
 jobs:
@@ -36,11 +42,9 @@ jobs:
         name: Install `docker compose` for local simulations
         with:
           version: "2.14.2"
-      - name: 🔧 Setup Node 22
+      - name: 🔧 Setup Node toolchain
         id: setup-node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: "22"
+        uses: ./.github/actions/setup-node-toolchain
       - name: Setup Python 3.11
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
@@ -57,7 +61,7 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: backend/node_modules
-          key: backend-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('backend/package-lock.json') }}
+          key: backend-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-npm${{ steps.setup-node.outputs.npm-version }}-${{ hashFiles('backend/package-lock.json', 'backend/.npmrc', '.npmrc') }}
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci

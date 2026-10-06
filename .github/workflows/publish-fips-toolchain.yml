@@ -76,6 +76,8 @@ jobs:
           tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}-${{ matrix.arch }}
           build-args: |
             INFISICAL_CLI_VERSION=${{ env.INFISICAL_CLI_VERSION }}
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            NPM_VERSION=${{ env.NPM_VERSION }}
 
   manifest:
     name: Merge manifest
